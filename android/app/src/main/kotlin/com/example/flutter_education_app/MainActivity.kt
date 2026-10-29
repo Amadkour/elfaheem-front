@@ -43,13 +43,13 @@ import android.provider.Settings
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.util.Log
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import com.cloudwebrtc.webrtc.ElFaheemBridge
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"

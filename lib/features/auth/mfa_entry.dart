@@ -7,16 +7,26 @@
 //
 // Feature key `profile.mfa` hides it. Never shown to guests or while a super admin views as someone else (the MFA
 // routes always act on the caller's own account). [MfaSecurityGroup] is the plain-values part the layout test pumps.
+//
+// The same "Security" group holds the fingerprint / Face ID sign-in switch (D-081, biometric.dart) for EVERY role on
+// a phone that supports it (Android 9+ / iOS with an enrolled fingerprint or face; never on web), so the two call sites
+// above carry it without a change. Feature key `auth.biometric` hides that row.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
-import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
+import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart' show t;
 import '../admin/admin_mfa_page.dart' show AdminMfaPage, mfaEntryLabel;
+import 'auth_provider.dart';
+import 'biometric.dart';
+import 'biometric_widgets.dart' show biometricEnrollNotice;
 import 'mfa.dart';
+import 'reauth_sheet.dart';
 
 /// Whether the settings entry is offered for [s]: the role may enroll, or MFA is on (so it can be managed).
 bool mfaEntryVisible(MfaStatus s) => s.allowed || s.enabled || s.required;
@@ -28,36 +38,76 @@ bool mfaEntryVisible(MfaStatus s) => s.allowed || s.enabled || s.required;
         ? (t('مطلوب', 'Required'), false)
         : (t('غير مفعّل', 'Off'), false);
 
-/// "Security" group with the single MFA row, from plain values.
-class MfaSecurityGroup extends StatelessWidget {
-  const MfaSecurityGroup({super.key, required this.status, this.onTap});
+/// The fingerprint / Face ID row's state (D-081), plain values.
+class BiometricRowState {
+  const BiometricRowState({required this.kind, required this.on, this.busy = false});
 
-  final MfaStatus status;
+  final BiometricKind kind;
+  final bool on;
+  final bool busy;
+}
+
+/// "Security" group from plain values: the MFA row (when [status] says the account may use MFA) and the fingerprint
+/// sign-in switch (when [biometric] is given: this phone supports it).
+class MfaSecurityGroup extends StatelessWidget {
+  const MfaSecurityGroup({super.key, this.status, this.onTap, this.biometric, this.onBiometricChanged});
+
+  final MfaStatus? status;
   final VoidCallback? onTap;
+  final BiometricRowState? biometric;
+  final ValueChanged<bool>? onBiometricChanged;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final (label, on) = mfaEntryState(status);
-    final color = on ? c.success : (status.required ? c.warning : c.textMedium);
+    final s = status;
+    final bio = biometric;
     return AppSettingsGroup(title: t('الأمان', 'Security'), icon: Icons.shield_rounded, children: [
-      AppSettingsTile(
-        key: const ValueKey('mfa.entry'),
-        icon: Icons.phonelink_lock_rounded,
-        color: c.primary,
-        label: mfaEntryLabel(),
-        onTap: onTap,
-        trailing: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 110),
-          child: AppBadgePill(label, color: color),
+      if (s != null && mfaEntryVisible(s))
+        Builder(builder: (context) {
+          final (label, on) = mfaEntryState(s);
+          final color = on ? c.success : (s.required ? c.warning : c.textMedium);
+          return AppSettingsTile(
+            key: const ValueKey('mfa.entry'),
+            icon: Icons.phonelink_lock_rounded,
+            color: c.primary,
+            label: mfaEntryLabel(),
+            featureKey: 'profile.mfa',
+            onTap: onTap,
+            trailing: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 110),
+              child: AppBadgePill(label, color: color),
+            ),
+          );
+        }),
+      if (bio != null)
+        AppSettingsTile(
+          key: const ValueKey('biometric.entry'),
+          icon: biometricIcon(bio.kind),
+          color: c.primary,
+          label: biometricSettingLabel(bio.kind),
+          subtitle: 'bio_setting_sub'.tr,
+          featureKey: kBiometricFeatureKey,
+          keywords: 'fingerprint face id touch id biometric بصمة وجه',
+          onTap: bio.busy || onBiometricChanged == null ? null : () => onBiometricChanged!(!bio.on),
+          trailing: bio.busy
+              ? SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.4, color: c.primary),
+                )
+              : AppSwitch(
+                  value: bio.on,
+                  semanticLabel: biometricSettingLabel(bio.kind),
+                  onChanged: onBiometricChanged,
+                ),
         ),
-      ),
     ]);
   }
 }
 
-/// Loads the caller's MFA status and shows [MfaSecurityGroup] (followed by [gap]) when the account may use MFA;
-/// nothing otherwise, also while loading or when the status cannot be read.
+/// Loads the caller's MFA status and this phone's fingerprint support, and shows [MfaSecurityGroup] (followed by
+/// [gap]) when either row applies; nothing otherwise, also while loading or when the status cannot be read.
 class MfaSettingsEntry extends StatefulWidget {
   const MfaSettingsEntry({super.key, this.api, this.gap = 20, this.padding = EdgeInsets.zero});
 
@@ -74,14 +124,28 @@ class MfaSettingsEntry extends StatefulWidget {
 
 class _MfaSettingsEntryState extends State<MfaSettingsEntry> {
   late final MfaApi _api = widget.api ?? RemoteMfaApi();
+  final _bio = BiometricAuth.instance;
   MfaStatus? _status;
+  bool _bioBusy = false;
 
   bool get _blocked => GuestState.active || ViewAsState.active;
 
   @override
   void initState() {
     super.initState();
+    _bio.addListener(_onBio);
     _load();
+    if (!_blocked && !_bio.loaded) _bio.load();
+  }
+
+  @override
+  void dispose() {
+    _bio.removeListener(_onBio);
+    super.dispose();
+  }
+
+  void _onBio() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -99,19 +163,61 @@ class _MfaSettingsEntryState extends State<MfaSettingsEntry> {
     if (mounted) await _load(); // turned on / off in there
   }
 
+  /// The fingerprint switch: on = the system prompt + a new key (the password sheet when the login's enrol token is
+  /// gone); off = the key is revoked on the server and forgotten here.
+  Future<void> _setBiometric(bool on) async {
+    final user = context.read<MyAuthProvider>().currentUser;
+    if (user == null || _bioBusy) return;
+    setState(() => _bioBusy = true);
+    try {
+      if (!on) {
+        await _bio.disable();
+        showAppNotice('bio_disabled_notice'.tr);
+        return;
+      }
+      final identifier = user.username != null ? '@${user.username}' : user.gmail;
+      var r = await _bio.enroll(userId: user.id, name: user.name, identifier: identifier, imageUrl: user.imageUrl);
+      if (r.outcome == BiometricEnrollOutcome.needsPassword && mounted) {
+        final re = await askReauth(context);
+        if (re == null) return;
+        r = await _bio.enroll(
+          userId: user.id,
+          name: user.name,
+          identifier: identifier,
+          imageUrl: user.imageUrl,
+          password: re.password,
+          code: re.mfaCode,
+          confirm: false, // the prompt was answered a moment ago
+        );
+      }
+      if (r.outcome == BiometricEnrollOutcome.enabled) await _bio.setDeclined(user.id, false);
+      biometricEnrollNotice(r);
+    } finally {
+      if (mounted) setState(() => _bioBusy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_blocked) return const SizedBox.shrink();
     final s = _status;
-    if (_blocked || s == null || !mfaEntryVisible(s)) return const SizedBox.shrink();
-    return ParentComponent(
-      featureKey: 'profile.mfa',
-      child: Padding(
-        padding: widget.padding,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          MfaSecurityGroup(status: s, onTap: _open),
-          SizedBox(height: widget.gap),
-        ]),
-      ),
+    final showMfa = s != null && mfaEntryVisible(s) && !AppConfig.disableList.contains('profile.mfa');
+    final userId = context.select<MyAuthProvider, int?>((a) => a.currentUser?.id);
+    final showBio = _bio.supported && _bio.featureOn && userId != null;
+    if (!showMfa && !showBio) return const SizedBox.shrink();
+    return Padding(
+      padding: widget.padding,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        MfaSecurityGroup(
+          status: showMfa ? s : null,
+          onTap: _open,
+          biometric: showBio
+              ? BiometricRowState(kind: _bio.kind, on: _bio.record?.userId == userId, busy: _bioBusy)
+              : null,
+          onBiometricChanged: _setBiometric,
+        ),
+        SizedBox(height: widget.gap),
+      ]),
     );
   }
 }

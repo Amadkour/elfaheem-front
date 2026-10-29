@@ -61,32 +61,57 @@ TextStyle authText(double size, {FontWeight w = FontWeight.w500, Color? c, doubl
       letterSpacing: ls,
     );
 
-/// The brand gradient of the hero and the brand panel: shades of the primary colour only (a lighter tint →
-/// primary → deeper), the same family as the dashboard sidebar. Not the theme's primary gradient, which an
-/// admin may run into the accent colour. Deeper as a whole in dark mode, where a bright brand block would glare.
+/// WCAG contrast ratio of two opaque colours (1 … 21).
+double authContrast(Color a, Color b) {
+  final la = a.computeLuminance(), lb = b.computeLuminance();
+  final hi = la > lb ? la : lb, lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/// One stop of a hero gradient: a step deeper toward [shade] in dark mode (a bright brand block glares there), then
+/// deepened further until even the MUTED on-hero ink (subtitles, the tagline: [ink] at 72 %) reads on it at 4.5:1,
+/// with a little margin for the glows drawn over it — an admin may run the server gradient into a light accent.
+Color authHeroStop(Color stop, Color ink, Color shade, {required bool dark}) {
+  var c = dark ? Color.alphaBlend(shade.withValues(alpha: 0.36), stop) : stop;
+  double muted(Color bg) => authContrast(Color.alphaBlend(ink.withValues(alpha: 0.72), bg), bg);
+  for (var i = 0; i < 16 && muted(c) < 4.9; i++) {
+    c = Color.alphaBlend(shade.withValues(alpha: 0.12), c);
+  }
+  return c;
+}
+
+/// The brand gradient of the sign-in hero = the dashboard hero's (HomeHeroCard: the theme's primary gradient, set on
+/// the server, with its light sheen through the middle), so sign-in → home reads as one surface (D-081, amends
+/// D-073). Every stop passes [authHeroStop]: deeper in dark mode, never too light for the on-hero ink. Falls back to
+/// shades of the primary when the server sends fewer than two colours.
 LinearGradient authHeroGradient(ThemeConfigProvider c) {
   final p = c.primary;
+  final base = c.primaryGradient.colors;
+  final colors = base.length >= 2 ? base : [c.heroTint(p, 0.14), p, c.heroEnd(p, 0.34)];
   return LinearGradient(
     begin: AlignmentDirectional.topStart,
     end: AlignmentDirectional.bottomEnd,
-    stops: const [0, 0.5, 1],
-    colors: c.isDark
-        ? [c.heroEnd(p, 0.34), c.heroEnd(p, 0.48), c.heroEnd(p, 0.64)]
-        : [c.heroTint(p, 0.14), p, c.heroEnd(p, 0.34)],
+    colors: [for (final s in colors) authHeroStop(s, c.onHero, c.heroShade, dark: c.isDark)],
   );
 }
 
-/// The hero surface: brand gradient, a light primary glow, a soft glow and two hairline rings. Fills its box.
+/// The hero surface, in the dashboard hero's language: the brand gradient, a soft top sheen, a brand glow, and the
+/// home hero's signature — one wide ring bleeding off the end edge — with a hairline echo. Fills its box. With a
+/// [radius] (the phone hero) it floats on a soft brand glow like HomeHeroCard.
 class AuthHeroBackdrop extends StatelessWidget {
-  const AuthHeroBackdrop({super.key, this.radius = 0});
+  const AuthHeroBackdrop({super.key, this.radius = 0, this.panel = false});
 
   /// Bottom corner radius (the phone hero is rounded, the brand panel is not).
   final double radius;
+
+  /// The wide layout's tall brand panel: one more soft glow half-way down, so the long surface keeps its depth.
+  final bool panel;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final r = BorderRadius.vertical(bottom: Radius.circular(radius));
+    final ink = c.onHero;
     Widget glow(Color color, double size) => Container(
           width: size,
           height: size,
@@ -95,28 +120,58 @@ class AuthHeroBackdrop extends StatelessWidget {
             gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
           ),
         );
-    Widget ring(double size, double alpha) => Container(
+    Widget ring(double size, double width, double alpha) => Container(
           width: size,
           height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: c.onHero.withValues(alpha: alpha), width: 1),
+            border: Border.all(color: ink.withValues(alpha: alpha), width: width),
           ),
         );
-    return ClipRRect(
+    final brandGlow = c.heroTint(c.primary, 0.45).withValues(alpha: c.isDark ? 0.16 : 0.24);
+    final surface = ClipRRect(
       borderRadius: r,
       child: DecoratedBox(
         decoration: BoxDecoration(gradient: authHeroGradient(c)),
         child: Stack(
           clipBehavior: Clip.hardEdge,
           children: [
-            PositionedDirectional(top: -140, end: -120, child: glow(c.heroTint(c.primary, 0.45).withValues(alpha: c.isDark ? 0.22 : 0.40), 360)),
-            PositionedDirectional(bottom: -160, start: -120, child: glow(c.onHero.withValues(alpha: 0.10), 340)),
-            PositionedDirectional(top: -90, end: -70, child: ring(260, 0.10)),
-            PositionedDirectional(top: -40, end: -20, child: ring(160, 0.08)),
+            // a soft top sheen: light falling on the surface
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.center,
+                    colors: [ink.withValues(alpha: c.isDark ? 0.03 : 0.05), ink.withValues(alpha: 0)],
+                  ),
+                ),
+              ),
+            ),
+            PositionedDirectional(top: -150, end: -130, child: glow(brandGlow, 380)),
+            PositionedDirectional(bottom: -170, start: -140, child: glow(ink.withValues(alpha: 0.04), 360)),
+            if (panel)
+              PositionedDirectional(top: 280, start: -140, child: glow(c.heroTint(c.primary, 0.3).withValues(alpha: c.isDark ? 0.08 : 0.12), 340)),
+            // the home hero's signature ring (HomeHeroCard), scaled to the larger surface, and a hairline echo
+            PositionedDirectional(top: -96, end: -84, child: ring(260, 30, 0.08)),
+            PositionedDirectional(top: -170, end: -160, child: ring(420, 1, 0.10)),
           ],
         ),
       ),
+    );
+    if (radius <= 0) return surface;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: r,
+        boxShadow: [
+          BoxShadow(
+            color: c.primary.withValues(alpha: c.isDark ? 0.22 : 0.28),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: surface,
     );
   }
 }
@@ -223,7 +278,7 @@ class AuthSidebar extends StatelessWidget {
       width: w,
       child: Stack(
         children: [
-          const Positioned.fill(child: AuthHeroBackdrop()),
+          const Positioned.fill(child: AuthHeroBackdrop(panel: true)),
           SafeArea(
             child: CustomScrollView(
               slivers: [

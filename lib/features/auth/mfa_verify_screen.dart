@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart' show t;
 import '../admin/admin_mfa_page.dart';
 import 'auth_provider.dart';
+import 'biometric_widgets.dart' show maybeOfferBiometric;
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'mfa.dart';
@@ -206,6 +207,7 @@ class _MfaVerifyScreenState extends State<MfaVerifyScreen> {
     final ok = await auth.verifyMfa(code: _recovery ? null : raw, recoveryCode: _recovery ? raw : null);
     if (!mounted) return;
     if (ok) {
+      await maybeOfferBiometric(context, auth); // once per account and phone (D-081)
       nav.pushNamedAndRemoveUntil(auth.homeRoute, (_) => false);
     } else {
       _code.clear();

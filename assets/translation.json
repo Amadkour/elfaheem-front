@@ -17084,5 +17084,141 @@
   "username_remove": {
     "en": "Remove username",
     "ar": "حذف اسم المستخدم"
+  },
+  "bio_sign_in_fingerprint": {
+    "en": "Sign in with fingerprint",
+    "ar": "الدخول بالبصمة"
+  },
+  "bio_sign_in_face": {
+    "en": "Sign in with Face ID",
+    "ar": "الدخول عبر Face ID"
+  },
+  "bio_sign_in_touch": {
+    "en": "Sign in with Touch ID",
+    "ar": "الدخول عبر Touch ID"
+  },
+  "bio_sign_in_generic": {
+    "en": "Sign in with fingerprint or face",
+    "ar": "الدخول بالبصمة أو الوجه"
+  },
+  "bio_not_you": {
+    "en": "Not you?",
+    "ar": "لست أنت؟"
+  },
+  "bio_or_password": {
+    "en": "or use your password",
+    "ar": "أو استخدم كلمة المرور"
+  },
+  "bio_welcome_name": {
+    "en": "Welcome back, {name}",
+    "ar": "أهلاً بعودتك، {name}"
+  },
+  "bio_login_sub": {
+    "en": "One touch and you're in, or use your password below.",
+    "ar": "لمسة واحدة وتدخل، أو استخدم كلمة المرور بالأسفل."
+  },
+  "bio_prompt_reason": {
+    "en": "Confirm it's you to sign in",
+    "ar": "أكّد أنك أنت لتسجيل الدخول"
+  },
+  "bio_enable_reason": {
+    "en": "Confirm it's you to turn on quick sign-in",
+    "ar": "أكّد أنك أنت لتفعيل الدخول السريع"
+  },
+  "bio_offer_title_fingerprint": {
+    "en": "Sign in with your fingerprint next time?",
+    "ar": "هل تريد الدخول ببصمتك في المرة القادمة؟"
+  },
+  "bio_offer_title_face": {
+    "en": "Sign in with Face ID next time?",
+    "ar": "هل تريد الدخول عبر Face ID في المرة القادمة؟"
+  },
+  "bio_offer_title_touch": {
+    "en": "Sign in with Touch ID next time?",
+    "ar": "هل تريد الدخول عبر Touch ID في المرة القادمة؟"
+  },
+  "bio_offer_title_generic": {
+    "en": "Sign in faster next time?",
+    "ar": "هل تريد الدخول بشكل أسرع في المرة القادمة؟"
+  },
+  "bio_offer_body": {
+    "en": "Skip the password on this phone: one touch and you're in. You can turn it off any time from Security in your profile.",
+    "ar": "تخطَّ كلمة المرور على هذا الهاتف: لمسة واحدة وتدخل. يمكنك إيقافه في أي وقت من «الأمان» في حسابك."
+  },
+  "bio_offer_point_private": {
+    "en": "Your fingerprint or face never leaves this phone",
+    "ar": "بصمتك أو وجهك لا يغادران هذا الهاتف أبداً"
+  },
+  "bio_offer_point_device": {
+    "en": "Works on this phone only, and stops when your password changes",
+    "ar": "يعمل على هذا الهاتف فقط، ويتوقف عند تغيير كلمة المرور"
+  },
+  "bio_offer_enable": {
+    "en": "Turn on",
+    "ar": "تفعيل"
+  },
+  "bio_offer_later": {
+    "en": "Not now",
+    "ar": "ليس الآن"
+  },
+  "bio_enabled_notice": {
+    "en": "Quick sign-in is on for this phone",
+    "ar": "تم تفعيل الدخول السريع على هذا الهاتف"
+  },
+  "bio_disabled_notice": {
+    "en": "Quick sign-in is off for this phone",
+    "ar": "تم إيقاف الدخول السريع على هذا الهاتف"
+  },
+  "bio_gone_notice": {
+    "en": "Quick sign-in was turned off for your security. Sign in with your password to turn it on again.",
+    "ar": "أُوقف الدخول السريع حفاظاً على أمانك. سجّل الدخول بكلمة المرور لتفعيله من جديد."
+  },
+  "bio_lockout_notice": {
+    "en": "Too many tries. Use your password, or try again in a little while.",
+    "ar": "محاولات كثيرة. استخدم كلمة المرور، أو حاول مرة أخرى بعد قليل."
+  },
+  "bio_unavailable_notice": {
+    "en": "Add a fingerprint or face in your phone's settings first.",
+    "ar": "أضف بصمة أو وجهاً من إعدادات هاتفك أولاً."
+  },
+  "bio_failed_notice": {
+    "en": "Couldn't sign you in that way. Try again or use your password.",
+    "ar": "تعذّر الدخول بهذه الطريقة. حاول مرة أخرى أو استخدم كلمة المرور."
+  },
+  "bio_setting_fingerprint": {
+    "en": "Fingerprint sign-in",
+    "ar": "الدخول بالبصمة"
+  },
+  "bio_setting_face": {
+    "en": "Face ID sign-in",
+    "ar": "الدخول عبر Face ID"
+  },
+  "bio_setting_touch": {
+    "en": "Touch ID sign-in",
+    "ar": "الدخول عبر Touch ID"
+  },
+  "bio_setting_generic": {
+    "en": "Quick sign-in (fingerprint / face)",
+    "ar": "الدخول السريع (البصمة / الوجه)"
+  },
+  "bio_setting_sub": {
+    "en": "On this phone only",
+    "ar": "على هذا الهاتف فقط"
+  },
+  "bio_forget_title": {
+    "en": "Forget this account on this phone?",
+    "ar": "نسيان هذا الحساب على هذا الهاتف؟"
+  },
+  "bio_forget_body": {
+    "en": "Quick sign-in will be turned off here. You can still sign in with your password.",
+    "ar": "سيتوقف الدخول السريع هنا. يمكنك دائماً الدخول بكلمة المرور."
+  },
+  "bio_forget": {
+    "en": "Forget",
+    "ar": "نسيان"
+  },
+  "bio_security": {
+    "en": "Security",
+    "ar": "الأمان"
   }
 }
