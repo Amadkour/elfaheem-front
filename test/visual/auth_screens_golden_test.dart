@@ -27,8 +27,12 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_widgets.dart';
+import 'package:flutter_education_app/features/auth/biometric.dart';
+import 'package:flutter_education_app/features/auth/biometric_widgets.dart';
 import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/auth/login_screen.dart';
+import 'package:flutter_education_app/features/auth/mfa.dart';
+import 'package:flutter_education_app/features/auth/mfa_entry.dart';
 import 'package:flutter_education_app/features/auth/mfa_verify_screen.dart';
 import 'package:flutter_education_app/features/auth/register_screen.dart';
 import 'package:flutter_education_app/features/auth/username.dart';
@@ -299,4 +303,112 @@ void main() {
   testWidgets('mfa', (tester) async {
     await _renderAll(tester, 'mfa', () => const MfaVerifyScreen());
   });
+
+  // ── Fingerprint / Face ID sign-in (D-082) ──────────────────────────────────
+  group('biometric', () {
+    const rec = BiometricRecord(
+      credentialId: 'c-1',
+      seed: 's',
+      userId: 7,
+      name: 'Ahmed Hamdy',
+      identifier: 'ahmed.hamdy@example.com',
+    );
+    tearDown(BiometricAuth.instance.debugReset);
+
+    testWidgets('login remembered', (tester) async {
+      BiometricAuth.instance.debugSet(supported: true, record: rec);
+      await _renderAll(tester, 'login_biometric', () => const LoginScreen());
+    });
+
+    testWidgets('login remembered face', (tester) async {
+      BiometricAuth.instance.debugSet(supported: true, kind: BiometricKind.face, record: rec);
+      await _renderAll(tester, 'login_biometric_face', () => const LoginScreen());
+    });
+
+    testWidgets('offer sheet', (tester) async {
+      await _renderAll(tester, 'biometric_offer', () => const _SheetPreview(kind: BiometricKind.fingerprint));
+    });
+
+    testWidgets('security group', (tester) async {
+      await _renderAll(tester, 'biometric_security', () => const _SecurityPreview());
+    });
+  });
+}
+
+/// The offer as the app shows it: over the dimmed login screen, in the app sheet's rounded surface.
+class _SheetPreview extends StatelessWidget {
+  const _SheetPreview({required this.kind});
+
+  final BiometricKind kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Stack(
+      children: [
+        const LoginScreen(),
+        const Positioned.fill(child: ColoredBox(color: Color(0x8A000000))),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Material(
+              color: c.cardBg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(2)),
+                  ),
+                  const SizedBox(height: 8),
+                  BiometricOfferSheetBody(kind: kind, onEnable: () {}, onLater: () {}),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The profile's Security group with the switch on (and the MFA row), and a phone with the switch off.
+class _SecurityPreview extends StatelessWidget {
+  const _SecurityPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: context.colors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Column(
+                children: [
+                  MfaSecurityGroup(
+                    status: const MfaStatus(allowed: true, enabled: true),
+                    onTap: () {},
+                    biometric: const BiometricRowState(kind: BiometricKind.fingerprint, on: true),
+                    onBiometricChanged: (_) {},
+                  ),
+                  const SizedBox(height: 24),
+                  MfaSecurityGroup(
+                    biometric: const BiometricRowState(kind: BiometricKind.face, on: false),
+                    onBiometricChanged: (_) {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

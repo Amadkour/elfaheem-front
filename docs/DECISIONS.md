@@ -768,3 +768,49 @@ pushing every page on the root (today's behaviour: the bar disappears, the reque
 **Known differences.** A tab's first page no longer shows an implied back arrow when the dashboard itself was pushed
 above another page (the org dashboards have their exit button); on web the address bar keeps the dashboard's path
 while pages are open inside a tab.
+## D-082 — Fingerprint / Face ID sign-in with a device-bound key; the sign-in hero speaks the dashboard hero's language · 2026-10-29
+
+**Context.** The owner asked for biometric login "to accelerate login", and for login bars that feel like the
+dashboard. The cheap way — keep the refresh token alive across a sign-out and unlock it with the fingerprint — turns
+a sign-out into a no-op for anyone who can read the app's storage, and a stolen refresh token into a permanent one.
+**Decision (security).** Each phone enrolls its own credential (`lib/features/auth/biometric.dart`, back
+`services/biometric_service.py`, migration 0029):
+- *Key.* An Ed25519 pair made on the phone with package:cryptography (already in the lock file, pure Dart); the
+  private seed lives in the keystore (`BiometricKeyStore` in `token_storage.dart`: Android EncryptedSharedPreferences,
+  iOS Keychain `unlocked_this_device`), apart from the session tokens, so a sign-out keeps it. The server stores only
+  the public key and sha256 of the device id.
+- *Enrolment proof.* An access token alone cannot enroll (a leaked one would mint a credential that outlives it):
+  the call needs the `biometric_enroll_token` every login answer now carries (10 minutes, bound to the user, their
+  token_version and `X-Device-Id`) or the password (+ the MFA code), which the Security switch asks for. Students
+  enroll only a device registered to the account. One active key per device, at most 5 per account.
+- *Login.* `local_auth` with `biometricOnly: true` (never a silent fallback to the device PIN — the password form is
+  the fallback) releases the seed; the app signs `nextbrain/biometric-login/v1\n<credential>\n<challenge>\n<device
+  id>` over a single-use 2-minute challenge, which the server claims with a compare-and-set before checking the
+  signature. The session then starts through the password login's own gates (`start_biometric_session`: deactivated,
+  unverified, temporary-password expiry, the student's single session) and its **second factor**: the biometric check
+  is enforced by the app, not bound into the key (pure Dart cannot ask the keystore for a biometric-bound key), so the
+  key counts as one factor and an MFA account still answers `mfa_required`.
+- *Revocation.* The switch / "Not you?", every "sign out everywhere" event (`revoke_user_tokens` except a student's
+  new sign-in and a plain sign-out: password change / reset, revoke-all, MFA on / reset, deletion), 5 bad signatures,
+  a deactivated account, a student device no longer registered, 90 days unused (`BIOMETRIC_IDLE_DAYS`). Throttle kind
+  `biometric` (10 per key + address, 20 per key, 30 per address / 15 min); the enrol token, challenge, signature and
+  seed are in `logSensitiveKeys`.
+**Decision (product).** Android 9+ and iOS only (Android 8 needs an AppCompat launch theme for the legacy fingerprint
+dialog; the app's themes are not AppCompat, so those phones simply don't get it), hidden on web and by the kill
+switch `auth.biometric`. After a password / MFA / Google sign-in the app offers it ONCE per account and phone ("Not
+now" is remembered; the Security switch next to two-step verification stays — it now shows for every role on a
+supporting phone). The login screen greets the remembered account by name with its photo, the big fingerprint / Face
+ID button and "Not you?", prefills the identifier, and opens the prompt by itself once per app run — never right after
+a sign-out. `MainActivity` extends `FlutterFragmentActivity` (local_auth's requirement; the MediaProjection
+`startActivityForResult` / `onActivityResult` path is unchanged — both exist on `FragmentActivity`), manifest
+`USE_BIOMETRIC`, iOS `NSFaceIDUsageDescription` (English only: the project has no InfoPlist.strings localisation).
+**Decision (look, amends D-073).** `authHeroGradient` is now the dashboard hero's gradient — the theme's
+`primaryGradient` from the server, the same one `HomeHeroCard` paints, with its light sheen through the middle —
+each stop guarded by `authHeroStop` (a step deeper in dark mode, then deepened until even the muted on-hero ink —
+subtitles, tagline — reads at 4.5:1 with a margin for the glows; an admin may run the gradient into a light accent). On
+the default theme this keeps a gentle sheen rather than the home card's full one: AA contrast wins over the sheen. `AuthHeroBackdrop` carries the home hero's signature ring and a
+soft top sheen, and the phone hero floats on the same brand glow as the home hero; the wide brand panel uses the same
+surface (one extra glow for its height). The splash → login hand-off is untouched (the logo tile keeps its Hero tag).
+**Rejected.** Keeping the refresh token across sign-out; an HMAC device secret (a server-side secret to protect,
+where a public key needs none); skipping MFA after a fingerprint; the dashboard sidebar's charcoal for the wide
+panel (rendered muddy next to the brand hero); a separate biometric settings page.

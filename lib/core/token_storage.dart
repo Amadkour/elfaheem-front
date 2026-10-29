@@ -109,3 +109,43 @@ class TokenStorage {
     } catch (_) {}
   }
 }
+
+/// The fingerprint / Face ID sign-in key of this device (D-082, lib/features/auth/biometric.dart): one JSON record
+/// (credential id, the Ed25519 private seed, and the account's name / avatar / identifier for the login screen).
+///
+/// Kept apart from the session tokens on purpose: signing out wipes the tokens, never this record (that is what lets
+/// the next sign-in skip the password); "Not you?", turning the switch off or a server refusal deletes it. iOS: the
+/// item is readable only while the phone is unlocked and never moves to another device (`unlocked_this_device`: no
+/// iCloud Keychain, no backup restore elsewhere). Android: EncryptedSharedPreferences (flutter_secure_storage 11),
+/// whose key lives in the Android Keystore. Never used on web.
+class BiometricKeyStore {
+  const BiometricKeyStore();
+
+  static const _key = 'biometric_credential_v1';
+
+  static const _secure = FlutterSecureStorage(
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.unlocked_this_device),
+  );
+
+  /// The stored record (raw JSON) or null.
+  Future<String?> read() async {
+    if (kIsWeb) return null;
+    try {
+      return await _secure.read(key: _key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> write(String json) async {
+    if (kIsWeb) return;
+    await _secure.write(key: _key, value: json);
+  }
+
+  Future<void> clear() async {
+    if (kIsWeb) return;
+    try {
+      await _secure.delete(key: _key);
+    } catch (_) {}
+  }
+}

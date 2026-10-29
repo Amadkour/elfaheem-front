@@ -515,6 +515,13 @@ const logSensitiveKeys = {
   'recovery_codes',
   'recovery_code',
   'otp',
+  // fingerprint / Face ID sign-in (D-082): the enrol proof, the one-time challenge and its signature, the key seed
+  'biometric_enroll_token',
+  'enroll_token',
+  'challenge',
+  'signature',
+  'seed',
+  'private_key',
 };
 
 /// Server error codes (`mfa_code_invalid`, `DEVICE_MISMATCH`) stay readable in a `code` field; any other `code`

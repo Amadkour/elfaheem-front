@@ -5,11 +5,15 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../design/app_charts.dart' show appInk;
+import '../../design/app_kit.dart' show appConfirm;
+import '../../design/app_notice.dart';
 import '../../utils/helpers.dart';
 import '../shared/guest/guest_state.dart';
 import 'auth_provider.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
+import 'biometric.dart';
+import 'biometric_widgets.dart';
 import 'forget_screen.dart';
 import 'google_auth_flow.dart';
 import 'mfa.dart';
@@ -30,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _bio = BiometricAuth.instance;
 
   @override
   void initState() {
@@ -38,8 +43,50 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.clear();
     // Which identifiers the admin allows (email / phone / either).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<MyAuthProvider>().loadPolicy();
+      if (!mounted) return;
+      context.read<MyAuthProvider>().loadPolicy();
+      _initBiometric();
     });
+  }
+
+  /// A remembered fingerprint account (D-082): its identifier stands in for the field, and the system prompt opens by
+  /// itself once per app run (never right after a sign-out).
+  Future<void> _initBiometric() async {
+    await _bio.load();
+    if (!mounted) return;
+    if (_bio.takeAutoPrompt()) await _biometricLogin();
+  }
+
+  /// The identifier of the remembered account shown at the top of the card, or null (the field is shown then).
+  String? _rememberedIdentifier(BiometricRecord? rec) {
+    final id = rec?.identifier?.trim();
+    return (id == null || id.isEmpty) ? null : id;
+  }
+
+  String get _identifier =>
+      _rememberedIdentifier(_bio.available ? _bio.record : null) ?? _emailController.text.trim();
+
+  Future<void> _biometricLogin() async {
+    final auth = context.read<MyAuthProvider>();
+    final out = await auth.loginWithBiometric();
+    if (!mounted) return;
+    switch (out) {
+      case BiometricOutcome.session:
+        auth.loadCachedUser();
+        Navigator.of(context).pushNamed(auth.homeRoute);
+      case BiometricOutcome.mfa:
+        await openMfaStep(Navigator.of(context), auth);
+      default:
+        final m = biometricOutcomeNotice(out, message: auth.biometricError);
+        if (m != null) showAppNotice(m, error: out != BiometricOutcome.gone);
+    }
+  }
+
+  Future<void> _forgetBiometric() async {
+    final ok = await appConfirm(context, message: 'bio_forget_body'.tr, confirmLabel: 'bio_forget'.tr);
+    if (!ok || !mounted) return;
+    await _bio.forget();
+    _emailController.clear();
   }
 
   @override
@@ -53,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     final authProvider = context.read<MyAuthProvider>();
     final success = await authProvider.login(
-      gmail: _emailController.text.trim(),
+      gmail: _identifier,
       password: _passwordController.text,
     );
     if (!mounted) return;
@@ -61,6 +108,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // lets the platform's password manager offer to save the sign-in
       TextInput.finishAutofillContext();
       authProvider.loadCachedUser();
+      // "Sign in with your fingerprint next time?" — once per account on this phone (D-082)
+      await maybeOfferBiometric(context, authProvider, identifier: _identifier);
       if (mounted) {
         Navigator.of(context).pushNamed(authProvider.homeRoute);
       }
@@ -73,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(
           builder: (_) => OtpVerificationScreen(
             // Always the account e-mail from the server (the user may have typed a phone).
-            email: authProvider.pendingGmail ?? _emailController.text.trim(),
+            email: authProvider.pendingGmail ?? _identifier,
             channels: authProvider.pendingChannels,
             phoneNumber: authProvider.pendingPhoneMasked,
             role: authProvider.pendingRole ?? 'student',
@@ -91,14 +140,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AuthScaffold(
-      title: 'auth_welcome_back'.tr,
-      subtitle: 'auth_login_sub'.tr,
-      builder: (context, isWide) => _buildForm(),
+    return ListenableBuilder(
+      listenable: _bio,
+      builder: (context, _) {
+        final rec = _bio.available ? _bio.record : null;
+        final first = rec?.firstName ?? '';
+        return AuthScaffold(
+          title: first.isNotEmpty ? 'bio_welcome_name'.tr.replaceAll('{name}', first) : 'auth_welcome_back'.tr,
+          subtitle: rec != null ? 'bio_login_sub'.tr : 'auth_login_sub'.tr,
+          builder: (context, isWide) => _buildForm(rec),
+        );
+      },
     );
   }
 
-  Widget _buildForm() {
+  Widget _buildForm(BiometricRecord? rec) {
     final c = context.colors;
     // the readable ink of the primary on the card (the raw primary was 3:1 on it, light and dark)
     final link = appInk(context, c.primary);
@@ -111,22 +167,37 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ── A remembered fingerprint / Face ID account (D-082) ─────────
+            if (rec != null)
+              BiometricQuickSignIn(
+                name: rec.name,
+                initials: rec.initials,
+                identifier: rec.identifier,
+                imageUrl: rec.imageUrl,
+                kind: _bio.kind,
+                busy: context.watch<MyAuthProvider>().isLoadingBiometric,
+                onSignIn: _biometricLogin,
+                onForget: _forgetBiometric,
+              ),
             // ── Email / phone / either (+ @username) — controlled by the admin ─
-            Builder(
-              builder: (context) {
-                final spec = context.watch<MyAuthProvider>().identifierSpec;
-                return IconTextField(
-                  controller: _emailController,
-                  label: spec.labelKey.tr,
-                  icon: spec.icon.data,
-                  keyboard: spec.keyboard,
-                  autocorrect: false,
-                  autofillHints: const [AutofillHints.username, AutofillHints.email],
-                  textInputAction: TextInputAction.next,
-                );
-              },
-            ),
-            const SizedBox(height: 16),
+            // (a remembered account already shows who signs in: its identifier is used, "Not you?" brings the field back)
+            if (_rememberedIdentifier(rec) == null) ...[
+              Builder(
+                builder: (context) {
+                  final spec = context.watch<MyAuthProvider>().identifierSpec;
+                  return IconTextField(
+                    controller: _emailController,
+                    label: spec.labelKey.tr,
+                    icon: spec.icon.data,
+                    keyboard: spec.keyboard,
+                    autocorrect: false,
+                    autofillHints: const [AutofillHints.username, AutofillHints.email],
+                    textInputAction: TextInputAction.next,
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // ── Password ───────────────────────────────────────────────────
             IconPasswordField(

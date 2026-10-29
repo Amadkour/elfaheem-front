@@ -36,6 +36,7 @@
  "attendance",
  "attendance.action",
  "attendance.record",
+ "auth.biometric",
  "auth.username",
  "calendar.entry",
  "categories",

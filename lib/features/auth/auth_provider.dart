@@ -15,6 +15,7 @@ import '../../core/app_mode.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
 import '../../config/app_config.dart' show AppConfig;
+import 'biometric.dart';
 import 'mfa.dart';
 import 'teacher_onboarding_token.dart';
 import 'username.dart';
@@ -412,11 +413,14 @@ class MyAuthProvider extends BaseProvider {
     await _persistTokens(result);
     TeacherOnboardingToken.readFrom(result);
     _readAccountSetup(result);
+    BiometricAuth.instance.noteLoginAnswer(result); // the enrol token for the "fingerprint next time?" offer (D-082)
     final userJson = result['user'];
     if (userJson is Map) {
       final m = Map<String, dynamic>.from(userJson);
       _currentUser = UserModel.fromJson(m);
       await _storage.saveUser(m);
+      await BiometricAuth.instance
+          .refreshProfile(userId: _currentUser!.id, name: _currentUser!.name, imageUrl: _currentUser!.imageUrl);
     }
     await NotificationService.instance.registerWithBackend(_api);
     notifyListeners();
@@ -809,6 +813,45 @@ class MyAuthProvider extends BaseProvider {
     notifyListeners();
     return false;
   }
+  // ── Fingerprint / Face ID sign-in (D-082) ─────────────────────────────────────
+
+  bool isLoadingBiometric = false;
+
+  /// The server's sentence of the last failed fingerprint sign-in (null = a generic text).
+  String? biometricError;
+
+  /// The system prompt, then the device key's signed challenge (BiometricAuth.signIn). A session is saved exactly
+  /// like a password login; an MFA account sets [mfaStep] (the login screen opens the code screen); [biometricError]
+  /// carries the server's sentence for [BiometricOutcome.failed].
+  Future<BiometricOutcome> loginWithBiometric() async {
+    if (isLoadingBiometric) return BiometricOutcome.cancelled;
+    isLoadingBiometric = true;
+    needsVerification = false;
+    pendingRole = null;
+    biometricError = null;
+    _resetMfa();
+    notifyListeners();
+    try {
+      final r = await BiometricAuth.instance.signIn();
+      switch (r.outcome) {
+        case BiometricOutcome.session:
+          await completeSession(r.body!);
+        case BiometricOutcome.mfa:
+          final step = MfaLoginStep.fromLogin(r.body);
+          mfaStep = step;
+          mfaAttemptsLeft = step.attemptsLeft;
+        case BiometricOutcome.failed:
+          biometricError = r.message;
+        default:
+          break;
+      }
+      return r.outcome;
+    } finally {
+      isLoadingBiometric = false;
+      notifyListeners();
+    }
+  }
+
   // ── Google sign-in / sign-up ──────────────────────────────────────────────────
 
   bool isLoadingGoogle = false;
@@ -1016,6 +1059,8 @@ class MyAuthProvider extends BaseProvider {
   Future<void> logout() async {
     ViewAsState.instance.stop(); // never carry view-as into the next session
     AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
+    // the fingerprint key survives a sign-out (D-082), but the login screen that follows must not prompt by itself
+    BiometricAuth.instance.suppressAutoPrompt();
     // Unregister the push token BEFORE the tokens are wiped — afterwards the DELETE had no auth header,
     // failed with 401, and this device kept receiving the previous user's pushes.
     try {

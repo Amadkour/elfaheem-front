@@ -23,6 +23,8 @@ import 'package:flutter_education_app/core/providers.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
+import 'package:flutter_education_app/features/auth/biometric.dart';
+import 'package:flutter_education_app/features/auth/biometric_widgets.dart';
 import 'package:flutter_education_app/features/auth/login_screen.dart';
 import 'package:flutter_education_app/features/auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/auth/register_screen.dart';
@@ -368,6 +370,19 @@ void main() {
 
     testWidgets('re-auth sheet', (tester) async {
       await expectA11y(tester, 'reauth', () => ReauthSheetBody(showMfa: true, onSubmit: (_) {}));
+    });
+
+    testWidgets('sign in, remembered fingerprint account (D-082)', (tester) async {
+      BiometricAuth.instance.debugSet(
+          supported: true,
+          record: const BiometricRecord(credentialId: 'c', seed: 's', userId: 7, name: 'Ahmed Hamdy', identifier: '@ahmed'));
+      addTearDown(BiometricAuth.instance.debugReset);
+      await expectA11y(tester, 'login_biometric', () => const LoginScreen(), wrap: withProviders);
+    });
+
+    testWidgets('fingerprint offer sheet (D-082)', (tester) async {
+      await expectA11y(tester, 'biometric_offer',
+          () => BiometricOfferSheetBody(kind: BiometricKind.fingerprint, onEnable: () {}, onLater: () {}));
     });
   });
 }

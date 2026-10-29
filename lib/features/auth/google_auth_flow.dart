@@ -26,6 +26,7 @@ import '../../design/app_notice.dart';
 import '../../utils/widget/parent_component.dart';
 import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
+import 'biometric_widgets.dart' show maybeOfferBiometric;
 import 'username.dart';
 import 'username_field.dart';
 import 'mfa_verify_screen.dart';
@@ -214,6 +215,12 @@ Future<void> continueWithGoogle(
         final teacherOwesStep =
             user?.role == 'teacher' &&
                 (step == 'pending_profile' || step == 'pending_documents');
+        // an existing account signing in: offer fingerprint sign-in once (D-082); a new account settles in first
+        if (choice == null && !teacherOwesStep) {
+          fc.busy.value = false;
+          await maybeOfferBiometric(context, auth);
+          if (!context.mounted || stale()) return;
+        }
         if (teacherOwesStep && teacherStepBuilder != null) {
           nav.pushAndRemoveUntil(
             MaterialPageRoute(builder: teacherStepBuilder),
