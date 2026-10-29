@@ -3,7 +3,7 @@
 // The annotation toolbar (D-079). [AnnotationToolbar] is presentational (plain values + callbacks, tested by
 // test/ui/annotation_toolbar_layout_test.dart): pen, highlighter, eraser, laser · undo, clear all (host) ·
 // colour (the theme palette's presets + the current one) and thickness (3 steps) · "Allow students to draw"
-// (host, AppSwitch) · close. On a phone (compact) colour and thickness fold into one "Style" button that opens a
+// (host, AppSwitch) and "Show who drew what" (host, D-093) · close. On a phone (compact) colour and thickness fold into one "Style" button that opens a
 // row under the bar, and the bar scrolls sideways instead of overflowing. Every control has a Semantics label
 // and a 48 px target.
 //
@@ -61,6 +61,7 @@ class AnnotationToolbar extends StatelessWidget {
     this.canUndo = false,
     this.isHost = false,
     this.allowStudents = false,
+    this.showAuthors = false,
     this.burnedIn = false,
     this.compact,
     this.styleOpen = false,
@@ -70,6 +71,7 @@ class AnnotationToolbar extends StatelessWidget {
     this.onUndo,
     this.onClear,
     this.onAllowStudents,
+    this.onShowAuthors,
     this.onToggleStyle,
     this.onClose,
   });
@@ -89,6 +91,9 @@ class AnnotationToolbar extends StatelessWidget {
   final bool isHost;
   final bool allowStudents;
 
+  /// The host's "Show who drew what" (D-093): a toggle next to the students switch.
+  final bool showAuthors;
+
   /// Android whole-screen share: students cannot draw (the switch is off and says why).
   final bool burnedIn;
 
@@ -104,6 +109,7 @@ class AnnotationToolbar extends StatelessWidget {
   final VoidCallback? onUndo;
   final VoidCallback? onClear;
   final ValueChanged<bool>? onAllowStudents;
+  final ValueChanged<bool>? onShowAuthors;
   final VoidCallback? onToggleStyle;
   final VoidCallback? onClose;
 
@@ -156,6 +162,14 @@ class AnnotationToolbar extends StatelessWidget {
         if (isHost) ...[
           const _Divider(),
           _studentsSwitch(narrow),
+          if (onShowAuthors != null)
+            AnnotToolButton(
+              key: const ValueKey('annot.show_authors'),
+              label: t('إظهار من رسم كل شيء', 'Show who drew what'),
+              selected: showAuthors,
+              onTap: () => onShowAuthors!(!showAuthors),
+              child: Icon(Icons.badge_outlined, size: 22, color: showAuthors ? LivePalette.textHigh : LivePalette.textMid),
+            ),
         ],
         const _Divider(),
         AnnotToolButton(
@@ -574,6 +588,7 @@ class _AnnotationControllerToolbarState extends State<AnnotationControllerToolba
           canUndo: _c.canUndo,
           isHost: _c.isHost,
           allowStudents: _c.allowStudents,
+          showAuthors: _c.showAuthors,
           burnedIn: _c.burnedIn,
           compact: widget.compact,
           styleOpen: _styleOpen,
@@ -583,6 +598,7 @@ class _AnnotationControllerToolbarState extends State<AnnotationControllerToolba
           onUndo: _c.undo,
           onClear: _clear,
           onAllowStudents: _c.setAllowStudents,
+          onShowAuthors: _c.setShowAuthors,
           onToggleStyle: () => setState(() => _styleOpen = !_styleOpen),
           onClose: _close,
         ),

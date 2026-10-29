@@ -19,7 +19,7 @@ import 'widgets/live_palette.dart';
 import 'annotation/annotation_controller.dart';
 // The whiteboard (D-087): the "Whiteboard" region below
 import 'whiteboard/board_controller.dart';
-import 'whiteboard/board_protocol.dart' show BoardBackground;
+import 'whiteboard/board_protocol.dart' show BoardBackground, BoardFormat;
 import 'whiteboard/board_toolbar.dart' show boardShortcutTool;
 import 'whiteboard/board_view.dart';
 import 'annotation/annotation_layer.dart';
@@ -438,7 +438,10 @@ class _RoomPageState extends State<RoomPage>
   void _onBoardScene() => _boardVideo.markDirty();
 
   bool _depsReady = false;
-  @override Future<void> startWhiteboard(BoardBackground background) => _startBoard(background);
+  // D-093 hook (whiteboard page format): the share sheet's choice reaches _startBoard.
+  @override
+  Future<void> startWhiteboard(BoardBackground background, {BoardFormat format = BoardFormat.landscape}) =>
+      _startBoard(background, format: format);
 
   // ── D29: what the server lets this participant publish (follows ParticipantPermissionsUpdatedEvent) ─────
   late LiveAllowedControls _allowed = _allowedFrom(widget.room.localParticipant?.permissions);
@@ -3679,7 +3682,17 @@ class _RoomPageState extends State<RoomPage>
       if (lp == null) return;
       await lp.publishData(bytes, reliable: reliable, topic: topic, destinationIdentities: to);
     },
+    nameOf: _presenceNameOf, // D-093: the name tags
   );
+
+  /// The name on a drawer's tag (D-093): the participant's LiveKit display name — a guest's is the name they typed —
+  /// never an identity; nobody known by name → "Participant" / "Guest".
+  String _presenceNameOf(String identity) {
+    final p = _remoteBy(identity);
+    final name = p?.name.trim() ?? '';
+    if (name.isNotEmpty) return name;
+    return isGuestIdentity(identity) ? t('ضيف', 'Guest') : t('مشارك', 'Participant');
+  }
 
   /// The in-app toolbar is shown (and the layer takes the pointer).
   bool _annotOpen = false;
@@ -3822,6 +3835,10 @@ class _RoomPageState extends State<RoomPage>
     isHost: _identityIsHost,
     mayPresent: _mayPresentBoard,
     studentMayDraw: _drawingAllowedFor,
+    // D-093: name tags (shown for everyone once students may draw) and the host's "Show who drew what".
+    nameOf: _presenceNameOf,
+    othersMayDraw: () => _annot.allowStudents || _annot.allowedIdentities.isNotEmpty,
+    showAuthors: () => _annot.showAuthors,
   );
   final GlobalKey _boardPageKey = GlobalKey(debugLabel: 'live_room.board_page');
   String? _boardPresenterSeen;
@@ -3851,7 +3868,7 @@ class _RoomPageState extends State<RoomPage>
   }
 
   /// The Share sheet's Whiteboard: this device's own screen share stops first (one share), then the board goes up.
-  Future<void> _startBoard(BoardBackground background) async {
+  Future<void> _startBoard(BoardBackground background, {BoardFormat format = BoardFormat.landscape}) async {
     if (!_boardEnabled || !mounted) return;
     final me = _myIdentity;
     if (me.isEmpty) return;
@@ -3860,7 +3877,7 @@ class _RoomPageState extends State<RoomPage>
     _board.localIdentity = me;
     _board.setTool(BoardTool.pen);
     _board.setDrawMode(true);
-    _board.startPresenting(background: background);
+    _board.startPresenting(background: background, format: format);
     LiveRoomScope.maybeOf(context)?.expand();
     _scheduleSort(); // → the arbiter: a host takes over, an approved presenter's grant is used
     _pokeControls();
@@ -3915,6 +3932,8 @@ class _RoomPageState extends State<RoomPage>
         isHost: _annot.isHost,
         allowStudents: () => _annot.allowStudents,
         onAllowStudents: _annot.isHost ? _annot.setAllowStudents : null,
+        showAuthors: () => _annot.showAuthors, // D-093
+        onShowAuthors: _annot.isHost ? _annot.setShowAuthors : null,
         listenable: _annot,
         fileStem: (widget.sessionName ?? '').trim().isEmpty ? 'whiteboard' : widget.sessionName!.trim(),
       );

@@ -5,8 +5,9 @@
 //               only the mic is heard; on Android 14+ a second line says device audio is every app's media, also in
 //               a single-app share). iOS / desktop ([qualityChoice] false): no modes, the system picker comes next.
 //               A phone browser ([screenAvailable] false) cannot share a screen: the tab says so.
-//   Whiteboard  a background (white · blackboard · grid · lined) and Start whiteboard: a board of vector strokes
-//               and text everyone sees instead of a screen (no video track).
+//   Whiteboard  the page format (landscape · portrait · continuous, D-093), a background (white · blackboard · grid ·
+//               lined) and Start whiteboard: a board of vector strokes and text everyone sees instead of a screen (no
+//               video track).
 // ShareOptionsLayout takes plain values (test/ui/share_options_layout_test.dart); showShareOptionsSheet holds the
 // choices.
 
@@ -15,18 +16,19 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
-import '../whiteboard/board_protocol.dart' show BoardBackground;
-import '../whiteboard/board_toolbar.dart' show BoardBackgroundPicker;
+import '../whiteboard/board_protocol.dart' show BoardBackground, BoardFormat;
+import '../whiteboard/board_toolbar.dart' show BoardBackgroundPicker, BoardFormatPicker;
 import 'share_presets.dart';
 
 /// What the presenter picked: a screen ([quality], [deviceAudio]) or, when [whiteboard] is set, a whiteboard on
-/// that background.
+/// that background, in [boardFormat].
 class ShareChoice {
-  const ShareChoice({required this.quality, required this.deviceAudio, this.whiteboard});
+  const ShareChoice({required this.quality, required this.deviceAudio, this.whiteboard, this.boardFormat = BoardFormat.landscape});
 
   final ShareQuality quality;
   final bool deviceAudio;
   final BoardBackground? whiteboard;
+  final BoardFormat boardFormat;
 
   bool get isWhiteboard => whiteboard != null;
 }
@@ -88,8 +90,19 @@ class _ShareOptionsSheetState extends State<_ShareOptionsSheet> {
   late ShareTab _tab = widget.whiteboard && !widget.screenAvailable ? ShareTab.whiteboard : ShareTab.screen;
   late BoardBackground _bg = widget.background;
 
+  /// A portrait phone starts with a portrait page (it fills the width); everything else with landscape.
+  late BoardFormat _format = _defaultFormat();
+
+  BoardFormat _defaultFormat() {
+    final s = MediaQuery.maybeSizeOf(context);
+    return s != null && s.width < 600 && s.height > s.width ? BoardFormat.portrait : BoardFormat.landscape;
+  }
+
+  // Scrolls: the Whiteboard tab (page format + backgrounds) is taller than a small phone's sheet.
   @override
-  Widget build(BuildContext context) => ShareOptionsLayout(
+  Widget build(BuildContext context) => SingleChildScrollView(child: _layout(context));
+
+  Widget _layout(BuildContext context) => ShareOptionsLayout(
         quality: _quality,
         deviceAudio: _audio,
         deviceAudioSupported: widget.deviceAudioSupported,
@@ -100,8 +113,10 @@ class _ShareOptionsSheetState extends State<_ShareOptionsSheet> {
         qualityChoice: widget.qualityChoice,
         tab: _tab,
         background: _bg,
+        boardFormat: _format,
         onTab: (v) => setState(() => _tab = v),
         onBackground: (b) => setState(() => _bg = b),
+        onBoardFormat: (f) => setState(() => _format = f),
         onQuality: (q) => setState(() => _quality = q),
         onDeviceAudio: (v) => setState(() => _audio = v),
         onStart: () => Navigator.pop(
@@ -110,7 +125,7 @@ class _ShareOptionsSheetState extends State<_ShareOptionsSheet> {
         ),
         onStartWhiteboard: () => Navigator.pop(
           context,
-          ShareChoice(quality: _quality, deviceAudio: false, whiteboard: _bg),
+          ShareChoice(quality: _quality, deviceAudio: false, whiteboard: _bg, boardFormat: _format),
         ),
       );
 }
@@ -128,8 +143,10 @@ class ShareOptionsLayout extends StatelessWidget {
     this.qualityChoice = true,
     this.tab = ShareTab.screen,
     this.background = BoardBackground.white,
+    this.boardFormat = BoardFormat.landscape,
     this.onTab,
     this.onBackground,
+    this.onBoardFormat,
     this.onQuality,
     this.onDeviceAudio,
     this.onStart,
@@ -158,8 +175,10 @@ class ShareOptionsLayout extends StatelessWidget {
   final bool qualityChoice;
   final ShareTab tab;
   final BoardBackground background;
+  final BoardFormat boardFormat;
   final ValueChanged<ShareTab>? onTab;
   final ValueChanged<BoardBackground>? onBackground;
+  final ValueChanged<BoardFormat>? onBoardFormat;
   final ValueChanged<ShareQuality>? onQuality;
   final ValueChanged<bool>? onDeviceAudio;
   final VoidCallback? onStart;
@@ -278,6 +297,10 @@ class ShareOptionsLayout extends StatelessWidget {
   Widget _whiteboard(BuildContext context) {
     final c = context.colors;
     return Column(key: const ValueKey('share.whiteboard_tab'), crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      AppSectionTitle(t('شكل الصفحة', 'Page')),
+      const SizedBox(height: 8),
+      BoardFormatPicker(value: boardFormat, onChanged: onBoardFormat),
+      const SizedBox(height: 14),
       AppSectionTitle(t('اختر الخلفية', 'Pick a background')),
       const SizedBox(height: 8),
       BoardBackgroundPicker(value: background, onChanged: onBackground),

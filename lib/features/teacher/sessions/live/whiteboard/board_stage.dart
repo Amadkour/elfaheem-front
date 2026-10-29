@@ -14,10 +14,21 @@
 //                      box's width); drag it: moved. Double-tap a text box: edit it.
 //   eraser             removes what it touches; laser: a fading dot (also on hover with a mouse).
 //
-// The page is a RepaintBoundary ([pageKey]) without the selection frame or the editor: [boardPagePng] saves
-// exactly what everyone sees. Tests: test/ui/whiteboard_layout_test.dart; renders test/visual/whiteboard_golden_test.dart.
+// The page is a RepaintBoundary ([pageKey]) without the selection frame or the editor (the board's recording track
+// reads it; on a continuous page it is the part on screen). Tests: test/ui/whiteboard_layout_test.dart; renders
+// test/visual/whiteboard_golden_test.dart.
+//
+// Formats (D-093): a landscape / portrait page is fitted (`contain`) and zoomed per device as before; a continuous
+// page is a width-filled column ([ContinuousView]) shown down to [boardContinuousExtent] (it grows as people draw
+// near its end), scrolled with two fingers, the mouse wheel — or one finger when this person is not drawing or only
+// the stylus draws ("Stylus only", draw_input_prefs.dart). Viewers follow the presenter's view (the `vp` packets,
+// eased) until they scroll themselves; then "Follow …" snaps back. A rail at the end edge shows where the view is
+// (and where the presenter is). Name tags of whoever else draws (presence_tags.dart) sit over the ink; with the host's
+// "Show who drew what", the mouse over an item (or a long press when not drawing) shows its author. A finger's stroke
+// is held for 70 ms before it goes out, so a pinch never shows anybody a dot.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -34,8 +45,11 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import '../annotation/annotation_ink.dart';
 import '../annotation/annotation_layer.dart' show kAnnotPalmGuard;
 import '../annotation/annotation_toolbar.dart' show AnnotToolButton;
+import '../annotation/draw_input_prefs.dart';
+import '../annotation/presence_tags.dart';
 import '../widgets/live_palette.dart';
 import 'board_controller.dart';
+import 'board_format.dart';
 import 'board_painter.dart';
 import 'board_protocol.dart';
 
@@ -56,9 +70,13 @@ class WhiteboardStage extends StatefulWidget {
     this.fallbackRtl = false,
     this.laserColor,
     this.showEmptyHint = true,
+    this.presenterName = '',
   });
 
   final BoardController controller;
+
+  /// "Follow `name`" on a continuous page (empty: "Follow the presenter").
+  final String presenterName;
 
   /// The page's RepaintBoundary (export).
   final GlobalKey? pageKey;
@@ -76,11 +94,17 @@ class WhiteboardStage extends StatefulWidget {
 
 class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProviderStateMixin {
   late final Ticker _ticker = createTicker((_) {
-    if (!widget.controller.pruneLasers()) _ticker.stop();
+    final lasers = widget.controller.pruneLasers();
+    final tags = widget.controller.presence.step();
+    final follow = _stepFollow();
+    if (!lasers && !tags && !follow) _ticker.stop();
   });
 
   BoardController get _c => widget.controller;
+
+  /// The page's COORDINATE size on screen (continuous: its whole length) and where its top-left corner is.
   Size _page = Size.zero;
+  Offset _origin = Offset.zero;
 
   // pointer
   int? _pointer;
@@ -101,27 +125,42 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _c.scene.addListener(_onScene);
-    _c.addListener(_onController);
+    _listen(_c);
+    DrawInputPrefs.stylusOnly.addListener(_onPrefs);
+    unawaited(DrawInputPrefs.load());
+  }
+
+  void _listen(BoardController c) {
+    c.scene.addListener(_onScene);
+    c.addListener(_onController);
+    c.presence.addListener(_onScene);
+    c.presenterViewport.addListener(_onPresenterViewport);
+  }
+
+  void _unlisten(BoardController c) {
+    c.scene.removeListener(_onScene);
+    c.removeListener(_onController);
+    c.presence.removeListener(_onScene);
+    c.presenterViewport.removeListener(_onPresenterViewport);
   }
 
   @override
   void didUpdateWidget(WhiteboardStage old) {
     super.didUpdateWidget(old);
     if (!identical(old.controller, widget.controller)) {
-      old.controller.scene.removeListener(_onScene);
-      old.controller.removeListener(_onController);
-      widget.controller.scene.addListener(_onScene);
-      widget.controller.addListener(_onController);
+      _unlisten(old.controller);
+      _listen(widget.controller);
     }
   }
 
   @override
   void dispose() {
-    _c.scene.removeListener(_onScene);
-    _c.removeListener(_onController);
+    _unlisten(_c);
+    DrawInputPrefs.stylusOnly.removeListener(_onPrefs);
     final id = _editingId;
     if (id != null) _c.endEdit(id);
+    _probeTimer?.cancel();
+    _offerTimer?.cancel();
     _ticker.dispose();
     _text.dispose();
     _focus.dispose();
@@ -129,7 +168,136 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   }
 
   void _onScene() {
-    if (_c.scene.hasLasers && !_ticker.isActive) _ticker.start();
+    if ((_c.scene.hasLasers || !_c.presence.isEmpty) && !_ticker.isActive) _ticker.start();
+  }
+
+  void _onPrefs() {
+    if (mounted) setState(() {});
+  }
+
+  // ── Following the presenter (continuous) ───────────────────────────────────
+  bool _follow = true;
+  double? _followTarget;
+  double _lastVisible = 0;
+  double _lastExtent = 1;
+
+  void _onPresenterViewport() {
+    if (!mounted || _c.isLocalPresenting || !_c.isContinuous) return;
+    final pv = _c.presenterViewport.value;
+    if (pv == null) return;
+    if (_follow) {
+      _followTarget = boardFollowTop(presenter: pv, visible: _lastVisible, extent: math.max(_lastExtent, pv.bottom));
+      if (!_ticker.isActive) _ticker.start();
+    } else {
+      setState(() {}); // the rail's presenter mark moves
+    }
+  }
+
+  /// One frame of the eased follow; whether it is still moving.
+  bool _stepFollow() {
+    final target = _followTarget;
+    if (target == null || !_follow || !mounted) return false;
+    final d = target - _scroll;
+    if (d.abs() < 1e-5) {
+      _followTarget = null;
+      return false;
+    }
+    setState(() => _scroll += d.abs() < 2e-4 ? d : d * 0.22);
+    return true;
+  }
+
+  void _followPresenter() {
+    final pv = _c.presenterViewport.value;
+    setState(() {
+      _follow = true;
+      if (pv != null) _followTarget = boardFollowTop(presenter: pv, visible: _lastVisible, extent: math.max(_lastExtent, pv.bottom));
+    });
+    if (!_ticker.isActive) _ticker.start();
+  }
+
+  /// This viewer moved the view themselves: they stop following until they tap "Follow …".
+  void _leaveFollow() {
+    if (_c.isLocalPresenting || !_follow) return;
+    _follow = false;
+    _followTarget = null;
+  }
+
+  // ── "Drawn by …" ───────────────────────────────────────────────────────────
+  ({String author, Offset at, int color})? _probe;
+  Timer? _probeTimer;
+  Offset? _pressAt;
+
+  bool get _probing => _c.showAuthors() && (!_c.drawMode || _c.tool == BoardTool.select);
+
+  void _probeAt(Offset local, {bool autoHide = false}) {
+    final n = _norm(local - _origin);
+    final it = (n.dx < 0 || n.dx > 1 || n.dy < 0 || n.dy > 1) ? null : _c.itemAt(n.dx, n.dy);
+    final color = switch (it) {
+      BoardInk() => it.color,
+      BoardShape() => it.color,
+      BoardText() => it.color,
+      null => 0,
+    };
+    final next = it == null ? null : (author: it.author, at: local, color: color);
+    if (next == null && _probe == null) return;
+    setState(() => _probe = next);
+    _probeTimer?.cancel();
+    if (autoHide && next != null) {
+      _probeTimer = Timer(const Duration(milliseconds: 2500), () {
+        if (mounted) setState(() => _probe = null);
+      });
+    }
+  }
+
+  void _clearProbe() {
+    _probeTimer?.cancel();
+    _pressAt = null;
+    if (_probe != null && mounted) setState(() => _probe = null);
+  }
+
+  void _probeDown(PointerDownEvent e) {
+    if (!_probing || e.kind == PointerDeviceKind.mouse || _c.drawMode) return;
+    _pressAt = e.localPosition;
+    _probeTimer?.cancel();
+    _probeTimer = Timer(const Duration(milliseconds: 450), () {
+      final at = _pressAt;
+      if (mounted && at != null) _probeAt(at, autoHide: true);
+    });
+  }
+
+  void _probeMove(PointerMoveEvent e) {
+    final at = _pressAt;
+    if (at != null && (e.localPosition - at).distance > 10) {
+      _pressAt = null;
+      if (_probe == null) _probeTimer?.cancel();
+    }
+  }
+
+  void _probeUp(PointerEvent e) {
+    if (_probe == null) _probeTimer?.cancel();
+    _pressAt = null;
+  }
+
+  // ── "Stylus only?" (once, when a pen first touches the board) ──────────────
+  bool _offer = false;
+  Timer? _offerTimer;
+
+  void _maybeOfferStylus() {
+    if (DrawInputPrefs.offered || DrawInputPrefs.stylusOnly.value || _offer) return;
+    DrawInputPrefs.offered = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _offer = true);
+      _offerTimer = Timer(const Duration(seconds: 9), () {
+        if (mounted) setState(() => _offer = false);
+      });
+    });
+  }
+
+  void _answerOffer(bool on) {
+    _offerTimer?.cancel();
+    setState(() => _offer = false);
+    unawaited(DrawInputPrefs.setStylusOnly(on));
   }
 
   void _onController() {
@@ -157,6 +325,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
 
   static bool _isStylus(PointerDeviceKind k) => k == PointerDeviceKind.stylus || k == PointerDeviceKind.invertedStylus;
 
+  /// A stylus is down or just lifted: a touch now is the palm (it neither draws nor scrolls).
+  bool get _palmWindow => _stylusDown || (_stylusUp != null && DateTime.now().difference(_stylusUp!) < kAnnotPalmGuard);
+
   static double _pressure(PointerEvent e) {
     if (!_isStylus(e.kind)) return 0.5;
     final range = e.pressureMax - e.pressureMin;
@@ -172,8 +343,14 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     if (!_c.drawMode) return;
     if (e.kind == PointerDeviceKind.mouse && (e.buttons & kPrimaryMouseButton) == 0) return;
     final stylus = _isStylus(e.kind);
-    if (stylus) _stylusDown = true;
-    if (!stylus && (_stylusDown || (_stylusUp != null && DateTime.now().difference(_stylusUp!) < kAnnotPalmGuard))) return;
+    if (stylus) {
+      _stylusDown = true;
+      DrawInputPrefs.stylusSeen = true;
+      _maybeOfferStylus();
+    }
+    if (!stylus && _palmWindow) return;
+    // "Stylus only": a finger scrolls / zooms (the outer listener), it never draws.
+    if (e.kind == PointerDeviceKind.touch && DrawInputPrefs.stylusOnly.value) return;
     if (_pointer != null) {
       if (stylus && _pointerKind != null && !_isStylus(_pointerKind!) && _ink != null) {
         _c.cancelInk(); // the touch that was drawing was the palm
@@ -193,7 +370,8 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         _endTextEdit();
         final ink = AnnotInkFilter(pressure: stylus);
         final s = ink.start(e.localPosition.dx, e.localPosition.dy, _seconds(e), _pressure(e));
-        if (_c.beginInk(n.dx, n.dy, p: s.p, stylus: stylus, highlighter: tool == BoardTool.highlighter)) {
+        final hold = e.kind == PointerDeviceKind.touch; // a second finger soon after makes it a pinch
+        if (_c.beginInk(n.dx, n.dy, p: s.p, stylus: stylus, highlighter: tool == BoardTool.highlighter, hold: hold)) {
           _ink = ink;
         } else {
           _resetPointer();
@@ -303,7 +481,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     if (create != null && !cancelled) {
       final w = kBoardDefaultTextWidth;
       final x = widget.fallbackRtl ? create.dx - w : create.dx;
-      final lineH = kBoardFontSizes[_c.fontStep] * 1.35 * kBoardAspect;
+      final lineH = _c.fontSize(_c.fontStep) * 1.35 * _c.aspect;
       final id = _c.createText(x, (create.dy - lineH / 2).clamp(0.0, 1.0).toDouble(), boxWidth: w);
       if (id != null) _startTextEdit(id, fresh: true);
       return;
@@ -368,6 +546,75 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
 
   // ── Build ──────────────────────────────────────────────────────────────────
 
+  BoardFormat? _lastFormat;
+  String? _lastPage;
+
+  /// A new format or a new page starts the view again (zoom, scroll).
+  void _resetViewFor(BoardFormat f, String page) {
+    if (_lastFormat == f && _lastPage == page) return;
+    final formatChanged = _lastFormat != null && _lastFormat != f;
+    final pageChanged = _lastPage != null && _lastPage != page;
+    _lastFormat = f;
+    _lastPage = page;
+    if (formatChanged) {
+      _zoom = 1;
+      _pan = Offset.zero;
+    }
+    if (formatChanged || pageChanged) {
+      _scroll = 0;
+      _cpanX = 0;
+      _follow = true;
+      _followTarget = null;
+      _followedOnce = false;
+    }
+  }
+
+  /// The first follow of this page was applied (later ones glide, [_stepFollow]).
+  bool _followedOnce = false;
+
+  final Expando<({int n, double bottom})> _inkBottoms = Expando('board.ink.bottom');
+
+  /// The lowest content of the visible page (page fraction), cached per ink by its point count.
+  double _contentBottom() {
+    final a = _c.aspect;
+    var bottom = 0.0;
+    for (final it in _c.scene.visibleItems) {
+      double b;
+      if (it is BoardInk) {
+        final hit = _inkBottoms[it];
+        if (hit != null && hit.n == it.points.length) {
+          b = hit.bottom;
+        } else {
+          b = boardContentBottom([it], aspect: a);
+          _inkBottoms[it] = (n: it.points.length, bottom: b);
+        }
+      } else {
+        b = boardContentBottom([it], aspect: a, textHeight: _c.textHeight);
+      }
+      if (b > bottom) bottom = b;
+    }
+    return bottom;
+  }
+
+  /// This device's view of the continuous page, kept inside it (the extent follows the content and the presenter).
+  ContinuousView _continuousView(Size size) {
+    final base = ContinuousView(box: size, zoom: _zoom, scroll: _scroll, panX: _cpanX);
+    final pv = _c.isLocalPresenting ? null : _c.presenterViewport.value;
+    final extent = boardContinuousExtent(contentBottom: _contentBottom(), visible: base.visible, presenterBottom: pv?.bottom ?? 0);
+    var start = base;
+    if (pv != null && _follow && !_followedOnce) {
+      // A viewer who arrives (or a new page) starts where the presenter is.
+      _followedOnce = true;
+      start = base.copyWith(scroll: boardFollowTop(presenter: pv, visible: base.visible, extent: extent));
+    }
+    final v = start.copyWith(extent: extent).clamped();
+    _scroll = v.scroll;
+    _cpanX = v.panX;
+    _lastVisible = v.visible;
+    _lastExtent = extent;
+    return v;
+  }
+
   @override
   Widget build(BuildContext context) {
     LivePalette.sync(context);
@@ -376,12 +623,36 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       listenable: Listenable.merge([_c, _c.scene]),
       builder: (context, _) => LayoutBuilder(builder: (context, box) {
         final size = Size(box.maxWidth.isFinite ? box.maxWidth : 0, box.maxHeight.isFinite ? box.maxHeight : 0);
-        final page = _pageRect(size);
-        _page = page.size;
         final scene = _c.scene;
+        _resetViewFor(_c.format, scene.page);
+        final cont = _c.isContinuous;
+        ContinuousView? cv;
+        final Rect page; // the page's coordinate rect on screen (continuous: its whole length)
+        final Rect shown; // the part that is drawn (continuous: down to the extent)
+        if (cont) {
+          cv = _continuousView(size);
+          page = cv.pageRect;
+          shown = cv.shownRect;
+        } else {
+          page = _pageRect(size);
+          shown = page;
+        }
+        _page = page.size;
+        _origin = page.topLeft;
+        final presenting = _c.isLocalPresenting;
+        if (cont && presenting) {
+          final vp = cv!.viewport;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _c.reportViewport(vp);
+          });
+        }
         final texts = scene.visibleItems.whereType<BoardText>().toList();
         final pw = page.width, ph = page.height;
         final draw = _c.drawMode;
+        final screen = Offset.zero & size;
+        final vis = shown.intersect(screen);
+        // The visible part of the page, in the page's own coordinates (the empty hint, the tags, the rail).
+        final visLocal = vis.isEmpty ? Rect.zero : vis.shift(-shown.topLeft);
 
         final content = Stack(clipBehavior: Clip.hardEdge, children: [
           Positioned.fill(child: CustomPaint(painter: BoardBackgroundPainter(scene.background))),
@@ -393,6 +664,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
                 lasers: () => const [],
                 laserColor: laser,
                 laserOpacity: _c.laserOpacity,
+                coordSize: cont ? page.size : null,
                 repaint: scene,
               ),
             ),
@@ -408,32 +680,63 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
               ),
         ]);
 
-        final selected = _c.selectedItem;
-        final stage = Stack(fit: StackFit.expand, children: [
-          if (!page.isEmpty)
-            Positioned.fromRect(
-              rect: page,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(color: LivePalette.shade(0.45), blurRadius: 30, offset: const Offset(0, 12)),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: RepaintBoundary(key: widget.pageKey, child: content),
+        const radius = 12.0;
+        final card = BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [BoxShadow(color: LivePalette.shade(0.45), blurRadius: 30, offset: const Offset(0, 12))],
+        );
+        final List<Widget> pageLayers;
+        if (!cont) {
+          pageLayers = [
+            if (!page.isEmpty)
+              Positioned.fromRect(
+                rect: page,
+                child: DecoratedBox(
+                  decoration: card,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(radius),
+                    child: RepaintBoundary(key: widget.pageKey, child: content),
+                  ),
                 ),
               ),
-            ),
-          if (!page.isEmpty)
+          ];
+        } else {
+          // The page card down to its extent; the boundary (the recording track) is the part on screen.
+          pageLayers = [
+            if (!shown.isEmpty) Positioned.fromRect(rect: shown, child: DecoratedBox(decoration: card)),
+            if (!vis.isEmpty)
+              Positioned.fromRect(
+                rect: vis,
+                child: RepaintBoundary(
+                  key: widget.pageKey,
+                  child: ClipRect(
+                    child: Stack(clipBehavior: Clip.none, children: [
+                      Positioned(
+                        left: shown.left - vis.left,
+                        top: shown.top - vis.top,
+                        width: shown.width,
+                        height: shown.height,
+                        child: ClipRRect(borderRadius: BorderRadius.circular(radius), child: content),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
+          ];
+        }
+
+        final selected = _c.selectedItem;
+        final probe = _probe;
+        final stage = Stack(fit: StackFit.expand, children: [
+          ...pageLayers,
+          if (!shown.isEmpty)
             Positioned.fromRect(
-              rect: page,
+              rect: shown,
               child: Semantics(
                 container: true,
                 label: draw ? t('مساحة الرسم على السبورة', 'Whiteboard drawing area') : t('السبورة البيضاء', 'Whiteboard'),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(radius),
                   child: Stack(clipBehavior: Clip.none, children: [
                     // Laser dots above the text boxes.
                     Positioned.fill(
@@ -444,13 +747,17 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
                             lasers: () => scene.lasers,
                             laserColor: laser,
                             laserOpacity: _c.laserOpacity,
+                            coordSize: cont ? page.size : null,
                             repaint: scene,
                           ),
                         ),
                       ),
                     ),
-                    if (widget.showEmptyHint && _c.isLocalPresenting && scene.pageEmpty && _editingId == null)
-                      Positioned.fill(child: IgnorePointer(child: _EmptyHint(dark: boardIsDark(scene.background), width: pw))),
+                    if (widget.showEmptyHint && presenting && scene.pageEmpty && _editingId == null && !visLocal.isEmpty)
+                      Positioned.fromRect(
+                        rect: cont ? Rect.fromLTWH(visLocal.left, visLocal.top, visLocal.width, math.min(visLocal.height, 260)) : visLocal,
+                        child: IgnorePointer(child: _EmptyHint(dark: boardIsDark(scene.background), width: pw)),
+                      ),
                     Positioned.fill(
                       child: IgnorePointer(
                         ignoring: !draw,
@@ -470,6 +777,21 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
                         ),
                       ),
                     ),
+                    // Whoever else is drawing: their name follows their pen.
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: PresenceTagsPainter(
+                            presence: _c.presence,
+                            marks: () => _c.presence.on(scene.page),
+                            visible: (m) => _c.presenceShownFor(m.identity),
+                            toLocal: (x, y) => Offset(x * pw, y * ph),
+                            bounds: (_) => visLocal,
+                            fallbackRtl: widget.fallbackRtl,
+                          ),
+                        ),
+                      ),
+                    ),
                     if (_editingId != null) _editor(pw, ph),
                     if (selected != null && draw) ..._selection(selected, pw, ph),
                   ]),
@@ -477,43 +799,107 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
               ),
             ),
           if (_c.needsUpdate)
-            Positioned.fromRect(rect: page.isEmpty ? Offset.zero & size : page, child: const _NeedsUpdate()),
+            Positioned.fromRect(rect: page.isEmpty || cont ? screen : page, child: const _NeedsUpdate()),
+          if (cont && !vis.isEmpty)
+            Positioned(
+              top: vis.top + 10,
+              height: math.max(0.0, vis.height - 20),
+              left: _railLeft(shown, size.width, Directionality.of(context) == TextDirection.rtl),
+              width: 6,
+              child: IgnorePointer(
+                child: _ScrollRail(
+                  extent: cv!.extent,
+                  view: cv.viewport,
+                  presenter: presenting ? null : _c.presenterViewport.value,
+                ),
+              ),
+            ),
+          if (cont && !presenting && !_follow && _c.presenterViewport.value != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 14,
+              child: Center(child: BoardFollowButton(name: widget.presenterName, onTap: _followPresenter)),
+            ),
+          if (_offer)
+            Positioned(
+              left: 8,
+              right: 8,
+              top: 10,
+              child: Center(child: BoardStylusOffer(onYes: () => _answerOffer(true), onNo: () => _answerOffer(false))),
+            ),
+          if (probe != null && _probing)
+            Positioned(
+              left: authorLabelOffset(probe.at, screen).dx,
+              top: authorLabelOffset(probe.at, screen).dy,
+              child: AuthorLabelChip(
+                name: _c.displayName(probe.author),
+                mine: probe.author == _c.localIdentity,
+                color: Color(probe.color),
+              ),
+            ),
           if (_zoom > 1.01)
             PositionedDirectional(
               top: 8,
-              end: 8,
+              end: cont ? 16 : 8,
               child: _ZoomChip(percent: (_zoom * 100).round(), onReset: _resetZoom),
             ),
         ]);
-        // Pinch (two fingers) / Ctrl + wheel zooms this device's view only; two fingers (or the wheel) pan it.
+        // Pinch (two fingers) / Ctrl + wheel zooms this device's view only; two fingers (or the wheel) pan it; a
+        // continuous page scrolls with them too (and with one finger when this person is not drawing).
         return ClipRect(
           child: Listener(
             behavior: HitTestBehavior.translucent,
-            onPointerDown: (e) => _zoomDown(e, size),
-            onPointerMove: (e) => _zoomMove(e, size),
-            onPointerUp: _zoomUp,
-            onPointerCancel: _zoomUp,
+            onPointerDown: (e) {
+              _zoomDown(e, size);
+              _probeDown(e);
+            },
+            onPointerMove: (e) {
+              _zoomMove(e, size);
+              _probeMove(e);
+            },
+            onPointerUp: (e) {
+              _zoomUp(e);
+              _probeUp(e);
+            },
+            onPointerCancel: (e) {
+              _zoomUp(e);
+              _probeUp(e);
+            },
+            onPointerHover: (e) {
+              if (_probing && e.kind == PointerDeviceKind.mouse) _probeAt(e.localPosition);
+            },
             onPointerSignal: (e) => _zoomSignal(e, size),
-            child: stage,
+            child: MouseRegion(opaque: false, onExit: (_) => _clearProbe(), child: stage),
           ),
         );
       }),
     );
   }
 
+  /// The rail beside the column's end edge (the left one in Arabic), inside the page when there is no room outside.
+  static double _railLeft(Rect shown, double width, bool rtl) {
+    if (rtl) return shown.left - 14 >= 2 ? shown.left - 14 : math.max(2.0, shown.left + 4);
+    return shown.right + 14 <= width - 2 ? shown.right + 8 : math.min(width - 8, shown.right - 10);
+  }
+
   // ── Zoom (this device's view: never sent) ──────────────────────────────────
   double _zoom = 1;
   Offset _pan = Offset.zero;
+
+  /// The continuous page's scroll (page fraction at the top of the stage) and sideways pan of a zoomed column.
+  double _scroll = 0;
+  double _cpanX = 0;
   final Map<int, Offset> _touches = {};
-  ({double zoom, Rect rect, Offset focal, double dist})? _pinch;
-  ({Offset start, Offset pan})? _viewPan;
+  ({double zoom, Rect rect, Offset focal, double dist, ContinuousView? view})? _pinch;
+  ({Offset start, Offset pan, double scroll, double panX})? _viewPan;
 
   static const _kMaxZoom = 4.0;
 
   /// The page on screen: the fitted page, scaled by [_zoom] about its centre and moved by [_pan], never leaving a
   /// gap at an edge it overflows.
   Rect _pageRect(Size size) {
-    final base = boardPageRect(size);
+    final base = boardPageRect(size, aspect: _c.aspect);
     if (_zoom <= 1.001 || base.isEmpty) return base;
     final w = base.width * _zoom, h = base.height * _zoom;
     var cx = base.center.dx + _pan.dx, cy = base.center.dy + _pan.dy;
@@ -526,11 +912,12 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   void _resetZoom() => setState(() {
         _zoom = 1;
         _pan = Offset.zero;
+        _cpanX = 0;
       });
 
   /// Zooms to [z] keeping the page point under [focalBefore] under [focalAfter].
   void _zoomTo(double z, Rect before, Offset focalBefore, Offset focalAfter, Size size) {
-    final base = boardPageRect(size);
+    final base = boardPageRect(size, aspect: _c.aspect);
     if (base.isEmpty || before.isEmpty) return;
     final nz = z.clamp(1.0, _kMaxZoom).toDouble();
     final p = Offset((focalBefore.dx - before.left) / before.width, (focalBefore.dy - before.top) / before.height);
@@ -542,17 +929,45 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     });
   }
 
+  /// The continuous view now (the last build's extent).
+  ContinuousView _cvNow(Size size) =>
+      ContinuousView(box: size, zoom: _zoom, scroll: _scroll, panX: _cpanX, extent: _lastExtent).clamped();
+
+  void _applyView(ContinuousView v) => setState(() {
+        _zoom = v.zoom;
+        _scroll = v.scroll;
+        _cpanX = v.panX;
+      });
+
+  /// A finger moves the view (not a stroke): this person is not drawing, or only the stylus draws.
+  bool get _fingerPans => !_c.drawMode || DrawInputPrefs.stylusOnly.value;
+
   void _zoomDown(PointerDownEvent e, Size size) {
-    if (e.kind != PointerDeviceKind.touch) return;
+    if (_isStylus(e.kind)) {
+      // The pen came down: a palm resting on the page must not scroll it.
+      _touches.clear();
+      _pinch = null;
+      _viewPan = null;
+      return;
+    }
+    if (e.kind != PointerDeviceKind.touch || _palmWindow) return;
     _touches[e.pointer] = e.localPosition;
     if (_touches.length == 2) {
-      // A second finger: a pinch, not a stroke — whatever the first finger began is undone.
+      // A second finger: a pinch, not a stroke — whatever the first finger began is undone (a held stroke never
+      // went out).
       _cancelGesture();
       final pts = _touches.values.toList();
-      _pinch = (zoom: _zoom, rect: _pageRect(size), focal: (pts[0] + pts[1]) / 2, dist: math.max(1, (pts[0] - pts[1]).distance));
+      _pinch = (
+        zoom: _zoom,
+        rect: _c.isContinuous ? _cvNow(size).pageRect : _pageRect(size),
+        focal: (pts[0] + pts[1]) / 2,
+        dist: math.max(1, (pts[0] - pts[1]).distance),
+        view: _c.isContinuous ? _cvNow(size) : null,
+      );
       _viewPan = null;
-    } else if (_touches.length == 1 && !_c.drawMode && _zoom > 1.01) {
-      _viewPan = (start: e.localPosition, pan: _pan); // a viewer moves around a zoomed page with one finger
+    } else if (_touches.length == 1 && _fingerPans && (_c.isContinuous || _zoom > 1.01)) {
+      // One finger moves around a zoomed page / scrolls a continuous one.
+      _viewPan = (start: e.localPosition, pan: _pan, scroll: _scroll, panX: _cpanX);
     }
   }
 
@@ -564,11 +979,25 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       final pts = _touches.values.take(2).toList();
       final focal = (pts[0] + pts[1]) / 2;
       final dist = math.max(1.0, (pts[0] - pts[1]).distance);
-      _zoomTo(pinch.zoom * dist / pinch.dist, pinch.rect, pinch.focal, focal, size);
+      final view = pinch.view;
+      if (view != null) {
+        _leaveFollow();
+        _applyView(view.zoomedAt(pinch.zoom * dist / pinch.dist, pinch.focal, focal, maxZoom: _kMaxZoom));
+      } else {
+        _zoomTo(pinch.zoom * dist / pinch.dist, pinch.rect, pinch.focal, focal, size);
+      }
       return;
     }
     final vp = _viewPan;
-    if (vp != null) setState(() => _pan = vp.pan + (e.localPosition - vp.start));
+    if (vp == null) return;
+    final d = e.localPosition - vp.start;
+    if (_c.isContinuous) {
+      if (d.distance > 3) _leaveFollow();
+      final v = ContinuousView(box: size, zoom: _zoom, scroll: vp.scroll, panX: vp.panX, extent: _lastExtent);
+      _applyView(v.scrolledBy(-d.dx, -d.dy));
+    } else {
+      setState(() => _pan = vp.pan + d);
+    }
   }
 
   void _zoomUp(PointerEvent e) {
@@ -580,7 +1009,21 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   void _zoomSignal(PointerSignalEvent e, Size size) {
     if (e is! PointerScrollEvent) return;
     final hk = HardwareKeyboard.instance;
-    if (hk.isControlPressed || hk.isMetaPressed) {
+    final zooming = hk.isControlPressed || hk.isMetaPressed;
+    if (_c.isContinuous) {
+      _leaveFollow();
+      final v = _cvNow(size);
+      if (zooming) {
+        _applyView(v.zoomedAt(_zoom * math.exp(-e.scrollDelta.dy / 400), e.localPosition, e.localPosition, maxZoom: _kMaxZoom));
+      } else {
+        // Shift + wheel (or a sideways trackpad swipe) moves a zoomed column sideways.
+        final dx = hk.isShiftPressed ? e.scrollDelta.dy : e.scrollDelta.dx;
+        final dy = hk.isShiftPressed ? 0.0 : e.scrollDelta.dy;
+        _applyView(v.scrolledBy(dx, dy));
+      }
+      return;
+    }
+    if (zooming) {
       final rect = _pageRect(size);
       _zoomTo(_zoom * math.exp(-e.scrollDelta.dy / 400), rect, e.localPosition, e.localPosition, size);
     } else if (_zoom > 1.01) {
@@ -781,6 +1224,169 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         BoardTool.eraser => SystemMouseCursors.cell,
         BoardTool.laser => SystemMouseCursors.none,
       };
+}
+
+/// Where this view is on a continuous page: a slim rail at the end edge, the view's thumb, and the presenter's view
+/// as an accent mark (viewers).
+class _ScrollRail extends StatelessWidget {
+  const _ScrollRail({required this.extent, required this.view, this.presenter});
+
+  final double extent;
+  final BoardViewportPos view;
+  final BoardViewportPos? presenter;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
+        final h = c.maxHeight;
+        if (!h.isFinite || h <= 0 || extent <= 0 || view.height >= extent - 1e-6) return const SizedBox.shrink();
+        double y(double v) => (v / extent).clamp(0.0, 1.0) * h;
+        final top = y(view.top), bottom = math.max(y(view.bottom), y(view.top) + 18);
+        final p = presenter;
+        return Stack(clipBehavior: Clip.none, children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: LivePalette.shade(0.18), borderRadius: BorderRadius.circular(3)),
+            ),
+          ),
+          if (p != null)
+            Positioned(
+              left: -2,
+              right: -2,
+              top: y(p.top),
+              height: math.max(4.0, y(p.bottom) - y(p.top)),
+              child: DecoratedBox(
+                key: const ValueKey('board.rail.presenter'),
+                decoration: BoxDecoration(
+                  color: LivePalette.accent.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+            ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: top,
+            height: math.min(h, bottom) - top,
+            child: DecoratedBox(
+              key: const ValueKey('board.rail.thumb'),
+              decoration: BoxDecoration(
+                color: const Color(0xB3475569),
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: const Color(0x66FFFFFF), width: 0.8),
+              ),
+            ),
+          ),
+        ]);
+      });
+}
+
+/// "Follow Dr. Mona" on a continuous page, once a viewer scrolled away from the presenter's view.
+class BoardFollowButton extends StatelessWidget {
+  const BoardFollowButton({super.key, this.name = '', this.onTap});
+
+  final String name;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    LivePalette.sync(context);
+    final label = name.isEmpty ? t('تابِع مقدّم العرض', 'Follow the presenter') : t('تابِع $name', 'Follow $name');
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const ValueKey('board.follow'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48, maxWidth: 300),
+            padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 16, 6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [LivePalette.accent, LivePalette.accent2]),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: LivePalette.accent.withValues(alpha: 0.4), blurRadius: 18, offset: const Offset(0, 6)),
+                BoxShadow(color: LivePalette.shade(0.3), blurRadius: 6, offset: const Offset(0, 2)),
+              ],
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: const Color(0x33FFFFFF), borderRadius: BorderRadius.circular(16)),
+                child: const Icon(Icons.near_me_rounded, size: 18, color: LivePalette.textHigh),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(label,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: LivePalette.textHigh)),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Pen detected: let fingers scroll and zoom?" — offered once, the first time a stylus touches a board.
+class BoardStylusOffer extends StatelessWidget {
+  const BoardStylusOffer({super.key, this.onYes, this.onNo});
+
+  final VoidCallback? onYes;
+  final VoidCallback? onNo;
+
+  @override
+  Widget build(BuildContext context) {
+    LivePalette.sync(context);
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        key: const ValueKey('board.stylus_offer'),
+        constraints: const BoxConstraints(maxWidth: 460),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 6, 6),
+        decoration: BoxDecoration(
+          color: LivePalette.surfaceHi.withValues(alpha: 0.97),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: LivePalette.glassBorder),
+          boxShadow: [BoxShadow(color: LivePalette.shade(0.35), blurRadius: 18, offset: const Offset(0, 6))],
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.draw_rounded, size: 20, color: LivePalette.textHigh),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(t('اكتشفنا قلماً', 'Pen detected'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w800, c: LivePalette.textHigh)),
+              Text(t('القلم يرسم والإصبع يحرّك ويكبّر؟', 'Pen draws, fingers scroll and zoom?'),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: LivePalette.textMid)),
+            ]),
+          ),
+          const SizedBox(width: 6),
+          TextButton(
+            key: const ValueKey('board.stylus_offer.yes'),
+            onPressed: onYes,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              foregroundColor: LivePalette.textHigh,
+              backgroundColor: LivePalette.accent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: Text(t('تفعيل', 'Turn on'), style: appText(13, w: FontWeight.w800, c: LivePalette.textHigh)),
+          ),
+          AnnotToolButton(
+            key: const ValueKey('board.stylus_offer.no'),
+            label: t('لا، شكراً', 'No thanks'),
+            onTap: onNo,
+            child: const Icon(Icons.close_rounded, size: 20, color: LivePalette.textMid),
+          ),
+        ]),
+      ),
+    );
+  }
 }
 
 /// "150 %" while this device's view is zoomed; a tap fits the page again.

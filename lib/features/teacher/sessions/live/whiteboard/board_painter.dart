@@ -20,6 +20,7 @@ import 'package:flutter/rendering.dart';
 import '../annotation/annotation_controller.dart' show AnnotLaserDot, AnnotStroke;
 import '../annotation/annotation_painter.dart';
 import '../widgets/live_palette.dart';
+import 'board_format.dart';
 import 'board_protocol.dart';
 
 /// The paper of each background.
@@ -75,14 +76,22 @@ class BoardBackgroundPainter extends CustomPainter {
       case BoardBackground.white:
         canvas.drawRect(r, Paint()..color = BoardPaper.white);
       case BoardBackground.blackboard:
+        // A tall (continuous) page: the slate darkens toward its sides, not toward one centre.
+        final tall = size.height > size.width * 1.6;
         canvas.drawRect(
           r,
           Paint()
-            ..shader = RadialGradient(
-              center: const Alignment(0, -0.2),
-              radius: 1.1,
-              colors: const [BoardPaper.blackboard, BoardPaper.blackboardEdge],
-            ).createShader(r),
+            ..shader = (tall
+                    ? const LinearGradient(
+                        colors: [BoardPaper.blackboardEdge, BoardPaper.blackboard, BoardPaper.blackboard, BoardPaper.blackboardEdge],
+                        stops: [0, 0.22, 0.78, 1],
+                      )
+                    : const RadialGradient(
+                        center: Alignment(0, -0.2),
+                        radius: 1.1,
+                        colors: [BoardPaper.blackboard, BoardPaper.blackboardEdge],
+                      ))
+                .createShader(r),
         );
       case BoardBackground.grid:
         canvas.drawRect(r, Paint()..color = BoardPaper.grid);
@@ -104,11 +113,12 @@ class BoardBackgroundPainter extends CustomPainter {
         }
       case BoardBackground.lined:
         canvas.drawRect(r, Paint()..color = BoardPaper.lined);
-        final step = size.height / 16;
+        // By the width (a 16:9 page's height / 16): the same ruling on every format.
+        final step = size.width * 9 / 256;
         if (step < 3) return;
         final rule = Paint()
           ..color = BoardPaper.lineRule
-          ..strokeWidth = math.max(1.0, size.height / 900);
+          ..strokeWidth = math.max(1.0, size.width / 1600);
         for (var y = step * 2; y < size.height - 0.5; y += step) {
           canvas.drawLine(Offset(0, y), Offset(size.width, y), rule);
         }
@@ -126,6 +136,7 @@ class BoardItemsPainter extends CustomPainter {
     required this.lasers,
     required this.laserColor,
     required this.laserOpacity,
+    this.coordSize,
     super.repaint,
   });
 
@@ -133,6 +144,10 @@ class BoardItemsPainter extends CustomPainter {
   final Iterable<AnnotLaserDot> Function() lasers;
   final Color laserColor;
   final double Function(AnnotLaserDot dot) laserOpacity;
+
+  /// The page's coordinate size when it differs from the painted size (a continuous page is painted as far as it is
+  /// shown, its coordinates span its whole length). Null: the painted size.
+  final Size? coordSize;
 
   static final Expando<AnnotStroke> _strokes = Expando('board.ink');
 
@@ -162,9 +177,9 @@ class BoardItemsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
+    final rect = Offset.zero & (coordSize ?? size);
     canvas.save();
-    canvas.clipRect(rect);
+    canvas.clipRect(Offset.zero & size);
     for (final it in items()) {
       switch (it) {
         case BoardInk():
@@ -243,14 +258,9 @@ class BoardItemsPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(BoardItemsPainter old) => old.laserColor != laserColor || !identical(old.items, items);
+  bool shouldRepaint(BoardItemsPainter old) =>
+      old.laserColor != laserColor || !identical(old.items, items) || old.coordSize != coordSize;
 }
 
-/// The page fitted into [box] (16:9, centred), never wider / taller than the box.
-Rect boardPageRect(Size box, {double margin = 0}) {
-  final w = math.max(0.0, box.width - margin * 2), h = math.max(0.0, box.height - margin * 2);
-  if (w <= 0 || h <= 0) return Rect.zero;
-  final scale = math.min(w / kBoardAspect, h);
-  final pw = scale * kBoardAspect, ph = scale;
-  return Rect.fromLTWH((box.width - pw) / 2, (box.height - ph) / 2, pw, ph);
-}
+/// The page fitted into [box] (16:9 unless [aspect] says otherwise, centred), never wider / taller than the box.
+Rect boardPageRect(Size box, {double margin = 0, double aspect = kBoardAspect}) => boardFitPage(box, aspect, margin: margin);

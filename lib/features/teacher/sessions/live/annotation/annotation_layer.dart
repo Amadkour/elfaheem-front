@@ -10,8 +10,15 @@
 // one is not held back, and the stroke still ends exactly where the pen lifted. Palm-safe: one pointer draws at a time, and while a stylus is down (or
 // just lifted) touches are ignored; a stylus landing on a stroke a touch started removes that stroke (the palm).
 // Outside draw mode the layer is wrapped in IgnorePointer, so the video below (and its controls) keep working.
-// The laser fades with a Ticker that runs only while a dot is on screen.
+// The laser fades with a Ticker that runs only while a dot (or a name tag) is on screen.
+//
+// D-093: the name tags of whoever else draws (presence_tags.dart) follow their pen tip and fade 1.5 s after they
+// stop; with the host's "Show who drew what" a mouse over a stroke (or a long press on it, outside draw mode) shows
+// "Drawn by …" — through a translucent listener, so the video below still gets every tap. "Stylus only"
+// (draw_input_prefs.dart): a finger never draws.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +29,8 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'annotation_controller.dart';
 import 'annotation_ink.dart';
 import 'annotation_painter.dart';
+import 'draw_input_prefs.dart';
+import 'presence_tags.dart';
 
 /// Touches this soon after a stylus lifted are taken as the palm.
 const kAnnotPalmGuard = Duration(milliseconds: 500);
@@ -43,8 +52,15 @@ class AnnotationLayer extends StatefulWidget {
 
 class _AnnotationLayerState extends State<AnnotationLayer> with SingleTickerProviderStateMixin {
   late final Ticker _ticker = createTicker((_) {
-    if (!widget.controller.pruneLasers()) _ticker.stop();
+    final lasers = widget.controller.pruneLasers();
+    final tags = widget.controller.presence.step();
+    if (!lasers && !tags) _ticker.stop();
   });
+
+  /// "Drawn by …" under the pointer (the host's showAuthors).
+  ({String author, Offset at, int color})? _probe;
+  Timer? _probeTimer;
+  Offset? _pressAt;
 
   int? _pointer;
   PointerDeviceKind? _pointerKind;
@@ -59,6 +75,7 @@ class _AnnotationLayerState extends State<AnnotationLayer> with SingleTickerProv
   void initState() {
     super.initState();
     widget.controller.board.addListener(_onBoard);
+    widget.controller.presence.addListener(_onBoard);
   }
 
   @override
@@ -66,19 +83,68 @@ class _AnnotationLayerState extends State<AnnotationLayer> with SingleTickerProv
     super.didUpdateWidget(old);
     if (!identical(old.controller, widget.controller)) {
       old.controller.board.removeListener(_onBoard);
+      old.controller.presence.removeListener(_onBoard);
       widget.controller.board.addListener(_onBoard);
+      widget.controller.presence.addListener(_onBoard);
     }
   }
 
   @override
   void dispose() {
     widget.controller.board.removeListener(_onBoard);
+    widget.controller.presence.removeListener(_onBoard);
+    _probeTimer?.cancel();
     _ticker.dispose();
     super.dispose();
   }
 
   void _onBoard() {
-    if (widget.controller.board.hasLasers && !_ticker.isActive) _ticker.start();
+    final c = widget.controller;
+    if ((c.board.hasLasers || !c.presence.isEmpty) && !_ticker.isActive) _ticker.start();
+  }
+
+  // ── "Drawn by …" ───────────────────────────────────────────────────────────
+
+  void _probeAt(Offset local, {bool autoHide = false}) {
+    final n = AnnotFit.toNormal(local, _rect);
+    final s = (n.dx < 0 || n.dx > 1 || n.dy < 0 || n.dy > 1) ? null : widget.controller.strokeAt(n.dx, n.dy, aspect: _aspect);
+    final next = s == null ? null : (author: s.author, at: local, color: s.color);
+    if (next?.author != _probe?.author || next == null || (next.at - _probe!.at).distance > 2) setState(() => _probe = next);
+    _probeTimer?.cancel();
+    if (autoHide && next != null) {
+      _probeTimer = Timer(const Duration(milliseconds: 2500), () {
+        if (mounted) setState(() => _probe = null);
+      });
+    }
+  }
+
+  void _clearProbe() {
+    _probeTimer?.cancel();
+    _pressAt = null;
+    if (_probe != null) setState(() => _probe = null);
+  }
+
+  void _probeDown(PointerDownEvent e) {
+    if (e.kind == PointerDeviceKind.mouse) return;
+    _pressAt = e.localPosition;
+    _probeTimer?.cancel();
+    _probeTimer = Timer(const Duration(milliseconds: 450), () {
+      final at = _pressAt;
+      if (mounted && at != null) _probeAt(at, autoHide: true);
+    });
+  }
+
+  void _probeMove(PointerMoveEvent e) {
+    final at = _pressAt;
+    if (at != null && (e.localPosition - at).distance > 10) {
+      _pressAt = null;
+      if (_probe == null) _probeTimer?.cancel();
+    }
+  }
+
+  void _probeUp(PointerEvent e) {
+    if (_probe == null) _probeTimer?.cancel();
+    _pressAt = null;
   }
 
   bool get _active => widget.controller.drawMode;
@@ -102,10 +168,14 @@ class _AnnotationLayerState extends State<AnnotationLayer> with SingleTickerProv
     if (!_active) return;
     if (e.kind == PointerDeviceKind.mouse && (e.buttons & kPrimaryMouseButton) == 0) return;
     final stylus = _isStylus(e.kind);
-    if (stylus) _stylusDown = true;
+    if (stylus) {
+      _stylusDown = true;
+      DrawInputPrefs.stylusSeen = true;
+    }
     if (!stylus && (_stylusDown || (_stylusUp != null && DateTime.now().difference(_stylusUp!) < kAnnotPalmGuard))) {
       return; // the palm
     }
+    if (e.kind == PointerDeviceKind.touch && DrawInputPrefs.stylusOnly.value) return; // only the pen draws
     if (_pointer != null) {
       // A stylus wins over a touch that is drawing (that touch was the palm); any other extra pointer is ignored.
       if (stylus && _pointerKind != null && !_isStylus(_pointerKind!)) {
@@ -184,37 +254,80 @@ class _AnnotationLayerState extends State<AnnotationLayer> with SingleTickerProv
           _pointerKind = null;
           _ink = null;
         }
-        return LayoutBuilder(builder: (context, c) {
-          final size = Size(c.maxWidth.isFinite ? c.maxWidth : 0, c.maxHeight.isFinite ? c.maxHeight : 0);
+        return LayoutBuilder(builder: (context, box) {
+          final size = Size(box.maxWidth.isFinite ? box.maxWidth : 0, box.maxHeight.isFinite ? box.maxHeight : 0);
           _rect = AnnotFit.contain(widget.contentSize, size);
+          final c = widget.controller;
           final paint = CustomPaint(
             size: size,
             isComplex: true,
             painter: AnnotationPainter(
-              board: widget.controller.board,
+              board: c.board,
               contentSize: widget.contentSize,
               laserColor: laser,
-              laserOpacity: widget.controller.laserOpacity,
+              laserOpacity: c.laserOpacity,
             ),
           );
-          return IgnorePointer(
-            ignoring: !active,
-            child: Semantics(
-              container: true,
-              label: active ? annotLayerLabel() : null,
-              child: Listener(
-                behavior: active ? HitTestBehavior.opaque : HitTestBehavior.translucent,
-                onPointerDown: _down,
-                onPointerMove: _move,
-                onPointerHover: _hover,
-                onPointerUp: _up,
-                onPointerCancel: _up,
-                child: MouseRegion(
-                  cursor: active ? _cursor(widget.controller.tool) : MouseCursor.defer,
-                  child: paint,
+          final rect = _rect;
+          final rtl = Directionality.maybeOf(context) == TextDirection.rtl;
+          final tags = IgnorePointer(
+            child: CustomPaint(
+              size: size,
+              painter: PresenceTagsPainter(
+                presence: c.presence,
+                marks: () => c.presence.marks,
+                visible: (m) => c.presenceShownFor(m.identity),
+                toLocal: (x, y) => AnnotFit.toLocal(x, y, rect),
+                bounds: (s) => rect.intersect(Offset.zero & s),
+                fallbackRtl: rtl,
+              ),
+            ),
+          );
+          final probing = !active && c.showAuthors;
+          if (!probing && _probe != null) WidgetsBinding.instance.addPostFrameCallback((_) => _clearProbe());
+          final probe = _probe;
+          final layer = Stack(fit: StackFit.expand, children: [
+            IgnorePointer(
+              ignoring: !active,
+              child: Semantics(
+                container: true,
+                label: active ? annotLayerLabel() : null,
+                child: Listener(
+                  behavior: active ? HitTestBehavior.opaque : HitTestBehavior.translucent,
+                  onPointerDown: _down,
+                  onPointerMove: _move,
+                  onPointerHover: _hover,
+                  onPointerUp: _up,
+                  onPointerCancel: _up,
+                  child: MouseRegion(
+                    cursor: active ? _cursor(c.tool) : MouseCursor.defer,
+                    child: paint,
+                  ),
                 ),
               ),
             ),
+            tags,
+            if (probing && probe != null)
+              Positioned(
+                left: authorLabelOffset(probe.at, Offset.zero & size).dx,
+                top: authorLabelOffset(probe.at, Offset.zero & size).dy,
+                child: AuthorLabelChip(
+                  name: c.displayName(probe.author),
+                  mine: probe.author == c.localIdentity,
+                  color: Color(probe.color),
+                ),
+              ),
+          ]);
+          if (!probing) return layer;
+          // Hover / long press shows the author; translucent: the video below still gets the taps.
+          return Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerHover: (e) => _probeAt(e.localPosition),
+            onPointerDown: _probeDown,
+            onPointerMove: _probeMove,
+            onPointerUp: _probeUp,
+            onPointerCancel: _probeUp,
+            child: MouseRegion(opaque: false, onExit: (_) => _clearProbe(), child: layer),
           );
         });
       },
