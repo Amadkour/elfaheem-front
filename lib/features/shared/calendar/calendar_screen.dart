@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show t, asMap;
@@ -426,7 +427,13 @@ class _EventSheet extends StatelessWidget {
             onPressed: () {
               final nav = Navigator.of(context);
               nav.pop();
-              unawaited(nav.pushNamed('/course-profile', arguments: e.courseId));
+              // a course's own live session opens the course page (its "Live now" card joins the room); a
+              // timetable slot / exam keeps the course profile
+              if (e.source == 'course_session') {
+                unawaited(AppNavigator.openCourse(e.courseId!));
+              } else {
+                unawaited(nav.pushNamed('/course-profile', arguments: e.courseId));
+              }
             },
           ),
         ],

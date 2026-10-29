@@ -121,7 +121,9 @@ void openTeacherPreJoin(BuildContext context, ScheduleSession session) {
               token: session.token!,
             );
           },
-          onEnd: () => context.read<TeacherCourseScreenProvider>().endLive(session.sessionId!),
+          // the home has no TeacherCourseScreenProvider above it (a context.read here threw when the room ended):
+          // a short-lived one ends the session
+          onEnd: () => TeacherCourseScreenProvider(initialCourse: TeacherCourse.dummy(session.courseId)).endLive(session.sessionId!),
           apiClient: ApiClient(),
         ),
       ),

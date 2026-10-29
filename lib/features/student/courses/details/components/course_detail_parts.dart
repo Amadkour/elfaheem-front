@@ -307,7 +307,8 @@ class CourseBuyBar extends StatelessWidget {
 // ── Spotlight ────────────────────────────────────────────────────────────────
 
 /// "Live now" — the loudest card while one of the course's sessions is on air.
-Widget courseLiveNowCard({required String sessionName, required VoidCallback onJoin}) => ParentComponent(
+/// [onJoin] = the button (into the room) · [onOpen] = a tap elsewhere on the card (the Live tab); null → [onJoin].
+Widget courseLiveNowCard({required String sessionName, required VoidCallback onJoin, VoidCallback? onOpen}) => ParentComponent(
   featureKey: 'live_sessions',
   child: Builder(
     builder: (context) => CourseSpotlightCard(
@@ -320,7 +321,7 @@ Widget courseLiveNowCard({required String sessionName, required VoidCallback onJ
       actionLabel: gt('انضم', 'Join'),
       actionIcon: DirIcons.login,
       onAction: onJoin,
-      onTap: onJoin,
+      onTap: onOpen ?? onJoin,
     ),
   ),
 );
