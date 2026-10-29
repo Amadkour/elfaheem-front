@@ -18,15 +18,29 @@
 //   HomeTodoCard       "To do" from AttentionService (AttentionTabs.home) → the items sheet with deep links
 //   HomeStatStrip      "Needs you" in ONE card of small count tiles (student · instructor homes)
 //   HomeCourseSummary  a role's courses in ONE card: figures, the 3 that matter now as slim lines, "All n courses"
+//   HomeSection        a section whose title folds / unfolds it (animated); the choice is kept per user and section
+//                      on the device (HomeFolds, SharedPreferences) — a calmer home the person shapes
+//   HomeAgendaLine /   the compact agenda (the default): one line per item (time · dot · title · tag), live first,
+//     HomeShowAllRow   then what is to come, what ended last (homeAgendaFocus); the first 3 + "Show all (n)"
+//   HomeLiveBanner     "Live now": a room I'm invited to is live — host avatar, title, live-for clock, pulsing dot
+//                      (HomePulseDot, parked by Reduce motion) and ONE Join button; one card per room
+//   homeDaySummary     the greeting's one line: "2 sessions today · 1 live now · 3 to do" (replaces a card)
+//
+// Density rules (Track UX-home): action cards draw icon · count · label only (the description is the tooltip and
+// the screen-reader hint); a section with nothing to say is not drawn; what is live comes first.
 library;
 
+import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Hooks & pure helpers
@@ -149,7 +163,7 @@ class HomeHeader extends StatelessWidget {
 /// Two home sections side by side from [minWidth] (each a list: title + body), one under the other below it — a
 /// 1000 px single column stretched a 5-row agenda into a strip with a blank half.
 class HomeSplit extends StatelessWidget {
-  const HomeSplit({super.key, required this.start, required this.end, this.minWidth = 900, this.gap = 28});
+  const HomeSplit({super.key, required this.start, required this.end, this.minWidth = 900, this.gap = 16});
   final List<Widget> start, end;
   final double minWidth, gap;
 
@@ -168,7 +182,8 @@ class HomeSplit extends StatelessWidget {
 }
 
 class HomeSectionTitle extends StatelessWidget {
-  const HomeSectionTitle(this.title, {super.key, this.count, this.actionLabel, this.onAction, this.padding, this.subtitle});
+  const HomeSectionTitle(this.title,
+      {super.key, this.count, this.actionLabel, this.onAction, this.padding, this.subtitle, this.onToggle, this.collapsed = false});
   final String title;
 
   /// A quiet line under the title (e.g. "Based on the rights you were given").
@@ -178,33 +193,63 @@ class HomeSectionTitle extends StatelessWidget {
   final VoidCallback? onAction;
   final EdgeInsetsGeometry? padding;
 
+  /// Set → the title is a button that folds / unfolds its section (a chevron at its end shows which).
+  final VoidCallback? onToggle;
+  final bool collapsed;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    Widget heading = Row(children: [
+      Container(width: 4, height: 18, decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(4))),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w900, c: c.textDark))),
+            if (count != null && count! > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(10)),
+                child: Text(count! > 999 ? '999+' : '$count', style: appText(12, w: FontWeight.w800, c: appInk(context, c.primary))),
+              ),
+            ],
+            if (onToggle != null) ...[
+              const SizedBox(width: 4),
+              AnimatedRotation(
+                turns: collapsed ? -0.25 * (Directionality.of(context) == TextDirection.rtl ? -1 : 1) : 0,
+                duration: still ? Duration.zero : const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                child: Icon(Icons.expand_more_rounded, size: 22, color: c.textLight),
+              ),
+            ],
+          ]),
+          if (subtitle != null && subtitle!.isNotEmpty)
+            Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+        ]),
+      ),
+    ]);
+    if (onToggle != null) {
+      heading = Semantics(
+        button: true,
+        expanded: !collapsed,
+        onTapHint: (collapsed ? 'home_section_expand' : 'home_section_collapse').tr,
+        child: InkWell(
+          onTap: onToggle,
+          borderRadius: BorderRadius.circular(c.radiusMedium),
+          // a 48 px target whatever the title's line height
+          child: ConstrainedBox(constraints: const BoxConstraints(minHeight: 48), child: Align(alignment: AlignmentDirectional.centerStart, widthFactor: 1, child: heading)),
+        ),
+      );
+    }
     return Padding(
       padding: padding ?? const EdgeInsets.fromLTRB(20, 0, 12, 10),
       // The title takes every pixel the action leaves (a Flexible + Spacer pair split the row in halves: the title
       // was cut at half the width and the action floated mid-row instead of sitting at the end).
       child: LayoutBuilder(builder: (context, box) => Row(children: [
-        Container(width: 4, height: 18, decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(4))),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Row(children: [
-              Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w900, c: c.textDark))),
-              if (count != null && count! > 0) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(10)),
-                  child: Text(count! > 999 ? '999+' : '$count', style: appText(12, w: FontWeight.w800, c: appInk(context, c.primary))),
-                ),
-              ],
-            ]),
-            if (subtitle != null && subtitle!.isNotEmpty)
-              Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
-          ]),
-        ),
+        Expanded(child: heading),
         if (actionLabel != null && onAction != null)
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: box.maxWidth * 0.42),
@@ -336,7 +381,7 @@ class HomeActionCard extends StatelessWidget {
       child: Icon(icon, size: 21, color: appInk(context, color)),
     );
     if (attentionKey != null) iconBox = homeAttentionBadge(attentionKey!, iconBox);
-    return Material(
+    final card = Material(
       color: c.cardBg,
       borderRadius: r,
       child: InkWell(
@@ -367,14 +412,15 @@ class HomeActionCard extends StatelessWidget {
             ]),
             const SizedBox(height: 12),
             Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark, h: 1.25)),
-            if (subtitle != null && subtitle!.isNotEmpty) ...[
-              const SizedBox(height: 3),
-              Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium, h: 1.3)),
-            ],
           ]),
         ),
       ),
     );
+    // The description is no longer drawn (a calmer grid: icon · count · label); it stays the tooltip on hover /
+    // long-press and what a screen reader says after the label.
+    final hint = subtitle;
+    if (hint == null || hint.isEmpty) return card;
+    return Tooltip(message: hint, waitDuration: const Duration(milliseconds: 500), child: Semantics(hint: hint, child: card));
   }
 }
 
@@ -472,7 +518,19 @@ class HomeAgendaItem {
   final VoidCallback? onTap;
 }
 
-class HomeAgenda extends StatelessWidget {
+/// The order a compact agenda shows a day in: what runs now first, then what is still to come (by start), what
+/// already ended last. Pure (unit-tested).
+List<HomeAgendaItem> homeAgendaFocus(List<HomeAgendaItem> items, int nowMin) {
+  int rank(HomeAgendaItem x) => x.live ? 0 : ((x.endMin ?? 1 << 20) <= nowMin ? 2 : 1);
+  final indexed = [for (var i = 0; i < items.length; i++) (i, items[i])];
+  indexed.sort((a, b) {
+    final r = rank(a.$2).compareTo(rank(b.$2));
+    return r != 0 ? r : a.$1.compareTo(b.$1);
+  });
+  return [for (final x in indexed) x.$2];
+}
+
+class HomeAgenda extends StatefulWidget {
   const HomeAgenda({
     super.key,
     required this.items,
@@ -483,6 +541,8 @@ class HomeAgenda extends StatelessWidget {
     this.onEmptyAction,
     this.padding = const EdgeInsets.symmetric(horizontal: 20),
     this.nowMin,
+    this.compact = true,
+    this.maxItems = 3,
   });
 
   final List<HomeAgendaItem> items;
@@ -496,9 +556,26 @@ class HomeAgenda extends StatelessWidget {
   /// Now, in wall minutes (items that ended are dimmed). Defaults to [homeNow].
   final int? nowMin;
 
+  /// One line per item (time · title · tag), live first ([homeAgendaFocus]); false = the full timeline.
+  final bool compact;
+
+  /// Compact: the first [maxItems] lines, the rest behind "Show all (n)".
+  final int maxItems;
+
+  @override
+  State<HomeAgenda> createState() => _HomeAgendaState();
+}
+
+class _HomeAgendaState extends State<HomeAgenda> {
+  bool _all = false;
+
   @override
   Widget build(BuildContext context) {
+    final w = widget;
     final c = context.colors;
+    final items = w.items, loading = w.loading, padding = w.padding, nowMin = w.nowMin;
+    final emptyTitle = w.emptyTitle, emptyMessage = w.emptyMessage, emptyActionLabel = w.emptyActionLabel;
+    final onEmptyAction = w.onEmptyAction;
     if (loading) {
       return SizedBox(height: 3 * 82.0, child: AppListSkeleton(items: 3, padding: padding));
     }
@@ -522,6 +599,32 @@ class HomeAgenda extends StatelessWidget {
       );
     }
     final now = nowMin ?? (homeNow().hour * 60 + homeNow().minute);
+    bool done(HomeAgendaItem x) => !x.live && (x.endMin ?? 1 << 20) <= now;
+    if (w.compact) {
+      final ordered = homeAgendaFocus(items, now);
+      final more = ordered.length > w.maxItems;
+      final shown = _all || !more ? ordered : ordered.take(w.maxItems).toList();
+      return Padding(
+        padding: padding,
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: AnimatedSize(
+            duration: (MediaQuery.maybeDisableAnimationsOf(context) ?? false) ? Duration.zero : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: AlignmentDirectional.topCenter,
+            child: Column(children: [
+              for (final x in shown) HomeAgendaLine(item: x, done: done(x)),
+              if (more)
+                HomeShowAllRow(
+                  expanded: _all,
+                  count: ordered.length,
+                  onTap: () => setState(() => _all = !_all),
+                ),
+            ]),
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: padding,
       child: Container(
@@ -1029,4 +1132,575 @@ class _CourseLineRow extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Compact agenda pieces
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One line of the compact agenda: start time · a dot in the item's tone (pulsing while live) · title · tag.
+/// The subtitle (teacher · room · organization) is not drawn; a screen reader still hears it.
+class HomeAgendaLine extends StatelessWidget {
+  const HomeAgendaLine({super.key, required this.item, this.done = false});
+  final HomeAgendaItem item;
+
+  /// Already ended: quieter ink (never an opacity — the text keeps its contrast).
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final x = item;
+    final tone = x.live ? c.danger : (x.tone ?? c.primary);
+    final tag = x.live ? 'home_live'.tr : x.tag;
+    final label = [
+      '${x.start} – ${x.end}',
+      x.title,
+      if (x.subtitle != null && x.subtitle!.isNotEmpty) x.subtitle!,
+      ?tag,
+    ].join(', ');
+    return Semantics(
+      button: x.onTap != null,
+      label: label,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: x.onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 52),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(children: [
+              SizedBox(
+                width: 64,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(x.start,
+                      maxLines: 1,
+                      style: appText(13.5, w: FontWeight.w800, c: done ? c.textMedium : c.textDark)
+                          .copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                ),
+              ),
+              SizedBox(
+                width: 16,
+                child: Center(
+                  child: x.live
+                      ? HomePulseDot(color: tone)
+                      : Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: done ? null : tone,
+                            shape: BoxShape.circle,
+                            border: done ? Border.all(color: c.textLight, width: 1.5) : null,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(x.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: appText(14, w: done ? FontWeight.w600 : FontWeight.w700, c: done ? c.textMedium : c.textDark, h: 1.25)),
+              ),
+              if (tag != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 112), // a long tag never squeezes the title out
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                  child: Text(tag,
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w800, c: appInk(context, tone))),
+                ),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Show all (n)" / "Show less" at the foot of a compact list (a 48 px target).
+class HomeShowAllRow extends StatelessWidget {
+  const HomeShowAllRow({super.key, required this.expanded, required this.count, required this.onTap});
+  final bool expanded;
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = appInk(context, c.primary);
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: c.divider),
+      InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Flexible(
+                child: Text(expanded ? 'home_show_less'.tr : 'home_show_all'.tr.replaceAll('{n}', '$count'),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w800, c: ink)),
+              ),
+              const SizedBox(width: 4),
+              Icon(expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 18, color: ink),
+            ]),
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Foldable sections
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Which home sections the person folded, per signed-in user, on this device (SharedPreferences `home_folds`:
+/// "user id:section id" entries). Nothing loaded / no storage (tests) → every section open.
+class HomeFolds extends ChangeNotifier {
+  HomeFolds._();
+  static final HomeFolds instance = HomeFolds._();
+
+  static const prefsKey = 'home_folds';
+
+  SharedPreferences? _prefs;
+  final Set<String> _folded = {};
+  bool _loading = false;
+  String? _userRaw, _user;
+
+  /// The signed-in user's id, read from the cached user (StorageService's `current_user`) — a different account on
+  /// the same device keeps its own folds.
+  String get _uid {
+    final raw = _prefs?.getString('current_user');
+    if (raw != _userRaw) {
+      _userRaw = raw;
+      try {
+        _user = raw == null ? null : '${(jsonDecode(raw) as Map)['id']}';
+      } catch (_) {
+        _user = null;
+      }
+    }
+    return _user ?? '0';
+  }
+
+  /// Loads the saved folds once (best effort).
+  void ensureLoaded() {
+    if (_prefs != null || _loading) return;
+    _loading = true;
+    SharedPreferences.getInstance().then((p) {
+      _prefs = p;
+      _folded.addAll(p.getStringList(prefsKey) ?? const []);
+      notifyListeners();
+    }).catchError((Object _) {});
+  }
+
+  bool isFolded(String section) => _folded.contains('$_uid:$section');
+
+  void toggle(String section) {
+    final k = '$_uid:$section';
+    if (!_folded.remove(k)) _folded.add(k);
+    notifyListeners();
+    _prefs?.setStringList(prefsKey, _folded.toList()).catchError((Object _) => false);
+  }
+
+  @visibleForTesting
+  void debugReset() {
+    _folded.clear();
+    notifyListeners();
+  }
+}
+
+/// A home section whose title folds and unfolds it: the title row (count, action, a chevron), then [child] under an
+/// animated size change. Folded, the title's quiet line shows [foldedSummary] (what is hidden, in a few words).
+class HomeSection extends StatefulWidget {
+  const HomeSection({
+    super.key,
+    required this.id,
+    required this.title,
+    required this.child,
+    this.count,
+    this.subtitle,
+    this.foldedSummary,
+    this.actionLabel,
+    this.onAction,
+    this.titlePadding,
+    this.foldable = true,
+  });
+
+  /// Stable id of the section (the saved fold), e.g. `student.today`.
+  final String id;
+  final String title;
+  final Widget child;
+  final int? count;
+  final String? subtitle, foldedSummary, actionLabel;
+  final VoidCallback? onAction;
+  final EdgeInsetsGeometry? titlePadding;
+  final bool foldable;
+
+  @override
+  State<HomeSection> createState() => _HomeSectionState();
+}
+
+class _HomeSectionState extends State<HomeSection> {
+  @override
+  void initState() {
+    super.initState();
+    HomeFolds.instance.ensureLoaded();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget;
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return ListenableBuilder(
+      listenable: HomeFolds.instance,
+      builder: (context, _) {
+        final folded = w.foldable && HomeFolds.instance.isFolded(w.id);
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          HomeSectionTitle(
+            w.title,
+            count: w.count,
+            subtitle: folded ? (w.foldedSummary ?? w.subtitle) : w.subtitle,
+            actionLabel: folded ? null : w.actionLabel,
+            onAction: folded ? null : w.onAction,
+            padding: w.titlePadding ?? const EdgeInsets.fromLTRB(20, 0, 12, 4),
+            collapsed: folded,
+            onToggle: w.foldable ? () => HomeFolds.instance.toggle(w.id) : null,
+          ),
+          ClipRect(
+            child: AnimatedSize(
+              duration: still ? Duration.zero : const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              alignment: AlignmentDirectional.topCenter,
+              child: folded ? const SizedBox(width: double.infinity) : w.child,
+            ),
+          ),
+        ]);
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Live now
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A small dot that sends out a soft ring, for "this is happening now". A decorative loop: Reduce motion parks it
+/// (the dot stays, the ring goes).
+class HomePulseDot extends StatefulWidget {
+  const HomePulseDot({super.key, required this.color, this.size = 8});
+  final Color color;
+  final double size;
+
+  @override
+  State<HomePulseDot> createState() => _HomePulseDotState();
+}
+
+class _HomePulseDotState extends State<HomePulseDot> with SingleTickerProviderStateMixin {
+  late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _a); // at rest (1.0) the ring is fully faded
+  }
+
+  @override
+  void dispose() {
+    _a.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.size;
+    return SizedBox(
+      width: s * 2.4,
+      height: s * 2.4,
+      child: AnimatedBuilder(
+        animation: _a,
+        builder: (context, _) {
+          final t = Curves.easeOut.transform(_a.value);
+          return Stack(alignment: Alignment.center, children: [
+            Container(
+              width: s * (1 + 1.4 * t),
+              height: s * (1 + 1.4 * t),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color.withValues(alpha: 0.45 * (1 - t))),
+            ),
+            Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color)),
+          ]);
+        },
+      ),
+    );
+  }
+}
+
+/// One room of the "Live now" banner (plain values).
+class HomeLiveItem {
+  const HomeLiveItem({
+    required this.title,
+    required this.onJoin,
+    this.kindLabel,
+    this.subtitle,
+    this.hostName,
+    this.hostImageUrl,
+    this.startedAt,
+    this.onOpen,
+  });
+
+  final String title;
+
+  /// "Live session" / "Live meeting" — the small line above the title.
+  final String? kindLabel;
+
+  /// The course of a session (drawn after the host).
+  final String? subtitle;
+  final String? hostName, hostImageUrl;
+
+  /// When the room went live (UTC): the "live for" clock; null hides it.
+  final DateTime? startedAt;
+
+  /// The one-tap Join (straight into the pre-join page, which joins by itself).
+  final VoidCallback onJoin;
+
+  /// A tap on the card elsewhere (the course / the meeting); null = Join.
+  final VoidCallback? onOpen;
+}
+
+/// "mm:ss" under an hour, else "h:mm:ss" (Western digits, tabular).
+String homeLiveFor(Duration d) {
+  if (d.isNegative) d = Duration.zero;
+  final h = d.inHours, m = d.inMinutes.remainder(60), s = d.inSeconds.remainder(60);
+  String two(int v) => v.toString().padLeft(2, '0');
+  return h > 0 ? '$h:${two(m)}:${two(s)}' : '${two(m)}:${two(s)}';
+}
+
+/// "Live now" at the top of a home: one calm card per room I'm invited to that is live — the host's photo, the title,
+/// how long it has been live, a pulsing dot and ONE Join button. Draws nothing without rooms. [now] fixes the clock
+/// (tests / renders); null = the device clock, ticking every second while shown.
+class HomeLiveBanner extends StatefulWidget {
+  const HomeLiveBanner({super.key, required this.items, this.now, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+  final List<HomeLiveItem> items;
+  final DateTime? now;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  State<HomeLiveBanner> createState() => _HomeLiveBannerState();
+}
+
+class _HomeLiveBannerState extends State<HomeLiveBanner> {
+  Timer? _tick;
+
+  void _sync() {
+    final want = widget.now == null && widget.items.any((x) => x.startedAt != null);
+    if (want && _tick == null) {
+      _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } else if (!want) {
+      _tick?.cancel();
+      _tick = null;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(HomeLiveBanner old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.items;
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final now = widget.now ?? DateTime.now().toUtc();
+    return AnimatedSize(
+      duration: still ? Duration.zero : const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      alignment: AlignmentDirectional.topCenter,
+      child: items.isEmpty
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: widget.padding,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  _LiveCard(item: items[i], now: now),
+                ],
+              ]),
+            ),
+    );
+  }
+}
+
+class _LiveCard extends StatelessWidget {
+  const _LiveCard({required this.item, required this.now});
+  final HomeLiveItem item;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final x = item;
+    final red = c.danger;
+    final redInk = appInk(context, red);
+    final r = BorderRadius.circular(c.radiusLarge);
+    final since = x.startedAt == null ? null : homeLiveFor(now.difference(x.startedAt!));
+    final who = [
+      if (x.hostName != null && x.hostName!.isNotEmpty) 'home_live_with'.tr.replaceAll('{name}', x.hostName!),
+      if (x.subtitle != null && x.subtitle!.isNotEmpty) x.subtitle!,
+    ].join(' · ');
+    final title = x.title.isEmpty ? (x.kindLabel ?? 'home_live'.tr) : x.title;
+
+    final join = FilledButton.icon(
+      onPressed: x.onJoin,
+      icon: const Icon(Icons.videocam_rounded, size: 18),
+      label: Text('home_live_join'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: FilledButton.styleFrom(
+        backgroundColor: red,
+        foregroundColor: homeOnHero(context),
+        minimumSize: const Size(0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        textStyle: appText(14, w: FontWeight.w800),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        elevation: 0,
+      ),
+    );
+
+    final avatar = _HostAvatar(name: x.hostName ?? title, url: x.hostImageUrl, ring: red);
+
+    final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Row(children: [
+        HomePulseDot(color: red, size: 7),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            [x.kindLabel ?? 'home_live_badge'.tr, ?since].join(' · '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: appText(12, w: FontWeight.w800, c: redInk).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+          ),
+        ),
+      ]),
+      const SizedBox(height: 2),
+      Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15.5, w: FontWeight.w800, c: c.textDark, h: 1.25)),
+      if (who.isNotEmpty) ...[
+        const SizedBox(height: 2),
+        Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
+      ],
+    ]);
+
+    return Semantics(
+      container: true,
+      label: [x.kindLabel ?? 'home_live'.tr, title, if (who.isNotEmpty) who].join(', '),
+      child: Material(
+        color: c.cardBg,
+        borderRadius: r,
+        child: InkWell(
+          borderRadius: r,
+          onTap: x.onOpen ?? x.onJoin,
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: r,
+              border: Border.all(color: red.withValues(alpha: 0.40), width: 1.2),
+              gradient: LinearGradient(
+                begin: AlignmentDirectional.centerStart,
+                end: AlignmentDirectional.centerEnd,
+                colors: [red.withValues(alpha: 0.09), red.withValues(alpha: 0.0)],
+              ),
+              boxShadow: [BoxShadow(color: red.withValues(alpha: 0.14), blurRadius: 22, offset: const Offset(0, 8))],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: LayoutBuilder(builder: (context, box) {
+                // the button sits at the end while the text keeps room; on a narrow phone (or big text) it goes under
+                final roomy = box.maxWidth >= 300 * MediaQuery.textScalerOf(context).scale(1);
+                if (roomy) {
+                  return Row(children: [
+                    avatar,
+                    const SizedBox(width: 12),
+                    Expanded(child: text),
+                    const SizedBox(width: 12),
+                    ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth * 0.36), child: join),
+                  ]);
+                }
+                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [avatar, const SizedBox(width: 16), Expanded(child: text)]),
+                  const SizedBox(height: 16),
+                  join,
+                ]);
+              }),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The host's photo in a red ring (initials over the brand tint without one).
+class _HostAvatar extends StatelessWidget {
+  const _HostAvatar({required this.name, required this.url, required this.ring});
+  final String name;
+  final String? url;
+  final Color ring;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final initials = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).take(2).map((p) => p.characters.first).join();
+    final u = url;
+    return Container(
+      width: 52,
+      height: 52,
+      padding: const EdgeInsets.all(2.5),
+      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ring, width: 2)),
+      child: ClipOval(
+        child: u != null && u.startsWith('http')
+            ? AppNetworkImage(url: u, width: 44, height: 44)
+            : ColoredBox(
+                color: c.primaryTint,
+                child: Center(
+                  child: Text(initials.isEmpty ? '•' : initials.toUpperCase(),
+                      maxLines: 1, style: appText(15, w: FontWeight.w900, c: appInk(context, c.primary))),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  The greeting's summary line
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// "2 sessions today · 1 live now · next at 1:00 PM · 3 to do" — the day in one line under the name, so the home
+/// needs fewer cards. [nextAt] is a display time (through AppTime). Pure.
+String homeDaySummary({required int sessions, int live = 0, int todo = 0, String? nextAt}) {
+  final parts = <String>[
+    sessions == 0
+        ? 'home_sum_free'.tr
+        : (sessions == 1 ? 'home_sum_sessions_one'.tr : 'home_sum_sessions'.tr.replaceAll('{n}', '$sessions')),
+    if (live > 0) 'home_sum_live'.tr.replaceAll('{n}', '$live'),
+    if (live == 0 && nextAt != null && nextAt.isNotEmpty) 'home_sum_next'.tr.replaceAll('{t}', nextAt),
+    todo > 0 ? 'home_sum_todo'.tr.replaceAll('{n}', '$todo') : 'home_sum_clear'.tr,
+  ];
+  return parts.join(' · ');
 }

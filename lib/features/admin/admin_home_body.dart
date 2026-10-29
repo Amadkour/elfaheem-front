@@ -478,9 +478,12 @@ class _Health extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final failed = data.jobsFailed24h;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      HomeSectionTitle('admin_home_health'.tr, padding: const EdgeInsets.fromLTRB(6, 0, 0, 10)),
-      AppGrid(minTile: 160, children: [ // 160: two per row in the side column — three cut every label
+    // folds from its title (HomeSection, remembered per user on the device)
+    return HomeSection(
+      id: 'admin.health',
+      title: 'admin_home_health'.tr,
+      titlePadding: const EdgeInsets.fromLTRB(6, 0, 0, 4),
+      child: AppGrid(minTile: 160, children: [ // 160: two per row in the side column — three cut every label
         if (data.hasRealtime)
           AppStatTile(
             icon: Icons.bolt_rounded,
@@ -518,7 +521,7 @@ class _Health extends StatelessWidget {
           onTap: actions.openSubscriptions,
         ),
       ]),
-    ]);
+    );
   }
 }
 

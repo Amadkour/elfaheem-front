@@ -83,8 +83,12 @@ class LiveEvents {
   /// recording | registration | cloud | ingest, id, status, stage?}`.
   static const jobUpdated = 'job_updated';
 
-  /// A course session went live: `{session_id}`.
+  /// A course session went live (or ended, `live: false`): `{session_id, course_id, live?}`.
   static const sessionLive = 'session_live';
+
+  /// A meeting I'm invited to went live (its room opened) or ended (`live: false`): `{meeting_id, org_id, live}`
+  /// (server: services/calendar_service.emit_meeting_live). The home's "Live now" banner follows both.
+  static const meetingLive = 'meeting_live';
 
   /// The teacher started a quiz in the room: `{course_id}`.
   static const quizStarted = 'quiz_started';
@@ -108,6 +112,7 @@ class LiveEvents {
     joinDecided,
     jobUpdated,
     sessionLive,
+    meetingLive,
     quizStarted,
     attendanceRosterUpdated,
   };
@@ -118,6 +123,7 @@ class LiveEvents {
     'complain' => complaints,
     'transfer_review' => transfers,
     'payment_success' => payments, // the checkout's verification wait ends on it
+    'session_started' => sessionLive, // the visible "session started" push: the home / course page follow it too
     _ => null,
   };
 

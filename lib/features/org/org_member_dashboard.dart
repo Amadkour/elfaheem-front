@@ -9,10 +9,12 @@
 //                            call), today's events and the inbox preview of the SAME payload; AppModeController
 //                            keeps the selection and the older-server copy of the overview.
 //   OrgMemberHomeBody        the presentational body (plain values, layout-tested):
-//                            OrgHero → status banner → HomeStatStrip (to do · due soon · awaiting you · news, once) →
-//                            today agenda → "What needs you" (InboxCompactList, 3) → decisions (managers) → what I
-//                            manage → quick actions GROUPED (My studies · Requests & forms · Manage · Organization,
-//                            ≤ 6 pills each + a "More" sheet) → news (3)
+//                            OrgHero → "Live now" (HomeLiveBanner: a room I'm invited to is live, one-tap Join) →
+//                            status banner → HomeStatStrip (to do · due soon · awaiting you · news, once; hidden
+//                            while all are zero) → today agenda (one line each, live first, 3 + "Show all") →
+//                            "What needs you" (InboxCompactList, 3) → decisions (managers) → what I manage → quick
+//                            actions GROUPED (My studies · Requests & forms · Manage · Organization, ≤ 6 pills each +
+//                            a "More" sheet) → news (3). Sections fold from their titles (HomeSection, remembered).
 //   OrgMemberDashboardScreen standalone page (route '/org_member', e.g. org staff without a management dashboard)
 //   openOrgApproval          jump from an approval item to the page that decides it (rights checked server-side)
 //
@@ -31,7 +33,8 @@ import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
-import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeAgendaItemOf, openHomeEvent;
+import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeAgendaItemOf, homeDaySummaryOf, openHomeEvent;
+import 'package:flutter_education_app/features/student/home/home_live.dart' show HomeLiveNow;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -283,18 +286,19 @@ List<OrgQuickGroup> orgQuickGroups(BuildContext context, Map<String, dynamic> en
 
 /// One group: title, up to [orgQuickPillsMax] pills, "More (+n)" opens a sheet with every action of the group.
 class OrgQuickGroupView extends StatelessWidget {
-  const OrgQuickGroupView({super.key, required this.group, this.max = orgQuickPillsMax});
+  const OrgQuickGroupView({super.key, required this.group, this.max = orgQuickPillsMax, this.foldId});
   final OrgQuickGroup group;
   final int max;
+
+  /// Set → the group folds from its title (HomeSection, remembered under this id).
+  final String? foldId;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final shown = group.actions.take(max).toList();
     final rest = group.actions.length - shown.length;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      HomeSectionTitle(group.title, padding: const EdgeInsets.fromLTRB(16, 0, 8, 8)),
-      Padding(
+    final pills = Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Wrap(spacing: 8, runSpacing: 8, children: [
           for (final a in shown) AppPill(icon: a.icon, label: a.label, color: a.color, onTap: a.onTap),
@@ -307,7 +311,19 @@ class OrgQuickGroupView extends StatelessWidget {
               onTap: () => _more(context),
             ),
         ]),
-      ),
+      );
+    if (foldId != null) {
+      return HomeSection(
+        id: foldId!,
+        title: group.title,
+        count: group.actions.length,
+        titlePadding: const EdgeInsets.fromLTRB(16, 0, 8, 4),
+        child: pills,
+      );
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      HomeSectionTitle(group.title, padding: const EdgeInsets.fromLTRB(16, 0, 8, 8)),
+      pills,
     ]);
   }
 
@@ -375,6 +391,7 @@ class OrgMemberHome extends StatelessWidget {
             showPicker: showPickerInHero && ctl.liveEntries.length > 1,
             today: me?.todayOf(orgId),
             inbox: me?.inboxPreviewOf(orgId),
+            liveNow: svc.liveNow,
             onPick: () => showMemberOrgPicker(context),
             onOpenEvent: (e) => openHomeEvent(context, e, inOrg: true),
             onOpenInboxItem: (x) async {
@@ -411,7 +428,11 @@ class OrgMemberHomeBody extends StatelessWidget {
     this.todayFallback,
     this.inboxFallback,
     this.news,
+    this.liveNow = const [],
   });
+
+  /// The rooms live right now that I may join (MeHomeService.liveNow): the "Live now" banner under the hero.
+  final List<MeLiveRoom> liveNow;
 
   /// `{organization, roles, manage, todo, approvals, news}` (one item of GET /org/public/me/overview).
   final Map<String, dynamic> entry;
@@ -476,6 +497,7 @@ class OrgMemberHomeBody extends StatelessWidget {
                 icon: Icon(Icons.swap_horiz_rounded, color: c.onHero))
             : null,
       ),
+      if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(16, 0, 16, 16)),
       if ('${org['status']}' != 'approved')
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -487,9 +509,11 @@ class OrgMemberHomeBody extends StatelessWidget {
           ),
         ),
 
-      // ── the numbers, once: one card of small tiles (the same strip as the personal homes)
-      HomeStatStrip(items: stats, padding: const EdgeInsets.symmetric(horizontal: 16)),
-      const SizedBox(height: 18),
+      // ── the numbers, once: one card of small tiles (the same strip as the personal homes) — only while one counts
+      if (stats.any((x) => x.count > 0)) ...[
+        HomeStatStrip(items: stats, padding: const EdgeInsets.symmetric(horizontal: 16)),
+        const SizedBox(height: 24),
+      ],
 
     ];
     final main = <Widget>[
@@ -497,45 +521,59 @@ class OrgMemberHomeBody extends StatelessWidget {
       if (isMember) ...[
         if (today == null && todayFallback != null)
           todayFallback!
-        else ...[
-          HomeSectionTitle('home_today'.tr,
-              count: today?.length ?? 0, actionLabel: 'home_full_timetable'.tr, onAction: openTimetable, padding: const EdgeInsets.fromLTRB(16, 0, 8, 10)),
-          HomeAgenda(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            nowMin: nowMin,
-            items: [for (final e in today ?? const <CalEvent>[]) homeAgendaItemOf(context, e, nowUtc, onTap: () => onOpenEvent?.call(e))],
-            emptyTitle: 'home_no_classes_today'.tr,
-            emptyMessage: 'home_no_classes_hint'.tr,
-            emptyActionLabel: 'home_full_timetable'.tr,
-            onEmptyAction: openTimetable,
+        else
+          HomeSection(
+            id: 'member.today',
+            title: 'home_today'.tr,
+            count: today?.length ?? 0,
+            foldedSummary: (today ?? const []).isEmpty ? null : homeDaySummaryOf(today!, nowUtc),
+            actionLabel: 'home_full_timetable'.tr,
+            onAction: openTimetable,
+            titlePadding: _titlePad,
+            child: HomeAgenda(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              nowMin: nowMin,
+              items: [for (final e in today ?? const <CalEvent>[]) homeAgendaItemOf(context, e, nowUtc, onTap: () => onOpenEvent?.call(e))],
+              emptyTitle: 'home_no_classes_today'.tr,
+              emptyMessage: 'home_no_classes_hint'.tr,
+              emptyActionLabel: 'home_full_timetable'.tr,
+              onEmptyAction: openTimetable,
+            ),
           ),
-        ],
-        const SizedBox(height: 18),
+        const SizedBox(height: 24),
       ],
 
       // ── what needs me (the 3 most urgent rows of THIS organization; the counts sit in the strip above)
       if (inboxRows == null && inboxFallback != null) ...[
         HomeSectionTitle(t('ما ينتظرك', 'What needs you'),
-            padding: _titlePad,
+            padding: const EdgeInsets.fromLTRB(16, 0, 8, 10),
             actionLabel: t('عرض الكل', 'See all'),
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))))),
         inboxFallback!,
         const SizedBox(height: 8),
       ] else if (inboxRows != null && inboxRows.isNotEmpty) ...[
-        HomeSectionTitle(t('ما ينتظرك', 'What needs you'),
-            padding: _titlePad,
-            actionLabel: t('عرض الكل', 'See all'),
-            onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))))),
-        InboxCompactList(items: inboxRows.take(3).toList(), padding: const EdgeInsets.symmetric(horizontal: 16), onTap: (x) => onOpenInboxItem?.call(x)),
-        const SizedBox(height: 18),
+        HomeSection(
+          id: 'member.needs',
+          title: t('ما ينتظرك', 'What needs you'),
+          count: inboxRows.length,
+          titlePadding: _titlePad,
+          actionLabel: t('عرض الكل', 'See all'),
+          onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org)))),
+          child: InboxCompactList(items: inboxRows.take(3).toList(), padding: const EdgeInsets.symmetric(horizontal: 16), onTap: (x) => onOpenInboxItem?.call(x)),
+        ),
+        const SizedBox(height: 24),
       ],
 
     ];
     final side = <Widget>[
       // ── decisions (managers)
       if (manage != null && asInt(ap['total']) > 0) ...[
-        HomeSectionTitle(t('بانتظار قرارك', 'Waiting for your decision'), padding: _titlePad),
-        Padding(
+        HomeSection(
+          id: 'member.decisions',
+          title: t('بانتظار قرارك', 'Waiting for your decision'),
+          count: asInt(ap['total']),
+          titlePadding: _titlePad,
+          child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(children: [
             for (final (k, icon, label) in [
@@ -563,15 +601,19 @@ class OrgMemberHomeBody extends StatelessWidget {
                 ),
           ]),
         ),
-        const SizedBox(height: 8),
+        ),
+        const SizedBox(height: 16),
       ],
 
       // ── the parts I manage
       if (depts.isNotEmpty || subOrgs.isNotEmpty) ...[
-        HomeSectionTitle(t('ما تديره', 'What you manage'),
-            padding: _titlePad,
-            subtitle: admin ? t('صلاحيات كاملة على المؤسسة', 'Full rights on the organization') : t('حسب الصلاحيات الممنوحة لك', 'Based on the rights you were given')),
-        Padding(
+        HomeSection(
+          id: 'member.manage',
+          title: t('ما تديره', 'What you manage'),
+          count: depts.length + subOrgs.length,
+          titlePadding: _titlePad,
+          subtitle: admin ? t('صلاحيات كاملة على المؤسسة', 'Full rights on the organization') : t('حسب الصلاحيات الممنوحة لك', 'Based on the rights you were given'),
+          child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(children: [
             for (final d in depts)
@@ -598,21 +640,26 @@ class OrgMemberHomeBody extends StatelessWidget {
               ),
           ]),
         ),
-        const SizedBox(height: 8),
+        ),
+        const SizedBox(height: 16),
       ],
 
       // ── quick actions, grouped (exactly what my rights allow)
-      for (final g in orgQuickGroups(context, entry)) ...[
-        OrgQuickGroupView(group: g),
-        const SizedBox(height: 18),
+      for (final (gi, g) in orgQuickGroups(context, entry).indexed) ...[
+        OrgQuickGroupView(group: g, foldId: 'member.quick.$gi'),
+        const SizedBox(height: 16),
       ],
 
       // ── news
-      if (isMember && news != null) ...[
-        HomeSectionTitle(t('أخبار المؤسسة', 'News'),
-            padding: _titlePad, actionLabel: t('كل الأخبار', 'All news'), onAction: () => _space(context, org, 0)),
-        news!,
-      ],
+      if (isMember && news != null)
+        HomeSection(
+          id: 'member.news',
+          title: t('أخبار المؤسسة', 'News'),
+          titlePadding: _titlePad,
+          actionLabel: t('كل الأخبار', 'All news'),
+          onAction: () => _space(context, org, 0),
+          child: news!,
+        ),
     ];
 
     // A wide window: what is happening (today · what needs you) beside what you act on (decisions · what you
@@ -637,7 +684,7 @@ class OrgMemberHomeBody extends StatelessWidget {
     });
   }
 
-  static const _titlePad = EdgeInsets.fromLTRB(16, 0, 8, 10);
+  static const _titlePad = EdgeInsets.fromLTRB(16, 0, 8, 4);
 
   static void _space(BuildContext context, Map<String, dynamic> org, int tab) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: org, initialTab: tab)));

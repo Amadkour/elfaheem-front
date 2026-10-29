@@ -7,7 +7,8 @@
 //   homeAgendaItemOf(context, e, now)   a CalEvent as a HomeAgenda row (times through AppTime, live while running)
 //   homeEventTag(e) · homeDuration(min) the tag of an event (lab · exam · meeting · online) · "1 h 20 min"
 //   NextUpHero(next:, now:, upcoming:)  the hero: the next event's start time set big, live state, countdown
-//   UpcomingList(events:)               "This week": compact rows with the day in a small column
+//   UpcomingList(events:)               "This week": one line per event (day + time column), 3 + "Show all"
+//   homeDaySummaryOf(today, now)        a folded "Today" section's quiet line
 //   StudentCourseSummary(courses:)      "My courses" in one card: figures + the 3 that matter now (homeCourseFocus)
 //
 // Plain values only (layout-tested in test/ui/student_home_layout_test.dart).
@@ -84,6 +85,17 @@ HomeAgendaItem homeAgendaItemOf(BuildContext context, CalEvent e, DateTime nowUt
     },
     onTap: onTap,
   );
+}
+
+/// A folded "Today" section's quiet line: "4 sessions today · 1 live now" / "… · next at 1:00 PM".
+String homeDaySummaryOf(List<CalEvent> today, DateTime nowUtc) {
+  final live = today.where((e) => !e.start.isAfter(nowUtc) && e.end.isAfter(nowUtc)).length;
+  final next = today.where((e) => e.start.isAfter(nowUtc)).firstOrNull;
+  return [
+    today.length == 1 ? 'home_sum_sessions_one'.tr : 'home_sum_sessions'.tr.replaceAll('{n}', '${today.length}'),
+    if (live > 0) 'home_sum_live'.tr.replaceAll('{n}', '$live'),
+    if (live == 0 && next != null) 'home_sum_next'.tr.replaceAll('{t}', AppTime.time(next.start)),
+  ].join(' · ');
 }
 
 String homeDuration(int minutes) {
@@ -171,71 +183,109 @@ class NextUpHero extends StatelessWidget {
   }
 }
 
-/// "This week": compact rows, the day in a small column, grouped visually by day.
-class UpcomingList extends StatelessWidget {
-  const UpcomingList({super.key, required this.events, this.onTap, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+/// "This week": one compact line per event — the day and time in a small column, a dot in the event's tone, the
+/// title, the tag — the first [maxItems] and "Show all (n)".
+class UpcomingList extends StatefulWidget {
+  const UpcomingList({super.key, required this.events, this.onTap, this.padding = const EdgeInsets.symmetric(horizontal: 20), this.maxItems = 3});
   final List<CalEvent> events;
   final ValueChanged<CalEvent>? onTap;
   final EdgeInsetsGeometry padding;
+  final int maxItems;
+
+  @override
+  State<UpcomingList> createState() => _UpcomingListState();
+}
+
+class _UpcomingListState extends State<UpcomingList> {
+  bool _all = false;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    String? lastDay;
+    final events = widget.events;
+    final more = events.length > widget.maxItems;
+    final shown = _all || !more ? events : events.take(widget.maxItems).toList();
     return Padding(
-      padding: padding,
+      padding: widget.padding,
       child: AppCard(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Column(children: [
-          for (final e in events)
-            Builder(builder: (context) {
-              final day = '${e.wallStart.year}-${e.wallStart.month}-${e.wallStart.day}';
-              final first = day != lastDay;
-              lastDay = day;
-              final tone = switch (e.source) {
-                'exam' => c.danger,
-                'meeting' => c.accent2,
-                _ => e.kind == 'lab' ? c.purple : c.primary,
-              };
-              return InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: onTap == null ? null : () => onTap!(e),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    SizedBox(
-                      width: 44,
-                      child: first
-                          ? Column(children: [
-                              Text(AppTime.date(e.start, pattern: 'EEE'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w700, c: c.textLight)),
-                              Text('${e.wallStart.day}', maxLines: 1, style: appText(18, w: FontWeight.w900, c: c.textDark, h: 1.1)),
-                            ])
-                          : const SizedBox.shrink(),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(width: 3, height: 36, margin: const EdgeInsets.only(top: 2), decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(2))),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
-                        const SizedBox(height: 2),
-                        Text(
-                          [
-                            '${AppTime.time(e.start)} – ${AppTime.time(e.end)}',
-                            if (homeEventTag(e) != null) homeEventTag(e)!,
-                            if (e.orgName != null && e.orgName!.isNotEmpty) e.orgName!,
-                          ].join(' · '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: appText(11.5, c: c.textMedium),
-                        ),
-                      ]),
-                    ),
-                  ]),
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: AnimatedSize(
+          duration: (MediaQuery.maybeDisableAnimationsOf(context) ?? false) ? Duration.zero : const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: AlignmentDirectional.topCenter,
+          child: Column(children: [
+            for (final e in shown) _UpcomingLine(e: e, tone: _tone(c, e), onTap: widget.onTap == null ? null : () => widget.onTap!(e)),
+            if (more) HomeShowAllRow(expanded: _all, count: events.length, onTap: () => setState(() => _all = !_all)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  static Color _tone(ThemeConfigProvider c, CalEvent e) => switch (e.source) {
+        'exam' => c.danger,
+        'meeting' => c.accent2,
+        _ => e.kind == 'lab' ? c.purple : c.primary,
+      };
+}
+
+class _UpcomingLine extends StatelessWidget {
+  const _UpcomingLine({required this.e, required this.tone, this.onTap});
+  final CalEvent e;
+  final Color tone;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tag = homeEventTag(e);
+    final day = AppTime.date(e.start, pattern: 'EEE d');
+    final time = AppTime.time(e.start);
+    return Semantics(
+      button: onTap != null,
+      excludeSemantics: true,
+      label: [day, '$time – ${AppTime.time(e.end)}', e.title, ?tag, if (e.orgName != null && e.orgName!.isNotEmpty) e.orgName!].join(', '),
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 52),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(children: [
+              SizedBox(
+                width: 64,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text(day, maxLines: 1, style: appText(12.5, w: FontWeight.w800, c: c.textDark))),
+                  FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text(time, maxLines: 1, style: appText(11.5, c: c.textMedium))),
+                ]),
+              ),
+              SizedBox(
+                width: 16,
+                child: Center(child: Container(width: 8, height: 8, decoration: BoxDecoration(color: tone, shape: BoxShape.circle))),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark, h: 1.25)),
+              ),
+              if (tag != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 112), // a long tag never squeezes the title out
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                  child: Text(tag,
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w800, c: appInk(context, tone))),
                 ),
-              );
-            }),
-        ]),
+              ],
+            ]),
+          ),
+        ),
       ),
     );
   }

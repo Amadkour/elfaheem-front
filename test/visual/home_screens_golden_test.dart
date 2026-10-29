@@ -440,12 +440,40 @@ Widget _memberHome() {
       today: me.todayOf(4),
       inbox: me.inboxPreviewOf(4),
       now: _now,
+      liveNow: _liveMeeting(),
       onPick: () {},
       onOpenEvent: (_) {},
       onOpenInboxItem: (_) {},
     ),
   );
 }
+
+// "Live now": a course session of the student's course · a meeting the instructor / member is invited to
+List<MeLiveRoom> _liveSession() => [
+      MeLiveRoom(
+        kind: 'session',
+        id: 21,
+        title: tr('مراجعة الفصل الثالث', 'Chapter 3 review'),
+        subtitle: tr('أساسيات بايثون', 'Python fundamentals'),
+        courseId: 11,
+        hostName: tr('د. منى عادل', 'Dr. Mona Adel'),
+        startedAt: _now.subtract(const Duration(minutes: 12, seconds: 40)),
+      ),
+    ];
+
+List<MeLiveRoom> _liveMeeting() => [
+      MeLiveRoom(
+        kind: 'meeting',
+        id: 9,
+        title: tr('مجلس قسم علوم الحاسب', 'Computer science department council'),
+        meetingId: 9,
+        orgId: 4,
+        hostName: tr('أ.د. هاني فوزي', 'Prof. Hany Fawzy'),
+        startedAt: _now.subtract(const Duration(minutes: 4, seconds: 5)),
+      ),
+    ];
+
+Widget _header(String name, String? summary) => HomeHeader(name: name, subtitle: summary, padding: const EdgeInsets.fromLTRB(20, 20, 20, 16));
 
 // teacher
 ScheduleSession _session(int id, String name, String start, String end, {bool ongoing = false, int? untilStart}) => ScheduleSession(
@@ -480,7 +508,11 @@ TeacherHomeExtra _teacherExtra() => TeacherHomeExtra.fromJson({
     });
 
 Widget _teacherHome() => SingleChildScrollView(
-      child: _width(1100, TeacherHomeBody(
+      child: _width(1100, Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _header(tr('أحمد حمدي', 'Ahmed Hamdy'), homeDaySummary(sessions: 3, live: 2, todo: 28, nextAt: AppTime.time(_now.add(const Duration(hours: 3))))),
+        TeacherHomeBody(
+        liveNow: _liveMeeting(),
+        now: _now,
         loading: false,
         stats: const TeacherStats(totalStudents: 1840, totalCourses: 6, overallRating: 4.8),
         schedule: [
@@ -520,7 +552,8 @@ Widget _teacherHome() => SingleChildScrollView(
         onOpenEarnings: () {},
         onOpenInbox: () {},
         showFeeds: false,
-      )),
+      ),
+      ])),
     );
 
 // parent
@@ -739,7 +772,13 @@ void main() {
 
   testWidgets('student home', (tester) async {
     await _renderAll(tester, 'student_home',
-        (_) => SingleChildScrollView(child: _width(1000, StudentHomeBody(data: StudentHomeData(home: _studentHome(), now: _now), onTab: (_) {}))));
+        (_) => SingleChildScrollView(
+            child: _width(
+                1000,
+                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentHome(), 1, _now)),
+                  StudentHomeBody(data: StudentHomeData(home: _studentHome(), now: _now, liveNow: _liveSession()), onTab: (_) {}),
+                ]))));
   });
 
   testWidgets('teacher home', (tester) async {

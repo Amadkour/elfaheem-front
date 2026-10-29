@@ -9,10 +9,17 @@
 //     home.nextUp()         today's next (or running) session / exam — the hero
 //     home.attentionCount(AttentionTabs.home)            the "To do" count, drawn once
 //     home.orgEntry(orgId) · home.todayOf(orgId) · home.inboxPreviewOf(orgId)   the Organization-mode slices
+//     home.liveNow          `live_now[]` as [MeLiveRoom]: the rooms live RIGHT NOW I may join as an invitee (a course
+//                           session of my course whose run is active · an online meeting I'm invited to whose room
+//                           is open) — the home's "Live now" banner; [MeHome.liveNowKnown] false on an older server
 //   MeHomeService.instance  the loader: GET /me/home once per open, cached in memory (instant redraw), refreshed
 //                           on resume · pull (refresh()) · the live events `attention_changed` / `*_updated`
 //                           (LiveEvents) · back online after a failure. Listen with ListenableBuilder; the live
 //                           wiring runs only while something listens.
+//     liveNow               what the banner draws: the payload's `live_now`, minus a room whose end event just
+//                           arrived (dropped at once, before the reload answers), plus — older server without
+//                           `live_now` — the rooms `session_live` / `meeting_live` said went live
+//                           ([liveRoomsAfterEvent]). Each such event also reloads the home (at most once per 2 s).
 //     ensure()              load when nothing is cached (or the cache is stale) — the screen's initState
 //     refresh()             reload now (pull-to-refresh); in-flight calls are shared
 //   Older server (bare 404 / 405 on /me/home) → [MeHomeOutcome.legacy]: the same MeHome is composed from today's
@@ -20,7 +27,8 @@
 //   screens have ONE code path. Parents get 403 `role_not_supported` → [MeHomeOutcome.unsupported] (no home).
 //
 // Pure (unit-tested, test/org/me_home_test.dart): MeHome.fromJson, nextUp, orgEntry / todayOf / inboxPreviewOf,
-// meHomeOutcomeOf, MeHomeService with an injected fetch (legacy composition).
+// meHomeOutcomeOf, MeHomeService with an injected fetch (legacy composition), MeLiveRoom, liveRoomsAfterEvent,
+// MeHomeService.onLiveRoomEvent.
 library;
 
 import 'dart:async';
@@ -28,6 +36,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../config/app_config.dart';
 import '../../features/shared/calendar/calendar_models.dart' show CalEvent;
 import '../../utils/live_events.dart';
 import '../api_client.dart';
@@ -151,6 +160,68 @@ class MeHomeTeacher {
   }
 }
 
+/// A room that is live right now and that I may walk into as an invitee (`live_now[]` of GET /me/home).
+class MeLiveRoom {
+  const MeLiveRoom({
+    required this.kind,
+    required this.id,
+    required this.title,
+    this.subtitle,
+    this.courseId,
+    this.meetingId,
+    this.orgId,
+    this.hostId,
+    this.hostName,
+    this.hostImageUrl,
+    this.startedAt,
+  });
+
+  /// `session` (a course's live session: [id] = the session) · `meeting` (a calendar meeting: [id] = the meeting).
+  final String kind;
+  final int id;
+  final String title;
+
+  /// The course's name of a session (null for a meeting).
+  final String? subtitle;
+  final int? courseId, meetingId, orgId, hostId;
+  final String? hostName, hostImageUrl;
+
+  /// When the room went live (UTC); null when unknown (the banner then hides its "live for" clock).
+  final DateTime? startedAt;
+
+  bool get isMeeting => kind == 'meeting';
+
+  /// Unique across kinds (a session and a meeting may share an id).
+  String get key => '$kind:$id';
+
+  static MeLiveRoom? fromJson(dynamic v) {
+    if (v is! Map) return null;
+    final m = Map<String, dynamic>.from(v);
+    final id = meHomeInt(m['id'], -1);
+    if (id < 0) return null;
+    final host = meHomeMap(m['host']);
+    String? str(dynamic x) {
+      final s = '${x ?? ''}'.trim();
+      return s.isEmpty || s == 'null' ? null : s;
+    }
+
+    int? opt(dynamic x) => x == null ? null : meHomeInt(x);
+    return MeLiveRoom(
+      kind: m['kind'] == 'meeting' ? 'meeting' : 'session',
+      id: id,
+      title: str(m['title']) ?? '',
+      subtitle: str(m['subtitle']),
+      courseId: opt(m['course_id']),
+      meetingId: opt(m['meeting_id']),
+      orgId: opt(m['org_id']),
+      hostId: opt(host['id']),
+      hostName: str(host['name']),
+      hostImageUrl: str(host['image_url']),
+      startedAt: meHomeUtc(m['live_started_at']),
+    );
+  }
+}
+
 /// Today's next thing: running now ([live]) or the next one to start.
 class MeNextUp {
   const MeNextUp(this.event, {required this.live});
@@ -174,6 +245,8 @@ class MeHome {
     required this.orgOverview,
     required this.coursesProgress,
     required this.teacher,
+    this.liveNow = const [],
+    this.liveNowKnown = false,
     this.legacy = false,
     this.raw = const {},
   });
@@ -204,6 +277,12 @@ class MeHome {
   final List<MeCourseProgress> coursesProgress;
   final MeHomeTeacher? teacher;
 
+  /// `live_now[]`: the rooms live right now that I may join as an invitee, newest first.
+  final List<MeLiveRoom> liveNow;
+
+  /// The server sent `live_now` (an older one does not: the banner then follows the live events alone).
+  final bool liveNowKnown;
+
   /// Composed from today's separate calls (older server).
   final bool legacy;
   final Map<String, dynamic> raw;
@@ -226,6 +305,10 @@ class MeHome {
       orgOverview: m['org_overview'] is Map ? meHomeMap(m['org_overview']) : null,
       coursesProgress: meHomeMapList(m['courses_progress']).map(MeCourseProgress.fromJson).toList(),
       teacher: MeHomeTeacher.fromJson(m),
+      liveNow: [for (final x in m['live_now'] is List ? m['live_now'] as List : const []) MeLiveRoom.fromJson(x)]
+          .whereType<MeLiveRoom>()
+          .toList(),
+      liveNowKnown: m['live_now'] is List,
       legacy: legacy,
       raw: m,
     );
@@ -298,6 +381,47 @@ class MeHome {
   CalEvent? get firstUpcoming => upcoming.firstOrNull;
 }
 
+/// The rooms an older server's home (no `live_now`) shows after a `session_live` / `meeting_live` event [e]: a start
+/// adds the room (its title from the payload's course / today's events when known), an end removes it. Pure.
+List<MeLiveRoom> liveRoomsAfterEvent(List<MeLiveRoom> rooms, LiveEvent e, {MeHome? home, DateTime? nowUtc}) {
+  final meeting = e.type == LiveEvents.meetingLive;
+  final id = meHomeInt(meeting ? e.data['meeting_id'] : e.data['session_id'], -1);
+  if (id < 0) return rooms;
+  final key = '${meeting ? 'meeting' : 'session'}:$id';
+  final rest = [for (final r in rooms) if (r.key != key) r];
+  if ('${e.data['live']}' == 'false') return rest;
+  var title = '';
+  String? subtitle;
+  int? courseId;
+  if (meeting) {
+    for (final x in [...?home?.today, ...?home?.upcoming]) {
+      if (x.meetingId == id) title = x.title;
+    }
+  } else {
+    final c = meHomeInt(e.data['course_id'], -1);
+    courseId = c < 0 ? null : c;
+    for (final x in home?.coursesProgress ?? const <MeCourseProgress>[]) {
+      if (x.courseId == courseId) subtitle = x.name(AppConfig.lang);
+    }
+    for (final x in home?.today ?? const <CalEvent>[]) {
+      if (x.id == 'session:$id') title = x.title;
+    }
+  }
+  return [
+    MeLiveRoom(
+      kind: meeting ? 'meeting' : 'session',
+      id: id,
+      title: title,
+      subtitle: subtitle,
+      courseId: courseId,
+      meetingId: meeting ? id : null,
+      orgId: e.data['org_id'] == null ? null : meHomeInt(e.data['org_id']),
+      startedAt: nowUtc ?? DateTime.now().toUtc(),
+    ),
+    ...rest,
+  ];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Outcome of the call
 // ─────────────────────────────────────────────────────────────────────────────
@@ -357,10 +481,25 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
   MeHomeOutcome outcome = MeHomeOutcome.ok;
   DateTime? loadedAt;
   Future<void>? _running;
-  StreamSubscription<LiveEvent>? _live;
+  StreamSubscription<LiveEvent>? _live, _liveRooms;
   bool _wired = false;
 
   bool get legacy => outcome == MeHomeOutcome.legacy;
+
+  /// Rooms whose end event arrived: dropped from the banner at once, until the reload confirms (at most 60 s).
+  final Map<String, DateTime> _endedAt = {};
+
+  /// Older server (no `live_now`): the rooms the live events said went live.
+  List<MeLiveRoom> _eventRooms = const [];
+
+  /// What the "Live now" banner draws (see the header), newest first.
+  List<MeLiveRoom> get liveNow {
+    final h = home;
+    final now = _clock();
+    _endedAt.removeWhere((_, at) => now.difference(at) > const Duration(seconds: 60));
+    final base = h == null || !h.liveNowKnown ? _eventRooms : h.liveNow;
+    return [for (final r in base) if (!_endedAt.containsKey(r.key)) r];
+  }
   bool get unsupported => outcome == MeHomeOutcome.unsupported;
 
   /// Nothing to show and the last load failed → the screen shows ErrorRetry.
@@ -464,6 +603,8 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     error = null;
     loadedAt = null;
     outcome = MeHomeOutcome.ok;
+    _eventRooms = const [];
+    _endedAt.clear();
     notifyListeners();
   }
 
@@ -476,6 +617,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     _wired = true;
     WidgetsBinding.instance.addObserver(this);
     _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged}, (_) => _quietRefresh());
+    _liveRooms = LiveEvents.instance.listen({LiveEvents.sessionLive, LiveEvents.meetingLive}, onLiveRoomEvent);
     AppConnectivity.instance.online.addListener(_onConnectivity);
   }
 
@@ -486,11 +628,34 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     _wired = false;
     _live?.cancel();
     _live = null;
+    _liveRooms?.cancel();
+    _liveRooms = null;
     AppConnectivity.instance.online.removeListener(_onConnectivity);
     WidgetsBinding.instance.removeObserver(this);
   }
 
-  DateTime? _lastQuiet;
+  DateTime? _lastQuiet, _lastLive;
+
+  /// `session_live` / `meeting_live`: an end drops the room from the banner at once, a start shows it at once on an
+  /// older server; either way the home reloads (at most once per 2 s: a burst of rooms is one reload).
+  @visibleForTesting
+  void onLiveRoomEvent(LiveEvent e) {
+    final meeting = e.type == LiveEvents.meetingLive;
+    final id = meHomeInt(meeting ? e.data['meeting_id'] : e.data['session_id'], -1);
+    if (id < 0) return;
+    final key = '${meeting ? 'meeting' : 'session'}:$id';
+    if ('${e.data['live']}' == 'false') {
+      _endedAt[key] = _clock();
+    } else {
+      _endedAt.remove(key);
+    }
+    _eventRooms = liveRoomsAfterEvent(_eventRooms, e, home: home, nowUtc: _clock());
+    notifyListeners();
+    final now = _clock();
+    if (_lastLive != null && now.difference(_lastLive!) < const Duration(seconds: 2)) return;
+    _lastLive = now;
+    refresh();
+  }
 
   /// Events can burst (several `*_updated` in a row): at most one reload per 5 s.
   void _quietRefresh() {

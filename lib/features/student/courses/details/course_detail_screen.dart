@@ -40,6 +40,7 @@ import 'components/course_detail_parts.dart';
 import 'components/session.dart';
 import 'components/share_link.dart';
 import 'course_detail_provider.dart';
+import 'course_live_join.dart';
 import '../../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
 import 'growth_tr.dart';
 
@@ -166,6 +167,22 @@ class _CoursePageState extends State<_CoursePage> {
         .catchError((_) {});
   }
 
+  /// The "Live now" card's Join: a locked session (prerequisites) shows the Live tab, where its card says why.
+  void _joinLive(BuildContext context, CourseDetailProvider p, SessionModel s) {
+    if (!GuestGuard.ensure(context, reasonKey: 'guest_reason_enroll')) return;
+    if (!p.isSessionUnlockedById(s.id)) {
+      p.setTab(CourseDetailTab.live);
+      return;
+    }
+    openCourseLiveRoom(
+      context,
+      sessionId: s.id,
+      courseId: s.courseId != 0 ? s.courseId : (int.tryParse(p.course.id) ?? 0),
+      sessionName: s.name,
+      hostName: p.course.teacher?.name,
+    );
+  }
+
   static String _tabId(CourseDetailTab t) => switch (t) {
     CourseDetailTab.live => 'live',
     CourseDetailTab.exam => 'exam',
@@ -246,8 +263,14 @@ class _CoursePageState extends State<_CoursePage> {
       }
     }
     final spotlight = <Widget>[
+      // Join goes INTO the room (it used to switch to the Live tab only: on a wide window — the card sits in the side
+      // column — with that tab already open, the click did nothing); a tap on the card opens the Live tab.
       if (live.isNotEmpty)
-        courseLiveNowCard(sessionName: live.first.name, onJoin: () => p.setTab(CourseDetailTab.live)),
+        courseLiveNowCard(
+          sessionName: live.first.name,
+          onJoin: () => _joinLive(context, p, live.first),
+          onOpen: () => p.setTab(CourseDetailTab.live),
+        ),
       if (c.isEnrolled && courseId != null)
         ParentComponent(
           featureKey: 'course_hero.attendance',
