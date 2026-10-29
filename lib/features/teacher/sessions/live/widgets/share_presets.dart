@@ -1,10 +1,16 @@
 // share_presets.dart — the pure parts of the Android screen share (no channels, no widgets):
 //
-// - ShareQuality / SharePreset: the presenter's two modes (D14). "Detail" is for slides and text
-//   (longer side up to 1920 = 1080p, at most 15 fps, ~2.5 Mbps, keep the resolution when the
-//   network is short); "Motion" is for video (720p, 30 fps, ~3 Mbps, keep the frame rate). The
-//   preset sizes the native capture (ScreenPlaceholderRenderer scales on the GPU), the track's
-//   dimensions and LiveKit's screen-share encoding.
+// - ShareQuality / SharePreset: the presenter's two modes (D14, sizes D-090). "Detail" is for slides and text
+//   (1080p, at most 15 fps, ~2.5 Mbps, keep the resolution when the network is short); "Motion" is for video
+//   (720p, 30 fps, ~3 Mbps, keep the frame rate). "1080p / 720p" is the SHORT side, as in every video format: a
+//   portrait phone shares 1080 / 720 px wide, not 1080 / 720 px of its long side (the old "long side ≤ 1280" rule
+//   gave a 1440×3120 phone a 590×1280 Motion share: 41 % of its width, soft text). A pixel ceiling (1.25 × the
+//   landscape frame) and a long-side cap keep very tall or wide screens inside the encoder's level. The preset
+//   sizes the native capture (ScreenPlaceholderRenderer scales on the GPU, the same rule), the track's dimensions
+//   and LiveKit's screen-share encoding; the super admin's `screen_fps_max` / `screen_bitrate_kbps` tune it
+//   (SharePreset.tuned).
+// - Two layers (simulcast on): the full frame plus LiveKit's half-size copy at a quarter of the bitrate. A weak
+//   viewer gets the half-size copy instead of a frozen picture; dynacast stops encoding it while nobody needs it.
 // - ShareMicPolicy: the mic while device audio rides on the mic track. The fork mixes the shared
 //   audio into the outgoing mic buffer (ElFaheemAudioMixer), so the mic track must stay published
 //   and enabled while it runs; muting then zeroes the mic samples natively ("soft mute") instead
@@ -15,6 +21,10 @@
 //
 // Tests: test/org/live_share_presets_test.dart.
 
+import 'dart:math' as math;
+
+import 'package:flutter_education_app/features/shared/live/live_config.dart';
+import 'package:flutter_education_app/features/shared/live/live_media_plan.dart' show backupCodecFor;
 import 'package:livekit_client/livekit_client.dart';
 
 enum ShareQuality { detail, motion }
@@ -22,25 +32,43 @@ enum ShareQuality { detail, motion }
 class SharePreset {
   const SharePreset({
     required this.quality,
+    required this.shortSide,
+    required this.maxPixels,
     required this.maxLongSide,
     required this.maxFps,
     required this.maxBitrate,
     required this.degradation,
+    this.codec = 'vp8',
+    this.simulcast = true,
   });
 
   final ShareQuality quality;
 
-  /// The capture's longer side, in pixels (aspect kept, never upscaled).
+  /// The capture's shorter side, in pixels (aspect kept, never upscaled): 1080 Detail, 720 Motion.
+  final int shortSide;
+
+  /// The capture's pixel ceiling (1.25 × the landscape frame of [shortSide]).
+  final int maxPixels;
+
+  /// The capture's longer side at most (a hard cap for very tall / wide screens).
   final int maxLongSide;
   final int maxFps;
 
-  /// Bits per second for the one screen-share layer.
+  /// Bits per second for the full-size layer.
   final int maxBitrate;
   final DegradationPreference degradation;
 
+  /// The codec LiveKit publishes the share with (VP8 backup behind H.264 / VP9).
+  final String codec;
+
+  /// The half-size second layer for weak viewers.
+  final bool simulcast;
+
   static const detail = SharePreset(
     quality: ShareQuality.detail,
-    maxLongSide: 1920,
+    shortSide: 1080,
+    maxPixels: 2592000, // 1.25 × 1920×1080
+    maxLongSide: 2560,
     maxFps: 15,
     maxBitrate: 2500000,
     degradation: DegradationPreference.maintainResolution,
@@ -48,7 +76,9 @@ class SharePreset {
 
   static const motion = SharePreset(
     quality: ShareQuality.motion,
-    maxLongSide: 1280,
+    shortSide: 720,
+    maxPixels: 1152000, // 1.25 × 1280×720
+    maxLongSide: 1600,
     maxFps: 30,
     maxBitrate: 3000000,
     degradation: DegradationPreference.maintainFramerate,
@@ -59,12 +89,34 @@ class SharePreset {
         ShareQuality.motion => motion,
       };
 
-  /// The screen [width]x[height] scaled so the longer side is at most [maxLongSide], aspect kept,
-  /// both even (I420). The same rule as the native renderer's scaledSize.
+  /// The super admin's ceilings: the frame rate at most `screen_fps_max`; Detail at `screen_bitrate_kbps`, Motion
+  /// at 1.2 × that (at most 6 Mbps); the room's codec ([codec], from `video_codec` for this device).
+  SharePreset tuned(LiveConfig c, {String? codec}) {
+    final kbps = quality == ShareQuality.detail ? c.screenBitrateKbps : math.min(6000, (c.screenBitrateKbps * 1.2).round());
+    return SharePreset(
+      quality: quality,
+      shortSide: shortSide,
+      maxPixels: maxPixels,
+      maxLongSide: maxLongSide,
+      maxFps: math.min(maxFps, c.screenFpsMax),
+      maxBitrate: kbps * 1000,
+      degradation: degradation,
+      codec: codec ?? this.codec,
+      simulcast: simulcast,
+    );
+  }
+
+  /// The screen [width]x[height] scaled so the shorter side is at most [shortSide], the area at most [maxPixels]
+  /// and the longer side at most [maxLongSide]; aspect kept, never upscaled, both even (I420). The same rule as the
+  /// native renderer's scaledSize.
   (int, int) sizeFor(int width, int height) {
     if (width <= 0 || height <= 0) return (0, 0);
-    final longer = width > height ? width : height;
-    final scale = longer > maxLongSide ? maxLongSide / longer : 1.0;
+    final shorter = math.min(width, height);
+    final longer = math.max(width, height);
+    var scale = 1.0;
+    scale = math.min(scale, shortSide / shorter);
+    scale = math.min(scale, math.sqrt(maxPixels / (width * height)));
+    scale = math.min(scale, maxLongSide / longer);
     int even(double v) {
       final r = v.round() & ~1;
       return r < 2 ? 2 : r;
@@ -80,23 +132,29 @@ class SharePreset {
         params: VideoParameters(dimensions: VideoDimensions(width, height), encoding: encoding),
       );
 
-  /// One layer (no simulcast: a scaled-down copy of slides is unreadable anyway, and the
-  /// capture is already sized for the mode).
+  /// The full frame plus (simulcast) LiveKit's half-size layer at a quarter of the bitrate (≥ 150 kbps).
   VideoPublishOptions get publishOptions => VideoPublishOptions(
         name: VideoPublishOptions.defaultScreenShareName,
+        videoCodec: codec,
+        backupVideoCodec: backupCodecFor(codec),
         screenShareEncoding: encoding,
-        simulcast: false,
+        simulcast: simulcast,
         degradationPreference: degradation,
       );
 
   /// Arguments for the native `startScreenCaptureService`.
   Map<String, Object> nativeArgs({required bool deviceAudio}) => {
         'maxLongSide': maxLongSide,
+        'shortSide': shortSide,
+        'maxPixels': maxPixels,
         'fps': maxFps,
         'deviceAudio': deviceAudio,
       };
 
   // ── Web (the browser's getDisplayMedia, W7) ────────────────────────────────────────────────────────────────
+
+  /// The landscape frame of [shortSide] (a monitor is landscape): getDisplayMedia's upper bound.
+  int get webLongSide => (shortSide * 16 / 9).round();
 
   /// The video track's `contentHint`: the encoder keeps text sharp ("detail") or motion smooth ("motion").
   String get contentHint => quality == ShareQuality.detail ? 'detail' : 'motion';
@@ -107,8 +165,8 @@ class SharePreset {
   /// key ignore it.
   Map<String, dynamic> webDisplayMediaConstraints({required bool audio}) => {
         'video': {
-          'width': {'max': maxLongSide},
-          'height': {'max': maxLongSide},
+          'width': {'max': webLongSide},
+          'height': {'max': webLongSide},
           'frameRate': {'ideal': maxFps, 'max': maxFps},
         },
         'audio': audio
@@ -131,7 +189,7 @@ class SharePreset {
     int n(Object? v) => v is num ? v.round() : 0;
     final w = n(settings['width']), h = n(settings['height']);
     if (w > 0 && h > 0) return sizeFor(w, h);
-    return sizeFor(maxLongSide, maxLongSide * 9 ~/ 16);
+    return sizeFor(webLongSide, shortSide);
   }
 
   /// The shared tab / system audio track (web): music quality, no DTX (silence detection cuts quiet music).

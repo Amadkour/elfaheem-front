@@ -29,6 +29,7 @@ Widget _layout({
   String? title,
   String userName = 'أحمد حمدي مدكور',
   double? micLevel,
+  bool cameraOffHint = false,
 }) =>
     PreJoinLayout(
       title: title ?? 'Live session: Advanced Algorithms — week 7 (a long session name to wrap)',
@@ -51,6 +52,7 @@ Widget _layout({
       onBack: () {},
       issue: issue,
       onRetry: issue == null ? null : () {},
+      cameraOffHint: cameraOffHint,
     );
 
 void main() {
@@ -69,6 +71,23 @@ void main() {
     await expectNoLayoutErrors(
       tester,
       () => _layout(camOn: false, micOn: false, isTeacher: false, userName: 'Student Name'),
+    );
+  });
+
+  testWidgets('a student whose camera starts off by the admin default sees why, with Turn on (D-090)', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => _layout(camOn: false, isTeacher: false, userName: 'Student Name', cameraOffHint: true),
+      act: (t) async {
+        expect(find.byKey(const ValueKey('prejoin.camera_off_hint')), findsOneWidget);
+        expect(find.byKey(const ValueKey('prejoin.camera_off_hint.turn_on')), findsOneWidget);
+      },
+    );
+    // Once the camera is on, the hint goes.
+    await expectNoLayoutErrors(
+      tester,
+      () => _layout(isTeacher: false, cameraOffHint: true),
+      act: (t) async => expect(find.byKey(const ValueKey('prejoin.camera_off_hint')), findsNothing),
     );
   });
 

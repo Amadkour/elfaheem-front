@@ -1,3 +1,5 @@
+import '../../../shared/live/live_config.dart';
+
 class LiveResponseModel {
   final int sessionId;
   final String url;
@@ -15,13 +17,17 @@ class LiveResponseModel {
   /// session's start. The room's info sheet counts "Live for" from it. Null = unknown (an older server).
   final DateTime? liveStartedAt;
 
+  /// The super admin's live media settings (`live_config`, D-090); the defaults when the server sent none.
+  final LiveConfig liveConfig;
+
   LiveResponseModel(
       {required this.sessionId,
       required this.url,
       required this.token,
       this.recordingEnabled = true,
       this.freeEndsAt,
-      this.liveStartedAt});
+      this.liveStartedAt,
+      this.liveConfig = LiveConfig.defaults});
 
   Map<String, dynamic> get toJson => {
         'session_id': sessionId,
@@ -30,5 +36,6 @@ class LiveResponseModel {
         'recording_enabled': recordingEnabled,
         'time_limit': freeEndsAt == null ? null : {'ends_at': freeEndsAt!.toUtc().toIso8601String()},
         'live_started_at': liveStartedAt?.toUtc().toIso8601String(),
+        if (liveConfig.fromServer) 'live_config': liveConfig.toJson(),
       };
 }

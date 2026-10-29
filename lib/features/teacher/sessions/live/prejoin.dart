@@ -22,6 +22,8 @@ import 'widgets/live_room_rules.dart' show liveConnectRetryDelay;
 import 'widgets/share_presets.dart' show SharePreset;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/features/shared/live/live_config.dart';
+import 'package:flutter_education_app/features/shared/live/live_media_plan.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart' show WaitingForHostPage;
 import 'package:flutter_education_app/features/shared/live/live_mini_box.dart' show LiveMiniTile;
 import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
@@ -93,6 +95,9 @@ class JoinArgs {
   final Future<JoinOutcome> Function(JoinOutcome waiting)? onPoll;
 
   LiveRoomRef get ref => roomRef ?? LiveRoomRef.fromSessionId(sessionId ?? 0);
+
+  /// Hosts get the host camera cap and never start with the camera off by the participants' default (D-090).
+  bool get hostRole => isHost ?? (isTeacher && !guest);
 
   /// False → the participant may only watch and listen: the pre-join screen creates no
   /// microphone / camera tracks and the room shows only Leave, reactions and audio output.
@@ -170,13 +175,15 @@ class JoinArgs {
 // prejoin_layout.dart (PreJoinLayout) so it can be tested without LiveKit.
 // ─────────────────────────────────────────────────────────────────────────────
 class PreJoinPage extends StatefulWidget {
-  const PreJoinPage({required this.args, super.key, this.startMic = true, this.startCam = true});
+  const PreJoinPage({required this.args, super.key, this.startMic = true, this.startCam});
 
   final JoinArgs args;
 
-  /// The microphone / camera to start with (a Rejoin restores what the person had in the room, D9).
+  /// The microphone / camera to start with (a Rejoin restores what the person had in the room, D9). A null
+  /// [startCam] follows the super admin's `participants_camera_default_off` (D-090): a student's camera starts off
+  /// and no camera track exists until they turn it on; a host's starts on.
   final bool startMic;
-  final bool startCam;
+  final bool? startCam;
 
   @override
   State<StatefulWidget> createState() => _PreJoinPageState();
@@ -188,7 +195,13 @@ class _PreJoinPageState extends State<PreJoinPage> {
   StreamSubscription? _subscription;
 
   bool _busy = false;
-  late bool _enableVideo = widget.startCam;
+
+  /// The live media settings: the last ones a join answered with until this join answers (D-090).
+  LiveConfig _config = LiveConfig.lastKnown;
+
+  /// The camera started off because of the participants' default (the page says why).
+  late final bool _cameraOffByDefault = widget.startCam == null && !_config.cameraStartsOn(host: widget.args.hostRole);
+  late bool _enableVideo = widget.startCam ?? _config.cameraStartsOn(host: widget.args.hostRole);
   late bool _enableAudio = widget.startMic;
 
   /// Set once the room took over the tracks: dispose must not stop them then.
@@ -222,8 +235,6 @@ class _PreJoinPageState extends State<PreJoinPage> {
       if (q != _micLevel) setState(() => _micLevel = q);
     }, onError: (_) {});
   }
-
-  static const _bestResolution = VideoParametersPresets.h1080_169;
 
   bool get _canPublish => widget.args.canPublish;
 
@@ -295,7 +306,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
     _selectedAudioDevice = null;
     _selectedVideoDevice = null;
     _enableAudio = true;
-    _enableVideo = true;
+    _enableVideo = widget.startCam ?? _config.cameraStartsOn(host: widget.args.hostRole);
     if (mounted) setState(() {});
     await _enumerate();
   }
@@ -422,13 +433,10 @@ class _PreJoinPageState extends State<PreJoinPage> {
     _videoTrack = null;
     if (_selectedVideoDevice != null) {
       try {
+        // D-090: the role's cap at camera_fps (was 1080p60 for everyone) — the capture is what the camera, the
+        // encoder and every later unmute (a muted camera restarts with these options) cost.
         _videoTrack = await LocalVideoTrack.createCameraTrack(
-          CameraCaptureOptions(
-            deviceId: _selectedVideoDevice!['device_id'] as String,
-            cameraPosition: CameraPosition.front,
-            maxFrameRate: 60,
-            params: _bestResolution,
-          ),
+          cameraCaptureFor(_config, host: widget.args.hostRole, deviceId: _selectedVideoDevice!['device_id'] as String),
         );
         await _videoTrack!.start();
       } catch (e) {
@@ -462,14 +470,6 @@ class _PreJoinPageState extends State<PreJoinPage> {
     final args = widget.args;
 
     try {
-      const cameraEncoding = VideoEncoding(
-        maxBitrate: 5 * 1000 * 1000,
-        maxFramerate: 60,
-      );
-      // D14: one screen-share preset everywhere. Android and the web publish their own track with the mode the
-      // presenter picked (SharePreset); what still goes through setScreenShareEnabled (iOS, desktop) gets
-      // "Detail" (1080p, 15 fps, 2.5 Mbps) instead of the old 1080p15 capture with 30 fps / 4 Mbps encoding.
-      final screenEncoding = SharePreset.detail.encoding;
       late int localSessionId;
       if (args.sessionId==null && !args.guest){
         final TeacherSessionItem? r = await context.read<TeacherCourseScreenProvider>().quickSession(courseId: args.courseId);
@@ -479,47 +479,57 @@ class _PreJoinPageState extends State<PreJoinPage> {
         }
         localSessionId = r.id;
       }
-      Room newRoom() => Room(
+      // D-090: everything the room publishes follows the super admin's live_config of THIS join (read when the Room
+      // is made, after the join answered): the camera cap per role at camera_fps with explicit simulcast layers,
+      // the codec (+ VP8 backup), Opus DTX / RED, the screen share's ceilings. Adaptive stream + dynacast stay on.
+      Room newRoom() {
+        final cfg = _config;
+        final host = args.hostRole;
+        final codec = effectiveVideoCodec(cfg.videoCodec, LiveCodecPlatform.current());
+        // D14: what still goes through setScreenShareEnabled (iOS, desktop) gets "Detail" with the config's ceilings;
+        // Android and the web publish their own track with the mode the presenter picked.
+        final screen = SharePreset.detail.tuned(cfg, codec: codec);
+        final screenEncoding = screen.encoding;
+        return Room(
         roomOptions: RoomOptions(
           adaptiveStream: args.adaptiveStream,
           dynacast: args.dynacast,
-          defaultAudioPublishOptions: const AudioPublishOptions(
-            encoding: AudioEncoding(maxBitrate: 128000),
-            dtx: false,
-            red: true,
-          ),
-          defaultCameraCaptureOptions: const CameraCaptureOptions(
-            cameraPosition: CameraPosition.front,
-            maxFrameRate: 60,
-            params: VideoParameters(
-              dimensions: VideoDimensionsPresets.h1080_169,
-            ),
-          ),
+          defaultAudioPublishOptions: audioPublishFor(cfg, host: host),
+          defaultCameraCaptureOptions: cameraCaptureFor(cfg, host: host),
           // iOS (I1): LiveKit publishes the share by itself on iOS_BroadcastStarted with THESE options (no
           // per-call options then); `useiOSBroadcastExtension` picks the extension's socket ('broadcast-manual').
           // Ignored on the other platforms.
           defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(
             useiOSBroadcastExtension: true,
             captureScreenAudio: true,
-            maxFrameRate: SharePreset.detail.maxFps.toDouble(),
+            maxFrameRate: screen.maxFps.toDouble(),
             params: VideoParameters(dimensions: VideoDimensionsPresets.h1080_169, encoding: screenEncoding),
           ),
-          defaultVideoPublishOptions: VideoPublishOptions(
-            simulcast: args.simulcast,
-            videoCodec: args.preferredCodec,
-            degradationPreference: DegradationPreference.balanced,
-            backupVideoCodec: BackupVideoCodec(
-              enabled: args.enableBackupVideoCodec,
-            ),
-            videoEncoding: cameraEncoding,
-            screenShareEncoding: screenEncoding,
-          ),
+          defaultVideoPublishOptions: () {
+            final o = videoPublishFor(cfg, host: host, codec: codec, screenEncoding: screenEncoding);
+            return o.copyWith(
+              simulcast: args.simulcast,
+              backupVideoCodec: args.enableBackupVideoCodec ? o.backupVideoCodec : const BackupVideoCodec(enabled: false),
+            );
+          }(),
         ),
       );
+      }
 
       final sessionId = args.sessionId ?? localSessionId;
       final data = await _resolveJoin(args, sessionId);
       if (data == null) return; // waiting cancelled, or the host refused: stay on the pre-join page
+
+      // D-090: this join's live_config. A preview captured with other settings (the last join's, or the defaults)
+      // is made again so the published camera is the configured one.
+      LiveConfig.remember(data.liveConfig);
+      _config = data.liveConfig;
+      final preview = _videoTrack;
+      if (preview != null && _enableVideo &&
+          cameraCaptureDiffers(preview.currentOptions, cameraCaptureFor(_config, host: args.hostRole))) {
+        await _changeLocalVideoTrack();
+        if (mounted) setState(() {});
+      }
 
       // D10: a network failure is tried twice more (after 1 s, then 3 s) with a fresh Room and fresh tracks (a
       // failed connect cleans its Room up and stops what it had published); a refused token (4xx) is not. A Room
@@ -558,6 +568,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         canRecord: args.canRecord, // [meeting-recording]
         freeEndsAt: data.freeEndsAt,
         liveStartedAt: data.liveStartedAt,
+        liveConfig: data.liveConfig,
         startsAt: args.startsAt,
         hostName: args.hostName,
         // D9: Rejoin opens this page again for the same session, joining by itself with the room's choices.
@@ -769,6 +780,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         onBack: _back,
         issue: _issue,
         onRetry: _retry,
+        cameraOffHint: _cameraOffByDefault && !_enableVideo && _videoInputs.isNotEmpty,
       ),
     );
   }

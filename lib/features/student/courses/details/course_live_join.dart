@@ -37,6 +37,7 @@ Future<dynamic> joinCourseLiveAsStudent(ApiClient api, int sessionId) async {
       token: m['token'] as String? ?? '',
       recordingEnabled: m['recording_enabled'] as bool? ?? true,
       liveStartedAt: outcome.liveStartedAt,
+      liveConfig: outcome.liveConfig, // D-090
     );
   } on ApiException catch (e) {
     if (liveJoinRefusalText(e) != null) rethrow;

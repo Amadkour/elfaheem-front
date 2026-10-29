@@ -3,6 +3,7 @@
 // Room — the screen share if any, else the speaker's camera, else any camera, else an avatar ([liveMiniPick] is
 // the pure choice, unit-tested). Tap → full screen; the microphone can be muted and the room left from the box.
 import 'package:flutter/material.dart';
+import 'live_media_plan.dart' show kBoardVideoTrackName;
 import 'package:livekit_client/livekit_client.dart';
 
 import '../../admin/admin_common.dart' show t;
@@ -291,6 +292,7 @@ class LiveMiniTile extends StatelessWidget {
             for (final pub in p.videoTrackPublications) {
               final track = pub.track;
               if (track is! VideoTrack || pub.muted) continue;
+              if (pub.name == kBoardVideoTrackName) continue; // the board's recording track (D-090)
               if (pub.isScreenShare) {
                 screen ??= track;
               } else {

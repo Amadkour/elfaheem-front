@@ -39,8 +39,8 @@ import java.nio.FloatBuffer
  * arbitrary threads directly.
  *
  * The live share's readback (A6): the frame is drawn a second time into a
- * small offscreen framebuffer — scaled so its longer side is at most
- * [configureCapture]'s maxLongSide (1280 "motion", 1920 "detail"), aspect
+ * small offscreen framebuffer — scaled to [configureCapture]'s caps (short
+ * side 720 "motion" / 1080 "detail", a pixel ceiling, a long-side cap), aspect
  * kept, flipped to top-left origin — and read with glReadPixels into ONE
  * reused direct buffer, only when a new screen frame arrived (or every
  * 500 ms on a static screen) and never faster than the share's fps. Nothing
@@ -95,6 +95,9 @@ class ScreenPlaceholderRenderer(
 
     // Live-share capture: scaled offscreen framebuffer + one reused readback buffer.
     @Volatile private var captureMaxLongSide = 1280
+    // D-090: 0 = off (the long side alone decides, as before).
+    @Volatile private var captureShortSide = 0
+    @Volatile private var captureMaxPixels = 0
     @Volatile private var captureFps = 15
     private var captureFbo = 0
     private var captureTexture = 0
@@ -205,10 +208,12 @@ class ScreenPlaceholderRenderer(
      * (aspect kept), at most [fps] frames per second. Also speeds the draw
      * clock up to [fps] while live.
      */
-    fun configureCapture(maxLongSide: Int, fps: Int) {
+    fun configureCapture(maxLongSide: Int, fps: Int, shortSide: Int = 0, maxPixels: Int = 0) {
         captureMaxLongSide = maxLongSide.coerceIn(320, 3840)
+        captureShortSide = shortSide
+        captureMaxPixels = maxPixels
         captureFps = fps.coerceIn(1, 30)
-        Log.d(TAG, "capture ≤${captureMaxLongSide}px @${captureFps}fps")
+        Log.d(TAG, "capture short≤${captureShortSide} px≤${captureMaxPixels} long≤${captureMaxLongSide}px @${captureFps}fps")
     }
 
     /**
@@ -755,7 +760,7 @@ class ScreenPlaceholderRenderer(
     /** (Re)creates the capture framebuffer + readback buffer for the current input size. */
     private fun ensureCaptureTarget(): Boolean {
         if (inputWidth <= 0 || inputHeight <= 0) return false
-        val (w, h) = scaledSize(inputWidth, inputHeight, captureMaxLongSide)
+        val (w, h) = scaledSize(inputWidth, inputHeight, captureMaxLongSide, captureShortSide, captureMaxPixels)
         if (captureFbo != 0 && w == captureWidth && h == captureHeight) return true
         if (captureTexture == 0) {
             val t = IntArray(1)
@@ -790,10 +795,17 @@ class ScreenPlaceholderRenderer(
         return true
     }
 
-    /** [w]x[h] scaled so the longer side is at most [maxLong], aspect kept, both even. */
-    private fun scaledSize(w: Int, h: Int, maxLong: Int): Pair<Int, Int> {
+    /**
+     * [w]x[h] scaled so the longer side is at most [maxLong], the shorter at most [shortSide] and the area at most
+     * [maxPixels] (0 = that cap is off); aspect kept, never upscaled, both even. Same rule as SharePreset.sizeFor
+     * (D-090: a 1440x3120 phone shares 1080x2340 Detail / 720x1560 Motion, not 886x1920 / 590x1280).
+     */
+    private fun scaledSize(w: Int, h: Int, maxLong: Int, shortSide: Int = 0, maxPixels: Int = 0): Pair<Int, Int> {
         val longer = maxOf(w, h)
-        val scale = if (longer > maxLong) maxLong.toDouble() / longer else 1.0
+        val shorter = minOf(w, h)
+        var scale = if (longer > maxLong) maxLong.toDouble() / longer else 1.0
+        if (shortSide > 0 && shorter > shortSide) scale = minOf(scale, shortSide.toDouble() / shorter)
+        if (maxPixels > 0 && w.toLong() * h > maxPixels) scale = minOf(scale, Math.sqrt(maxPixels.toDouble() / (w.toDouble() * h)))
         fun even(v: Double) = (Math.round(v).toInt() and 1.inv()).coerceAtLeast(2)
         return even(w * scale) to even(h * scale)
     }

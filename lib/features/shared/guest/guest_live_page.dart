@@ -355,6 +355,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
               recordingEnabled: j.recordingEnabled,
               freeEndsAt: j.freeEndsAt,
               liveStartedAt: j.liveStartedAt,
+              liveConfig: j.liveConfig,
             ),
             onEnd: () async {},
             sessionName: info.displayTitle,
