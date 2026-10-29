@@ -1,6 +1,7 @@
 // The live whiteboard's widgets (D-087) at 320×640 and 1400×900, Arabic and English, text 1.3×: the tool dock (one
-// row / two rows, the shapes and style panels), the bar over the page (presenter / viewer / host viewer), the page
-// with content and a selection, the text editor, the Board sheet and the share sheet's Whiteboard tab.
+// row / two rows, the shapes and style panels, the hand on — D-096), the bar over the page (presenter / viewer / host
+// viewer), the page with content and a selection, the text editor, the Board sheet and the share sheet's Whiteboard
+// tab. The hand and edge auto-scroll themselves: whiteboard_hand_layout_test.dart.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
@@ -71,6 +72,8 @@ void main() {
                 dock(wide: false, panel: BoardPanel.style, text: true, tool: BoardTool.text),
                 dock(wide: true, panel: BoardPanel.shapes),
                 dock(wide: true, text: true),
+                dock(wide: false, tool: BoardTool.hand),
+                dock(wide: true, tool: BoardTool.hand),
               ]),
             )));
   });

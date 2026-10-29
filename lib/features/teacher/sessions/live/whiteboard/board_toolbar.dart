@@ -2,10 +2,11 @@
 //
 // The whiteboard's chrome (D-087), presentational (plain values + callbacks; test/ui/whiteboard_layout_test.dart):
 //
-//   WhiteboardToolbar   the tool dock under the page: select · pen · highlighter · shapes ▸ · text · eraser · laser,
-//                       undo / redo, colour, thickness (ink, shapes) or font size (text). Wide (≥ 980 px): one row.
-//                       Narrower: two rows of 7 (tools; undo, redo, 4 colours, "style" for the rest). The shapes
-//                       (line, arrow, rectangle, ellipse) and the narrow style panel open above the dock.
+//   WhiteboardToolbar   the tool dock under the page: select (the mouse pointer) · hand (move the page, D-096) · pen ·
+//                       highlighter · shapes ▸ · text · eraser · laser, undo / redo, colour, thickness (ink, shapes) or
+//                       font size (text). Wide (≥ 980 px): one row. Narrower: two rows of 7 (the page tools select …
+//                       eraser; undo, redo, 3 colours — the current one always among them —, "style" for the rest,
+//                       laser). The shapes (line, arrow, rectangle, ellipse) and the narrow style panel open above.
 //   WhiteboardTopBar    over the page: what it is and whose, the page navigator (‹ 2 / 3 › and + for the presenter),
 //                       "Board" (options) and Stop presenting.
 //   WhiteboardOptionsLayout   the Board sheet: page format (D-093), background, the page (save as PNG — continuous:
@@ -39,6 +40,7 @@ enum BoardPanel { none, style, shapes }
 
 String boardToolLabel(BoardTool tool) => switch (tool) {
       BoardTool.select => t('تحديد ونقل', 'Select and move'),
+      BoardTool.hand => t('اليد: تحريك الصفحة', 'Hand: move the page'),
       BoardTool.pen => t('قلم', 'Pen'),
       BoardTool.highlighter => t('قلم تظليل', 'Highlighter'),
       BoardTool.line => t('خط', 'Line'),
@@ -77,6 +79,7 @@ List<String> boardFontLabels() => [t('نص صغير', 'Small text'), t('نص م�
 
 String _toolKey(BoardTool tl) => switch (tl) {
       BoardTool.select => 'V',
+      BoardTool.hand => 'M · ${t('أو اضغط المسافة مطوّلاً', 'or hold Space')}',
       BoardTool.pen => 'P',
       BoardTool.highlighter => 'H',
       BoardTool.line => 'I',
@@ -97,7 +100,8 @@ bool get _keyboardPlatform =>
 String _hint(String key) => _keyboardPlatform ? ' ($key)' : '';
 
 IconData boardToolIcon(BoardTool tl) => switch (tl) {
-      BoardTool.select => Icons.pan_tool_alt_rounded,
+      BoardTool.select => Icons.near_me_rounded, // the dock draws a mouse pointer ([_ToolGlyph])
+      BoardTool.hand => Icons.pan_tool_rounded,
       BoardTool.pen => Icons.edit_rounded,
       BoardTool.highlighter => Icons.border_color_rounded,
       BoardTool.line => Icons.horizontal_rule_rounded,
@@ -110,7 +114,8 @@ IconData boardToolIcon(BoardTool tl) => switch (tl) {
     };
 
 const _shapeTools = [BoardTool.line, BoardTool.arrow, BoardTool.rect, BoardTool.ellipse];
-const _dockTools = [BoardTool.select, BoardTool.pen, BoardTool.highlighter, BoardTool.text, BoardTool.eraser, BoardTool.laser];
+// The page tools before the shapes button and after it; the laser comes last (on a narrow dock: the second row).
+const _dockTools = [BoardTool.select, BoardTool.hand, BoardTool.pen, BoardTool.highlighter, BoardTool.text, BoardTool.eraser];
 
 /// The tool dock.
 class WhiteboardToolbar extends StatelessWidget {
@@ -182,7 +187,7 @@ class WhiteboardToolbar extends StatelessWidget {
             child: _ToolGlyph(tl, selected: tl == tool),
           );
       final tools = <Widget>[
-        for (final tl in _dockTools.take(3)) toolButton(tl),
+        for (final tl in _dockTools.take(4)) toolButton(tl),
         AnnotToolButton(
           key: const ValueKey('board.shapes'),
           label: '${t('الأشكال', 'Shapes')}: ${boardToolLabel(shapeShown)}',
@@ -197,8 +202,9 @@ class WhiteboardToolbar extends StatelessWidget {
             ),
           ]),
         ),
-        for (final tl in _dockTools.skip(3)) toolButton(tl),
+        for (final tl in _dockTools.skip(4)) toolButton(tl),
       ];
+      final laser = toolButton(BoardTool.laser);
       final history = <Widget>[
         AnnotToolButton(
           key: const ValueKey('board.undo'),
@@ -220,6 +226,7 @@ class WhiteboardToolbar extends StatelessWidget {
       if (oneRow) {
         dock = _scroll(Row(mainAxisSize: MainAxisSize.min, children: [
           ...tools,
+          laser,
           const _Divider(),
           ...history,
           const _Divider(),
@@ -234,7 +241,7 @@ class WhiteboardToolbar extends StatelessWidget {
           _scroll(Row(mainAxisSize: MainAxisSize.min, children: [
             ...history,
             const _Divider(),
-            for (final (i, (col, label)) in swatches.take(4).indexed) _swatch(i, col, label),
+            for (final i in _rowSwatches(swatches)) _swatch(i, swatches[i].$1, swatches[i].$2),
             AnnotToolButton(
               key: const ValueKey('board.style'),
               label: textStyle ? t('اللون وحجم الخط', 'Colour and text size') : t('اللون والسُّمك', 'Colour and thickness'),
@@ -242,6 +249,8 @@ class WhiteboardToolbar extends StatelessWidget {
               onTap: onPanel == null ? null : () => onPanel!(panel == BoardPanel.style ? BoardPanel.none : BoardPanel.style),
               child: Icon(Icons.tune_rounded, size: 22, color: panel == BoardPanel.style ? LivePalette.textHigh : LivePalette.textMid),
             ),
+            const _Divider(),
+            laser,
           ])),
         ]);
       }
@@ -288,6 +297,15 @@ class WhiteboardToolbar extends StatelessWidget {
     ];
     if (!colors.any((c) => c.toARGB32() == color.toARGB32())) out.insert(0, (color, t('اللون الحالي', 'Current colour')));
     return out;
+  }
+
+  /// The narrow dock's three swatches (indexes into [swatches]): the first three, the current colour always among
+  /// them.
+  List<int> _rowSwatches(List<(Color, String)> swatches) {
+    final n = math.min(3, swatches.length);
+    final sel = swatches.indexWhere((s) => s.$1.toARGB32() == color.toARGB32());
+    if (sel < n) return [for (var i = 0; i < n; i++) i];
+    return [for (var i = 0; i < n - 1; i++) i, sel];
   }
 
   Widget _swatch(int i, Color col, String label) {
@@ -400,12 +418,51 @@ class _ToolGlyph extends StatelessWidget {
         ),
       );
     }
+    // Select is the mouse pointer (the hand beside it moves the page): the same on every language, like a cursor.
+    if (tool == BoardTool.select) {
+      return SizedBox(width: 22, height: 22, child: CustomPaint(painter: _PointerGlyphPainter(col)));
+    }
     final icon = Icon(boardToolIcon(tool), size: 22, color: col);
     // A line and an arrow are drawn on the diagonal (the same on every language: they are drawing tools, not directions).
     if (tool == BoardTool.line) return Transform.rotate(angle: -0.785, child: icon);
     if (tool == BoardTool.arrow) return Transform.rotate(angle: 0.785, child: icon);
     return icon;
   }
+}
+
+/// A mouse pointer, filled, its corners rounded like the Material glyphs beside it (designed on a 24-unit grid).
+class _PointerGlyphPainter extends CustomPainter {
+  const _PointerGlyphPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide / 24;
+    canvas.save();
+    canvas.translate((size.width - 24 * s) / 2, (size.height - 24 * s) / 2);
+    canvas.scale(s);
+    final path = Path()
+      ..moveTo(6.2, 3.2)
+      ..lineTo(6.2, 19.4)
+      ..lineTo(10.3, 15.7)
+      ..lineTo(12.9, 21.3)
+      ..lineTo(15.7, 20.0)
+      ..lineTo(13.1, 14.5)
+      ..lineTo(18.6, 14.3)
+      ..close();
+    final paint = Paint()
+      ..color = color
+      ..isAntiAlias = true
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 1.6;
+    canvas.drawPath(path, paint..style = PaintingStyle.fill);
+    canvas.drawPath(path, paint..style = PaintingStyle.stroke);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_PointerGlyphPainter old) => old.color != color;
 }
 
 // ── The bar over the page ─────────────────────────────────────────────────────
@@ -1201,9 +1258,11 @@ class _OptionRow extends StatelessWidget {
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 
-/// V select · P pen · H highlighter · I line · A arrow · R rectangle · O ellipse · T text · E eraser · L laser.
+/// V select · M hand · P pen · H highlighter · I line · A arrow · R rectangle · O ellipse · T text · E eraser · L laser.
+/// (Holding Space pans while another tool is on: the stage reads it.)
 BoardTool? boardShortcutTool(LogicalKeyboardKey k) {
   if (k == LogicalKeyboardKey.keyV) return BoardTool.select;
+  if (k == LogicalKeyboardKey.keyM) return BoardTool.hand;
   if (k == LogicalKeyboardKey.keyP) return BoardTool.pen;
   if (k == LogicalKeyboardKey.keyH) return BoardTool.highlighter;
   if (k == LogicalKeyboardKey.keyI) return BoardTool.line;

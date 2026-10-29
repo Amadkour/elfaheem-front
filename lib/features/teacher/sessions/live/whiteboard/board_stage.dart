@@ -11,8 +11,19 @@
 //                      direction follows its first letter (Arabic → right to left). Enter is a new line; Esc,
 //                      "Done" or a tap elsewhere ends it.
 //   select             tap a shape / text box: selected (frame, Delete, Edit for text, the corner handle sets a text
-//                      box's width); drag it: moved. Double-tap a text box: edit it.
+//                      box's width); drag it: moved. Double-tap a text box: edit it. A drag on empty paper moves the
+//                      view (D-096).
+//   hand               moves the view only (D-096): one finger, the mouse or the pen drags a continuous page up and
+//                      down and a zoomed page around (grab / grabbing cursor). Holding Space does the same with any
+//                      tool, the middle mouse button always does, and so does every pointer of whoever is not drawing.
 //   eraser             removes what it touches; laser: a fading dot (also on hover with a mouse).
+//
+// Edge auto-scroll (D-096, board_edge_scroll.dart): a stroke, a shape or a moved selection that comes near an edge of
+// the stage scrolls the view that way, faster the closer it gets, while the frame clock runs; the pointer, held
+// still, is mapped to the page again every frame (positions are kept in the stage's frame from the pointer's down,
+// [_downOrigin]), so the stroke follows without a gap. The presenter's auto-scroll goes out as their view like any
+// scroll; a viewer who draws stops following. Tests: test/org/board_edge_scroll_test.dart,
+// test/ui/whiteboard_hand_layout_test.dart; renders test/visual/whiteboard_hand_golden_test.dart.
 //
 // The page is a RepaintBoundary ([pageKey]) without the selection frame or the editor (the board's recording track
 // reads it; on a continuous page it is the part on screen). Tests: test/ui/whiteboard_layout_test.dart; renders
@@ -44,11 +55,12 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
 import '../annotation/annotation_ink.dart';
 import '../annotation/annotation_layer.dart' show kAnnotPalmGuard;
-import '../annotation/annotation_toolbar.dart' show AnnotToolButton;
+import '../annotation/annotation_toolbar.dart' show AnnotToolButton, annotTypingInField;
 import '../annotation/draw_input_prefs.dart';
 import '../annotation/presence_tags.dart';
 import '../widgets/live_palette.dart';
 import 'board_controller.dart';
+import 'board_edge_scroll.dart';
 import 'board_format.dart';
 import 'board_painter.dart';
 import 'board_protocol.dart';
@@ -93,22 +105,54 @@ class WhiteboardStage extends StatefulWidget {
 }
 
 class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker((_) {
+  late final Ticker _ticker = createTicker((elapsed) {
+    final dt = ((elapsed - _prevTick).inMicroseconds / 1e6).clamp(0.0, 0.05).toDouble();
+    _prevTick = elapsed;
     final lasers = widget.controller.pruneLasers();
     final tags = widget.controller.presence.step();
     final follow = _stepFollow();
-    if (!lasers && !tags && !follow) _ticker.stop();
+    final edge = _stepEdge(dt);
+    if (!lasers && !tags && !follow && !edge) _ticker.stop();
   });
+  Duration _prevTick = Duration.zero;
+
+  /// Runs the frame clock (lasers, tags, the eased follow, edge auto-scroll).
+  void _kick() {
+    if (_ticker.isActive) return;
+    _prevTick = Duration.zero;
+    _ticker.start();
+  }
 
   BoardController get _c => widget.controller;
 
-  /// The page's COORDINATE size on screen (continuous: its whole length) and where its top-left corner is.
+  /// The page's COORDINATE size on screen (continuous: its whole length) and where its top-left corner is; the drawn
+  /// part of it and the stage's size (the last build, or the last auto-scroll step).
   Size _page = Size.zero;
   Offset _origin = Offset.zero;
+  Rect _shown = Rect.zero;
+  Size _box = Size.zero;
 
   // pointer
   int? _pointer;
   PointerDeviceKind? _pointerKind;
+
+  /// The page's corner when the drawing pointer went down: its events stay in that frame (the hit test's), so
+  /// `localPosition + _downOrigin` is the stage position even after the view moved.
+  Offset _downOrigin = Offset.zero;
+
+  // edge auto-scroll (D-096)
+  final BoardEdgeScroll _edge = BoardEdgeScroll();
+  bool _edgeOn = false;
+  Offset? _lastStage;
+  double _lastSeconds = 0;
+  double _lastPressure = 0.5;
+  final Stopwatch _sinceMove = Stopwatch();
+
+  // Space held (desktop): any tool pans until it is let go.
+  bool _space = false;
+
+  /// The mouse is over an item with the select tool (move cursor; elsewhere: grab).
+  bool _hoverItem = false;
   AnnotInkFilter? _ink;
   bool _stylusDown = false;
   DateTime? _stylusUp;
@@ -128,7 +172,19 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     _listen(_c);
     DrawInputPrefs.stylusOnly.addListener(_onPrefs);
     unawaited(DrawInputPrefs.load());
+    HardwareKeyboard.instance.addHandler(_onKey);
   }
+
+  /// Space held pans with any tool (it only watches the key: a text field still types its space).
+  bool _onKey(KeyEvent e) {
+    if (e.logicalKey != LogicalKeyboardKey.space) return false;
+    final down = e is! KeyUpEvent && !annotTypingInField() && _c.drawMode;
+    if (down != _space && mounted) setState(() => _space = down);
+    return false;
+  }
+
+  /// Space is held now (a key-up lost to another window never leaves it stuck).
+  bool get _spaceHeld => _space && HardwareKeyboard.instance.isLogicalKeyPressed(LogicalKeyboardKey.space);
 
   void _listen(BoardController c) {
     c.scene.addListener(_onScene);
@@ -157,6 +213,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   void dispose() {
     _unlisten(_c);
     DrawInputPrefs.stylusOnly.removeListener(_onPrefs);
+    HardwareKeyboard.instance.removeHandler(_onKey);
     final id = _editingId;
     if (id != null) _c.endEdit(id);
     _probeTimer?.cancel();
@@ -168,7 +225,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   }
 
   void _onScene() {
-    if ((_c.scene.hasLasers || !_c.presence.isEmpty) && !_ticker.isActive) _ticker.start();
+    if (_c.scene.hasLasers || !_c.presence.isEmpty) _kick();
   }
 
   void _onPrefs() {
@@ -187,7 +244,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     if (pv == null) return;
     if (_follow) {
       _followTarget = boardFollowTop(presenter: pv, visible: _lastVisible, extent: math.max(_lastExtent, pv.bottom));
-      if (!_ticker.isActive) _ticker.start();
+      _kick();
     } else {
       setState(() {}); // the rail's presenter mark moves
     }
@@ -212,7 +269,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       _follow = true;
       if (pv != null) _followTarget = boardFollowTop(presenter: pv, visible: _lastVisible, extent: math.max(_lastExtent, pv.bottom));
     });
-    if (!_ticker.isActive) _ticker.start();
+    _kick();
   }
 
   /// This viewer moved the view themselves: they stop following until they tap "Follow …".
@@ -227,7 +284,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   Timer? _probeTimer;
   Offset? _pressAt;
 
-  bool get _probing => _c.showAuthors() && (!_c.drawMode || _c.tool == BoardTool.select);
+  bool get _probing => _c.showAuthors() && (!_c.drawMode || _c.tool == BoardTool.select || _c.tool == BoardTool.hand);
 
   void _probeAt(Offset local, {bool autoHide = false}) {
     final n = _norm(local - _origin);
@@ -256,7 +313,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   }
 
   void _probeDown(PointerDownEvent e) {
-    if (!_probing || e.kind == PointerDeviceKind.mouse || _c.drawMode) return;
+    if (!_probing || e.kind == PointerDeviceKind.mouse || (_c.drawMode && _c.tool != BoardTool.hand)) return;
     _pressAt = e.localPosition;
     _probeTimer?.cancel();
     _probeTimer = Timer(const Duration(milliseconds: 450), () {
@@ -316,6 +373,8 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     _ink = null;
     _drag = null;
     _pendingCreate = null;
+    _edgeOn = false;
+    _lastStage = null;
   }
 
   // ── Geometry ───────────────────────────────────────────────────────────────
@@ -337,7 +396,28 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
 
   static double _seconds(PointerEvent e) => e.timeStamp.inMicroseconds / 1e6;
 
+  /// The drawing pointer's stage position (its events keep the frame of its down, [_downOrigin]).
+  Offset _stageOf(PointerEvent e) => e.localPosition + _downOrigin;
+
   // ── Pointer ────────────────────────────────────────────────────────────────
+
+  /// The hand: the hand tool, or Space held (desktop).
+  bool get _handMode => _c.tool == BoardTool.hand || _spaceHeld;
+
+  /// There is something to move: a continuous page, or a zoomed fixed one.
+  bool get _pannable => _c.isContinuous || _zoom > 1.01;
+
+  /// A mouse or a pen that moves the view rather than drawing: the middle mouse button always; the primary button /
+  /// the pen with the hand, or for whoever is not drawing. (A finger: [_fingerPans].)
+  bool _pansWith(PointerDownEvent e) {
+    if (e.kind == PointerDeviceKind.mouse) {
+      if ((e.buttons & kMiddleMouseButton) != 0) return true;
+      if ((e.buttons & kPrimaryMouseButton) == 0) return false;
+    } else if (!_isStylus(e.kind)) {
+      return false;
+    }
+    return !_c.drawMode || _handMode;
+  }
 
   void _down(PointerDownEvent e) {
     if (!_c.drawMode) return;
@@ -346,8 +426,10 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     if (stylus) {
       _stylusDown = true;
       DrawInputPrefs.stylusSeen = true;
-      _maybeOfferStylus();
+      if (!_handMode) _maybeOfferStylus();
     }
+    // The hand (or Space): the outer listener moves the view; nothing is drawn.
+    if (_handMode) return;
     if (!stylus && _palmWindow) return;
     // "Stylus only": a finger scrolls / zooms (the outer listener), it never draws.
     if (e.kind == PointerDeviceKind.touch && DrawInputPrefs.stylusOnly.value) return;
@@ -364,6 +446,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     final tool = e.kind == PointerDeviceKind.invertedStylus ? BoardTool.eraser : _c.tool;
     _pointer = e.pointer;
     _pointerKind = e.kind;
+    _downOrigin = _origin;
+    final stage = _stageOf(e);
+    var edge = true; // this gesture scrolls the view at the edges
     switch (tool) {
       case BoardTool.pen:
       case BoardTool.highlighter:
@@ -387,7 +472,10 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         _endTextEdit();
         _c.eraseAt(n.dx, n.dy);
       case BoardTool.laser:
+        edge = false;
         _c.pointLaser(n.dx, n.dy);
+      case BoardTool.hand:
+        edge = false;
       case BoardTool.select:
       case BoardTool.text:
         final hit = _c.selectableAt(n.dx, n.dy);
@@ -399,21 +487,47 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         _endTextEdit();
         if (hit != null) {
           _c.select(hit.id);
-          _drag = (id: hit.id, last: n, start: e.localPosition, moved: false);
+          _drag = (id: hit.id, last: n, start: stage, moved: false);
         } else {
+          edge = false;
           _c.select(null);
           // A tap beside the box being typed ends it; the next tap opens a new one.
           if (tool == BoardTool.text && !wasEditing) _pendingCreate = n;
+          // Select on empty paper: the drag moves the view.
+          if (tool == BoardTool.select && _pannable) _beginPan(e.pointer, stage);
         }
     }
+    if (_pointer == null) return;
+    _lastStage = stage;
+    _lastSeconds = _seconds(e);
+    _lastPressure = _pressure(e);
+    _sinceMove
+      ..reset()
+      ..start();
+    _edgeOn = edge;
+    if (edge) _edge.begin(stage, _box);
   }
 
   void _move(PointerMoveEvent e) {
     if (e.pointer != _pointer) return;
-    final n = _norm(e.localPosition);
+    final stage = _stageOf(e);
+    _lastStage = stage;
+    _lastSeconds = _seconds(e);
+    _lastPressure = _pressure(e);
+    _sinceMove
+      ..reset()
+      ..start();
+    _moveAt(stage, _lastSeconds, _lastPressure, e.kind);
+    if (_edgeOn && _pointer != null && _edge.track(stage, _box)) _kick();
+  }
+
+  /// The drawing pointer is at [stage] (a stage position) — after a move, or held still while the view scrolls.
+  void _moveAt(Offset stage, double seconds, double pressure, PointerDeviceKind kind) {
+    final local = stage - _origin; // on the page as it is now
+    final n = _norm(local);
     final drag = _drag;
     if (drag != null) {
-      final moved = drag.moved || (e.localPosition - drag.start).distance > 5;
+      final moved = drag.moved || (stage - drag.start).distance > 5;
       if (moved) {
         if (!drag.moved) _c.beginEdit(drag.id);
         _c.moveItem(drag.id, n.dx - drag.last.dx, n.dy - drag.last.dy);
@@ -427,7 +541,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       case BoardTool.highlighter:
         final ink = _ink;
         if (ink == null) return;
-        final s = ink.add(e.localPosition.dx, e.localPosition.dy, _seconds(e), _pressure(e));
+        final s = ink.add(local.dx, local.dy, seconds, pressure);
         if (s == null) return;
         final q = _norm(Offset(s.x, s.y));
         _c.moveInk(q.dx, q.dy, p: s.p);
@@ -442,15 +556,56 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         _c.pointLaser(n.dx, n.dy);
       case BoardTool.select:
       case BoardTool.text:
+      case BoardTool.hand:
         break;
     }
-    if (e.kind == PointerDeviceKind.invertedStylus) _c.eraseAt(n.dx, n.dy);
+    if (kind == PointerDeviceKind.invertedStylus) _c.eraseAt(n.dx, n.dy);
+  }
+
+  /// One frame of edge auto-scroll; whether the frame clock must keep running for it.
+  bool _stepEdge(double dt) {
+    final at = _lastStage;
+    if (!_edgeOn || _pointer == null || at == null || !mounted || _box.isEmpty) return false;
+    final v = _edge.velocity(at, _box, room: boardScrollRoom(_shown, _box), dt: dt);
+    if (v == Offset.zero) return _edge.inZone(at, _box);
+    if (dt <= 0) return true;
+    _scrollViewBy(v * dt);
+    // The pointer is held where it is: it is over another point of the page now.
+    _moveAt(at, _lastSeconds + _sinceMove.elapsedMicroseconds / 1e6, _lastPressure, _pointerKind ?? PointerDeviceKind.touch);
+    return true;
+  }
+
+  /// Moves the view by [d] stage pixels (positive: further right / down the page) and puts the page where it now is
+  /// at once (the next build lays it out the same), so the next pointer position maps onto the moved page.
+  void _scrollViewBy(Offset d) {
+    if (_c.isContinuous) {
+      _leaveFollow();
+      final v = _cvNow(_box).scrolledBy(d.dx, d.dy);
+      _scroll = v.scroll;
+      _cpanX = v.panX;
+      _origin = v.pageRect.topLeft;
+      _page = v.pageRect.size;
+      _shown = v.shownRect;
+    } else {
+      _pan -= d;
+      final r = _pageRect(_box);
+      _origin = r.topLeft;
+      _page = r.size;
+      _shown = r;
+    }
+    setState(() {});
   }
 
   void _hover(PointerHoverEvent e) {
-    if (!_c.drawMode || _pointer != null || _c.tool != BoardTool.laser) return;
+    if (!_c.drawMode || _pointer != null) return;
     final n = _norm(e.localPosition);
-    if (n.dx < 0 || n.dx > 1 || n.dy < 0 || n.dy > 1) return;
+    final inside = !(n.dx < 0 || n.dx > 1 || n.dy < 0 || n.dy > 1);
+    if (_c.tool == BoardTool.select) {
+      final over = inside && _c.selectableAt(n.dx, n.dy) != null;
+      if (over != _hoverItem) setState(() => _hoverItem = over);
+      return;
+    }
+    if (_c.tool != BoardTool.laser || !inside) return;
     _c.pointLaser(n.dx, n.dy);
   }
 
@@ -464,6 +619,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     final drag = _drag;
     final create = _pendingCreate;
     final ink = _ink;
+    final local = _stageOf(e) - _origin;
     _resetPointer();
     if (drag != null) {
       if (drag.moved) {
@@ -490,7 +646,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       case BoardTool.pen:
       case BoardTool.highlighter:
         if (ink != null && e is PointerUpEvent) {
-          final last = ink.finish(e.localPosition.dx, e.localPosition.dy);
+          final last = ink.finish(local.dx, local.dy);
           if (last != null) {
             final q = _norm(Offset(last.x, last.y));
             _c.moveInk(q.dx, q.dy, p: last.p);
@@ -507,6 +663,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       case BoardTool.laser:
       case BoardTool.select:
       case BoardTool.text:
+      case BoardTool.hand:
         break;
     }
     if (e.kind == PointerDeviceKind.invertedStylus) _c.endErase();
@@ -639,6 +796,8 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         }
         _page = page.size;
         _origin = page.topLeft;
+        _shown = shown;
+        _box = size;
         final presenting = _c.isLocalPresenting;
         if (cont && presenting) {
           final vp = cv!.viewport;
@@ -772,7 +931,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
                             onPointerHover: _hover,
                             onPointerUp: _up,
                             onPointerCancel: _up,
-                            child: MouseRegion(cursor: draw ? _cursor(_c.tool) : MouseCursor.defer, child: const SizedBox.expand()),
+                            child: MouseRegion(cursor: draw ? _drawCursor() : MouseCursor.defer, child: const SizedBox.expand()),
                           ),
                         ),
                       ),
@@ -846,7 +1005,8 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
             ),
         ]);
         // Pinch (two fingers) / Ctrl + wheel zooms this device's view only; two fingers (or the wheel) pan it; a
-        // continuous page scrolls with them too (and with one finger when this person is not drawing).
+        // continuous page scrolls with them too — and with one finger, the mouse or the pen with the hand (D-096), when
+        // this person is not drawing, or with Space held / the middle mouse button.
         return ClipRect(
           child: Listener(
             behavior: HitTestBehavior.translucent,
@@ -870,7 +1030,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
               if (_probing && e.kind == PointerDeviceKind.mouse) _probeAt(e.localPosition);
             },
             onPointerSignal: (e) => _zoomSignal(e, size),
-            child: MouseRegion(opaque: false, onExit: (_) => _clearProbe(), child: stage),
+            child: MouseRegion(opaque: false, cursor: _viewCursor(), onExit: (_) => _clearProbe(), child: stage),
           ),
         );
       }),
@@ -892,7 +1052,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   double _cpanX = 0;
   final Map<int, Offset> _touches = {};
   ({double zoom, Rect rect, Offset focal, double dist, ContinuousView? view})? _pinch;
-  ({Offset start, Offset pan, double scroll, double panX})? _viewPan;
+
+  /// One pointer moving the view (a finger, the mouse, the pen): where it went down (stage position) and the view then.
+  ({int pointer, Offset start, Offset pan, double scroll, double panX})? _viewPan;
 
   static const _kMaxZoom = 4.0;
 
@@ -939,15 +1101,49 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         _cpanX = v.panX;
       });
 
-  /// A finger moves the view (not a stroke): this person is not drawing, or only the stylus draws.
-  bool get _fingerPans => !_c.drawMode || DrawInputPrefs.stylusOnly.value;
+  /// A finger moves the view (not a stroke): this person is not drawing, only the stylus draws, or the hand is on.
+  bool get _fingerPans => !_c.drawMode || DrawInputPrefs.stylusOnly.value || _handMode;
+
+  /// [pointer] starts moving the view from [stage] (a stage position).
+  void _beginPan(int pointer, Offset stage) {
+    if (!_pannable) return;
+    setState(() => _viewPan = (pointer: pointer, start: stage, pan: _pan, scroll: _scroll, panX: _cpanX));
+  }
+
+  void _endPan() {
+    if (_viewPan == null) return;
+    if (mounted) setState(() => _viewPan = null);
+  }
+
+  /// Where the mouse looks over the page while drawing: grabbing while the view moves, grab where a drag moves it.
+  MouseCursor _drawCursor() {
+    if (_viewPan != null) return SystemMouseCursors.grabbing;
+    if (_handMode) return SystemMouseCursors.grab;
+    if (_c.tool == BoardTool.select) {
+      return _hoverItem ? SystemMouseCursors.move : (_pannable ? SystemMouseCursors.grab : SystemMouseCursors.basic);
+    }
+    return _cursor(_c.tool);
+  }
+
+  /// And over the stage (whoever is not drawing).
+  MouseCursor _viewCursor() {
+    if (_viewPan != null) return SystemMouseCursors.grabbing;
+    return !_c.drawMode && _pannable ? SystemMouseCursors.grab : MouseCursor.defer;
+  }
 
   void _zoomDown(PointerDownEvent e, Size size) {
     if (_isStylus(e.kind)) {
-      // The pen came down: a palm resting on the page must not scroll it.
-      _touches.clear();
-      _pinch = null;
-      _viewPan = null;
+      // The pen came down: a palm resting on the page must not scroll it (the pen itself may move the view).
+      if (_viewPan?.pointer != e.pointer) {
+        _touches.clear();
+        _pinch = null;
+        _viewPan = null;
+      }
+      if (_pansWith(e)) _beginPan(e.pointer, e.localPosition);
+      return;
+    }
+    if (e.kind == PointerDeviceKind.mouse) {
+      if (_pansWith(e)) _beginPan(e.pointer, e.localPosition);
       return;
     }
     if (e.kind != PointerDeviceKind.touch || _palmWindow) return;
@@ -965,31 +1161,32 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         view: _c.isContinuous ? _cvNow(size) : null,
       );
       _viewPan = null;
-    } else if (_touches.length == 1 && _fingerPans && (_c.isContinuous || _zoom > 1.01)) {
+    } else if (_touches.length == 1 && _fingerPans) {
       // One finger moves around a zoomed page / scrolls a continuous one.
-      _viewPan = (start: e.localPosition, pan: _pan, scroll: _scroll, panX: _cpanX);
+      _beginPan(e.pointer, e.localPosition);
     }
   }
 
   void _zoomMove(PointerMoveEvent e, Size size) {
-    if (!_touches.containsKey(e.pointer)) return;
-    _touches[e.pointer] = e.localPosition;
-    final pinch = _pinch;
-    if (pinch != null && _touches.length >= 2) {
-      final pts = _touches.values.take(2).toList();
-      final focal = (pts[0] + pts[1]) / 2;
-      final dist = math.max(1.0, (pts[0] - pts[1]).distance);
-      final view = pinch.view;
-      if (view != null) {
-        _leaveFollow();
-        _applyView(view.zoomedAt(pinch.zoom * dist / pinch.dist, pinch.focal, focal, maxZoom: _kMaxZoom));
-      } else {
-        _zoomTo(pinch.zoom * dist / pinch.dist, pinch.rect, pinch.focal, focal, size);
+    if (_touches.containsKey(e.pointer)) {
+      _touches[e.pointer] = e.localPosition;
+      final pinch = _pinch;
+      if (pinch != null && _touches.length >= 2) {
+        final pts = _touches.values.take(2).toList();
+        final focal = (pts[0] + pts[1]) / 2;
+        final dist = math.max(1.0, (pts[0] - pts[1]).distance);
+        final view = pinch.view;
+        if (view != null) {
+          _leaveFollow();
+          _applyView(view.zoomedAt(pinch.zoom * dist / pinch.dist, pinch.focal, focal, maxZoom: _kMaxZoom));
+        } else {
+          _zoomTo(pinch.zoom * dist / pinch.dist, pinch.rect, pinch.focal, focal, size);
+        }
+        return;
       }
-      return;
     }
     final vp = _viewPan;
-    if (vp == null) return;
+    if (vp == null || vp.pointer != e.pointer) return;
     final d = e.localPosition - vp.start;
     if (_c.isContinuous) {
       if (d.distance > 3) _leaveFollow();
@@ -1003,7 +1200,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   void _zoomUp(PointerEvent e) {
     _touches.remove(e.pointer);
     if (_touches.length < 2) _pinch = null;
-    if (_touches.isEmpty) _viewPan = null;
+    if (_viewPan?.pointer == e.pointer) _endPan();
   }
 
   void _zoomSignal(PointerSignalEvent e, Size size) {
@@ -1050,6 +1247,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         final d = _drag;
         if (d != null && d.moved) _c.endEdit(d.id);
       case BoardTool.laser:
+      case BoardTool.hand:
         break;
     }
     _resetPointer();
@@ -1221,6 +1419,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         BoardTool.line || BoardTool.arrow || BoardTool.rect || BoardTool.ellipse => SystemMouseCursors.precise,
         BoardTool.text => SystemMouseCursors.text,
         BoardTool.select => SystemMouseCursors.move,
+        BoardTool.hand => SystemMouseCursors.grab,
         BoardTool.eraser => SystemMouseCursors.cell,
         BoardTool.laser => SystemMouseCursors.none,
       };
