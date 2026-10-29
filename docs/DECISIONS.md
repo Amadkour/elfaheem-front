@@ -1214,3 +1214,30 @@ of D-079 / D-087 assumes 0..1 — a second path for one format); an unbounded pa
 projector must show the same content); cropping content on a format change (silent loss) or refusing the change once
 a board has content; a screenshot for the PNG (it carried the zoom, the selection and the tags, and could not export
 what is off screen).
+
+## D-096 — Whiteboard: a hand to move the paper; the view scrolls by itself when drawing reaches an edge · 2026-10-30 · proposed
+
+**Context.** The owner: "make the drawing paper scroll with the mouse or the hand when the pen is not selected …
+and when I draw near the bottom, scroll automatically, also at the top, left and right". A continuous page (D-093)
+scrolled with two fingers, the wheel, or one finger only when not drawing; a mouse drag never moved it, and a stroke
+had to stop at the screen's edge.
+**Decision.** (1) A new local tool `BoardTool.hand` (open palm, key M, tooltip "Hand: move the page"), second in the
+dock beside Select, which is now drawn as a mouse pointer. With the hand, one finger, the mouse or the pen drags the
+view (a continuous page up / down, a zoomed page around; grab / grabbing cursor) and draws nothing. The same pan
+comes from: Select on empty paper (a drag on an item still moves the item), Space held with any tool (desktop), the
+middle mouse button, and every pointer of whoever is not drawing (viewers included). The view is this device's
+(D-093): the presenter's pan goes out as `vp` like any scroll, a viewer's pan leaves "Follow". The phone's dock keeps
+two rows of 7: the page tools on the first (select · hand · pen · highlighter · shapes · text · eraser), undo /
+redo · 3 colours (the current one always shown) · style · laser on the second. (2) Edge auto-scroll
+(`board_edge_scroll.dart`, pure): a stroke, a shape or a moved selection within the edge zone (12 % of the stage,
+28–72 px) scrolls the view that way at 60 → 900 px/s (quadratic in the depth, eased in over 250 ms), driven by the
+stage's ticker while the pointer is held still; an edge is armed only once the pointer was outside its zone or moved
+24 px towards it, so writing along the bottom never scrolls. It stops at the page's limits (a continuous page grows
+under the stroke, D-093). The drawing pointer's events stay in the frame of its down, so each frame the held pointer
+is mapped onto the moved page and the stroke follows without a gap; the laser, text and the hand never auto-scroll.
+Pinch, two-finger pan, "Stylus only" and palm rejection are unchanged. Tests: `test/org/board_edge_scroll_test.dart`,
+`test/ui/whiteboard_hand_layout_test.dart`; renders `test/visual/whiteboard_hand_golden_test.dart`.
+**Rejected.** Select alone panning on empty paper (no visible way to know the paper moves; the owner asked for an
+icon); a hand that is a mode switch outside the tool row (one more control to find); auto-scroll on entering the
+zone with no arming (a line written at the bottom ran away); a timer instead of the ticker (frame-locked steps keep
+the stroke smooth).

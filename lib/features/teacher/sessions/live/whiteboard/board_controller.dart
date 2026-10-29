@@ -47,8 +47,8 @@ const kBoardViewportInterval = Duration(milliseconds: 100);
 /// And once more, reliably, this long after it stopped moving.
 const kBoardViewportSettle = Duration(milliseconds: 350);
 
-/// What a pointer does on the board.
-enum BoardTool { select, pen, highlighter, line, arrow, rect, ellipse, text, eraser, laser }
+/// What a pointer does on the board. [hand] only moves this device's view (D-096): it never changes the board.
+enum BoardTool { select, hand, pen, highlighter, line, arrow, rect, ellipse, text, eraser, laser }
 
 extension BoardToolKind on BoardTool {
   BoardShapeKind? get shape => switch (this) {
