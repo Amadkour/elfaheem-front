@@ -4,8 +4,8 @@
   "uid": 3
  },
  "payload": {
-  "now": "2026-10-28T06:30:18.106384",
-  "today_date": "2026-10-28",
+  "now": "2026-10-29T15:10:34.358195",
+  "today_date": "2026-10-29",
   "timezone": "Africa/Cairo",
   "role": "teacher",
   "today": [
@@ -14,8 +14,8 @@
     "source": "course_session",
     "title": "L2",
     "subtitle": "رياضيات",
-    "starts_at": "2026-10-28T09:00:00",
-    "ends_at": "2026-10-28T10:00:00",
+    "starts_at": "2026-10-29T09:00:00",
+    "ends_at": "2026-10-29T10:00:00",
     "org_id": null,
     "org": null,
     "color": null,
@@ -34,8 +34,8 @@
     "source": "course_session",
     "title": "L3",
     "subtitle": "رياضيات",
-    "starts_at": "2026-10-31T07:00:00",
-    "ends_at": "2026-10-31T08:00:00",
+    "starts_at": "2026-11-01T07:00:00",
+    "ends_at": "2026-11-01T08:00:00",
     "org_id": null,
     "org": null,
     "color": null,
@@ -138,17 +138,18 @@
    "suggested_mode": "organization",
    "independent_courses": 0,
    "pending_total": 0,
-   "now": "2026-10-28T06:30:18.241778"
+   "now": "2026-10-29T15:10:34.805124"
   },
   "orgs_enabled": true,
+  "live_now": [],
   "teaching_today": [
    {
     "id": "session:3",
     "source": "course_session",
     "title": "L2",
     "subtitle": "رياضيات",
-    "starts_at": "2026-10-28T09:00:00",
-    "ends_at": "2026-10-28T10:00:00",
+    "starts_at": "2026-10-29T09:00:00",
+    "ends_at": "2026-10-29T10:00:00",
     "org_id": null,
     "org": null,
     "color": null,
@@ -162,8 +163,8 @@
    }
   ],
   "pending": {
-   "attendance_missing": 1,
-   "materials_missing": 2,
+   "attendance_missing": 2,
+   "materials_missing": 3,
    "grading": 0,
    "enrollment_requests": 0
   },

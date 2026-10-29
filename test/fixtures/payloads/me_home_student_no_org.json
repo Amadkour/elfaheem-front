@@ -4,8 +4,8 @@
   "uid": 5
  },
  "payload": {
-  "now": "2026-10-28T06:30:17.842566",
-  "today_date": "2026-10-28",
+  "now": "2026-10-29T15:10:34.290486",
+  "today_date": "2026-10-29",
   "timezone": "Africa/Cairo",
   "role": "student",
   "today": [],
@@ -42,6 +42,7 @@
   "notifications_unread": 0,
   "org_overview": null,
   "orgs_enabled": true,
+  "live_now": [],
   "courses_progress": []
  }
 }

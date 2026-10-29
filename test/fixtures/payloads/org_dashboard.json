@@ -51,13 +51,6 @@
   },
   "series": [
    {
-    "date": "2026-09-29",
-    "joins": 0,
-    "attendance": 0,
-    "complaints": 0,
-    "work_items": 0
-   },
-   {
     "date": "2026-09-30",
     "joins": 0,
     "attendance": 0,
@@ -249,12 +242,19 @@
    {
     "date": "2026-10-27",
     "joins": 0,
-    "attendance": 1,
+    "attendance": 0,
     "complaints": 0,
     "work_items": 0
    },
    {
     "date": "2026-10-28",
+    "joins": 0,
+    "attendance": 1,
+    "complaints": 0,
+    "work_items": 0
+   },
+   {
+    "date": "2026-10-29",
     "joins": 3,
     "attendance": 0,
     "complaints": 0,
@@ -268,21 +268,21 @@
     "id": 3,
     "summary": "أضاف st بدور student",
     "action": "member.add",
-    "created_at": "2026-10-28T06:30:12.237461"
+    "created_at": "2026-10-29T15:10:32.201244"
    },
    {
     "id": 2,
     "summary": "أضاف te بدور teacher",
     "action": "member.add",
-    "created_at": "2026-10-28T06:30:11.991572"
+    "created_at": "2026-10-29T15:10:32.132327"
    },
    {
     "id": 1,
     "summary": "أنشأ المؤسسة «Agg U» (approved)",
     "action": "org.create",
-    "created_at": "2026-10-28T06:30:11.713237"
+    "created_at": "2026-10-29T15:10:32.042063"
    }
   ],
-  "generated_at": "2026-10-28T06:30:15.237637"
+  "generated_at": "2026-10-29T15:10:33.025007"
  }
 }

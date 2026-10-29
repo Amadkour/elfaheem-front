@@ -4,8 +4,8 @@
   "uid": 6
  },
  "payload": {
-  "now": "2026-10-28T06:30:18.704079",
-  "today_date": "2026-10-28",
+  "now": "2026-10-29T15:10:36.143210",
+  "today_date": "2026-10-29",
   "timezone": "Africa/Cairo",
   "children": [
    {
@@ -14,7 +14,7 @@
      "name": "st",
      "image_url": null,
      "is_active": true,
-     "linked_at": "2026-10-28T06:30:12.318288Z"
+     "linked_at": "2026-10-29T15:10:32.276774Z"
     },
     "today_sessions": [
      {
@@ -22,8 +22,8 @@
       "source": "course_session",
       "title": "L2",
       "subtitle": "رياضيات",
-      "starts_at": "2026-10-28T09:00:00",
-      "ends_at": "2026-10-28T10:00:00",
+      "starts_at": "2026-10-29T09:00:00",
+      "ends_at": "2026-10-29T10:00:00",
       "org_id": null,
       "org": null,
       "color": null,
@@ -36,7 +36,7 @@
       "change_id": null
      }
     ],
-    "attendance_pct_30d": 50,
+    "attendance_pct_30d": 33,
     "latest_marks": [
      {
       "exam_id": 1,
@@ -46,16 +46,16 @@
       "course_en": "Maths",
       "percentage": 70.0,
       "passed": true,
-      "submitted_at": "2026-10-28T06:30:12.317288"
+      "submitted_at": "2026-10-29T15:10:32.271578"
      }
     ],
-    "open_alerts": 1,
+    "open_alerts": 3,
     "next_exam": {
      "id": 2,
      "name": "Midterm",
      "course_id": 1,
-     "starts_at": "2026-10-30T06:30:10.229548",
-     "ends_at": "2026-10-30T08:30:10.229548",
+     "starts_at": "2026-10-31T15:10:30.888791",
+     "ends_at": "2026-10-31T17:10:30.888791",
      "source": "course"
     },
     "courses": 1
@@ -66,7 +66,7 @@
      "name": "st2",
      "image_url": null,
      "is_active": true,
-     "linked_at": "2026-10-28T06:30:12.318288Z"
+     "linked_at": "2026-10-29T15:10:32.276774Z"
     },
     "today_sessions": [],
     "attendance_pct_30d": null,
@@ -76,7 +76,7 @@
     "courses": 0
    }
   ],
-  "alerts_total": 1,
+  "alerts_total": 3,
   "requests": [],
   "link_config": {
    "mode": "easy",
