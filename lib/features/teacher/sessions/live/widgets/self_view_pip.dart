@@ -320,10 +320,14 @@ class SelfViewLayer extends StatefulWidget {
     this.onShow,
     this.onTap,
     this.onLongPress,
+    this.content,
   });
 
   final SelfViewPrefs prefs;
   final SelfViewKeepOut keepOut;
+
+  /// D-105: the shared picture on this stage (my own share): the box then floats over it (selfViewOverContent).
+  final Rect? Function(Size stage)? content;
 
   /// The box's content (a SelfViewTile, or the stage's content while swapped).
   final Widget tile;
@@ -361,8 +365,11 @@ class _SelfViewLayerState extends State<SelfViewLayer> {
         final side = _settle?.side ?? widget.prefs.side;
         final y = _settle?.y ?? widget.prefs.y;
         if (widget.hidden) return Stack(children: [_chip(stage, side, y)]);
-        final box = selfViewBoxSize(shape: widget.prefs.shape, size: widget.prefs.size, stage: stage);
-        final rest = selfViewOffset(stage: stage, box: box, keepOut: widget.keepOut, side: side, y: y);
+        var box = selfViewBoxSize(shape: widget.prefs.shape, size: widget.prefs.size, stage: stage);
+        var keepOut = widget.keepOut;
+        final over = selfViewOverContent(stage: stage, box: box, keepOut: keepOut, content: widget.content?.call(stage));
+        if (over != null) (box, keepOut) = (over.box, over.keepOut);
+        final rest = selfViewOffset(stage: stage, box: box, keepOut: keepOut, side: side, y: y);
         final at = _drag ?? rest;
         return Stack(children: [
           AnimatedPositioned(
@@ -386,7 +393,7 @@ class _SelfViewLayerState extends State<SelfViewLayer> {
                 final snap = selfViewSnap(
                   stage: stage,
                   box: box,
-                  keepOut: widget.keepOut,
+                  keepOut: keepOut,
                   topLeft: from,
                   velocity: d.velocity.pixelsPerSecond,
                 );

@@ -35,6 +35,7 @@ Widget _stage({
   VoidCallback? onExpand,
   ValueChanged<String>? onPin,
   void Function(SelfViewSide, double)? onMoved,
+  double? shareAspect,
 }) =>
     Builder(builder: (context) {
       LivePalette.sync(context);
@@ -68,6 +69,7 @@ Widget _stage({
               onPin: onPin,
               onMore: () {},
               onMoved: onMoved ?? (_, _) {},
+              content: shareAspect == null ? null : (stage) => shareContentRect(stage, shareAspect),
             ),
           ),
         ]),
@@ -101,6 +103,25 @@ void main() {
     testWidgets('minimized to a name', (tester) async {
       await expectNoLayoutErrors(tester, () => _stage(collapsed: true, bubbles: 2, more: 1));
       await expectNoLayoutErrors(tester, () => _stage(collapsed: true, prefs: const PresenterCamPrefs(side: SelfViewSide.right, y: 0.3)));
+    });
+  });
+
+  group('over the shared picture (D-105)', () {
+    for (final aspect in [540 / 1170, 16 / 9]) {
+      testWidgets('aspect ${aspect.toStringAsFixed(2)}: no overflow, with bubbles', (tester) async {
+        await expectNoLayoutErrors(tester, () => _stage(shareAspect: aspect, bubbles: 2, more: 1));
+      });
+    }
+
+    testWidgets('a portrait share on a wide stage: the box sits on the picture, not in the side bars', (tester) async {
+      tester.view.physicalSize = const Size(1280, 660);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(layoutHost(_stage(shareAspect: 540 / 1170)));
+      await tester.pumpAndSettle();
+      final box = tester.getRect(find.byKey(const ValueKey('presenter_cam.box')));
+      final content = shareContentRect(const Size(1280, 660), 540 / 1170)!;
+      expect(content.contains(box.topLeft) && content.contains(box.bottomRight), isTrue, reason: '$box in $content');
     });
   });
 

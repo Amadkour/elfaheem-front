@@ -1445,3 +1445,41 @@ logical pixels as before); the iOS recorder (one AVAssetWriter per chunk, untest
 **Rejected.** `MediaRecorder.setNextOutputFile` (switches only on a max file size, not on time); fragmented MP4 / a
 hand-written MPEG-TS muxer on the device (more code, and older servers would not accept the new container); a native
 camera-frame bridge into the recording (needs the flutter_webrtc fork, and drops what the room shows around the camera).
+
+## D-105 — The camera floats over the shared picture, not in the empty bars beside it · 2026-10-30 · proposed
+
+Amends D-092 (self-view) and D-094 (the presenter's camera for viewers).
+**Context.** The owner: "why when open camera with share content the camera not show in the front of the shared
+content". A real two-browser run on the local stack (web profile build, Chrome with fake devices: a teacher sharing,
+a student watching, phone 390 × 844 and laptop 1280 × 800; screenshots in `screenshots/share_cam/`) showed that
+D-094 itself works on the web: the presenter's camera is subscribed, streams and is drawn in its box for the viewer,
+over a share, in full view and over the board, and the presenter's self-view stays on top of their own share. What
+was wrong is WHERE: a share is drawn `contain` in the share view, and both boxes were placed by the STAGE's edges.
+A phone's portrait screen (what an Android presenter sends) is a narrow column in the middle of a laptop's stage —
+the viewer's camera box sat in the empty left bar and the presenter's self-view in the right one, far from the
+content; a laptop's 16:9 screen is a band across a phone's stage — the box sat in the black area under it. In every
+case the camera was beside the content, never in front of it; the same for the whiteboard's page on a phone.
+**Decision.** While a screen share fills the stage, the presenter's camera (viewers) and the presenter's own
+self-view (on their own share) float over the PICTURE: the shared frame's real aspect comes from the share view's
+renderer (`_AnnotatedShareVideo` now always owns the renderer and reports the aspect; the publication's announced
+dimensions until the first frame), `shareContentRect` fits it like the view does (`kShareVideoInsets`), and
+`selfViewOverContent` (pure, `live_self_view.dart`) turns the picture's inside (10 px in, never past the stage's own
+keep-outs — the share's bottom bar, the badges) into the box's keep-out and scales the box to at most 55 % × 45 % of
+the picture, so a phone's column or a laptop's band keeps most of its content readable; a picture too small for a
+52 px box keeps the old stage placement. Drag / snap / side / height work as before, inside the picture. On the
+whiteboard the presenter's camera does the same over the page as it is on screen (its zoom / pan included, read from
+the page's render box, `_boardPageKey`; the room's 1 Hz clock re-places it only when the page moved, since the board
+lays itself out without rebuilding the room); the presenter's own self-view on their board keeps the stage edges (they
+draw on that page). A viewer's own self-view keeps the stage edges (it is not the presenter's content). Tests:
+`test/org/live_over_content_test.dart`, `test/ui/presenter_cam_layout_test.dart` (over the shared picture).
+**Android (not runnable here; the owner checks on the S24).** A presenter who shares the whole screen and leaves the
+app keeps the camera on (D8 never turns it off while `screenShareActive`, which is true from the tap through the
+system dialog) and `ScreenCaptureService` carries the camera foreground-service type (D-094); nothing in the share
+path mutes, unpublishes or restarts the camera. While the presenter is in another app their own phone shows no
+camera over that app (D-092: an overlay would be captured into the share and the viewers would see the camera twice)
+— the viewers see it in the box over the picture. Viewers on an app or web build from before D-094 see no camera at
+all over a share (the box is drawn by the viewer's app).
+**Rejected.** Burning the camera into the shared screen on the presenter's device (D-094's reasons: cost, the
+recording, and the camera twice for viewers); a fixed size over the picture (a laptop-sized box covered a phone's
+band); keeping the stage placement and only moving the default corner (the bars beside a portrait column are where
+the box ended up in the first place).

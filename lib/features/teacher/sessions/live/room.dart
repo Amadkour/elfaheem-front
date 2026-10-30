@@ -9,6 +9,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, ValueListenable;
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart' show SchedulerBinding, SchedulerPhase;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/record/live_frame_pacing.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -1121,6 +1122,7 @@ class _RoomPageState extends State<RoomPage>
       if (!mounted) { _sessionClockTimer?.cancel(); _sessionClockTimer = null; return; }
       _sessionElapsedSeconds++;
       _clockTick.value++;
+      _followBoardPage(); // D-105: the presenter's camera follows the board's page
     });
   }
 
@@ -2745,6 +2747,7 @@ class _RoomPageState extends State<RoomPage>
                       Expanded(
                         child: LayoutBuilder(
                           builder: (ctx, constraints) => Stack(
+                            key: _stageKey,
                             fit: StackFit.expand,
                             children: [
                               // A tap anywhere on the stage shows / hides the bar (D-092: no video renderer takes
@@ -3089,6 +3092,7 @@ class _RoomPageState extends State<RoomPage>
               ? () => unawaited(_stopPresenter(main.participant.identity, notify: true))
               : null,
           stopBusy: _stopping.contains(main.participant.identity),
+          onAspect: _onShareAspect,
         ),
         main.participant,
       );
@@ -3178,6 +3182,8 @@ class _RoomPageState extends State<RoomPage>
         key: const ValueKey('live_room.self_view'),
         prefs: prefs,
         keepOut: _selfKeepOut,
+        // D-105: my own share on the stage — my camera sits on its picture (else in the bars beside it).
+        content: _myShareOnStage ? _shareContent : null,
         hidden: spot == SelfViewSpot.hiddenChip,
         onShow: () {
           setState(() => _selfHidden = false);
@@ -3271,6 +3277,90 @@ class _RoomPageState extends State<RoomPage>
   /// "Minimize to a name" — per room, like "Hide self view".
   bool _camCollapsed = false;
 
+  // ── Over the shared picture (D-105) ──
+  // A share is drawn `contain`: a phone's portrait screen is a column in the middle of a laptop's stage, a laptop's
+  // screen a band across a phone's. Placed by the stage's edges, the cameras floated in the empty bars beside or
+  // under it — "the camera is not in front of the shared content". While a share fills the stage, the presenter's
+  // camera (viewers) and the presenter's own self-view sit on the picture's corner instead (selfViewOverContent).
+
+  /// The shared frame's aspect as its renderer reports it (null: no frame yet).
+  double? _shareAspect;
+
+  void _onShareAspect(double? aspect) {
+    if (!mounted || aspect == _shareAspect) return;
+    void apply() {
+      if (mounted && aspect != _shareAspect) setState(() => _shareAspect = aspect);
+    }
+
+    // The renderer reports from its own events; never a setState in the middle of a build.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    } else {
+      apply();
+    }
+  }
+
+  /// The aspect of the share on the stage: the renderer's, else what its publisher announced.
+  double? get _stageShareAspect {
+    if (!_isScreenShareMain) return null;
+    if (_shareAspect != null) return _shareAspect;
+    for (final pub in _stageTracks.first.participant.videoTrackPublications) {
+      if (!pub.isScreenShare || isBoardVideoName(pub.name)) continue;
+      final d = pub.dimensions;
+      if (d != null && d.width > 0 && d.height > 0) return d.width / d.height;
+    }
+    return null;
+  }
+
+  /// The shared picture on a stage of the given size, while a screen share (not a board) fills the stage and is
+  /// shown there (null: the cameras keep the stage's edges).
+  Rect? Function(Size stage)? get _shareContent {
+    if (!_isScreenShareMain || _isBoardMain || _videoParked || _selfSpot == SelfViewSpot.stage) return null;
+    final aspect = _stageShareAspect;
+    if (aspect == null) return null;
+    return (stage) => shareContentRect(stage, aspect);
+  }
+
+  /// The stage's Stack: the frame the floating cameras are placed in.
+  final GlobalKey _stageKey = GlobalKey(debugLabel: 'live_room.stage_stack');
+
+  /// What the presenter's camera floats over: the shared picture, or the whiteboard's page as it is on screen
+  /// (the board's own zoom / pan included; read from its layout — the board is laid out before the floating layers,
+  /// which come after it in the stage's Stack).
+  Rect? Function(Size stage)? get _presenterContent {
+    if (!_isBoardMain) return _shareContent;
+    if (_videoParked || _selfSpot == SelfViewSpot.stage) return null;
+    return (stage) {
+      final r = _boardPageOnStage();
+      _boardPageSeen = r;
+      if (r == null) return null;
+      final shown = r.intersect(Offset.zero & stage);
+      return shown.isEmpty ? null : shown;
+    };
+  }
+
+  /// The board page's rectangle in the stage's frame (null: not laid out).
+  Rect? _boardPageOnStage() {
+    final page = _boardPageKey.currentContext?.findRenderObject();
+    final frame = _stageKey.currentContext?.findRenderObject();
+    if (page is! RenderBox || frame is! RenderBox || !page.attached || !frame.attached || !page.hasSize) return null;
+    return MatrixUtils.transformRect(page.getTransformTo(frame), Offset.zero & page.size);
+  }
+
+  /// The page rectangle the presenter's camera was last placed by. The board lays its page out on its own (state
+  /// arriving, zoom, pan, format) without rebuilding the room, so the clock (1 Hz) looks again and rebuilds only
+  /// when the page moved.
+  Rect? _boardPageSeen;
+
+  void _followBoardPage() {
+    if (!mounted || !_isBoardMain || _camCollapsed || _camPlan.main == null || _presenterContent == null) return;
+    final now = _boardPageOnStage();
+    if (now != _boardPageSeen) setState(() {});
+  }
+
+  /// My own share fills the stage: my self-view goes on its picture, where my students see my camera too.
+  bool get _myShareOnStage => _isScreenShareMain && _stageTracks.first.participant == widget.room.localParticipant;
+
   PresenterCamPrefs get _camPrefs => PresenterCamStore.instance.value;
 
   /// Whoever fills the stage with a share or a board (null: neither is on the stage).
@@ -3348,6 +3438,7 @@ class _RoomPageState extends State<RoomPage>
         key: const ValueKey('live_room.presenter_cam'),
         prefs: _camPrefs,
         keepOut: keep,
+        content: _presenterContent, // D-105: on the shared picture's / page's corner, not in the bars beside it
         selfSide: selfPrefs.side,
         main: plan.main == null ? null : item(plan.main!),
         bubbles: [for (final id in plan.bubbles) ?item(id)],
@@ -5669,6 +5760,10 @@ class _PremiumScreenShareView extends StatefulWidget {
   final VoidCallback? onStopShare;
   final bool stopBusy;
 
+  /// D-105: the shared frame's aspect (width / height) once the renderer knows it, so the room can float the
+  /// cameras over the picture itself (null: no frame yet).
+  final ValueChanged<double?>? onAspect;
+
   const _PremiumScreenShareView({
     required this.participant,
     required this.resolveScreenTrack,
@@ -5676,6 +5771,7 @@ class _PremiumScreenShareView extends StatefulWidget {
     this.annot,
     this.onStopShare,
     this.stopBusy = false,
+    this.onAspect,
   });
 
   @override
@@ -5774,9 +5870,9 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(19),
                 child: screenTrack != null
-                    ? (widget.annot == null
-                        ? LiveVideoView(screenTrack, fit: VideoViewFit.contain)
-                        : _AnnotatedShareVideo(track: screenTrack, controller: widget.annot!))
+                    // Always the renderer we own: it reads the real frame size (for the annotation layer, and for
+                    // the room's cameras over the picture, D-105).
+                    ? _AnnotatedShareVideo(track: screenTrack, controller: widget.annot, onAspect: widget.onAspect)
                     : _ScreenShareLoadingPlaceholder(
                   presenterName: presenterName,
                 ),
@@ -5815,10 +5911,15 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
 /// (RTCVideoValue: width / height / rotation, the same aspect RTCVideoView's `contain` fit uses), which follows
 /// rotation and window resizes. Until the first frame the layer uses its own size.
 class _AnnotatedShareVideo extends StatefulWidget {
-  const _AnnotatedShareVideo({required this.track, required this.controller});
+  const _AnnotatedShareVideo({required this.track, this.controller, this.onAspect});
 
   final VideoTrack track;
-  final AnnotationController controller;
+
+  /// Null: no annotation (`live.annotation` is off) — the video alone.
+  final AnnotationController? controller;
+
+  /// The frame's aspect whenever it changes (D-105); null again when this view goes away.
+  final ValueChanged<double?>? onAspect;
 
   @override
   State<_AnnotatedShareVideo> createState() => _AnnotatedShareVideoState();
@@ -5843,13 +5944,19 @@ class _AnnotatedShareVideoState extends State<_AnnotatedShareVideo> {
     if (!mounted) return;
     final v = _renderer.value;
     final next = v.width > 0 && v.height > 0 ? Size(v.aspectRatio, 1) : null;
-    if (next != _frame) setState(() => _frame = next);
+    if (next != _frame) {
+      setState(() => _frame = next);
+      widget.onAspect?.call(next?.width);
+    }
   }
 
   @override
   void dispose() {
     _disposed = true;
     _renderer.removeListener(_onValue);
+    // The share left the stage: the room forgets its aspect (after this frame — never a setState while unmounting).
+    final gone = widget.onAspect;
+    if (gone != null) WidgetsBinding.instance.addPostFrameCallback((_) => gone(null));
     // The VideoTrackRenderer below was unmounted first (children go first) and does not dispose a cached renderer.
     unawaited(() async {
       try {
@@ -5874,7 +5981,7 @@ class _AnnotatedShareVideoState extends State<_AnnotatedShareVideo> {
         cachedRenderer: _renderer,
         autoDisposeRenderer: false,
       ),
-      AnnotationLayer(controller: widget.controller, contentSize: _frame),
+      if (widget.controller != null) AnnotationLayer(controller: widget.controller!, contentSize: _frame),
     ]);
   }
 }

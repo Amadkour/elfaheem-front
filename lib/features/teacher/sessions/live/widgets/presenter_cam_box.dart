@@ -70,10 +70,15 @@ class PresenterCamLayer extends StatefulWidget {
     this.onExpand,
     this.onPin,
     this.onMore,
+    this.content,
   });
 
   final PresenterCamPrefs prefs;
   final SelfViewKeepOut keepOut;
+
+  /// D-105: the shared picture on this stage (null: a board or unknown): the box floats over it
+  /// (selfViewOverContent), so the camera is in front of the content, not in the bars beside it.
+  final Rect? Function(Size stage)? content;
 
   /// The side my self-view is on: an unmoved box sits on the other one.
   final SelfViewSide selfSide;
@@ -124,9 +129,15 @@ class _PresenterCamLayerState extends State<PresenterCamLayer> {
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
         final stage = c.biggest;
         if (widget.main == null && _bubbleCount == 0) return const SizedBox.shrink();
-        final box = widget.main == null
+        var box = widget.main == null
             ? Size.zero
             : selfViewBoxSize(shape: widget.prefs.shape, size: widget.prefs.size, stage: stage);
+        // D-105: over a shared picture the box floats on the picture's corner (scaled to it), not in the bars.
+        var keepOut = widget.keepOut;
+        if (!widget.collapsed && widget.main != null) {
+          final over = selfViewOverContent(stage: stage, box: box, keepOut: keepOut, content: widget.content?.call(stage));
+          if (over != null) (box, keepOut) = (over.box, over.keepOut);
+        }
         final d = presenterBubbleSize(stage.width);
         final unit = presenterDockSize(box: box, bubbles: _bubbleCount, bubble: d);
         final avoid = widget.avoid?.call(stage);
@@ -134,14 +145,14 @@ class _PresenterCamLayerState extends State<PresenterCamLayer> {
             presenterCamSpot(
               stage: stage,
               unit: widget.collapsed ? const Size(180, 44) : unit,
-              keepOut: widget.keepOut,
+              keepOut: keepOut,
               side: widget.prefs.side,
               y: widget.prefs.y,
               selfSide: widget.selfSide,
               avoid: avoid,
             );
         if (widget.collapsed) return Stack(children: [_pill(stage, spot)]);
-        final rest = selfViewOffset(stage: stage, box: unit, keepOut: widget.keepOut, side: spot.side, y: spot.y);
+        final rest = selfViewOffset(stage: stage, box: unit, keepOut: keepOut, side: spot.side, y: spot.y);
         final at = _drag ?? rest;
         final above = presenterRowAbove(spot.y);
         final align = spot.side == SelfViewSide.left ? Alignment.centerLeft : Alignment.centerRight;
@@ -183,7 +194,7 @@ class _PresenterCamLayerState extends State<PresenterCamLayer> {
                 final snap = selfViewSnap(
                   stage: stage,
                   box: unit,
-                  keepOut: widget.keepOut,
+                  keepOut: keepOut,
                   topLeft: from,
                   velocity: dd.velocity.pixelsPerSecond,
                 );
@@ -191,7 +202,7 @@ class _PresenterCamLayerState extends State<PresenterCamLayer> {
                 final free = presenterCamSpot(
                   stage: stage,
                   unit: unit,
-                  keepOut: widget.keepOut,
+                  keepOut: keepOut,
                   side: snap.side,
                   y: snap.y,
                   selfSide: widget.selfSide,
