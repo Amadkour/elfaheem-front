@@ -51,7 +51,11 @@ class OrgHomeEntry extends StatelessWidget {
         final first = active.isEmpty ? null : Map<String, dynamic>.from(active.first['organization'] as Map);
         final base = first == null ? c.primary : orgColor(context, first);
         return GestureDetector(
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgMembershipScreen())).then((_) => p.loadMine()),
+          // "Join your university" opens the join flow itself (L6: it opened an empty "My organizations" list);
+          // with a membership or a request under review it opens the list.
+          onTap: () => first == null && pending == 0 && p.loaded
+              ? openOrgJoin(context, onDone: p.loadMine)
+              : Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgMembershipScreen())).then((_) => p.loadMine()),
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 6),
             padding: const EdgeInsets.all(16),
@@ -74,7 +78,7 @@ class OrgHomeEntry extends StatelessWidget {
                     first == null ? t('انضم إلى جامعتك أو كليتك', 'Join your university or faculty') : OrgSession.nameOf(first),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.display, fontSize: 16, fontWeight: FontWeight.w800, color: c.onHero),
+                    style: TextStyle(fontFamily: AppFonts.display, fontSize: 16, fontWeight: FontWeight.w600, color: c.onHero),
                   ),
                   Text(
                     first == null
@@ -440,8 +444,9 @@ class _TimetableView extends StatelessWidget {
               if (_isLab(x)) t('عملي', 'Lab'),
               if (x['room'] != null) '${x['room']}',
               if (x['teacher'] != null) '${x['teacher']}',
-              if (x['can_switch'] == true) t('اضغط لعقدها أونلاين في تاريخ', 'Tap to hold it online on a date'),
             ].join(' · '),
+            // its own line, not glued into the room · teacher line (M12)
+            hint: x['can_switch'] == true ? t('اضغط لعقدها أونلاين في تاريخ', 'Tap to hold it online on a date') : null,
             accent: _isLab(x) ? c.success : c.primary,
             onTap: x['can_switch'] == true ? () => switchDate(x) : null,
           ),
@@ -452,8 +457,11 @@ class _TimetableView extends StatelessWidget {
 }
 
 class _SlotRow extends StatelessWidget {
-  const _SlotRow({required this.top, required this.bottom, required this.title, required this.subtitle, required this.accent, this.onTap});
+  const _SlotRow({required this.top, required this.bottom, required this.title, required this.subtitle, required this.accent, this.onTap, this.hint});
   final String top, bottom, title, subtitle;
+
+  /// What a tap does, on its own line under the subtitle (null = nothing to say).
+  final String? hint;
   final Color accent;
   final VoidCallback? onTap;
 
@@ -472,7 +480,7 @@ class _SlotRow extends StatelessWidget {
             decoration: BoxDecoration(color: accent.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
             child: Column(children: [
               Text(top, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
-                  style: TextStyle(fontWeight: FontWeight.w800, color: accent, fontSize: 13)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: accent, fontSize: 13)),
               Text(bottom, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
                   style: TextStyle(color: c.textLight, fontSize: 11)),
             ]),
@@ -481,10 +489,21 @@ class _SlotRow extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark)),
               if (subtitle.isNotEmpty)
                 Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
+              if (hint != null) ...[
+                const SizedBox(height: 4),
+                Row(children: [
+                  Icon(Icons.wifi_tethering_rounded, size: 14, color: c.primary),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(hint!, maxLines: 2, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w500, color: c.primary)),
+                  ),
+                ]),
+              ],
             ]),
           ),
         ]),

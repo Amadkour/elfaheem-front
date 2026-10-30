@@ -86,7 +86,7 @@ class SessionsTab extends StatelessWidget {
         ),
     ]);
     final fold = live ? 0 : courseSessionFoldCount(states);
-    final header = CourseSectionHeader(title: title ?? 'sessions'.tr, count: count);
+    final header = CourseSectionHeader(title: title ?? gt('الجلسات', 'Sessions'), count: count);
     if (presented.isEmpty) {
       return Column(
         children: [
@@ -96,7 +96,7 @@ class SessionsTab extends StatelessWidget {
             title: live ? gt('لا يوجد بث مباشر الآن', 'Nothing is live right now') : 'sessions_empty'.tr,
             message: live
                 ? gt('ستظهر الجلسة هنا فور أن يبدأ المدرس البث', 'The session shows up here as soon as the teacher goes live')
-                : gt('سيضيف المدرس الدروس قريباً', 'The teacher will add lessons soon'),
+                : gt('سيضيف المدرس الجلسات قريباً', 'The teacher will add sessions soon'),
           ),
         ],
       );
@@ -139,6 +139,7 @@ class SessionsTab extends StatelessWidget {
                   state: states[i],
                   rail: rail,
                   liveType: session.isLive,
+                  focusTick: provider.focusSessionId == session.id ? provider.focusTick : null,
                   // The exam the teacher attached to this session: passing it is what unlocks the sessions after it.
                   footer: gate == null || gate.isEmpty
                       ? null

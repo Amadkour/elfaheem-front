@@ -2,6 +2,13 @@
 //
 // The student paywall. Opened at '/subscription' — automatically by ApiClient
 // when the server answers 402 SUBSCRIPTION_REQUIRED, and from the profile page.
+//
+// It tells the truth about WHO asks for the subscription (`reason`: the person's
+// organization's fee policy, with its name and contact, or the platform) and
+// never loops: "Continue" is offered only while the server says the person has
+// access, and a Continue that lands straight back here (an older server whose
+// status ignores the organization rule, QA H1) shows "access isn't open yet"
+// with refresh + log out instead of the "app is free" page again.
 library;
 
 import 'package:flutter/material.dart';
@@ -60,7 +67,47 @@ class _ViewState extends State<_View> {
     return null;
   }
 
-  void _goHome() => Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (r) => false);
+  /// When "Continue" was last pressed (static: a 402 rebuilds this page from scratch).
+  static DateTime? _continuedAt;
+
+  /// The server answered 402 again right after "Continue": its status and its guard disagree.
+  bool get _bouncedBack => _continuedAt != null && DateTime.now().difference(_continuedAt!) < const Duration(seconds: 30);
+
+  void _goHome() {
+    _continuedAt = DateTime.now();
+    Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (r) => false);
+  }
+
+  Widget _refreshAndLogout(SubscriptionProvider p) {
+    final c = context.colors;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      OutlinedButton.icon(
+        onPressed: () {
+          _continuedAt = null;
+          p.load();
+        },
+        icon: const Icon(Icons.refresh_rounded),
+        label: Text('sub_refresh_status'.tr),
+      ),
+      const SizedBox(height: 6),
+      ParentComponent(
+        featureKey: 'subscription.logout',
+        child: TextButton(
+          onPressed: () => context.read<ProfileProvider>().logout(context),
+          child: Text('sub_logout'.tr, style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
+        ),
+      ),
+    ]);
+  }
+
+  /// "{organization} · contact: …" under an organization's request ('' when the server named none).
+  String _orgLine(SubscriptionProvider p, bool isAr) {
+    final name = p.orgName(isAr), contact = p.orgContact();
+    return [
+      if (name.isNotEmpty) name,
+      if (contact.isNotEmpty) '${'sub_org_contact'.tr} $contact',
+    ].join('\n');
+  }
 
   Future<void> _submit(SubscriptionProvider p) async {
     final plan = _plan(p);
@@ -134,13 +181,33 @@ class _ViewState extends State<_View> {
           label: Text('sub_refresh_status'.tr),
         ),
       );
-    } else if (!p.required) {
+    } else if (p.hasAccess && _bouncedBack) {
+      // the status says "free" but every other call still answers 402 (an older server): never loop
+      body = _Status(
+        icon: Icons.lock_clock_rounded,
+        color: c.warning,
+        title: 'sub_access_paused'.tr,
+        subtitle: 'sub_access_paused_hint'.tr,
+        action: _refreshAndLogout(p),
+      );
+    } else if (p.hasAccess) {
       body = _Status(
         icon: Icons.celebration_rounded,
         color: c.success,
-        title: 'sub_app_free'.tr,
+        title: p.platformRequired ? 'sub_covered_title'.tr : 'sub_app_free'.tr,
         subtitle: 'sub_no_subscription_needed'.tr,
         action: PrimaryButton(label: 'sub_continue'.tr, onPressed: _goHome, isLoading: false,),
+      );
+    } else if (p.plans.isEmpty) {
+      // a subscription is needed but none can be bought here: say who to ask
+      final org = p.reason == 'organization';
+      final line = _orgLine(p, isAr);
+      body = _Status(
+        icon: org ? Icons.apartment_rounded : Icons.workspace_premium_rounded,
+        color: c.warning,
+        title: org ? 'sub_org_requires_title'.tr : 'sub_subscribe_to_continue'.tr,
+        subtitle: [org ? 'sub_org_no_plans'.tr : 'sub_no_plans'.tr, if (org && line.isNotEmpty) line].join('\n\n'),
+        action: _refreshAndLogout(p),
       );
     } else {
       final transferEnabled = p.transfer['bank_transfer_enabled'] == true || p.transfer['instapay_enabled'] == true;
@@ -148,9 +215,18 @@ class _ViewState extends State<_View> {
       body = ListView(padding: const EdgeInsets.all(16), children: [
         Icon(Icons.workspace_premium_rounded, size: 56, color: c.primary),
         const SizedBox(height: 8),
-        Text('sub_subscribe_to_continue'.tr,
+        Text(p.reason == 'organization' ? 'sub_org_requires_title'.tr : 'sub_subscribe_to_continue'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 22, color: c.textDark)),
+        if (p.reason == 'organization')
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              ['sub_org_requires_hint'.tr, if (_orgLine(p, isAr).isNotEmpty) _orgLine(p, isAr)].join('\n'),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium, fontSize: 13),
+            ),
+          ),
         if (p.last != null && '${p.last!['status']}' == 'rejected')
           Padding(
             padding: const EdgeInsets.only(top: 8),

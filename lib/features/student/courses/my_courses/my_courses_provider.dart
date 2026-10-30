@@ -178,13 +178,20 @@ class MyCoursesProvider extends BaseProvider {
   /// Fetches the next page and appends it. No-ops while a fetch is already
   /// in flight, once the server has told us there's nothing more, or after a failure.
   Future<void> loadMore() async {
-    if (!_hasMore || isLoading || _pageFailed) return;
+    if (!_hasMore || isLoading || _pageFailed || _pageGen == _gen) return;
     await _loadPage();
   }
 
+  /// The generation whose page request is in flight (-1 = none). `isLoading` alone is not enough: a dropped
+  /// request of an older generation sets the state back to success while the new page is still loading, and
+  /// the fill-the-viewport pager (wide screens) then asked for the same page again → every course twice (H4).
+  int _pageGen = -1;
+
   Future<void> _loadPage() async {
     final gen = _gen;
+    _pageGen = gen;
     final r = await run(() => _api.get('/api/v1/my-enrolled-courses', queryParams: _params(_skip)));
+    if (_pageGen == gen) _pageGen = -1;
     if (gen != _gen) return; // a refresh started while this page was loading
     if (r is Map && r['items'] is List) {
       _apply(r, replace: false);
@@ -198,7 +205,12 @@ class MyCoursesProvider extends BaseProvider {
   void _apply(Map r, {required bool replace}) {
     final page =
     (r['items'] as List).map((e) => CourseModel.fromJson(e)).toList();
-    _all = replace ? page : [..._all, ...page];
+    if (replace) {
+      _all = page;
+    } else {
+      final seen = {for (final c in _all) c.id};
+      _all = [..._all, ...page.where((c) => seen.add(c.id))]; // never the same course twice
+    }
     _skip = _all.length;
     final hasTotal = r['total'] is num;
     if (hasTotal) _total = (r['total'] as num).toInt();

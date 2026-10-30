@@ -160,9 +160,13 @@ class CalTimeGrid extends StatefulWidget {
     this.pauses = const [],
     this.isLive,
     this.showHeader = true,
+    this.bottomPadding = 0,
   });
 
   final List<DateTime> days; // wall days
+
+  /// Room under the last hour, so a floating button never sits on 23:00 (H10).
+  final double bottomPadding;
   final List<CalEvent> events;
 
   /// Exam windows pausing the weekly classes: a strip under the headers of the days they cover.
@@ -189,8 +193,11 @@ class _CalTimeGridState extends State<CalTimeGrid> {
   Timer? _tick;
   double _viewport = 0;
 
-  /// The person scrolled, or the focus was taken from real data: nothing moves the grid by itself any more.
-  bool _userScrolled = false, _settled = false;
+  /// The person scrolled: nothing moves the grid by itself any more.
+  bool _userScrolled = false;
+
+  /// The offset the grid last focused on (it follows the data until the person scrolls, L14).
+  double _focused = 0;
 
   DateTime get _nowWall => widget.now ?? AppTime.toZone(DateTime.now().toUtc());
 
@@ -204,21 +211,24 @@ class _CalTimeGridState extends State<CalTimeGrid> {
   ScrollController _controllerFor(double viewport) {
     _viewport = viewport;
     return _scroll ??= () {
-      _settled = widget.events.isNotEmpty;
-      return ScrollController(initialScrollOffset: _focusOffset(viewport));
+      _focused = _focusOffset(viewport);
+      return ScrollController(initialScrollOffset: _focused);
     }();
   }
 
-  /// The events arrived after the grid opened (it was still loading): take the focus once, unless the person moved.
+  /// The events arrived or changed after the grid opened (it was still loading, or held another range's data):
+  /// follow the focus, unless the person moved the grid.
   @override
   void didUpdateWidget(covariant CalTimeGrid old) {
     super.didUpdateWidget(old);
-    if (_settled || _userScrolled || widget.events.isEmpty || identical(widget.events, old.events)) return;
-    _settled = true;
+    if (_userScrolled || _scroll == null || identical(widget.events, old.events)) return;
+    final target = _focusOffset(_viewport);
+    if ((target - _focused).abs() < 1) return;
+    _focused = target;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final s = _scroll;
       if (!mounted || s == null || !s.hasClients || _userScrolled) return;
-      s.animateTo(_focusOffset(_viewport), duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+      s.animateTo(target.clamp(0.0, s.position.maxScrollExtent), duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
     });
   }
 
@@ -311,6 +321,7 @@ class _CalTimeGridState extends State<CalTimeGrid> {
             controller: scroll,
             child: SingleChildScrollView(
               controller: scroll,
+              padding: EdgeInsets.only(bottom: widget.bottomPadding),
               child: SizedBox(
                 height: 24 * hh,
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

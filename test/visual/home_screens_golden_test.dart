@@ -26,6 +26,9 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/design/app_shell.dart' show NotificationIcon;
+import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon;
+import 'package:flutter_education_app/design/quick_meeting_entry.dart' show QuickMeetingIcon;
 import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_home.dart';
@@ -478,7 +481,14 @@ List<MeLiveRoom> _liveMeeting() => [
       ),
     ];
 
-Widget _header(String name, String? summary) => HomeHeader(name: name, subtitle: summary, padding: const EdgeInsets.fromLTRB(20, 20, 20, 16));
+// the real header buttons (Meet now always; calendar + bell on phones, the top bar carries them on desktop)
+Widget _header(String name, String? summary) => HomeHeader(
+      name: name,
+      subtitle: summary,
+      actions: const [QuickMeetingIcon()],
+      shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+    );
 
 // teacher
 ScheduleSession _session(int id, String name, String start, String end, {bool ongoing = false, int? untilStart, int inDays = 0}) =>

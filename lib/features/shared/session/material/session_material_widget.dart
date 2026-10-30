@@ -58,8 +58,11 @@ class SessionMaterialCard extends StatefulWidget {
   /// The timeline line through this row (none by default).
   final CourseSessionRail rail;
 
-  /// The course is a live course (the student's SessionModel → TeacherSessionItem copy drops `type`).
+  /// The course is a live course (overrides the session's own `type`).
   final bool? liveType;
+
+  /// "Continue learning" asked for this row: each new value opens it and scrolls it into view.
+  final int? focusTick;
 
   /// Under the row's actions (the student's exam-gate notice).
   final Widget? footer;
@@ -76,6 +79,7 @@ class SessionMaterialCard extends StatefulWidget {
     this.rail = (top: null, bottom: null),
     this.liveType,
     this.footer,
+    this.focusTick,
   });
 
   @override
@@ -130,6 +134,27 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       curve: Curves.easeInOutCubic,
     );
     _loadStudentExams();
+    _maybeFocus();
+  }
+
+  int? _seenFocus;
+
+  @override
+  void didUpdateWidget(covariant SessionMaterialCard old) {
+    super.didUpdateWidget(old);
+    _maybeFocus();
+  }
+
+  /// Opens this row and brings it into view when [SessionMaterialCard.focusTick] changed.
+  void _maybeFocus() {
+    final tick = widget.focusTick;
+    if (tick == null || tick == _seenFocus) return;
+    _seenFocus = tick;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_expanded && !_isLocked) _toggleExpanded();
+      Scrollable.ensureVisible(context, duration: const Duration(milliseconds: 320), alignment: 0.15, curve: Curves.easeOutCubic);
+    });
   }
 
   @override
@@ -548,9 +573,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
 
 String _tt(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
-/// A session's `scheduled_at` as parsed by the models (`toLocalSaTime`: the instant shifted by +3 h and still
-/// flagged UTC) → the real UTC instant AppTime expects.
-DateTime? sessionUtc(DateTime? d) {
-  if (d == null) return null;
-  return d.isUtc ? d.subtract(const Duration(hours: 3)) : d.toUtc();
-}
+/// A session's `scheduledAt` (already the real instant, `sessionInstantUtc` in the models) as the UTC
+/// instant AppTime expects.
+DateTime? sessionUtc(DateTime? d) => d?.toUtc();

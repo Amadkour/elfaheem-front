@@ -379,7 +379,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
             AppSettingsTile(
               icon: Icons.support_agent_rounded,
               color: c.primary,
-              label: 'help_center'.tr,
+              label: 'complaints_and_support'.tr,
               onTap: () => _push(const ComplaintsHubPage()), // D-086: New complaint + My complaints
             ),
           ],

@@ -1034,13 +1034,17 @@ Future<Map<String, dynamic>?> startQuickMeeting(BuildContext context, {int? orgI
 
 /// The "Meet now" button (kill switch `live.quick_meeting`); [onDone] runs after the room (reload a list).
 class QuickMeetingButton extends StatefulWidget {
-  const QuickMeetingButton({super.key, this.orgId, this.api = const RemoteCalendarApi(), this.onDone, this.fab = false});
+  const QuickMeetingButton(
+      {super.key, this.orgId, this.api = const RemoteCalendarApi(), this.onDone, this.fab = false, this.icon = false});
   final int? orgId;
   final CalendarApi api;
   final VoidCallback? onDone;
 
-  /// A floating action button (the calendar) instead of a compact pill (lists).
+  /// A floating action button instead of a compact pill (lists).
   final bool fab;
+
+  /// An icon button with a tooltip (the phone schedule's header: one floating button only, H10).
+  final bool icon;
 
   @override
   State<QuickMeetingButton> createState() => _QuickMeetingButtonState();
@@ -1063,7 +1067,16 @@ class _QuickMeetingButtonState extends State<QuickMeetingButton> {
     final label = t('اجتمع الآن', 'Meet now');
     return ParentComponent(
       featureKey: kQuickMeetingFeatureKey,
-      child: widget.fab
+      child: widget.icon
+          ? IconButton(
+              key: const ValueKey('calendar.meet_now'),
+              tooltip: label,
+              onPressed: _busy ? null : _go,
+              icon: _busy
+                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary))
+                  : Icon(Icons.video_call_rounded, color: appInk(context, c.primary)),
+            )
+          : widget.fab
           ? FloatingActionButton.extended(
               key: const ValueKey('calendar.meet_now'),
               heroTag: 'cal_meet_now',

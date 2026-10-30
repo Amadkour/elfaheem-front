@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
+import 'package:flutter_education_app/features/shared/course/studend_course_roadmap_section.dart';
+import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
+import 'package:flutter_education_app/features/student/models.dart' show sessionInstantUtc;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show CourseSchedule;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -291,5 +294,43 @@ void main() {
     await t.pumpWidget(layoutHost(const CourseRatingStars(value: 3.5, count: 1200)));
     expect(find.byIcon(Icons.star_half_rounded), findsOneWidget);
     expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+  });
+
+  testWidgets('quick actions: more than fit → the row ends with "More", never cut at the edge', (t) async {
+    await expectNoLayoutErrors(t, () => ListView(children: [CourseActionStrip(actions: [..._actions(), ..._actions()])]));
+    await t.binding.setSurfaceSize(const Size(390, 844));
+    await t.pumpWidget(layoutHost(ListView(children: [CourseActionStrip(actions: [..._actions(), ..._actions()])])));
+    expect(find.byIcon(Icons.more_horiz_rounded), findsOneWidget);
+    await t.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('roadmap: a course name keeps whole words (wide stops)', (t) async {
+    await expectNoLayoutErrors(
+      t,
+      () => ListView(children: [
+        CourseRoadmapSection(
+          currentCourseName: 'أساسيات الخط العربي للمبتدئين Arabic calligraphy basics',
+          nextCourses: const [],
+          recommendedCourses: const [],
+          similarCourses: const [],
+          onTapCourse: (_) {},
+        ),
+      ]),
+    );
+  });
+
+  testWidgets('session track tabs: labels and counts stay whole', (t) async {
+    await expectNoLayoutErrors(
+      t,
+      () => SessionTrackTabs(value: 'lecture', lectures: 16, sections: 16, onChanged: (_) {}),
+    );
+  });
+
+  test('a session time from the server is the real UTC instant (naive = UTC, H2)', () {
+    expect(sessionInstantUtc('2026-11-08T06:30:00'), DateTime.utc(2026, 11, 8, 6, 30));
+    expect(sessionInstantUtc('2026-11-08T06:30:00Z'), DateTime.utc(2026, 11, 8, 6, 30));
+    expect(sessionInstantUtc('2026-11-08T08:30:00+02:00'), DateTime.utc(2026, 11, 8, 6, 30));
+    expect(sessionInstantUtc(null), isNull);
+    expect(sessionInstantUtc(''), isNull);
   });
 }

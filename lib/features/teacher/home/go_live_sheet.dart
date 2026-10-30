@@ -433,11 +433,11 @@ class _GoLiveSheetState extends State<GoLiveSheet> {
       } else if (s != null) {
         // this hour's timetable slot has no session yet: create it at the slot's start (the home then matches it)
         title = goLiveDefaultTitle(s.startsAt);
-        id = await widget.api.create(courseId: courseId, title: title, startsAt: s.startsAt, minutes: s.minutes > 0 ? s.minutes : 60, record: record);
+        id = await widget.api.create(courseId: courseId, title: '', startsAt: s.startsAt, minutes: s.minutes > 0 ? s.minutes : 60, record: record);
       } else {
         final typed = _title.text.trim();
         title = typed.isEmpty ? goLiveDefaultTitle(_now) : typed;
-        id = await widget.api.create(courseId: courseId, title: title, startsAt: _now, record: record);
+        id = await widget.api.create(courseId: courseId, title: typed, startsAt: _now, record: record);
       }
       widget.onSave?.call(widget.prefs.copyWith(courseId: courseId, camera: _camera, mic: _mic));
       if (!mounted) return;

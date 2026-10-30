@@ -18,7 +18,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
 import 'package:flutter_education_app/features/student/courses/details/components/about.dart' show CourseAboutView;
 import 'package:flutter_education_app/features/student/courses/details/components/course_detail_parts.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
+import 'package:flutter_education_app/features/shared/course/studend_course_roadmap_section.dart';
+import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
+import 'package:flutter_education_app/features/student/models.dart' show CourseModel, CourseSummary;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -361,6 +363,40 @@ Widget _student() => Builder(
   },
 );
 
+/// The quick-action row with more than fit ("More"), the lecture / section filter and the roadmap card.
+Widget _parts() => Builder(
+  builder: (context) => ListView(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    children: [
+      CourseActionStrip(actions: [
+        for (final (ar, en, i) in [
+          ('جلسة جديدة', 'New session', Icons.add_rounded),
+          ('الطلاب', 'Students', Icons.groups_rounded),
+          ('ملف المقرر', 'Course profile', Icons.dashboard_customize_rounded),
+          ('معمل البيانات', 'Data Lab', Icons.science_rounded),
+          ('الجدول الأسبوعي', 'Weekly schedule', Icons.calendar_month_rounded),
+          ('تعديل الكورس', 'Edit course', Icons.edit_rounded),
+        ])
+          CourseSpaceAction(icon: i, label: tr(ar, en), onTap: () {}),
+      ]),
+      const SizedBox(height: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: SessionTrackTabs(value: 'all', lectures: 16, sections: 16, onChanged: (_) {}),
+      ),
+      const SizedBox(height: 16),
+      CourseRoadmapSection(
+        currentCourseName: tr('أساسيات الخط العربي', 'Arabic calligraphy basics'),
+        recentCompletedCourses: [CourseSummary(id: 1, name: tr('مدخل إلى الفنون الإسلامية', 'Intro to Islamic art'), finalPrice: 0)],
+        nextCourses: [CourseSummary(id: 2, name: tr('خط الثلث المتقدم', 'Advanced Thuluth script'), finalPrice: 0)],
+        recommendedCourses: const [],
+        similarCourses: const [],
+        onTapCourse: (_) {},
+      ),
+    ],
+  ),
+);
+
 Widget _teacher() => Builder(
   builder: (context) {
     final c = context.colors;
@@ -616,6 +652,7 @@ void main() {
   setUp(() => AppConfig.disableList = []);
 
   testWidgets('course student', (t) => _render(t, 'course_student', _student));
+  testWidgets('course parts', (t) => _render(t, 'course_parts', _parts));
   testWidgets('course teacher', (t) => _render(t, 'course_teacher', _teacher));
   testWidgets('course about', (t) => _render(t, 'course_about', _about));
   testWidgets('course student real pieces', (t) => _render(t, 'course_student_real', _studentReal));

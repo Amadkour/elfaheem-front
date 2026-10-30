@@ -285,7 +285,7 @@ Future<void> showContextSwitcherSheet(BuildContext context, {bool allowPersonal 
               ),
             ),
           // organizations that are not open yet (under review / suspended): shown, not enterable
-          for (final e in ctl.entries.where((e) => !ctl.liveEntries.contains(e)))
+          for (final e in notOpenEntries(ctl.entries, ctl.liveEntries))
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Opacity(
@@ -318,6 +318,23 @@ Future<void> showContextSwitcherSheet(BuildContext context, {bool allowPersonal 
       ),
     );
   });
+}
+
+/// The organizations of [entries] that cannot be opened yet (under review / suspended), without the ones the person
+/// already sees as open: the same organization id, or an organization of the same name (a creation request for a
+/// university the person already belongs to listed it twice, M10).
+List<Map<String, dynamic>> notOpenEntries(List<Map<String, dynamic>> entries, List<Map<String, dynamic>> live) {
+  String norm(Object? v) => '$v'.trim().toLowerCase();
+  final liveIds = {for (final e in live) asInt(asMap(e['organization'])['id'])};
+  final liveNames = {for (final e in live) norm(orgNameOf(asMap(e['organization'])))};
+  final seen = <int>{};
+  return [
+    for (final e in entries)
+      if (!live.contains(e))
+        if (!liveIds.contains(asInt(asMap(e['organization'])['id'])))
+          if (!liveNames.contains(norm(orgNameOf(asMap(e['organization'])))))
+            if (seen.add(asInt(asMap(e['organization'])['id']))) e,
+  ];
 }
 
 String _statusText(Object? status) => switch ('$status') {

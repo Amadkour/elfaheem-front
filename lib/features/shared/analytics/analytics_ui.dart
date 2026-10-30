@@ -507,10 +507,14 @@ class AnVsClassCard extends StatelessWidget {
     final c = context.colors;
     final shown = rows.where((r) => r.$2 != null && r.$3 != null).toList();
     if (shown.isEmpty) return const SizedBox.shrink();
-    final above = shown.where((r) => r.$2! >= r.$3!).length;
+    // as shown (whole points): level with the class is neither above nor below (M5)
+    final above = shown.where((r) => r.$2!.round() > r.$3!.round()).length;
+    final below = shown.where((r) => r.$2!.round() < r.$3!.round()).length;
     final body = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(
-          above == shown.length
+          above == 0 && below == 0
+              ? anTr('an_vs_all_level', 'Level with the class average — keep going.')
+              : above == shown.length
               ? anTr('an_vs_all_above', 'Above the class average everywhere — wonderful work! 🌟')
               : above == 0
               ? anTr('an_vs_all_below', 'Below the class average for now — a little extra effort will close the gap.')

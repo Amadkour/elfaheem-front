@@ -48,6 +48,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -116,6 +117,7 @@ class HomeHeader extends StatelessWidget {
     required this.name,
     this.leading,
     this.actions = const [],
+    this.shellActions = const [],
     this.contextSwitcher,
     this.subtitle,
     this.padding = const EdgeInsets.fromLTRB(20, 20, 20, 8),
@@ -123,38 +125,55 @@ class HomeHeader extends StatelessWidget {
 
   final String name;
   final Widget? leading;
+
+  /// Buttons only the home offers (Meet now …): always drawn.
   final List<Widget> actions;
+
+  /// Buttons the shell's top bar already carries on desktop / tablet (calendar, bell): drawn on phones only, so a
+  /// wide screen never shows the same action twice (M7).
+  final List<Widget> shellActions;
   final Widget? contextSwitcher;
   final String? subtitle;
   final EdgeInsetsGeometry padding;
 
+  /// True while the shell's top bar (sidebar / rail layouts) is on screen around this page.
+  static bool shellTopBar(BuildContext context) {
+    MediaQuery.sizeOf(context); // re-asked when the window is resized
+    final s = ShellScope.maybeOf(context);
+    return s != null && s.sideChrome > 0 && !s.fullScreen;
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final buttons = [...actions, if (!shellTopBar(context)) ...shellActions];
+    // greeting · buttons on the first line, then the name and the day line on the full width: three 48 px buttons
+    // next to the name truncated "Mark Mark…" and the day line at 390 px (M9)
     return ValueListenableBuilder<int>(
       valueListenable: AppTime.version,
       builder: (context, _, _) => Padding(
         padding: padding,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            if (leading != null) ...[leading!, const SizedBox(width: 12)],
+            if (leading != null) ...[leading!, const SizedBox(width: 10)],
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(homeGreetingKey(homeNow().hour).tr,
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textLight)),
-                const SizedBox(height: 4),
-                Text(name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: appText(24, w: FontWeight.w600, c: c.textDark, h: 1.2).copyWith(letterSpacing: -0.3)),
-                if (subtitle != null && subtitle!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium)),
-                ],
-              ]),
+              child: Text(homeGreetingKey(homeNow().hour).tr,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, c: c.textLight)),
             ),
-            ...actions,
+            ...buttons,
           ]),
+          SizedBox(height: buttons.isEmpty && leading == null ? 4 : 6),
+          Semantics(
+            header: true,
+            child: Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: appText(24, w: FontWeight.w600, c: c.textDark, h: 1.2).copyWith(letterSpacing: -0.3)),
+          ),
+          if (subtitle != null && subtitle!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.4)),
+          ],
           if (contextSwitcher != null) ...[
             const SizedBox(height: 14),
             Align(alignment: AlignmentDirectional.centerStart, child: contextSwitcher!),
@@ -260,6 +279,12 @@ class HomeSectionTitle extends StatelessWidget {
         child: InkWell(
           onTap: onToggle,
           borderRadius: BorderRadius.circular(c.radiusMedium),
+          // light washes only: on the web a clicked title keeps the focus, and the default grey focus fill left a
+          // full-width bar that looked disabled (L8)
+          focusColor: c.primary.withValues(alpha: 0.06),
+          hoverColor: c.primary.withValues(alpha: 0.04),
+          highlightColor: c.primary.withValues(alpha: 0.06),
+          splashColor: c.primary.withValues(alpha: 0.08),
           // a 48 px target whatever the title's line height
           child: ConstrainedBox(constraints: const BoxConstraints(minHeight: 48), child: Align(alignment: AlignmentDirectional.centerStart, widthFactor: 1, child: heading)),
         ),
@@ -1840,15 +1865,17 @@ class _HostAvatar extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// "2 sessions today · 1 live now · next at 1:00 PM · 3 to do" — the day in one line under the name, so the home
-/// needs fewer cards. [nextAt] is a display time (through AppTime). Pure.
-String homeDaySummary({required int sessions, int live = 0, int todo = 0, String? nextAt}) {
+/// needs fewer cards. [nextAt] is a display time (through AppTime). [othersWaiting]: something the to-do count
+/// does not hold still waits (unread notifications, an organization's request, a payout) — then the line never
+/// says "all caught up" next to a "Needs you" strip (M6). Pure.
+String homeDaySummary({required int sessions, int live = 0, int todo = 0, String? nextAt, bool othersWaiting = false}) {
   final parts = <String>[
     sessions == 0
         ? 'home_sum_free'.tr
         : (sessions == 1 ? 'home_sum_sessions_one'.tr : 'home_sum_sessions'.tr.replaceAll('{n}', '$sessions')),
     if (live > 0) 'home_sum_live'.tr.replaceAll('{n}', '$live'),
     if (live == 0 && nextAt != null && nextAt.isNotEmpty) 'home_sum_next'.tr.replaceAll('{t}', nextAt),
-    todo > 0 ? 'home_sum_todo'.tr.replaceAll('{n}', '$todo') : 'home_sum_clear'.tr,
+    if (todo > 0) 'home_sum_todo'.tr.replaceAll('{n}', '$todo') else if (!othersWaiting) 'home_sum_clear'.tr,
   ];
   return parts.join(' · ');
 }

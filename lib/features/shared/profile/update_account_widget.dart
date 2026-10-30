@@ -27,6 +27,7 @@ import '../../auth/username_field.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppSkeletonBox;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class EditAccountScreen extends StatefulWidget {
@@ -59,6 +60,9 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   late ProfileProvider _p;
   bool _saving = false;
 
+  /// The fields hold the account's values (a skeleton is drawn until then, M17).
+  bool _ready = false;
+
   // 0 = Personal Info, 1 = Documents (teachers only — students never see the tab bar)
   int _tab = 0;
 
@@ -69,18 +73,26 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     final auth = context.read<MyAuthProvider>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Opened straight from the avatar menu the profile provider may still be empty (or hold another account):
+      // fill it from the signed-in user first, so the fields never start blank (M17).
+      final u = auth.currentUser;
+      if (u != null && (_p.email.isEmpty || _p.id != u.id)) _p.initData(u);
       _nameCtrl.text = _p.name;
       _emailCtrl.text = _p.email;
       _phoneCtrl.text = _p.phone;
       _dobCtrl.text = _p.dob;
       _bioCtrl.text = _p.bio;
       _usernameCtrl.text = _p.username;
+      if (mounted) setState(() => _ready = true);
 
       if (widget.isTeacher) {
         // Specializations must be loaded before loadTeacherProfileExtras()
         // can match the teacher's current specialization_id to an entry.
-        await auth.loadSpecialization(context);
-        await auth.loadTeacherProfileExtras();
+        // Either call may fail (an older server answers 404): the page keeps its fields and the extras stay empty.
+        try {
+          await auth.loadSpecialization(context);
+          await auth.loadTeacherProfileExtras();
+        } catch (_) {}
         _experienceCtrl.text = auth.teacherExperienceYears?.toString() ?? '';
       }
       if (mounted) setState(() {});
@@ -275,32 +287,8 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
             // ── App bar ────────────────────────────────────────────────────
             if (isWide) ScreenAppBar(title: 'update_account'.tr),
 
-            // ── Premium tab switcher (teachers only) ─────────────────────────
-
-            // ── Body ───────────────────────────────────────────────────────
-            Expanded(
-              child: (!widget.isTeacher || _tab == 0)
-                  ? _mobileLayout(p, c)
-                  : Column(
-                      children: [
-                        _PremiumTabSwitcher(
-                          selected: _tab,
-                          onChanged: (i) => setState(() => _tab = i),
-                          tabs: [
-                            (
-                              icon: Icons.person_outline_rounded,
-                              label: 'tab_personal_info'.tr,
-                            ),
-                            (
-                              icon: Icons.description_outlined,
-                              label: 'tab_documents'.tr,
-                            ),
-                          ],
-                        ),
-                        const _DocumentsTabView(),
-                      ],
-                    ),
-            ),
+            // ── Body: the same hero for every role; a teacher's Personal info / Documents switch sits under it (M18)
+            Expanded(child: _mobileLayout(p, c)),
           ],
         ),
       ),
@@ -316,19 +304,6 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       physics: const BouncingScrollPhysics(),
       child: Column(
         children: [
-          if (widget.isTeacher) ...[
-            _PremiumTabSwitcher(
-              selected: _tab,
-              onChanged: (i) => setState(() => _tab = i),
-              tabs: [
-                (
-                  icon: Icons.person_outline_rounded,
-                  label: 'tab_personal_info'.tr,
-                ),
-                (icon: Icons.description_outlined, label: 'tab_documents'.tr),
-              ],
-            ),
-          ],
           // ── Hero header ────────────────────────────────────────────────
           _MobileHero(
             p: p,
@@ -339,9 +314,30 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
             },
           ),
 
+          if (widget.isTeacher)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: _PremiumTabSwitcher(
+                selected: _tab,
+                onChanged: (i) => setState(() => _tab = i),
+                tabs: [
+                  (icon: Icons.person_outline_rounded, label: 'tab_personal_info'.tr),
+                  (icon: Icons.description_outlined, label: 'tab_documents'.tr),
+                ],
+              ),
+            ),
+
+          if (widget.isTeacher && _tab == 1)
+            const _DocumentsTabView()
+          else if (!_ready)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 32),
+              child: _FormSkeleton(),
+            )
+          else
           // ── Form ───────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
             child: _FormCard(
               p: p,
               c: c,
@@ -409,7 +405,7 @@ class _PremiumTabSwitcher extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(0),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: List.generate(tabs.length, (i) {
@@ -446,7 +442,7 @@ class _PremiumTabSwitcher extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: AppFonts.display,
                           fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                           color: isActive ? context.colors.onHero : c.textLight,
                         ),
                       ),
@@ -472,9 +468,9 @@ class _DocumentsTabView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+    // Inside the page's scroll view, under the hero and the tab switch (M18).
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
@@ -716,29 +712,35 @@ class _FormCard extends StatelessWidget {
           _SectionHeader(label: 'personal_info_section'.tr, c: c),
           const SizedBox(height: 16),
 
-          MyTextField(controller: nameCtrl, label: 'name_label'.tr),
+          _Labeled(label: 'name_label'.tr, child: MyTextField(controller: nameCtrl, label: 'name_label'.tr)),
           const SizedBox(height: 14),
-          MyTextField(
-            controller: emailCtrl,
+          _Labeled(
             label: 'email_label'.tr,
-            enable: false, // email cannot be changed
+            child: MyTextField(
+              controller: emailCtrl,
+              label: 'email_label'.tr,
+              enable: false, // email cannot be changed
+            ),
           ),
           ?usernameField,
           const SizedBox(height: 14),
-          MyTextField(
-            controller: phoneCtrl,
+          _Labeled(
             label: 'phone_label'.tr,
-            keyboard: TextInputType.phone,
+            child: MyTextField(
+              controller: phoneCtrl,
+              label: 'phone_label'.tr,
+              keyboard: TextInputType.phone,
+            ),
           ),
           const SizedBox(height: 14),
-          MyTextField(controller: dobCtrl, label: 'dob_label'.tr),
+          _Labeled(label: 'dob_label'.tr, child: MyTextField(controller: dobCtrl, label: 'dob_label'.tr)),
 
           const SizedBox(height: 24),
 
           // ── Section: Bio ─────────────────────────────────────────────────
           _SectionHeader(label: 'bio_section'.tr, c: c),
           const SizedBox(height: 16),
-          MyTextField(controller: bioCtrl, label: 'bio_label'.tr, maxLine: 4),
+          _Labeled(label: 'bio_label'.tr, child: MyTextField(controller: bioCtrl, label: 'bio_label'.tr, maxLine: 4)),
 
           // ── Section: Teaching Details (teachers only, everything from
           //    registration except email + documents) ─────────────────────
@@ -805,14 +807,11 @@ class _FormCard extends StatelessWidget {
           const SizedBox(height: 32),
 
           // ── Save button ──────────────────────────────────────────────────
-          AnimatedOpacity(
-            opacity: isChanged ? 1.0 : 0.45,
-            duration: const Duration(milliseconds: 200),
-            child: PrimaryButton(
-              label: 'save_changes'.tr,
-              isLoading: isSaving,
-              onPressed: isChanged ? onSave : null,
-            ),
+          // PrimaryButton draws its own disabled look (no extra fade on top, L10)
+          PrimaryButton(
+            label: 'save_changes'.tr,
+            isLoading: isSaving,
+            onPressed: isChanged ? onSave : null,
           ),
 
           // ── "No changes" hint ────────────────────────────────────────────
@@ -1362,6 +1361,55 @@ class _StatusChip extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// A field with its name above it: [MyTextField] only shows its label as a hint, which disappears once the field
+/// holds a value (M17).
+class _Labeled extends StatelessWidget {
+  const _Labeled({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 4, bottom: 6),
+          child: SectionLabel(label: label),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+/// The form's shape while the account loads (M17): labels and boxes, no spinner.
+class _FormSkeleton extends StatelessWidget {
+  const _FormSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      decoration: BoxDecoration(color: c.cardBg, borderRadius: c.brLarge, boxShadow: c.cardShadow),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < 4; i++) ...[
+            AppSkeletonBox(width: 80.0 + (i * 23) % 50, height: 12),
+            const SizedBox(height: 8),
+            const AppSkeletonBox(width: double.infinity, height: 48, radius: 10),
+            const SizedBox(height: 18),
+          ],
+        ],
+      ),
     );
   }
 }

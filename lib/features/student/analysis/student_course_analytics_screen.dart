@@ -55,11 +55,15 @@ class StudentCourseAnalyticsScreen extends StatelessWidget {
     required this.courseTitle,
     this.initialTab = 0,
     this.initialBlock,
+    this.progress,
   });
+
+  /// The enrolment's live progress (the hub has it): the figure the home and the course list show.
+  final double? progress;
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-    create: (_) => StudentCourseAnalyticsProvider(courseId: courseId, initialBlock: initialBlock)..loadAll(),
+    create: (_) => StudentCourseAnalyticsProvider(courseId: courseId, initialBlock: initialBlock, enrolledProgress: progress)..loadAll(),
     child: _CourseAnalyticsView(courseId: courseId, courseTitle: courseTitle, initialTab: initialTab),
   );
 }

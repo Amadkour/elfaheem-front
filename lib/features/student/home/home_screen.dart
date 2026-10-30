@@ -145,14 +145,17 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Selector<MyAuthProvider, UserModel?>(
           selector: (_, p) => p.currentUser,
           builder: (context, user, _) => ListenableBuilder(
-            listenable: MeHomeService.instance,
+            listenable: Listenable.merge([MeHomeService.instance, AppModeController.instance]),
             builder: (context, _) => HomeHeader(
               name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
               // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card
-              subtitle: guest ? null : studentDaySummary(MeHomeService.instance.home, MeHomeService.instance.liveNow.length),
+              subtitle: guest ? null : studentDaySummary(MeHomeService.instance.home, MeHomeService.instance.liveNow.length, null,
+                  contextSwitchVisible(AppModeController.instance) ? AppModeController.instance.pendingTotal : 0),
               leading: user == null ? null : UserChipButton(user: user, showLabel: false),
               // the unread count is drawn once, in the "Needs you" grid — the bell stays plain here
-              actions: [if (!guest) const QuickMeetingIcon(), if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
+              actions: [if (!guest) const QuickMeetingIcon()],
+              // the top bar carries these on desktop / tablet: drawn here on phones only (M7)
+              shellActions: [if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
               contextSwitcher: guest ? null : const ContextSwitcher(),
             ),
           ),
@@ -231,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 /// The greeting's one line for a student / member: today's count, what is live (or the next start), the to-dos.
 /// Null while nothing is loaded.
-String? studentDaySummary(MeHome? home, int liveRooms, [DateTime? nowUtc]) {
+String? studentDaySummary(MeHome? home, int liveRooms, [DateTime? nowUtc, int orgWaiting = 0]) {
   if (home == null) return null;
   final now = nowUtc ?? DateTime.now().toUtc();
   final today = home.today.where((e) => !e.declined).toList();
@@ -241,6 +244,7 @@ String? studentDaySummary(MeHome? home, int liveRooms, [DateTime? nowUtc]) {
     sessions: today.length,
     live: liveRooms > running ? liveRooms : running,
     todo: home.attentionCount(AttentionTabs.home) + home.inboxTodo,
+    othersWaiting: home.notificationsUnread > 0 || orgWaiting > 0,
     nextAt: next == null ? null : AppTime.time(next.start),
   );
 }
@@ -365,6 +369,8 @@ class _Sections extends StatelessWidget {
         : enter(HomeSection(
             id: 'student.needs_you',
             title: 'home_needs_you'.tr,
+            // folded, the title still says how much waits (L8)
+            foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '${todo + inboxTodo + home.notificationsUnread + data.orgWaiting}'),
             child: HomeStatStrip(items: [
               HomeStat(icon: Icons.task_alt_rounded, label: 'home_todo'.tr, count: todo, tone: c.danger, onTap: body.onOpenTodo),
               HomeStat(
@@ -432,7 +438,7 @@ class _Sections extends StatelessWidget {
                 onAction: () => body.onTab('my_courses'),
               ),
             )
-          : StudentCourseSummary(courses: home.coursesProgress, onOpen: body.onOpenCourse, onShowAll: () => body.onTab('my_courses')),
+          : StudentCourseSummary(courses: home.coursesProgress, events: [...home.today, ...home.upcoming], onOpen: body.onOpenCourse, onShowAll: () => body.onTab('my_courses')),
     ));
 
     // ── inbox: the 3 most urgent rows (the count already sits in "Needs you")

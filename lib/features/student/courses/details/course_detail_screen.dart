@@ -250,7 +250,7 @@ class _CoursePageState extends State<_CoursePage> {
         if (c.type == 'live')
           CourseSpaceBadge(label: gt('بث مباشر', 'Live'), icon: Icons.sensors_rounded, color: col.danger)
         else
-          CourseSpaceBadge(label: gt('مسجّل', 'Recorded'), icon: Icons.play_circle_outline_rounded),
+          CourseSpaceBadge(label: gt('دروس مسجّلة', 'Recorded lessons'), icon: Icons.play_circle_outline_rounded),
         if (c.certificates.isNotEmpty)
           CourseSpaceBadge(label: gt('شهادة', 'Certificate'), icon: Icons.workspace_premium_rounded),
       ],
@@ -279,13 +279,8 @@ class _CoursePageState extends State<_CoursePage> {
     final total = c.materialsTotal;
     final done = c.materialsCompleted;
     final learned = total > 0 ? done / total : c.progress.clamp(0, 100) / 100;
-    SessionModel? next;
-    for (final s in p.sessions) {
-      if (!s.isCompleted && p.isSessionUnlockedById(s.id)) {
-        next = s;
-        break;
-      }
-    }
+    // the next thing that can be taken (an ended live session with nothing recorded is skipped, H8)
+    final next = p.nextPlayable;
     final spotlight = <Widget>[
       // Join goes INTO the room (it used to switch to the Live tab only: on a wide window — the card sits in the side
       // column — with that tab already open, the click did nothing); a tap on the card opens the Live tab.
@@ -307,7 +302,7 @@ class _CoursePageState extends State<_CoursePage> {
           total: total,
           nextLesson: next?.name,
           hasCertificates: p.myCertificates.isNotEmpty || c.certificates.isNotEmpty,
-          onContinue: () => p.setTab(CourseDetailTab.lessons),
+          onContinue: next == null ? null : () => p.focusSession(next.id),
           onCertificates: () => p.setTab(CourseDetailTab.about),
         ),
     ];
@@ -333,15 +328,7 @@ class _CoursePageState extends State<_CoursePage> {
             MaterialPageRoute(builder: (_) => StudentAnalyticsProfileScreen.forStudent(courseId: courseId)),
           ),
         ),
-      if (c.isEnrolled)
-        CourseSpaceAction(
-          icon: Icons.assignment_rounded,
-          label: 'exams'.tr,
-          caption: gt('اختبارات الكورس ونتائجك', 'Course exams and your results'),
-          color: col.warning,
-          featureKey: 'exams',
-          onTap: () => p.setTab(CourseDetailTab.exam),
-        ),
+      // (Exams is a tab of its own — no quick action repeating it, H7)
       CourseSpaceAction(
         icon: Icons.headset_mic_rounded,
         label: gt('الدعم', 'Support'),
@@ -365,7 +352,7 @@ class _CoursePageState extends State<_CoursePage> {
         ),
       CourseSpaceTab(
         id: 'lessons',
-        label: 'sessions'.tr,
+        label: gt('الجلسات', 'Sessions'),
         icon: Icons.play_lesson_rounded,
         count: c.sessionsCount > 0 ? c.sessionsCount : p.sessions.length,
         featureKey: 'course_tabs.lessons',
@@ -380,7 +367,7 @@ class _CoursePageState extends State<_CoursePage> {
       ),
       CourseSpaceTab(
         id: 'about',
-        label: 'course_details'.tr,
+        label: gt('عن الكورس', 'About'),
         icon: Icons.info_outline_rounded,
         featureKey: 'course_tabs.about',
         builder: (_) => const AboutTab(),

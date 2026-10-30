@@ -6,7 +6,7 @@
 //      recording migration).
 //      `availableQualities` computed getter returns all playable variants.
 
-import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:flutter_education_app/features/student/models.dart' show sessionInstantUtc;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 
@@ -245,7 +245,8 @@ class SessionMaterialModel {
       fileSize:    json['file_size']   as int?,
       key:         json['key']         as String?,
       order:       json['order']       as int? ?? 0,
-      createdAt:   (json['created_at'] as String).toLocalSaTime,
+      // the real instant (naive server UTC read as UTC), so AppTime and "x ago" are right
+      createdAt:   sessionInstantUtc(json['created_at']) ?? DateTime.now().toUtc(),
       completed:   json['completed']   as bool? ?? false,
       rateSummary: json.containsKey('rate') && json['rate'] != null
           ? RatingSummary.fromJson(json['rate'] as Map<String, dynamic>)

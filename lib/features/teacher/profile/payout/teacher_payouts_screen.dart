@@ -1,6 +1,7 @@
 // lib/features/teacher/payout/teacher_payouts_screen.dart — balance · payout accounts · withdrawals.
 library;
 
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -183,12 +184,7 @@ class _View extends StatelessWidget {
       textDirection: dir,
       child: BasePage(
         key: const ValueKey('teacher_payouts'),
-        appBar: AppBar(
-          title: Text(
-            'admin_earnings_payouts'.tr,
-            style: TextStyle(fontFamily: AppFonts.family),
-          ),
-        ),
+        appBar: ScreenAppBar(title: 'admin_earnings_payouts'.tr), // the app's back chip + title (L4)
         child: body,
       ),
     );

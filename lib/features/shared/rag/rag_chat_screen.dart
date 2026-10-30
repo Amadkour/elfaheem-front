@@ -14,6 +14,8 @@
 // [showSessions] lists them — a bottom sheet on phones, a side panel from [Breakpoints.desktop]; reopening loads
 // that conversation's messages oldest first, "Load earlier" pages back with `has_more`); on an older server
 // (a bare 404 / 405) it keeps the flat history as before. The client sends only `conversation_id`.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -149,6 +151,12 @@ class RagChatViewState extends State<RagChatView> {
   List<String>? _starters; // from the server (questions the library answers); null = the built-in list
   bool _loading = true;
   bool _sending = false;
+
+  /// Answers the worker never finished (M16): drawn as a calm error with Retry instead of a stage trail forever.
+  final Set<int> _stalled = {};
+
+  /// Unfinished answers reopened from the history that this view is following.
+  final Set<int> _following = {};
   String? _error;
 
   // chat sessions (Track E.5)
@@ -275,7 +283,53 @@ class RagChatViewState extends State<RagChatView> {
       }
     });
     if (_current == null) widget.onConversationChanged?.call(null);
+    _followUnfinished();
     _toEnd();
+  }
+
+  /// The history may hold questions still unfinished (asked just before the chat closed, or abandoned by a stopped
+  /// worker): an old one is shown as stalled at once, a recent one is followed for the patience it has left.
+  void _followUnfinished() {
+    final now = DateTime.now().toUtc();
+    final stale = <int>[];
+    for (final a in _items) {
+      if (a.done || _following.contains(a.id) || _stalled.contains(a.id)) continue;
+      if (ragAnswerStalled(a, now)) {
+        stale.add(a.id);
+        continue;
+      }
+      _following.add(a.id);
+      unawaited(_follow(a.id, ragWaitLeft(a, now)));
+    }
+    if (stale.isNotEmpty) setState(() => _stalled.addAll(stale));
+  }
+
+  Future<void> _follow(int id, Duration timeout) async {
+    final r = await _api.waitFor(id, timeout: timeout, onUpdate: (a) {
+      if (!mounted) return;
+      final i = _items.indexWhere((x) => x.id == a.id);
+      if (i < 0 || !ragAnswerChanged(_items[i], a)) return;
+      setState(() => _items[i] = a);
+    });
+    _following.remove(id);
+    if (!mounted) return;
+    final i = _items.indexWhere((x) => x.id == id);
+    if (i < 0) return;
+    setState(() {
+      final a = r.ok ? RagAnswer.fromJson(r.map) : null;
+      if (a != null) _items[i] = a;
+      if (a == null || !a.done) _stalled.add(id);
+    });
+  }
+
+  /// Retry on a stalled answer: the same question again, as a new one.
+  void _retry(RagAnswer a) {
+    if (_sending) return;
+    setState(() {
+      _items.removeWhere((x) => x.id == a.id);
+      _stalled.remove(a.id);
+    });
+    send(a.question);
   }
 
   Future<void> _loadEarlier() async {
@@ -409,6 +463,7 @@ class RagChatViewState extends State<RagChatView> {
       if (r.unavailable) _error = t('المساعد غير متاح بعد على هذا الخادم', 'The assistant is not available on this server yet');
       if (!r.ok && ragOrgBlocked(r.code)) _error = ragChatResultText(r); // suspended / deactivated / switched off
     });
+    _followUnfinished();
     _toEnd();
   }
 
@@ -474,10 +529,8 @@ class RagChatViewState extends State<RagChatView> {
       _sending = false;
       final i = _items.indexWhere((a) => a.id == pending.id);
       if (done.ok && i >= 0) _items[i] = RagAnswer.fromJson(done.map);
-      if (!done.ok) _error = ragChatResultText(done);
-      if (done.ok && !RagAnswer.fromJson(done.map).done) {
-        _error = t('ما زال المساعد يعمل على إجابتك — حدّث بعد قليل', 'The assistant is still working on your answer — refresh in a moment');
-      }
+      // no answer in time (or the polling failed): the card turns into a calm error with Retry (M16)
+      if (!done.ok || !RagAnswer.fromJson(done.map).done) _stalled.add(pending.id);
     });
     _toEnd();
   }
@@ -590,6 +643,8 @@ class RagChatViewState extends State<RagChatView> {
                 answer: a,
                 onRate: a.smallTalk ? null : (helpful) => _rate(a, helpful),
                 onFollowUp: identical(a, last) && !_sending ? send : null,
+                stalled: _stalled.contains(a.id) && !a.done,
+                onRetry: _sending ? null : () => _retry(a),
                 onNavigate: widget.onNavigate,
                 onCitationOpen: (ci) => _learn.signal(a.id, 'chat_citation_open', {'n': ci.n, if (ci.documentId > 0) 'document_id': ci.documentId, 'kind': ci.kind}),
                 onDeepLink: (ci) => _learn.signal(a.id, 'chat_deeplink', {'link': ci.deepLink ?? ''}),
@@ -788,11 +843,57 @@ class _StageDot extends StatelessWidget {
   }
 }
 
+/// An answer that never came (the assistant's worker is busy or stopped, M16): a calm note and Retry.
+class RagStalledNote extends StatelessWidget {
+  const RagStalledNote({super.key, this.onRetry});
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.hourglass_disabled_rounded, size: 18, color: c.textMedium),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'rag_answer_stalled'.tr,
+            style: appText(13.5, c: c.textMedium, h: 1.45),
+          ),
+        ),
+      ]),
+      if (onRetry != null)
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: TextButton.icon(
+            key: const ValueKey('rag.retry'),
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: Text('rag_retry'.tr),
+          ),
+        ),
+    ]);
+  }
+}
+
 /// A question and its answer: the answer's blocks with their `[n]` markers, the follow-ups, then the sources it quotes.
 class RagAnswerCard extends StatelessWidget {
   const RagAnswerCard(
-      {super.key, required this.answer, this.onRate, this.onFollowUp, this.onNavigate, this.onCitationOpen, this.onDeepLink, this.onSupport});
+      {super.key,
+      required this.answer,
+      this.onRate,
+      this.onFollowUp,
+      this.onNavigate,
+      this.onCitationOpen,
+      this.onDeepLink,
+      this.onSupport,
+      this.stalled = false,
+      this.onRetry});
   final RagAnswer answer;
+
+  /// The worker never finished this answer (M16): a calm note with Retry instead of the stage trail.
+  final bool stalled;
+  final VoidCallback? onRetry;
 
   /// helpful? (null = no rating offered)
   final void Function(bool helpful)? onRate;
@@ -829,7 +930,9 @@ class RagAnswerCard extends StatelessWidget {
         const SizedBox(height: 6),
         AppCard(
           padding: const EdgeInsets.all(12),
-          child: !answer.done
+          child: !answer.done && stalled
+              ? RagStalledNote(onRetry: onRetry)
+              : !answer.done
               ? (answer.provisional
                   ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       RagStageTrail(stage: answer.stage),

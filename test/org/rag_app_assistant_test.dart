@@ -87,7 +87,19 @@ void main() {
       expect(AppAssistantSpot.decode('x:1'), isNull);
       expect(AppAssistantSpot.decode('l:abc'), isNull);
       expect(AppAssistantSpot.decode(null), isNull);
-      expect(AppAssistantSpot.fallback(rtl: true).left, isFalse, reason: 'the start side in Arabic is the right');
+      expect(AppAssistantSpot.fallback(rtl: true).left, isTrue, reason: 'the end side in Arabic is the left');
+      expect(AppAssistantSpot.fallback(rtl: false).left, isFalse, reason: 'labels start on the left in English');
+    });
+
+    test('at rest it docks flush against the edge and slides out while scrolling (H9)', () {
+      const pad = EdgeInsets.only(left: 10, right: 20);
+      expect(appAssistantDockX(screen, pad, left: true), 10);
+      expect(appAssistantDockX(screen, pad, left: false), 400 - 20 - appAssistantTabWidth);
+      // tucked: only the peek stays on screen
+      expect(appAssistantDockX(screen, pad, left: true, tucked: true) + appAssistantTabWidth, 10 + appAssistantTuckedPeek);
+      expect(appAssistantDockX(screen, pad, left: false, tucked: true), 400 - 20 - appAssistantTuckedPeek);
+      // it covers at most ~28 dp of a page that keeps a 16 dp gutter
+      expect(appAssistantTabWidth - 16, lessThanOrEqualTo(28));
     });
   });
 
@@ -125,6 +137,9 @@ void main() {
   group('layout', () {
     testWidgets('the bubble, its menu and the hide target', (tester) async {
       await expectNoLayoutErrors(tester, () => Center(child: AppAssistantBubble(onTap: () {})));
+      for (final left in [true, false]) {
+        await expectNoLayoutErrors(tester, () => Center(child: AppAssistantEdgeTab(onLeftSide: left, onTap: () {})));
+      }
       await expectNoLayoutErrors(
           tester, () => Center(child: SizedBox(width: 208, child: AppAssistantBubbleMenu(onOpen: () {}, onHide: () {}))));
       for (final active in [false, true]) {

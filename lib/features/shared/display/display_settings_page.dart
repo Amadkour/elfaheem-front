@@ -13,6 +13,7 @@
 // can pump it without the singleton.
 library;
 
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
@@ -48,7 +49,7 @@ class DisplaySettingsPage extends StatelessWidget {
     final s = DisplaySettings.instance;
     return BasePage(
       key: const ValueKey('profile.display'),
-      appBar: AppBar(title: Text(t('العرض والقراءة', 'Display & reading'))),
+      appBar: ScreenAppBar(title: t('العرض والقراءة', 'Display & reading')), // the app's back chip + title (L4)
       child: ListenableBuilder(
         listenable: s,
         builder: (context, _) => DisplaySettingsView(prefs: s.prefs, onChanged: s.update),

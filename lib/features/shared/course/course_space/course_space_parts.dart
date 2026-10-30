@@ -1012,7 +1012,8 @@ List<CourseSpaceAction> _visibleActions(List<CourseSpaceAction> all) => [
     if (a.featureKey == null || !AppConfig.disableList.contains(a.featureKey)) a,
 ];
 
-/// Phones: the course's quick actions as a horizontally scrolling row of tiles.
+/// Phones: the course's quick actions as ONE row of tiles that share the width; when they do not all fit, the
+/// last tile is "More", which lists the rest in a sheet (a row cut at the edge read as broken, M14).
 class CourseActionStrip extends StatelessWidget {
   const CourseActionStrip({super.key, required this.actions});
 
@@ -1022,6 +1023,7 @@ class CourseActionStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final shown = _visibleActions(actions);
     if (shown.isEmpty) return const SizedBox.shrink();
+    final c = context.colors;
     return LayoutBuilder(
       builder: (context, box) {
         const pad = kCourseGutter - 4;
@@ -1035,15 +1037,60 @@ class CourseActionStrip extends StatelessWidget {
             ),
           );
         }
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+        final fit = ((box.maxWidth - pad * 2) / _ActionTile.width).floor().clamp(2, shown.length);
+        final head = shown.take(fit - 1).toList();
+        final rest = shown.skip(fit - 1).toList();
+        final more = CourseSpaceAction(
+          icon: Icons.more_horiz_rounded,
+          label: _t('المزيد', 'More'),
+          color: c.textMedium,
+          onTap: () => _openMore(context, rest),
+        );
+        return Padding(
           padding: const EdgeInsets.symmetric(horizontal: pad),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [for (final a in shown) _ActionTile(action: a)],
+            children: [
+              for (final a in head) Expanded(child: _ActionTile(action: a, fill: true)),
+              Expanded(child: _ActionTile(action: more, fill: true)),
+            ],
           ),
         );
       },
+    );
+  }
+
+  static void _openMore(BuildContext context, List<CourseSpaceAction> rest) {
+    final c = context.colors;
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: c.cardBg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (sheet) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+                child: Text(_t('اختصارات الكورس', 'Course shortcuts'), style: _ts(14, FontWeight.w600, c.textDark)),
+              ),
+              for (final a in rest)
+                _ActionRow(
+                  action: a,
+                  onTap: () {
+                    Navigator.of(sheet).pop();
+                    a.onTap();
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1168,12 +1215,29 @@ class CourseActionList extends StatelessWidget {
               style: _ts(12.5, FontWeight.w600, c.textMedium),
             ),
           ),
-          for (final a in shown)
-            Material(
+          for (final a in shown) _ActionRow(action: a, onTap: a.onTap),
+        ],
+      ),
+    );
+  }
+}
+
+/// One action as a list row (the desktop side column and the phone's "More" sheet).
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({required this.action, this.onTap});
+
+  final CourseSpaceAction action;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final a = action;
+    return Material(
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: a.onTap,
+                onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   child: Row(
@@ -1205,10 +1269,7 @@ class CourseActionList extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-        ],
-      ),
-    );
+            );
   }
 }
 

@@ -382,6 +382,38 @@ class CourseDetailProvider extends BaseProvider {
     return isSessionUnlocked(idx);
   }
 
+  /// "Continue learning": the session whose row should open and scroll into view (+ a counter, so a second tap
+  /// on the same session opens it again). The row clears nothing — it compares [focusTick] with the last it saw.
+  int? focusSessionId;
+  int focusTick = 0;
+
+  /// The next thing the student can actually take: the first unlocked, unfinished session that has something to
+  /// play — not a live session whose time is over with nothing recorded in it (that row has nothing to open).
+  SessionModel? get nextPlayable {
+    final now = DateTime.now().toUtc();
+    for (final s in sessions) {
+      if (s.isCompleted || !isSessionUnlockedById(s.id)) continue;
+      if (s.isLiveActive) return s;
+      final hasContent = s.totalMaterial > 0 || s.hasRecording;
+      if (s.isLive && !hasContent) {
+        final at = s.scheduledAt;
+        final over = at == null || at.add(Duration(minutes: s.durationMinutes > 0 ? s.durationMinutes : 60)).isBefore(now);
+        if (over) continue;
+      }
+      if (!s.isLive && !hasContent) continue;
+      return s;
+    }
+    return null;
+  }
+
+  /// Opens the Lessons tab on [sessionId]'s row (expanded, scrolled into view).
+  void focusSession(int sessionId) {
+    focusSessionId = sessionId;
+    focusTick++;
+    _activeTab = CourseDetailTab.lessons;
+    notifyListeners();
+  }
+
   void setTab(CourseDetailTab tab) {
     if (_activeTab == tab) return;
     final leavingExams =
@@ -476,7 +508,7 @@ class CourseDetailProvider extends BaseProvider {
     try {
       final cr = await _api.get('/api/v1/courses/${course.id}', auth: true);
       if (cr is Map<String, dynamic>) {
-        course.progress = ((cr['progress'] as num?)?.toDouble() ?? 0.0).toInt();
+        course.progress = ((cr['progress'] as num?)?.toDouble() ?? 0.0).round();
         course.materialsTotal =
             cr['materials_total'] as int? ?? course.materialsTotal;
         course.materialsCompleted =

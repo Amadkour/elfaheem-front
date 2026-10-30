@@ -17,6 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../core/api_client.dart';
+import '../../../../../core/app_time.dart';
 import '../../../../../core/live/event_wait.dart';
 import '../../../../../design/app_kit.dart' show showAppSheet, AppSheetHeader, AppBanner, appText, AppListSkeleton;
 import '../../../../../utils/helpers.dart';
@@ -235,11 +236,10 @@ class SessionMaterialGrid extends StatelessWidget {
     final isCompleted = m.completed;
 
     // ── Derived display values ─────────────────────────────────────────────
-    // For recording / recorded, surface the creation date as part of the title.
-    final String displayName = isRecording
-        ? 'recording_in_progress'
-              .tr // hardcoded "Recording in progress…"
-        : (isRecorded ? '${m.name}  •  ${_formatDate(m.createdAt)}' : m.name);
+    // (the recorded item's date sits on the right through AppTime, not glued to the title)
+    final String displayName = isRecording ? 'recording_in_progress'.tr : m.name;
+    // Ratings only once there are some — or for a student who finished it and may rate it ("0.0 (0)" on every file read as noise).
+    final showRating = !isRecording && ((m.rateSummary?.total ?? 0) > 0 || (!isTeacher && isCompleted));
 
     return Directionality(
       textDirection: Helpers.textDirOf(displayName),
@@ -252,37 +252,19 @@ class SessionMaterialGrid extends StatelessWidget {
           decoration: BoxDecoration(
             color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(12),
+            // calm hairline; "done" is the check badge, not a heavy green frame
             border: Border.all(
               color: isCompleted
-                  ? context.colors.success.withValues(alpha: 0.35)
-                  : color.withValues(alpha: 0.18),
-              width: isCompleted ? 1.5 : 1.0,
+                  ? context.colors.success.withValues(alpha: 0.22)
+                  : context.colors.divider,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: isCompleted
-                    ? context.colors.success.withValues(alpha: 0.10)
-                    : color.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Column(
               children: [
-                // ── Top accent strip ─────────────────────────────────────────
-                if (isCompleted)
-                  Container(
-                    height: 3,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [context.colors.success, context.colors.success],
-                      ),
-                    ),
-                  )
-                else if (isRecording)
+                // ── Top accent strip (recording only) ───────────────────────
+                if (isRecording)
                   // Pulsing red strip for active recording
                   Container(
                     height: 3,
@@ -306,7 +288,7 @@ class SessionMaterialGrid extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.rectangle,
                           borderRadius: BorderRadius.circular(10),
-                          border: BoxBorder.all(color: context.colors.primary),
+                          border: BoxBorder.all(color: context.colors.primary.withValues(alpha: 0.25)),
                         ),
                         child: Column(
                           children: [
@@ -359,7 +341,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                           ? color
                                           : null,
                                     ),
-                                    maxLines: 1,
+                                    maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -407,7 +389,8 @@ class SessionMaterialGrid extends StatelessWidget {
                                 if (m.sizeLabel.isNotEmpty && !isRecording) ...[
                                   const SizedBox(width: 6),
                                   Text(
-                                    m.sizeLabel, // KB under 1 MB, else MB
+                                    m.sizeLabel, // KB under 1 MB, else MB — always "15.2 MB", also in RTL
+                                    textDirection: TextDirection.ltr,
                                     style: context.colors.caption.copyWith(
                                       fontSize: 10,
                                     ),
@@ -424,6 +407,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                   const SizedBox(width: 2),
                                   Text(
                                     m.durationLabel, // h:mm:ss
+                                    textDirection: TextDirection.ltr,
                                     style: context.colors.caption.copyWith(
                                       fontSize: 10,
                                     ),
@@ -431,7 +415,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                 ],
                               ],
                             ),
-                            if (!isRecording)
+                            if (showRating)
                               RatingWidget(
                                 type: RateType.material,
                                 sourceId: m.id.toString(),
@@ -536,24 +520,8 @@ class SessionMaterialGrid extends StatelessWidget {
 
   // ── Date helper ────────────────────────────────────────────────────────────
 
-  /// Returns a short formatted date string, e.g. "14 Jan 2025".
-  String _formatDate(DateTime dt) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
-  }
+  /// A short date in the platform / organization timezone and the app's language, e.g. "14 Jan 2025".
+  String _formatDate(DateTime dt) => AppTime.date(dt.toUtc(), pattern: 'd MMM y');
 
   // ── Tap handler ────────────────────────────────────────────────────────────
 

@@ -17,7 +17,7 @@ class InstructorsRow extends StatelessWidget {
     if (instructors.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-      height: 136,
+      height: 150 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.4),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
@@ -26,7 +26,7 @@ class InstructorsRow extends StatelessWidget {
         itemBuilder: (_, i) {
           final ins = instructors[i];
           return SizedBox(
-            width: 84,
+            width: 92,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -41,11 +41,12 @@ class InstructorsRow extends StatelessWidget {
                 Text(
                   ins.teacher?.name ?? 'T',
                   style: context.colors.h3.copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
                   ),
                   textAlign: TextAlign.center,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),

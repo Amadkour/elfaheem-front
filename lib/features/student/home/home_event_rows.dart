@@ -221,22 +221,50 @@ class _UpcomingLine extends StatelessWidget {
 }
 
 /// The order the home shows courses in: the soonest scheduled next lecture first, then the furthest along that
-/// is not finished, finished courses last.
-List<MeCourseProgress> homeCourseFocus(List<MeCourseProgress> all) {
-  int rank(MeCourseProgress x) => x.progress >= 100 ? 2 : (x.nextLecture?.scheduledAt != null ? 0 : 1);
+/// is not finished, finished courses last. [events] (the home's today / upcoming rows) count as a course's next
+/// class too: a course with 3 live sessions today is not "no lecture scheduled".
+List<MeCourseProgress> homeCourseFocus(List<MeCourseProgress> all, {List<CalEvent> events = const [], DateTime? nowUtc}) {
+  final next = homeCourseNextEvents(events, nowUtc);
+  DateTime? at(MeCourseProgress x) {
+    final a = x.nextLecture?.scheduledAt, b = next[x.courseId]?.start;
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isBefore(b) ? a : b;
+  }
+
+  int rank(MeCourseProgress x) => x.progress >= 100 ? 2 : (at(x) != null ? 0 : 1);
   return [...all]..sort((a, b) {
       final r = rank(a).compareTo(rank(b));
       if (r != 0) return r;
-      if (rank(a) == 0) return a.nextLecture!.scheduledAt!.compareTo(b.nextLecture!.scheduledAt!);
+      if (rank(a) == 0) return at(a)!.compareTo(at(b)!);
       return b.progress.compareTo(a.progress);
     });
 }
 
-/// "Next: lecture · when", or "no lecture scheduled yet".
-String homeNextLectureLine(MeCourseProgress x) {
+/// Each course's first event that has not ended (declined / cancelled ones left out). Pure.
+Map<int, CalEvent> homeCourseNextEvents(List<CalEvent> events, [DateTime? nowUtc]) {
+  final now = nowUtc ?? DateTime.now().toUtc();
+  final out = <int, CalEvent>{};
+  for (final e in [...events]..sort((a, b) => a.start.compareTo(b.start))) {
+    final id = e.courseId;
+    if (id == null || e.declined || e.cancelled || !e.end.isAfter(now)) continue;
+    out.putIfAbsent(id, () => e);
+  }
+  return out;
+}
+
+/// "Next: lecture · when", or "no lecture scheduled yet". [event] is the course's next calendar event (a live
+/// session of today, …): it wins when it comes before the next recorded lecture (M6).
+String homeNextLectureLine(MeCourseProgress x, {CalEvent? event, DateTime? nowUtc}) {
   final n = x.nextLecture;
+  final lectureAt = n?.scheduledAt;
+  if (event != null && (n == null || lectureAt == null || event.start.isBefore(lectureAt))) {
+    final now = nowUtc ?? DateTime.now().toUtc();
+    if (!event.start.isAfter(now)) return 'home_course_live_now'.tr.replaceAll('{n}', event.title);
+    return 'home_next_lecture'.tr.replaceAll('{n}', event.title) + ' · ${AppTime.dateTime(event.start)}';
+  }
   if (n == null) return 'home_no_next_lecture'.tr;
-  final when = n.scheduledAt == null ? '' : ' · ${AppTime.dateTime(n.scheduledAt!)}';
+  final when = lectureAt == null ? '' : ' · ${AppTime.dateTime(lectureAt)}';
   return 'home_next_lecture'.tr.replaceAll('{n}', n.name) + when;
 }
 
@@ -244,21 +272,25 @@ String homeNextLectureLine(MeCourseProgress x) {
 /// lecture and progress — the count sits in the section title, the totals on the courses tab; tap → the course,
 /// the foot → the courses tab.
 class StudentCourseSummary extends StatelessWidget {
-  const StudentCourseSummary({super.key, required this.courses, this.onOpen, this.onShowAll});
+  const StudentCourseSummary({super.key, required this.courses, this.events = const [], this.onOpen, this.onShowAll});
   final List<MeCourseProgress> courses;
+
+  /// The home's today + upcoming rows: a course's next class when it has no recorded lecture coming.
+  final List<CalEvent> events;
   final ValueChanged<int>? onOpen;
   final VoidCallback? onShowAll;
 
   @override
   Widget build(BuildContext context) {
-    final top = homeCourseFocus(courses).take(3).toList();
+    final top = homeCourseFocus(courses, events: events).take(3).toList();
+    final next = homeCourseNextEvents(events);
     return HomeCourseSummary(
       figures: const [],
       lines: [
         for (final x in top)
           HomeCourseLine(
             title: x.name(AppConfig.lang),
-            subtitle: homeNextLectureLine(x),
+            subtitle: homeNextLectureLine(x, event: next[x.courseId]),
             imageUrl: x.imageUrl,
             progress: x.progress,
             trailing: '${x.progress.round()}%',

@@ -93,13 +93,21 @@ void main() {
     });
 
     test('ahead everywhere, and the one-course wording', () {
-      expect(studentHeadline([course(1, p: 80, cp: 70), course(2, e: 70, ce: 70)]).kind, AnHeadlineKind.aheadAll);
+      expect(studentHeadline([course(1, p: 80, cp: 70), course(2, e: 75, ce: 70)]).kind, AnHeadlineKind.aheadAll);
       expect(anHeadlineText(studentHeadline([course(1, p: 80, cp: 70)])), "You're ahead of the class average.");
     });
 
     test('behind everywhere → start with the course closest to the class', () {
       final h = studentHeadline([course(1, p: 20, cp: 70), course(2, p: 55, cp: 60)]);
       expect((h.kind, h.course), (AnHeadlineKind.catchUp, 'C2'));
+    });
+
+    test('level with the class is not "ahead" (M5)', () {
+      final level = studentHeadline([course(1, p: 80, cp: 80), course(2, e: 70.2, ce: 69.9)]);
+      expect(level.kind, AnHeadlineKind.great);
+      final h = studentHeadline([course(1, p: 80, cp: 70), course(2, e: 70, ce: 70)]);
+      expect((h.kind, h.n, h.m), (AnHeadlineKind.ahead, 1, 2));
+      expect(studentHeadline([course(1, p: 60, cp: 60), course(2, p: 50, cp: 55)]).kind, AnHeadlineKind.catchUp);
     });
 
     test('without class figures: attention, great or steady', () {

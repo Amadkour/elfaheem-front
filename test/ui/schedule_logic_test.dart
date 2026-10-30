@@ -144,8 +144,9 @@ void main() {
       expect(calFocusMinute(events, days, now), 14 * 60 + 30);
       // a class in progress counts as next
       expect(calFocusMinute([...events, ev('running', w(30, 10, 30), w(30, 12))], days, now), 10 * 60 + 30);
-      // nothing left: now, on today's week
+      // nothing left: now, on today's week — never before 7:00 (an empty early morning opened on 2 AM, L14)
       expect(calFocusMinute(events.take(2), days, now), 11 * 60 + 15);
+      expect(calFocusMinute(events.take(1), days, w(30, 4, 50)), 7 * 60);
       // a past week: its earliest appointment; an empty one: 8:00
       final past = calWeekDays(DateTime(2026, 10, 22));
       expect(calFocusMinute([ev('old', w(23, 10), w(23, 11)), ev('older', w(24, 9), w(24, 10))], past, now), 9 * 60);

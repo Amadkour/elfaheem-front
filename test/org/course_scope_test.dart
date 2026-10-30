@@ -281,5 +281,29 @@ void main() {
       expect(fake.calls.last.query, containsPair('org_id', '7'));
       expect(p.allCourses.single.id, '2');
     });
+
+    test('student: a superseded page answering early never lets the pager ask for page 1 twice (H4)', () async {
+      final fake = FakeApi({
+        'GET /api/v1/my-enrolled-courses': (o) => {
+              'items': [if ('${o.queryParameters['skip']}' == '0') studentCourse(1)],
+              'total': 1,
+              'scope': o.queryParameters['scope'] ?? 'all',
+            },
+      }, latency: const Duration(milliseconds: 20));
+      fake.install();
+      addTearDown(fake.uninstall);
+      final p = MyCoursesProvider(mode: mode);
+      addTearDown(p.dispose);
+
+      final first = p.fetchMyEnrollments();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      final second = p.fetchMyEnrollments(); // e.g. the home list changed again: page 1 of a new generation
+      await first; // the dropped answer sets the state back to "success" while the second page still loads
+      await p.loadMore(); // the wide layout's fill-the-viewport pager
+      await second;
+      await pumpEventQueue();
+      expect(p.allCourses.map((c) => c.id), ['1'], reason: 'the only course, once');
+      expect(p.allCount, 1);
+    });
   });
 }

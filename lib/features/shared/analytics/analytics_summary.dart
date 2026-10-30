@@ -197,12 +197,17 @@ AnHeadline studentHeadline(List<AnCourseFacts> courses) {
   if (withNumbers.isEmpty) return const AnHeadline(AnHeadlineKind.empty);
   final compared = [for (final c in courses) if (c.versusClass != null) (c, c.versusClass!)];
   if (compared.isNotEmpty) {
-    final ahead = compared.where((x) => x.$2.$1 >= x.$2.$2).length;
+    // compared as shown (whole points): level with the class ("±0") is neither ahead nor behind (M5)
+    final ahead = compared.where((x) => x.$2.$1.round() > x.$2.$2.round()).length;
+    final behind = compared.where((x) => x.$2.$1.round() < x.$2.$2.round()).toList();
     if (ahead == compared.length) return AnHeadline(AnHeadlineKind.aheadAll, n: ahead, m: compared.length);
     if (ahead > 0) return AnHeadline(AnHeadlineKind.ahead, n: ahead, m: compared.length);
-    compared.sort((a, b) => (a.$2.$2 - a.$2.$1).compareTo(b.$2.$2 - b.$2.$1));
-    // behind everywhere: point at the course that is closest to the class (the quickest win)
-    return AnHeadline(AnHeadlineKind.catchUp, course: compared.first.$1.title);
+    if (behind.isNotEmpty) {
+      behind.sort((a, b) => (a.$2.$2 - a.$2.$1).compareTo(b.$2.$2 - b.$2.$1));
+      // behind: point at the course that is closest to the class (the quickest win)
+      return AnHeadline(AnHeadlineKind.catchUp, course: behind.first.$1.title);
+    }
+    // level with the class everywhere: say what the numbers themselves say
   }
   final attention = courses.where(anCourseNeedsAttention).length;
   if (attention > 0) return AnHeadline(AnHeadlineKind.attention, n: attention, m: courses.length);

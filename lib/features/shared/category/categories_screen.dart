@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:provider/provider.dart';
 
@@ -505,14 +506,25 @@ class CategoryAvatar extends StatelessWidget {
     required this.index,
   });
 
-  final List<Color> colors = [
-    AppTheme.accent,
-    AppTheme.accent2,
-    AppTheme.primary,
-  ];
+  /// The letters drawn without a picture, from the name in the app's language (L7): Arabic → its first letter
+  /// (two Arabic letters join into a word), Latin → the first letters of the first and last word.
+  static String initialsOf(String name) {
+    final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.isEmpty) return '?';
+    final first = words.first.characters.first;
+    if (RegExp(r'[\u0600-\u06FF]').hasMatch(first)) return first;
+    final last = words.length > 1 ? words.last.characters.first : '';
+    return (first + last).toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final colors = [c.accent, c.accent2, c.primary];
+    final ar = AppConfig.lang == 'ar';
+    final name = ar
+        ? (categoryModel.nameAr.isNotEmpty ? categoryModel.nameAr : categoryModel.nameEn)
+        : (categoryModel.nameEn.isNotEmpty ? categoryModel.nameEn : categoryModel.nameAr);
     double size = min(context.width / 6, 100);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -553,14 +565,12 @@ class CategoryAvatar extends StatelessWidget {
                         : colors[index % 3].withValues(alpha: 0.5),
                     child: Center(
                       child: Text(
-                        categoryModel.nameEn.isNotEmpty
-                            ? categoryModel.nameEn.split(' ').first[0] +
-                                  categoryModel.nameEn.split(' ').last[0]
-                            : '?',
+                        initialsOf(name),
                         style: TextStyle(
-                          color: AppTheme.primary,
-                          fontSize: size / 5,
-                          fontWeight: FontWeight.w800,
+                          fontFamily: AppFonts.family,
+                          color: c.primary,
+                          fontSize: size / 4.5,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -571,17 +581,15 @@ class CategoryAvatar extends StatelessWidget {
         SizedBox(
           width: size,
           child: Text(
-            AppConfig.lang == 'ar'
-                ? categoryModel.nameAr
-                : categoryModel.nameAr,
+            name,
             style: context.colors.navLabelSelected.copyWith(
               color: isSelected ? context.colors.warning : null,
-              height: 1,
-              fontSize: size / 7,
+              height: 1.15,
+              fontSize: max(11, size / 7),
             ),
             textAlign: TextAlign.center,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            textDirection: TextDirection.rtl,
           ),
         ),
       ],

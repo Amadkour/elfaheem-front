@@ -5,7 +5,8 @@
 //
 // Pure parts (unit-tested): [RagCitation], [RagAnswer], [answerRuns] (the answer text split at its `[n]` markers),
 // [answerBlocks] (paragraphs, bullet and numbered lists, **bold** runs), [ragStageText], [ragStarterPrompts],
-// [ragCodeText], [ragChatResultText], [ragOrgBlocked], [ragAnswerChanged], [ragNextPoll], [RagDelivery].
+// [ragCodeText], [ragChatResultText], [ragOrgBlocked], [ragAnswerChanged], [ragNextPoll], [RagDelivery],
+// [ragAnswerStalled] / [ragWaitLeft] (an answer the worker never finished: a calm error with Retry, M16).
 //
 // Delivery telemetry: when an answer finishes after the first response, [RagApi.waitFor] tells the server once,
 // fire-and-forget, how it got it — `stream` (the fetch that found it done was woken by the live job_updated event),
@@ -91,7 +92,7 @@ class RagCitation {
 class RagAnswer {
   RagAnswer(this.id, this.state, this.question, this.found, this.answer, this.citations, this.error,
       [this.helpful, this.followUps = const [], this.stage, this.generator = '', this.app = false, this.orgId, this.conversationId,
-      this.partial]);
+      this.partial, this.createdAt]);
   final int id;
   final String state;
   final String question;
@@ -121,6 +122,9 @@ class RagAnswer {
   /// after a retraction, once done, and on an older server.
   final String? partial;
 
+  /// When the question was asked (`created_at`, UTC); null on a row without it.
+  final DateTime? createdAt;
+
   bool get done => state == 'done' || state == 'failed';
 
   /// A draft to show under the stage trail: still running and the server sent text. Never once done (the final
@@ -148,7 +152,8 @@ class RagAnswer {
       j['app'] == true,
       j['org_id'] == null ? null : asInt(j['org_id']),
       j['conversation_id'] == null ? null : asInt(j['conversation_id']),
-      j['answer_partial'] is String ? j['answer_partial'] as String : null);
+      j['answer_partial'] is String ? j['answer_partial'] as String : null,
+      DateTime.tryParse(asStr(j['created_at']))?.toUtc());
 
   RagCitation? citation(int n) {
     for (final c in citations) {
@@ -264,6 +269,24 @@ const ragStages = ['plan', 'retrieve', 'write', 'verify'];
 /// Whether [next] (a poll or a live event) changes what the pending card shows compared with [prev].
 bool ragAnswerChanged(RagAnswer prev, RagAnswer next) =>
     prev.state != next.state || prev.stage != next.stage || (prev.provisional ? prev.partial : null) != (next.provisional ? next.partial : null);
+
+/// How long an answer may stay unfinished before the chat stops waiting and offers Retry (the 1.7B local model
+/// takes about a minute; a stopped worker never finishes, M16).
+const Duration ragAnswerPatience = Duration(minutes: 3);
+
+/// True when [a] is still unfinished [ragAnswerPatience] after it was asked: the worker is not coming back to it.
+/// A row without `created_at` is never judged by age (the wait's own timeout decides).
+bool ragAnswerStalled(RagAnswer a, DateTime nowUtc, {Duration patience = ragAnswerPatience}) =>
+    !a.done && a.createdAt != null && nowUtc.difference(a.createdAt!) >= patience;
+
+/// How much longer to wait for an unfinished [a] reopened from the history: the patience left since it was asked
+/// (at least 15 s, so a question asked a moment ago on another device still gets its answer).
+Duration ragWaitLeft(RagAnswer a, DateTime nowUtc, {Duration patience = ragAnswerPatience}) {
+  final at = a.createdAt;
+  if (at == null) return patience;
+  final left = patience - nowUtc.difference(at);
+  return left < const Duration(seconds: 15) ? const Duration(seconds: 15) : left;
+}
 
 /// The next poll interval of [RagApi.waitFor]: 1 s growing by 0.5 s up to 4 s, but every 1.5 s at most while a draft
 /// grows ([writing]: the asker is reading it).
@@ -540,7 +563,7 @@ class RagApi {
   /// shown at once, the draft fetched) comes early; the last state otherwise (the screen keeps it as "still working"
   /// and asks again on refresh). [onUpdate] gets every poll (the stage and the draft change on the way). An answer
   /// that finishes after the first fetch is reported once ([RagDelivery], [reportDelivery]), without waiting for it.
-  Future<EngineResult> waitFor(int id, {Duration timeout = const Duration(minutes: 3), void Function(RagAnswer)? onUpdate}) async {
+  Future<EngineResult> waitFor(int id, {Duration timeout = ragAnswerPatience, void Function(RagAnswer)? onUpdate}) async {
     final end = DateTime.now().add(timeout);
     final clock = Stopwatch()..start();
     final delivery = RagDelivery();

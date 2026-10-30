@@ -77,7 +77,7 @@ class CpStaffActions extends StatelessWidget {
         TeacherAttendanceCourseEntry(
           padding: EdgeInsets.zero,
           target: target == null ? null : LauncherSession(id: target.id, number: 0, name: target.name),
-          sessions: [for (var i = 0; i < sessions.length; i++) LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name)],
+          sessions: [for (var i = 0; i < sessions.length; i++) LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name, date: sessions[i].scheduledAt)],
         ),
         Align(
           alignment: AlignmentDirectional.centerEnd,

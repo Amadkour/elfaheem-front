@@ -387,7 +387,7 @@ class TeacherSessionsHeader extends StatelessWidget {
     final c = context.colors;
     final ink = c.isDark ? Color.lerp(c.primary, c.textDark, 0.4)! : c.primary;
     return CourseSectionHeader(
-      title: 'sessions'.tr,
+      title: _t('الجلسات', 'Sessions'),
       count: count,
       trailing: count == 0
           ? null

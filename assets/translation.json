@@ -572,8 +572,8 @@
     "ar": "حفظ التغيرات"
   },
   "add_session": {
-    "en": "Add Session",
-    "ar": "اضافة حصة"
+    "en": "Add session",
+    "ar": "إضافة الجلسة"
   },
   "account": {
     "en": "Account",
@@ -581,7 +581,7 @@
   },
   "change_password": {
     "en": "Change Password",
-    "ar": "تغير كلمة المرور"
+    "ar": "تغيير كلمة المرور"
   },
   "cancel": {
     "en": "Cancel",
@@ -756,12 +756,12 @@
     "ar": "س"
   },
   "edit_session": {
-    "en": "Edit Session",
-    "ar": "تعديل المحاضرة"
+    "en": "Edit session",
+    "ar": "تعديل الجلسة"
   },
   "delete_session": {
-    "en": "Delete Session",
-    "ar": "حذف المحاضرة"
+    "en": "Delete session",
+    "ar": "حذف الجلسة"
   },
   "delete_session_successfully": {
     "en": "Delete Session Successfully",
@@ -1265,11 +1265,11 @@
   },
   "cost": {
     "en": "Cost",
-    "ar": "التكلفه"
+    "ar": "التكلفة"
   },
   "duration": {
     "en": "Duration",
-    "ar": "المده"
+    "ar": "المدة"
   },
   "change_language": {
     "en": "Change language",
@@ -1481,7 +1481,7 @@
   },
   "explorer_courses": {
     "en": "Explorer Courses",
-    "ar": "استكشف دورات اخري"
+    "ar": "استكشف دورات أخرى"
   },
   "course_details": {
     "en": "Course Details",
@@ -1617,7 +1617,7 @@
   },
   "other_courses": {
     "en": "Explorer Other Courses",
-    "ar": "اسكشاف دورات اخري"
+    "ar": "استكشاف دورات أخرى"
   },
   "registered_courses": {
     "en": "Recorded",
@@ -1657,7 +1657,7 @@
   },
   "you_are_enrolled": {
     "en": "Your Are enrolled",
-    "ar": "انت مشترك في الدورة"
+    "ar": "أنت مشترك في الدورة"
   },
   "__comment_session_material_card": "─── Keys added for session_material_card.dart ───",
   "save": {
@@ -2950,12 +2950,12 @@
     "ar": "خطأ من الخادم"
   },
   "edit_session_title": {
-    "en": "Edit Lesson",
-    "ar": "تعديل الدرس"
+    "en": "Edit session",
+    "ar": "تعديل الجلسة"
   },
   "new_session_title": {
-    "en": "New Lesson",
-    "ar": "درس جديد"
+    "en": "New session",
+    "ar": "جلسة جديدة"
   },
   "session_edited_success": {
     "en": "Lesson updated",
@@ -3167,7 +3167,7 @@
   },
   "req_min_length": {
     "en": "At least 8 characters",
-    "ar": "٨ أحرف على الأقل"
+    "ar": "8 أحرف على الأقل"
   },
   "req_uppercase": {
     "en": "At least one uppercase letter (A-Z)",
@@ -3254,8 +3254,8 @@
     "ar": "أضف أول درس"
   },
   "add_session_btn": {
-    "en": "Add Lesson",
-    "ar": "إضافة درس"
+    "en": "New session",
+    "ar": "جلسة جديدة"
   },
   "material_type_recorded": {
     "en": "Recorded",
@@ -3275,11 +3275,11 @@
   },
   "are_you_sure_to_delete_account": {
     "en": "Are you sure to delete your account?",
-    "ar": "هل انت متاكد من حذف الحساب ؟"
+    "ar": "هل أنت متأكد من حذف الحساب؟"
   },
   "your_account_will_deleted_successfully_through_14_days": {
     "en": "Your account will deleted successfully through 14 days",
-    "ar": "سوف يتم حذف الحساب نهائيا خلال 14  يوم"
+    "ar": "سيُحذف الحساب نهائيًا خلال 14 يومًا"
   },
   "donnot_have_schedule": {
     "en": "Donn't Have Appointments",
@@ -4315,7 +4315,7 @@
   },
   "not_found": {
     "en": "This Page still loading, click to reload",
-    "ar": "الصفحة قيد التحميل حاول مرة اخري"
+    "ar": "الصفحة قيد التحميل، حاول مرة أخرى"
   },
   "make_all_read": {
     "en": "Make All Read",
@@ -5114,8 +5114,8 @@
     "ar": "طالب"
   },
   "course_hero_lessons": {
-    "en": "Lessons",
-    "ar": "درس"
+    "en": "Sessions",
+    "ar": "جلسة"
   },
   "course_hero_hours": {
     "en": "Hours",
@@ -6969,6 +6969,38 @@
     "en": "No subscription needed.",
     "ar": "لا حاجة لاشتراك."
   },
+  "sub_covered_title": {
+    "en": "Your organization covers your access",
+    "ar": "مؤسستك تغطي اشتراكك"
+  },
+  "sub_access_paused": {
+    "en": "Your access isn't open yet",
+    "ar": "لم يُفتح حسابك بعد"
+  },
+  "sub_access_paused_hint": {
+    "en": "The server still asks for a subscription. If you study through an organization, contact its administration, then refresh.",
+    "ar": "ما زال الخادم يطلب اشتراكاً. إذا كنت تدرس عبر مؤسسة فتواصل مع إدارتها ثم حدّث الصفحة."
+  },
+  "sub_org_requires_title": {
+    "en": "Your organization requires a subscription",
+    "ar": "مؤسستك تتطلب اشتراكاً"
+  },
+  "sub_org_requires_hint": {
+    "en": "Your organization charges its students a subscription to use the app.",
+    "ar": "تفرض مؤسستك على طلابها اشتراكاً لاستخدام التطبيق."
+  },
+  "sub_org_no_plans": {
+    "en": "No plan can be bought here yet. Contact your organization's administration to open your access.",
+    "ar": "لا توجد باقة متاحة للشراء بعد. تواصل مع إدارة مؤسستك لفتح حسابك."
+  },
+  "sub_no_plans": {
+    "en": "No subscription plan is available right now. Please try again later.",
+    "ar": "لا توجد باقة اشتراك متاحة الآن. حاول لاحقاً."
+  },
+  "sub_org_contact": {
+    "en": "Contact:",
+    "ar": "للتواصل:"
+  },
   "sub_subscribe_to_continue": {
     "en": "Subscribe to continue",
     "ar": "اشترك للمتابعة"
@@ -7354,8 +7386,8 @@
     "ar": "الاختبار غير متاح"
   },
   "sessions_empty": {
-    "en": "No lessons yet",
-    "ar": "لا توجد دروس بعد"
+    "en": "No sessions yet",
+    "ar": "لا توجد جلسات بعد"
   },
   "cas_too_many": {
     "en": "Too many attempts. Try again in {minutes} min",
@@ -10331,7 +10363,7 @@
   },
   "pl_att_attended": {
     "en": "Attended {a} of {b} scheduled sessions.",
-    "ar": "حضر {a} من {b} حصة مجدولة."
+    "ar": "حضر {a} من أصل {b} من الحصص المجدولة."
   },
   "pl_att_late": {
     "en": "Arrived late {n} time(s), by about {m} minutes on average.",
@@ -11662,8 +11694,8 @@
     "en": "your.name"
   },
   "username_rules": {
-    "ar": "من 3 إلى 30 حرفاً: أحرف إنجليزية صغيرة وأرقام و . و _ — يمكنك اختياره لاحقاً من ملفك الشخصي",
-    "en": "3–30 characters: a–z, 0–9, . and _ — you can also pick one later in your profile"
+    "ar": "من 3 إلى 30 حرفاً: أحرف إنجليزية صغيرة وأرقام والنقطة (.) والشرطة السفلية (_). يمكنك اختياره لاحقاً من ملفك الشخصي.",
+    "en": "3–30 characters: a–z, 0–9, dot (.) and underscore (_). You can also pick one later in your profile."
   },
   "username_checking": {
     "ar": "جارٍ التحقق من توفّره…",
@@ -13561,6 +13593,10 @@
     "en": "Progress",
     "ar": "التقدم"
   },
+  "an_vs_all_level": {
+    "en": "Level with the class average — keep going.",
+    "ar": "أنت مثل متوسط الدفعة — واصل."
+  },
   "an_vs_all_above": {
     "en": "Above the class average everywhere — wonderful work! 🌟",
     "ar": "أعلى من متوسط الفصل في كل شيء — عمل رائع! 🌟"
@@ -15430,8 +15466,8 @@
     "ar": "لا مواعيد في هذا اليوم"
   },
   "new_session_subtitle": {
-    "en": "Add a new lesson to the course",
-    "ar": "أضف درساً جديداً للدورة"
+    "en": "Add a new session to the course",
+    "ar": "أضف جلسة جديدة للدورة"
   },
   "reject": {
     "en": "Reject",
@@ -16661,6 +16697,14 @@
     "en": "Load earlier messages",
     "ar": "عرض الرسائل الأقدم"
   },
+  "rag_answer_stalled": {
+    "en": "The assistant could not finish this answer — it may be busy right now. Try again in a moment.",
+    "ar": "تعذّر على المساعد إكمال هذه الإجابة — قد يكون مشغولاً الآن. حاول مرة أخرى بعد قليل."
+  },
+  "rag_retry": {
+    "en": "Try again",
+    "ar": "أعد المحاولة"
+  },
   "rag_feedback_title": {
     "en": "What went wrong?",
     "ar": "ما الذي لم يعجبك؟"
@@ -17585,6 +17629,22 @@
     "en": "{n} to do",
     "ar": "{n} مطلوب منك"
   },
+  "home_needs_folded": {
+    "en": "{n} waiting · tap to show",
+    "ar": "{n} بانتظارك · اضغط للعرض"
+  },
+  "shell_navigation": {
+    "en": "Main navigation",
+    "ar": "التنقل الرئيسي"
+  },
+  "shell_top_bar": {
+    "en": "Top bar",
+    "ar": "الشريط العلوي"
+  },
+  "home_course_live_now": {
+    "en": "Live now: {n}",
+    "ar": "مباشر الآن: {n}"
+  },
   "home_sum_live": {
     "en": "{n} live now",
     "ar": "{n} مباشر الآن"
@@ -17982,8 +18042,8 @@
     "ar": "مباشر"
   },
   "course_list_recorded": {
-    "en": "Recorded",
-    "ar": "مسجّل"
+    "en": "Recorded lessons",
+    "ar": "دروس مسجّلة"
   },
   "course_list_lessons_1": {
     "en": "1 lesson",

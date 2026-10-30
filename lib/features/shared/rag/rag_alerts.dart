@@ -55,7 +55,7 @@ String ragAlertRuleTitle(String rule) => switch (rule) {
     };
 
 String ragAlertRuleHint(String rule) => switch (rule) {
-      'p95_latency' => t('ينبّه حين يتجاوز زمن ٩٥٪ من الإجابات الحد', 'Fires when 95% of answers take longer than the threshold'),
+      'p95_latency' => t('ينبّه حين يتجاوز زمن 95٪ من الإجابات الحد', 'Fires when 95% of answers take longer than the threshold'),
       'not_found_rate' => t('حصة الأسئلة التي لم تجد إجابة', 'Share of the questions that found no answer'),
       'thumbs_down_rate' => t('حصة التقييمات السلبية من كل التقييمات', 'Share of thumbs-down among the votes'),
       'ingest_failures' => t('مستندات فشلت معالجتها', 'Documents whose processing failed'),

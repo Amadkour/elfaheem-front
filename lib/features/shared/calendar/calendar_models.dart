@@ -10,6 +10,8 @@
 // calSnap, calWeekStart.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -186,7 +188,9 @@ class CalEvent {
     return CalEvent(
       id: '${j['id']}',
       source: '${j['source'] ?? 'meeting'}',
-      title: '${j['title'] ?? ''}'.trim().isEmpty ? t('بدون عنوان', 'Untitled') : '${j['title']}',
+      title: j['title_auto'] == true
+          ? t('حصة مباشرة', 'Live session')
+          : '${j['title'] ?? ''}'.trim().isEmpty ? t('بدون عنوان', 'Untitled') : '${j['title']}',
       start: s,
       end: e.isAfter(s) ? e : s.add(const Duration(minutes: 30)),
       subtitle: j['subtitle']?.toString(),
@@ -324,8 +328,9 @@ class CalPlaced {
 }
 
 /// The minute of the day the time grid scrolls to (D-101): the first appointment still running or still to come in
-/// the shown [days] (a class in progress counts as next); else now, when today is shown; else the earliest
-/// appointment shown (a past week); else 8:00. Cancelled and declined ones are skipped.
+/// the shown [days] (a class in progress counts as next); else now, when today is shown (never before 7:00: an empty
+/// early morning would open on 2 AM, L14); else the earliest appointment shown (a past week); else 8:00. Cancelled
+/// and declined ones are skipped.
 int calFocusMinute(Iterable<CalEvent> events, List<DateTime> days, DateTime nowWall) {
   int? earliest;
   for (final d in days) {
@@ -337,7 +342,7 @@ int calFocusMinute(Iterable<CalEvent> events, List<DateTime> days, DateTime nowW
     }
   }
   final today = calDay(nowWall);
-  if (days.any((d) => calDay(d) == today)) return nowWall.hour * 60 + nowWall.minute;
+  if (days.any((d) => calDay(d) == today)) return math.max(nowWall.hour * 60 + nowWall.minute, 7 * 60);
   return earliest ?? 8 * 60;
 }
 

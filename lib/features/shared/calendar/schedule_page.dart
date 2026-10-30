@@ -567,22 +567,23 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   String get _pageTitle =>
       widget.title ?? (_dept ? t('تقويم الإدارة', 'Department calendar') : t('جدولي', 'My schedule'));
 
+  /// The phone's ONE floating button (H10): a round "+" for a new meeting; "Meet now" is the header's video icon.
+  /// The lists and the time grid end with [_fabRoom] of free space so it never sits on their last row.
   Widget? _fab(BuildContext context) {
     final c = context.colors;
-    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
-      QuickMeetingButton(fab: true, orgId: widget.orgId, api: widget.api, onDone: _refresh),
-      const SizedBox(height: 10),
-      FloatingActionButton.extended(
-        key: const ValueKey('cal.new_meeting'),
-        heroTag: 'cal_add',
-        onPressed: () => _add(),
-        backgroundColor: c.primary,
-        foregroundColor: c.onHero,
-        icon: const Icon(Icons.add_rounded),
-        label: Text(t('اجتماع جديد', 'New meeting'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
-      ),
-    ]);
+    return FloatingActionButton(
+      key: const ValueKey('cal.new_meeting'),
+      heroTag: 'cal_add',
+      tooltip: t('اجتماع جديد', 'New meeting'),
+      onPressed: () => _add(),
+      backgroundColor: c.primary,
+      foregroundColor: c.onHero,
+      child: const Icon(Icons.add_rounded, size: 28),
+    );
   }
+
+  /// Free space under a phone list / grid for the floating button (56 + its 16 margin + 16 air).
+  static const double _fabRoom = 96;
 
   // ── desktop sidebar ──────────────────────────────────────────────────────
   Widget _sidebar(BuildContext context, CalView view, List<CalEvent> all, List<CalEvent> shown) {
@@ -726,6 +727,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             ),
           ]),
         ),
+        if (!_dept) QuickMeetingButton(icon: true, orgId: widget.orgId, api: widget.api, onDone: _refresh),
         _TodayButton(onTap: _today, isToday: _atToday),
         _MoreMenu(onRefresh: _refresh, onExport: _export),
       ]),
@@ -864,7 +866,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final child = switch (view) {
       CalView.agenda => _agenda(context, shown, wide: wide),
       CalView.day => _day(context, shown, wide: wide),
-      CalView.week => _week(context, shown),
+      CalView.week => _week(context, shown, wide: wide),
       CalView.month => _month(context, shown, wide: wide),
     };
     final keyed = KeyedSubtree(key: ValueKey('${view.name}|$_anchor|$_agendaDays'), child: child);
@@ -906,7 +908,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       liveKeys: _liveKeys,
       actions: _actions,
       showOrg: orgs.where((o) => o.id != 0).length > 1,
-      padding: EdgeInsets.fromLTRB(16, 10, 16, wide ? 32 : 160),
+      padding: EdgeInsets.fromLTRB(16, 10, 16, wide ? 32 : _fabRoom),
       emptyRange: _NothingAhead(filtered: _filters.any, onClear: () => _setFilters(const CalFilters())),
       footer: _agendaDays < 56
           ? Padding(
@@ -938,6 +940,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       events: shown,
       pauses: _pauses,
       showHeader: wide,
+      bottomPadding: wide || _dept ? 0 : _fabRoom,
       now: widget.now == null ? null : _nowWall,
       isLive: (e) => calIsLive(e, _nowUtc, liveKeys: keys),
       onTapEvent: _tap,
@@ -985,7 +988,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     return AppTime.date(AppTime.fromZone(DateTime(d.year, d.month, d.day, 12)), pattern: 'EEEE');
   }
 
-  Widget _week(BuildContext context, List<CalEvent> shown) {
+  Widget _week(BuildContext context, List<CalEvent> shown, {required bool wide}) {
     final keys = _liveKeys;
     final days = _daysOf(CalView.week);
     return CalTimeGrid(
@@ -993,6 +996,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       days: days,
       events: shown,
       pauses: _pauses,
+      bottomPadding: wide || _dept ? 0 : _fabRoom,
       now: widget.now == null ? null : _nowWall,
       isLive: (e) => calIsLive(e, _nowUtc, liveKeys: keys),
       onTapEvent: _tap,
@@ -1022,7 +1026,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     return AppRefresh(
       onRefresh: _refresh,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 160),
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, _fabRoom),
         children: [
           Container(
             padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),

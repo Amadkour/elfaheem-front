@@ -138,6 +138,16 @@ class TeacherCoursesProvider extends BaseProvider {
 
   bool _loadedOnce = false;
 
+  /// A first load was asked for (the Courses tab, Analytics, …). Before it, an empty list means "not loaded yet".
+  bool get loadedOnce => _loadedOnce;
+
+  /// Loads the first page once, for whichever screen opens first (the tabs are lazy: Analytics may be visited
+  /// before Courses). Nothing happens when a load already ran or is running.
+  Future<void> ensureLoaded() async {
+    if (_loadedOnce || isLoading) return;
+    await refresh();
+  }
+
   /// Courses loaded so far (for the progress card).
   int get loadedCount => _allCourses.length;
 

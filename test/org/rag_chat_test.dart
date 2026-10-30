@@ -55,4 +55,30 @@ void main() {
       await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: RagAnswerCard(answer: RagAnswer.fromJson(q))));
     }
   });
+
+  test('an answer the worker never finished is stalled after the patience; a reopened one waits what is left (M16)', () {
+    final asked = DateTime.utc(2026, 10, 30, 9);
+    final pending = RagAnswer.fromJson({..._q(state: 'running', found: null, answer: ''), 'created_at': '2026-10-30T09:00:00Z'});
+    expect(pending.createdAt, asked);
+    expect(ragAnswerStalled(pending, asked.add(const Duration(minutes: 1))), isFalse);
+    expect(ragAnswerStalled(pending, asked.add(ragAnswerPatience)), isTrue);
+    expect(ragAnswerStalled(RagAnswer.fromJson({..._q(), 'created_at': '2026-10-30T09:00:00Z'}), asked.add(const Duration(hours: 1))), isFalse,
+        reason: 'a finished answer is never stalled');
+    expect(ragAnswerStalled(RagAnswer.fromJson(_q(state: 'queued')), asked.add(const Duration(hours: 1))), isFalse,
+        reason: 'no created_at: the wait decides');
+    expect(ragWaitLeft(pending, asked.add(const Duration(minutes: 1))), ragAnswerPatience - const Duration(minutes: 1));
+    expect(ragWaitLeft(pending, asked.add(const Duration(minutes: 10))), const Duration(seconds: 15));
+  });
+
+  testWidgets('a stalled answer: a calm note with Retry — no overflow', (tester) async {
+    var retried = 0;
+    await expectNoLayoutErrors(tester,
+        () => SingleChildScrollView(
+            child: RagAnswerCard(answer: RagAnswer.fromJson(_q(state: 'running', found: null, answer: '')), stalled: true, onRetry: () => retried++)),
+        act: (t) async {
+      expect(find.byKey(const ValueKey('rag.retry')), findsOneWidget);
+      await t.tap(find.byKey(const ValueKey('rag.retry')));
+    });
+    expect(retried, greaterThan(0));
+  });
 }

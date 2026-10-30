@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
 import '../utils/widget/parent_component.dart';
+import 'chrome_button.dart';
 import 'app_settings.dart';
 import 'app_shell_nav.dart' show AppShellNav;
 
@@ -26,24 +27,10 @@ class CalendarEntryIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return ParentComponent(
       featureKey: calendarEntryFeatureKey,
-      child: Tooltip(
-        message: 'my_calendar'.tr,
-        child: Semantics(
-          button: true,
-          label: 'my_calendar'.tr,
-          child: GestureDetector(
-            onTap: () => openMyCalendar(context),
-            child: Container(
-              padding: const EdgeInsets.all(7),
-              margin: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: context.colors.accent2,
-              ),
-              child: Icon(Icons.event_rounded, color: context.colors.onHero, size: 20),
-            ),
-          ),
-        ),
+      child: ChromeIconButton(
+        icon: Icons.event_rounded,
+        label: 'my_calendar'.tr,
+        onTap: () => openMyCalendar(context),
       ),
     );
   }

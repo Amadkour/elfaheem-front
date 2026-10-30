@@ -24,6 +24,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_charts.dart' show appCompactNumber;
 import 'package:flutter_education_app/design/app_kit.dart' show appText, AppShimmer, AppSkeletonBox;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -417,8 +418,9 @@ class CourseStatsFooter extends StatelessWidget {
           ]),
         );
     return Wrap(spacing: 16, runSpacing: 4, children: [
-      figure(Icons.people_outline_rounded, '$students', 'course_list_students_sem'.tr.replaceAll('{n}', '$students')),
-      figure(Icons.play_circle_outline_rounded, '$sessions', 'course_list_sessions_sem'.tr.replaceAll('{n}', '$sessions')),
+      // compact like the home's figures ("1.3K", the exact number is read out)
+      figure(Icons.people_outline_rounded, appCompactNumber(students), 'course_list_students_sem'.tr.replaceAll('{n}', '$students')),
+      figure(Icons.play_circle_outline_rounded, appCompactNumber(sessions), 'course_list_sessions_sem'.tr.replaceAll('{n}', '$sessions')),
       if (rating != null && rating! > 0)
         ParentComponent(
           featureKey: 'course_card.rating',

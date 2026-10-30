@@ -651,7 +651,7 @@ class _TimetablesTab extends StatelessWidget {
         icon: Icons.calendar_month_rounded,
         title: t('الجداول الدراسية', 'Timetables'),
         subtitle: t(
-          'أربع خطوات: ١) الإعداد — الفترات والأماكن والمدرسون · ٢) التوليد التلقائي · ٣) المراجعة والإصلاح · ٤) النشر والمشاركة. افتح أي جدول لترى خطوته التالية.',
+          'أربع خطوات: 1) الإعداد — الفترات والأماكن والمدرسون · 2) التوليد التلقائي · 3) المراجعة والإصلاح · 4) النشر والمشاركة. افتح أي جدول لترى خطوته التالية.',
           'Four steps: 1) Set up — periods, rooms and teachers · 2) Generate automatically · 3) Review & fix · 4) Publish & share. Open any timetable to see its next step.',
         ),
         stats: [

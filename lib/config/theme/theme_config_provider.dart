@@ -373,10 +373,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// Always the light brand gradient, regardless of dark mode — for
   /// content painted *on top of* a coloured surface (e.g. button icons),
   /// which shouldn't flip to the charcoal variant in dark mode.
+  ///
+  /// Built from [primary] (primary → a deeper primary), not from the server's `gradient_primary`: the server derives
+  /// that one from the two ACCENT colours, which painted every "brand" tab, pill and hero gold / olive (M22).
   LinearGradient get primaryGradientOnColor => LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: _model?.gradientPrimary ?? AppTheme.primaryGradient.colors,
+    begin: AlignmentDirectional.topStart,
+    end: AlignmentDirectional.bottomEnd,
+    colors: [primary, heroEnd(primary, 0.22)],
   );
 
   /// In dark mode this intentionally resolves to the charcoal slide-bar

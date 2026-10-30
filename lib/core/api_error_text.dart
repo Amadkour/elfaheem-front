@@ -78,6 +78,8 @@ String apiErrorText(ApiException e) {
       return _t('رقم الهاتف مستخدم بحساب آخر', 'This phone number is already used by another account');
     case 'REAUTH_REQUIRED':
       return _t('أدخل كلمة المرور الحالية للمتابعة', 'Enter your current password to continue');
+    case 'INVALID_CREDENTIALS':                            // 401 from POST /auth/login (QA M1): no such account OR wrong password
+      return _t('بيانات الدخول أو كلمة المرور غير صحيحة', 'Incorrect login or password');
     case 'TEMP_PASSWORD_EXPIRED':
       return _t('انتهت صلاحية كلمة المرور المؤقتة — اطلب بيانات دخول جديدة من مؤسستك',
           'Your temporary password has expired — ask your organization for new login details');

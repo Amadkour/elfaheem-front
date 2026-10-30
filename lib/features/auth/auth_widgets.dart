@@ -986,8 +986,8 @@ class AuthDateField extends StatelessWidget {
       decoration: authInputDecoration(
         context,
         hint: label,
-        icon: Icons.cake_outlined,
-        suffix: const Icon(Icons.calendar_month_rounded, size: 20),
+        // one icon (L12: a cake AND a calendar read as two controls)
+        icon: Icons.calendar_month_rounded,
       ),
     );
   }
@@ -1053,12 +1053,11 @@ class _AuthButtonState extends State<AuthButton> {
     // a busy button keeps its colour (it is working, not disabled)
     final lit = active || widget.loading;
     final tone = widget.tone;
-    // the hero's 70 / 30 primary → accent blend (D-088), each stop deep enough for the label at 4.5:1
-    final (brand, brandStops) = authBrandStops(c);
-    final colors = tone != null
-        ? [tone, c.heroEnd(tone, 0.22)]
-        : [for (final s in brand) authDeepen(s, (bg) => authContrast(c.onHero, bg) >= 4.7)];
-    final stops = tone != null ? null : brandStops;
+    // the brand primary only (M22: the hero's primary → accent blend, D-088, read olive → green on a button); each
+    // stop deep enough for the label at 4.5:1. The hero keeps its blend.
+    final base = tone ?? authDeepen(c.primary, (bg) => authContrast(c.onHero, bg) >= 4.7);
+    final colors = [base, c.heroEnd(base, 0.22)];
+    const List<double>? stops = null;
     final fg = lit ? c.onHero : c.textLight;
     const radius = 16.0;
 

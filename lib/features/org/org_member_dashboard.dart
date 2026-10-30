@@ -77,7 +77,10 @@ String _moduleLabel(String m) => switch (m) {
       'team' => t('الفريق', 'Team'),
       'certificates' => t('الشهادات', 'Certificates'),
       'data_lab' => t('معمل البيانات', 'Data Lab'),
-      _ => m,
+      'workflow' => t('الطلبات والمعاملات', 'Requests & workflow'),
+      'councils' => t('المجالس', 'Councils'),
+      'export_templates' => t('قوالب التصدير', 'Export templates'),
+      _ => t('وحدة أخرى', 'Other module'),
     };
 
 IconData _moduleIcon(String m) => switch (m) {
@@ -90,6 +93,9 @@ IconData _moduleIcon(String m) => switch (m) {
       'team' => Icons.badge_rounded,
       'certificates' => Icons.workspace_premium_rounded,
       'data_lab' => Icons.science_rounded,
+      'workflow' => Icons.account_tree_rounded,
+      'councils' => Icons.groups_rounded,
+      'export_templates' => Icons.description_rounded,
       _ => Icons.widgets_rounded,
     };
 
@@ -723,9 +729,10 @@ class OrgMemberHomeBody extends StatelessWidget {
                       'delete' => t('حذف', 'delete'),
                       'approve' => t('اعتماد', 'approve'),
                       'export' => t('تصدير', 'export'),
-                      _ => '$a',
+                      'import' => t('استيراد', 'import'),
+                      _ => '',
                     }
-                ].join(' · '),
+                ].where((a) => a.isNotEmpty).join(' · '),
                 color: c.primary,
                 onTap: () {
                   Navigator.pop(ctx);

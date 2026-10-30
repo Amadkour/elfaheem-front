@@ -27,14 +27,43 @@ class SubPlan {
 class SubscriptionProvider extends BaseProvider {
   final ApiClient _api = ApiClient();
 
+  /// This person needs an active subscription (the organization's fee policy or the platform switch).
   bool required = false;
   bool hasAccess = true;
+
+  /// The platform-wide switch (`platform_required`; an older server sends only `required`).
+  bool platformRequired = false;
+
+  /// Who asks for the subscription: 'organization' | 'platform' | null (older server: null).
+  String? reason;
+
+  /// The organization whose fee policy asks for it: id, name_ar, name_en, contact_email, contact_phone.
+  Map<String, dynamic>? organization;
   bool loaded = false;
   String? error;
   Map<String, dynamic>? active;
   Map<String, dynamic>? pending;
   Map<String, dynamic>? last;
   List<SubPlan> plans = [];
+
+  /// The charging organization's name in the current language ('' when none).
+  String orgName(bool isAr) {
+    final o = organization;
+    if (o == null) return '';
+    final ar = '${o['name_ar'] ?? ''}'.trim(), en = '${o['name_en'] ?? ''}'.trim();
+    return isAr ? (ar.isNotEmpty ? ar : en) : (en.isNotEmpty ? en : ar);
+  }
+
+  /// The charging organization's e-mail / phone, joined for display ('' when none).
+  String orgContact() {
+    final o = organization;
+    if (o == null) return '';
+    return [o['contact_email'], o['contact_phone']]
+        .map((e) => '${e ?? ''}'.trim())
+        .where((e) => e.isNotEmpty)
+        .join(' · ');
+  }
+
   Map<String, dynamic> transfer = {};
 
   Future<void> load() async {
@@ -43,6 +72,9 @@ class SubscriptionProvider extends BaseProvider {
       final j = Map<String, dynamic>.from(r);
       required = j['required'] == true;
       hasAccess = j['has_access'] == true;
+      platformRequired = j.containsKey('platform_required') ? j['platform_required'] == true : required;
+      reason = j['reason'] is String ? j['reason'] as String : null;
+      organization = j['organization'] is Map ? _m(j['organization']) : null;
       active = j['active'] is Map ? _m(j['active']) : null;
       pending = j['pending'] is Map ? _m(j['pending']) : null;
       last = j['last'] is Map ? _m(j['last']) : null;

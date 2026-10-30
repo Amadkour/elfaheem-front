@@ -60,7 +60,7 @@ class CourseScopeMark extends StatelessWidget {
       inner = Center(
         child: Text(
           name.isEmpty ? '#' : name.characters.first.toUpperCase(),
-          style: TextStyle(fontFamily: AppFonts.display, fontWeight: FontWeight.w800, fontSize: size * 0.42,
+          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: size * 0.42,
               color: courseScopeInk(context, tone), height: 1),
         ),
       );
@@ -110,7 +110,7 @@ class CourseOrgBadge extends StatelessWidget {
           const SizedBox(width: 5),
           Flexible(
             child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w700, color: c.textDark)),
+                style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w600, color: c.textDark)),
           ),
         ]),
       ),
@@ -172,7 +172,7 @@ class CourseScopeBanner extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.display, fontSize: 15, fontWeight: FontWeight.w800, color: c.textDark)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w600, color: c.textDark)),
               const SizedBox(height: 2),
               Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium, height: 1.3)),
@@ -184,7 +184,7 @@ class CourseScopeBanner extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
               child: Text('$count',
-                  style: TextStyle(fontFamily: AppFonts.display, fontSize: 14, fontWeight: FontWeight.w800, color: c.textDark)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w600, color: c.textDark)),
             ),
           ],
         ]),
@@ -213,7 +213,7 @@ class CourseScopeBanner extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.swap_horiz_rounded, size: 18),
                   label: Text('course_scope_switch'.tr,
-                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 13)),
+                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 13)),
                 ),
             ],
           ),
@@ -289,7 +289,7 @@ class _ScopeChip extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: AppFonts.family,
                       fontSize: 13,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                       color: selected ? c.textDark : c.textMedium,
                     )),
               ),
@@ -301,7 +301,7 @@ class _ScopeChip extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text('${chip.count}',
-                    style: TextStyle(fontFamily: AppFonts.display, fontSize: 11, fontWeight: FontWeight.w800, color: c.textDark)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w600, color: c.textDark)),
               ),
             ]),
           ),

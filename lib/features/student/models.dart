@@ -143,7 +143,7 @@ class SessionModel {
   factory SessionModel.fromJson(Map<String, dynamic> j) => SessionModel(
     id: j['id'] as int? ?? -1,
     courseId: j['course_id'] as int? ?? 0,
-    name: j['name'] as String? ?? '',
+    name: sessionTitleOf(j),
     description: j['description'] as String? ?? '',
     type: j['type'] as String? ?? 'pre-recorded',
     track: j['track'] as String? ?? 'lecture',
@@ -154,9 +154,7 @@ class SessionModel {
     rateSummary: j.containsKey('rate') && j['rate'] != null
         ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
         : null,
-    scheduledAt: j['scheduled_at'] != null
-        ? (j['scheduled_at'] as String).toLocalSaTime
-        : null,
+    scheduledAt: sessionInstantUtc(j['scheduled_at']),
     createdAt: j['created_at'] != null
         ? (j['created_at'] as String).toLocalSaTime
         : DateTime.now(),
@@ -174,12 +172,15 @@ class SessionModel {
     recordEnabled: recordEnabled,
     courseId: courseId,
     name: name,
+    type: type,
     rateSummary: rateSummary,
     description: description,
     durationMinutes: durationMinutes,
     order: order,
     scheduledAt: scheduledAt,
     isLiveActive: isLiveActive,
+    recordingUrl: recordingUrl,
+    recordingStatus: recordingStatus,
     createdAt: createdAt,
     totalMaterial: totalMaterial,
     completeMaterial: completeMaterial,
@@ -207,6 +208,21 @@ class SessionModel {
     progress: progress,
     rateSummary: rateSummary,
   );
+}
+
+/// A session's `scheduled_at` as the real UTC instant. The server stores naive UTC
+/// ("2026-11-08T06:30:00", no zone), so a string without a zone is read as UTC — the
+/// old `toLocalSaTime` read it as device-local and the course page drew 6:30 for 8:30.
+/// A session's display title: the server flags its own generated titles with `title_auto` (an unnamed live or quick
+/// session, and old rows that follow the old generated patterns), which are shown in the reader's language.
+String sessionTitleOf(Map<String, dynamic> j) =>
+    j['title_auto'] == true ? (AppConfig.lang == 'ar' ? 'حصة مباشرة' : 'Live session') : j['name'] as String? ?? '';
+
+DateTime? sessionInstantUtc(dynamic v) {
+  final s = '${v ?? ''}'.trim();
+  if (s.isEmpty || s == 'null') return null;
+  final hasZone = s.endsWith('Z') || RegExp(r'[+-]\d\d:?\d\d$').hasMatch(s);
+  return DateTime.tryParse(hasZone || s.length <= 10 ? s : '${s}Z')?.toUtc();
 }
 
 // ── TeacherSessionItem ────────────────────────────────────────────────────────
@@ -270,13 +286,11 @@ class TeacherSessionItem {
     return TeacherSessionItem(
       id: j['id'] as int,
       courseId: j['course_id'] as int? ?? 0,
-      name: j['name'] as String? ?? '',
+      name: sessionTitleOf(j),
       description: j['description'] as String?,
       type: j['type'] as String?,
       track: j['track'] as String? ?? 'lecture',
-      scheduledAt: j['scheduled_at'] != null
-          ? (j['scheduled_at'] as String).toLocalSaTime
-          : null,
+      scheduledAt: sessionInstantUtc(j['scheduled_at']),
       createdAt: j['created_at'] != null
           ? (j['created_at'] as String).toLocalSaTime
           : DateTime.now(),
@@ -617,7 +631,7 @@ class CourseModel with DiscountInfo {
     type: j['type'] as String? ?? 'recorded',
     isSubscribed: j['is_subscribed'] as bool? ?? false,
     isFavorite: j['is_favorite'] as bool? ?? false,
-    progress: ((j['progress'] as num?)?.toDouble() ?? 0.0).toInt(),
+    progress: ((j['progress'] as num?)?.toDouble() ?? 0.0).round(), // round like /me/home and analytics (M3)
     materialsTotal: j['materials_total'] as int? ?? 0,
     materialsCompleted: j['materials_completed'] as int? ?? 0,
     schedules: (j['schedules'] as List? ?? [])

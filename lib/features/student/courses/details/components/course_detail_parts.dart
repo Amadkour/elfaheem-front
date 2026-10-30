@@ -137,7 +137,7 @@ class CourseIncludedList extends StatelessWidget {
     final hours = course.totalHours.toStringAsFixed(course.totalHours % 1 == 0 ? 0 : 1);
     final rows = <(IconData, String, Color)>[
       if (course.sessionsCount > 0)
-        (Icons.play_lesson_rounded, gt('${course.sessionsCount} درس', '${course.sessionsCount} lessons'), c.primary),
+        (Icons.play_lesson_rounded, gt('${course.sessionsCount} جلسة', '${course.sessionsCount} sessions'), c.primary),
       if (course.totalHours > 0) (Icons.schedule_rounded, gt('$hours ساعة محتوى', '$hours hours of content'), c.warning),
       if (course.type == 'live')
         (Icons.sensors_rounded, gt('بث مباشر مع المدرس', 'Live sessions with the teacher'), c.danger)
@@ -245,7 +245,7 @@ class CourseEnrolledCard extends StatelessWidget {
                       style: TextStyle(fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w600, color: c.textDark),
                     ),
                     Text(
-                      gt('وصول كامل لكل الدروس والاختبارات', 'Full access to every lesson and exam'),
+                      gt('وصول كامل لكل الجلسات والاختبارات', 'Full access to every session and exam'),
                       style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium),
                     ),
                   ],
@@ -329,7 +329,7 @@ Widget courseLearningCard({
   required int total,
   String? nextLesson,
   required bool hasCertificates,
-  required VoidCallback onContinue,
+  VoidCallback? onContinue,
   VoidCallback? onCertificates,
 }) => ParentComponent(
   featureKey: 'sessions.progress',
@@ -342,7 +342,7 @@ Widget courseLearningCard({
           title: gt('أتممت الكورس 🎉', 'Course completed 🎉'),
           subtitle: hasCertificates
               ? gt('شهادتك جاهزة في تبويب "عن الكورس"', 'Your certificate is in the About tab')
-              : gt('أحسنت! يمكنك مراجعة الدروس في أي وقت', 'Well done! Review any lesson at any time'),
+              : gt('أحسنت! يمكنك مراجعة الجلسات في أي وقت', 'Well done! Review any session at any time'),
           color: c.success,
           progress: 1,
           actionLabel: hasCertificates ? gt('شهاداتي', 'My certificates') : null,
@@ -358,7 +358,7 @@ Widget courseLearningCard({
         color: c.primary,
         progress: progress,
         progressLabel: total > 0 ? '$done/$total' : null,
-        actionLabel: started ? gt('تابع', 'Continue') : gt('ابدأ', 'Start'),
+        actionLabel: onContinue == null ? null : (started ? gt('تابع', 'Continue') : gt('ابدأ', 'Start')),
         actionIcon: Icons.play_arrow_rounded,
         onAction: onContinue,
         onTap: onContinue,

@@ -99,7 +99,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
     final result = await p.createComplaint(
       title: _titleCtrl.text.trim(),
       description: _descCtrl.text.trim(),
-      category: _category,
+      category: complaintCategoryFor(_category, _targetType),
       priority: _priority,
       courseId: widget.courseId,
       targetType: _targetType,
@@ -1650,6 +1650,26 @@ class _RepliesCountChip extends StatelessWidget {
 //  Pickers
 // ══════════════════════════════════════════════════════════════════════════════
 
+/// The category sent with a complaint. The form asks WHO it is about ("About what?") and WHAT KIND of problem it is
+/// separately, so the kind picker no longer repeats teacher / student (M23); a general problem about a teacher or a
+/// student is still filed under that category, as before.
+ComplaintCategory complaintCategoryFor(ComplaintCategory picked, String targetType) {
+  if (picked != ComplaintCategory.general) return picked;
+  return switch (targetType) {
+    'teacher' => ComplaintCategory.teacher,
+    'student' => ComplaintCategory.student,
+    _ => picked,
+  };
+}
+
+/// The kinds of problem the picker offers (who it is about is the "About what?" picker's job, M23).
+const kComplaintKinds = [
+  ComplaintCategory.general,
+  ComplaintCategory.technical,
+  ComplaintCategory.payment,
+  ComplaintCategory.courseContent,
+];
+
 class _CategoryPicker extends StatelessWidget {
   const _CategoryPicker({required this.selected, required this.onChanged});
 
@@ -1670,7 +1690,7 @@ class _CategoryPicker extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: ComplaintCategory.values.map((cat) {
+      children: kComplaintKinds.map((cat) {
         final (label, icon) = labels[cat]!;
         final sel = selected == cat;
         return InkWell(
@@ -1694,7 +1714,7 @@ class _CategoryPicker extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: AppFonts.display,
                   fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   color: sel ? context.colors.onHero : c.textMedium,
                 ),
               ),

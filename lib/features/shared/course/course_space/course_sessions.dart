@@ -597,7 +597,7 @@ class _Meta extends StatelessWidget {
     final (IconData kindIcon, String kind) = switch (data.kind) {
       CourseSessionKind.live => (Icons.sensors_rounded, _t('مباشر', 'Live')),
       CourseSessionKind.section => (Icons.science_outlined, _t('سكشن', 'Section')),
-      CourseSessionKind.recorded => (Icons.play_circle_outline_rounded, _t('مسجّل', 'Recorded')),
+      CourseSessionKind.recorded => (Icons.play_circle_outline_rounded, _t('فيديو', 'Video')),
     };
     final when = data.when;
     final length = courseSessionLength(data.durationMinutes);

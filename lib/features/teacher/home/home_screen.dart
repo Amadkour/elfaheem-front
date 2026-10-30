@@ -185,14 +185,15 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         index: 0,
                         child: HomeHeader(
                           name: user?.name ?? 'sir'.tr,
-                          subtitle: provider.loaded ? teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length) : null,
+                          subtitle: provider.loaded ? teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length,
+                              payoutWaiting: (provider.extra?.pendingPayout ?? 0) > 0) : null,
                           leading: user == null ? null : UserChipButton(user: user, showLabel: false),
                           actions: [
                             // "Meet now" moved into the Go live sheet; the icon comes back when Go live is switched off
                             if (!quickLive) const QuickMeetingIcon(),
-                            const CalendarEntryIcon(),
-                            NotificationIcon(unreadCount: unread),
                           ],
+                          // the top bar carries these on desktop / tablet: drawn here on phones only (M7)
+                          shellActions: [const CalendarEntryIcon(), NotificationIcon(unreadCount: unread)],
                           contextSwitcher: quickLive
                               // the switcher at the start, "Go live" at the end; each may take half the line
                               ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -253,7 +254,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
 }
 
 /// The greeting's one line: today's sessions, what is live (or the next start), the counts that wait.
-String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pending, int liveMeetings) {
+String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pending, int liveMeetings, {bool payoutWaiting = false}) {
   final today = [...schedule.where((s) => s.isToday)]..sort((a, b) => a.startMin.compareTo(b.startMin));
   final live = schedule.where((s) => s.isOngoing || s.isLive).length + liveMeetings;
   final now = DateTime.now().toUtc();
@@ -263,6 +264,7 @@ String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pendin
     sessions: today.length,
     live: live,
     todo: p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests'),
+    othersWaiting: payoutWaiting,
     nextAt: next == null ? null : AppTime.time(teacherSessionUtc(next, next.startTime)),
   );
 }
@@ -401,6 +403,8 @@ class TeacherHomeBody extends StatelessWidget {
         : enter(HomeSection(
             id: 'teacher.needs_you',
             title: 'home_needs_you'.tr,
+            // folded, the title still says how much waits (L8)
+            foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '$needs'),
             child: HomeStatStrip(items: [
               HomeStat(icon: Icons.how_to_reg_outlined, label: 'home_t_attendance'.tr, count: p('attendance_missing'), tone: c.warning, onTap: () => onTab(1)),
               HomeStat(icon: Icons.grading_rounded, label: 'home_t_grading'.tr, count: p('grading'), tone: c.primary, onTap: () => onTab(1)),

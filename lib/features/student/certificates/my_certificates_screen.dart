@@ -6,6 +6,7 @@
 //   • available / rejected → "Request certificate" (teacher must approve)
 //   • finished courses get their certificate automatically (+ notification)
 
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppShimmer;
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter/material.dart';
@@ -71,10 +72,7 @@ class _View extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('my_certificates'.tr, style: c.h2.copyWith(fontSize: 16)),
-        centerTitle: true,
-      ),
+      appBar: ScreenAppBar(title: 'my_certificates'.tr), // the app's back chip + title (L4)
       body: SafeArea(
         child: Align(
           alignment: Alignment.topCenter,

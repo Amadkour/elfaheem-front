@@ -209,7 +209,7 @@ class MeLiveRoom {
     return MeLiveRoom(
       kind: m['kind'] == 'meeting' ? 'meeting' : 'session',
       id: id,
-      title: str(m['title']) ?? '',
+      title: m['title_auto'] == true ? (AppConfig.lang == 'ar' ? 'حصة مباشرة' : 'Live session') : str(m['title']) ?? '',
       subtitle: str(m['subtitle']),
       courseId: opt(m['course_id']),
       meetingId: opt(m['meeting_id']),

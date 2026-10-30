@@ -1,7 +1,7 @@
 /// features/attendance/teacher_attendance_launcher.dart
 ///
 /// Teacher button for the course/session profile header. Opens a bottom sheet listing the
-/// course's lessons (number + name) NEWEST FIRST (n … 1); tapping one opens the attendance sheet
+/// course's lessons (number + name + date) — today's first, then NEWEST FIRST (n … 1); tapping one opens the attendance sheet
 /// where the teacher chooses the classmate-signal count (default 0) and sees the live
 /// present counter (default 0).
 library;
@@ -9,6 +9,7 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
@@ -16,10 +17,29 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Plain data so this file does not depend on the teacher model classes.
 class LauncherSession {
-  const LauncherSession({required this.id, required this.number, required this.name});
+  const LauncherSession({required this.id, required this.number, required this.name, this.date});
   final int id;
   final int number; // 1-based position in the course
   final String name;
+
+  /// When the lesson is scheduled (UTC), when known: shown under the name, and today's lesson goes first (L9).
+  final DateTime? date;
+}
+
+/// The picker's order (L9): today's lessons first, then the rest newest first (n … 1).
+List<LauncherSession> launcherOrder(List<LauncherSession> sessions, {DateTime? nowUtc}) {
+  final rest = sessions.reversed.toList();
+  bool today(LauncherSession s) => launcherIsToday(s, nowUtc: nowUtc);
+  return [...rest.where(today), ...rest.where((s) => !today(s))];
+}
+
+/// Is [s] scheduled today (in the platform / organization zone)?
+bool launcherIsToday(LauncherSession s, {DateTime? nowUtc}) {
+  final d = s.date;
+  if (d == null) return false;
+  final now = AppTime.toZone(nowUtc ?? DateTime.now().toUtc());
+  final w = AppTime.toZone(d);
+  return w.year == now.year && w.month == now.month && w.day == now.day;
 }
 
 class TeacherAttendanceLauncher extends StatelessWidget {
@@ -53,7 +73,7 @@ class TeacherAttendanceLauncher extends StatelessWidget {
 }
 
 Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> sessions) {
-  final inverted = sessions.reversed.toList(); // newest first: n, n-1, … 1
+  final inverted = launcherOrder(sessions); // today's first, then newest first: n, n-1, … 1
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -77,7 +97,7 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
               decoration: BoxDecoration(
                   color: context.colors.textLight.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2))),
           Text(attT('att_launch_title'),
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 17, fontWeight: FontWeight.w800)),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 17, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Expanded(
             child: inverted.isEmpty
@@ -91,20 +111,36 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
                       final s = inverted[i];
-                      final c = Theme.of(sheetCtx).colorScheme.primary;
+                      final cc = context.colors;
+                      final c = cc.primary;
+                      final isToday = launcherIsToday(s);
+                      final when = s.date == null ? null : AppTime.date(s.date!, pattern: 'EEE d MMM');
                       return ListTile(
+                        tileColor: isToday ? c.withValues(alpha: 0.06) : null,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
-                            side: BorderSide(color: c.withValues(alpha: 0.18))),
+                            side: BorderSide(color: isToday ? c.withValues(alpha: 0.45) : cc.divider)),
                         leading: CircleAvatar(
                           backgroundColor: c.withValues(alpha: 0.12),
                           child: Text('${s.number}',
-                              style: TextStyle(color: c, fontWeight: FontWeight.w800)),
+                              style: TextStyle(fontFamily: AppFonts.family, color: c, fontWeight: FontWeight.w600)),
                         ),
                         title: Text(s.name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+                            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w500, color: cc.textDark)),
+                        subtitle: when == null && !isToday
+                            ? null
+                            : Text(
+                                [if (isToday) attT('att_launch_today'), ?when].join(' · '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontFamily: AppFonts.family,
+                                    fontSize: 12,
+                                    fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
+                                    color: isToday ? c : cc.textMedium),
+                              ),
                         trailing: const Icon(CupertinoIcons.forward, size: 16),
                         onTap: () {
                           Navigator.of(sheetCtx).pop();

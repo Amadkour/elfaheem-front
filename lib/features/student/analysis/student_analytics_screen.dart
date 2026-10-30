@@ -126,6 +126,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
           courseTitle: course.title,
           initialTab: tab,
           initialBlock: prov.blockOf(course.id),
+          progress: prov.progressOf(course),
         ),
       ),
     );
@@ -425,6 +426,7 @@ class _AllCoursesPageState extends State<_AllCoursesPage> {
           courseTitle: course.title,
           initialTab: tab,
           initialBlock: prov.blockOf(course.id),
+          progress: prov.progressOf(course),
         ),
       ),
     );

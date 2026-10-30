@@ -11,6 +11,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -122,7 +123,7 @@ class _OrgApplicationScreenState extends State<OrgApplicationScreen> {
             message: t('أوقفت إدارة المنصة خدمة المؤسسات مؤقتاً. جرّب لاحقاً.', 'The platform team has paused organizations for now. Please try again later.')),
       );
     }
-    Text label(String s) => Text(s, style: orgText(context, size: 13, w: FontWeight.w800, color: c.textMedium));
+    Text label(String s) => Text(s, style: orgText(context, size: 14, w: FontWeight.w600, color: c.textDark));
     return BasePage(
       useWebCard: true,
       maxWith: 720,
@@ -139,26 +140,33 @@ class _OrgApplicationScreenState extends State<OrgApplicationScreen> {
         const SizedBox(height: 16),
         label(t('بياناتك (مدير المؤسسة)', 'You (the organization admin)')),
         const SizedBox(height: 8),
-        Field(controller: _name, label: t('الاسم الكامل', 'Full name')),
+        _LabeledInput(controller: _name, label: t('الاسم الكامل', 'Full name'), icon: Icons.person_outline_rounded),
         AppEmailField(controller: _email, label: t('البريد الإلكتروني', 'E-mail')),
-        AppPhoneField(controller: _phone, label: t('الهاتف (اختياري)', 'Phone (optional)')),
-        Field(controller: _pass, label: t('كلمة المرور (حروف وأرقام، 8+)', 'Password (letters and digits, 8+)'), obscure: true, ltr: true),
-        Field(controller: _pass2, label: t('تأكيد كلمة المرور', 'Confirm the password'), obscure: true, ltr: true),
+        // the phone field has no space under it of its own (M21: phone / password / confirm were glued together)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: AppPhoneField(controller: _phone, label: t('الهاتف (اختياري)', 'Phone (optional)')),
+        ),
+        AppPasswordField(controller: _pass, label: t('كلمة المرور (حروف وأرقام، 8+)', 'Password (letters and digits, 8+)')),
+        AppPasswordField(controller: _pass2, mustMatch: _pass, label: t('تأكيد كلمة المرور', 'Confirm the password')),
         const SizedBox(height: 12),
         label(t('المؤسسة', 'The institution')),
         const SizedBox(height: 8),
-        Field(controller: _ar, label: t('الاسم بالعربية', 'Arabic name')),
-        Field(controller: _en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
+        _LabeledInput(controller: _ar, label: t('الاسم بالعربية', 'Arabic name'), icon: Icons.account_balance_outlined),
+        _LabeledInput(controller: _en, label: t('الاسم بالإنجليزية', 'English name'), icon: Icons.account_balance_outlined, ltr: true),
         ChoiceRow<String>(label: t('النوع', 'Type'), options: orgTypeLabels(), value: _type, onChanged: (v) => setState(() => _type = v)),
         const SizedBox(height: 10),
-        Field(controller: _desc, label: t('نبذة (اختياري)', 'About (optional)'), maxLines: 3),
+        _LabeledInput(controller: _desc, label: t('نبذة (اختياري)', 'About (optional)'), icon: Icons.notes_rounded, maxLines: 3),
         Text(t('بيانات رسمية — تسرّع الاعتماد', 'Official details — they speed up approval'), style: orgText(context, size: 12, color: c.textLight)),
         const SizedBox(height: 6),
-        Field(controller: _license, label: t('رقم القرار / الترخيص', 'Decree / licence number')),
+        _LabeledInput(controller: _license, label: t('رقم القرار / الترخيص', 'Decree / licence number'), icon: Icons.verified_outlined),
         AppEmailField(controller: _orgEmail, label: t('البريد الرسمي', 'Official e-mail')),
-        AppPhoneField(controller: _orgPhone, label: t('هاتف التواصل', 'Contact phone')),
-        Field(controller: _website, label: t('الموقع الإلكتروني', 'Website'), ltr: true),
-        Field(controller: _address, label: t('العنوان', 'Address')),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: AppPhoneField(controller: _orgPhone, label: t('هاتف التواصل', 'Contact phone')),
+        ),
+        _LabeledInput(controller: _website, label: t('الموقع الإلكتروني', 'Website'), icon: Icons.language_rounded, ltr: true),
+        _LabeledInput(controller: _address, label: t('العنوان', 'Address'), icon: Icons.place_outlined),
         if (_error != null)
           Container(
             margin: const EdgeInsets.only(bottom: 10),
@@ -177,6 +185,38 @@ class _OrgApplicationScreenState extends State<OrgApplicationScreen> {
           },
         ),
         PrimaryButton(isLoading: _busy, label: t('إرسال الطلب', 'Send the application'), icon: Icons.send_rounded, iconBefore: true, onPressed: _busy ? null : _submit),
+      ]),
+    );
+  }
+}
+
+/// A text field with its name above it, the same shape as [AppEmailField] / [AppPasswordField] (M21).
+class _LabeledInput extends StatelessWidget {
+  const _LabeledInput({required this.controller, required this.label, required this.icon, this.ltr = false, this.maxLines = 1});
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final bool ltr;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(label, style: orgText(context, size: 12.5, w: FontWeight.w600, color: c.textMedium)),
+        ),
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          textDirection: ltr ? TextDirection.ltr : null,
+          style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, color: c.textDark),
+          decoration: appInputDecoration(context, hint: label, icon: icon),
+        ),
       ]),
     );
   }

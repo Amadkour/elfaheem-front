@@ -3,6 +3,7 @@
 // Teacher inbox: approve → the student gets the certificate automatically
 // (email + in-app notification); reject → the student is notified.
 
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -43,10 +44,7 @@ class _View extends StatelessWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('certificate_requests'.tr, style: c.h2.copyWith(fontSize: 16)),
-        centerTitle: true,
-      ),
+      appBar: ScreenAppBar(title: 'certificate_requests'.tr), // the app's back chip + title (L4)
       body: SafeArea(
         child: Align(
           alignment: Alignment.topCenter,

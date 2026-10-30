@@ -71,9 +71,9 @@ class StudentAnalyticsProvider extends BaseProvider {
 
   DlCourseBlock? blockOf(int courseId) => _blocks[courseId];
 
-  /// Best known progress of a course: the profile's (it follows lessons AND the teacher's corrections), else the
-  /// enrolment's.
-  double progressOf(EnrolledCourse c) => _blocks[c.id]?.progress ?? c.progress.toDouble();
+  /// Progress of a course: the enrolment's live % — the same figure (and rounding) the home, the course list and
+  /// the course page show (M3); the Data Lab profile's copy can lag behind it.
+  double progressOf(EnrolledCourse c) => c.progress.toDouble();
 
   double? overallOf(EnrolledCourse c) {
     final b = _blocks[c.id];
@@ -148,9 +148,16 @@ class StudentAnalyticsProvider extends BaseProvider {
 // ── Per-course provider ───────────────────────────────────────────────────────
 
 class StudentCourseAnalyticsProvider extends ChangeNotifier {
-  StudentCourseAnalyticsProvider({required this.courseId, StudentAnalyticsApi? api, DlCourseBlock? initialBlock})
-      : _api = api ?? StudentAnalyticsApi(),
+  StudentCourseAnalyticsProvider({
+    required this.courseId,
+    StudentAnalyticsApi? api,
+    DlCourseBlock? initialBlock,
+    this.enrolledProgress,
+  })  : _api = api ?? StudentAnalyticsApi(),
         _block = initialBlock;
+
+  /// The enrolment's live progress when the caller has it — wins over the profile's copy (one figure app-wide).
+  final double? enrolledProgress;
 
   final StudentAnalyticsApi _api;
   final int courseId;
@@ -203,7 +210,7 @@ class StudentCourseAnalyticsProvider extends ChangeNotifier {
     return done.fold(0.0, (s, e) => s + e.percentage!) / done.length;
   }
 
-  double? get progress => _block?.progress;
+  double? get progress => enrolledProgress ?? _block?.progress;
 
   /// Average of progress, attendance and exams — only the parts that exist.
   double? get overall => anOverall(

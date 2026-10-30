@@ -317,7 +317,8 @@ class RemoteGoLiveApi implements GoLiveApi {
   Future<int> create({required int courseId, required String title, required DateTime startsAt, int minutes = 60, required bool record}) async {
     final r = await _api.post('/api/v1/sessions', body: {
       'course_id': courseId,
-      'name': title,
+      // no name = the server stores its neutral title (`title_auto`), which every reader shows in its own language
+      if (title.trim().isNotEmpty) 'name': title,
       'type': 'live',
       'scheduled_at': startsAt.toUtc().toIso8601String(),
       'duration_minutes': minutes,

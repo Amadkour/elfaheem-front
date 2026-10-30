@@ -23,6 +23,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
@@ -290,15 +291,27 @@ String _title(InboxItem x) {
     return name.isEmpty ? x.title : name;
   }
   if (x.kind != 'approval') return x.title;
-  final n = '${asInt(x.data['count'])}';
-  final key = switch ('${x.action['what']}') {
-    'complaints' => 'inbox_appr_complaints',
-    'join_requests' => 'inbox_appr_join',
-    'unit_requests' => 'inbox_appr_units',
-    _ => 'inbox_appr_forms',
-  };
-  return key.tr.replaceAll('{n}', n);
+  return approvalCountText('${x.action['what']}', asInt(x.data['count']));
 }
+
+/// "3 requests waiting for your review" with the right plural form (L2: "1 طلبات" / "1 requests").
+String approvalCountText(String what, int n, {String? lang}) => switch (what) {
+      'complaints' => countText(n,
+          ar1: 'شكوى واحدة مفتوحة في نطاقك', ar2: 'شكويان مفتوحتان في نطاقك', arFew: '{n} شكاوى مفتوحة في نطاقك',
+          arMany: '{n} شكوى مفتوحة في نطاقك', en1: '1 open complaint in your area', en: '{n} open complaints in your area',
+          lang: lang),
+      'join_requests' => countText(n,
+          ar1: 'طلب انضمام واحد للمؤسسة', ar2: 'طلبا انضمام للمؤسسة', arFew: '{n} طلبات انضمام للمؤسسة',
+          arMany: '{n} طلب انضمام للمؤسسة', en1: '1 person asking to join', en: '{n} people asking to join', lang: lang),
+      'unit_requests' => countText(n,
+          ar1: 'طلب انضمام واحد لقسم', ar2: 'طلبا انضمام لأقسام', arFew: '{n} طلبات انضمام لأقسام',
+          arMany: '{n} طلب انضمام لأقسام', en1: '1 department join request', en: '{n} department join requests',
+          lang: lang),
+      _ => countText(n,
+          ar1: 'طلب واحد ينتظر مراجعتك', ar2: 'طلبان ينتظران مراجعتك', arFew: '{n} طلبات تنتظر مراجعتك',
+          arMany: '{n} طلبًا تنتظر مراجعتك', en1: '1 request waiting for your review',
+          en: '{n} requests waiting for your review', lang: lang),
+    };
 
 (String, Color)? _statusChip(BuildContext context, InboxItem x) {
   final c = context.colors;

@@ -1008,7 +1008,8 @@ class AboutStatsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return LayoutBuilder(builder: (context, box) {
-      final cols = box.maxWidth > 560 ? stats.length.clamp(1, 4) : 2;
+      // one row for up to 3 figures on a phone too (L11: 3 figures in a 2 × 2 grid left an empty cell)
+      final cols = box.maxWidth > 560 ? stats.length.clamp(1, 4) : (stats.length <= 3 ? stats.length.clamp(1, 3) : 2);
       final rows = <List<AppStatModel>>[];
       for (var i = 0; i < stats.length; i += cols) {
         rows.add(stats.skip(i).take(cols).toList());
@@ -1020,7 +1021,7 @@ class AboutStatsCard extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(st.value,
-                      style: appText(28, w: FontWeight.w800, c: appInk(context, c.primary), h: 1.15)),
+                      style: appText(26, w: FontWeight.w700, c: appInk(context, c.primary), h: 1.15)),
                 ),
                 const SizedBox(height: 8),
                 Text(st.label,
@@ -1038,9 +1039,10 @@ class AboutStatsCard extends StatelessWidget {
             if (r > 0) Divider(height: 1, color: c.divider),
             IntrinsicHeight(
               child: Row(children: [
-                for (var i = 0; i < cols; i++) ...[
+                // a short last row spreads its figures over the width rather than leaving empty cells
+                for (var i = 0; i < rows[r].length; i++) ...[
                   if (i > 0) VerticalDivider(width: 1, color: c.divider),
-                  if (i < rows[r].length) cell(rows[r][i]) else const Expanded(child: SizedBox()),
+                  cell(rows[r][i]),
                 ],
               ]),
             ),
