@@ -30,6 +30,7 @@ import 'dart:typed_data';
 
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart';
@@ -548,7 +549,10 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       if (!wide) {
         return BasePage(
           floatingActionButton: _dept ? null : _fab(context),
-          child: SafeArea(bottom: false, child: main),
+          child: SafeArea(
+            bottom: false,
+            child: NotificationListener<ScrollNotification>(onNotification: _onScroll, child: main),
+          ),
         );
       }
       return BasePage(
@@ -568,22 +572,60 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       widget.title ?? (_dept ? t('تقويم الإدارة', 'Department calendar') : t('جدولي', 'My schedule'));
 
   /// The phone's ONE floating button (H10): a round "+" for a new meeting; "Meet now" is the header's video icon.
-  /// The lists and the time grid end with [_fabRoom] of free space so it never sits on their last row.
+  /// Every list and time grid ends with [_fabRoomOf] of free space, so at the end it never sits on a row; while the
+  /// person scrolls down through rows it slides away ([_onScroll]) and comes back on a scroll up or at the end.
   Widget? _fab(BuildContext context) {
     final c = context.colors;
-    return FloatingActionButton(
-      key: const ValueKey('cal.new_meeting'),
-      heroTag: 'cal_add',
-      tooltip: t('اجتماع جديد', 'New meeting'),
-      onPressed: () => _add(),
-      backgroundColor: c.primary,
-      foregroundColor: c.onHero,
-      child: const Icon(Icons.add_rounded, size: 28),
+    final hidden = _fabHidden;
+    final dur = MediaQuery.of(context).disableAnimations ? Duration.zero : const Duration(milliseconds: 200);
+    return AnimatedSlide(
+      offset: hidden ? const Offset(0, 1.6) : Offset.zero,
+      duration: dur,
+      curve: Curves.easeOutCubic,
+      child: AnimatedOpacity(
+        opacity: hidden ? 0 : 1,
+        duration: dur,
+        child: IgnorePointer(
+          ignoring: hidden,
+          child: ExcludeFocus(
+            excluding: hidden,
+            child: FloatingActionButton(
+              key: const ValueKey('cal.new_meeting'),
+              heroTag: 'cal_add',
+              tooltip: t('اجتماع جديد', 'New meeting'),
+              onPressed: () => _add(),
+              backgroundColor: c.primary,
+              foregroundColor: c.onHero,
+              child: const Icon(Icons.add_rounded, size: 28),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  /// Free space under a phone list / grid for the floating button (56 + its 16 margin + 16 air).
+  /// The floating button is out of the way (the person is scrolling down through rows).
+  bool _fabHidden = false;
+
+  /// A user's scroll down a list / grid tucks the floating button away; a scroll up, or reaching the end (where
+  /// [_fabRoomOf] keeps the last row clear of it), brings it back. Horizontal scrolls (filter chips) are ignored.
+  bool _onScroll(ScrollNotification n) {
+    if (n.metrics.axis != Axis.vertical || _dept) return false;
+    var hide = _fabHidden;
+    if (n is UserScrollNotification) {
+      if (n.direction == ScrollDirection.reverse && n.metrics.extentAfter > 0) hide = true;
+      if (n.direction == ScrollDirection.forward) hide = false;
+    } else if (n is ScrollEndNotification && n.metrics.extentAfter <= 0) {
+      hide = false;
+    }
+    if (hide != _fabHidden) setState(() => _fabHidden = hide);
+    return false;
+  }
+
+  /// Free space under a phone list / grid for the floating button: its 56 + the 16 margin + 24 air, plus the
+  /// bottom safe area the button sits above.
   static const double _fabRoom = 96;
+  double _fabRoomOf(BuildContext context) => _fabRoom + MediaQuery.paddingOf(context).bottom;
 
   // ── desktop sidebar ──────────────────────────────────────────────────────
   Widget _sidebar(BuildContext context, CalView view, List<CalEvent> all, List<CalEvent> shown) {
@@ -908,7 +950,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       liveKeys: _liveKeys,
       actions: _actions,
       showOrg: orgs.where((o) => o.id != 0).length > 1,
-      padding: EdgeInsets.fromLTRB(16, 10, 16, wide ? 32 : _fabRoom),
+      padding: EdgeInsets.fromLTRB(16, 10, 16, wide ? 32 : _fabRoomOf(context)),
       emptyRange: _NothingAhead(filtered: _filters.any, onClear: () => _setFilters(const CalFilters())),
       footer: _agendaDays < 56
           ? Padding(
@@ -940,7 +982,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       events: shown,
       pauses: _pauses,
       showHeader: wide,
-      bottomPadding: wide || _dept ? 0 : _fabRoom,
+      bottomPadding: wide || _dept ? 0 : _fabRoomOf(context),
       now: widget.now == null ? null : _nowWall,
       isLive: (e) => calIsLive(e, _nowUtc, liveKeys: keys),
       onTapEvent: _tap,
@@ -996,7 +1038,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       days: days,
       events: shown,
       pauses: _pauses,
-      bottomPadding: wide || _dept ? 0 : _fabRoom,
+      bottomPadding: wide || _dept ? 0 : _fabRoomOf(context),
       now: widget.now == null ? null : _nowWall,
       isLive: (e) => calIsLive(e, _nowUtc, liveKeys: keys),
       onTapEvent: _tap,
@@ -1026,7 +1068,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     return AppRefresh(
       onRefresh: _refresh,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, _fabRoom),
+        padding: EdgeInsets.fromLTRB(12, 4, 12, _fabRoomOf(context)),
         children: [
           Container(
             padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),

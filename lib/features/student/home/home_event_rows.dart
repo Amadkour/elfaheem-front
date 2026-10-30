@@ -253,9 +253,24 @@ Map<int, CalEvent> homeCourseNextEvents(List<CalEvent> events, [DateTime? nowUtc
   return out;
 }
 
-/// "Next: lecture · when", or "no lecture scheduled yet". [event] is the course's next calendar event (a live
-/// session of today, …): it wins when it comes before the next recorded lecture (M6).
-String homeNextLectureLine(MeCourseProgress x, {CalEvent? event, DateTime? nowUtc}) {
+/// Each course's latest event that already ended (declined / cancelled ones left out): the home's rows hold today's
+/// past classes too. Pure.
+Map<int, CalEvent> homeCourseLastEvents(List<CalEvent> events, [DateTime? nowUtc]) {
+  final now = nowUtc ?? DateTime.now().toUtc();
+  final out = <int, CalEvent>{};
+  for (final e in [...events]..sort((a, b) => b.end.compareTo(a.end))) {
+    final id = e.courseId;
+    if (id == null || e.declined || e.cancelled || e.end.isAfter(now)) continue;
+    out.putIfAbsent(id, () => e);
+  }
+  return out;
+}
+
+/// "Next: lecture · when", "Today's class ended · time", or "no lecture scheduled yet". [event] is the course's next
+/// calendar event (a live session of today, …): it wins when it comes before the next recorded lecture (M6).
+/// [last] is its latest class that already ended: with nothing coming, the card says so rather than "no lecture
+/// scheduled" next to a Today list that shows the course's classes (M6).
+String homeNextLectureLine(MeCourseProgress x, {CalEvent? event, CalEvent? last, DateTime? nowUtc}) {
   final n = x.nextLecture;
   final lectureAt = n?.scheduledAt;
   if (event != null && (n == null || lectureAt == null || event.start.isBefore(lectureAt))) {
@@ -263,7 +278,10 @@ String homeNextLectureLine(MeCourseProgress x, {CalEvent? event, DateTime? nowUt
     if (!event.start.isAfter(now)) return 'home_course_live_now'.tr.replaceAll('{n}', event.title);
     return 'home_next_lecture'.tr.replaceAll('{n}', event.title) + ' · ${AppTime.dateTime(event.start)}';
   }
-  if (n == null) return 'home_no_next_lecture'.tr;
+  if (n == null) {
+    if (last != null) return 'home_course_ended_today'.tr.replaceAll('{t}', AppTime.time(last.end));
+    return 'home_no_next_lecture'.tr;
+  }
   final when = lectureAt == null ? '' : ' · ${AppTime.dateTime(lectureAt)}';
   return 'home_next_lecture'.tr.replaceAll('{n}', n.name) + when;
 }
@@ -284,13 +302,14 @@ class StudentCourseSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final top = homeCourseFocus(courses, events: events).take(3).toList();
     final next = homeCourseNextEvents(events);
+    final last = homeCourseLastEvents(events);
     return HomeCourseSummary(
       figures: const [],
       lines: [
         for (final x in top)
           HomeCourseLine(
             title: x.name(AppConfig.lang),
-            subtitle: homeNextLectureLine(x, event: next[x.courseId]),
+            subtitle: homeNextLectureLine(x, event: next[x.courseId], last: last[x.courseId]),
             imageUrl: x.imageUrl,
             progress: x.progress,
             trailing: '${x.progress.round()}%',

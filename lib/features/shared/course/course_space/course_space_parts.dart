@@ -547,20 +547,50 @@ class CourseSpaceTabBar extends StatelessWidget {
   final String active;
   final ValueChanged<String> onTab;
 
-  /// Equal segments get a label beside the icon from this width, and the icon above the label from [_stackedW];
+  /// Equal segments get a label beside the icon when every tab's label + count fits whole in its segment (H7:
+  /// "Sessi… 4" at 390 px in English), else the icon above the label (the count beside the icon) from [_stackedW];
   /// narrower still, the row scrolls.
   static const double _rowW = 110, _stackedW = 64;
 
-  static bool _stacked(double inner, int count) {
-    final per = count == 0 ? inner : inner / count;
-    return per < _rowW && per >= _stackedW;
+  /// The width one tab needs laid out as a row: pill padding 14 + 14, hairline, icon 18 + 8, label, count 6 + n.
+  static double _rowNeed(BuildContext context, CourseSpaceTab t) {
+    final scaler = MediaQuery.textScalerOf(context);
+    double w(String text, double size, FontWeight weight) {
+      final tp = TextPainter(
+        text: TextSpan(text: text, style: _ts(size, weight, const Color(0xFF000000), h: 1.4)),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      final width = tp.width;
+      tp.dispose();
+      return width;
+    }
+
+    var need = 28 + 2 + 18 + 8 + w(t.label, 13, FontWeight.w600) + 2;
+    if (t.live) need += 14;
+    if (t.count != null && t.count! > 0) need += 6 + w('${t.count}', 11.5, FontWeight.w600);
+    return need;
   }
 
+  static bool _stacked(BuildContext context, double inner, List<CourseSpaceTab> visible) {
+    if (visible.isEmpty) return false;
+    final per = inner / visible.length;
+    if (per < _stackedW) return false;
+    if (per < _rowW) return true;
+    return visible.any((t) => _rowNeed(context, t) > per);
+  }
+
+  static List<CourseSpaceTab> _visible(List<CourseSpaceTab> tabs) => [
+    for (final t in tabs)
+      if (t.featureKey == null || !AppConfig.disableList.contains(t.featureKey)) t,
+  ];
+
   /// The bar's height for a page [width] at the current text scale (the pinned header needs a fixed extent).
-  static double heightFor(BuildContext context, {required double width, required int count}) {
+  static double heightFor(BuildContext context, {required double width, required List<CourseSpaceTab> tabs}) {
     final scaler = MediaQuery.textScalerOf(context);
     // padding 8 + 8, track 3 + 3, pill 9 + 9 (stacked 7 + 7), the active pill's hairline 1 + 1
-    if (_stacked(width - kCourseGutter * 2 - 6, count)) {
+    if (_stacked(context, width - kCourseGutter * 2 - 6, _visible(tabs))) {
       return (16 + 6 + 14 + 2 + 18 + 3 + scaler.scale(11.5) * 1.45).ceilToDouble();
     }
     final line = scaler.scale(13) * 1.45;
@@ -570,10 +600,7 @@ class CourseSpaceTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final visible = [
-      for (final t in tabs)
-        if (t.featureKey == null || !AppConfig.disableList.contains(t.featureKey)) t,
-    ];
+    final visible = _visible(tabs);
     return Padding(
       padding: const EdgeInsets.fromLTRB(kCourseGutter, 8, kCourseGutter, 8),
       child: Container(
@@ -584,7 +611,7 @@ class CourseSpaceTabBar extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, box) {
-            final stacked = _stacked(box.maxWidth, visible.length);
+            final stacked = _stacked(context, box.maxWidth, visible);
             final fits = visible.isEmpty || stacked || box.maxWidth / visible.length >= _rowW;
             Widget item(CourseSpaceTab t) =>
                 _TabPill(tab: t, active: t.id == active, stacked: stacked, onTap: () => onTab(t.id));
@@ -618,7 +645,13 @@ class _TabPill extends StatelessWidget {
     final fg = active ? c.textDark : c.textMedium;
     final iconColor = active ? _lift(context, c.primary) : c.textLight;
     final count = tab.count != null && tab.count! > 0
-        ? Text('${tab.count}', style: _ts(11.5, FontWeight.w600, active ? c.textMedium : c.textLight, h: 1.4))
+        ? Text(
+            '${tab.count}',
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.fade,
+            style: _ts(11.5, FontWeight.w600, active ? c.textMedium : c.textLight, h: stacked ? 1.0 : 1.4),
+          )
         : null;
     final label = Text(
       tab.label,
@@ -637,6 +670,8 @@ class _TabPill extends StatelessWidget {
                   children: [
                     if (tab.live) ...[_LiveDot(color: c.danger), const SizedBox(width: 4)],
                     Icon(tab.icon, size: 18, color: iconColor),
+                    // the count beside the icon, so the label below keeps the whole segment
+                    if (count != null) ...[const SizedBox(width: 4), Flexible(child: count)],
                   ],
                 ),
               ),

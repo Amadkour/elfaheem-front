@@ -576,6 +576,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                 _router(const RouteSettings(name: '/downloads'))!,
               ];
             }
+            // `/profile` by URL: the home, on its account tab (N10) — the dashboard reads the request when it mounts.
+            final tab = auth.isAuthenticated ? webEntryTab(_webEntry) : null;
+            if (tab != null) AppNavigator.requestedTab.value = tab;
             _webEntry = null; // one start only: a later Navigator (sign-out / sign-in) opens the usual way
             if (entry != null && entry.overHome && name == entry.route) {
               return [_router(RouteSettings(name: auth.homeRoute))!, _router(RouteSettings(name: name))!];
@@ -707,7 +710,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         return _fade(const _Guard(child: ParentDashboardScreen()), settings);
       case '/subscription':
         return _fade(const _Guard(child: SubscriptionScreen()), settings);
-      case '/profile':
+      case '/profile': // the role's account tab (N10); the edit-account form is '/edit-account'
+        return _fade(const _Guard(child: _RedirectHome(tab: 'profile')), settings);
+      case '/edit-account':
         return _fade(const _Guard(child: EditAccountScreen()), settings);
       case '/change-password':
         return _fade(const _Guard(child: ChangePasswordScreen()), settings);
@@ -997,7 +1002,11 @@ class _GuardState extends State<_Guard> {
 
 /// Sends the user to their own home screen (used when a route has no usable arguments).
 class _RedirectHome extends StatefulWidget {
-  const _RedirectHome();
+  const _RedirectHome({this.tab});
+
+  /// The dashboard tab to show ('profile' for the `/profile` route, N10): back to the home under this page, or
+  /// the home in its place, which then switches to the tab.
+  final String? tab;
 
   @override
   State<_RedirectHome> createState() => _RedirectHomeState();
@@ -1009,9 +1018,16 @@ class _RedirectHomeState extends State<_RedirectHome> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushReplacementNamed(context.read<MyAuthProvider>().homeRoute);
+      final nav = Navigator.of(context);
+      if (widget.tab != null) {
+        AppNavigator.requestedTab.value = null; // re-fire even if the same tab is requested twice
+        AppNavigator.requestedTab.value = widget.tab;
+        if (nav.canPop()) {
+          nav.pop();
+          return;
+        }
+      }
+      nav.pushReplacementNamed(context.read<MyAuthProvider>().homeRoute);
     });
   }
 

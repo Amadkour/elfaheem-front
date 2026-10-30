@@ -250,7 +250,7 @@ class CourseSpace extends StatelessWidget {
             tabs: tabs,
             active: active?.id ?? '',
             onTab: onTab,
-            extent: CourseSpaceTabBar.heightFor(context, width: width, count: _visibleTabs),
+            extent: CourseSpaceTabBar.heightFor(context, width: width, tabs: tabs),
             background: context.colors.background,
           ),
         ),

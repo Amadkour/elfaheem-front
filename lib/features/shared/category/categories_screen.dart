@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/app_bar.dart';
@@ -506,13 +505,19 @@ class CategoryAvatar extends StatelessWidget {
     required this.index,
   });
 
-  /// The letters drawn without a picture, from the name in the app's language (L7): Arabic → its first letter
-  /// (two Arabic letters join into a word), Latin → the first letters of the first and last word.
+  /// The letters drawn without a picture, from the name in the app's language (L7): Arabic → the first letter after the article,
+  /// of the first and last word, Latin → the first letters of the first and last word.
   static String initialsOf(String name) {
     final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
     if (words.isEmpty) return '?';
     final first = words.first.characters.first;
-    if (RegExp(r'[\u0600-\u06FF]').hasMatch(first)) return first;
+    if (RegExp(r'[\u0600-\u06FF]').hasMatch(first)) {
+      // N7: skip the article "ال" (every "ال..." name drew the same alef, which reads as a Latin "I");
+      // two words → both letters, kept apart by a zero-width non-joiner so they stay two initials
+      String stem(String w) => (w.startsWith('ال') && w.characters.length > 3 ? w.substring(2) : w).characters.first;
+      if (words.length == 1) return stem(words.first);
+      return '${stem(words.first)}\u200C${stem(words.last)}';
+    }
     final last = words.length > 1 ? words.last.characters.first : '';
     return (first + last).toUpperCase();
   }

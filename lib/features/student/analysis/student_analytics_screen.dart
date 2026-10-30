@@ -64,14 +64,16 @@ List<AnCourseFacts> studentCourseFacts(StudentAnalyticsProvider prov) => [
       for (final c in prov.courses)
         () {
           final b = prov.blockOf(c.id);
+          final progress = prov.progressOf(c);
           return AnCourseFacts(
             id: c.id,
             title: c.title,
             subtitle: c.teacherName,
-            progress: prov.progressOf(c),
+            progress: progress,
             attendance: b?.attendance,
             exams: b?.examAvg,
-            classProgress: _classAvg(b, 'progress'),
+            // N5: the class on the scale of the enrolment's progress (a cohort of one is level, never "11 below")
+            classProgress: anClassOnScale(shown: progress, mine: b?.progress, cls: _classAvg(b, 'progress')),
             classAttendance: _classAvg(b, 'attendance'),
             classExams: _classAvg(b, 'exam_avg'),
             attended: b?.attended ?? 0,

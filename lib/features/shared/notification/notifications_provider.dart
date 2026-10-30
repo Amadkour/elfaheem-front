@@ -10,7 +10,8 @@
 ///   • todayNotifs     → List used by _NotifGroup(group: NotifGroup.today)
 ///   • yesterdayNotifs → List used by _NotifGroup(group: NotifGroup.yesterday)
 ///   • markAsRead(id)  → called on tile tap
-///   • markGroupAsRead(group) → called by "تحديد الكل كمقروء"
+///   • markAllAsRead()  → the page's one "Mark all read" (PUT /read-all, N12)
+///   • unreadCount      → the server's whole `unread` count (N11)
 ///
 /// NotificationModel fields the screen reads:
 ///   id, title, body, iconAsset, isRead
@@ -49,6 +50,9 @@ class NotificationModel {
   /// Raw `related_type` from the API (course / session / exam / payment / profile …).
   final String relatedType;
 
+  /// Raw notification `type` from the API (session_started / recording_ready / payment_success …).
+  final String type;
+
   NotificationModel({
     required this.id,
     required this.title,
@@ -58,6 +62,7 @@ class NotificationModel {
     this.isRead = false,
     required this.sourceId,
     this.relatedType = '',
+    this.type = '',
   });
 
   // ── fromJson ────────────────────────────────────────────────────────────────
@@ -95,6 +100,7 @@ class NotificationModel {
       iconAsset: iconAsset,
       group: group,
       relatedType: type,
+      type: (json['type'] as String? ?? '').toLowerCase(),
     );
   }
 
@@ -127,6 +133,7 @@ class NotificationModel {
     isRead: isRead ?? this.isRead,
     sourceId: sourceId,
     relatedType: relatedType,
+    type: type,
   );
 }
 
@@ -144,6 +151,10 @@ class NotificationsProvider extends BaseProvider {
   int _skip = 0;
   bool _hasMore = true;
 
+  /// The server's whole unread count (`unread` on GET /notifications, N11), kept in step with local marks;
+  /// null on an older server, which then falls back to the loaded page's count.
+  int? _serverUnread;
+
   /// Larger page to ensure both "today" and "yesterday" buckets fill up
   /// in a single fetch.
   static const int _pageSize = 30; // sent as `limit`; hasMore = (page.length == _pageSize)
@@ -160,8 +171,9 @@ class NotificationsProvider extends BaseProvider {
   List<NotificationModel> get yesterdayNotifs =>
       _all.where((n) => n.group == NotifGroup.yesterday).toList();
 
-  /// Total unread count — used for badge dots in app shell.
-  int get unreadCount => _all.where((n) => !n.isRead).length;
+  /// Total unread count — the bell badge. The server's whole count when it sends one (the page holds at most
+  /// [_pageSize] rows, so counting it said 30 where the attention feed said 31), else the loaded rows'.
+  int get unreadCount => _serverUnread ?? _all.where((n) => !n.isRead).length;
 
   bool get hasMore => _hasMore;
 
@@ -171,6 +183,7 @@ class NotificationsProvider extends BaseProvider {
   Future<void> fetchNotifications({bool unreadOnly = false}) async {
     _skip = 0;
     _hasMore = true;
+    _serverUnread = null;
     _all.clear();
     notifyListeners();
     await _loadPage(unreadOnly: unreadOnly);
@@ -194,6 +207,8 @@ class NotificationsProvider extends BaseProvider {
     if (result is Map<dynamic, dynamic> &&
         result.containsKey('items') &&
         result['items'] is List) {
+      final unread = result['unread'];
+      if (unread is int) _serverUnread = unread;
       result = result['items'];
       List<NotificationModel> page = result
           .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
@@ -267,19 +282,22 @@ class NotificationsProvider extends BaseProvider {
 
   // ── markAllAsRead — used by app shell nav badge ───────────────────────────────
 
+  /// Marks every notification read — the loaded rows and the ones on later pages — with ONE call
+  /// (`PUT /read-all`), optimistically. The page's single "Mark all read" (N12) uses it.
   Future<void> markAllAsRead() async {
-    final unread = _all.where((n) => !n.isRead).toList();
-    if (unread.isEmpty) return;
-
-    for (final n in unread) {
+    if (unreadCount == 0) return;
+    for (final n in _all.where((n) => !n.isRead).toList()) {
       _updateLocal(n.id, true);
     }
-
-    await Future.wait(
-      unread.map((n) => _api
-          .put('/api/v1/notifications/${n.id}/read')
-          .catchError((_) => null)),
-    );
+    if (_serverUnread != null) {
+      _serverUnread = 0;
+      notifyListeners();
+    }
+    try {
+      await _api.put('/api/v1/notifications/read-all');
+    } catch (_) {
+      // Kept read on screen; the next fetch tells the truth.
+    }
   }
 
   // ── Private helper ────────────────────────────────────────────────────────────
@@ -287,8 +305,12 @@ class NotificationsProvider extends BaseProvider {
   void _updateLocal(String id, bool isRead) {
     final idx = _all.indexWhere((n) => n.id == id);
     if (idx != -1) {
+      final was = _all[idx].isRead;
+      if (_serverUnread != null && was != isRead) {
+        _serverUnread = (_serverUnread! + (isRead ? -1 : 1)).clamp(0, 1 << 30);
+      }
       _all[idx] = _all[idx].copyWith(isRead: isRead);
       notifyListeners();
     }
   }
-}
+}

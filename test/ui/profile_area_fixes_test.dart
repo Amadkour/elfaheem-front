@@ -79,7 +79,14 @@ void main() {
       LauncherSession(id: 3, number: 3, name: 'three', date: DateTime.utc(2026, 11, 6, 9)),
       const LauncherSession(id: 4, number: 4, name: 'four'),
     ];
-    expect(launcherOrder(sessions, nowUtc: now).map((s) => s.id).toList(), [2, 4, 3, 1]);
+    // N13: today's, then upcoming soonest first, then past newest first, then undated.
+    expect(launcherOrder(sessions, nowUtc: now).map((s) => s.id).toList(), [2, 3, 1, 4]);
+    expect(launcherFocusId(sessions, nowUtc: now), 2, reason: "today's lesson is marked");
+    final noToday = [sessions[0], sessions[2], sessions[3],
+      LauncherSession(id: 5, number: 5, name: 'five', date: DateTime.utc(2026, 11, 2, 9))];
+    expect(launcherOrder(noToday, nowUtc: now).map((s) => s.id).toList(), [5, 3, 1, 4]);
+    expect(launcherFocusId(noToday, nowUtc: now), 5, reason: 'else the next one');
+    expect(launcherFocusId([sessions[0], sessions[3]], nowUtc: now), isNull, reason: 'only past / undated: no mark');
     expect(launcherIsToday(sessions[1], nowUtc: now), isTrue);
     expect(launcherIsToday(sessions[3], nowUtc: now), isFalse);
   });

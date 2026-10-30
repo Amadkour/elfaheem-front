@@ -28,6 +28,7 @@ import '../../../../teacher/sessions/sessions_provider.dart';
 import '../../video/video_player_screen.dart';
 import '../session_material_model.dart';
 import 'material_file_style.dart';
+import 'material_title.dart';
 import 'session_exam_tile.dart';
 import 'session_shared_widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -237,9 +238,13 @@ class SessionMaterialGrid extends StatelessWidget {
 
     // ── Derived display values ─────────────────────────────────────────────
     // (the recorded item's date sits on the right through AppTime, not glued to the title)
-    final String displayName = isRecording ? 'recording_in_progress'.tr : m.name;
-    // Ratings only once there are some — or for a student who finished it and may rate it ("0.0 (0)" on every file read as noise).
-    final showRating = !isRecording && ((m.rateSummary?.total ?? 0) > 0 || (!isTeacher && isCompleted));
+    // a class recording drops "<session> — تسجيل الحصة": the row above names the session, the pill says "Recorded" (N9)
+    final String displayName = isRecording ? 'recording_in_progress'.tr : materialTitle(m.name, recorded: isRecorded);
+    // Stars only once there are ratings ("0.0 (0)" on every file read as noise, N9); a student who finished a file
+    // with none yet gets a small "Rate" link that opens them.
+    final rated = (m.rateSummary?.total ?? 0) > 0;
+    final showRating = !isRecording && rated;
+    final offerRating = !isRecording && !rated && !isTeacher && isCompleted;
 
     return Directionality(
       textDirection: Helpers.textDirOf(displayName),
@@ -310,7 +315,8 @@ class SessionMaterialGrid extends StatelessWidget {
                                 : MaterialIconWidget(
                                     icon: icon,
                                     color: color,
-                                    isCompleted: isCompleted,
+                                    // one done mark per card (N9): the check at the end, not a green tile + pill too
+                                    isCompleted: false,
                                     badge: fileStyle?.badge,
                                     badgeTextColor: fileStyle?.badgeTextColor,
                                   ),
@@ -349,10 +355,6 @@ class SessionMaterialGrid extends StatelessWidget {
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    if (isCompleted && !isTeacher) ...[
-                                      const MaterialCompletedBadge(),
-                                      const SizedBox(width: 5),
-                                    ],
                                     // For recording, show a live dot instead of age
                                     if (isRecording)
                                       _LiveDotBadge(color: color)
@@ -421,7 +423,9 @@ class SessionMaterialGrid extends StatelessWidget {
                                 sourceId: m.id.toString(),
                                 canEdit: !isTeacher,
                                 rateSummary: m.rateSummary,
-                              ),
+                              )
+                            else if (offerRating)
+                              _RateLater(materialId: m.id, rateSummary: m.rateSummary),
                           ],
                         ),
                       ),
@@ -489,11 +493,14 @@ class SessionMaterialGrid extends StatelessWidget {
                               child: isCompleted
                                   ? Padding(
                                       key: ValueKey('check'),
-                                      padding: EdgeInsetsDirectional.only(end: 5),
-                                      child: Icon(
-                                        Icons.check_circle_rounded,
-                                        size: 15,
-                                        color: context.colors.success,
+                                      padding: EdgeInsetsDirectional.only(end: 6),
+                                      child: Semantics(
+                                        label: 'completed'.tr,
+                                        child: Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 18,
+                                          color: context.colors.success,
+                                        ),
                                       ),
                                     )
                                   : const SizedBox.shrink(
@@ -994,6 +1001,51 @@ class MaterialIconWidget extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// "Rate" link: a finished file with no ratings yet opens the stars on demand (no "0.0 (0)" row, N9)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RateLater extends StatefulWidget {
+  const _RateLater({required this.materialId, this.rateSummary});
+
+  final int materialId;
+  final RatingSummary? rateSummary;
+
+  @override
+  State<_RateLater> createState() => _RateLaterState();
+}
+
+class _RateLaterState extends State<_RateLater> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_open) {
+      return RatingWidget(
+        type: RateType.material,
+        sourceId: widget.materialId.toString(),
+        canEdit: true,
+        rateSummary: widget.rateSummary,
+      );
+    }
+    final c = context.colors;
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextButton.icon(
+        onPressed: () => setState(() => _open = true),
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 32),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          visualDensity: VisualDensity.compact,
+          foregroundColor: c.textMedium,
+        ),
+        icon: Icon(Icons.star_outline_rounded, size: 15, color: c.textLight),
+        label: Text('material_rate_it'.tr, style: appText(12, w: FontWeight.w500, c: c.textMedium)),
+      ),
     );
   }
 }

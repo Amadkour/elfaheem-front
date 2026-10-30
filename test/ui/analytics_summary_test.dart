@@ -182,6 +182,16 @@ void main() {
       expect(teacherHeadline([course(1)]).kind, AnHeadlineKind.teacherEmpty);
     });
 
+    test('N4: no praise over 0 % and "–": nothing started is empty, weak figures are neutral', () {
+      // 0 % progress, no attendance, no exams = nobody started yet
+      expect(teacherHeadline([course(1, p: 0, students: 4), course(2)]).kind, AnHeadlineKind.teacherEmpty);
+      expect(teacherHeadline([course(1, p: 30, a: 65)]).kind, AnHeadlineKind.teacherSteady);
+      expect(anHeadlineText(teacherHeadline([course(1, p: 30, a: 65)])), isNot(contains('nice work')));
+      expect(teacherHeadline([course(1, p: 85, a: 90)]).kind, AnHeadlineKind.teacherOk);
+      // and no "Everything is on track" nudge over zeros either
+      expect(teacherInsights([course(1, p: 0, students: 4, shared: 1)]), isEmpty);
+    });
+
     test('insights: the most students at risk first, then one of each other kind (lowest figure first)', () {
       final i = teacherInsights([
         course(1, p: 58, a: 66, students: 64, atRisk: 5, pass: 72, shared: 2),
@@ -212,6 +222,17 @@ void main() {
       expect(anLecturesWord(5), '5 محاضرات');
       expect(anLecturesWord(12), '12 محاضرة');
       expect(anStudentsWord(9), '9 طلاب');
+    });
+
+    test('L2: zero takes the plural, sessions have their own word', () {
+      expect(anStudentsWord(0), '0 طلاب');
+      expect(anStudentsWord(11), '11 طالبًا');
+      expect(anStudentsWord(103), '103 طلاب');
+      expect(anSessionsWord(4), '4 جلسات');
+      expect(anSessionsWord(1), 'جلسة واحدة');
+      AppConfig.lang = 'en';
+      expect(anStudentsWord(4), '4 students');
+      expect(anSessionsWord(1), '1 session');
     });
 
     test('a figure in an Arabic sentence is isolated left-to-right', () {

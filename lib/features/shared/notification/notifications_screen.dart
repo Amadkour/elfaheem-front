@@ -45,6 +45,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 onRefresh: provider.fetchNotifications,
                 onLoadMore: provider.hasMore ? () => provider.loadMore() : null,
                 children: [
+                  if (provider.unreadCount > 0)
+                    ParentComponent(featureKey: 'notifications.mark_all_read', child: NotificationsMarkAllBar(
+                      // ONE action for the whole page (N12), not one per day group; one PUT /read-all.
+                      onPressed: () => context.read<NotificationsProvider>().markAllAsRead(),
+                    )),
                   ParentComponent(featureKey: 'notifications.today', child: _NotifGroup(
                     group: NotifGroup.today,
                     groupTitle: 'today'.tr,
@@ -145,29 +150,8 @@ class _NotifGroup extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Group header row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(child: Text(groupTitle, style: context.colors.h2)),
-            ParentComponent(featureKey: 'notifications.mark_all_read', child: TextButton(
-              style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-              onPressed: () async {
-                // FIX: capture provider before the async gap so we never
-                // access context after notifyListeners() may deactivate
-                // this widget.
-                final p = context.read<NotificationsProvider>();
-                await p.markGroupAsRead(group);
-              },
-              child: Text(
-                'mark_all_read'.tr,
-                style: context.colors.label.copyWith(
-                  color: context.colors.primary,
-                ),
-              ),
-            )),
-          ],
-        ),
+        // Group header (the page's single "Mark all read" sits above the groups, N12)
+        Text(groupTitle, style: context.colors.h2),
         const SizedBox(height: 12),
         // Notification tiles
         ...notifs.map(
@@ -181,6 +165,66 @@ class _NotifGroup extends StatelessWidget {
   }
 }
 
+/// The page's one "Mark all read", above the day groups (end-aligned, 48 px target).
+class NotificationsMarkAllBar extends StatelessWidget {
+  const NotificationsMarkAllBar({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: TextButton.icon(
+        style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+        onPressed: onPressed,
+        icon: Icon(Icons.done_all_rounded, size: 18, color: context.colors.primary),
+        label: Text('mark_all_read'.tr, style: context.colors.label.copyWith(color: context.colors.primary)),
+      ),
+    );
+  }
+}
+
+/// What a notification is about, for its icon (N12): read from the server's `type` first, then `related_type`.
+enum NotifKind { live, recording, schedule, exam, course, payment, certificate, complaint, announcement, request, organization, person, general }
+
+NotifKind notificationKind(String type, String relatedType) {
+  final t = type.toLowerCase();
+  final r = relatedType.toLowerCase();
+  bool any(List<String> keys) => keys.any((k) => t.contains(k) || r.contains(k));
+  if (t.contains('record') || r.contains('record')) return NotifKind.recording;
+  if (t.contains('session_started') || t.contains('live') || any(['meeting'])) return NotifKind.live;
+  if (any(['exam', 'quiz'])) return NotifKind.exam;
+  if (any(['payment', 'topup', 'subscription', 'fee', 'transfer', 'points'])) return NotifKind.payment;
+  if (any(['certificate', 'badge', 'graduation', 'premium'])) return NotifKind.certificate;
+  if (any(['complain'])) return NotifKind.complaint;
+  if (any(['announcement'])) return NotifKind.announcement;
+  if (any(['schedule', 'timetable', 'session', 'availability', 'calendar'])) return NotifKind.schedule;
+  if (any(['course', 'material', 'learning', 'module', 'lesson', 'enroll'])) return NotifKind.course;
+  if (any(['work_item', 'decision', 'council', 'form', 'request', 'consent', 'review', 'delegation', 'registrar', 'registration', 'program_choice'])) {
+    return NotifKind.request;
+  }
+  if (any(['parent', 'username', 'mention', 'user', 'profile'])) return NotifKind.person;
+  if (t.startsWith('org') || r.startsWith('org')) return NotifKind.organization;
+  return NotifKind.general;
+}
+
+IconData notificationIcon(NotifKind kind) => switch (kind) {
+  NotifKind.live => Icons.videocam_rounded,
+  NotifKind.recording => Icons.play_circle_outline_rounded,
+  NotifKind.schedule => Icons.event_note_rounded,
+  NotifKind.exam => Icons.quiz_outlined,
+  NotifKind.course => Icons.menu_book_rounded,
+  NotifKind.payment => Icons.credit_card_rounded,
+  NotifKind.certificate => Icons.workspace_premium_rounded,
+  NotifKind.complaint => Icons.support_agent_rounded,
+  NotifKind.announcement => Icons.campaign_outlined,
+  NotifKind.request => Icons.assignment_outlined,
+  NotifKind.organization => Icons.apartment_rounded,
+  NotifKind.person => Icons.person_outline_rounded,
+  NotifKind.general => Icons.notifications_none_rounded,
+};
+
 // ── Notification Tile ─────────────────────────────────────────────────────────
 
 /// One notification row (calm: an unread one adds a dot and a w600 title, M2).
@@ -190,6 +234,12 @@ class NotificationTile extends StatelessWidget {
   const NotificationTile({super.key, required this.notif});
 
   Widget _buildIcon(String asset, BuildContext context) {
+    final kind = notificationKind(notif.type, notif.relatedType);
+    if (kind != NotifKind.general) {
+      final c = context.colors;
+      final tone = kind == NotifKind.certificate ? c.accent : c.primary;
+      return _IconBadge(icon: notificationIcon(kind), bg: tone.withValues(alpha: 0.12), iconColor: tone);
+    }
     switch (asset) {
       case 'payment':
         return _IconBadge(

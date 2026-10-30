@@ -507,10 +507,17 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
     final screen = Size(mq.size.width, mq.size.height - mq.viewInsets.bottom);
     final r = appAssistantPanelRect(screen, mq.padding.copyWith(bottom: mq.viewInsets.bottom > 0 ? 0 : mq.padding.bottom), rtl: rtl);
     final wide = mq.size.width >= 700;
-    return Offstage(
+    // A closed pop-up stays mounted (an answer being prepared is kept) but leaves the focus order (N2): its nodes sit
+    // beside the Navigator, in the view's own focus scope, so Tab, the browser handing focus back to the page and
+    // reading-order traversal would otherwise measure them (FocusNode.rect) while they are hidden. Its own traversal
+    // group keeps Tab inside the open card in reading order without sorting it against the rest of the app.
+    return ExcludeFocus(
+      excluding: !open,
+      child: Offstage(
       offstage: !open,
       child: TickerMode(
         enabled: open,
+        child: FocusTraversalGroup(
         child: Stack(children: [
           if (!wide) Positioned.fill(child: GestureDetector(onTap: _close, child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)))),
           Positioned.fromRect(
@@ -560,6 +567,8 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
             ),
           ),
         ]),
+        ),
+      ),
       ),
     );
   }

@@ -180,7 +180,7 @@ const double kAnAheadOfClass = 8;
 // Headline
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum AnHeadlineKind { empty, aheadAll, ahead, catchUp, attention, great, steady, teacherRisk, teacherOk, teacherEmpty }
+enum AnHeadlineKind { empty, aheadAll, ahead, catchUp, attention, great, steady, teacherRisk, teacherOk, teacherSteady, teacherEmpty }
 
 class AnHeadline {
   const AnHeadline(this.kind, {this.n = 0, this.m = 0, this.course});
@@ -215,11 +215,21 @@ AnHeadline studentHeadline(List<AnCourseFacts> courses) {
   return AnHeadline(overall != null && overall >= 75 ? AnHeadlineKind.great : AnHeadlineKind.steady);
 }
 
+/// A figure the students actually made: an attendance or exam number, or progress above zero (0 % progress with
+/// nothing else is "nobody started yet", not a result).
+bool anHasRealData(AnCourseFacts c) => c.attendance != null || c.exams != null || (c.progress ?? 0) > 0;
+
+/// The overall figure that earns praise for a class.
+const double kAnClassGood = 70;
+
 AnHeadline teacherHeadline(List<AnCourseFacts> courses) {
   final risk = courses.fold<int>(0, (s, c) => s + c.atRisk);
   if (risk > 0) return AnHeadline(AnHeadlineKind.teacherRisk, n: risk);
-  if (courses.every((c) => c.overall == null)) return const AnHeadline(AnHeadlineKind.teacherEmpty);
-  return const AnHeadline(AnHeadlineKind.teacherOk);
+  // N4: no praise over "0 %" and "–": praise only real, good numbers; anything else is a neutral line
+  final real = courses.where(anHasRealData).toList();
+  if (real.isEmpty) return const AnHeadline(AnHeadlineKind.teacherEmpty);
+  final overall = anMean(real.map((c) => c.overall));
+  return AnHeadline(overall != null && overall >= kAnClassGood ? AnHeadlineKind.teacherOk : AnHeadlineKind.teacherSteady);
 }
 
 bool anCourseNeedsAttention(AnCourseFacts c) =>
@@ -359,7 +369,7 @@ List<AnInsight> teacherInsights(List<AnCourseFacts> courses, {int max = 3}) {
     return ra == 0 ? b.n.compareTo(a.n) : (a.value ?? 100).compareTo(b.value ?? 100);
   });
   final out = anPickInsights([...warn, ...info, ...good], max);
-  if (out.isEmpty && courses.any((c) => c.overall != null)) {
+  if (out.isEmpty && courses.any((c) => anHasRealData(c) && (c.overall ?? 0) >= kAnClassGood)) {
     out.add(const AnInsight(AnInsightKind.allGood, AnTone.good, target: AnTarget.none));
   }
   return out;
@@ -376,7 +386,8 @@ String anCountWord(int n, {required String en, required String enPlural, require
   if (!_ar) return n == 1 ? '1 $en' : '$n $enPlural';
   if (n == 1) return arOne;
   if (n == 2) return arTwo;
-  if (n >= 3 && n <= 10) return '$n $arFew';
+  // L2: zero takes the plural ("0 طلاب"), not the accusative singular ("0 طالبًا")
+  if (n == 0 || (n % 100 >= 3 && n % 100 <= 10)) return '$n $arFew';
   return '$n $arMany';
 }
 
@@ -385,6 +396,9 @@ String anLecturesWord(int n) =>
 
 String anStudentsWord(int n) =>
     anCountWord(n, en: 'student', enPlural: 'students', arOne: 'طالب واحد', arTwo: 'طالبان', arFew: 'طلاب', arMany: 'طالبًا');
+
+String anSessionsWord(int n) =>
+    anCountWord(n, en: 'session', enPlural: 'sessions', arOne: 'جلسة واحدة', arTwo: 'جلستان', arFew: 'جلسات', arMany: 'جلسة');
 
 String anQuestionsWord(int n) =>
     anCountWord(n, en: 'question', enPlural: 'questions', arOne: 'سؤال واحد', arTwo: 'سؤالان', arFew: 'أسئلة', arMany: 'سؤالًا');
@@ -440,6 +454,7 @@ String anHeadlineText(AnHeadline h) {
     AnHeadlineKind.steady => anFmt('an2_head_steady', p, 'Steady progress. Small steps every day add up.'),
     AnHeadlineKind.teacherRisk => anFmt('an2_thead_risk', {'students': anStudentsWord(h.n)}, '{students} could use your attention this week.'),
     AnHeadlineKind.teacherOk => anFmt('ta_hero_ok', p, 'Every class is on track — nice work!'),
+    AnHeadlineKind.teacherSteady => anFmt('an2_thead_steady', p, 'Your classes are under way. The figures below show where they stand.'),
     AnHeadlineKind.teacherEmpty => anFmt('an2_thead_empty', p, 'Class numbers appear once your students start learning.'),
   };
 }

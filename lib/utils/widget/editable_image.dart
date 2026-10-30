@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -16,7 +15,7 @@ class EditableImage extends StatelessWidget {
       required this.onChange,
       this.imageUrl,
       this.imageByte,
-      this.imageFile, required this.size, this.isCircle=false});
+      this.imageFile, required this.size, this.isCircle=false, this.name});
 
   final Future<void> Function(XFile file) onChange;
   final String? imageUrl;
@@ -24,9 +23,13 @@ class EditableImage extends StatelessWidget {
   final Uint8List? imageByte;
   final double size;
   final bool isCircle;
+
+  /// The person's name for an avatar without a photo: its first letter, like every other avatar of the app
+  /// (N10), with the camera badge to add one. Null keeps the "add a picture" placeholder (covers, logos).
+  final String? name;
+
   @override
   Widget build(BuildContext context) {
-    print(context.height/10);
     return Container(
       height: size,
       width: size,
@@ -65,7 +68,7 @@ class EditableImage extends StatelessWidget {
             ),
           ),
         ),
-        if (imageByte != null || imageUrl != null)
+        if (imageByte != null || (imageUrl ?? '').isNotEmpty || name != null)
           Positioned(
             bottom: isCircle?0 :0,
             left:isCircle? (size/1.7): - 10,
@@ -110,7 +113,24 @@ class EditableImage extends StatelessWidget {
     return _placeholder(context);
   }
 
-  Widget _placeholder(BuildContext context) => Container(
+  Widget _placeholder(BuildContext context) {
+    final n = name?.trim() ?? '';
+    if (name != null) {
+      return Container(
+        color: context.colors.primary.withValues(alpha: 0.10),
+        alignment: Alignment.center,
+        child: Text(n.isNotEmpty ? n.characters.first.toUpperCase() : '?',
+            style: TextStyle(
+                fontFamily: AppFonts.family,
+                fontSize: size * 0.36,
+                fontWeight: FontWeight.w800,
+                color: context.colors.primary)),
+      );
+    }
+    return _addPicture(context);
+  }
+
+  Widget _addPicture(BuildContext context) => Container(
         decoration: BoxDecoration(
           shape:isCircle? BoxShape.circle : BoxShape.rectangle,
             color: context.colors.primary.withValues(alpha: 0.10),

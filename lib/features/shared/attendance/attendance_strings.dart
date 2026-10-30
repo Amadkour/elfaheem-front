@@ -180,6 +180,7 @@ const Map<String, (String, String)> _fallback = {
   'att_launch_btn': ('بدء أخذ الحضور', 'Start attendance'),
   'att_launch_title': ('اختر المحاضرة', 'Choose the lesson'),
   'att_launch_today': ('اليوم', 'Today'),
+  'att_launch_next': ('التالية', 'Next'),
   'att_launch_empty': ('لا توجد محاضرات بعد', 'No lessons yet'),
   'att_tab_downloads': ('التنزيلات', 'Downloads'),
   'att_tab_attendance': ('الحضور', 'Attendance'),

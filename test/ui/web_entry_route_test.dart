@@ -15,7 +15,8 @@ void main() {
   test('signed in: argument-free pages open over the home; dashboards and unknown routes go home', () {
     ({String route, bool overHome})? r(String e) => resolveWebEntry(e, signedIn: true, home: '/dashboard', isLink: link);
     expect(r('/notifications'), (route: '/notifications', overHome: true));
-    expect(r('/profile'), (route: '/profile', overHome: true));
+    expect(r('/edit-account'), (route: '/edit-account', overHome: true));
+    expect(r('/profile'), isNull, reason: 'N10: the home, switched to its account tab (webEntryTab)');
     expect(r('/dashboard'), isNull, reason: 'already the home');
     expect(r('/admin_dashboard'), isNull, reason: "never another role's home");
     expect(r('/login'), isNull, reason: 'signed in: the home');
@@ -23,6 +24,14 @@ void main() {
     expect(r('/nope'), isNull);
     expect(r('/c/12?ref=5'), (route: '/c/12?ref=5', overHome: false), reason: 'share links resolve themselves');
     expect(resolveWebEntry(null, signedIn: true, home: '/dashboard', isLink: link), isNull);
+  });
+
+  test('N10: /profile names the account tab of the home, not the edit-account form', () {
+    expect(webEntryTab('/profile'), 'profile');
+    expect(webEntryTab('/profile?x=1'), 'profile');
+    expect(webEntryTab('/edit-account'), isNull);
+    expect(webEntryTab('/notifications'), isNull);
+    expect(webEntryTab(null), isNull);
   });
 
   test('signed out: sign-in pages and share links; a page that needs an account → the login', () {

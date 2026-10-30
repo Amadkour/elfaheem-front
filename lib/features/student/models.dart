@@ -1,6 +1,7 @@
 /// features/student/models.dart  —  Student data models v3.2.0
 library;
 
+import 'package:flutter/widgets.dart' show StringCharacters;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
@@ -403,10 +404,14 @@ class TeacherProfileData {
             : null,
       );
 
+  /// Two letters of the name without a title ("Dr. Omar Hassan" → "OH", not "DO" — M22).
   String get initials {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+    const titles = {'dr', 'dr.', 'mr', 'mr.', 'mrs', 'mrs.', 'ms', 'ms.', 'prof', 'prof.', 'eng', 'eng.', 'د', 'د.', 'أ', 'أ.', 'م', 'م.', 'أ.د', 'أ.د.'};
+    var parts = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final named = parts.where((w) => !titles.contains(w.toLowerCase())).toList();
+    if (named.isNotEmpty) parts = named;
+    if (parts.length >= 2) return '${parts[0].characters.first}${parts[1].characters.first}'.toUpperCase();
+    return parts.isNotEmpty ? parts[0].characters.first.toUpperCase() : '?';
   }
 }
 

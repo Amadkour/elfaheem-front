@@ -148,6 +148,10 @@ class RagChatViewState extends State<RagChatView> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
   final List<RagAnswer> _items = [];
+
+  /// How many of [_items] (the oldest) are folded away (N6): an older server's flat history that ended on a failure
+  /// opens on the starter questions, with "Earlier questions" to unfold them.
+  int _hiddenBefore = 0;
   List<String>? _starters; // from the server (questions the library answers); null = the built-in list
   bool _loading = true;
   bool _sending = false;
@@ -187,7 +191,7 @@ class RagChatViewState extends State<RagChatView> {
     if (!ragSessionsSupported(r)) {
       _sessions = false;
       widget.onSessionsSupported?.call(false);
-      await _history();
+      await _history(opening: true);
       return;
     }
     _sessions = true;
@@ -204,10 +208,14 @@ class RagChatViewState extends State<RagChatView> {
     RagConversation? open;
     final want = _draftFresh ? null : widget.initialConversationId;
     if (want != null) open = _convs.where((c) => c.id == want).firstOrNull;
-    if (open == null && want == null && widget.resumeLatest && !_draftFresh) open = _convs.firstOrNull;
+    if (open == null && want == null && widget.resumeLatest && !_draftFresh) {
+      // N6: an old conversation is not reopened by itself — the assistant starts on a new chat (it is under Chats)
+      final latest = _convs.firstOrNull;
+      if (latest != null && ragResumeConversation(latest, DateTime.now().toUtc())) open = latest;
+    }
     _draftFresh = false;
     if (open != null) {
-      await openConversation(open);
+      await openConversation(open, resumed: want == null);
     } else {
       setState(() => _loading = false);
       widget.onConversationChanged?.call(null);
@@ -250,6 +258,7 @@ class RagChatViewState extends State<RagChatView> {
     setState(() {
       _current = null;
       _items.clear();
+      _hiddenBefore = 0;
       _error = null;
       _hasMore = false;
       _loading = false;
@@ -257,11 +266,13 @@ class RagChatViewState extends State<RagChatView> {
     widget.onConversationChanged?.call(null);
   }
 
-  /// Reopens [c]: its messages oldest first (the first page; "Load earlier" pages back).
-  Future<void> openConversation(RagConversation c) async {
+  /// Reopens [c]: its messages oldest first (the first page; "Load earlier" pages back). [resumed]: opened by itself
+  /// (the latest conversation), not picked — one that ends on a failure then gives way to a new chat (N6).
+  Future<void> openConversation(RagConversation c, {bool resumed = false}) async {
     setState(() {
       _current = c;
       _items.clear();
+      _hiddenBefore = 0;
       _error = null;
       _hasMore = false;
       _loading = true;
@@ -283,6 +294,12 @@ class RagChatViewState extends State<RagChatView> {
       }
     });
     if (_current == null) widget.onConversationChanged?.call(null);
+    // N6: the first thing the person sees is never a failed / abandoned answer — a new chat with the starter
+    // questions instead; the conversation stays under Chats
+    if (resumed && r.ok && ragOpensOnFailure(_items, DateTime.now().toUtc(), askedAt: c.lastAt)) {
+      newChat();
+      return;
+    }
     _followUnfinished();
     _toEnd();
   }
@@ -454,12 +471,18 @@ class RagChatViewState extends State<RagChatView> {
     _history();
   }
 
-  Future<void> _history() async {
+  /// The flat history (an older server). [opening]: the view's first load — when it ends on a failure (N6) the
+  /// questions are folded away behind "Earlier questions" and the starter questions show.
+  Future<void> _history({bool opening = false}) async {
     final r = await _api.history(orgId: widget.orgId, courseId: widget.courseId, app: widget.app);
     if (!mounted) return;
     setState(() {
       _loading = false;
-      if (r.ok) _items..clear()..addAll(RagApi.items(r).reversed);
+      if (r.ok) {
+        _items..clear()..addAll(RagApi.items(r).reversed);
+        final fold = (opening || _hiddenBefore > 0) && ragOpensOnFailure(_items, DateTime.now().toUtc());
+        _hiddenBefore = fold ? _items.length : 0;
+      }
       if (r.unavailable) _error = t('المساعد غير متاح بعد على هذا الخادم', 'The assistant is not available on this server yet');
       if (!r.ok && ragOrgBlocked(r.code)) _error = ragChatResultText(r); // suspended / deactivated / switched off
     });
@@ -608,7 +631,9 @@ class RagChatViewState extends State<RagChatView> {
 
   Widget _chatColumn(BuildContext context, double side) {
     final c = context.colors;
-    final last = _items.isEmpty ? null : _items.last;
+    final hidden = _hiddenBefore.clamp(0, _items.length);
+    final visible = hidden == 0 ? _items : _items.sublist(hidden);
+    final last = visible.isEmpty ? null : visible.last;
     final retention = _sessions == true && !_loading && _items.isEmpty ? retentionText(_retentionDays, AppConfig.lang) : '';
     return Column(children: [
       Expanded(
@@ -616,7 +641,20 @@ class RagChatViewState extends State<RagChatView> {
           AppBanner(icon: Icons.menu_book_rounded, color: appInk(context, c.primary), text: _scopeText()),
           const SizedBox(height: 10),
           if (_loading) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
-          if (!_loading && _items.isEmpty && _error == null)
+          if (hidden > 0)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                key: const ValueKey('rag.earlier'),
+                onPressed: () {
+                  setState(() => _hiddenBefore = 0);
+                  _toEnd();
+                },
+                icon: const Icon(Icons.history_rounded, size: 18),
+                label: Text(t('الأسئلة السابقة ($hidden)', 'Earlier questions ($hidden)')),
+              ),
+            ),
+          if (!_loading && visible.isEmpty && _error == null)
             RagStarterPrompts(
                 context_: _ctx,
                 prompts: _starters,
@@ -638,7 +676,7 @@ class RagChatViewState extends State<RagChatView> {
                       : const Icon(Icons.expand_less_rounded, size: 18),
                   label: Text('rag_load_earlier'.tr)),
             ),
-          for (final a in _items)
+          for (final a in visible)
             RagAnswerCard(
                 answer: a,
                 onRate: a.smallTalk ? null : (helpful) => _rate(a, helpful),

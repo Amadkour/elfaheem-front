@@ -605,6 +605,7 @@ class _MobileHero extends StatelessWidget {
               imageUrl: p.imageUrl,
               size: context.height / 8,
               isCircle: true,
+              name: p.name, // no photo: the initial, as everywhere else (N10)
             ),
           ),
           const SizedBox(height: 14),
@@ -703,6 +704,7 @@ class _FormCard extends StatelessWidget {
                 imageUrl: p.imageUrl,
                 size: context.height / 8,
                 isCircle: true,
+                name: p.name, // no photo: the initial, as everywhere else (N10)
               ),
             ),
             const SizedBox(height: 28),

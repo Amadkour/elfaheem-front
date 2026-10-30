@@ -13,6 +13,7 @@ import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboa
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
+import '../../../utils/widget/app_navigator.dart' show AppNavigator;
 import '../analysis/analytics_hub_screen.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
@@ -38,13 +39,37 @@ class _State extends State<TeacherDashboardScreen> {
 
   @override
   void dispose() {
+    AppNavigator.requestedTab.removeListener(_onTabRequested);
     _complaints.dispose();
     super.dispose();
+  }
+
+  /// A URL (`/profile`, N10), a dialog button or a push asked for a tab: the builder below switches to it.
+  void _onTabRequested() {
+    if (mounted) setState(() {});
+  }
+
+  /// Switches to the requested tab once this frame is drawn (the tab index lives in the provider built below).
+  void _consumeTabRequest(TeacherDashboardProvider provider) {
+    final req = AppNavigator.requestedTab.value;
+    if (req == null) return;
+    final label = switch (req) {
+      'profile' || 'last' => 'my_profile',
+      _ => req,
+    };
+    final i = dashboardItems.indexWhere((e) => e.label == label);
+    if (i < 0) return; // switched off by the feature list, or another dashboard's tab
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || AppNavigator.requestedTab.value != req) return;
+      AppNavigator.requestedTab.value = null; // consumed
+      provider.onChangeTab(i);
+    });
   }
 
   @override
   void initState() {
     super.initState();
+    AppNavigator.requestedTab.addListener(_onTabRequested);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final devices = context.read<TeacherDeviceRequestsProvider>();
       await Future.wait([
@@ -108,6 +133,7 @@ class _State extends State<TeacherDashboardScreen> {
       builder: (context, _) {
         TeacherDashboardProvider provider = context
             .watch<TeacherDashboardProvider>();
+        _consumeTabRequest(provider);
         return PopScope(
           // Back goes to the first tab, and only from there may it leave the app
           // (canPop: false used to trap the user on the dashboard).

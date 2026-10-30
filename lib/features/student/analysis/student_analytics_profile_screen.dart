@@ -26,6 +26,7 @@ import '../../teacher/data_lab/data_lab_widgets.dart' show DlAvatar;
 import 'flags/student_flags_screen.dart';
 import 'student_analytics_provider.dart';
 import 'student_analytics_widgets.dart';
+import '../../shared/analytics/analytics_summary.dart' show anSessionsWord;
 import 'student_course_analytics_screen.dart';
 
 class StudentAnalyticsProfileScreen extends StatefulWidget {
@@ -331,7 +332,7 @@ class _CourseDetail extends StatelessWidget {
             Icon(Icons.event_available_rounded, color: c.success),
             const SizedBox(width: 12),
             Expanded(
-              child: Text('${'dl_attended'.tr} ${block.attended} ${'dl_of'.tr} ${block.held} ${'dl_sessions_held'.tr}',
+              child: Text(anFmt('an2_attended_of', {'a': block.attended, 'sessions': anSessionsWord(block.held)}, 'Attended {a} of {sessions} so far'),  // L2
                   style: anText(13, w: FontWeight.w700, c: c.textDark, h: 1.4)),
             ),
           ]),

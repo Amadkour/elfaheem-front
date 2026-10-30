@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../../core/base_provider.dart';
+import '../../../core/home/me_home.dart';
 import '../../teacher/analysis/attendance/attendance_model.dart';
 import '../../teacher/data_lab/data_lab_models.dart';
 import 'attendance/student_attendance_model.dart';
@@ -27,6 +28,16 @@ double? anAverage(Iterable<double?> xs) {
 
 /// Overall performance of a course: the average of progress, attendance and exams — only those that exist.
 double? anOverall({double? progress, double? attendance, double? exams}) => anAverage([progress, attendance, exams]);
+
+/// The class average [cls] laid on the scale of the figure shown as "you" ([shown]) (N5 / M3). The class average is
+/// the Data Lab column's, while "you" is the enrolment's live figure (the one the home, the course list and the course
+/// page show), and the two can differ; so the gap is measured inside the column (my value there, [mine], vs the
+/// class's) and laid on [shown]. A cohort of one is level with itself. Null when either side is missing.
+double? anClassOnScale({required double? shown, required double? mine, required double? cls}) {
+  if (shown == null || cls == null) return null;
+  if (mine == null) return cls;
+  return (shown + cls - mine).clamp(0, 100).toDouble();
+}
 
 /// A course needs attention when attendance or exams are clearly low.
 bool anNeedsAttention({double? attendance, double? exams}) =>
@@ -210,7 +221,27 @@ class StudentCourseAnalyticsProvider extends ChangeNotifier {
     return done.fold(0.0, (s, e) => s + e.percentage!) / done.length;
   }
 
-  double? get progress => enrolledProgress ?? _block?.progress;
+  /// One progress figure app-wide (M3): the enrolment's (the caller's, else the cached `/me/home` copy, no request),
+  /// the Data Lab profile's only when neither is known.
+  double? get progress => enrolledProgress ?? _homeProgress ?? _block?.progress;
+
+  double? get _homeProgress {
+    for (final c in MeHomeService.instance.home?.coursesProgress ?? const <MeCourseProgress>[]) {
+      if (c.courseId == courseId) return c.progress;
+    }
+    return null;
+  }
+
+  /// The class average of a profile column on the scale of [shown], the figure drawn as "you" (see [anClassOnScale]).
+  double? classFor(String key, double? shown) {
+    final mine = switch (key) {
+      'progress' => _block?.progress,
+      'attendance' => _block?.attendance,
+      'exam_avg' => _block?.examAvg,
+      _ => null,
+    };
+    return anClassOnScale(shown: shown, mine: mine, cls: classAvg(key));
+  }
 
   /// Average of progress, attendance and exams — only the parts that exist.
   double? get overall => anOverall(

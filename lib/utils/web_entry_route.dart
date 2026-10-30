@@ -18,7 +18,11 @@ const kWebDashboardRoutes = {
 
 /// Pages that need no arguments and may be opened by URL by a signed-in person (each stays behind the router's
 /// own guard): they open on top of the person's home, so Back leads there.
-const kWebUrlPages = {'/notifications', '/profile', '/change-password', '/subscription', '/calendar', '/downloads'};
+const kWebUrlPages = {'/notifications', '/change-password', '/subscription', '/calendar', '/downloads', '/edit-account'};
+
+/// URLs that name a tab of the person's home (N10): the app starts on the home and switches to that tab
+/// (`/profile` is the account tab, not the edit-account form, which is `/edit-account`).
+const kWebTabPages = {'/profile': 'profile'};
 
 /// The sign-in pages, which a signed-out person may open by URL.
 const kWebAuthRoutes = {'/login', '/register', '/forgot-password'};
@@ -44,5 +48,11 @@ String? webEntryRouteFromUri(Uri base) {
   }
   if (kWebAuthRoutes.contains(path) || kWebDashboardRoutes.contains(path) || path == home) return null;
   if (kWebUrlPages.contains(path)) return (route: path, overHome: true);
-  return null; // unknown or needs arguments: the home
+  return null; // unknown, a home tab ([webEntryTab]) or needs arguments: the home
+}
+
+/// The home tab a browser [entry] route names (`/profile` → 'profile'), for a signed-in start; else null.
+String? webEntryTab(String? entry) {
+  if (entry == null || entry.isEmpty) return null;
+  return kWebTabPages[Uri.tryParse(entry)?.path ?? entry];
 }

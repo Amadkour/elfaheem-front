@@ -186,7 +186,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         child: HomeHeader(
                           name: user?.name ?? 'sir'.tr,
                           subtitle: provider.loaded ? teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length,
-                              payoutWaiting: (provider.extra?.pendingPayout ?? 0) > 0) : null,
+                              payoutWaiting: (provider.extra?.pendingPayout ?? 0) > 0, orgTodo: _orgTodo()) : null,
                           leading: user == null ? null : UserChipButton(user: user, showLabel: false),
                           actions: [
                             // "Meet now" moved into the Go live sheet; the icon comes back when Go live is switched off
@@ -253,8 +253,18 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
   }
 }
 
-/// The greeting's one line: today's sessions, what is live (or the next start), the counts that wait.
-String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pending, int liveMeetings, {bool payoutWaiting = false}) {
+/// What waits in the organization shown in Organization mode (its to-dos + approvals, the counts its "What needs
+/// you" section draws), 0 in Individual mode.
+int _orgTodo() {
+  final m = AppModeController.instance;
+  final e = m.isOrg ? m.current : null;
+  return e == null ? 0 : AppModeController.pendingOf(e);
+}
+
+/// The greeting's one line: today's sessions, what is live (or the next start), the counts that wait — the same
+/// counts the page's pills show ([orgTodo]: the open organization's, M6), never "nothing waiting" next to them.
+String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pending, int liveMeetings,
+    {bool payoutWaiting = false, int orgTodo = 0}) {
   final today = [...schedule.where((s) => s.isToday)]..sort((a, b) => a.startMin.compareTo(b.startMin));
   final live = schedule.where((s) => s.isOngoing || s.isLive).length + liveMeetings;
   final now = DateTime.now().toUtc();
@@ -263,7 +273,7 @@ String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pendin
   return homeDaySummary(
     sessions: today.length,
     live: live,
-    todo: p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests'),
+    todo: p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests') + orgTodo,
     othersWaiting: payoutWaiting,
     nextAt: next == null ? null : AppTime.time(teacherSessionUtc(next, next.startTime)),
   );

@@ -554,7 +554,7 @@ class InstructorAvatar extends StatelessWidget {
         border: Border.all(color: context.colors.background, width: 1),
       ),
       child: ClipOval(
-        child: teacher.imageUrl != null
+        child: (teacher.imageUrl ?? '').isNotEmpty
             ? AppNetworkImage(
           url: teacher.imageUrl!,
           width: size,

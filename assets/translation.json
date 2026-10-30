@@ -5121,6 +5121,42 @@
     "en": "Hours",
     "ar": "ساعة"
   },
+  "course_hero_students_one": {
+    "en": "Student",
+    "ar": "طالب"
+  },
+  "course_hero_students_few": {
+    "en": "Students",
+    "ar": "طلاب"
+  },
+  "course_hero_lessons_one": {
+    "en": "Session",
+    "ar": "جلسة"
+  },
+  "course_hero_lessons_few": {
+    "en": "Sessions",
+    "ar": "جلسات"
+  },
+  "course_hero_hours_one": {
+    "en": "Hour",
+    "ar": "ساعة"
+  },
+  "course_hero_hours_few": {
+    "en": "Hours",
+    "ar": "ساعات"
+  },
+  "material_session_recording": {
+    "en": "Session recording",
+    "ar": "تسجيل الحصة"
+  },
+  "material_recording_round": {
+    "en": "round {n}",
+    "ar": "لقاء {n}"
+  },
+  "material_rate_it": {
+    "en": "Rate",
+    "ar": "قيّم"
+  },
   "admin_attach_receipt": {
     "en": "Attach receipt",
     "ar": "إرفاق الإيصال"
@@ -7308,6 +7344,10 @@
   "an2_thead_risk": {
     "en": "{students} could use your attention this week.",
     "ar": "{students} يحتاجون اهتمامك هذا الأسبوع."
+  },
+  "an2_thead_steady": {
+    "en": "Your classes are under way. The figures below show where they stand.",
+    "ar": "فصولك جارية، والأرقام أدناه توضّح أين وصلت."
   },
   "an2_thead_empty": {
     "en": "Class numbers appear once your students start learning.",
@@ -13157,6 +13197,10 @@
     "en": "All my courses",
     "ar": "كل كورساتي"
   },
+  "an2_attended_of": {
+    "en": "Attended {a} of {sessions} so far",
+    "ar": "حضر {a} من {sessions} حتى الآن"
+  },
   "dl_attended": {
     "en": "Attended",
     "ar": "حضر"
@@ -17088,6 +17132,10 @@
   "home_online": {
     "en": "Online",
     "ar": "أونلاين"
+  },
+  "home_course_ended_today": {
+    "en": "Today's class ended · {t}",
+    "ar": "انتهت حصة اليوم · {t}"
   },
   "home_no_next_lecture": {
     "en": "No lecture scheduled yet",

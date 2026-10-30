@@ -81,7 +81,13 @@ class SessionsTab extends StatelessWidget {
         (
           live: s.isLiveActive,
           locked: !provider.isSessionUnlockedById(s.id),
-          done: s.isCompleted,
+          done: courseStudentSessionDone(
+            serverDone: s.isCompleted,
+            materials: s.totalMaterial,
+            materialsDone: s.completeMaterial,
+            when: sessionUtc(s.scheduledAt),
+            minutes: s.durationMinutes,
+          ),
           when: sessionUtc(s.scheduledAt),
         ),
     ]);

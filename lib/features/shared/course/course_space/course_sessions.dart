@@ -24,6 +24,7 @@ import 'package:flutter/material.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/app_time.dart';
+import '../../../../core/plural.dart' show arabicPluralForm;
 import '../../../../core/display/app_fonts.dart';
 import '../../../../design/app_display.dart' show syncMotionLoop;
 import '../../../../utils/helpers.dart';
@@ -113,7 +114,30 @@ class CourseSessionView {
   }
 }
 
-/// Student: one state per session, in list order. The first session that is neither live, locked nor done is "next".
+/// Student: is this session done? (N1: the server's `completeness` is true for a session with nothing in it, so a
+/// course of empty future sessions read all done at 0%.)
+/// - a future session is never done;
+/// - with materials: the server's flag (every material completed AND the session's exam passed, if it has one),
+///   checked against the counts;
+/// - without materials: done only when it already took place (start + length has passed) and the server agrees —
+///   an ended live session with nothing to watch has nothing left to do; one without a date has not happened.
+bool courseStudentSessionDone({
+  required bool serverDone,
+  required int materials,
+  required int materialsDone,
+  DateTime? when,
+  int minutes = 0,
+  DateTime? now,
+}) {
+  final t = (now ?? DateTime.now()).toUtc();
+  if (when != null && when.isAfter(t)) return false;
+  if (materials > 0) return serverDone && materialsDone >= materials;
+  if (when == null) return false;
+  return serverDone && !when.add(Duration(minutes: minutes)).isAfter(t);
+}
+
+/// Student: one state per session, in list order. The first session that is neither live, locked nor done is "next";
+/// a future session is never done.
 List<CourseSessionState> courseStudentStates(
   List<({bool live, bool locked, bool done, DateTime? when})> sessions, {
   DateTime? now,
@@ -127,7 +151,7 @@ List<CourseSessionState> courseStudentStates(
       out.add(CourseSessionState.live);
     } else if (s.locked) {
       out.add(CourseSessionState.locked);
-    } else if (s.done) {
+    } else if (s.done && !future) {
       out.add(CourseSessionState.done);
     } else if (!nextTaken && !future) {
       nextTaken = true;
@@ -187,6 +211,17 @@ int courseSessionFoldCount(List<CourseSessionState> states, {int minLength = 8, 
   }
   if (n >= states.length || n < minFold) return 0;
   return n;
+}
+
+/// The noun under a hero number (drawn apart from it) in its plural form (L2: "4 طالب"): the translation keys
+/// `<base>_one` (1), `<base>_few` (Arabic 2–10, English plural) and `<base>` (Arabic 0 / 11+ / a fraction, English
+/// plural) — e.g. `courseStatNoun(4, 'course_hero_students')` → "طلاب" / "Students".
+String courseStatNoun(num n, String base, {String? lang}) {
+  final whole = n == n.roundToDouble() ? n.toInt() : null;
+  final ar = (lang ?? AppConfig.lang) == 'ar';
+  if (whole == 1) return '${base}_one'.tr;
+  if (ar && whole != null && whole != 0 && arabicPluralForm(whole) != 'many') return '${base}_few'.tr;
+  return base.tr;
 }
 
 /// "45 min" · "1 h 30 min" · "2 h".

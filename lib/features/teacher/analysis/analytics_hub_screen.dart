@@ -21,7 +21,6 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
-import '../../../core/plural.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../shared/analytics/analytics_summary.dart';
 import '../../shared/analytics/analytics_summary_ui.dart';
@@ -608,13 +607,11 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   AnTag(
-                      countText(course.studentsCount,
-                          ar1: 'طالب واحد', ar2: 'طالبان', arFew: '{n} طلاب', arMany: '{n} طالبًا', en1: '1 student', en: '{n} students'),
+                      anStudentsWord(course.studentsCount),
                       c.accent2,
                       icon: Icons.people_rounded),
                   AnTag(
-                      countText(course.sessionsCount,
-                          ar1: 'جلسة واحدة', ar2: 'جلستان', arFew: '{n} جلسات', arMany: '{n} جلسة', en1: '1 session', en: '{n} sessions'),
+                      anSessionsWord(course.sessionsCount),
                       c.purple,
                       icon: Icons.video_library_outlined),
                   if (risk > 0) AnTag(anFmt('ta_risk_n', {'n': risk}, '{n} need attention'), c.warning, icon: Icons.volunteer_activism_rounded),

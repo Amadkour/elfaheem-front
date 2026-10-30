@@ -1,7 +1,8 @@
 /// features/attendance/teacher_attendance_launcher.dart
 ///
 /// Teacher button for the course/session profile header. Opens a bottom sheet listing the
-/// course's lessons (number + name + date) — today's first, then NEWEST FIRST (n … 1); tapping one opens the attendance sheet
+/// course's lessons (number + name + date) — today's first, then the upcoming ones soonest first, then the past ones
+/// newest first (N13 / L9); the first one (today's, else the next) is marked. Tapping one opens the attendance sheet
 /// where the teacher chooses the classmate-signal count (default 0) and sees the live
 /// present counter (default 0).
 library;
@@ -26,11 +27,29 @@ class LauncherSession {
   final DateTime? date;
 }
 
-/// The picker's order (L9): today's lessons first, then the rest newest first (n … 1).
+/// The picker's order (N13 / L9): today's lessons first, then the upcoming ones soonest first, then the past ones
+/// newest first, then the undated ones (n … 1). The lesson the teacher most likely wants is always on top.
 List<LauncherSession> launcherOrder(List<LauncherSession> sessions, {DateTime? nowUtc}) {
-  final rest = sessions.reversed.toList();
-  bool today(LauncherSession s) => launcherIsToday(s, nowUtc: nowUtc);
-  return [...rest.where(today), ...rest.where((s) => !today(s))];
+  final now = nowUtc ?? DateTime.now().toUtc();
+  bool today(LauncherSession s) => launcherIsToday(s, nowUtc: now);
+  final todays = [for (final s in sessions) if (today(s)) s]..sort((a, b) => a.date!.compareTo(b.date!));
+  final upcoming = [for (final s in sessions) if (s.date != null && !today(s) && s.date!.isAfter(now)) s]
+    ..sort((a, b) => a.date!.compareTo(b.date!));
+  final past = [for (final s in sessions) if (s.date != null && !today(s) && !s.date!.isAfter(now)) s]
+    ..sort((a, b) => b.date!.compareTo(a.date!));
+  final undated = [for (final s in sessions.reversed) if (s.date == null) s];
+  return [...todays, ...upcoming, ...past, ...undated];
+}
+
+/// The lesson the picker marks (N13): today's first one, else the next upcoming one; null when neither exists.
+int? launcherFocusId(List<LauncherSession> sessions, {DateTime? nowUtc}) {
+  final now = nowUtc ?? DateTime.now().toUtc();
+  final ordered = launcherOrder(sessions, nowUtc: now);
+  if (ordered.isEmpty) return null;
+  final first = ordered.first;
+  final d = first.date;
+  if (d == null) return null;
+  return launcherIsToday(first, nowUtc: now) || d.isAfter(now) ? first.id : null;
 }
 
 /// Is [s] scheduled today (in the platform / organization zone)?
@@ -73,7 +92,9 @@ class TeacherAttendanceLauncher extends StatelessWidget {
 }
 
 Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> sessions) {
-  final inverted = launcherOrder(sessions); // today's first, then newest first: n, n-1, … 1
+  final now = DateTime.now().toUtc();
+  final inverted = launcherOrder(sessions, nowUtc: now); // today's, then upcoming soonest first, then past newest first
+  final focusId = launcherFocusId(sessions, nowUtc: now); // on top, so the sheet opens on it
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -113,13 +134,16 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
                       final s = inverted[i];
                       final cc = context.colors;
                       final c = cc.primary;
-                      final isToday = launcherIsToday(s);
+                      final isToday = launcherIsToday(s, nowUtc: now);
+                      final focus = s.id == focusId;
+                      final marked = isToday || focus;
                       final when = s.date == null ? null : AppTime.date(s.date!, pattern: 'EEE d MMM');
+                      final tag = isToday ? attT('att_launch_today') : (focus ? attT('att_launch_next') : null);
                       return ListTile(
-                        tileColor: isToday ? c.withValues(alpha: 0.06) : null,
+                        tileColor: marked ? c.withValues(alpha: 0.06) : null,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
-                            side: BorderSide(color: isToday ? c.withValues(alpha: 0.45) : cc.divider)),
+                            side: BorderSide(color: marked ? c.withValues(alpha: 0.45) : cc.divider, width: focus ? 1.5 : 1)),
                         leading: CircleAvatar(
                           backgroundColor: c.withValues(alpha: 0.12),
                           child: Text('${s.number}',
@@ -129,17 +153,17 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w500, color: cc.textDark)),
-                        subtitle: when == null && !isToday
+                        subtitle: when == null && tag == null
                             ? null
                             : Text(
-                                [if (isToday) attT('att_launch_today'), ?when].join(' · '),
+                                [?tag, ?when].join(' · '),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                     fontFamily: AppFonts.family,
                                     fontSize: 12,
-                                    fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
-                                    color: isToday ? c : cc.textMedium),
+                                    fontWeight: marked ? FontWeight.w600 : FontWeight.w400,
+                                    color: marked ? c : cc.textMedium),
                               ),
                         trailing: const Icon(CupertinoIcons.forward, size: 16),
                         onTap: () {

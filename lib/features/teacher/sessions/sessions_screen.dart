@@ -257,7 +257,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           featureKey: 'course_stats.students',
           icon: Icons.groups_rounded,
           value: '${course.studentsCount}',
-          label: 'student'.tr,
+          label: courseStatNoun(course.studentsCount, 'course_hero_students'),
           onTap: _openStudents,
         ),
         CourseSpaceStat(

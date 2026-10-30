@@ -232,7 +232,9 @@ class MyCoursesProvider extends BaseProvider {
     notifyListeners();
   }
 
-  static bool _ip(CourseModel c) => c.progress > 0 && c.progress < 100;
+  /// N8: "In progress" is every enrolled course not completed yet, a 0 % one included, so All = In progress +
+  /// Completed (a course at 0 % sat in neither filter).
+  static bool _ip(CourseModel c) => c.progress < 100;
 
   static bool _done(CourseModel c) => c.progress >= 100;
 

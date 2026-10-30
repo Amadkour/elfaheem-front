@@ -139,7 +139,7 @@ class _PremiumHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary, c.purple],
+          colors: [c.primary, c.heroEnd(c.primary)], // M22: theme ink, not purple
         ),
       ),
       child: Column(children: [
@@ -465,7 +465,7 @@ class _StudentSheetState extends State<_StudentSheet> with WidgetsBindingObserve
           height: 52,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: p.busy ? null : LinearGradient(colors: [primary, context.colors.purple]),
+              gradient: p.busy ? null : LinearGradient(colors: [primary, context.colors.heroEnd(primary)]),
               color: p.busy ? context.colors.divider : null,
               borderRadius: BorderRadius.circular(18),
               boxShadow: p.busy

@@ -21,6 +21,7 @@ import 'attendance/student_attendance_model.dart';
 import 'student_analytics_provider.dart';
 import 'student_analytics_profile_screen.dart';
 import 'student_analytics_widgets.dart';
+import '../../shared/analytics/analytics_summary.dart' show anSessionsWord;
 import 'flags/student_flags_screen.dart';
 import 'exam/student_exam_list_screen.dart';
 import 'exam/student_exam_provider.dart';
@@ -521,8 +522,8 @@ class _OverviewTab extends StatelessWidget {
     }
 
     final b = prov.block;
-    if (b != null && b.progress != null) {
-      final p = b.progress!;
+    if (prov.progress != null) {
+      final p = prov.progress!;
       list.add(_Insight(
         Icons.route_rounded,
         p >= 75 ? success : (p >= 40 ? context.colors.primary : context.colors.warning),
@@ -597,12 +598,12 @@ class _OverviewTab extends StatelessWidget {
               ),
             ),
           ]),
-          if (prov.block?.progress != null) ...[
+          if (prov.progress != null) ...[
             const SizedBox(height: 12),
             _KpiCard(
               icon: Icons.route_rounded,
               color: context.colors.purple,
-              value: anPct(prov.block!.progress),
+              value: anPct(prov.progress),
               label: anTr('an_course_progress', 'Course progress'),
             ),
           ],
@@ -627,10 +628,13 @@ class _OverviewTab extends StatelessWidget {
           // You vs the class (only what the teacher shares a class average for)
           if (prov.block != null)
             Builder(builder: (context) {
+              // N5: "you" is the figure shown everywhere else, the class on the same scale (a cohort of one is level)
+              final att = prov.totalSessions == 0 ? prov.block!.attendance : prov.attendanceRate;
+              final ex = prov.attemptedCount == 0 ? prov.block!.examAvg : prov.avgScore;
               final rows = <(String, double?, double?)>[
-                (anTr('an_course_progress', 'Course progress'), prov.block!.progress, prov.classAvg('progress')),
-                ('attendance_rate'.tr, prov.totalSessions == 0 ? prov.block!.attendance : prov.attendanceRate, prov.classAvg('attendance')),
-                ('sa_avg_score'.tr, prov.attemptedCount == 0 ? prov.block!.examAvg : prov.avgScore, prov.classAvg('exam_avg')),
+                (anTr('an_course_progress', 'Course progress'), prov.progress, prov.classFor('progress', prov.progress)),
+                ('attendance_rate'.tr, att, prov.classFor('attendance', att)),
+                ('sa_avg_score'.tr, ex, prov.classFor('exam_avg', ex)),
               ];
               if (!rows.any((r) => r.$2 != null && r.$3 != null)) return const SizedBox.shrink();
               return Padding(
@@ -1427,7 +1431,7 @@ class _MarksTab extends StatelessWidget {
           AnCard(
             padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              AnRing(value: b.progress, label: anTr('an_course_progress', 'Course progress')),
+              AnRing(value: prov.progress, label: anTr('an_course_progress', 'Course progress')),
               AnRing(value: b.attendance, label: 'attendance_rate'.tr),
               AnRing(value: b.examAvg, label: 'sa_avg_score'.tr),
             ]),
@@ -1439,7 +1443,7 @@ class _MarksTab extends StatelessWidget {
                 Icon(Icons.event_available_rounded, size: 16, color: c.success),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text('${'dl_attended'.tr} ${b.attended} ${'dl_of'.tr} ${b.held} ${'dl_sessions_held'.tr}',
+                  child: Text(anFmt('an2_attended_of', {'a': b.attended, 'sessions': anSessionsWord(b.held)}, 'Attended {a} of {sessions} so far'),  // L2
                       style: _t(12, c: c.textMedium)),
                 ),
               ]),

@@ -9,6 +9,7 @@ import '../../../../core/base_provider.dart';
 import '../../../../core/live/event_wait.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/live_events.dart';
+import '../../../shared/course/course_space/course_sessions.dart' show courseStudentSessionDone;
 import '../../../shared/guest/guest_state.dart';
 import '../../models.dart';
 import 'components/issued_certificate.dart';
@@ -174,6 +175,9 @@ class CourseDetailProvider extends BaseProvider {
   bool _hasMoreSessions = true;
   static const _sessionsPageSize = 20;
 
+  /// The server clamps a page to 1..500 (`SESSIONS_PAGE_MAX`); the teacher's studio loads the course in one such page.
+  static const _sessionsRestLimit = 500;
+
   bool get hasMoreSessions => _hasMoreSessions;
 
   /// True only while fetching another page onto an already-populated list —
@@ -187,7 +191,10 @@ class CourseDetailProvider extends BaseProvider {
   /// Fetches page 1 fresh (used on pull-to-refresh / first open).
   /// Pass [reset]=false to append the next page instead (see
   /// [loadMoreSessions]).
-  Future<void> fetchSessions(String courseId, {bool reset = true}) async {
+  ///
+  /// A course with sections loads the rest of its sessions right after the first page (N3): the Lectures / Sections
+  /// tabs count and filter the loaded list, and a page of 20 read "Lectures 10 · Sections 10" for a 32-session course.
+  Future<void> fetchSessions(String courseId, {bool reset = true, bool rest = false}) async {
     if (reset) {
       _sessionsSkip = 0;
       _hasMoreSessions = true;
@@ -201,9 +208,10 @@ class CourseDetailProvider extends BaseProvider {
           GuestState.active
               ? '/api/v1/courses/$courseId/sessions/public'
               : '/api/v1/courses/$courseId/sessions',
-          queryParams: {'skip': _sessionsSkip, 'limit': _sessionsPageSize},
+          queryParams: {'skip': _sessionsSkip, 'limit': rest ? _sessionsRestLimit : _sessionsPageSize},
         )),
       );
+      var loadRest = false;
       if (result is Map && result['items'] is List) {
         final items = result['items'] as List;
         final page =
@@ -221,12 +229,17 @@ class CourseDetailProvider extends BaseProvider {
         _storeGates(items);
         sessions = [...sessions, ...page];
         _sessionsSkip += page.length;
-        _hasMoreSessions = page.length == _sessionsPageSize;
+        _hasMoreSessions = page.length == (rest ? _sessionsRestLimit : _sessionsPageSize);
+        loadRest = !rest && _hasMoreSessions && sessions.any((s) => s.track == 'section');
       }
       completedSessionIds.clear();
       completedSessionIds.addAll(
         sessions.where((e) => e.isCompleted).map((e) => e.id),
       );
+      if (loadRest) {
+        notifyListeners();
+        return fetchSessions(courseId, reset: false, rest: true);
+      }
     } on ApiException catch (e) {
       if (e.isDeviceBlocked) {
         // Screen listens to this and shows the device-blocked dialog.
@@ -392,8 +405,18 @@ class CourseDetailProvider extends BaseProvider {
   SessionModel? get nextPlayable {
     final now = DateTime.now().toUtc();
     for (final s in sessions) {
-      if (s.isCompleted || !isSessionUnlockedById(s.id)) continue;
+      if (!isSessionUnlockedById(s.id)) continue;
       if (s.isLiveActive) return s;
+      // the timeline's own "done" (N1): an empty session the server calls complete is not skipped while ahead
+      final done = courseStudentSessionDone(
+        serverDone: s.isCompleted,
+        materials: s.totalMaterial,
+        materialsDone: s.completeMaterial,
+        when: s.scheduledAt?.toUtc(),
+        minutes: s.durationMinutes,
+        now: now,
+      );
+      if (done) continue;
       final hasContent = s.totalMaterial > 0 || s.hasRecording;
       if (s.isLive && !hasContent) {
         final at = s.scheduledAt;

@@ -263,13 +263,17 @@ class _CoursePageState extends State<_CoursePage> {
               MaterialPageRoute(builder: (_) => InstructorProfileScreen(teacher: c.teacher!)),
             ),
       stats: [
-        CourseSpaceStat(icon: Icons.groups_rounded, value: '${c.studentsCount}', label: 'course_hero_students'.tr),
+        CourseSpaceStat(
+          icon: Icons.groups_rounded,
+          value: '${c.studentsCount}',
+          label: courseStatNoun(c.studentsCount, 'course_hero_students'),
+        ),
         CourseSpaceStat(
           icon: Icons.play_circle_outline_rounded,
           value: '${c.sessionsCount}',
-          label: 'course_hero_lessons'.tr,
+          label: courseStatNoun(c.sessionsCount, 'course_hero_lessons'),
         ),
-        CourseSpaceStat(icon: Icons.schedule_rounded, value: hours, label: 'course_hero_hours'.tr),
+        CourseSpaceStat(icon: Icons.schedule_rounded, value: hours, label: courseStatNoun(c.totalHours, 'course_hero_hours')),
       ],
       progress: c.isEnrolled ? c.progress.clamp(0, 100) / 100 : null,
       progressLabel: gt('تقدّمك', 'Your progress'),
