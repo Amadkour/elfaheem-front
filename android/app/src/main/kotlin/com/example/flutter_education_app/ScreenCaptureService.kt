@@ -33,9 +33,11 @@ import java.util.concurrent.atomic.AtomicInteger
  * The one MediaProjection of a live session, and the client-side recording.
  *
  * Two independent jobs share it:
- * - RECORDING (ACTION_START_MIC_ONLY … ACTION_STOP): ping-pong MediaRecorder
- *   chunks fed by ScreenPlaceholderRenderer (a placeholder until a share
- *   starts, the live screen while it runs), uploaded one by one.
+ * - RECORDING (ACTION_START_MIC_ONLY … ACTION_STOP): one continuous encode
+ *   (SegmentedRecorder, D-103) cut into ~5 s MP4 chunks at key frames, fed by
+ *   ScreenPlaceholderRenderer (the room's frames until a share starts, the
+ *   live screen while it runs), uploaded one by one with `seamless=1`; the
+ *   old ping-pong MediaRecorder chunks remain only as the fallback.
  * - SCREEN SHARE (ACTION_STORE_PROJECTION / ACTION_START_SHARE …
  *   ACTION_STOP_SHARE): the projection's VirtualDisplay draws into the
  *   renderer, which hands scaled frames to the fork's ElFaheemFrameCapturer
@@ -700,8 +702,123 @@ class ScreenCaptureService : Service() {
 
     private fun recordLoop() {
         Log.d(TAG, "recordLoop started (placeholder) — ${screenWidth}x${screenHeight} chunkSecs=$chunkSecs")
-
         val sessionDir = File(cacheDir, "session_$sessionId").also { it.mkdirs() }
+        // D-103: one continuous encode cut into chunks (gapless). MediaRecorder ping-pong only where the device's
+        // encoders / mic cannot be driven directly.
+        if (recordLoopSegmented(sessionDir)) return
+        Log.w(TAG, "continuous recorder unavailable — falling back to MediaRecorder chunks")
+        recordLoopLegacy(sessionDir)
+    }
+
+    /**
+     * D-103: [SegmentedRecorder] runs ONE H.264 + ONE AAC encoder for the whole recording (until a pause) and only
+     * switches the MP4 file at a key frame every ~[chunkSecs]: no frame or sample is lost or doubled at a chunk
+     * boundary, and each chunk is uploaded with `seamless=1` so the server joins them with a stream copy on the audio
+     * clock. Returns false (nothing recorded yet) when the recorder cannot start — the caller falls back.
+     */
+    private fun recordLoopSegmented(sessionDir: File): Boolean {
+        var finishingAsFinal = false
+        var finalSent = false
+
+        fun newRecorder(): SegmentedRecorder {
+            val (encW, encH) = encoderSize()
+            return SegmentedRecorder(
+                    audioOnly = audioOnly,
+                    width = encW, height = encH,
+                    videoBps = videoBps, fps = VIDEO_FPS, audioBps = AUDIO_BPS,
+                    segmentSecs = chunkSecs,
+                    firstIndex = chunkIndex,
+                    tmpFileFor = { tmpFile(sessionDir, it) },
+                    onSegment = onSegment@{ tmp, index, last ->
+                        val out = chunkFile(sessionDir, index)
+                        out.delete()
+                        if (!tmp.renameTo(out)) {
+                            Log.w(TAG, "chunk #$index could not be finalised — dropped")
+                            tmp.delete()
+                            return@onSegment
+                        }
+                        val isFinal = last && finishingAsFinal
+                        if (isFinal) finalSent = true
+                        currentChunkIndex = index + 1
+                        Log.d(TAG, "chunk #$index ready (${out.length()}B) final=$isFinal — queuing upload")
+                        uploadChunkAsync(out, index, isFinal, seamless = true)
+                    },
+            )
+        }
+
+        fun startOne(): SegmentedRecorder? {
+            val r = newRecorder()
+            return try {
+                r.start()
+                r.inputSurface?.let { s ->
+                    val (encW, encH) = encoderSize()
+                    placeholderRenderer!!.attachEncoderSurface(s, encW, encH)
+                }
+                r
+            } catch (e: Exception) {
+                Log.e(TAG, "continuous recorder could not start: ${e.message}", e)
+                null
+            }
+        }
+
+        var rec = startOne() ?: return false
+        Log.d(TAG, "continuous recorder started at chunk #$chunkIndex")
+        mainHandler.post { emitScreenLoopStarted() }
+
+        while (true) {
+            while (!shouldStop.get() && !shouldPause.get()) Thread.sleep(50)
+            val stopping = shouldStop.get()
+            // The renderer stops drawing into the encoder before the encoder goes away (a share keeps running).
+            if (!audioOnly) placeholderRenderer?.detachEncoderSurfaceForPause()
+            finishingAsFinal = stopping
+            rec.finish()
+            chunkIndex = rec.nextIndex
+            currentChunkIndex = chunkIndex
+            if (stopping) break
+
+            isPaused = true
+            mainHandler.post { emitRecordingPaused() }
+            Log.d(TAG, "recording PAUSED at chunk #$chunkIndex")
+            synchronized(this) {
+                while (shouldPause.get() && !shouldStop.get()) {
+                    try { (this as Object).wait(1_000) } catch (_: InterruptedException) { break }
+                }
+            }
+            if (shouldStop.get()) {
+                Log.d(TAG, "exiting from paused state — stop received")
+                break
+            }
+            Log.d(TAG, "recording RESUMED at chunk #$chunkIndex")
+            mainHandler.post { emitRecordingResumed() }
+            rec = startOne() ?: run {
+                mainHandler.post { emitError("Resume failed") }
+                null
+            } ?: break
+        }
+
+        // The last chunk went up non-final (stopped while paused, or the last file could not be written): an empty
+        // final chunk tells the server to assemble now (the same finalize ping iOS sends).
+        if (!finalSent) {
+            val ping = File(sessionDir, "final_ping_${chunkIndex}.${chunkExt()}")
+            try {
+                ping.writeBytes(ByteArray(0))
+                uploadChunkAsync(ping, chunkIndex, true, seamless = true)
+            } catch (e: Exception) {
+                Log.w(TAG, "finalize ping not queued: ${e.message}")
+            }
+        }
+
+        Log.d(TAG, "all chunks recorded — waiting for ${pendingUploads.get()} upload(s)…")
+        val deadline = System.currentTimeMillis() + 120_000L
+        while (pendingUploads.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(200)
+        if (pendingUploads.get() > 0) Log.w(TAG, "${pendingUploads.get()} upload(s) unfinished after 120 s")
+        mainHandler.post { onRecordingFinished() }
+        Log.d(TAG, "recordLoop done")
+        return true
+    }
+
+    /** The pre-D-103 MediaRecorder ping-pong (one recorder per chunk): the fallback only. */
+    private fun recordLoopLegacy(sessionDir: File) {
         val chunkDurationMs = chunkSecs * 1_000L
 
         // Prepare the very first recorder before signalling Dart, so that
@@ -1159,7 +1276,7 @@ class ScreenCaptureService : Service() {
         else org.json.JSONObject(body).optJSONObject("detail")?.optString("code")?.takeIf { it.isNotEmpty() }
     } catch (_: Exception) { null }
 
-    private fun uploadChunkAsync(file: File, index: Int, isFinal: Boolean) {
+    private fun uploadChunkAsync(file: File, index: Int, isFinal: Boolean, seamless: Boolean = false) {
         val size = file.length()
         pendingUploads.incrementAndGet()
         uploadExecutor.execute {
@@ -1175,7 +1292,7 @@ class ScreenCaptureService : Service() {
             var lastErr = "unknown"
             while (attempt <= 3) {
                 try {
-                    uploadChunk(file, index, isFinal)
+                    uploadChunk(file, index, isFinal, seamless)
                     file.delete()
                     pendingUploads.decrementAndGet()
                     mainHandler.post { emitChunkUploaded(index, size, isFinal) }
@@ -1237,7 +1354,7 @@ class ScreenCaptureService : Service() {
         }
     }
 
-    private fun uploadChunk(file: File, index: Int, isFinal: Boolean) {
+    private fun uploadChunk(file: File, index: Int, isFinal: Boolean, seamless: Boolean) {
         val boundary = "----ElFaheemBoundary${System.currentTimeMillis()}"
         val conn = (java.net.URL(uploadUrl).openConnection() as java.net.HttpURLConnection).apply {
             requestMethod  = "POST"
@@ -1253,6 +1370,9 @@ class ScreenCaptureService : Service() {
             field("chunk_index", index.toString())
             field("is_final",    if (isFinal) "1" else "0")
             if (epoch.isNotEmpty()) field("epoch", epoch)
+            // D-103: one slice of a continuous encode — the server joins these with a stream copy (older servers
+            // ignore the field and re-encode as before).
+            if (seamless) field("seamless", "1")
             out.write(("--$boundary\r\nContent-Disposition: form-data; name=\"chunk\";" +
                     " filename=\"chunk_${index.toString().padStart(6,'0')}.${chunkExt()}\"\r\n" +
                     "Content-Type: ${if (audioOnly) "audio/mp4" else "video/mp4"}\r\n\r\n").toByteArray())

@@ -26,6 +26,12 @@ audio, so server mode must not be switched on in production before §1.6).
 only if present — production has no GPU), and `FFMPEG_THREADS` defaults to `os.cpu_count()` — i.e. every core of the
 server, while other classes may be live. Tasks, in order:
 
+**Done 2026-10-30 (D-103, branches `fix/rec-gapless` / `fix/rec-gapless-back`, not merged):** the Android recorder is
+one continuous encode cut into `seamless=1` chunks (no gap / click every 5 s), the room frames reach it at ~12 fps
+(the camera no longer moves in 2 fps jumps), the server joins seamless runs with `-c copy` on the audio clock, and
+item 2 below (2 threads, `nice` / `ionice`, one assembly at a time) is in. Check on the S24 (§3 style): a 2-min class
+with the camera moving, a pause / resume and a share; the finished recording must play as one block.
+
 1. **Measure first.** A 60-min Android chunk set (and a web `webm` one) through `assemble_and_upload` on the dev stack:
    wall time, CPU-seconds, peak cores, per tier. Write the numbers to `../back/bench/recording/CLIENT_ASSEMBLY.md`.
 2. **Never starve live classes:** default `FFMPEG_THREADS` to 2 (env still wins), run ffmpeg under `nice -n 19` /
