@@ -1,7 +1,7 @@
 // lib/design/quick_meeting_entry.dart
 //
 // QuickMeetingIcon — "Meet now" in a home header (HomeHeader.actions), next to the calendar and the bell: one tap
-// opens an online, private meeting starting now and joins it (startQuickMeeting in
+// opens an online, private meeting starting now and its pre-join page (startQuickMeeting in
 // lib/features/shared/calendar/calendar_meeting.dart, live-rooms-spec §7). In Organization mode the meeting
 // belongs to the open organization. Hidden by the kill switch `live.quick_meeting` and for guests.
 library;

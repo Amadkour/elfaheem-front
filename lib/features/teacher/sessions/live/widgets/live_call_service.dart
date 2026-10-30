@@ -20,6 +20,7 @@ import 'dart:developer';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 
 class LiveCallService {
   LiveCallService._();
@@ -42,11 +43,15 @@ class LiveCallService {
     });
   }
 
-  /// The notification's texts in the app language.
+  /// The notification's texts in the app language, for the open room's kind (D-106).
   static Map<String, String> labels() => {
-        'title': t('في جلسة مباشرة', 'In a live session'),
-        'text': t('يبقى الميكروفون يعمل في الخلفية. اضغط للعودة إلى الجلسة.',
-            'Your microphone keeps working in the background. Tap to return to the session.'),
+        'title': liveT(null,
+            ar: 'في جلسة مباشرة', en: 'In a live session', meetingAr: 'في اجتماع مباشر', meetingEn: 'In a live meeting'),
+        'text': liveT(null,
+            ar: 'يبقى الميكروفون يعمل في الخلفية. اضغط للعودة إلى الجلسة.',
+            en: 'Your microphone keeps working in the background. Tap to return to the session.',
+            meetingAr: 'يبقى الميكروفون يعمل في الخلفية. اضغط للعودة إلى الاجتماع.',
+            meetingEn: 'Your microphone keeps working in the background. Tap to return to the meeting.'),
         'leave': t('مغادرة', 'Leave'),
         'channelName': t('الجلسات المباشرة', 'Live sessions'),
       };

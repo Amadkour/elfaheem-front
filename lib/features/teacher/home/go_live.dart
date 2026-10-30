@@ -5,7 +5,7 @@
 // or already live is offered first — or "New live session now" (title optional, a default from the date and
 // time), a Record switch, the camera / microphone to start with, and one big button that creates the session when
 // needed (POST /sessions), starts it (POST /live-sessions/start, which also resumes a running one) and opens the
-// pre-join page with autoJoin, so the teacher lands in the room.
+// pre-join page with that choice, where the teacher presses Join (D-106: the page never joins by itself).
 //
 // Everything here is plain data and pure functions (unit-tested in test/org/go_live_test.dart); the only network
 // is [RemoteGoLiveApi], called on tap — opening the home asks nothing new (test/perf budgets).

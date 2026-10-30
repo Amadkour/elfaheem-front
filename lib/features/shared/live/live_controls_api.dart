@@ -25,6 +25,7 @@ library;
 import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t;
 import 'live_room.dart';
+import 'live_room_words.dart';
 
 /// Kill-switch keys (ParentComponent / AppConfig.disableList, ../back/services/feature_catalog.py).
 const String kLiveTeacherControlsFeatureKey = 'live.teacher_controls';
@@ -333,10 +334,13 @@ String liveHostActionDone(LiveHostAction a, String name) => switch (a) {
       LiveHostAction.remove => t('تم إخراج $name من الغرفة', '$name was removed from the room'),
     };
 
-/// The confirmation of a destructive action.
-String liveHostActionConfirm(LiveHostAction a, String name) => switch (a) {
-      LiveHostAction.remove => t('إخراج $name من الغرفة؟ لن يتمكن من العودة إلى هذه الجلسة.',
-          'Remove $name from the room? They cannot come back to this session.'),
+/// The confirmation of a destructive action ([kind]: the open room by default, D-106).
+String liveHostActionConfirm(LiveHostAction a, String name, {LiveRoomKind? kind}) => switch (a) {
+      LiveHostAction.remove => liveT(kind,
+          ar: 'إخراج $name من الغرفة؟ لن يتمكن من العودة إلى هذه الجلسة.',
+          en: 'Remove $name from the room? They cannot come back to this session.',
+          meetingAr: 'إخراج $name من الغرفة؟ لن يتمكن من العودة إلى هذا الاجتماع.',
+          meetingEn: 'Remove $name from the room? They cannot come back to this meeting.'),
       _ => liveHostActionLabel(a),
     };
 
@@ -373,8 +377,9 @@ class LiveLockState {
 // Error text
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Bilingual text for the host-control codes; null for a code this file does not know.
-String? liveControlsErrorText(String? code) => switch (code) {
+/// Bilingual text for the host-control codes; null for a code this file does not know. [kind]: the room's kind
+/// (default: the open room) — a meeting says «الاجتماع» (D-106).
+String? liveControlsErrorText(String? code, {LiveRoomKind? kind}) => switch (code) {
       'not_host' || 'host_only' => t('هذا الإجراء لمضيف الغرفة فقط.', 'Only the room host can do this.'),
       'live_not_started' => t('لم يبدأ البث بعد أو انتهى.', 'The room is not live right now.'),
       'cannot_moderate_host' => t('لا يمكن تطبيق هذا الإجراء على مضيف الغرفة.', 'This cannot be done to a host of the room.'),
@@ -382,18 +387,22 @@ String? liveControlsErrorText(String? code) => switch (code) {
       'too_many_requests' => t('إجراءات كثيرة في وقت قصير — انتظر دقيقة ثم أعد المحاولة.', 'Too many actions — wait a minute and try again.'),
       'livekit_error' => t('تعذر تنفيذ الإجراء على خادم البث. أعد المحاولة.', 'The live server could not do this. Try again.'),
       'room_locked' => t('الغرفة مقفلة: لا يمكن لأحد جديد الانضمام الآن.', 'The room is locked: nobody new can join right now.'),
-      'participant_removed' => t('أخرجك المضيف من هذه الجلسة.', 'The host removed you from this session.'),
+      'participant_removed' => liveT(kind,
+          ar: 'أخرجك المضيف من هذه الجلسة.',
+          en: 'The host removed you from this session.',
+          meetingAr: 'أخرجك المضيف من هذا الاجتماع.',
+          meetingEn: 'The host removed you from this meeting.'),
       'guest_blocked' => t('لا يمكنك الانضمام إلى هذه الغرفة.', 'You cannot join this room.'),
       _ => null,
     };
 
 /// The text for a join the host's controls refused — 423 `room_locked`, 403 `participant_removed` /
 /// `guest_blocked` — or null for any other failure (the caller shows its own text). Never retried: a 4xx.
-String? liveJoinRefusalText(Object e) {
+String? liveJoinRefusalText(Object e, {LiveRoomKind? kind}) {
   final ex = ApiException.from(e);
   switch (ex.code) {
     case 'room_locked' || 'participant_removed' || 'guest_blocked':
-      return liveControlsErrorText(ex.code);
+      return liveControlsErrorText(ex.code, kind: kind);
   }
   if (ex.statusCode == 423) return liveControlsErrorText('room_locked');
   return null;

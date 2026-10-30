@@ -982,9 +982,9 @@ Future<JoinOutcome> joinMeetingWithPlan(BuildContext context, CalendarApi api, i
 }
 
 /// The pre-join page of a meeting (its detail map: id, title, starts_at, owner, is_owner, mode, can_record).
-/// [autoJoin]: the pre-join page presses Join by itself once the devices are ready (the quick meeting).
+/// The person presses Join there (D-106: never by itself, the quick meeting included).
 Future<void> openMeetingRoom(BuildContext context,
-    {required CalendarApi api, required Map<String, dynamic> meeting, bool autoJoin = false, bool? canRecord, bool? isHost}) async {
+    {required CalendarApi api, required Map<String, dynamic> meeting, bool? canRecord, bool? isHost}) async {
   final auth = context.read<MyAuthProvider>();
   final id = asInt(meeting['id']);
   final owner = isHost ?? meeting['is_owner'] == true;
@@ -1001,7 +1001,6 @@ Future<void> openMeetingRoom(BuildContext context,
         userName: auth.currentUser?.name ?? '--',
         sessionName: '${meeting['title'] ?? ''}',
         apiClient: ApiClient(),
-        autoJoin: autoJoin,
         startsAt: _parse(meeting['starts_at']),
         hostName: _strOrNull(asMap(meeting['owner'])['name']),
         onStart: () => joinMeetingWithPlan(context, api, id),
@@ -1017,7 +1016,7 @@ String? _strOrNull(dynamic v) {
 }
 
 /// "Meet now" (live-rooms-spec §7): creates an online, private meeting that starts now (no title: the server names
-/// it after its start) and opens its pre-join page, which joins by itself; the creator is the host. Returns the
+/// it after its start) and opens its pre-join page, where the creator (the host) presses Join (D-106). Returns the
 /// meeting (null when it could not be created — the person was told).
 Future<Map<String, dynamic>?> startQuickMeeting(BuildContext context, {int? orgId, CalendarApi api = const RemoteCalendarApi()}) async {
   final Map<String, dynamic> m;
@@ -1028,7 +1027,7 @@ Future<Map<String, dynamic>?> startQuickMeeting(BuildContext context, {int? orgI
     return null;
   }
   if (asInt(m['id']) <= 0 || !context.mounted) return m.isEmpty ? null : m;
-  await openMeetingRoom(context, api: api, meeting: m, autoJoin: true, canRecord: true, isHost: true);
+  await openMeetingRoom(context, api: api, meeting: m, canRecord: true, isHost: true);
   return m;
 }
 

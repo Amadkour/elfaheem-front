@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 import '../whiteboard/board_protocol.dart' show BoardBackground, BoardFormat;
 import '../whiteboard/board_toolbar.dart' show BoardBackgroundPicker, BoardFormatPicker;
 import 'share_presets.dart';
@@ -313,8 +314,11 @@ class ShareOptionsLayout extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              t('قلم وقلم تظليل وأشكال ونص بالعربية والإنجليزية وصفحات متعددة. يراها الجميع بوضوح تام، وتُسجَّل مع الحصة.',
-                  'Pen, highlighter, shapes, Arabic and English text and several pages. Crisp for everyone, and recorded with the class.'),
+              liveT(null,
+                  ar: 'قلم وقلم تظليل وأشكال ونص بالعربية والإنجليزية وصفحات متعددة. يراها الجميع بوضوح تام، وتُسجَّل مع الحصة.',
+                  en: 'Pen, highlighter, shapes, Arabic and English text and several pages. Crisp for everyone, and recorded with the class.',
+                  meetingAr: 'قلم وقلم تظليل وأشكال ونص بالعربية والإنجليزية وصفحات متعددة. يراها الجميع بوضوح تام، وتُسجَّل مع الاجتماع.',
+                  meetingEn: 'Pen, highlighter, shapes, Arabic and English text and several pages. Crisp for everyone, and recorded with the meeting.'),
               style: appText(12.5, c: c.textMedium, h: 1.4),
             ),
           ),

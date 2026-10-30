@@ -14,7 +14,7 @@
 //                              that keeps Join disabled.
 //                            • `auto_join` (a DIRECT link, live-rooms-spec §10): signed in → joins with the account
 //                              at once; a remembered guest name → joins at once; otherwise only the name field
-//                              (autofocus) → Join. The pre-join step then presses Join by itself (JoinArgs.autoJoin).
+//                              (autofocus) → Join. The pre-join page then waits for Join like every entry (D-106).
 //                              Tried once per visit; a PIN or a missing recording consent waits for the visitor.
 //   GuestLiveContent       → the pure layout (plain values + callbacks): loading skeleton · not live (waiting) ·
 //                            live · error. Tested with expectNoLayoutErrors (test/ui/guest_live_layout_test.dart).
@@ -37,6 +37,7 @@ import '../../teacher/sessions/live/widgets/participant_info.dart' show isGuestI
 import '../../teacher/sessions/model/live_response_model.dart';
 import '../live/live_lobby_sheets.dart' show WaitingForHostPage;
 import '../live/live_room.dart';
+import '../live/live_room_words.dart';
 import 'guest_live_api.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/design/app_icons.dart';
@@ -116,9 +117,12 @@ class _GuestLivePageState extends State<GuestLivePage> {
     _maybeAutoJoin();
   }
 
-  /// A DIRECT link joins by itself once (spec §10): with the account when signed in, else with the remembered
-  /// guest name. Without a name the page shows just the name field; a PIN or the recording consent waits for the
-  /// visitor too.
+  /// The link's room kind (D-106): a meeting's texts say «اجتماع», a course session's «الحصة».
+  LiveRoomKind get _kind => _info?.ref.kind ?? LiveRoomKind.session;
+
+  /// A DIRECT link goes on by itself once (spec §10): with the account when signed in, else with the remembered
+  /// guest name — to the pre-join page, which then waits for Join like every entry (D-106). Without a name the
+  /// page shows just the name field; a PIN or the recording consent waits for the visitor too.
   void _maybeAutoJoin() {
     final info = _info;
     if (!mounted || _autoTried || !_prefsLoaded || info == null || !info.autoJoin || !info.isLive) return;
@@ -172,7 +176,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
       if (guestLiveErrorIsRateLimit(e)) _startRateLimit();
       setState(() {
         // A transient error during polling keeps the last good info on screen.
-        if (first || _info == null || isFinal) _error = guestLiveErrorText(e);
+        if (first || _info == null || isFinal) _error = guestLiveErrorText(e, kind: _kind);
         _errorFinal = isFinal;
       });
       if (isFinal) {
@@ -225,7 +229,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
       return;
     }
     if (info.recordingEnabled && !_consent) {
-      appToast('guest_live_consent_required'.tr, error: true);
+      appToast(liveTr('guest_live_consent_required', _kind), error: true);
       return;
     }
     setState(() {
@@ -254,11 +258,11 @@ class _GuestLivePageState extends State<GuestLivePage> {
       if (isFinal) {
         _poll?.cancel();
         setState(() {
-          _error = guestLiveErrorText(e);
+          _error = guestLiveErrorText(e, kind: _kind);
           _errorFinal = true;
         });
       } else {
-        appToast(guestLiveErrorText(e), error: true);
+        appToast(guestLiveErrorText(e, kind: _kind), error: true);
         unawaited(_load()); // e.g. live_not_started / guest_limit_reached → show the fresh state
       }
     } finally {
@@ -286,7 +290,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
     final info = _info;
     if (info == null || _joining || _rateLimitSeconds > 0 || !_signedIn) return;
     if (info.recordingEnabled && !_consent) {
-      appToast('guest_live_consent_required'.tr, error: true);
+      appToast(liveTr('guest_live_consent_required', _kind), error: true);
       return;
     }
     setState(() => _joining = true);
@@ -300,7 +304,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
         _startRateLimit();
         return;
       }
-      appToast(guestLiveErrorText(e), error: true);
+      appToast(guestLiveErrorText(e, kind: _kind), error: true);
       unawaited(_load());
     } finally {
       if (mounted) setState(() => _joining = false);
@@ -315,7 +319,11 @@ class _GuestLivePageState extends State<GuestLivePage> {
     if (o.isWaiting) {
       final admitted = await Navigator.of(context).push<JoinOutcome>(
         MaterialPageRoute(
-          builder: (_) => WaitingForHostPage(waiting: o, title: info.displayTitle, hostName: info.displayHost),
+          builder: (_) => WaitingForHostPage(
+            waiting: o,
+            title: info.displayTitle.isNotEmpty ? info.displayTitle : liveTr('lr_live_session', info.ref.kind),
+            hostName: info.displayHost,
+          ),
         ),
       );
       if (!mounted) return;
@@ -326,7 +334,8 @@ class _GuestLivePageState extends State<GuestLivePage> {
       o = admitted;
     }
     if (o.isRefused) {
-      appToast(liveRoomCodeText(o.status == JoinStatus.rejected ? 'join_rejected' : 'request_expired') ?? '', error: true);
+      appToast(liveRoomCodeText(o.status == JoinStatus.rejected ? 'join_rejected' : 'request_expired', kind: info.ref.kind) ?? '',
+          error: true);
       unawaited(_load());
       return;
     }
@@ -358,11 +367,9 @@ class _GuestLivePageState extends State<GuestLivePage> {
               liveConfig: j.liveConfig,
             ),
             onEnd: () async {},
-            sessionName: info.displayTitle,
+            sessionName: info.displayTitle.isNotEmpty ? info.displayTitle : null,
             guest: guest,
             canPublish: j.canPublish,
-            // A direct link: the pre-join step presses Join itself once the devices are ready (spec §10).
-            autoJoin: info.autoJoin,
             startsAt: info.startsAt,
             hostName: info.displayHost.isEmpty ? null : info.displayHost,
           ),
@@ -474,7 +481,7 @@ class GuestLiveContent extends StatelessWidget {
             children: [
               AppHero(
                 title: 'guest_live_title'.tr,
-                subtitle: 'guest_live_subtitle'.tr,
+                subtitle: liveTr('guest_live_subtitle', info?.ref.kind ?? LiveRoomKind.session),
                 icon: Icons.sensors_rounded,
               ),
               const SizedBox(height: 4),
@@ -614,6 +621,7 @@ class _SessionCardState extends State<_SessionCard> {
     final full = info.maxGuests != null && info.guestsJoined >= info.maxGuests!;
     final limited = widget.rateLimitSeconds > 0;
     final needsConsent = info.recordingEnabled && !widget.consent;
+    final kind = info.ref.kind; // D-106: a meeting says «اجتماع», a course session «الحصة»
     final title = info.displayTitle.isNotEmpty ? info.displayTitle : (info.isMeeting ? t('اجتماع', 'Meeting') : 'lr_live_session'.tr);
     final host = info.displayHost;
     final accountJoin = widget.signedIn && info.signedInJoin && widget.onJoinWithAccount != null;
@@ -658,7 +666,7 @@ class _SessionCardState extends State<_SessionCard> {
           AppBanner(
             key: const ValueKey('guest_live.recorded'),
             icon: Icons.fiber_manual_record_rounded,
-            text: 'lr_may_be_recorded'.tr,
+            text: liveTr('lr_may_be_recorded', kind),
             color: c.danger,
           ),
         ],
@@ -668,7 +676,7 @@ class _SessionCardState extends State<_SessionCard> {
           AppBanner(
             key: const ValueKey('guest_live.waiting_banner'),
             icon: Icons.hourglass_top_rounded,
-            text: 'guest_live_waiting_msg'.tr,
+            text: liveTr('guest_live_waiting_msg', kind),
             color: c.warning,
             action: const Padding(
               padding: EdgeInsets.all(8),
@@ -685,7 +693,7 @@ class _SessionCardState extends State<_SessionCard> {
           AppBanner(
             key: const ValueKey('guest_live.full'),
             icon: Icons.people_alt_rounded,
-            text: 'guest_live_err_limit'.tr,
+            text: liveTr('guest_live_err_limit', kind),
             color: c.warning,
           ),
         ],
@@ -718,7 +726,7 @@ class _SessionCardState extends State<_SessionCard> {
                 AppField(
                   controller: _pin,
                   label: 'guest_live_pin'.tr,
-                  hint: 'guest_live_pin_hint'.tr,
+                  hint: liveTr('guest_live_pin_hint', kind),
                   keyboard: TextInputType.number,
                   ltr: true,
                   onChanged: (v) {
@@ -738,7 +746,7 @@ class _SessionCardState extends State<_SessionCard> {
                       children: [
                         Icon(Icons.error_outline_rounded, size: 16, color: c.danger),
                         const SizedBox(width: 6),
-                        Expanded(child: Text('guest_live_err_pin'.tr, style: appText(12, c: c.danger, w: FontWeight.w600))),
+                        Expanded(child: Text(liveTr('guest_live_err_pin', kind), style: appText(12, c: c.danger, w: FontWeight.w600))),
                       ],
                     ),
                   ),
@@ -748,6 +756,7 @@ class _SessionCardState extends State<_SessionCard> {
         if (info.recordingEnabled)
           _ConsentRow(
             key: const ValueKey('guest_live.consent'),
+            kind: kind,
             value: widget.consent,
             onChanged: widget.joining ? null : widget.onConsentChanged,
           ),
@@ -758,8 +767,8 @@ class _SessionCardState extends State<_SessionCard> {
               : limited
                   ? 'guest_live_wait_s'.tr.replaceAll('{s}', '${widget.rateLimitSeconds}')
                   : live
-                      ? 'lr_join_session'.tr
-                      : 'guest_live_join_when_live'.tr,
+                      ? liveTr('lr_join_session', kind)
+                      : liveTr('guest_live_join_when_live', kind),
           icon: widget.joining ? null : DirIcons.login,
           busy: widget.joining,
           onPressed: live && !full && !limited && !needsConsent ? widget.onJoin : null,
@@ -803,9 +812,11 @@ class _RateLimitBanner extends StatelessWidget {
       );
 }
 
-/// "I understand this session may be recorded" — the kit has no checkbox, so a themed Material one.
+/// "I understand this session / meeting may be recorded" — the kit has no checkbox, so a themed Material one.
 class _ConsentRow extends StatelessWidget {
-  const _ConsentRow({super.key, required this.value, required this.onChanged});
+  const _ConsentRow({super.key, required this.value, required this.onChanged, this.kind = LiveRoomKind.session});
+
+  final LiveRoomKind kind;
 
   final bool value;
   final ValueChanged<bool>? onChanged;
@@ -834,7 +845,7 @@ class _ConsentRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(child: Text('guest_live_consent'.tr, style: appText(13, c: c.textDark, h: 1.4))),
+            Expanded(child: Text(liveTr('guest_live_consent', kind), style: appText(13, c: c.textDark, h: 1.4))),
           ]),
         ),
       ),

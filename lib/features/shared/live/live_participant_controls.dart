@@ -35,6 +35,7 @@ import '../../admin/admin_common.dart' show t;
 import '../../teacher/sessions/live/widgets/live_palette.dart';
 import 'live_controls_api.dart';
 import 'live_room.dart';
+import 'live_room_words.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Sends the annotation permission packet to one participant (the annotation layer owns its format).
@@ -211,7 +212,11 @@ class LiveHostControlsController extends ChangeNotifier {
     try {
       await _endPhase(true);
       await api.endForAll();
-      _notice(t('انتهت الجلسة للجميع', 'The room was ended for everyone'));
+      _notice(liveT(null,
+          ar: 'انتهت الجلسة للجميع',
+          en: 'The room was ended for everyone',
+          meetingAr: 'انتهى الاجتماع للجميع',
+          meetingEn: 'The meeting was ended for everyone'));
       return true;
     } catch (e) {
       await _endPhase(false);

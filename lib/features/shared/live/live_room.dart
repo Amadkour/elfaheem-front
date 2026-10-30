@@ -34,6 +34,7 @@ import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../teacher/sessions/model/live_response_model.dart';
 import 'live_config.dart';
+import 'live_room_words.dart' show liveT;
 import 'live_time_limit.dart' show parseLiveFreeMinutes, parseLiveTimeLimit, parseNaiveUtc;
 
 /// Kill-switch keys of the feature (ParentComponent / AppConfig.disableList).
@@ -391,8 +392,9 @@ String liveRoomErrorText(Object e) {
   return ex.message;
 }
 
-/// Null for a code this file does not know.
-String? liveRoomCodeText(String? code) => switch (code) {
+/// Null for a code this file does not know. [kind]: the room's kind (default: the open room) — a meeting's texts
+/// say «الاجتماع» (D-106).
+String? liveRoomCodeText(String? code, {LiveRoomKind? kind}) => switch (code) {
       'not_host' || 'host_only' => t('هذا الإجراء لمضيف الغرفة فقط.', 'Only the room host can do this.'),
       'room_not_found' || 'live_room_not_found' || 'meeting_not_found' || 'session_not_found' =>
         t('الغرفة غير موجودة.', 'This room does not exist.'),
@@ -402,8 +404,16 @@ String? liveRoomCodeText(String? code) => switch (code) {
       'request_rejected' || 'join_rejected' => t('لم يسمح المضيف بالانضمام.', 'The host did not let you in.'),
       'already_decided' => t('بُتّ في هذا الطلب من قبل.', 'This request was already decided.'),
       'not_invited' || 'not_member' || 'not_enrolled' => t('أنت لست من أعضاء هذه الغرفة.', 'You are not a member of this room.'),
-      'live_not_started' => t('لم يبدأ البث بعد.', 'The room has not started yet.'),
-      'live_ended' || 'meeting_ended' => t('انتهت هذه الجلسة.', 'This room has ended.'),
+      'live_not_started' => liveT(kind,
+          ar: 'لم يبدأ البث بعد.',
+          en: 'The room has not started yet.',
+          meetingAr: 'لم يبدأ الاجتماع بعد.',
+          meetingEn: 'The meeting has not started yet.'),
+      'live_ended' || 'meeting_ended' => liveT(kind,
+          ar: 'انتهت هذه الجلسة.',
+          en: 'This room has ended.',
+          meetingAr: 'انتهى هذا الاجتماع.',
+          meetingEn: 'This meeting has ended.'),
       'link_missing' || 'guest_link_missing' => t('لا يوجد رابط مشاركة لهذه الغرفة.', 'This room has no share link.'),
       'link_invalid' || 'guest_link_invalid' => t('هذا الرابط غير صالح.', 'This link is not valid.'),
       'guests_disabled' => t('روابط الزوار غير متاحة.', 'Share links are switched off.'),

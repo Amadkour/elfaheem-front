@@ -7729,6 +7729,10 @@
     "en": "Join Session",
     "ar": "انضم للحصة"
   },
+  "lr_join_session_meeting": {
+    "en": "Join meeting",
+    "ar": "انضم للاجتماع"
+  },
   "lr_speaker": {
     "en": "Speaker",
     "ar": "السماعة"
@@ -7845,9 +7849,17 @@
     "en": "Session Ended",
     "ar": "انتهت الحصة"
   },
+  "lr_teacher_ended_title_meeting": {
+    "en": "Meeting ended",
+    "ar": "انتهى الاجتماع"
+  },
   "lr_teacher_ended_msg": {
     "en": "The teacher has ended this session.\nThank you for joining!",
     "ar": "أنهى المعلم هذه الحصة.\nشكراً لانضمامك!"
+  },
+  "lr_teacher_ended_msg_meeting": {
+    "en": "The host has ended this meeting.\nThank you for joining!",
+    "ar": "أنهى المضيف هذا الاجتماع.\nشكراً لانضمامك!"
   },
   "lr_waiting_participants": {
     "en": "Waiting for participants…",
@@ -7864,6 +7876,10 @@
   "lr_live_session": {
     "en": "Live session",
     "ar": "حصة مباشرة"
+  },
+  "lr_live_session_meeting": {
+    "en": "Live meeting",
+    "ar": "اجتماع مباشر"
   },
   "lr_speaking": {
     "en": "Speaking",
@@ -7985,6 +8001,10 @@
     "en": "No recording was saved for this session due to a technical recording problem, even if the screen or camera was shared. Please contact support.",
     "ar": "لم يتم حفظ أي تسجيل لهذه الجلسة بسبب مشكلة تقنية في التسجيل، حتى لو تمت مشاركة الشاشة أو الكاميرا. يرجى إبلاغ الدعم الفني."
   },
+  "lr_no_recording_saved_meeting": {
+    "en": "No recording was saved for this meeting due to a technical recording problem, even if the screen or camera was shared. Please contact support.",
+    "ar": "لم يتم حفظ أي تسجيل لهذا الاجتماع بسبب مشكلة تقنية في التسجيل، حتى لو تمت مشاركة الشاشة أو الكاميرا. يرجى إبلاغ الدعم الفني."
+  },
   "lr_cam_mic_unavailable": {
     "en": "Could not access the camera or microphone — only screen share will be recorded once started. Make sure no other app is using them.",
     "ar": "تعذر الوصول إلى الكاميرا أو الميكروفون — سيتم تسجيل مشاركة الشاشة فقط عند بدئها. تأكد من عدم استخدام الكاميرا/الميكروفون في تطبيق آخر."
@@ -8053,9 +8073,17 @@
     "en": "Capturing session with shared screen",
     "ar": "يتم تسجيل الحصة مع الشاشة المشتركة"
   },
+  "lr_rec_va_shared_sub_meeting": {
+    "en": "Capturing meeting with shared screen",
+    "ar": "يتم تسجيل الاجتماع مع الشاشة المشتركة"
+  },
   "lr_rec_va_sub": {
     "en": "Capturing session video and audio",
     "ar": "يتم تسجيل فيديو وصوت الحصة"
+  },
+  "lr_rec_va_sub_meeting": {
+    "en": "Capturing meeting video and audio",
+    "ar": "يتم تسجيل فيديو وصوت الاجتماع"
   },
   "lr_rec_audio_title": {
     "en": "Recording — Audio Only",
@@ -16153,6 +16181,10 @@
     "en": "This session may be recorded",
     "ar": "قد يتم تسجيل هذه الحصة"
   },
+  "lr_may_be_recorded_meeting": {
+    "en": "This meeting may be recorded",
+    "ar": "قد يتم تسجيل هذا الاجتماع"
+  },
   "lr_no_mic_found": {
     "en": "No microphone found",
     "ar": "لم يتم العثور على ميكروفون"
@@ -16224,6 +16256,10 @@
   "lr_listen_only_msg": {
     "en": "You join as a listener: no microphone or camera in this session.",
     "ar": "ستنضم كمستمع فقط: لا ميكروفون ولا كاميرا في هذه الجلسة."
+  },
+  "lr_listen_only_msg_meeting": {
+    "en": "You join as a listener: no microphone or camera in this meeting.",
+    "ar": "ستنضم كمستمع فقط: لا ميكروفون ولا كاميرا في هذا الاجتماع."
   },
   "guest_link_title": {
     "en": "Guest link",
@@ -16321,6 +16357,10 @@
     "en": "You were invited to a live session. Type your name and join.",
     "ar": "تمت دعوتك إلى بث مباشر. اكتب اسمك وانضم."
   },
+  "guest_live_subtitle_meeting": {
+    "en": "You were invited to a live meeting. Type your name and join.",
+    "ar": "تمت دعوتك إلى اجتماع مباشر. اكتب اسمك وانضم."
+  },
   "guest_live_badge_live": {
     "en": "LIVE",
     "ar": "مباشر الآن"
@@ -16332,6 +16372,10 @@
   "guest_live_waiting_msg": {
     "en": "The session has not started yet. This page checks again every few seconds and the Join button turns on by itself.",
     "ar": "لم يبدأ البث بعد. تتحقق هذه الصفحة تلقائيًا كل بضع ثوانٍ وسيُفعَّل زر الانضمام من تلقاء نفسه."
+  },
+  "guest_live_waiting_msg_meeting": {
+    "en": "The meeting has not started yet. This page checks again every few seconds and the Join button turns on by itself.",
+    "ar": "لم يبدأ الاجتماع بعد. تتحقق هذه الصفحة تلقائيًا كل بضع ثوانٍ وسيُفعَّل زر الانضمام من تلقاء نفسه."
   },
   "guest_live_name": {
     "en": "Your name",
@@ -16349,6 +16393,10 @@
     "en": "Waiting for the session to start…",
     "ar": "في انتظار بدء البث…"
   },
+  "guest_live_join_when_live_meeting": {
+    "en": "Waiting for the meeting to start…",
+    "ar": "في انتظار بدء الاجتماع…"
+  },
   "guest_live_err_invalid": {
     "en": "This link is not valid any more.",
     "ar": "هذا الرابط لم يعد صالحًا."
@@ -16357,21 +16405,41 @@
     "en": "This session has no guest link yet.",
     "ar": "لا يوجد رابط ضيوف لهذه الجلسة بعد."
   },
+  "guest_live_err_missing_meeting": {
+    "en": "This meeting has no guest link yet.",
+    "ar": "لا يوجد رابط ضيوف لهذا الاجتماع بعد."
+  },
   "guest_live_err_not_started": {
     "en": "The session has not started yet.",
     "ar": "لم يبدأ البث بعد."
+  },
+  "guest_live_err_not_started_meeting": {
+    "en": "The meeting has not started yet.",
+    "ar": "لم يبدأ الاجتماع بعد."
   },
   "guest_live_err_ended": {
     "en": "The session has ended.",
     "ar": "انتهى البث."
   },
+  "guest_live_err_ended_meeting": {
+    "en": "The meeting has ended.",
+    "ar": "انتهى الاجتماع."
+  },
   "guest_live_err_limit": {
     "en": "The session is full: the guest limit has been reached.",
     "ar": "الجلسة ممتلئة: تم الوصول إلى الحد الأقصى للضيوف."
   },
+  "guest_live_err_limit_meeting": {
+    "en": "The meeting is full: the guest limit has been reached.",
+    "ar": "الاجتماع ممتلئ: تم الوصول إلى الحد الأقصى للضيوف."
+  },
   "guest_live_err_disabled": {
     "en": "Guests are not allowed in this session.",
     "ar": "الضيوف غير مسموح بهم في هذه الجلسة."
+  },
+  "guest_live_err_disabled_meeting": {
+    "en": "Guests are not allowed in this meeting.",
+    "ar": "الضيوف غير مسموح بهم في هذا الاجتماع."
   },
   "lr_raise_hand": {
     "en": "Raise hand",
@@ -16429,9 +16497,17 @@
     "en": "Remove from session",
     "ar": "إزالة من الجلسة"
   },
+  "lr_remove_guest_meeting": {
+    "en": "Remove from meeting",
+    "ar": "إزالة من الاجتماع"
+  },
   "lr_remove_guest_confirm": {
     "en": "Remove {name} from the session? They can rejoin only with a valid guest link.",
     "ar": "إزالة {name} من الجلسة؟ لن يتمكن من العودة إلا برابط ضيف صالح."
+  },
+  "lr_remove_guest_confirm_meeting": {
+    "en": "Remove {name} from the meeting? They can rejoin only with a valid guest link.",
+    "ar": "إزالة {name} من الاجتماع؟ لن يتمكن من العودة إلا برابط ضيف صالح."
   },
   "lr_guest_removed": {
     "en": "Guest removed.",
@@ -16449,9 +16525,17 @@
     "en": "This guest is no longer in the session.",
     "ar": "هذا الضيف لم يعد في الجلسة."
   },
+  "lr_guest_not_found_meeting": {
+    "en": "This guest is no longer in the meeting.",
+    "ar": "هذا الضيف لم يعد في الاجتماع."
+  },
   "lr_live_not_started": {
     "en": "The session has not started yet.",
     "ar": "لم تبدأ الجلسة بعد."
+  },
+  "lr_live_not_started_meeting": {
+    "en": "The meeting has not started yet.",
+    "ar": "لم يبدأ الاجتماع بعد."
   },
   "lr_chat": {
     "en": "Chat",
@@ -16485,6 +16569,10 @@
     "en": "Wrong PIN. Check it with the host and try again.",
     "ar": "رمز PIN غير صحيح. تأكد منه مع المحاضر وحاول مرة أخرى."
   },
+  "guest_live_err_pin_meeting": {
+    "en": "Wrong PIN. Check it with the host and try again.",
+    "ar": "رمز PIN غير صحيح. تأكد منه مع المضيف وحاول مرة أخرى."
+  },
   "guest_live_pin_required": {
     "en": "This link needs a PIN.",
     "ar": "هذا الرابط يحتاج إلى رمز PIN."
@@ -16509,6 +16597,10 @@
     "en": "4–8 digits from the host",
     "ar": "4–8 أرقام من المحاضر"
   },
+  "guest_live_pin_hint_meeting": {
+    "en": "4–8 digits from the host",
+    "ar": "4–8 أرقام من المضيف"
+  },
   "guest_live_pin_protected": {
     "en": "Protected with a PIN",
     "ar": "محمي برمز PIN"
@@ -16517,9 +16609,17 @@
     "en": "I understand this session may be recorded",
     "ar": "أفهم أن هذه الجلسة قد يتم تسجيلها"
   },
+  "guest_live_consent_meeting": {
+    "en": "I understand this meeting may be recorded",
+    "ar": "أفهم أن هذا الاجتماع قد يتم تسجيله"
+  },
   "guest_live_consent_required": {
     "en": "Please confirm that you understand the session may be recorded.",
     "ar": "يرجى تأكيد أنك تفهم أن الجلسة قد يتم تسجيلها."
+  },
+  "guest_live_consent_required_meeting": {
+    "en": "Please confirm that you understand the meeting may be recorded.",
+    "ar": "يرجى تأكيد أنك تفهم أن الاجتماع قد يتم تسجيله."
   },
   "guest_link_pin": {
     "en": "PIN (optional)",
@@ -16600,6 +16700,10 @@
   "guest_live_err_blocked": {
     "en": "You were removed from this session by the teacher.",
     "ar": "تمت إزالتك من هذه الجلسة بواسطة المعلّم."
+  },
+  "guest_live_err_blocked_meeting": {
+    "en": "You were removed from this meeting by the host.",
+    "ar": "أخرجك المضيف من هذا الاجتماع."
   },
   "ctx_join_new": {
     "en": "Join another organization",

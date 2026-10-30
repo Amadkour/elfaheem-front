@@ -418,7 +418,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       return;
     }
     if (e.sessionId != null && e.courseId != null) {
-      await openCourseLiveRoom(context, sessionId: e.sessionId!, courseId: e.courseId!, sessionName: e.title, autoJoin: true);
+      await openCourseLiveRoom(context, sessionId: e.sessionId!, courseId: e.courseId!, sessionName: e.title);
       return;
     }
     if (e.source == 'course_weekly') {
