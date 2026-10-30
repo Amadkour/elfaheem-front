@@ -131,4 +131,13 @@ void main() {
     await t.pump(const Duration(milliseconds: 300));
     expect(find.text('Show less'), findsOneWidget);
   });
+
+  testWidgets('CourseBlockedView: private (enter the code) and not available', (t) async {
+    for (final locked in [true, false]) {
+      await expectNoLayoutErrors(
+        t,
+        () => CourseBlockedView(locked: locked, title: '$_long $_long', onBack: () {}, onEnterCode: () {}),
+      );
+    }
+  });
 }

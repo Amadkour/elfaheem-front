@@ -39,6 +39,7 @@ import 'components/about.dart';
 import 'components/course_detail_parts.dart';
 import 'components/session.dart';
 import 'components/share_link.dart';
+import 'course_access_sheet.dart';
 import 'course_detail_provider.dart';
 import 'course_live_join.dart';
 import '../../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
@@ -97,6 +98,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     super.initState();
     _provider = context.read<CourseDetailProvider>();
     _provider.course = widget.course;
+    _provider.block = null; // a block from the previous course page must not flash here
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _provider.init(widget.course);
     });
@@ -108,13 +110,35 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     // Full-page skeleton only for the FIRST load. While the next page of
     // sessions loads (sessions already on screen) the page must stay put.
     final loading = provider.isLoading && provider.sessions.isEmpty;
+    final block = provider.block;
 
     return BasePage(
       useWebCard: true,
       enableFooterWidget: false,
       maxWith: 1320,
-      child: loading ? const CourseDetailSkeleton() : const _Body(),
+      child: loading
+          ? const CourseDetailSkeleton()
+          : block != null
+          // 404 (draft / unknown) or 403 course_locked: a calm page instead of an empty course
+          ? CourseBlockedView(
+              locked: block == CourseBlock.locked,
+              title: (AppConfig.lang == 'ar' ? provider.course.titleAr : provider.course.titleEn) ??
+                  provider.course.titleEn ??
+                  provider.course.titleAr,
+              onBack: Navigator.canPop(context) ? () => Navigator.maybePop(context) : null,
+              onEnterCode: () => _enterCode(provider),
+            )
+          : const _Body(),
     );
+  }
+
+  Future<void> _enterCode(CourseDetailProvider p) async {
+    final id = int.tryParse(p.course.id);
+    if (id == null) return;
+    final title = (AppConfig.lang == 'ar' ? p.course.titleAr : p.course.titleEn) ?? '';
+    if (await CourseAccessSheet.show(context, courseId: id, courseName: title)) {
+      await p.init(p.course);
+    }
   }
 }
 

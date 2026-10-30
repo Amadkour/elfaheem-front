@@ -40,7 +40,7 @@ class CoursePriceBlock extends StatelessWidget {
             style: TextStyle(
               fontFamily: AppFonts.family,
               fontSize: compact ? 20 : 28,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w600,
               color: c.success,
             ),
           )
@@ -52,7 +52,7 @@ class CoursePriceBlock extends StatelessWidget {
                 originalPrice: course.price,
                 finalPrice: course.finalPrice ?? 0,
                 discountActive: discount,
-                format: course.currency.format,
+                format: (v) => coursePriceLabel(course.currency, v),
                 fontSize: compact ? 20 : 28,
                 originalFontSize: compact ? 12 : 14,
               ),
@@ -94,7 +94,7 @@ class CourseEnrollButton extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: c.primaryGradient,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: c.primary.withValues(alpha: 0.36), blurRadius: 18, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: c.primary.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Material(
         color: Colors.transparent,
@@ -111,7 +111,7 @@ class CourseEnrollButton extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: c.onHero, fontWeight: FontWeight.w800, fontSize: 15, fontFamily: AppFonts.display),
+                    style: TextStyle(color: c.onHero, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: AppFonts.family),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -157,7 +157,7 @@ class CourseIncludedList extends StatelessWidget {
       children: [
         Text(
           gt('يتضمن الكورس', 'This course includes'),
-          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w800, color: c.textMedium),
+          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600, color: c.textMedium),
         ),
         const SizedBox(height: 6),
         for (final (icon, label, tone) in rows)
@@ -165,17 +165,12 @@ class CourseIncludedList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: Row(
               children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(9)),
-                  child: Icon(icon, size: 16, color: tone),
-                ),
-                const SizedBox(width: 10),
+                Icon(icon, size: 18, color: c.isDark ? Color.lerp(tone, c.textDark, 0.4) : tone),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     label,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600, color: c.textDark),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w400, color: c.textDark),
                   ),
                 ),
               ],
@@ -247,7 +242,7 @@ class CourseEnrolledCard extends StatelessWidget {
                   children: [
                     Text(
                       'you_are_enrolled'.tr,
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w800, color: c.textDark),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w600, color: c.textDark),
                     ),
                     Text(
                       gt('وصول كامل لكل الدروس والاختبارات', 'Full access to every lesson and exam'),
@@ -284,7 +279,7 @@ class CourseBuyBar extends StatelessWidget {
         color: c.cardBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border(top: BorderSide(color: c.divider)),
-        boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.1), blurRadius: 22, offset: const Offset(0, -6))],
+        boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.06), blurRadius: 18, offset: const Offset(0, -6))],
       ),
       padding: EdgeInsets.fromLTRB(kCourseGutter, 12, kCourseGutter, 12 + MediaQuery.paddingOf(context).bottom),
       child: Column(
@@ -371,3 +366,115 @@ Widget courseLearningCard({
     },
   ),
 );
+
+// ── The course cannot be shown ───────────────────────────────────────────────
+
+/// The whole page when the server will not show the course: [locked] (403 `course_locked`, a private course —
+/// [onEnterCode] opens the access-code sheet) or not (404: a draft or an unknown course).
+class CourseBlockedView extends StatelessWidget {
+  const CourseBlockedView({super.key, required this.locked, this.title, this.onBack, this.onEnterCode});
+
+  final bool locked;
+
+  /// The course name, when the page was opened from a card that knew it.
+  final String? title;
+  final VoidCallback? onBack;
+  final VoidCallback? onEnterCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tone = locked ? c.primary : c.textMedium;
+    final ink = c.isDark ? Color.lerp(tone, c.textDark, 0.4)! : tone;
+    final name = title?.trim() ?? '';
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (onBack != null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: IconButton(
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: c.textDark),
+                  onPressed: onBack,
+                ),
+              ),
+            ),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(color: tone.withValues(alpha: 0.1), shape: BoxShape.circle),
+                        child: Icon(locked ? Icons.lock_outline_rounded : Icons.visibility_off_outlined, size: 30, color: ink),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        locked ? gt('هذا الكورس خاص', 'This course is private') : gt('الكورس غير متاح', 'This course is not available'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 18, fontWeight: FontWeight.w600, color: c.textDark),
+                      ),
+                      if (name.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          name,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w500, color: c.textMedium),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        locked
+                            ? gt('أدخل كود الدخول الذي أرسله لك المدرس لتفتح الكورس.',
+                                'Enter the access code your teacher gave you to open it.')
+                            : gt('ربما لم يُنشر بعد أو أُزيل. جرّب لاحقاً أو تصفح كورسات أخرى.',
+                                'It may not be published yet, or it was removed. Try again later or browse other courses.'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 13.5, height: 1.55, color: c.textMedium),
+                      ),
+                      const SizedBox(height: 24),
+                      if (locked && onEnterCode != null)
+                        FilledButton.icon(
+                          onPressed: onEnterCode,
+                          icon: const Icon(Icons.key_rounded, size: 18),
+                          label: Text(gt('أدخل الكود', 'Enter the code')),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: c.primary,
+                            foregroundColor: c.onHero,
+                            minimumSize: const Size(200, 48),
+                            textStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w600),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        )
+                      else if (onBack != null)
+                        OutlinedButton(
+                          onPressed: onBack,
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(160, 44),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: Text(gt('رجوع', 'Go back')),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

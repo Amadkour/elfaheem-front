@@ -76,6 +76,16 @@ class SessionsTab extends StatelessWidget {
         ? presented
         : presented.where((s) => s.track == provider.trackFilter).toList();
     final count = live ? presented.length : math.max(provider.course.sessionsCount, presented.length);
+    final states = courseStudentStates([
+      for (final s in shown)
+        (
+          live: s.isLiveActive,
+          locked: !provider.isSessionUnlockedById(s.id),
+          done: s.isCompleted,
+          when: sessionUtc(s.scheduledAt),
+        ),
+    ]);
+    final fold = live ? 0 : courseSessionFoldCount(states);
     final header = CourseSectionHeader(title: title ?? 'sessions'.tr, count: count);
     if (presented.isEmpty) {
       return Column(
@@ -106,41 +116,44 @@ class SessionsTab extends StatelessWidget {
               onChanged: provider.setTrackFilter,
             ),
           ),
-        ListView.builder(
-          padding: const EdgeInsets.fromLTRB(kCourseGutter, 4, kCourseGutter, 4),
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          itemCount: shown.length,
-          itemBuilder: (_, i) {
-            final session = shown[i];
-            final gate = provider.examGates[session.id];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                children: [
-                  ParentComponent(
-                      featureKey: 'sessions.card',
-                      child: SessionMaterialCard(
-                        session: session.toTeacher,
-                        course: provider.course.toTeacherModel,
-                        sessionNumber: i+1,
-                        isTeacher: false,
-                        locked: !provider.isSessionUnlockedById(session.id),
-                      )),
-                  // The exam the teacher attached to this session: passing it
-                  // is what unlocks the sessions that come after it.
-                  if (gate != null && !gate.isEmpty)
-                    ParentComponent(
-                        featureKey: 'sessions.exam_banner',
-                        child: _SessionExamBanner(
-                          gate: gate,
-                          enrolled: provider.course.isEnrolled,
-                          onOpenExam: (examId) => _openExam(context, examId),
-                        )),
-                ],
-              ),
-            );
-          },
+        // ONE timeline card: done · up next · live · scheduled · locked; a long list folds its completed start
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 4),
+          child: CourseSessionsTimeline(
+            itemCount: shown.length,
+            foldCount: fold,
+            itemBuilder: (_, i) {
+              final session = shown[i];
+              final gate = provider.examGates[session.id];
+              var rail = courseSessionRail(states, i);
+              if (fold > 0 && i == 0) rail = (top: CourseRailTone.done, bottom: rail.bottom);
+              return ParentComponent(
+                key: ValueKey('student_session_${session.id}'),
+                featureKey: 'sessions.card',
+                child: SessionMaterialCard(
+                  session: session.toTeacher,
+                  course: provider.course.toTeacherModel,
+                  sessionNumber: i + 1,
+                  isTeacher: false,
+                  locked: !provider.isSessionUnlockedById(session.id),
+                  state: states[i],
+                  rail: rail,
+                  liveType: session.isLive,
+                  // The exam the teacher attached to this session: passing it is what unlocks the sessions after it.
+                  footer: gate == null || gate.isEmpty
+                      ? null
+                      : ParentComponent(
+                          featureKey: 'sessions.exam_banner',
+                          child: _SessionExamBanner(
+                            gate: gate,
+                            enrolled: provider.course.isEnrolled,
+                            onOpenExam: (examId) => _openExam(context, examId),
+                          ),
+                        ),
+                ),
+              );
+            },
+          ),
         ),
         // Footer for the next page of sessions. The scroll-position trigger is the CourseSpace's onNearEnd
         // (this list never scrolls itself); this widget only reflects the state.
@@ -230,81 +243,57 @@ class _SessionExamBannerState extends State<_SessionExamBanner> {
         '${'session_exam_attempts_left'.tr}: ${exam.remainingSubmissions}',
     ];
 
+    // A quiet note under the session row (it sits in the row's text column): icon · exam · status · details,
+    // and the one action under it.
+    final ink = c.isDark ? Color.lerp(color, c.textDark, 0.35)! : color;
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
+        color: color.withValues(alpha: c.isDark ? 0.12 : 0.06),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 19),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${'session_exam_title'.tr}: ${exam.name}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: c.label.copyWith(
-                    color: c.textDark,
-                    fontWeight: FontWeight.w700,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Icon(icon, color: ink, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${'session_exam_title'.tr}: ${exam.name}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: c.label.copyWith(color: c.textDark, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(status, style: c.caption.copyWith(color: ink, fontWeight: FontWeight.w500)),
+                    if (details.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(details.join('  ·  '), style: c.caption.copyWith(fontWeight: FontWeight.w400)),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  status,
-                  style: c.caption.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (details.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(details.join('  •  '), style: c.caption),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
           if (enrolled && exam.canStart) ...[
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: _opening ? null : () => _open(exam.id),
-              style: FilledButton.styleFrom(
-                backgroundColor: color,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                minimumSize: const Size(0, 36),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: _opening
-                  ? SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: c.onHero),
-              )
-                  : Text(
-                exam.attempted
-                    ? 'session_exam_retry'.tr
-                    : 'session_exam_start'.tr,
-                style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w700),
-              ),
+            const SizedBox(height: 10),
+            CourseSessionAction(
+              label: exam.attempted ? 'session_exam_retry'.tr : 'session_exam_start'.tr,
+              icon: Icons.quiz_outlined,
+              tone: color,
+              filled: true,
+              loading: _opening,
+              onTap: () => _open(exam.id),
             ),
           ],
         ],

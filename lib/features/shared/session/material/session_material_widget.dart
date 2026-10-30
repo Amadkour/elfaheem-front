@@ -1,30 +1,31 @@
 // shared/session/session_material_widget.dart
 //
-// SessionMaterialCard — the session row card rendered inside both the teacher
-// and student course-detail screens.
+// SessionMaterialCard — one session of the course page's timeline, for the teacher and the student alike. It is
+// drawn by the shared, plain-value [CourseSessionTile] (shared/course/course_space/course_sessions.dart); this
+// widget adds what needs the providers: the role's actions (student: join live · start the session exam · the
+// exam gate footer; teacher: the ⋮ menu with go live · guest link · attendance · exams · material · edit ·
+// delete, and the drag handle), the materials panel the row opens, and the session rating inside that panel.
+// The caller wraps the rows in CourseSessionsTimeline / CourseSessionsSurface and passes each row's
+// [state] and [rail] (courseStudentStates / courseTeacherStates + courseSessionRail).
 //
-// After the split this file is a slim orchestrator (~200 lines).
-// All heavy sub-trees live in:
-//   • components/session_shared_widgets.dart   (RtlDialog, SessionField, pills, ActionBtn)
-//   • components/session_progress_section.dart (progress bar + labels)
+// Heavy sub-trees live in:
+//   • components/session_shared_widgets.dart   (RtlDialog, SessionField)
 //   • components/session_material_grid.dart    (material tiles, image viewer)
 //   • components/add_material_sheet.dart       (upload / link sheet)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/student/analysis/exam/student_course_exams_widget.dart'
     show SessionExamButton;
+import 'package:flutter_education_app/features/student/analysis/exam/student_exam_provider.dart';
 
 import '../../../../config/app_config.dart';
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../utils/widget/parent_component.dart';
 import '../../../../utils/widget/rating_widget.dart';
+import '../../course/course_space/course_sessions.dart';
 import '../../../teacher/sessions/components/guest_link_sheet.dart';
 import '../../../student/courses/details/course_detail_provider.dart';
 import '../../../student/models.dart';
@@ -34,7 +35,6 @@ import '../../../teacher/home/teacher_models.dart';
 import '../../../teacher/sessions/sessions_provider.dart';
 import 'components/add_material_sheet.dart';
 import 'components/session_material_grid.dart';
-import 'components/session_progress_section.dart';
 import 'components/session_shared_widgets.dart';
 
 class SessionMaterialCard extends StatefulWidget {
@@ -43,14 +43,26 @@ class SessionMaterialCard extends StatefulWidget {
   final bool isTeacher;
   final int sessionNumber;
 
-  /// Position inside the enclosing ReorderableListView (teacher only). When
-  /// set, a drag handle is shown in the card header.
+  /// Position inside the enclosing ReorderableListView (teacher only): a drag handle on wide screens, a long press
+  /// on the row on phones.
   final int? dragIndex;
 
   /// True when this session should be shown as locked to the current
   /// student — i.e. it's beyond what an unpaid preview or the student's
   /// current progress allows them to open. Ignored for teachers.
   final bool locked;
+
+  /// Where the session stands in the timeline (null → live / locked / open from the session itself).
+  final CourseSessionState? state;
+
+  /// The timeline line through this row (none by default).
+  final CourseSessionRail rail;
+
+  /// The course is a live course (the student's SessionModel → TeacherSessionItem copy drops `type`).
+  final bool? liveType;
+
+  /// Under the row's actions (the student's exam-gate notice).
+  final Widget? footer;
 
   const SessionMaterialCard({
     super.key,
@@ -60,6 +72,10 @@ class SessionMaterialCard extends StatefulWidget {
     this.locked = false,
     required this.sessionNumber,
     this.dragIndex,
+    this.state,
+    this.rail = (top: null, bottom: null),
+    this.liveType,
+    this.footer,
   });
 
   @override
@@ -113,6 +129,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       parent: _animController,
       curve: Curves.easeInOutCubic,
     );
+    _loadStudentExams();
   }
 
   @override
@@ -294,94 +311,136 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     );
   }
 
-  // ── Actions row ────────────────────────────────────────────────────────────
+  // ── Row parts ──────────────────────────────────────────────────────────────
 
-  Widget _buildActionsRow(TeacherCourseScreenProvider prov, bool hasExam) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
+  /// Students: the course's exams (several rows mount together; only the first one fetches).
+  void _loadStudentExams() {
+    if (widget.isTeacher) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        final prov = context.read<StudentExamProvider>();
+        final cid = '${_session.courseId}';
+        if (!prov.courseExamsLoadedFor(cid) && !prov.loadingCourseExamsFor(cid)) prov.loadCourseExams(cid);
+      } catch (_) {}
+    });
+  }
+
+  /// The student's exam attached to this session (drives the "Start exam" action under the row).
+  bool _hasStudentExam() {
+    if (widget.isTeacher || _isLocked) return false;
+    try {
+      return context.watch<StudentExamProvider>().examForSession('${_session.courseId}', _session.id) != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Live join / end and the session exam, under the row's meta line; null when there is nothing to show.
+  Widget? _below(TeacherCourseScreenProvider prov) {
+    final c = context.colors;
+    final live = _session.isLiveActive;
+    final items = <Widget>[
+      if (live && !_isLocked)
+        CourseSessionAction(
+          icon: Icons.videocam_rounded,
+          label: widget.isTeacher ? _tt('دخول الغرفة', 'Enter room') : 'join_live_session'.tr,
+          tone: c.danger,
+          filled: true,
+          loading: prov.joinSessionId == _session.id,
+          onTap: prov.joinSessionId != -1 ? null : _joinLive,
+        ),
+      if (live && widget.isTeacher)
+        CourseSessionAction(
+          icon: Icons.stop_circle_outlined,
+          label: 'end_session'.tr,
+          tone: c.danger,
+          loading: prov.startSessionId == _session.id,
+          onTap: prov.startSessionId != -1 ? null : _toggleLive,
+        ),
+      if (_hasStudentExam())
+        SessionExamButton(
+          courseId: _session.courseId,
+          sessionId: _session.id,
+          builder: (ctx, {required icon, required label, required color, required onTap}) =>
+              CourseSessionAction(icon: icon, label: label, tone: color, onTap: onTap),
+          callback: prov.refresh,
+        ),
+    ];
+    final uploading = prov.isUploadingMaterial(_session.id);
+    if (items.isEmpty && widget.footer == null && !uploading) return null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.isTeacher) ...[
-          SessionActionBtn(
-            icon: CupertinoIcons.video_camera_solid,
-            loading: prov.startSessionId == _session.id,
-            label: _session.isLiveActive ? 'end_session'.tr : 'meet_now'.tr,
-            color: _session.isLiveActive
-                ? context.colors.danger
-                : context.colors.success,
-            onTap: prov.startSessionId != -1 ? null : _toggleLive,
+        if (items.isNotEmpty) Wrap(spacing: 8, runSpacing: 8, children: items),
+        if (widget.footer != null) ...[if (items.isNotEmpty) const SizedBox(height: 8), widget.footer!],
+        if (uploading) ...[
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: prov.uploadProgressForSession(_session.id),
+            minHeight: 3,
+            color: c.primary,
+            backgroundColor: c.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(3),
           ),
-          // Public guest link of this live session (kill-switch: live.guest_link)
-          ParentComponent(
-            featureKey: kGuestLinkFeatureKey,
-            child: SessionActionBtn(
-              icon: Icons.link_rounded,
-              label: 'guest_link_title'.tr,
-              color: context.colors.accent,
-              onTap: () => showGuestLinkSheet(context, sessionId: _session.id, sessionName: _session.name),
-              outlined: true,
-            ),
-          ),
-          SessionActionBtn(
-            icon: Icons.how_to_reg_rounded,
-            label: 'attendance'.tr,
-            color: context.colors.primary,
-            onTap: _openAttendance,
-            outlined: true,
-          ),
-          SessionActionBtn(
-            icon: Icons.quiz_rounded,
-            label: 'exams'.tr,
-            color: context.colors.warning,
-            onTap: _openExams,
-            outlined: true,
-          ),
-          SessionActionBtn(
-            icon: Icons.add_task_rounded,
-            label: 'new_exam'.tr,
-            color: context.colors.purple,
-            onTap: _openAddExam,
-            outlined: true,
-          ),
-
         ],
-        if (!widget.isTeacher && !_isLocked)
-          SessionExamButton(
-            courseId: _session.courseId,
-            sessionId: _session.id,
-            builder:
-                (
-                ctx, {
-              required icon,
-              required label,
-              required color,
-              required onTap,
-            }) => SessionActionBtn(
-              icon: icon,
-              label: label,
-              color: color,
-              onTap: onTap,
-            ),
-            callback: prov.refresh,
-          ),
-        // if (isLiveType && widget.isTeacher)
-        if (_session.isLiveActive)
-          SessionActionBtn(
-            loading: prov.joinSessionId == _session.id,
-            icon: CupertinoIcons.video_camera_solid,
-            label: 'join_live_session'.tr,
-            color: context.colors.success,
-            onTap: prov.joinSessionId != -1 ? null : _joinLive,
-          ),
-        if (_session.totalMaterial > 0 || hasExam)
-          _MaterialsToggleButton(
-            count: _session.totalMaterial + (hasExam ? 1 : 0),
-            expanded: _expanded,
-            onTap: _toggleExpanded,
-          )
-        else if (widget.isTeacher)
-          AddMaterialButton(sessionId: _session.id),
+      ],
+    );
+  }
+
+  /// The teacher's ⋮: live · guest link · attendance · exams · material · edit · delete.
+  Widget _teacherMenu(TeacherCourseScreenProvider prov) {
+    final c = context.colors;
+    final live = _session.isLiveActive;
+    final guest = !AppConfig.disableList.contains(kGuestLinkFeatureKey);
+    PopupMenuItem<String> item(String v, IconData icon, String label, {Color? tone}) => PopupMenuItem(
+      value: v,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: tone ?? c.textMedium),
+          const SizedBox(width: 12),
+          Flexible(child: Text(label, style: TextStyle(color: tone ?? c.textDark))),
+        ],
+      ),
+    );
+    return PopupMenuButton<String>(
+      tooltip: _tt('خيارات الجلسة', 'Session options'),
+      icon: Icon(Icons.more_vert_rounded, color: c.textLight, size: 20),
+      onSelected: (v) {
+        switch (v) {
+          case 'live':
+            if (prov.startSessionId == -1) _toggleLive();
+          case 'guest':
+            showGuestLinkSheet(context, sessionId: _session.id, sessionName: _session.name);
+          case 'attendance':
+            _openAttendance();
+          case 'exams':
+            _openExams();
+          case 'new_exam':
+            _openAddExam();
+          case 'material':
+            showAddMaterialSheet(context, sessionId: _session.id);
+          case 'edit':
+            _showEditSessionDialog();
+          case 'delete':
+            _showDeleteSessionDialog();
+        }
+      },
+      itemBuilder: (_) => [
+        item(
+          'live',
+          live ? Icons.stop_circle_outlined : Icons.videocam_rounded,
+          live ? 'end_session'.tr : 'meet_now'.tr,
+          tone: live ? c.danger : c.success,
+        ),
+        if (guest) item('guest', Icons.link_rounded, 'guest_link_title'.tr),
+        item('attendance', Icons.how_to_reg_rounded, 'attendance'.tr),
+        item('exams', Icons.quiz_outlined, 'exams'.tr),
+        item('new_exam', Icons.add_task_rounded, 'new_exam'.tr),
+        item('material', Icons.attach_file_rounded, 'add_material'.tr),
+        const PopupMenuDivider(),
+        item('edit', Icons.tune_rounded, 'edit_session'.tr),
+        item('delete', Icons.delete_outline_rounded, 'delete_session'.tr, tone: c.danger),
       ],
     );
   }
@@ -392,376 +451,106 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   Widget build(BuildContext context) {
     final prov = context.watch<TeacherCourseScreenProvider>();
     final materials = prov.materialsFor(_session.id);
-    final uploading = prov.isUploadingMaterial(_session.id);
-    final uploadProgress = prov.uploadProgressForSession(_session.id);
-    final isLiveNow = _session.isLiveActive;
     final examGate = _examGate(prov);
     final hasExam = examGate != null && !examGate.isEmpty;
-
-    final c = context.colors;
+    final wide = MediaQuery.sizeOf(context).width >= 900;
     final isSection = _session.track == 'section';
-    final accent = isLiveNow ? c.danger : (isSection ? c.purple : c.primary);
-    final card = Container(
-      key: ValueKey("session_reorder_list:${widget.dragIndex}"),
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        boxShadow: c.cardShadow,
-        border: Border.all(color: isLiveNow ? c.danger.withValues(alpha: 0.45) : c.divider.withValues(alpha: 0.7)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(children: [
-        // accent strip on the reading-start edge (red while live · purple for sections)
-        PositionedDirectional(start: 0, top: 0, bottom: 0, child: Container(width: 4, color: accent)),
-        Column(
-        children: [
-          // ── Main card body ───────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Name + age
-                Directionality(
-                  textDirection: Helpers.textDirOf(_session.name),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        margin: const EdgeInsetsDirectional.only(end: 10),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: AlignmentDirectional.topStart,
-                            end: AlignmentDirectional.bottomEnd,
-                            colors: [accent, Color.lerp(accent, context.colors.heroShade, 0.25)!],
-                          ),
-                          borderRadius: BorderRadius.circular(13),
-                          boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 4))],
-                        ),
-                        child: Text(
-                          (widget.sessionNumber < 10 ? '0' : '') + widget.sessionNumber.toString(),
-                          style: c.h4.copyWith(color: c.onHero, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      Flexible(
-                        child: Text(
-                          _session.name,
-                          style: c.h3.copyWith(fontWeight: FontWeight.w800),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _session.createdAt.age,
-                        style: context.colors.navLabelUnselected,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (widget.isTeacher && widget.dragIndex != null) ...[
-                        const Spacer(),
-                        ReorderableDragStartListener(
-                          index: widget.dragIndex!,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Icon(
-                              Icons.menu,
-                              size: 24,
-                              color: context.colors.textLight,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
 
-                // Description
-                if (_session.description != null) ...[
-                  const SizedBox(height: 2),
-                  Directionality(
-                    textDirection: Helpers.textDirOf(_session.name),
-                    child: Text(
-                      _session.description!,
-                      style: context.colors.navLabelUnselected,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+    final state = widget.state ??
+        (_session.isLiveActive
+            ? CourseSessionState.live
+            : _isLocked
+            ? CourseSessionState.locked
+            : CourseSessionState.open);
+    final kind = isSection
+        ? CourseSessionKind.section
+        : (widget.liveType ?? _session.isLive) || _session.isLiveActive
+        ? CourseSessionKind.live
+        : CourseSessionKind.recorded;
+    // Teachers can always open a row (its panel holds "Add material"); students only when there is something in it.
+    final expandable = !_isLocked && (widget.isTeacher || _session.totalMaterial > 0 || hasExam);
 
-                // Type pill + duration (+ section badge)
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    SessionTypePill(isLive: isLiveNow),
-                    if (isSection) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.science_rounded, size: 12, color: c.purple),
-                          const SizedBox(width: 4),
-                          Text(AppConfig.lang == 'ar' ? 'سكشن' : 'Section',
-                              style: c.caption.copyWith(color: c.purple, fontWeight: FontWeight.w800, fontSize: 11)),
-                        ]),
-                      ),
-                    ],
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.access_time_rounded,
-                      size: 12,
-                      color: context.colors.textLight,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${_session.durationMinutes} ${'m'.tr}',
-                      style: context.colors.caption,
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-                const Divider(height: 1),
-
-                // Student progress section
-                SessionProgressSection(
-                  totalMaterial: _session.totalMaterial,
-                  completeMaterial: _session.completeMaterial,
-                  isTeacher: widget.isTeacher,
-                  isFull: false,
-                ),
-
-                const SizedBox(height: 10),
-                _buildActionsRow(prov, hasExam),
-                const Divider(height: 20),
-
-                // Rating + teacher edit/delete icons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    RatingWidget(
-                      type: RateType.session,
-                      sourceId: _session.id.toString(),
-                      canEdit: !widget.isTeacher,
-                      rateSummary: _session.rateSummary,
-                    ),
-                    if (widget.isTeacher)
-                      PopupMenuButton<String>(
-                        tooltip: 'edit_session'.tr,
-                        icon: Icon(Icons.more_horiz_rounded, color: c.textMedium),
-                        onSelected: (v) => v == 'edit' ? _showEditSessionDialog() : _showDeleteSessionDialog(),
-                        itemBuilder: (_) => [
-                          PopupMenuItem(value: 'edit', child: Row(children: [
-                            Icon(Icons.tune_rounded, size: 18, color: c.textMedium), const SizedBox(width: 10), Text('edit_session'.tr)])),
-                          PopupMenuItem(value: 'delete', child: Row(children: [
-                            Icon(Icons.delete_outline_rounded, size: 18, color: c.danger), const SizedBox(width: 10),
-                            Text('delete_session'.tr, style: TextStyle(color: c.danger))])),
-                        ],
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // ── Upload indicator ───────────────────────────────────────────────
-          // `uploadProgress` is only non-null for the new background (video)
-          // uploads — the old bytes-based image/PDF flow has no byte-level
-          // progress, so it still shows an indeterminate bar (value: null).
-          if (uploading)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-              child: LinearProgressIndicator(
-                value: uploadProgress,
-                color: context.colors.primary,
-                backgroundColor: context.colors.primary.withValues(
-                  alpha: 0.1,
-                ),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-
-          // ── Expandable materials panel ─────────────────────────────────────
-          SizeTransition(
-            sizeFactor: _expandAnim,
-            child: _MaterialsPanel(
-              session: _session,
-              materials: materials,
-              isTeacher: widget.isTeacher,
-              examGate: examGate,
-              onOpenExam: _openSessionExam,
-            ),
-          ),
-        ],
-      ),
-      ]),
+    final data = CourseSessionView(
+      number: widget.sessionNumber,
+      title: _session.name,
+      subtitle: _session.description,
+      kind: kind,
+      state: state,
+      when: sessionUtc(_session.scheduledAt),
+      durationMinutes: _session.durationMinutes,
+      materials: _session.totalMaterial,
+      materialsDone: _session.completeMaterial,
+      showProgress: !widget.isTeacher,
+      hint: widget.isTeacher && _session.totalMaterial == 0 && !hasExam ? _tt('لا مواد بعد', 'No materials yet') : null,
     );
 
-    if (!_isLocked) return card;
-
-    // Locked: keep the card visible (students can still see what's coming
-    // next) but dim it, block every interaction inside it, and show a lock
-    // badge. Tapping anywhere on the card surfaces why it's locked.
-    return GestureDetector(
-      onTap: _showLockedMessage,
-      child: Stack(
-        children: [
-          AbsorbPointer(child: Opacity(opacity: 0.5, child: card)),
-          Positioned(
-            left: 10,
-            top: 10,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: c.heroShade.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Icon(Icons.lock_rounded, color: c.onHero, size: 16),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Materials expandable panel (panel shell + grid)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MaterialsPanel extends StatelessWidget {
-  final TeacherSessionItem session;
-  final List<SessionMaterialModel> materials;
-  final bool isTeacher;
-  final SessionExamGate? examGate;
-  final VoidCallback? onOpenExam;
-
-  const _MaterialsPanel({
-    required this.session,
-    required this.materials,
-    required this.isTeacher,
-    this.examGate,
-    this.onOpenExam,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final prov = context.read<TeacherCourseScreenProvider>();
-    final isLoadingMaterials =
-        prov.isLoading && !(prov.materialLoaded[session.id] ?? false);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.background.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.only(
-          bottomRight: Radius.circular(context.colors.radiusMedium),
-          bottomLeft: Radius.circular(context.colors.radiusMedium),
-        ),
-        border: Border(
-          top: BorderSide(
-            color: context.colors.textLight.withValues(alpha: 0.1),
-          ),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Panel header
-          Row(
+    final drag = widget.isTeacher && widget.dragIndex != null;
+    final Widget? trailing = widget.isTeacher
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.attach_file_rounded,
-                size: 14,
-                color: context.colors.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'attachments'.tr,
-                style: context.colors.caption.copyWith(
-                  color: context.colors.primary,
-                  fontWeight: FontWeight.w700,
+              _teacherMenu(prov),
+              if (drag && wide)
+                ReorderableDragStartListener(
+                  index: widget.dragIndex!,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.grab,
+                    child: SizedBox(
+                      width: 32,
+                      height: 44,
+                      child: Icon(Icons.drag_indicator_rounded, size: 20, color: context.colors.textLight),
+                    ),
+                  ),
+                ),
+            ],
+          )
+        : expandable
+        ? CourseSessionChevron(open: _expanded)
+        : null;
+
+    Widget tile = CourseSessionTile(
+      data: data,
+      rail: widget.rail,
+      wide: wide,
+      onTap: _isLocked ? _showLockedMessage : (expandable ? _toggleExpanded : null),
+      trailing: trailing,
+      below: _isLocked ? null : _below(prov),
+      panel: expandable
+          ? SizeTransition(
+              sizeFactor: _expandAnim,
+              child: CourseSessionPanel(
+                title: 'attachments'.tr,
+                action: widget.isTeacher ? AddMaterialButton(sessionId: _session.id) : null,
+                footer: RatingWidget(
+                  type: RateType.session,
+                  sourceId: _session.id.toString(),
+                  canEdit: !widget.isTeacher,
+                  rateSummary: _session.rateSummary,
+                ),
+                child: SessionMaterialGrid(
+                  isLoading: prov.isLoading && !(prov.materialLoaded[_session.id] ?? false),
+                  session: _session,
+                  materials: materials,
+                  columns: context.width > 800 ? 2 : 1,
+                  isTeacher: widget.isTeacher,
+                  examGate: examGate,
+                  onOpenExam: _openSessionExam,
                 ),
               ),
-              const Spacer(),
-              if (isTeacher) AddMaterialButton(sessionId: session.id),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Grid / list of material tiles
-          SessionMaterialGrid(
-            isLoading: isLoadingMaterials,
-            session: session,
-            materials: materials,
-            columns: context.width > 800 ? 2 : 1,
-            isTeacher: isTeacher,
-            examGate: examGate,
-            onOpenExam: onOpenExam,
-          ),
-        ],
-      ),
+            )
+          : null,
     );
+    // phones: a long press anywhere on the row picks it up to reorder
+    if (drag && !wide) tile = ReorderableDelayedDragStartListener(index: widget.dragIndex!, child: tile);
+    return KeyedSubtree(key: ValueKey('session_row:${_session.id}'), child: tile);
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Materials toggle button (count chip + expand arrow)
-// ─────────────────────────────────────────────────────────────────────────────
+String _tt(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
-class _MaterialsToggleButton extends StatelessWidget {
-  final int count;
-  final bool expanded;
-  final VoidCallback onTap;
-
-  const _MaterialsToggleButton({
-    required this.count,
-    required this.expanded,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: AppTheme.purple),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$count ${'materials'.tr}',
-              style: TextStyle(color: context.colors.purple),
-              textDirection: TextDirection.ltr,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            AnimatedRotation(
-              turns: expanded ? 0.5 : 0,
-              duration: const Duration(milliseconds: 280),
-              child: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: context.colors.purple,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+/// A session's `scheduled_at` as parsed by the models (`toLocalSaTime`: the instant shifted by +3 h and still
+/// flagged UTC) → the real UTC instant AppTime expects.
+DateTime? sessionUtc(DateTime? d) {
+  if (d == null) return null;
+  return d.isUtc ? d.subtract(const Duration(hours: 3)) : d.toUtc();
 }

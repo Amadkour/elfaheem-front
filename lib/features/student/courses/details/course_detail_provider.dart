@@ -76,14 +76,36 @@ class CourseDetailProvider extends BaseProvider {
 
   // ── Course data ───────────────────────────────────────────────────────────
 
+  /// Why the course cannot be shown: the server answers 404 for a draft / unknown course (to non-staff) and
+  /// 403 `course_locked` for a private course without access (both on the course and on its session list).
+  /// Null while the course is reachable.
+  CourseBlock? block;
+
+  /// Remembers a 404 / 403 course_locked on the way through [run] (which turns every ApiException into null).
+  Future<dynamic> _guarded(Future<dynamic> Function() call) async {
+    try {
+      return await call();
+    } on ApiException catch (e) {
+      final b = courseBlockOf(e);
+      if (b != null) block = b;
+      rethrow;
+    }
+  }
+
   Future<void> fetchFull(String courseId) async {
+    block = null;
     final r = await run(
-          () => _api.get('/api/v1/courses/$courseId', auth: true),
+          () => _guarded(() => _api.get('/api/v1/courses/$courseId', auth: true)),
     );
     if (r is Map<String, dynamic>) {
       course = CourseModel.fromJson(r);
       final reel = (r['reel_url'] as String?)?.trim();
       reelUrl = (reel == null || reel.isEmpty) ? null : reel;
+    }
+    if (block == CourseBlock.unavailable) {
+      sessions = [];
+      notifyListeners();
+      return;
     }
     await Future.wait([
       fetchSessions(courseId),
@@ -174,13 +196,13 @@ class CourseDetailProvider extends BaseProvider {
     }
     try {
       final result = await run(
-            () => _api.get(
+            () => _guarded(() => _api.get(
           // Guest: the public outline (titles / order only, never any media URL).
           GuestState.active
               ? '/api/v1/courses/$courseId/sessions/public'
               : '/api/v1/courses/$courseId/sessions',
           queryParams: {'skip': _sessionsSkip, 'limit': _sessionsPageSize},
-        ),
+        )),
       );
       if (result is Map && result['items'] is List) {
         final items = result['items'] as List;
@@ -497,4 +519,19 @@ class CourseDetailProvider extends BaseProvider {
 //   progressPercentage = double.parse(
 //       ((done / total) * 100).toStringAsFixed(1));
 // }
+}
+/// Why a course page cannot show the course.
+enum CourseBlock {
+  /// 403 `course_locked`: a private course; the access code opens it.
+  locked,
+
+  /// 404: a draft or an unknown course (the server hides drafts from non-staff).
+  unavailable,
+}
+
+/// The [CourseBlock] an API error means, or null for any other failure.
+CourseBlock? courseBlockOf(ApiException e) {
+  if (e.code == 'course_locked') return CourseBlock.locked;
+  if (e.statusCode == 404) return CourseBlock.unavailable;
+  return null;
 }

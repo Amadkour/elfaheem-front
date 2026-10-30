@@ -183,4 +183,113 @@ void main() {
   testWidgets('CourseSpaceSkeleton', (t) async {
     await expectNoLayoutErrors(t, () => const CourseSpaceSkeleton());
   });
+
+  // ── the session timeline (shared by the student and the teacher) ──
+
+  List<CourseSessionState> studentStates() => courseStudentStates([
+    for (var i = 0; i < 10; i++) (live: i == 6, locked: i >= 8, done: i < 5, when: null),
+  ]);
+
+  Widget timeline({bool teacher = false}) {
+    final states = studentStates();
+    final fold = teacher ? 0 : courseSessionFoldCount(states);
+    return SingleChildScrollView(
+      child: CourseSessionsTimeline(
+        itemCount: states.length,
+        foldCount: fold,
+        itemBuilder: (_, i) => CourseSessionTile(
+          data: CourseSessionView(
+            number: i + 1,
+            title: '$_long ${i + 1}',
+            subtitle: _long,
+            kind: CourseSessionKind.values[i % 3],
+            state: states[i],
+            when: i == 7 ? DateTime.utc(2026, 11, 2, 15) : null,
+            durationMinutes: 95,
+            materials: 12,
+            materialsDone: i == 5 ? 4 : 0,
+            showProgress: !teacher,
+            hint: teacher && i == 9 ? 'لا مواد بعد No materials yet' : null,
+          ),
+          rail: courseSessionRail(states, i),
+          wide: true,
+          onTap: () {},
+          trailing: teacher
+              ? const SizedBox(width: 40, height: 44, child: Icon(Icons.more_vert_rounded))
+              : const CourseSessionChevron(open: false),
+          below: states[i] == CourseSessionState.live
+              ? Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    CourseSessionAction(label: 'دخول الغرفة Enter room', icon: Icons.videocam_rounded, filled: true, onTap: () {}),
+                    CourseSessionAction(label: 'إنهاء End', loading: true, onTap: () {}),
+                  ],
+                )
+              : null,
+          panel: i == 5 ? const CourseSessionPanel(action: Text('Add'), footer: Text(_long), child: SizedBox(height: 60)) : null,
+        ),
+      ),
+    );
+  }
+
+  testWidgets('session timeline: student (folded) and teacher rows', (t) async {
+    await expectNoLayoutErrors(t, () => timeline());
+    await expectNoLayoutErrors(t, () => timeline(teacher: true));
+  });
+
+  test('student states: live · locked · done, then ONE next', () {
+    final s = studentStates();
+    expect(s.sublist(0, 5).every((e) => e == CourseSessionState.done), isTrue);
+    expect(s[5], CourseSessionState.next);
+    expect(s[6], CourseSessionState.live);
+    expect(s[7], CourseSessionState.open);
+    expect(s.where((e) => e == CourseSessionState.next).length, 1);
+    expect(s[8], CourseSessionState.locked);
+  });
+
+  test('teacher states: delivered · live · the soonest future is next', () {
+    final now = DateTime.utc(2026, 10, 30, 12);
+    final s = courseTeacherStates([
+      (live: false, when: now.subtract(const Duration(days: 2)), minutes: 60),
+      (live: true, when: null, minutes: 60),
+      (live: false, when: now.add(const Duration(days: 5)), minutes: 60),
+      (live: false, when: now.add(const Duration(days: 1)), minutes: 60),
+      (live: false, when: null, minutes: 0),
+    ], now: now);
+    expect(s, [
+      CourseSessionState.done,
+      CourseSessionState.live,
+      CourseSessionState.scheduled,
+      CourseSessionState.next,
+      CourseSessionState.open,
+    ]);
+  });
+
+  test('rail and fold', () {
+    final s = studentStates();
+    expect(courseSessionRail(s, 0).top, isNull);
+    expect(courseSessionRail(s, 0).bottom, CourseRailTone.done);
+    expect(courseSessionRail(s, 5).top, CourseRailTone.done);
+    expect(courseSessionRail(s, 5).bottom, CourseRailTone.plain);
+    expect(courseSessionRail(s, 9).bottom, isNull);
+    expect(courseSessionFoldCount(s), 5);
+    expect(courseSessionFoldCount(s.sublist(0, 6)), 0); // short list
+    expect(courseSessionFoldCount(List.filled(9, CourseSessionState.done)), 0); // nothing would be left
+  });
+
+  test('session length', () {
+    AppConfig.lang = 'en';
+    expect(courseSessionLength(0), '');
+    expect(courseSessionLength(45), '45 min');
+    expect(courseSessionLength(120), '2 h');
+    expect(courseSessionLength(95), '1 h 35 min');
+  });
+
+  testWidgets('rating stars are icons, never glyphs', (t) async {
+    await expectNoLayoutErrors(t, () => const CourseRatingStars(value: 3.5, count: 1200));
+    await t.pumpWidget(layoutHost(const CourseRatingStars(value: 3.5, count: 1200)));
+    expect(find.byIcon(Icons.star_half_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+  });
 }

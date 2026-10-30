@@ -30,6 +30,7 @@ import '../../shared/attendance/attendance_course_entry.dart';
 import '../../shared/attendance/teacher_attendance_controller.dart';
 import '../../shared/attendance/teacher_attendance_launcher.dart';
 import '../../shared/course/course_space/course_space.dart';
+import '../../shared/course/course_price_tag.dart' show coursePriceLabel;
 import '../../shared/course/teacher_course_roadmap_section.dart';
 import '../../teacher/courses/course_form_screen.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
@@ -39,7 +40,7 @@ import '../data_lab/data_lab_models.dart';
 import '../data_lab/data_lab_screen.dart';
 import '../home/teacher_models.dart';
 import '../schedules/schedules_screen.dart';
-import '../../student/models.dart' show AppCurrencyX, CourseModel, CourseSummary;
+import '../../student/models.dart' show CourseModel, CourseSummary;
 import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/courses/details/components/share_link.dart';
 import '../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
@@ -274,7 +275,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
         CourseSpaceStat(
           featureKey: 'course_stats.price',
           icon: Icons.sell_rounded,
-          value: course.currency.format(course.finalPrice ?? 0),
+          value: coursePriceLabel(course.currency, course.finalPrice ?? 0),
           label: 'cost'.tr,
         ),
       ],
