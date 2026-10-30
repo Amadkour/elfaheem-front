@@ -1312,3 +1312,16 @@ of unbroken good samples; repeat strikes keep the 8 / 16 / 32-minute ceilings. O
 costs one more 720p probe in 10 minutes (4 drops instead of 3, still ~80 % of the time on 360p).
 **Not changed.** The screen share's half-size layer: livekit_client 2.13.1 keeps the share's frame rate on it
 (`_computeDefaultScreenShareSimulcastParams`); the 3 fps layer on the bench came from the Python SDK's default.
+
+## D-098 — Course sessions record on the teacher's device; the server's after-class assembly is made cheap · 2026-10-30 · accepted (owner)
+**Context.** The recording bench (`../back/bench/recording/RESULTS.md`) made the GStreamer composite the best SERVER
+engine (0.5 core per recording), but the owner wants the shared 12-vCPU server (API, database, LiveKit, the local AI
+model) free of recording work during classes, and production's egress (v1.8.3 Chrome under `cpus: 1.5`) loses ~80 %
+of the audio until it is upgraded.
+**Decision.** `RECORDING_MODE=client` stays the default (dev and production env): the teacher's device records and
+uploads chunks; the super admin's Live settings switch (D-089) keeps `server` as the per-run fallback once egress is
+upgraded (v1.15.0, `enable_template_sdk`, ≥ 2 CPUs). The after-class assembly (`local_recorder.py`) is the remaining
+server cost — three libx264 tiers with `FFMPEG_THREADS` = all cores — and is to be measured and made cheap (2 threads,
+`nice`, one job at a time, one tier by default, `-c copy` remux for H.264/AAC chunks): `docs/live/NEXT_SESSION.md` §1.
+**Trade-offs accepted.** The teacher's device spends CPU / battery / upload on recording; a killed app loses the chunk
+in flight; the recording is the teacher's screen layout.
