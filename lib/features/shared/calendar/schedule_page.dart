@@ -99,6 +99,9 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
 
   CalView? _view;
   late DateTime _anchor = calDay(_nowWall);
+
+  /// The rolling week's first day (D-101): the focused day is its second column; kept while the focus stays inside.
+  late DateTime _weekFrom = calWeekFrom(_anchor);
   late DateTime _pickerMonth = DateTime(_anchor.year, _anchor.month);
   int _agendaDays = calAgendaDays;
   CalFilters _filters = const CalFilters();
@@ -218,7 +221,11 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   }
 
   // ── loading ──────────────────────────────────────────────────────────────
-  (DateTime, DateTime) get _range => calFetchRange(_view ?? CalView.week, _anchor, agendaDays: _agendaDays);
+  (DateTime, DateTime) get _range =>
+      calFetchRange(_view ?? CalView.week, _anchor, agendaDays: _agendaDays, weekFrom: _weekFrom);
+
+  /// The days [v] shows now (the week is the rolling one).
+  List<DateTime> _daysOf(CalView v) => calVisibleDays(v, _anchor, weekFrom: _weekFrom);
 
   Future<void> _load({bool force = false}) async {
     final (s, e) = _range;
@@ -263,20 +270,31 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
 
   Future<void> _refresh() => _load(force: true);
 
-  void _go(CalView v, DateTime anchor, {int dir = 0}) {
+  /// Shows [anchor] in [v]. [page]: the week's arrows — the columns move by exactly 7 days; [reset]: Today — the
+  /// focused day goes back to the second column even when it is already on screen.
+  void _go(CalView v, DateTime anchor, {int dir = 0, bool page = false, bool reset = false}) {
     setState(() {
       if (v != _view) _agendaDays = calAgendaDays;
       _view = v;
       _anchor = calDay(anchor);
+      _weekFrom = page
+          ? DateTime(_weekFrom.year, _weekFrom.month, _weekFrom.day + 7 * dir)
+          : calWeekFrom(_anchor, current: reset ? null : _weekFrom);
       _pickerMonth = DateTime(_anchor.year, _anchor.month);
       _slide = dir;
     });
     _load();
   }
 
-  void _shift(int dir) => _go(_view!, calShift(_view!, _anchor, dir), dir: dir);
+  void _shift(int dir) => _go(_view!, calShift(_view!, _anchor, dir), dir: dir, page: _view == CalView.week);
 
-  void _today() => _go(_view ?? CalView.agenda, _nowWall);
+  void _today() => _go(_view ?? CalView.agenda, _nowWall, reset: true);
+
+  /// The page shows today the way it opens (today focused, and in the week as the second column).
+  bool get _atToday {
+    final today = calDay(_nowWall);
+    return _anchor == today && (_view != CalView.week || _weekFrom == calWeekFrom(today));
+  }
 
   // ── data for the views ───────────────────────────────────────────────────
   List<CalEvent> get _all {
@@ -499,7 +517,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       showAppNotice(t('لا مواعيد في هذه الفترة', 'Nothing to export in this range'), error: true);
       return;
     }
-    final name = '${t('جدولي', 'My schedule')} ${calTitleFor(_view ?? CalView.week, _anchor)}';
+    final name = '${t('جدولي', 'My schedule')} ${calTitleFor(_view ?? CalView.week, _anchor, weekFrom: _weekFrom)}';
     try {
       await FileSaver.instance.saveFile(
         name: name.replaceAll(RegExp(r'[\\/:*?"<>|–]'), '_'),
@@ -573,7 +591,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final keys = _liveKeys;
     final next = shown.where((e) => !e.cancelled && !e.declined && e.end.isAfter(now)).toList()..sort((a, b) => a.start.compareTo(b.start));
     final invites = [for (final e in all) if (e.isMeeting && e.myStatus == 'pending' && e.end.isAfter(now)) e];
-    final days = calVisibleDays(view, _anchor);
+    final days = _daysOf(view);
     return ColoredBox(
       color: c.cardBg,
       child: ListView(
@@ -668,7 +686,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   Widget _header(BuildContext context, CalView view) {
     final c = context.colors;
     final canPop = !widget.asTab && Navigator.of(context).canPop();
-    final monthTitle = calTitleFor(view == CalView.day || view == CalView.week ? CalView.month : view, _anchor);
+    final monthTitle = calTitleFor(view == CalView.day || view == CalView.week ? CalView.month : view, _anchor, weekFrom: _weekFrom);
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(canPop ? 4 : 18, 10, 8, 2),
       child: Row(children: [
@@ -708,7 +726,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             ),
           ]),
         ),
-        _TodayButton(onTap: _today, isToday: _anchor == calDay(_nowWall)),
+        _TodayButton(onTap: _today, isToday: _atToday),
         _MoreMenu(onRefresh: _refresh, onExport: _export),
       ]),
     );
@@ -716,7 +734,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
 
   Widget _toolbar(BuildContext context, CalView view, {required bool wide}) {
     final c = context.colors;
-    final title = calTitleFor(view, _anchor);
+    final title = calTitleFor(view, _anchor, weekFrom: _weekFrom);
     final canPop = !widget.asTab && Navigator.of(context).canPop();
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
@@ -726,7 +744,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           IconButton(tooltip: t('رجوع', 'Back'), onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded)),
           const SizedBox(width: 4),
         ],
-        _TodayButton(onTap: _today, isToday: false, outlined: true),
+        _TodayButton(onTap: _today, isToday: _atToday, outlined: true),
         const SizedBox(width: 6),
         IconButton(tooltip: t('السابق', 'Previous'), onPressed: () => _shift(-1), icon: const Icon(Icons.chevron_left_rounded)),
         IconButton(tooltip: t('التالي', 'Next'), onPressed: () => _shift(1), icon: const Icon(Icons.chevron_right_rounded)),
@@ -927,7 +945,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       onMove: _move,
     );
     if (wide) return grid;
-    final week = calVisibleDays(CalView.week, _anchor);
+    final week = _daysOf(CalView.week);
     return Column(children: [
       CalWeekStrip(
         days: week,
@@ -969,7 +987,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
 
   Widget _week(BuildContext context, List<CalEvent> shown) {
     final keys = _liveKeys;
-    final days = calVisibleDays(CalView.week, _anchor);
+    final days = _daysOf(CalView.week);
     return CalTimeGrid(
       key: ValueKey('week-${days.first}'),
       days: days,
@@ -1067,7 +1085,8 @@ class _TodayButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: outlined ? c.divider : (isToday ? c.divider : c.primary.withValues(alpha: 0.3))),
           ),
-          child: Text(t('اليوم', 'Today'), style: appText(13, w: FontWeight.w800, c: isToday && !outlined ? c.textMedium : (outlined ? c.textDark : appInk(context, c.primary)))),
+          // already on today: the button goes quiet (it would change nothing)
+          child: Text(t('اليوم', 'Today'), style: appText(13, w: FontWeight.w800, c: isToday ? c.textMedium : (outlined ? c.textDark : appInk(context, c.primary)))),
         ),
       ),
     );

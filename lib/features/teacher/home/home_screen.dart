@@ -37,6 +37,7 @@ import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show OrgMemberHome;
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
+import 'package:flutter_education_app/features/shared/course/course_scope.dart' show CourseScope;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
     show InboxCompactList, InboxItem, InboxPreviewCard, InboxScreen, openInboxItem;
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
@@ -125,6 +126,14 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
         ),
       );
 
+  /// The home's courses on the mode's side (D-100): the personal account never lists an organization's course, and
+  /// Organization mode ("Go live") only that organization's.
+  List<TeacherCourse> _sideCourses(TeacherHomeProvider p) {
+    final m = AppModeController.instance;
+    final scope = CourseScope.forMode(isOrg: m.isOrg, orgId: m.currentOrgId);
+    return p.homeCourses.where((c) => scope.matches(c.org)).toList();
+  }
+
   void _openCourseId(int id) {
     final c = context.read<TeacherHomeProvider>().homeCourses.where((x) => x.id == id).firstOrNull;
     c == null ? _tab(1) : _openCourse(c);
@@ -192,7 +201,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                                     child: Padding(
                                       padding: const EdgeInsetsDirectional.only(start: 12),
                                       child: GoLiveEntry(
-                                        courses: provider.homeCourses,
+                                        courses: _sideCourses(provider),
                                         schedule: provider.schedule,
                                         loading: loading,
                                         onDone: provider.refreshSilently,
@@ -221,7 +230,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         stats: provider.stats,
                         schedule: provider.schedule,
                         pending: provider.pending,
-                        courses: provider.homeCourses,
+                        courses: _sideCourses(provider),
                         extra: provider.extra,
                         liveNow: provider.liveNow,
                         onTab: _tab,

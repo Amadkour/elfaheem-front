@@ -1,4 +1,52 @@
 {
+  "course_scope_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "course_scope_personal": {
+    "en": "Personal",
+    "ar": "شخصي"
+  },
+  "course_scope_org": {
+    "en": "Organization",
+    "ar": "المؤسسة"
+  },
+  "course_scope_personal_title": {
+    "en": "My personal courses",
+    "ar": "كورساتي الشخصية"
+  },
+  "course_scope_personal_sub": {
+    "en": "Only the courses of your own account — none from your organizations",
+    "ar": "كورسات حسابك الشخصي فقط — بدون كورسات المؤسسات"
+  },
+  "course_scope_org_sub": {
+    "en": "Only this organization's courses",
+    "ar": "كورسات هذه المؤسسة فقط"
+  },
+  "course_scope_elsewhere_orgs": {
+    "en": "+{n} in your organizations",
+    "ar": "+{n} في مؤسساتك"
+  },
+  "course_scope_elsewhere_personal": {
+    "en": "+{n} in your personal account",
+    "ar": "+{n} في حسابك الشخصي"
+  },
+  "course_scope_switch": {
+    "en": "Switch",
+    "ar": "تبديل"
+  },
+  "course_scope_org_empty": {
+    "en": "Courses this organization gives you appear here",
+    "ar": "تظهر هنا الكورسات التي تُسندها إليك هذه المؤسسة"
+  },
+  "course_scope_org_empty_student": {
+    "en": "You have no courses in this organization yet",
+    "ar": "لا كورسات لك في هذه المؤسسة بعد"
+  },
+  "course_scope_browse_org": {
+    "en": "Browse its courses",
+    "ar": "تصفّح كورساتها"
+  },
   "my_calendar": {
     "en": "My calendar",
     "ar": "تقويمي"

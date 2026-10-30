@@ -1214,3 +1214,57 @@ of D-079 / D-087 assumes 0..1 — a second path for one format); an unbounded pa
 projector must show the same content); cropping content on a format change (silent loss) or refusing the change once
 a board has content; a screenshot for the PNG (it carried the zoom, the selection and the tags, and could not export
 what is off screen).
+
+## D-100 — "My courses" shows one side: the personal account or the open organization · 2026-10-30 · proposed
+
+**Context.** The owner: "when the teacher opens the personal profile, only the individual courses; when he opens an
+organization, only the organization's courses; and the student distinguishes between them in a premium, smart way".
+`/my-courses` and `/my-enrolled-courses` mixed every course: an organization course (a `Course` row linked by
+`org_courses`) showed in the personal account, and nothing said where a course lived.
+**Decision.** The server tags every course payload with `org` (the owning organization, null = personal; `Course.org`
+over a `selectin` link) and both list routes take `scope` = all | personal | org + `org_id` (an organization includes
+its sub-organizations, by `path`), echo `scope` and count every side in `scopes` on the first page
+(`services/course_scope.py`). The app keeps the side in pure `course_scope.dart` (`CourseScope`, `CourseOrg`, chips,
+smart default; `test/org/course_scope_test.dart`) and draws it with plain-value parts in `course_scope_bar.dart`.
+**Teacher:** the list follows the mode strictly — `TeacherCoursesProvider` listens to `AppModeController` itself, so
+every reader (Courses tab, analytics hub) sees the same side; a mode change empties the list at once (the other side
+never flashes) and reloads only if the list was ever loaded (no request at app start). `CourseScopeBanner` says which
+side is shown, its count, "+n in your organizations / personal account" and Switch (the context switcher). In
+Organization mode there is no "Add course" (a course created there would be a personal one) and the empty state says
+the organization assigns the courses. **Student:** the list opens on the mode's side, but a chip bar
+(`CourseScopeChipBar`: All · Personal · each organization by size, counts, the organization's logo / initial on its
+brand tint) lets the student look at another side without leaving the mode; the bar is drawn only when courses live on
+more than one side. Smart: the personal account with no personal course opens on All (an empty page would hide courses
+the student has), Organization mode stays on its organization even when empty (with "Browse its courses" into the
+organization's catalogue), and a mode change drops the student's pick. A list that mixes sides puts `CourseOrgBadge` on
+every card (under the favourite heart). An older server ignores the scope: the app shows what it sends, unfiltered.
+**Rejected.** Filtering on the client from the home payloads (an older server sends no `org`, so an organization page
+would come out empty, and paging / totals would be wrong); a chip bar for the teacher (the owner wants the side to be
+the mode; Switch is the one way across); making the student's chip switch the app mode (a list filter should not move
+the whole app); grouping the student's All list in sections (paging is by enrolment date; sections would reorder pages
+as they arrive).
+
+## D-101 — The schedule's week rolls (yesterday · today · tomorrow first); the grid opens with the next appointment on the 5th row · 2026-10-30 · proposed
+
+**Context.** The owner: "make the first column yesterday, today the second and tomorrow the third; and the first
+future appointment in the fifth row". The week was the calendar week (Saturday / Monday first), so on a Thursday most
+of it was over, and the time grid scrolled to an hour before the week's earliest event (07:00 at the latest) — often
+far from what comes next.
+**Decision.** (1) The Week view is a rolling 7 days whose SECOND column is the focused day (`calWeekDays`,
+`calWeekFrom` in calendar_models.dart): opening the page or Today shows yesterday · today · tomorrow …; a date picked
+outside the window becomes the second column; a tap inside it (the phone's day strip, a day header) keeps the columns
+where they are; the arrows move them by exactly 7 days. The page keeps the window's first day (`_weekFrom`) and hands
+it to the title ("28 Oct – 3 Nov 2026"), the mini month's highlighted range and the fetch range. The Day view fetches
+the same rolling week and the Agenda starts the day before its first day, so switching between them is served from
+the cache. The Month stays a real month (Saturday / Monday first by language). (2) The grid opens on its focus
+(`calFocusMinute`): the first appointment still running or to come in the shown days (a class in progress counts as
+next; cancelled / declined skipped), else now when today is shown, else the earliest one (a past week), else 08:00;
+`calFocusOffset` puts that hour row on the 5th row of a tall grid (≥ 11 hour rows: desktop), the 3rd on a phone
+(≥ 7), the 2nd on a very short one, 10 px higher so the top hour label is whole. The controller is made at the first
+layout (the viewport is known: no jump); if the events arrive after the grid opened it takes the focus once
+(animated), never after the person scrolled. (3) Day headers say Yesterday / Today / Tomorrow and past days are drawn
+quieter; the Today button goes quiet when the page already shows today the way it opens.
+**Rejected.** Keeping the calendar week and only scrolling it (on a Thursday the past days still take most of the
+screen); re-centring the window on every tap (the strip would move under the finger); a fixed row on every screen
+(row 5 on a phone pushes the appointment and what follows to the bottom); following the next appointment on every
+clock tick (the grid would move by itself while being read).

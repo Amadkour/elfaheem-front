@@ -19,7 +19,12 @@ class HomeCourseList extends StatefulWidget {
     this.onLoadMore,
     this.onRefresh,
     this.loadingMore = false,
+    this.badgeFor,
   });
+
+  /// A small mark drawn over each card's picture (under the favourite heart) — e.g. where the course lives when
+  /// the list mixes the personal account and organizations. Null (or a null result) draws nothing.
+  final Widget? Function(CourseModel course)? badgeFor;
 
   final String pageName;
   final List<CourseModel> courses;
@@ -81,14 +86,31 @@ class _HomeCourseListState extends State<HomeCourseList> {
     });
   }
 
-  Widget _card(CourseModel c) => CourseCard(
-    course: c,
-    pageName: widget.pageName,
-    fixedWidth: 188,
-    isTeacher: widget.isTeacher,
-    fullScreen: true,
-    onTap: (CourseModel c) => widget.onTap.call(c),
-  );
+  Widget _card(CourseModel c) {
+    final card = CourseCard(
+      course: c,
+      pageName: widget.pageName,
+      fixedWidth: 188,
+      isTeacher: widget.isTeacher,
+      fullScreen: true,
+      onTap: (CourseModel c) => widget.onTap.call(c),
+    );
+    final badge = widget.badgeFor?.call(c);
+    if (badge == null) return card;
+    return LayoutBuilder(
+      builder: (context, box) => Stack(children: [
+        Positioned.fill(child: card),
+        // the card's corners hold the heart (top left), type (top right), private flag and price (bottom)
+        Positioned(
+          top: 42,
+          left: 10,
+          child: IgnorePointer(
+            child: ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth * 0.58), child: badge),
+          ),
+        ),
+      ]),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

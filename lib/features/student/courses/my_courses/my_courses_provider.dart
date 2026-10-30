@@ -1,18 +1,84 @@
 /// courses/my_courses/my_courses_provider.dart
+///
+/// The student's enrolled courses, one side at a time (lib/features/shared/course/course_scope.dart):
+/// the side follows the app mode (personal account ↔ the open organization) until the student picks another
+/// chip; the personal account with no personal course opens on "All" ([smartStudentScope]). The first page's
+/// `scopes` counts every side for the chip bar. An older server ignores the scope and answers everything.
 library;
 
 import '../../../../core/api_client.dart';
+import '../../../../core/app_mode.dart';
 import '../../../../core/base_provider.dart';
+import '../../../shared/course/course_scope.dart';
 import '../../models.dart';
 
 class MyCoursesProvider extends BaseProvider {
   final ApiClient _api;
 
-  MyCoursesProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  /// [mode] defaults to the app's AppModeController; [followMode] false keeps the list on "All" (tests).
+  MyCoursesProvider({ApiClient? api, AppModeController? mode, bool followMode = true})
+      : _api = api ?? ApiClient(),
+        _mode = followMode ? (mode ?? AppModeController.instance) : null {
+    final m = _mode;
+    if (m != null) {
+      _modeScope = _scopeOf(m);
+      m.addListener(_onMode);
+    }
+  }
+
+  final AppModeController? _mode;
 
   List<CourseModel> _all = [];
   CourseStatus _filter = CourseStatus.all;
   String _query = '';
+
+  // ── Scope (personal account ↔ organizations) ─────────────────────────────
+
+  CourseScope _modeScope = CourseScope.all;
+  CourseScope? _picked;                    // the student's own chip, until the mode changes
+  CourseScope _loadedScope = CourseScope.all;
+  List<CourseScopeCount> _scopes = const [];
+  bool _started = false;
+
+  static CourseScope _scopeOf(AppModeController m) => CourseScope.forMode(isOrg: m.isOrg, orgId: m.currentOrgId);
+
+  /// The side shown: the student's pick, else the mode's (or "All" when the personal account is empty).
+  CourseScope get scope => smartStudentScope(_modeScope, _scopes, picked: _picked);
+
+  /// The mode's side (Organization mode → that organization).
+  CourseScope get modeScope => _modeScope;
+
+  /// Every side counted by the server (first page); empty on an older server.
+  List<CourseScopeCount> get scopes => _scopes;
+
+  void selectScope(CourseScope s) {
+    if (s == scope) return;
+    _picked = s;
+    _followScope();
+  }
+
+  void _onMode() {
+    final m = _scopeOf(_mode!);
+    if (m == _modeScope) return;
+    _modeScope = m;
+    _picked = null; // a new mode starts on its own side
+    _followScope();
+  }
+
+  /// Loads the shown side when it is not the one on screen (nothing before the tab was ever opened).
+  void _followScope() {
+    if (!_started || scope == _loadedScope) {
+      notifyListeners();
+      return;
+    }
+    fetchMyEnrollments();
+  }
+
+  @override
+  void dispose() {
+    _mode?.removeListener(_onMode);
+    super.dispose();
+  }
 
   // ── Pagination ────────────────────────────────────────────────────────────
   int _skip = 0;
@@ -77,9 +143,14 @@ class MyCoursesProvider extends BaseProvider {
     notifyListeners();
   }
 
-  /// Fetches the first page fresh (used on first open). Blanks the list while loading.
+  Map<String, dynamic> _params(int skip, [int limit = _pageSize]) =>
+      {'skip': skip, 'limit': limit, ..._loadedScope.query};
+
+  /// Fetches the first page fresh (used on first open and on a side change). Blanks the list while loading.
   Future<void> fetchMyEnrollments() async {
+    _started = true;
     _gen++;
+    _loadedScope = scope;
     _skip = 0;
     _total = 0;
     _hasMore = true;
@@ -92,10 +163,10 @@ class MyCoursesProvider extends BaseProvider {
   /// Pull-to-refresh: reloads page 1 and replaces the list WITHOUT blanking it first,
   /// so the RefreshIndicator / scroll view stay alive.
   Future<void> refresh() async {
+    _started = true;
     final gen = ++_gen;
     _pageFailed = false;
-    final r = await run(() => _api.get('/api/v1/my-enrolled-courses',
-        queryParams: {'skip': 0, 'limit': _pageSize}));
+    final r = await run(() => _api.get('/api/v1/my-enrolled-courses', queryParams: _params(0)));
     if (gen != _gen) return; // another refresh / re-init started meanwhile
     if (r is Map && r['items'] is List) {
       _apply(r, replace: true);
@@ -113,8 +184,7 @@ class MyCoursesProvider extends BaseProvider {
 
   Future<void> _loadPage() async {
     final gen = _gen;
-    final r = await run(() => _api.get('/api/v1/my-enrolled-courses',
-        queryParams: {'skip': _skip, 'limit': _pageSize}));
+    final r = await run(() => _api.get('/api/v1/my-enrolled-courses', queryParams: _params(_skip)));
     if (gen != _gen) return; // a refresh started while this page was loading
     if (r is Map && r['items'] is List) {
       _apply(r, replace: false);
@@ -136,6 +206,17 @@ class MyCoursesProvider extends BaseProvider {
     // last page happened to be exactly full, and when the list was seeded from the home screen).
     _hasMore = page.isNotEmpty &&
         (hasTotal ? _all.length < _total : page.length >= _pageSize);
+    _takeScopes(r);
+  }
+
+  /// Reads `scopes` (first pages carry it) and follows the side they make the default — e.g. the personal
+  /// account turns out to be empty while organizations hold courses → "All".
+  void _takeScopes(Map r) {
+    if (r['scopes'] is List) _scopes = parseCourseScopes(r);
+    if (_scopes.isNotEmpty && serverScoped(r) && scope != _loadedScope) {
+      fetchMyEnrollments();
+      return;
+    }
     notifyListeners();
   }
 
@@ -143,34 +224,43 @@ class MyCoursesProvider extends BaseProvider {
 
   static bool _done(CourseModel c) => c.progress >= 100;
 
-  /// Called with the home screen's already-fetched courses (if any) for an
-  /// instant first paint. If those were provided, we treat them as page 1
-  /// and let [loadMore] fetch page 2 onward from the server; otherwise we
-  /// fetch page 1 ourselves.
+  /// Called with the home screen's already-fetched courses (every enrolment, any side) for an instant first
+  /// paint. They stand for page 1 only while the side shown is "All"; another side loads its own page 1
+  /// (refreshed in place when it is already on screen).
   Future<void> init(List<CourseModel> homeCourses) async {
+    if (!scope.isAll) {
+      if (_started && _loadedScope == scope && _all.isNotEmpty) {
+        await refresh();
+      } else {
+        await fetchMyEnrollments();
+      }
+      return;
+    }
     if (homeCourses.isEmpty) {
       await fetchMyEnrollments();
     } else {
+      _started = true;
       _gen++;
+      _loadedScope = CourseScope.all;
       _pageFailed = false;
       _all = List.of(homeCourses); // own copy: the home list is replaced / mutated independently
       _skip = homeCourses.length;
       _total = 0;
       _hasMore = true;
       notifyListeners();
-      _syncTotal(_gen); // learn the server total without blocking the first paint
+      _syncTotal(_gen); // learn the server total (and the sides) without blocking the first paint
     }
   }
 
-  /// One-row request just to read `total` (the home list we were seeded with doesn't carry it).
+  /// One-row request just to read `total` and `scopes` (the home list we were seeded with carries neither).
   Future<void> _syncTotal(int gen) async {
     try {
-      final r = await _api.get('/api/v1/my-enrolled-courses',
-          queryParams: {'skip': 0, 'limit': 1});
+      final r = await _api.get('/api/v1/my-enrolled-courses', queryParams: _params(0, 1));
       if (gen != _gen) return;
       if (r is Map && r['total'] is num) {
         _total = (r['total'] as num).toInt();
         _hasMore = _all.length < _total;
+        if (r['scopes'] is List) _scopes = parseCourseScopes(r);
         notifyListeners();
       }
     } catch (_) {

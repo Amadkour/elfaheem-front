@@ -26,6 +26,10 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show contextSwitchVisible, showContextSwitcherSheet;
+import 'package:flutter_education_app/features/shared/course/course_scope.dart';
+import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
 
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
@@ -66,7 +70,7 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
       key: const ValueKey('teacher_courses'),
       useWebCard: true,
       appBar: ScreenAppBar(title: 'my_courses'.tr, showBack: !kIsWeb),
-      floatingActionButton: context.showSidebar
+      floatingActionButton: context.showSidebar || p.scope.isOrg
           ? null
           : ParentComponent(
               featureKey: 'teacher_courses.add',
@@ -86,6 +90,7 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        _ScopeHeader(p: p),
                         const SizedBox(height: 4),
                         ParentComponent(
                           featureKey: 'teacher_courses.filters',
@@ -130,6 +135,36 @@ class _Centered extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
       child: child,
     ),
+  );
+}
+
+/// Which side the list shows — the app mode: "My personal courses" or the organization — with its count, how many
+/// courses wait on the other sides and "Switch". Drawn only for a teacher who has an organization or courses in one.
+class _ScopeHeader extends StatelessWidget {
+  const _ScopeHeader({required this.p});
+
+  final TeacherCoursesProvider p;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: AppModeController.instance,
+    builder: (context, _) {
+      final ctl = AppModeController.instance;
+      final scope = p.scope;
+      if (scope.isAll || (!ctl.available && p.elsewhereCount == 0)) {
+        return const SizedBox.shrink();
+      }
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+        child: CourseScopeBanner(
+          scope: scope,
+          org: scope.isOrg ? courseOrgFor(scope.orgId!, p.scopes, ctl.current) : null,
+          count: p.scopes.isEmpty ? null : countFor(p.scopes, scope),
+          elsewhere: p.elsewhereCount,
+          onSwitch: contextSwitchVisible(ctl) ? () => showContextSwitcherSheet(context) : null,
+        ),
+      );
+    },
   );
 }
 
@@ -512,6 +547,7 @@ class _CourseListState extends State<_CourseList> {
         searching:
             p.query.trim().isNotEmpty ||
             p.activeFilter != TeacherCourseStatus.all,
+        inOrg: p.scope.isOrg,
       );
     }
 
@@ -622,11 +658,15 @@ class _TwoColumnMasonry extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({this.searching = false});
+  const _EmptyState({this.searching = false, this.inOrg = false});
 
   /// A search or filter is active: "nothing matches" instead of the
   /// "add your first course" call to action.
   final bool searching;
+
+  /// Organization mode: its courses are given by the organization, so no
+  /// "add your first course" (that would create a personal one).
+  final bool inOrg;
 
   @override
   Widget build(BuildContext context) => Center(
@@ -650,21 +690,21 @@ class _EmptyState extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              searching ? Icons.search_off_rounded : Icons.school_outlined,
+              searching ? Icons.search_off_rounded : (inOrg ? Icons.apartment_rounded : Icons.school_outlined),
               size: 40,
               color: context.colors.primary,
             ),
           ),
           const SizedBox(height: 18),
           Text(
-            searching ? 'admin_no_courses_found'.tr : 'no_courses_section'.tr,
+            searching ? 'admin_no_courses_found'.tr : (inOrg ? 'course_scope_org_empty'.tr : 'no_courses_section'.tr),
             style: context.colors.body.copyWith(
               fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
             textAlign: TextAlign.center,
           ),
-          if (!searching) ...[
+          if (!searching && !inOrg) ...[
             const SizedBox(height: 6),
             Text(
               'add_first_course_hint'.tr,

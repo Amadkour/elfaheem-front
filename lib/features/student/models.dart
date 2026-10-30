@@ -7,6 +7,7 @@ import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/category/model.dart';
 import '../teacher/home/teacher_models.dart';
+import '../shared/course/course_scope.dart' show CourseOrg;
 
 export '../shared/course/discount_info.dart';
 
@@ -523,7 +524,11 @@ class CourseModel with DiscountInfo {
   final int? discountDays;
   final String? titleAr, titleEn, descriptionAr, descriptionEn;
 
+  /// The organization the course belongs to; null = a personal course (or an older server).
+  final CourseOrg? org;
+
   CourseModel({
+    this.org,
     this.isPrivate = false,                                 // constructor
     this.allowResubscribe = true,
     required this.id,
@@ -655,6 +660,7 @@ class CourseModel with DiscountInfo {
     titleEn: j['name_en'] as String?,
     descriptionAr: j['description_ar'] as String?,
     descriptionEn: j['description_en'] as String?,
+    org: CourseOrg.fromJson(j['org']),
   );
 
   /// Builds a minimal-but-valid CourseModel from a lightweight summary card
@@ -677,6 +683,7 @@ class CourseModel with DiscountInfo {
   );
 
   TeacherCourse get toTeacherModel => TeacherCourse(
+    org: org,
     titleAr: titleAr,
     titleEn: titleEn,
     descriptionAr: descriptionAr,
@@ -745,6 +752,7 @@ class CourseModel with DiscountInfo {
     discountActive: discountActive,
     discountPercentage: discountPercentage,
     discountDays: discountDays,
+    org: org,
   );
 }
 

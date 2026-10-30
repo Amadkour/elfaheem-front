@@ -93,18 +93,76 @@ void main() {
   });
 
   group('ranges', () {
-    test('the agenda and the day view fetch whole weeks from the start of their week', () {
+    test('the day view fetches its rolling week; the agenda starts the day before, so the week is cached', () {
       final a = DateTime(2026, 10, 29); // Thursday
       final (s, e) = calFetchRange(CalView.agenda, a, weekStart: DateTime.monday, toUtc: (d) => d);
-      expect(s, DateTime(2026, 10, 26));
-      expect(e, DateTime(2026, 11, 16)); // 3 days into the week + 14 days → 3 whole weeks
+      expect(s, DateTime(2026, 10, 28));
+      expect(e, DateTime(2026, 11, 12)); // 14 days from the agenda's first day
       final (ds, de) = calFetchRange(CalView.day, a, weekStart: DateTime.monday, toUtc: (d) => d);
       final (ws, we) = calFetchRange(CalView.week, a, weekStart: DateTime.monday, toUtc: (d) => d);
-      expect((ds, de), (ws, we), reason: 'the day view reuses the week in the cache');
+      expect(ds, ws, reason: 'the day view reuses the week in the cache');
+      expect(de, we);
+      expect(!s.isAfter(ws) && !e.isBefore(we), isTrue, reason: 'the agenda covers the rolling week');
       final (_, e2) = calFetchRange(CalView.agenda, a, weekStart: DateTime.monday, toUtc: (d) => d, agendaDays: 28);
-      expect(e2, DateTime(2026, 11, 30));
+      expect(e2, DateTime(2026, 11, 26));
       expect(calVisibleDays(CalView.agenda, a).length, calAgendaDays);
       expect(calShift(CalView.agenda, a, 1), DateTime(2026, 11, 5));
+    });
+  });
+
+  group('rolling week (D-101)', () {
+    test('yesterday · today · tomorrow first; the window stays while the focus is inside it', () {
+      final today = DateTime(2026, 10, 30, 15, 20);
+      final from = calWeekFrom(today);
+      expect(from, DateTime(2026, 10, 29));
+      expect(calWeekDays(from).take(3).toList(), [DateTime(2026, 10, 29), DateTime(2026, 10, 30), DateTime(2026, 10, 31)]);
+      // a tap on another day of the strip / a header keeps the columns
+      expect(calWeekFrom(DateTime(2026, 11, 4), current: from), from);
+      expect(calWeekFrom(DateTime(2026, 10, 29), current: from), from);
+      // a day outside becomes the second column
+      expect(calWeekFrom(DateTime(2026, 11, 5), current: from), DateTime(2026, 11, 4));
+      expect(calWeekFrom(DateTime(2026, 10, 28), current: from), DateTime(2026, 10, 27));
+      // month ends and the title of a window across two months
+      expect(calWeekDays(DateTime(2026, 12, 29)).last, DateTime(2027, 1, 4));
+      expect(calVisibleDays(CalView.week, DateTime(2026, 11, 2), weekFrom: from).first, from);
+    });
+
+    test('focus: the first appointment still running or to come; else now on today; else the earliest; else 8:00', () {
+      DateTime w(int day, int h, [int m = 0]) => DateTime(2026, 10, day, h, m);
+      CalEvent ev(String id, DateTime s, DateTime e, {bool cancelled = false, String? status}) =>
+          _e(id, 'meeting', AppTime.fromZone(s), AppTime.fromZone(e), cancelled: cancelled, status: status);
+      final days = calWeekDays(DateTime(2026, 10, 29)); // 29 (yesterday) … 4 Nov
+      final now = w(30, 11, 15);
+      final events = [
+        ev('yesterday', w(29, 9), w(29, 10)),
+        ev('done', w(30, 8), w(30, 9)),
+        ev('cancelled', w(30, 12), w(30, 13), cancelled: true),
+        ev('declined', w(30, 12), w(30, 13), status: 'declined'),
+        ev('next', w(30, 14, 30), w(30, 15, 30)),
+        ev('later', w(31, 7), w(31, 8)),
+      ];
+      expect(calFocusMinute(events, days, now), 14 * 60 + 30);
+      // a class in progress counts as next
+      expect(calFocusMinute([...events, ev('running', w(30, 10, 30), w(30, 12))], days, now), 10 * 60 + 30);
+      // nothing left: now, on today's week
+      expect(calFocusMinute(events.take(2), days, now), 11 * 60 + 15);
+      // a past week: its earliest appointment; an empty one: 8:00
+      final past = calWeekDays(DateTime(2026, 10, 22));
+      expect(calFocusMinute([ev('old', w(23, 10), w(23, 11)), ev('older', w(24, 9), w(24, 10))], past, now), 9 * 60);
+      expect(calFocusMinute(const [], past, now), 8 * 60);
+      // a future week: its first appointment
+      expect(calFocusMinute(events, calWeekDays(DateTime(2026, 10, 31)), now), 7 * 60);
+    });
+
+    test('offset: the focus hour on the 5th row of a desktop grid, the 3rd on a phone, within the ends', () {
+      const hh = 56.0;
+      double off(int minute, double viewport) =>
+          calFocusOffset(minute, hourHeight: hh, viewport: viewport, maxExtent: 24 * hh - viewport);
+      expect(off(14 * 60 + 30, 770), 10 * hh - 10); // 13.75 rows → 4 above: 14:00 is row 5
+      expect(off(14 * 60 + 30, 480), 12 * hh - 10); // 8.6 rows → 2 above: row 3
+      expect(off(14 * 60, 300), 13 * hh - 10); // 5.4 rows → 1 above
+      expect(off(2 * 60, 770), 0); // too early to have 4 rows above
+      expect(off(23 * 60, 770), 24 * hh - 770); // the bottom
     });
   });
 

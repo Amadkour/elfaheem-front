@@ -248,8 +248,27 @@ int calWeekStart([String? lang]) => (lang ?? AppConfig.lang) == 'ar' ? DateTime.
 
 DateTime _startOfWeek(DateTime d, int weekStart) => calDay(d).subtract(Duration(days: (d.weekday - weekStart + 7) % 7));
 
-/// The days a view shows: 1 · 7 · the 6×7 month grid.
-List<DateTime> calVisibleDays(CalView v, DateTime anchor, {int? weekStart}) {
+/// The rolling week (D-101): 7 days from [from], the window's first day.
+List<DateTime> calWeekDays(DateTime from) {
+  final s = calDay(from);
+  return [for (var i = 0; i < 7; i++) DateTime(s.year, s.month, s.day + i)];
+}
+
+/// Where the rolling week starts once [focus] is shown: the focused day is the SECOND column (yesterday · today ·
+/// tomorrow … when the page opens). The window on screen ([current]) is kept while [focus] stays inside it, so a tap
+/// on the phone's day strip or on a day header never moves the columns under the finger.
+DateTime calWeekFrom(DateTime focus, {DateTime? current}) {
+  final f = calDay(focus);
+  if (current != null) {
+    final c = calDay(current);
+    if (!f.isBefore(c) && f.isBefore(DateTime(c.year, c.month, c.day + 7))) return c;
+  }
+  return DateTime(f.year, f.month, f.day - 1);
+}
+
+/// The days a view shows: 1 · the rolling 7 ([weekFrom], else [anchor] as the second column) · the 6×7 month
+/// grid (a real month, from [weekStart]).
+List<DateTime> calVisibleDays(CalView v, DateTime anchor, {int? weekStart, DateTime? weekFrom}) {
   final ws = weekStart ?? calWeekStart();
   switch (v) {
     case CalView.agenda:
@@ -258,28 +277,26 @@ List<DateTime> calVisibleDays(CalView v, DateTime anchor, {int? weekStart}) {
     case CalView.day:
       return [calDay(anchor)];
     case CalView.week:
-      final s = _startOfWeek(anchor, ws);
-      return [for (var i = 0; i < 7; i++) DateTime(s.year, s.month, s.day + i)];
+      return calWeekDays(weekFrom ?? calWeekFrom(anchor));
     case CalView.month:
       final s = _startOfWeek(DateTime(anchor.year, anchor.month), ws);
       return [for (var i = 0; i < 42; i++) DateTime(s.year, s.month, s.day + i)];
   }
 }
 
-/// UTC [start, end) to fetch for a view ([toUtc] = AppTime.fromZone in the app). The agenda and the day view fetch
-/// whole weeks from the start of their week, so the week view of the same days is already in the cache;
-/// [agendaDays] = how many days the agenda shows now.
+/// UTC [start, end) to fetch for a view ([toUtc] = AppTime.fromZone in the app). The day view fetches its rolling
+/// week ([weekFrom]) and the agenda starts the day before its first day, so switching day ↔ week ↔ agenda finds the
+/// days already in the cache; [agendaDays] = how many days the agenda shows now.
 (DateTime, DateTime) calFetchRange(CalView v, DateTime anchor,
-    {int? weekStart, DateTime Function(DateTime)? toUtc, int agendaDays = calAgendaDays}) {
+    {int? weekStart, DateTime Function(DateTime)? toUtc, int agendaDays = calAgendaDays, DateTime? weekFrom}) {
   final ws = weekStart ?? calWeekStart();
   final f = toUtc ?? AppTime.fromZone;
-  if (v == CalView.agenda || v == CalView.day) {
+  if (v == CalView.agenda) {
     final a = calDay(anchor);
-    final first = _startOfWeek(a, ws);
-    final n = v == CalView.day ? 7 : ((a.difference(first).inDays + agendaDays + 6) ~/ 7) * 7;
-    return (f(first), f(DateTime(first.year, first.month, first.day + n)));
+    final n = agendaDays < 6 ? 6 : agendaDays;
+    return (f(DateTime(a.year, a.month, a.day - 1)), f(DateTime(a.year, a.month, a.day + n)));
   }
-  final days = calVisibleDays(v, anchor, weekStart: ws);
+  final days = calVisibleDays(v == CalView.day ? CalView.week : v, anchor, weekStart: ws, weekFrom: weekFrom);
   final last = days.last;
   return (f(days.first), f(DateTime(last.year, last.month, last.day + 1)));
 }
@@ -304,6 +321,34 @@ class CalPlaced {
   final CalEvent event;
   final int top, bottom; // minutes after midnight, clamped to the day
   final int col, cols;
+}
+
+/// The minute of the day the time grid scrolls to (D-101): the first appointment still running or still to come in
+/// the shown [days] (a class in progress counts as next); else now, when today is shown; else the earliest
+/// appointment shown (a past week); else 8:00. Cancelled and declined ones are skipped.
+int calFocusMinute(Iterable<CalEvent> events, List<DateTime> days, DateTime nowWall) {
+  int? earliest;
+  for (final d in days) {
+    final placed = calLayoutDay(events, d).where((p) => !p.event.cancelled && !p.event.declined).toList()
+      ..sort((x, y) => x.top.compareTo(y.top));
+    for (final p in placed) {
+      if (p.event.wallEnd.isAfter(nowWall)) return p.top;
+      if (earliest == null || p.top < earliest) earliest = p.top;
+    }
+  }
+  final today = calDay(nowWall);
+  if (days.any((d) => calDay(d) == today)) return nowWall.hour * 60 + nowWall.minute;
+  return earliest ?? 8 * 60;
+}
+
+/// The grid's scroll offset that puts [minute]'s hour row on the 5th row of a tall grid (≥ 11 hour rows: a desktop
+/// window), the 3rd on a phone (≥ 7 rows), the 2nd on a very short one — about a third of the way down, with the
+/// hours before it in view; 10 px higher so the top row's hour label is not cut; never past either end.
+double calFocusOffset(int minute, {required double hourHeight, required double viewport, required double maxExtent}) {
+  final rows = viewport / hourHeight;
+  final above = rows >= 11 ? 4 : (rows >= 7 ? 2 : 1);
+  final top = ((minute ~/ 60) - above) * hourHeight - 10;
+  return top.clamp(0.0, maxExtent < 0 ? 0.0 : maxExtent).toDouble();
 }
 
 /// Side-by-side columns for overlapping events of one day (Outlook style): each cluster of overlapping events
@@ -414,8 +459,8 @@ Color calStatusColor(ThemeConfigProvider c, String? s) => switch (s) {
       _ => c.warning,
     };
 
-String calTitleFor(CalView v, DateTime anchor) {
-  final days = calVisibleDays(v, anchor);
+String calTitleFor(CalView v, DateTime anchor, {DateTime? weekFrom}) {
+  final days = calVisibleDays(v, anchor, weekFrom: weekFrom);
   String fmt(DateTime d, String p) => AppTime.date(AppTime.fromZone(DateTime(d.year, d.month, d.day, 12)), pattern: p);
   return switch (v) {
     CalView.day => fmt(anchor, 'EEEE d MMMM y'),

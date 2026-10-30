@@ -17,6 +17,10 @@ import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
 import 'my_courses_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgCoursesScreen;
+import 'package:flutter_education_app/features/shared/course/course_scope.dart';
+import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
 
 class MyCoursesScreen extends StatefulWidget {
   const MyCoursesScreen({super.key, required this.courses});
@@ -76,6 +80,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const _ScopeBar(),
                       const SizedBox(height: 16),
                       const ParentComponent(
                           featureKey: 'my_courses.stats', child: _StatsRow()),
@@ -89,6 +94,33 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Scope chips ───────────────────────────────────────────────────────────────
+
+/// All · Personal · each organization, with counts — drawn only when the student's courses live on more than one
+/// side (or Organization mode is open). A chip changes this list only, never the app mode; the list opens on the
+/// mode's side (MyCoursesProvider.scope).
+class _ScopeBar extends StatelessWidget {
+  const _ScopeBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<MyCoursesProvider>();
+    return ListenableBuilder(
+      listenable: AppModeController.instance,
+      builder: (context, _) {
+        final mode = p.modeScope;
+        final modeOrg = mode.isOrg ? courseOrgFor(mode.orgId!, p.scopes, AppModeController.instance.current) : null;
+        final chips = courseScopeChips(p.scopes, selected: p.scope, modeOrg: modeOrg);
+        if (chips.length < 2) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: CourseScopeChipBar(chips: chips, selected: p.scope, onSelect: p.selectScope),
+        );
+      },
     );
   }
 }
@@ -300,6 +332,9 @@ class _CourseList extends StatelessWidget {
       }
 
       final courses = provider.filteredCourses;
+      // the list mixes the personal account and organizations → every card says where it lives
+      final mixed = courses.map((c) => c.org?.id).toSet().length > 1;
+      final scope = provider.scope;
       // Only show "empty" once the server has nothing more: with client-side search / filter an
       // empty result on page 1 must still be allowed to load page 2.
       final showEmpty = courses.isEmpty && !provider.hasMore;
@@ -347,8 +382,17 @@ class _CourseList extends StatelessWidget {
                       size: 38, color: context.colors.primary),
                 ),
                 const SizedBox(height: 14),
-                Text('no_courses_in_section'.tr,
+                Text(scope.isOrg ? 'course_scope_org_empty_student'.tr : 'no_courses_in_section'.tr,
+                    textAlign: TextAlign.center,
                     style: context.colors.body),
+                if (scope.isOrg) ...[
+                  const SizedBox(height: 10),
+                  TextButton.icon(
+                    onPressed: () => _browseOrg(context, scope.orgId!),
+                    icon: const Icon(Icons.travel_explore_rounded, size: 18),
+                    label: Text('course_scope_browse_org'.tr),
+                  ),
+                ],
               ],
             ),
           )
@@ -368,10 +412,18 @@ class _CourseList extends StatelessWidget {
               },
               isTeacher: false,
               pageName: 'My-courses-profile-filtered',
+              badgeFor: mixed ? (c) => CourseOrgBadge(org: c.org) : null,
             ),
           ),
         ),
       ]);
     });
   }
+}
+
+/// The organization's own catalogue (its courses the student has not joined yet).
+void _browseOrg(BuildContext context, int orgId) {
+  final entry = AppModeController.instance.current?['organization'];
+  final org = entry is Map && entry['id'] == orgId ? Map<String, dynamic>.from(entry) : <String, dynamic>{'id': orgId};
+  Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: org)));
 }

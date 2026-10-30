@@ -11,6 +11,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -182,16 +183,43 @@ class CalTimeGrid extends StatefulWidget {
 }
 
 class _CalTimeGridState extends State<CalTimeGrid> {
-  late final ScrollController _scroll = ScrollController(initialScrollOffset: (_firstHour() * widget.hourHeight - 10).clamp(0, double.infinity));
+  /// Made at the first layout, when the viewport's height is known: it opens on the focus (calFocusMinute) with no
+  /// jump — the next appointment on the 5th hour row of a desktop window, the 3rd on a phone (calFocusOffset).
+  ScrollController? _scroll;
   Timer? _tick;
+  double _viewport = 0;
 
-  int _firstHour() {
-    final starts = [
-      for (final d in widget.days)
-        for (final p in calLayoutDay(widget.events, d)) p.top ~/ 60,
-    ];
-    final first = starts.isEmpty ? 8 : starts.reduce((a, b) => a < b ? a : b);
-    return ((first < 8 ? first : 8) - 1).clamp(0, 20); // an hour before the first event, 7:00 at the latest
+  /// The person scrolled, or the focus was taken from real data: nothing moves the grid by itself any more.
+  bool _userScrolled = false, _settled = false;
+
+  DateTime get _nowWall => widget.now ?? AppTime.toZone(DateTime.now().toUtc());
+
+  double _focusOffset(double viewport) => calFocusOffset(
+        calFocusMinute(widget.events, widget.days, _nowWall),
+        hourHeight: widget.hourHeight,
+        viewport: viewport,
+        maxExtent: 24 * widget.hourHeight - viewport,
+      );
+
+  ScrollController _controllerFor(double viewport) {
+    _viewport = viewport;
+    return _scroll ??= () {
+      _settled = widget.events.isNotEmpty;
+      return ScrollController(initialScrollOffset: _focusOffset(viewport));
+    }();
+  }
+
+  /// The events arrived after the grid opened (it was still loading): take the focus once, unless the person moved.
+  @override
+  void didUpdateWidget(covariant CalTimeGrid old) {
+    super.didUpdateWidget(old);
+    if (_settled || _userScrolled || widget.events.isEmpty || identical(widget.events, old.events)) return;
+    _settled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final s = _scroll;
+      if (!mounted || s == null || !s.hasClients || _userScrolled) return;
+      s.animateTo(_focusOffset(_viewport), duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+    });
   }
 
   @override
@@ -205,7 +233,7 @@ class _CalTimeGridState extends State<CalTimeGrid> {
   @override
   void dispose() {
     _tick?.cancel();
-    _scroll.dispose();
+    _scroll?.dispose();
     super.dispose();
   }
 
@@ -219,6 +247,11 @@ class _CalTimeGridState extends State<CalTimeGrid> {
       const gutter = 52.0;
       final colW = (box.maxWidth - gutter) / widget.days.length;
       final paused = [for (final d in widget.days) widget.pauses.where((p) => p.covers(d)).firstOrNull];
+      final strip = paused.any((p) => p != null);
+      final viewport = box.maxHeight.isFinite
+          ? box.maxHeight - (widget.showHeader ? 59 : 0) - (strip ? 24 : 0)
+          : 10 * hh;
+      final scroll = _controllerFor(viewport);
       return Column(children: [
         // sticky day headers
         if (widget.showHeader)
@@ -232,12 +265,12 @@ class _CalTimeGridState extends State<CalTimeGrid> {
                   height: 58,
                   child: InkWell(
                     onTap: widget.onOpenDay == null ? null : () => widget.onOpenDay!(d),
-                    child: _DayHead(day: d, today: d == today),
+                    child: _DayHead(day: d, today: today),
                   ),
                 ),
             ]),
           ),
-        if (paused.any((p) => p != null))
+        if (strip)
           Container(
             height: 24,
             decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider))),
@@ -269,10 +302,15 @@ class _CalTimeGridState extends State<CalTimeGrid> {
         Expanded(
           child: ColoredBox(
             color: c.cardBg,
+            child: NotificationListener<UserScrollNotification>(
+            onNotification: (n) {
+              if (n.direction != ScrollDirection.idle) _userScrolled = true;
+              return false;
+            },
             child: Scrollbar(
-            controller: _scroll,
+            controller: scroll,
             child: SingleChildScrollView(
-              controller: _scroll,
+              controller: scroll,
               child: SizedBox(
                 height: 24 * hh,
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -313,37 +351,53 @@ class _CalTimeGridState extends State<CalTimeGrid> {
             ),
           ),
           ),
+          ),
         ),
       ]);
     });
   }
 }
 
+/// A day's column header: the weekday, or Yesterday / Today / Tomorrow for the three days around today (the
+/// rolling week opens on them, D-101); a past day is drawn quieter.
 class _DayHead extends StatelessWidget {
   const _DayHead({required this.day, required this.today});
   final DateTime day;
-  final bool today;
+
+  /// Today's wall date.
+  final DateTime today;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final noon = AppTime.fromZone(DateTime(day.year, day.month, day.day, 12));
-    return Padding(
+    final diff = DateTime.utc(day.year, day.month, day.day).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
+    final isToday = diff == 0;
+    final label = switch (diff) {
+      -1 => t('أمس', 'Yesterday'),
+      0 => t('اليوم', 'Today'),
+      1 => t('غداً', 'Tomorrow'),
+      _ => AppTime.date(noon, pattern: 'EEE'),
+    };
+    return Opacity(
+      opacity: diff < 0 ? 0.6 : 1,
+      child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 1),
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(AppTime.date(noon, pattern: 'EEE'), style: appText(11, w: FontWeight.w700, c: today ? appInk(context, c.primary) : c.textLight)),
+          Text(label, style: appText(11, w: FontWeight.w700, c: isToday ? appInk(context, c.primary) : c.textLight)),
           const SizedBox(height: 3),
           Container(
             width: 30,
             height: 30,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: today ? c.primary : Colors.transparent, shape: BoxShape.circle),
-            child: Text('${day.day}', style: appText(15, w: FontWeight.w800, c: today ? context.colors.onHero : c.textDark)),
+            decoration: BoxDecoration(color: isToday ? c.primary : Colors.transparent, shape: BoxShape.circle),
+            child: Text('${day.day}', style: appText(15, w: FontWeight.w800, c: isToday ? context.colors.onHero : c.textDark)),
           ),
         ]),
       ),
+    ),
     );
   }
 }
