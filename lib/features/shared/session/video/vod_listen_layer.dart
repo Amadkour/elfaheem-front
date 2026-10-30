@@ -49,7 +49,15 @@ class VodListenLayer extends StatelessWidget {
           WidgetsBinding.instance.addPostFrameCallback((_) => s.stop());
         }
         final show = h != null && signedIn;
-        return Column(children: [
+        // Laid out bottom-up so the bar is PAINTED after the app: a route's modal barrier (BlockSemantics) drops
+        // the semantics of everything painted before the Navigator, which left the bar's buttons unreachable for
+        // screen readers and dead on the web while semantics are on.
+        return Column(verticalDirection: VerticalDirection.up, children: [
+          Expanded(
+            key: const ValueKey('vod_listen_app'),
+            // The bar already covers the status bar: the pages below must not add it a second time.
+            child: MediaQuery.removePadding(context: context, removeTop: show, child: child),
+          ),
           if (show)
             _Entrance(
               key: ObjectKey(h),
@@ -77,11 +85,6 @@ class VodListenLayer extends StatelessWidget {
                 },
               ),
             ),
-          Expanded(
-            key: const ValueKey('vod_listen_app'),
-            // The bar already covers the status bar: the pages below must not add it a second time.
-            child: MediaQuery.removePadding(context: context, removeTop: show, child: child),
-          ),
         ]);
       },
     );

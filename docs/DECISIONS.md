@@ -1424,7 +1424,11 @@ Navigator rebuild), so nothing covers it and it covers nothing. Wakelock is rele
 the sound with the screen off. The window is not screen-protected while only the bar shows (no picture is drawn;
 FLAG_SECURE never blocked audio capture anyway); the protection comes back with the player. One sound at a time:
 `MediaFocus` — opening another lecture's player or a live room (RoomPage) stops the bar; signing out stops it. The
-resume position is saved every 5 s, on leaving the app and on close; the 75 % "watched" mark still counts.
+resume position is saved every 5 s, on leaving the app and on close; the 75 % "watched" mark still counts. The bar is
+PAINTED after the app (a bottom-up Column): a route's modal barrier (BlockSemantics) drops the semantics of whatever is
+painted before the Navigator, which made the bar's buttons unreachable for screen readers and dead on the web while
+semantics are on (found in the real web build). ViewAsBanner and the offline banner are built the old way and likely
+have the same problem (not changed here).
 **Rejected.** Making the player a non-route host like the live room (D-059) — a larger change to every caller for the
 same result; an overlay bar drawn over the pages (it would cover app bars and back buttons); a media notification and
 lock-screen controls (needs `audio_service`, a new package — follow-up); keeping the picture stream in listen mode.

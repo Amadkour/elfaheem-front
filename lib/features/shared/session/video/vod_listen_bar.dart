@@ -78,7 +78,7 @@ class _VodListenBarState extends State<VodListenBar> {
     final finished = vodFinished(w.position, w.duration, playing: w.playing);
     final frac = vodFraction(w.position, w.duration, dragging: _drag);
     final shown = _drag == null ? w.position : Duration(milliseconds: (frac * w.duration.inMilliseconds).round());
-    final speed = w.speed == 1.0 ? '' : ' · ${_speedLabel(w.speed)}×';
+    final speed = w.speed == 1.0 ? '' : '${_speedLabel(w.speed)}×';
     final time = w.duration > Duration.zero ? '${vodFmt(shown)} / ${vodFmt(w.duration)}' : vodFmt(shown);
 
     // A fixed-height strip: the text grows with the person's text size up to a point, then stays inside it.
@@ -128,12 +128,14 @@ class _VodListenBarState extends State<VodListenBar> {
                                             TextSpan(
                                                 text: 'vod_listening'.tr,
                                                 style: appText(11.5, w: FontWeight.w600, c: c.primary)),
-                                            TextSpan(text: '  ·  ', style: appText(11.5, w: FontWeight.w400, c: c.textLight)),
+                                            TextSpan(text: ' · ', style: appText(11.5, w: FontWeight.w400, c: c.textLight)),
                                           ],
                                           // "12:03 / 45:10" reads the same way in Arabic
                                           TextSpan(text: '$_lri$time$_pdi'),
-                                          if (speed.isNotEmpty)
+                                          if (speed.isNotEmpty) ...[
+                                            TextSpan(text: ' · ', style: appText(11.5, w: FontWeight.w400, c: c.textLight)),
                                             TextSpan(text: '$_lri$speed$_pdi', style: appText(11.5, w: FontWeight.w600, c: c.primary)),
+                                          ],
                                         ]),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -232,6 +234,7 @@ class _BarButton extends StatelessWidget {
       button: true,
       label: label,
       excludeSemantics: true,
+      onTap: onTap, // screen readers and the web semantics tree activate the button through this
       child: SizedBox(
         width: 48,
         height: 48,
@@ -260,6 +263,7 @@ class _PlayButton extends StatelessWidget {
       button: true,
       label: label,
       excludeSemantics: true,
+      onTap: onTap, // screen readers and the web semantics tree activate the button through this
       child: SizedBox(
         width: 48,
         height: 48,

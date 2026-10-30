@@ -491,6 +491,7 @@ class VodListenButton extends StatelessWidget {
         button: true,
         label: tooltip,
         excludeSemantics: true,
+        onTap: onTap, // screen readers and the web semantics tree activate the button through this
         child: InkResponse(
           onTap: onTap,
           radius: 26,

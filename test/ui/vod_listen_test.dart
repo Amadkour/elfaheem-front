@@ -378,6 +378,10 @@ void main() {
         expect(tester.getTopLeft(find.byType(AppBar)).dy, barBottom);
         expect(MediaQuery.paddingOf(tester.element(find.text('open lecture'))).top, 0);
 
+        final sem = tester.ensureSemantics();
+        await tester.pump();
+        expect(find.semantics.byLabel('vod_expand'), findsOneWidget, reason: 'the bar is in the semantics tree');
+        sem.dispose();
         await tester.tap(find.byIcon(Icons.open_in_full_rounded));
         for (var i = 0; i < 20; i++) {
           await tester.pump(const Duration(milliseconds: 50));
@@ -460,6 +464,27 @@ void main() {
       await tester.pump();
       expect(to, isNotNull);
       expect(to!, greaterThan(0.45));
+    });
+
+    testWidgets('every bar button can be activated through semantics (screen readers, the web)', (tester) async {
+      final handle = tester.ensureSemantics();
+      final taps = <String>[];
+      await tester.pumpWidget(layoutHost(VodListenBar(
+        title: 'Lecture',
+        position: const Duration(minutes: 10),
+        duration: const Duration(minutes: 40),
+        playing: true,
+        onPlayPause: () => taps.add('play'),
+        onSeekBy: (s) => taps.add('seek$s'),
+        onSeekTo: (_) {},
+        onExpand: () => taps.add('expand'),
+        onClose: () => taps.add('close'),
+      )));
+      for (final l in ['vod_pause', 'vod_back10', 'vod_fwd10', 'vod_expand', 'vod_close_listen']) {
+        tester.semantics.tap(find.semantics.byLabel(l));
+      }
+      expect(taps, ['play', 'seek-10', 'seek10', 'expand', 'close']);
+      handle.dispose();
     });
 
     testWidgets('the player button never overflows', (tester) async {
