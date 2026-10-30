@@ -7,7 +7,7 @@
 // The course page's "Live now" card (wide: the side column, phone: the spotlight) and the home's "Live now" banner
 // open the room through here, so they no longer depend on the course page's TeacherCourseScreenProvider (the side
 // card only switched to the Live tab — on a wide window already on that tab the tap did nothing). Same join as
-// TeacherCourseScreenProvider.joinLive for a student, with [autoJoin] for the one-tap entries.
+// TeacherCourseScreenProvider.joinLive for a student. The pre-join page waits for Join (D-106).
 library;
 
 import 'package:flutter/material.dart';
@@ -45,15 +45,14 @@ Future<dynamic> joinCourseLiveAsStudent(ApiClient api, int sessionId) async {
   }
 }
 
-/// The student's pre-join page of a live course session. [autoJoin]: Join is pressed by itself once the devices are
-/// ready (the home's one-tap Join). Leaving the room marks the session complete, as the Live tab's join does.
+/// The student's pre-join page of a live course session; the student presses Join there (D-106). Leaving the room
+/// marks the session complete, as the Live tab's join does.
 Future<void> openCourseLiveRoom(
   BuildContext context, {
   required int sessionId,
   required int courseId,
   String? sessionName,
   String? hostName,
-  bool autoJoin = false,
 }) async {
   final auth = context.read<MyAuthProvider>();
   final api = ApiClient();
@@ -69,7 +68,6 @@ Future<void> openCourseLiveRoom(
         sessionName: sessionName,
         hostName: hostName,
         apiClient: api,
-        autoJoin: autoJoin,
         onStart: () => joinCourseLiveAsStudent(api, sessionId),
         onEnd: () async {},
         onComplete: () async {

@@ -5,7 +5,7 @@
 //   GoLiveSheetView  the sheet's content over plain values (layout-tested: test/ui/go_live_layout_test.dart):
 //                      course (horizontal cards) · session (the one scheduled now first, or "New live session now"
 //                      with an optional title) · Record · camera / microphone · the big "Go live" · "Meet now"
-//   openGoLive       tap → the sheet (a dialog from 720 px) → PreJoinPage with autoJoin, straight into the room
+//   openGoLive       tap → the sheet (a dialog from 720 px) → PreJoinPage, where the teacher presses Join (D-106)
 //
 // Data: nothing is asked when the home opens; the sheet asks GET /courses/{id}/sessions for the course it shows
 // (cached per course while it is open). Pure logic: go_live.dart. Renders: test/visual/go_live_golden_test.dart.
@@ -289,7 +289,8 @@ Future<Object?> showGoLiveSheet(BuildContext context, Widget sheet) {
   );
 }
 
-/// The pre-join page with autoJoin: it starts (or resumes) the session and presses Join by itself.
+/// The pre-join page of the chosen session, with the sheet's camera / microphone choice. It waits for the teacher
+/// to press Join (D-106), which starts (or resumes) the session and opens the room.
 Future<void> launchGoLive(BuildContext context, GoLiveLaunch go, {GoLiveApi? api}) async {
   final a = api ?? RemoteGoLiveApi();
   final user = context.read<MyAuthProvider>().currentUser;
@@ -304,7 +305,6 @@ Future<void> launchGoLive(BuildContext context, GoLiveLaunch go, {GoLiveApi? api
         userName: user?.name ?? 'Teacher',
         userId: user?.id ?? 0,
         sessionName: go.title,
-        autoJoin: true,
         apiClient: ApiClient(),
         onStart: () => a.start(go.sessionId, record: go.record),
         onEnd: () async {

@@ -24,6 +24,7 @@ import 'widgets/live_video_view.dart';
 import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/features/shared/live/live_room_words.dart' show liveTr;
 import 'package:flutter_education_app/features/shared/live/live_config.dart';
 import 'package:flutter_education_app/features/shared/live/live_media_plan.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart' show WaitingForHostPage;
@@ -62,13 +63,15 @@ class JoinArgs {
     this.isHost,
     this.onPoll,
     this.canRecord = false,
-    this.autoJoin = false,
+    @Deprecated('D-106: the pre-join page always waits for Join; the value is ignored') this.autoJoin = false,
     this.startsAt,
     this.hostName,
   });
 
-  /// Part 2 (docs/backend/live-rooms-spec.md §7, §10): press Join by itself as soon as the devices are ready —
-  /// "Meet now" and a direct guest link. Once only: never again after a failure or a back.
+  /// Was "press Join by itself once the devices are ready" (Meet now, Go live, Live now, a direct guest link).
+  /// D-106: the pre-join page ALWAYS waits for the person to press Join — the value is kept for source
+  /// compatibility and ignored. A 202 `waiting` after Join still follows the lobby by itself.
+  @Deprecated('D-106: the pre-join page always waits for Join; the value is ignored')
   final bool autoJoin;
 
   /// The meeting's scheduled start (UTC), shown in the room's info sheet.
@@ -140,7 +143,8 @@ class JoinArgs {
   final ApiClient apiClient;
 
   /// The same join again after a lost connection (D9): the session the room ran (a quick session created on
-  /// the first join keeps its id), pressed by itself once the devices are ready.
+  /// the first join keeps its id). The pre-join page opens with the room's mic / camera choices and waits for
+  /// Join like every other entry (D-106).
   JoinArgs forRejoin({required int sessionId}) => JoinArgs(
         e2ee: e2ee,
         e2eeKey: e2eeKey,
@@ -166,7 +170,6 @@ class JoinArgs {
         isHost: isHost,
         onPoll: onPoll,
         canRecord: canRecord,
-        autoJoin: true,
         startsAt: startsAt,
         hostName: hostName,
       );
@@ -240,20 +243,8 @@ class _PreJoinPageState extends State<PreJoinPage> {
 
   bool get _canPublish => widget.args.canPublish;
 
-  /// [JoinArgs.autoJoin] was used up (pressed once, or given up because the devices need the person's attention).
-  bool _autoJoinDone = false;
-
-  /// Presses Join once the devices are ready (JoinArgs.autoJoin). A refused permission leaves the page to the person
-  /// (they may want to fix it first; no camera / mic at all joins anyway); a failed or cancelled join is never
-  /// retried by itself.
-  void _maybeAutoJoin() {
-    if (!widget.args.autoJoin || _autoJoinDone || _busy || !mounted) return;
-    _autoJoinDone = true;
-    if (_issue == PreJoinIssue.permissionDenied) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_busy) unawaited(_join(context));
-    });
-  }
+  // D-106: nothing here presses Join — not after the devices are ready, not for Meet now / Go live / Live now / a
+  // direct guest link / a Rejoin. The person checks the preview and presses Join (focused; Enter on the web).
 
   @override
   void initState() {
@@ -266,10 +257,9 @@ class _PreJoinPageState extends State<PreJoinPage> {
       // Listen-only guest: no tracks are ever created, no permission prompt.
       _enableAudio = false;
       _enableVideo = false;
-      _maybeAutoJoin();
       return;
     }
-    unawaited(_initDevices().whenComplete(_maybeAutoJoin));
+    unawaited(_initDevices());
     if (lkPlatformIs(PlatformType.android)) unawaited(_checkPermissions());
   }
 
@@ -581,7 +571,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         liveConfig: data.liveConfig,
         startsAt: args.startsAt,
         hostName: args.hostName,
-        // D9: Rejoin opens this page again for the same session, joining by itself with the room's choices.
+        // D9: Rejoin opens this page again for the same session, with the room's mic / camera choices; it waits for Join (D-106).
         onRejoin: (micOn, camOn) {
           if (!nav.mounted) return;
           unawaited(nav.push(MaterialPageRoute<void>(
@@ -602,7 +592,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
       if (!context.mounted) return;
       // The host's controls refused the join (423 room_locked, 403 participant_removed / guest_blocked): say why,
       // never retry (a 4xx; liveConnectRetryDelay retries only network failures).
-      await context.showErrorDialog(liveJoinRefusalText(error) ?? error);
+      await context.showErrorDialog(liveJoinRefusalText(error, kind: args.ref.kind) ?? error);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -659,14 +649,16 @@ class _PreJoinPageState extends State<PreJoinPage> {
       if (!mounted) return null;
       final admitted = await Navigator.of(context).push<JoinOutcome>(
         MaterialPageRoute(
-          builder: (_) => WaitingForHostPage(waiting: outcome, title: args.sessionName, poll: args.onPoll),
+          builder: (_) => WaitingForHostPage(waiting: outcome, title: _title, poll: args.onPoll),
         ),
       );
       if (admitted == null) return null;
       outcome = admitted;
     }
     if (outcome.isRefused) {
-      appToast(liveRoomCodeText(outcome.status == JoinStatus.rejected ? 'join_rejected' : 'request_expired') ?? '', error: true);
+      appToast(
+          liveRoomCodeText(outcome.status == JoinStatus.rejected ? 'join_rejected' : 'request_expired', kind: args.ref.kind) ?? '',
+          error: true);
       return null;
     }
     if (outcome.url.isEmpty || outcome.token.isEmpty) throw Exception('Join answered without room credentials');
@@ -712,7 +704,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
       return;
     }
     final handle = LiveRoomHost.open(LiveRoomSession(
-      title: widget.args.sessionName ?? '',
+      title: _title,
       page: page,
       mini: (_) => LiveMiniTile(room: room),
     ));
@@ -741,10 +733,15 @@ class _PreJoinPageState extends State<PreJoinPage> {
   }
 
   Future<void> _back() async {
-    _autoJoinDone = true;
     if (_enableVideo) await _toggleCamera();
     if (_enableAudio) await _toggleAudio();
     if (mounted) Navigator.of(context).pop();
+  }
+
+  /// The room's name, or "Live session" / "Live meeting" by its kind (D-106).
+  String get _title {
+    final name = (widget.args.sessionName ?? '').trim();
+    return name.isNotEmpty ? name : liveTr('lr_live_session', widget.args.ref.kind);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -755,13 +752,15 @@ class _PreJoinPageState extends State<PreJoinPage> {
     LivePalette.sync(context);   // live classroom colours follow the app theme
     AppShellNav.markFullScreen(context); // no tab bar on the pre-join page, even inside a tab (D-081)
     final args = widget.args;
-    final title = (args.sessionName ?? '').trim();
     return Scaffold(
       key: const ValueKey('prejoin'),
       backgroundColor: context.colors.background,
       body: PreJoinLayout(
-        title: title.isNotEmpty ? title : 'lr_live_session'.tr,
+        title: _title,
         subtitle: 'lr_ready_to_join'.tr,
+        // D-106: a calendar meeting («اجتماع») or a course session («الحصة») — from roomRef / the -meetingId id.
+        roomKind: args.ref.kind,
+        isHost: args.hostRole,
         isTeacher: args.isTeacher,
         isGuest: args.guest,
         canPublish: args.canPublish,

@@ -19,7 +19,9 @@
 import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../live/live_controls_api.dart' show liveControlsErrorText;
-import '../live/live_room.dart' show JoinOutcome, LiveGuestAdmission, LiveRoomRef, liveGuestAdmissionFrom, liveRoomCodeText;
+import '../live/live_room.dart'
+    show JoinOutcome, LiveGuestAdmission, LiveRoomKind, LiveRoomRef, liveGuestAdmissionFrom, liveRoomCodeText;
+import '../live/live_room_words.dart' show liveTr;
 import '../live/live_config.dart';
 import '../live/live_time_limit.dart' show parseLiveTimeLimit, parseNaiveUtc;
 
@@ -322,24 +324,26 @@ class GuestLiveApi {
 // Error codes → text
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Bilingual text for the guest-link server codes; falls back to the ApiException message.
-String guestLiveErrorText(Object e) {
+/// Bilingual text for the guest-link server codes; falls back to the ApiException message. [kind]: the link's room
+/// when known — a meeting's texts say «الاجتماع» (D-106).
+String guestLiveErrorText(Object e, {LiveRoomKind? kind}) {
   final ex = ApiException.from(e);
+  final k = kind ?? LiveRoomKind.session;
   switch (ex.code) {
     case 'guest_link_invalid':
       return 'guest_live_err_invalid'.tr;
     case 'guest_link_missing':
-      return 'guest_live_err_missing'.tr;
+      return liveTr('guest_live_err_missing', k);
     case 'live_not_started':
-      return 'guest_live_err_not_started'.tr;
+      return liveTr('guest_live_err_not_started', k);
     case 'live_ended':
-      return 'guest_live_err_ended'.tr;
+      return liveTr('guest_live_err_ended', k);
     case 'guest_limit_reached':
-      return 'guest_live_err_limit'.tr;
+      return liveTr('guest_live_err_limit', k);
     case 'guests_disabled':
-      return 'guest_live_err_disabled'.tr;
+      return liveTr('guest_live_err_disabled', k);
     case 'guest_pin_invalid':
-      return 'guest_live_err_pin'.tr;
+      return liveTr('guest_live_err_pin', k);
     case 'guest_pin_required':
       return 'guest_live_pin_required'.tr;
     case 'guest_pin_format':
@@ -347,19 +351,19 @@ String guestLiveErrorText(Object e) {
     case 'too_many_requests':
       return 'guest_live_err_rate_limited'.tr;
     case 'guest_blocked':
-      return 'guest_live_err_blocked'.tr;
+      return liveTr('guest_live_err_blocked', k);
     // The host's controls (live hardening): 423 room_locked, 403 participant_removed.
     case 'room_locked':
     case 'participant_removed':
-      return liveControlsErrorText(ex.code)!;
+      return liveControlsErrorText(ex.code, kind: k)!;
   }
-  if (ex.statusCode == 423) return liveControlsErrorText('room_locked')!;
+  if (ex.statusCode == 423) return liveControlsErrorText('room_locked', kind: k)!;
   if (ex.statusCode == 429) return 'guest_live_err_rate_limited'.tr;
-  return liveRoomErrorTextOrNull(ex) ?? ex.message;
+  return liveRoomErrorTextOrNull(ex, kind: k) ?? ex.message;
 }
 
 /// The live-room codes (lobby, requests, meetings) that the guest page can also meet — null when unknown.
-String? liveRoomErrorTextOrNull(ApiException ex) => liveRoomCodeText(ex.code);
+String? liveRoomErrorTextOrNull(ApiException ex, {LiveRoomKind? kind}) => liveRoomCodeText(ex.code, kind: kind);
 
 /// 429 / `too_many_requests`: the visitor has to wait a minute before trying again.
 bool guestLiveErrorIsRateLimit(Object e) {

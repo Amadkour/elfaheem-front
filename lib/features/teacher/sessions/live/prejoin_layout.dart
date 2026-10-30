@@ -6,12 +6,19 @@
 //
 //   wide (≥ 860 px)  → two columns: preview card + toggles on the start side, the settings/join panel on the end side
 //   phone            → one column: preview (16:9) on top, toggles, then the panel; the whole page scrolls
+//
+// D-106: the page never joins by itself — the person checks the camera / microphone and presses Join, the page's
+// one primary button, which holds the keyboard focus (Enter presses it on the web and desktop). Every text follows
+// the room's kind ([PreJoinLayout.roomKind]): a meeting says «اجتماع» / "meeting", a course session «الحصة» /
+// "session" (live_room_words.dart).
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/shared/live/live_room.dart' show LiveRoomKind;
+import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 import 'package:flutter_education_app/features/shared/live/live_self_view.dart' show SelfViewShape;
 
 import 'widgets/live_palette.dart';
@@ -55,7 +62,23 @@ class PreJoinLayout extends StatelessWidget {
     this.cameraOffHint = false,
     this.previewShape = SelfViewShape.box,
     this.onPreviewShape,
+    this.roomKind = LiveRoomKind.session,
+    this.isHost,
+    this.autofocusJoin = true,
   });
+
+  /// Course session or calendar meeting: picks the words («الحصة» / «الاجتماع», D-106) and the role tag.
+  final LiveRoomKind roomKind;
+
+  /// Who runs the room; null → [isTeacher]. A meeting's owner is its host without being a teacher: the role tag
+  /// says Host and the "may be recorded" note is not shown to them.
+  final bool? isHost;
+
+  /// The Join button takes the keyboard focus (Enter presses it).
+  final bool autofocusJoin;
+
+  bool get _meeting => roomKind == LiveRoomKind.meeting;
+  bool get _host => isHost ?? isTeacher;
 
   /// The self-view's shape (D-092): the preview shows the camera as the room's box will (a box fills the card, a
   /// circle sits in its middle). [onPreviewShape] null hides the shape switch.
@@ -206,7 +229,7 @@ class PreJoinLayout extends StatelessWidget {
         AppBanner(
           key: const ValueKey('prejoin.listen_only'),
           icon: Icons.hearing_rounded,
-          text: 'lr_listen_only_msg'.tr,
+          text: liveTr('lr_listen_only_msg', roomKind),
         ),
       ],
       if (canPublish) ...[
@@ -252,9 +275,11 @@ class PreJoinLayout extends StatelessWidget {
   // ── Settings / join panel ─────────────────────────────────────────────────
   Widget _panel(BuildContext context) {
     final c = context.colors;
-    final roleColor = isTeacher ? c.primary : c.accent;
-    final roleLabel = isGuest ? 'lr_guest'.tr : (isTeacher ? 'teacher' : 'student').tr;
-    final roleIcon = isGuest ? Icons.person_outline_rounded : (isTeacher ? Icons.school_rounded : Icons.person_rounded);
+    final roleColor = _host ? c.primary : c.accent;
+    final roleLabel = isGuest ? 'lr_guest'.tr : liveRoleLabel(host: _host, kind: roomKind);
+    final roleIcon = isGuest
+        ? Icons.person_outline_rounded
+        : (_host ? (_meeting ? Icons.star_rounded : Icons.school_rounded) : Icons.person_rounded);
     return AppCard(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -332,7 +357,7 @@ class PreJoinLayout extends StatelessWidget {
           ),
         ],
 
-        if (!isTeacher) ...[
+        if (!_host) ...[
           const SizedBox(height: 14),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Padding(
@@ -341,7 +366,7 @@ class PreJoinLayout extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('lr_may_be_recorded'.tr, style: appText(12, c: c.textMedium, h: 1.4)),
+              child: Text(liveTr('lr_may_be_recorded', roomKind), style: appText(12, c: c.textMedium, h: 1.4)),
             ),
           ]),
         ],
@@ -349,14 +374,97 @@ class PreJoinLayout extends StatelessWidget {
         const SizedBox(height: 18),
         KeyedSubtree(
           key: const ValueKey('prejoin.join'),
-          child: AppPrimaryButton(
-            label: busy ? 'lr_joining'.tr : 'lr_join_session'.tr,
-            icon: busy ? null : DirIcons.login,
+          child: PreJoinJoinButton(
+            label: busy ? 'lr_joining'.tr : liveTr('lr_join_session', roomKind),
             busy: busy,
             onPressed: onJoin,
+            autofocus: autofocusJoin,
           ),
         ),
       ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Join: the page's one primary action (D-106) — nothing joins until it is pressed
+// ─────────────────────────────────────────────────────────────────────────────
+/// The Join button: full width, filled primary, 54 high. It holds the keyboard focus ([autofocus]), so Enter presses
+/// it on the web and desktop (the framework's button shortcut), and takes the focus back when it is enabled again
+/// after a join that failed or was cancelled while nothing else holds the focus. On touch the focus draws nothing.
+class PreJoinJoinButton extends StatefulWidget {
+  const PreJoinJoinButton({super.key, required this.label, required this.onPressed, this.busy = false, this.autofocus = true});
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool busy;
+  final bool autofocus;
+
+  @override
+  State<PreJoinJoinButton> createState() => _PreJoinJoinButtonState();
+}
+
+class _PreJoinJoinButtonState extends State<PreJoinJoinButton> {
+  final FocusNode _focus = FocusNode(debugLabel: 'prejoin.join');
+
+  bool get _enabled => !widget.busy && widget.onPressed != null;
+
+  @override
+  void didUpdateWidget(PreJoinJoinButton old) {
+    super.didUpdateWidget(old);
+    final was = !old.busy && old.onPressed != null;
+    if (widget.autofocus && !was && _enabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final holder = FocusManager.instance.primaryFocus;
+        // Back to Join unless the person moved to another control meanwhile.
+        if (mounted && _enabled && (holder == null || holder.context == null || holder is FocusScopeNode)) {
+          _focus.requestFocus();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final label = Flexible(
+      child: Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: appText(15.5, w: FontWeight.w800, c: c.onHero)),
+    );
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: FilledButton(
+        focusNode: _focus,
+        autofocus: widget.autofocus,
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+              (s) => s.contains(WidgetState.disabled) ? c.primary.withValues(alpha: 0.4) : c.primary),
+          foregroundColor: WidgetStatePropertyAll(c.onHero),
+          overlayColor: WidgetStatePropertyAll(c.onHero.withValues(alpha: 0.12)),
+          elevation: const WidgetStatePropertyAll(0),
+          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+          // The keyboard focus is a clear ring (drawn in keyboard mode only).
+          side: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.focused)
+              ? BorderSide(color: c.primaryLight, width: 3, strokeAlign: BorderSide.strokeAlignOutside)
+              : BorderSide.none),
+        ),
+        onPressed: _enabled ? widget.onPressed : null,
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          if (widget.busy)
+            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: c.onHero))
+          else
+            Icon(DirIcons.login, size: 20, color: c.onHero),
+          const SizedBox(width: 10),
+          label,
+        ]),
+      ),
     );
   }
 }

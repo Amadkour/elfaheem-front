@@ -26,6 +26,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 
 import '../annotation/annotation_toolbar.dart' show AnnotToolButton, annotThicknessLabels, annotTypingInField;
 import '../widgets/live_palette.dart';
@@ -942,8 +943,16 @@ class WhiteboardOptionsLayout extends StatelessWidget {
           icon: Icons.image_outlined,
           title: cont ? t('حفظ الجزء الظاهر كصورة PNG', 'Save what is on screen as PNG') : t('حفظ الصفحة كصورة PNG', 'Save the page as PNG'),
           subtitle: switch (format) {
-            BoardFormat.landscape => t('صورة واضحة بحجم 1920×1080 لمشاركتها بعد الحصة', 'A crisp 1920×1080 image to share after class'),
-            BoardFormat.portrait => t('صورة واضحة بحجم 1440×1920 لمشاركتها بعد الحصة', 'A crisp 1440×1920 image to share after class'),
+            BoardFormat.landscape => liveT(null,
+                ar: 'صورة واضحة بحجم 1920×1080 لمشاركتها بعد الحصة',
+                en: 'A crisp 1920×1080 image to share after class',
+                meetingAr: 'صورة واضحة بحجم 1920×1080 لمشاركتها بعد الاجتماع',
+                meetingEn: 'A crisp 1920×1080 image to share after the meeting'),
+            BoardFormat.portrait => liveT(null,
+                ar: 'صورة واضحة بحجم 1440×1920 لمشاركتها بعد الحصة',
+                en: 'A crisp 1440×1920 image to share after class',
+                meetingAr: 'صورة واضحة بحجم 1440×1920 لمشاركتها بعد الاجتماع',
+                meetingEn: 'A crisp 1440×1920 image to share after the meeting'),
             BoardFormat.continuous => t('ما تراه الآن على السبورة', 'Exactly the part you see now'),
           },
           onTap: onExport,

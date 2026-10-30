@@ -46,6 +46,7 @@ import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:flutter/services.dart';
 import '../../../../admin/admin_common.dart';
+import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 import 'recorder_web_stub.dart'
 if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 import 'package:livekit_client/livekit_client.dart';
@@ -1023,8 +1024,8 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
       icon        = Icons.videocam;
       title       = 'lr_rec_va_title'.tr;
       subtitle    = widget.isSharing
-          ? 'lr_rec_va_shared_sub'.tr
-          : 'lr_rec_va_sub'.tr;
+          ? liveTr('lr_rec_va_shared_sub')
+          : liveTr('lr_rec_va_sub');
     } else {
       dotColor    = LivePalette.warning;
       borderColor = LivePalette.warning.withValues(alpha: 0.45);

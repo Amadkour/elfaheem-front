@@ -3,6 +3,7 @@
 // (share_options_sheet.dart, web: true).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/shared/live/live_room.dart' show LiveRoomKind;
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_room_ended.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/share_options_sheet.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/share_presets.dart';
@@ -23,6 +24,24 @@ void main() {
           LiveRoomEndedCard(kind: LiveEndedKind.removed, onRejoin: () {}, onClose: () {}),
           LiveRoomEndedCard(kind: LiveEndedKind.otherDevice, onClose: () {}),
         ])));
+  });
+
+  testWidgets('a meeting says meeting (D-106): layout + texts in both languages', (t) async {
+    await expectNoLayoutErrors(
+      t,
+      () => SingleChildScrollView(child: Column(children: [
+            LiveRoomEndedCard(kind: LiveEndedKind.lost, roomKind: LiveRoomKind.meeting, onRejoin: () {}, onClose: () {}),
+            LiveRoomEndedCard(kind: LiveEndedKind.lost, roomKind: LiveRoomKind.meeting, onClose: () {}),
+            LiveRoomEndedCard(kind: LiveEndedKind.removed, roomKind: LiveRoomKind.meeting, onClose: () {}),
+          ])),
+      act: (t) async {
+        final ar = AppConfig.lang == 'ar';
+        expect(find.textContaining(ar ? 'بالاجتماع' : 'to the meeting'), findsOneWidget);
+        expect(find.textContaining(ar ? 'في الاجتماع' : 'in the meeting'), findsOneWidget);
+        expect(find.textContaining(ar ? 'هذا الاجتماع' : 'this meeting'), findsOneWidget);
+        expect(find.textContaining(ar ? 'الجلسة' : 'session'), findsNothing);
+      },
+    );
   });
 
   testWidgets('Rejoin only for a lost connection; the buttons answer', (t) async {

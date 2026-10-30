@@ -1,11 +1,11 @@
 // lib/features/student/home/home_live.dart — the home's "Live now" banner, wired (student · instructor · org member).
 //
 //   HomeLiveNow(rooms:, now:)    HomeLiveBanner over MeHomeService.liveNow (or the given rooms): one card per room
-//                                I'm invited to that is live — Join goes straight into the pre-join page, which
-//                                joins by itself (JoinArgs.autoJoin). It appears and leaves on its own: the service
+//                                I'm invited to that is live — Join opens the pre-join page, where the person
+//                                presses Join (D-106: never by itself). It appears and leaves on its own: the service
 //                                reloads the home on `session_live` / `meeting_live` (no timer, no extra request on
 //                                open or pull-to-refresh).
-//   joinHomeLiveRoom(context, r) a course session → openCourseLiveRoom · a meeting → openMeetingRoom (autoJoin)
+//   joinHomeLiveRoom(context, r) a course session → openCourseLiveRoom · a meeting → openMeetingRoom
 //   homeLiveItemsOf(context, …)  MeLiveRoom → HomeLiveItem (plain values; layout / render tests)
 //
 // Kill switch: a session room hides with `live_sessions` (the course page's live entries hide with it too).
@@ -24,7 +24,7 @@ import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 /// The feature key that hides a course session's live entries.
 const kLiveSessionsFeatureKey = 'live_sessions';
 
-/// Into the room of [r]: the pre-join page, which presses Join by itself once the devices are ready.
+/// Into the room of [r]: its pre-join page (camera / microphone check, then the person presses Join, D-106).
 Future<void> joinHomeLiveRoom(BuildContext context, MeLiveRoom r) async {
   if (GuestState.active) return;
   if (r.isMeeting) {
@@ -38,7 +38,6 @@ Future<void> joinHomeLiveRoom(BuildContext context, MeLiveRoom r) async {
         'is_owner': false,
         'owner': {'name': ?r.hostName},
       },
-      autoJoin: true,
       canRecord: false,
       isHost: false,
     );
@@ -50,7 +49,6 @@ Future<void> joinHomeLiveRoom(BuildContext context, MeLiveRoom r) async {
     courseId: r.courseId ?? 0,
     sessionName: r.title.isEmpty ? null : r.title,
     hostName: r.hostName,
-    autoJoin: true,
   );
 }
 

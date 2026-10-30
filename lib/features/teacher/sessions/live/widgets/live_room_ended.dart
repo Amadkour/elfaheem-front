@@ -14,14 +14,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 import '../../../../admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/shared/live/live_room.dart' show LiveRoomKind;
+import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 import 'live_palette.dart';
 
 enum LiveEndedKind { lost, removed, otherDevice }
 
 class LiveRoomEndedCard extends StatelessWidget {
-  const LiveRoomEndedCard({super.key, required this.kind, this.onRejoin, required this.onClose});
+  const LiveRoomEndedCard(
+      {super.key, required this.kind, this.onRejoin, required this.onClose, this.roomKind = LiveRoomKind.session});
 
   final LiveEndedKind kind;
+
+  /// A course session («الجلسة») or a calendar meeting («الاجتماع», D-106).
+  final LiveRoomKind roomKind;
 
   /// Null hides Rejoin (always for [LiveEndedKind.removed] / [LiveEndedKind.otherDevice]; for a lost connection
   /// when the room was not opened from a pre-join page that can join again).
@@ -30,18 +36,31 @@ class LiveRoomEndedCard extends StatelessWidget {
 
   String get _title => switch (kind) {
         LiveEndedKind.lost => t('انقطع الاتصال', 'Connection lost'),
-        LiveEndedKind.removed => t('أخرجك المضيف من الجلسة', 'You were removed by the host'),
+        LiveEndedKind.removed => liveT(roomKind,
+            ar: 'أخرجك المضيف من الجلسة',
+            en: 'You were removed by the host',
+            meetingAr: 'أخرجك المضيف من الاجتماع',
+            meetingEn: 'You were removed by the host'),
         LiveEndedKind.otherDevice => t('دخلت بهذا الحساب من جهاز آخر', 'This account joined from another device'),
       };
 
   String get _body => switch (kind) {
         LiveEndedKind.lost => onRejoin != null
-            ? t('انقطع اتصالك بالجلسة المباشرة. اضغط «إعادة الانضمام» للعودة بنفس إعدادات الميكروفون والكاميرا.',
-                'Your connection to the live session dropped. Tap Rejoin to come back with the same microphone and camera settings.')
-            : t('لم نتمكن من إبقائك في الجلسة. تحقق من الإنترنت وادخل مجدداً.',
-                "We couldn't keep you in the session. Check your internet and join again."),
-        LiveEndedKind.removed => t('أخرجك المضيف من هذه الجلسة المباشرة. تواصل معه إن كنت تظن أن هذا خطأ.',
-            'The host removed you from this live session. Contact them if you think this is a mistake.'),
+            ? liveT(roomKind,
+                ar: 'انقطع اتصالك بالجلسة المباشرة. اضغط «إعادة الانضمام» للعودة بنفس إعدادات الميكروفون والكاميرا.',
+                en: 'Your connection to the live session dropped. Tap Rejoin to come back with the same microphone and camera settings.',
+                meetingAr: 'انقطع اتصالك بالاجتماع. اضغط «إعادة الانضمام» للعودة بنفس إعدادات الميكروفون والكاميرا.',
+                meetingEn: 'Your connection to the meeting dropped. Tap Rejoin to come back with the same microphone and camera settings.')
+            : liveT(roomKind,
+                ar: 'لم نتمكن من إبقائك في الجلسة. تحقق من الإنترنت وادخل مجدداً.',
+                en: "We couldn't keep you in the session. Check your internet and join again.",
+                meetingAr: 'لم نتمكن من إبقائك في الاجتماع. تحقق من الإنترنت وادخل مجدداً.',
+                meetingEn: "We couldn't keep you in the meeting. Check your internet and join again."),
+        LiveEndedKind.removed => liveT(roomKind,
+            ar: 'أخرجك المضيف من هذه الجلسة المباشرة. تواصل معه إن كنت تظن أن هذا خطأ.',
+            en: 'The host removed you from this live session. Contact them if you think this is a mistake.',
+            meetingAr: 'أخرجك المضيف من هذا الاجتماع. تواصل معه إن كنت تظن أن هذا خطأ.',
+            meetingEn: 'The host removed you from this meeting. Contact them if you think this is a mistake.'),
         LiveEndedKind.otherDevice => t(
             'يمكن للحساب الواحد أن يكون في الغرفة من جهاز واحد فقط. أكمل من الجهاز الآخر، أو اخرج منه ثم ادخل من هنا.',
             'One account can be in the room from one device at a time. Carry on on the other device, or leave it there and join again here.'),

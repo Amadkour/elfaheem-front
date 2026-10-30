@@ -44,6 +44,7 @@ import 'widgets/live_reactions.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart';
 import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
 // Host controls (live hardening L2): docs/live/teacher_controls_wiring.md, the "Host controls" region below
@@ -735,9 +736,9 @@ class _RoomPageState extends State<RoomPage>
     final code = ex.code ?? (detail is Map ? detail['code'] : detail)?.toString();
     switch (code) {
       case 'guest_not_found':
-        return 'lr_guest_not_found'.tr;
+        return liveTr('lr_guest_not_found', widget.ref.kind);
       case 'live_not_started':
-        return 'lr_live_not_started'.tr;
+        return liveTr('lr_live_not_started', widget.ref.kind);
     }
     return ex.message;
   }
@@ -770,9 +771,9 @@ class _RoomPageState extends State<RoomPage>
 
   Future<void> _guestKick(String identity, String name) async {
     final yes = await appConfirm(context,
-        message: trp('lr_remove_guest_confirm', {'name': name}),
+        message: liveTrp('lr_remove_guest_confirm', {'name': name}, widget.ref.kind),
         danger: true,
-        confirmLabel: 'lr_remove_guest'.tr);
+        confirmLabel: liveTr('lr_remove_guest', widget.ref.kind));
     if (!yes || !mounted) return;
     final ok = await _guestCall(identity, 'kick', okMsg: 'lr_guest_removed'.tr);
     if (ok) _hands.drop(identity);
@@ -1333,6 +1334,9 @@ class _RoomPageState extends State<RoomPage>
   @override
   void initState() {
     super.initState();
+    // D-106: every text of the room (and of the leaf widgets that read LiveRoomWords.current) speaks of a meeting
+    // («اجتماع») or a course session («الحصة»).
+    LiveRoomWords.enter(widget.ref.kind);
     AppAssistant.hide(); // full screen: no floating assistant bubble
     _setUpListeners();
     // Android: share stopped from the system UI, phone calls (RoomScreenShareMixin).
@@ -1545,6 +1549,7 @@ class _RoomPageState extends State<RoomPage>
 
   @override
   void dispose() {
+    LiveRoomWords.leave(widget.ref.kind);
     _sortThrottle.dispose();
     _sortRecheck?.cancel();
     _lifecycle?.dispose();
@@ -1714,7 +1719,7 @@ class _RoomPageState extends State<RoomPage>
       // NOT depend on whether background uploads have finished yet.
       if (kIsWeb && !rec.webHadRealData && mounted) {
         _showSnack(
-          'lr_no_recording_saved'.tr,
+          liveTr('lr_no_recording_saved', widget.ref.kind),
         );
       }
     }
@@ -2110,7 +2115,7 @@ class _RoomPageState extends State<RoomPage>
           await showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (_) => const _SessionEndedDialog(),
+            builder: (_) => _SessionEndedDialog(kind: widget.ref.kind),
           );
         } else if (mounted &&
             (action == LiveDisconnectAction.rejoin ||
@@ -2130,6 +2135,7 @@ class _RoomPageState extends State<RoomPage>
                   backgroundColor: Colors.transparent,
                   child: LiveRoomEndedCard(
                     kind: kind,
+                    roomKind: widget.ref.kind,
                     onRejoin: kind == LiveEndedKind.lost && rejoin != null ? () => Navigator.of(ctx).pop(true) : null,
                     onClose: () => Navigator.of(ctx).pop(false),
                   ),
@@ -2384,7 +2390,8 @@ class _RoomPageState extends State<RoomPage>
       final teacherName = local?.name.isNotEmpty == true
           ? local!.name
           : (local?.identity ?? '');
-      final sessionTitle = widget.sessionName ?? 'lr_live_session'.tr;
+      final name = (widget.sessionName ?? '').trim();
+      final sessionTitle = name.isNotEmpty ? name : liveTr('lr_live_session', widget.ref.kind);
       final participantCount = widget.room.remoteParticipants.length + 1;
       await _recorder!.startWebCompositor(
         teacherName: teacherName,
@@ -3796,7 +3803,11 @@ class _RoomPageState extends State<RoomPage>
             ? (_isBoardMain
                 ? t('يمكنك الآن الكتابة والرسم على السبورة', 'You can now write and draw on the whiteboard')
                 : t('يمكنك الآن الرسم على الشاشة المشتركة', 'You can now draw on the shared screen'))
-            : t('أوقف المعلّم الرسم للطلاب', 'The teacher turned drawing off'));
+            : liveT(widget.ref.kind,
+                ar: 'أوقف المعلّم الرسم للطلاب',
+                en: 'The teacher turned drawing off',
+                meetingAr: 'أوقف المضيف الرسم',
+                meetingEn: 'The host turned drawing off'));
       }
     }
     // Drawing taken away (permission, burned-in mode, the share ended): the toolbar closes.
@@ -4833,7 +4844,7 @@ class _RoomPageState extends State<RoomPage>
         ),
         PopupMenuItem(
           value: 'kick',
-          child: _menuRow(Icons.person_remove_rounded, 'lr_remove_guest'.tr, color: _rose),
+          child: _menuRow(Icons.person_remove_rounded, liveTr('lr_remove_guest'), color: _rose),
         ),
       ],
     );
@@ -5394,7 +5405,7 @@ class _ParticipantRow extends StatelessWidget {
                 Row(
                   children: [
                     if (isTeacher)
-                      _MiniTag(label: 'teacher'.tr, color: _cyan)
+                      _MiniTag(label: liveRoleLabel(host: true), color: _cyan)
                     else if (isGuest) ...[
                       _MiniTag(label: 'lr_guest'.tr, color: LivePalette.warning),
                       if (isOnline) ...[
@@ -6459,7 +6470,7 @@ void _showAllParticipantsDialog(BuildContext context, List<_TeamsTileData> tiles
                       ),
                     ),
                     subtitle: Text(
-                      t.isHost ? 'teacher'.tr : 'student'.tr,
+                      liveRoleLabel(host: t.isHost),
                       style: TextStyle(
                           fontFamily: AppFonts.family, color: _textLow, fontSize: 12),
                     ),
@@ -6582,7 +6593,7 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                     color: (data.isHost ? _cyan : _emerald).withValues(alpha: 0.5)),
               ),
               child: Text(
-                data.isHost ? 'teacher'.tr : 'student'.tr,
+                liveRoleLabel(host: data.isHost),
                 style: TextStyle(
                   fontFamily: AppFonts.family,
                   color: data.isHost ? _cyan : _emerald,
@@ -6767,7 +6778,10 @@ class _GlassBadge extends StatelessWidget {
 }
 
 class _SessionEndedDialog extends StatelessWidget {
-  const _SessionEndedDialog();
+  const _SessionEndedDialog({this.kind = LiveRoomKind.session});
+
+  /// «انتهت الحصة» for a course session, «انتهى الاجتماع» for a meeting (D-106).
+  final LiveRoomKind kind;
 
   @override
   Widget build(BuildContext context) => Dialog(
@@ -6802,7 +6816,7 @@ class _SessionEndedDialog extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'lr_teacher_ended_title'.tr,
+            liveTr('lr_teacher_ended_title', kind),
             style: TextStyle(
               fontFamily: AppFonts.family,
               color: _textHigh,
@@ -6812,7 +6826,7 @@ class _SessionEndedDialog extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'lr_teacher_ended_msg'.tr,
+            liveTr('lr_teacher_ended_msg', kind),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: AppFonts.family,

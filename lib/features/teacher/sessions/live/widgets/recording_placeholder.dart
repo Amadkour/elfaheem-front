@@ -16,6 +16,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 
+import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 import 'live_avatar.dart';
 import 'live_palette.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -78,7 +79,7 @@ class RecordingPlaceholderFrame extends StatelessWidget {
           final wide = w >= 720 && w > h * 1.15;
           final tint = LivePalette.avatarColor(host.name);
           final bg = LivePalette.bg;
-          final title = (sessionTitle?.trim().isNotEmpty ?? false) ? sessionTitle!.trim() : 'lr_live_session'.tr;
+          final title = (sessionTitle?.trim().isNotEmpty ?? false) ? sessionTitle!.trim() : liveTr('lr_live_session');
 
           final hero = _Hero(host: host, title: title, short: math.min(w, h), onTap: onTapHost);
           final roster = _Roster(others: others, onTap: onTapOther, onTapOverflow: onTapOverflow);

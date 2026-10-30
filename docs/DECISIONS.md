@@ -1403,3 +1403,30 @@ is shown in the reader's language; Go live sends no name when the teacher typed 
 **Rejected.** A full-bleed coloured hero on every home (it fought the live state for attention); keeping the cover
 grid on phones for the lists (half the screen per course, titles cut to one line); a separate sessions widget per role
 (the two pages drifted apart before); Arabic-Indic digits everywhere (clocks, counts and server text are already 0-9).
+
+## D-106 — The pre-join page never joins by itself; a meeting's live texts say «اجتماع» · 2026-10-30 · accepted (owner)
+
+**Context.** The owner: "don't move from the pre-join screen to the live screen automatically, the user must click
+the Join button", and "when joining a free meeting change «الحصة» to «اجتماع»". `JoinArgs.autoJoin` pressed Join as
+soon as the devices were ready for Go live (D-091), the homes' Live now banner, Meet now, the schedule's Join, a
+direct guest link and the Rejoin after a lost connection, so people landed in a room before checking their camera and
+microphone. The room's words were written for course sessions («انضم للحصة», «انتهت الحصة», "Session Ended", Teacher /
+Student tags), so a calendar meeting said «حصة» everywhere.
+**Decision.** `PreJoinPage` ALWAYS waits for the person: the camera / microphone preview and device pickers, then Join —
+the page's one primary button (54 px, filled primary), which holds the keyboard focus so Enter presses it on the web
+and desktop, and takes the focus back after a failed or cancelled join. `JoinArgs.autoJoin` stays as a deprecated,
+ignored parameter for source compatibility; no caller passes it; `openMeetingRoom` / `openCourseLiveRoom` lost theirs.
+A Rejoin opens the pre-join page with the room's mic / camera choice and waits too. After Join, a 202 `waiting` still
+follows the lobby by itself. A guest's DIRECT link still skips the name step on the landing page (it goes on to the
+pre-join page, which waits). Room texts follow the room's kind (`LiveRoomRef.kind`, from `JoinArgs.roomRef` or the
+`-meetingId` convention): `live_room_words.dart` — `liveTr(key, kind)` reads `<key>_meeting` from translation.json
+for a meeting (26 paired keys), `liveT(kind, ar:, en:, meetingAr:, meetingEn:)` for inline texts, `liveRoleLabel`
+(Host / Participant in a meeting), `liveRoomNoun`. Each meeting text carries its own Arabic grammar (masculine
+«الاجتماع»: «انتهى الاجتماع», «هذا الاجتماع», «قد يتم تسجيله»), never the session text with the noun swapped. RoomPage sets
+`LiveRoomWords.current` while mounted, so leaf texts deep in the room (the background-call notification, the whiteboard
+export hint, the share sheet, the recording banner) follow it without the kind threaded through every widget. Course
+sessions keep their texts.
+**Rejected.** Keeping auto-join for "Meet now" or Go live only (the owner asked for every entry, and the preview is the
+one chance to fix a wrong camera or a muted microphone); swapping «الحصة» for «الاجتماع» inside one string (gender
+agreement breaks: «انتهت الاجتماع»); an InheritedWidget for the kind (the room's dialogs and sheets live in the room
+layer's own Navigator, outside the page's subtree).
