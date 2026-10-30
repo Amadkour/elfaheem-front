@@ -163,6 +163,73 @@ Offset selfViewDragClamp({required Size stage, required Size box, required Offse
     );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Over the shared content (D-105)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// A shared screen is drawn `contain` inside the share view: a phone's portrait screen is a narrow column in the middle
+// of a laptop's stage, a laptop's 16:9 screen a band across a phone's. A camera box placed by the stage's edges then
+// floated in the empty bars beside or under the picture — never in front of the shared content. While a share fills
+// the stage the presenter's camera (viewers, D-094) and the presenter's own self-view hug the corner of the PICTURE
+// instead, scaled down when the picture is small.
+
+/// Where the share view draws the video on its stage (the room's _PremiumScreenShareView: 12 px around, the presenter
+/// bar's 72 px under it, a 1.5 px border).
+const EdgeInsets kShareVideoInsets = EdgeInsets.fromLTRB(13.5, 13.5, 13.5, 73.5);
+
+/// The shared picture on [stage]: a frame of [aspect] (width / height) fitted `contain` into the share view's video
+/// area. Null when the aspect is unknown or the stage has no room.
+Rect? shareContentRect(Size stage, double? aspect, {EdgeInsets insets = kShareVideoInsets}) {
+  if (aspect == null || !aspect.isFinite || aspect <= 0) return null;
+  final area = insets.deflateRect(Offset.zero & stage);
+  if (area.width <= 0 || area.height <= 0) return null;
+  final w = math.min(area.width, area.height * aspect);
+  final h = w / aspect;
+  return Rect.fromCenter(center: area.center, width: w, height: h);
+}
+
+/// The gap between the picture's edge and the box.
+const double kOverContentInset = 10;
+
+/// The box over the picture takes at most this share of the picture's width / height (the rest stays readable).
+const double kOverContentMaxWidth = 0.55;
+const double kOverContentMaxHeight = 0.45;
+
+/// Below this (its shorter side, px) a box over the picture is too small to see a face: it stays by the stage's edges.
+const double kOverContentMinSide = 52;
+
+/// The box and its keep-out while it floats over the shared picture [content] (stage coordinates): the keep-out
+/// becomes the picture's inside (inset [kOverContentInset], never past [keepOut]'s own limits) and the box shrinks to
+/// at most [kOverContentMaxWidth] × [kOverContentMaxHeight] of it. Null — keep the stage's placement — when the
+/// picture is unknown or too small for a box of at least [kOverContentMinSide].
+({Size box, SelfViewKeepOut keepOut})? selfViewOverContent({
+  required Size stage,
+  required Size box,
+  required SelfViewKeepOut keepOut,
+  required Rect? content,
+}) {
+  if (content == null || content.isEmpty || box.isEmpty || stage.isEmpty) return null;
+  final inner = Rect.fromLTRB(
+    math.max(content.left + kOverContentInset, keepOut.base.left),
+    math.max(content.top + kOverContentInset, keepOut.base.top),
+    math.min(content.right - kOverContentInset, stage.width - keepOut.base.right),
+    math.min(content.bottom - kOverContentInset, stage.height - keepOut.base.bottom),
+  );
+  if (inner.width <= 0 || inner.height <= 0) return null;
+  final k = math.min(
+    1.0,
+    math.min(inner.width * kOverContentMaxWidth / box.width, inner.height * kOverContentMaxHeight / box.height),
+  );
+  final scaled = Size(box.width * k, box.height * k);
+  if (scaled.shortestSide < kOverContentMinSide) return null;
+  return (
+    box: scaled,
+    keepOut: SelfViewKeepOut(
+      base: EdgeInsets.fromLTRB(inner.left, inner.top, stage.width - inner.right, stage.height - inner.bottom),
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Preferences (device-local)
 // ─────────────────────────────────────────────────────────────────────────────
 
