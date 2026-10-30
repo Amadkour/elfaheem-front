@@ -17976,5 +17976,81 @@
   "lr_self_view_shape_toggle": {
     "en": "Preview shape",
     "ar": "شكل المعاينة"
+  },
+  "course_list_live": {
+    "en": "Live",
+    "ar": "مباشر"
+  },
+  "course_list_recorded": {
+    "en": "Recorded",
+    "ar": "مسجّل"
+  },
+  "course_list_lessons_1": {
+    "en": "1 lesson",
+    "ar": "محاضرة واحدة"
+  },
+  "course_list_lessons_2": {
+    "en": "2 lessons",
+    "ar": "محاضرتان"
+  },
+  "course_list_lessons_few": {
+    "en": "{n} lessons",
+    "ar": "{n} محاضرات"
+  },
+  "course_list_lessons_many": {
+    "en": "{n} lessons",
+    "ar": "{n} محاضرة"
+  },
+  "course_list_hours": {
+    "en": "{n} h",
+    "ar": "{n} ساعة"
+  },
+  "course_list_in_progress": {
+    "en": "In progress",
+    "ar": "قيد الدراسة"
+  },
+  "course_list_more": {
+    "en": "More options",
+    "ar": "خيارات أخرى"
+  },
+  "course_list_new": {
+    "en": "New course",
+    "ar": "كورس جديد"
+  },
+  "course_list_browse": {
+    "en": "Browse courses",
+    "ar": "تصفّح الكورسات"
+  },
+  "course_list_clear_search": {
+    "en": "Clear search",
+    "ar": "مسح البحث"
+  },
+  "course_list_empty": {
+    "en": "No courses here yet",
+    "ar": "لا توجد كورسات هنا بعد"
+  },
+  "course_list_not_found": {
+    "en": "No courses match your search",
+    "ar": "لا توجد كورسات مطابقة"
+  },
+  "course_list_progress_sem": {
+    "en": "{n}% complete",
+    "ar": "أُنجز {n}٪"
+  },
+  "course_list_students_sem": {
+    "en": "{n} students",
+    "ar": "{n} طالب"
+  },
+  "course_list_sessions_sem": {
+    "en": "{n} sessions",
+    "ar": "{n} محاضرة"
+  },
+  "course_list_rating_sem": {
+    "en": "Rating {n}",
+    "ar": "التقييم {n}"
+  },
+  "favorite": {
+    "en": "Favorite",
+    "ar": "مفضّل"
   }
 }

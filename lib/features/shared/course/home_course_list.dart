@@ -5,6 +5,7 @@ import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+import 'course_list_card.dart';
 import 'course_row.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 
@@ -86,97 +87,68 @@ class _HomeCourseListState extends State<HomeCourseList> {
     });
   }
 
-  Widget _card(CourseModel c) {
-    final card = CourseCard(
-      course: c,
-      pageName: widget.pageName,
-      fixedWidth: 188,
-      isTeacher: widget.isTeacher,
-      fullScreen: true,
-      onTap: (CourseModel c) => widget.onTap.call(c),
-    );
-    final badge = widget.badgeFor?.call(c);
-    if (badge == null) return card;
-    return LayoutBuilder(
-      builder: (context, box) => Stack(children: [
-        Positioned.fill(child: card),
-        // the card's corners hold the heart (top left), type (top right), private flag and price (bottom)
-        Positioned(
-          top: 42,
-          left: 10,
-          child: IgnorePointer(
-            child: ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth * 0.58), child: badge),
-          ),
-        ),
-      ]),
-    );
-  }
+  Widget _card(CourseModel c, CourseCardShape shape) => CourseCard(
+        key: ValueKey('course-${c.id}'),
+        course: c,
+        pageName: widget.pageName,
+        isTeacher: widget.isTeacher,
+        fullScreen: true,
+        shape: shape,
+        // a mixed list says on every card where the course lives (it leads the card's meta line)
+        badge: widget.badgeFor?.call(c),
+        onTap: (CourseModel c) => widget.onTap.call(c),
+      );
 
   @override
   Widget build(BuildContext context) {
-    final cols = context.screenW >= 700 ? 3 : 2;
-    // Cell height is computed from the card's own content (image + info area)
-    // instead of a fixed aspect ratio, so nothing overflows or wastes space.
-    final gridW = math.min(context.screenW, Breakpoints.contentMax);
-    final cellW = (gridW - 40 - 14 * (cols - 1)) / cols;
-    final delegate = SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: cols,
-      crossAxisSpacing: 14,
-      mainAxisSpacing: 14,
-      mainAxisExtent: CourseCard.cellHeight(context, cellW),
-    );
-
-    Widget body;
-    if (_paged) {
-      body = CustomScrollView(
-        controller: _scroll,
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-            sliver: SliverGrid(
-              gridDelegate: delegate,
-              delegate: SliverChildBuilderDelegate(
-                    (_, i) => _card(widget.courses[i]),
-                childCount: widget.courses.length,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: PagedListFooter(
-                loadingMore: widget.loadingMore,
-                hasMore: widget.hasMore,
-              ),
-            ),
-          ),
-        ],
-      );
-      if (widget.onRefresh != null) {
-        body = AppRefresh(onRefresh: widget.onRefresh!, child: body);
-      }
-    } else {
-      // Old behaviour (home screen etc.)
-      body = GridView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-        physics: const BouncingScrollPhysics(),
-        shrinkWrap: true,
-        gridDelegate: delegate,
-        itemCount: widget.courses.length + (widget.hasMore ? 1 : 0),
-        itemBuilder: (_, i) => i >= widget.courses.length
-            ? Center(child: AppLoadingIndicator())
-            : _card(widget.courses[i]),
-      );
-    }
-
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: Breakpoints.contentMax),
-        child: body,
+        constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
+        child: LayoutBuilder(builder: (context, box) {
+          // rows on a phone, a grid of tiles once there is room (course_list_card.dart)
+          final width = math.max(0.0, box.maxWidth - 32);
+          final cards = CourseCardSliver(
+            width: width,
+            count: widget.courses.length,
+            itemBuilder: (_, i, shape) => _card(widget.courses[i], shape),
+          );
+
+          if (_paged) {
+            Widget body = CustomScrollView(
+              controller: _scroll,
+              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+              slivers: [
+                SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), sliver: cards),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: PagedListFooter(loadingMore: widget.loadingMore, hasMore: widget.hasMore),
+                  ),
+                ),
+              ],
+            );
+            if (widget.onRefresh != null) body = AppRefresh(onRefresh: widget.onRefresh!, child: body);
+            return body;
+          }
+          // Inside a page's own scroll (the home, categories) the list sizes itself; given a height (favourites)
+          // it scrolls.
+          final own = box.hasBoundedHeight;
+          return CustomScrollView(
+            shrinkWrap: !own,
+            physics: own
+                ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
+                : const NeverScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 0), sliver: cards),
+              if (widget.hasMore)
+                SliverToBoxAdapter(
+                  child: Padding(padding: const EdgeInsets.all(16), child: Center(child: AppLoadingIndicator())),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          );
+        }),
       ),
     );
   }
