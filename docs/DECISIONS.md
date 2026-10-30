@@ -1557,3 +1557,32 @@ moving the origin or rewriting every item when growing left (every stroke jumps 
 an extent message on the wire (the reach follows from the content and the presenter's view, as the length does in
 D-093); keeping `bv: 2` and letting older apps clamp (they would show a wrong drawing silently); an unbounded width (no
 bound for snapshots, exports and the recording).
+
+## D-104 — Course video: quality switches in place; "Listen only" is a bar at the top of the app · 2026-10-30 · proposed
+
+**Context.** The owner: switching the video quality closed the video; add an option to only listen to the recording,
+shrunk to a progress bar at the top of the whole app, so the person can move to any screen and let the phone screen
+sleep. Root cause of the closing: since D-081 a bottom sheet opened from inside a tab goes to the ROOT navigator while
+the player is a page of the TAB's navigator, and the quality / speed sheets closed themselves with
+`Navigator.pop(playerContext)` — that popped the tab's top page, the player, and left the sheet open.
+**Decision.** (1) The player's sheets go through `showVodPicker`, which closes the sheet with its own context and returns
+the choice. A stream switch (`_switchVariant`) opens the new stream next to the old one (`openVodController`), carries
+the place, play / pause, speed and captions (`VodCarry`), shows "Switching quality…" over the last frame, and on a
+failure keeps the old stream playing with a notice instead of the error screen. (2) "Listen" in the player's top bar
+hands the playing controller to `VodListenSession` and closes the page — nothing is disposed, so no second
+POST …/play (a counted view). The session moves to the lecture's audio track (paired with the quality on screen),
+else the lightest video tier, so no picture is decoded for nobody; Expand pushes the player again with the same
+controller and goes back to the stream it showed. `VodListenLayer` sits in MaterialApp.builder OUTSIDE the assistant,
+banners and live-room layer: the bar takes the status bar and everything else is laid out below it (keyed slot, no
+Navigator rebuild), so nothing covers it and it covers nothing. Wakelock is released; `allowBackgroundPlayback` keeps
+the sound with the screen off. The window is not screen-protected while only the bar shows (no picture is drawn;
+FLAG_SECURE never blocked audio capture anyway); the protection comes back with the player. One sound at a time:
+`MediaFocus` — opening another lecture's player or a live room (RoomPage) stops the bar; signing out stops it. The
+resume position is saved every 5 s, on leaving the app and on close; the 75 % "watched" mark still counts. The bar is
+PAINTED after the app (a bottom-up Column): a route's modal barrier (BlockSemantics) drops the semantics of whatever is
+painted before the Navigator, which made the bar's buttons unreachable for screen readers and dead on the web while
+semantics are on (found in the real web build). ViewAsBanner and the offline banner are built the old way and likely
+have the same problem (not changed here).
+**Rejected.** Making the player a non-route host like the live room (D-059) — a larger change to every caller for the
+same result; an overlay bar drawn over the pages (it would cover app bars and back buttons); a media notification and
+lock-screen controls (needs `audio_service`, a new package — follow-up); keeping the picture stream in listen mode.
