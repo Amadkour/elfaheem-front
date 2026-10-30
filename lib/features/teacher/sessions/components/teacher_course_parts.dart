@@ -15,7 +15,6 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../design/app_kit.dart' show AppPrimaryButton;
 import '../../../shared/course/course_price_tag.dart';
 import '../../../shared/course/course_space/course_space.dart';
-import '../../../student/models.dart' show AppCurrencyX;
 import '../../home/teacher_models.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -64,7 +63,7 @@ class TeacherCourseStatusCard extends StatelessWidget {
                           published ? _t('منشور', 'Published') : _t('مسودة', 'Draft'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w800, color: tone),
+                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w600, color: tone),
                         ),
                       ),
                     ],
@@ -84,7 +83,7 @@ class TeacherCourseStatusCard extends StatelessWidget {
                           '${rate.average.toStringAsFixed(1)} (${rate.total})',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w800, color: c.textDark),
+                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600, color: c.textDark),
                         ),
                       ),
                     ],
@@ -111,7 +110,7 @@ class TeacherCourseStatusCard extends StatelessWidget {
                 originalPrice: course.price,
                 finalPrice: course.finalPrice ?? 0,
                 discountActive: course.discountActive ?? false,
-                format: course.currency.format,
+                format: (v) => coursePriceLabel(course.currency, v),
                 fontSize: 26,
                 originalFontSize: 13,
               ),
@@ -171,10 +170,10 @@ class TeacherCourseDetails extends StatelessWidget {
         course.tools.isEmpty &&
         course.certificates.isEmpty;
 
+    // ONE card, its sections split by hairlines
     return Padding(
       padding: const EdgeInsets.fromLTRB(kCourseGutter, 4, kCourseGutter, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: CourseInfoGroup(
         children: [
           if (empty)
             CourseInfoSection(
@@ -303,7 +302,7 @@ class _HoursProgress extends StatelessWidget {
         Text(
           _t('${courseHoursLabel(done)} من ${courseHoursLabel(planned)} ساعة مخططة',
               '${courseHoursLabel(done)} of ${courseHoursLabel(planned)} planned hours'),
-          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w700, color: c.textDark),
+          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w500, color: c.textDark),
         ),
         const SizedBox(height: 8),
         Row(
@@ -322,7 +321,7 @@ class _HoursProgress extends StatelessWidget {
             const SizedBox(width: 10),
             Text(
               '${(v * 100).round()}%',
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w800, color: c.textDark),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w600, color: c.textDark),
             ),
           ],
         ),
@@ -343,8 +342,9 @@ class _ManageButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final tone = color ?? c.primary;
+    final ink = c.isDark ? Color.lerp(tone, c.textDark, 0.4)! : tone;
     return Material(
-      color: tone.withValues(alpha: 0.12),
+      color: tone.withValues(alpha: c.isDark ? 0.2 : 0.1),
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -359,11 +359,11 @@ class _ManageButton extends StatelessWidget {
                   label,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w800, color: tone),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w500, color: ink),
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(icon, size: 13, color: tone),
+              Icon(icon, size: 13, color: ink),
             ],
           ),
         ),
@@ -385,22 +385,25 @@ class TeacherSessionsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ink = c.isDark ? Color.lerp(c.primary, c.textDark, 0.4)! : c.primary;
     return CourseSectionHeader(
-      title: 'sessions'.tr,
+      title: _t('الجلسات', 'Sessions'),
       count: count,
       trailing: count == 0
           ? null
-          : Flexible(
+          : ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
               child: FilledButton.icon(
                 onPressed: onAdd,
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: Text('add_session_btn'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
                 style: FilledButton.styleFrom(
-                  backgroundColor: c.primary,
-                  foregroundColor: c.onHero,
-                  minimumSize: const Size(0, 38),
+                  backgroundColor: c.primary.withValues(alpha: c.isDark ? 0.18 : 0.09),
+                  foregroundColor: ink,
+                  elevation: 0,
+                  minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                  textStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w800),
+                  textStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -417,36 +420,37 @@ class TeacherSessionsEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ink = c.isDark ? Color.lerp(c.primary, c.textDark, 0.4)! : c.primary;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [c.primary.withValues(alpha: 0.07), c.cardBg],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: c.primary.withValues(alpha: 0.16)),
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.divider.withValues(alpha: 0.7)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(gradient: c.primaryGradient, shape: BoxShape.circle, boxShadow: c.primaryShadow),
-            child: Icon(Icons.video_library_rounded, size: 38, color: c.onHero),
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: Icon(Icons.video_library_outlined, size: 28, color: ink),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           Text(
             'no_sessions_yet'.tr,
             textAlign: TextAlign.center,
-            style: c.h3.copyWith(color: c.textDark),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 16, fontWeight: FontWeight.w600, color: c.textDark),
           ),
           const SizedBox(height: 8),
-          Text('add_first_session_hint'.tr, style: c.body, textAlign: TextAlign.center),
-          const SizedBox(height: 22),
+          Text(
+            'add_first_session_hint'.tr,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, height: 1.5, color: c.textMedium),
+          ),
+          const SizedBox(height: 24),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 320),
             child: AppPrimaryButton(label: 'add_first_session_btn'.tr, icon: Icons.add_rounded, onPressed: onAdd),

@@ -1,12 +1,14 @@
 /// features/student/models.dart  —  Student data models v3.2.0
 library;
 
+import 'package:flutter/widgets.dart' show StringCharacters;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/category/model.dart';
 import '../teacher/home/teacher_models.dart';
+import '../shared/course/course_scope.dart' show CourseOrg;
 
 export '../shared/course/discount_info.dart';
 
@@ -142,7 +144,7 @@ class SessionModel {
   factory SessionModel.fromJson(Map<String, dynamic> j) => SessionModel(
     id: j['id'] as int? ?? -1,
     courseId: j['course_id'] as int? ?? 0,
-    name: j['name'] as String? ?? '',
+    name: sessionTitleOf(j),
     description: j['description'] as String? ?? '',
     type: j['type'] as String? ?? 'pre-recorded',
     track: j['track'] as String? ?? 'lecture',
@@ -153,9 +155,7 @@ class SessionModel {
     rateSummary: j.containsKey('rate') && j['rate'] != null
         ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
         : null,
-    scheduledAt: j['scheduled_at'] != null
-        ? (j['scheduled_at'] as String).toLocalSaTime
-        : null,
+    scheduledAt: sessionInstantUtc(j['scheduled_at']),
     createdAt: j['created_at'] != null
         ? (j['created_at'] as String).toLocalSaTime
         : DateTime.now(),
@@ -173,12 +173,15 @@ class SessionModel {
     recordEnabled: recordEnabled,
     courseId: courseId,
     name: name,
+    type: type,
     rateSummary: rateSummary,
     description: description,
     durationMinutes: durationMinutes,
     order: order,
     scheduledAt: scheduledAt,
     isLiveActive: isLiveActive,
+    recordingUrl: recordingUrl,
+    recordingStatus: recordingStatus,
     createdAt: createdAt,
     totalMaterial: totalMaterial,
     completeMaterial: completeMaterial,
@@ -206,6 +209,21 @@ class SessionModel {
     progress: progress,
     rateSummary: rateSummary,
   );
+}
+
+/// A session's `scheduled_at` as the real UTC instant. The server stores naive UTC
+/// ("2026-11-08T06:30:00", no zone), so a string without a zone is read as UTC — the
+/// old `toLocalSaTime` read it as device-local and the course page drew 6:30 for 8:30.
+/// A session's display title: the server flags its own generated titles with `title_auto` (an unnamed live or quick
+/// session, and old rows that follow the old generated patterns), which are shown in the reader's language.
+String sessionTitleOf(Map<String, dynamic> j) =>
+    j['title_auto'] == true ? (AppConfig.lang == 'ar' ? 'حصة مباشرة' : 'Live session') : j['name'] as String? ?? '';
+
+DateTime? sessionInstantUtc(dynamic v) {
+  final s = '${v ?? ''}'.trim();
+  if (s.isEmpty || s == 'null') return null;
+  final hasZone = s.endsWith('Z') || RegExp(r'[+-]\d\d:?\d\d$').hasMatch(s);
+  return DateTime.tryParse(hasZone || s.length <= 10 ? s : '${s}Z')?.toUtc();
 }
 
 // ── TeacherSessionItem ────────────────────────────────────────────────────────
@@ -269,13 +287,11 @@ class TeacherSessionItem {
     return TeacherSessionItem(
       id: j['id'] as int,
       courseId: j['course_id'] as int? ?? 0,
-      name: j['name'] as String? ?? '',
+      name: sessionTitleOf(j),
       description: j['description'] as String?,
       type: j['type'] as String?,
       track: j['track'] as String? ?? 'lecture',
-      scheduledAt: j['scheduled_at'] != null
-          ? (j['scheduled_at'] as String).toLocalSaTime
-          : null,
+      scheduledAt: sessionInstantUtc(j['scheduled_at']),
       createdAt: j['created_at'] != null
           ? (j['created_at'] as String).toLocalSaTime
           : DateTime.now(),
@@ -388,10 +404,14 @@ class TeacherProfileData {
             : null,
       );
 
+  /// Two letters of the name without a title ("Dr. Omar Hassan" → "OH", not "DO" — M22).
   String get initials {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+    const titles = {'dr', 'dr.', 'mr', 'mr.', 'mrs', 'mrs.', 'ms', 'ms.', 'prof', 'prof.', 'eng', 'eng.', 'د', 'د.', 'أ', 'أ.', 'م', 'م.', 'أ.د', 'أ.د.'};
+    var parts = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final named = parts.where((w) => !titles.contains(w.toLowerCase())).toList();
+    if (named.isNotEmpty) parts = named;
+    if (parts.length >= 2) return '${parts[0].characters.first}${parts[1].characters.first}'.toUpperCase();
+    return parts.isNotEmpty ? parts[0].characters.first.toUpperCase() : '?';
   }
 }
 
@@ -523,7 +543,11 @@ class CourseModel with DiscountInfo {
   final int? discountDays;
   final String? titleAr, titleEn, descriptionAr, descriptionEn;
 
+  /// The organization the course belongs to; null = a personal course (or an older server).
+  final CourseOrg? org;
+
   CourseModel({
+    this.org,
     this.isPrivate = false,                                 // constructor
     this.allowResubscribe = true,
     required this.id,
@@ -612,7 +636,7 @@ class CourseModel with DiscountInfo {
     type: j['type'] as String? ?? 'recorded',
     isSubscribed: j['is_subscribed'] as bool? ?? false,
     isFavorite: j['is_favorite'] as bool? ?? false,
-    progress: ((j['progress'] as num?)?.toDouble() ?? 0.0).toInt(),
+    progress: ((j['progress'] as num?)?.toDouble() ?? 0.0).round(), // round like /me/home and analytics (M3)
     materialsTotal: j['materials_total'] as int? ?? 0,
     materialsCompleted: j['materials_completed'] as int? ?? 0,
     schedules: (j['schedules'] as List? ?? [])
@@ -655,6 +679,7 @@ class CourseModel with DiscountInfo {
     titleEn: j['name_en'] as String?,
     descriptionAr: j['description_ar'] as String?,
     descriptionEn: j['description_en'] as String?,
+    org: CourseOrg.fromJson(j['org']),
   );
 
   /// Builds a minimal-but-valid CourseModel from a lightweight summary card
@@ -677,6 +702,7 @@ class CourseModel with DiscountInfo {
   );
 
   TeacherCourse get toTeacherModel => TeacherCourse(
+    org: org,
     titleAr: titleAr,
     titleEn: titleEn,
     descriptionAr: descriptionAr,
@@ -745,6 +771,7 @@ class CourseModel with DiscountInfo {
     discountActive: discountActive,
     discountPercentage: discountPercentage,
     discountDays: discountDays,
+    org: org,
   );
 }
 

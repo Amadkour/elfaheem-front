@@ -10,24 +10,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../models.dart';
 import '../growth_tr.dart';
 
-/// The public URL of a course.
-///
-/// ⚠️ Adjust this ONE line so it matches the link that
-/// `DeepLinkService.shareCourse` builds / your web router expects.
-String courseShareUrl(CourseModel course) =>
-    '${Uri.base.origin}/course/${course.id}';
+/// The public URL of a course: the same `/c/<id>?ref=<sharer>` link `DeepLinkService.shareCourse` builds
+/// (the only form the router and `DeepLinkService.parse` understand), on the site being browsed.
+String courseShareUrl(CourseModel course, {int? sharerId}) {
+  final id = int.tryParse(course.id) ?? 0;
+  final link = DeepLinkService.buildLink(id, sharerId);
+  return kIsWeb ? link.replaceFirst(DeepLinkService.siteBase, Uri.base.origin) : link;
+}
 
 Future<void> shareCourseLink(BuildContext context, CourseModel course) async {
   if (kIsWeb) {
     await showShareLinkDialog(
       context,
-      url: courseShareUrl(course),
+      url: courseShareUrl(course, sharerId: context.read<MyAuthProvider>().currentUser?.id),
       title: (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
     );
     return;

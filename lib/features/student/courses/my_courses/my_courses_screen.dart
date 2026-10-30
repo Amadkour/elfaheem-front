@@ -1,23 +1,27 @@
-import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/app_config.dart' as Helpers;
-import '../../../../config/theme/theme_config_provider.dart';
+import '../../../../config/app_config.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/paged_progress.dart';
-import '../../../../utils/widget/search_text_field.dart';
+import '../../../shared/course/course_list_card.dart';
 import '../../../shared/course/home_course_list.dart';
 import '../../models.dart';
-import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
+import '../list/courses_list_screen.dart';
 import 'my_courses_provider.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgCoursesScreen;
+import 'package:flutter_education_app/features/shared/course/course_scope.dart';
+import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
+import 'package:flutter_education_app/design/home_kit.dart' show homeCardWidth, kHomeWideMax;
 
+/// The student's "My courses": which side (scope chips, only when the courses live on several), then ONE calm
+/// toolbar (search · All / In progress / Completed with their counts), then the shared course cards
+/// (course_list_card.dart: rows on a phone, a grid of tiles wider).
 class MyCoursesScreen extends StatefulWidget {
   const MyCoursesScreen({super.key, required this.courses});
   final List<CourseModel> courses;
@@ -60,32 +64,37 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      key: const ValueKey('my_courses'),
-      appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
-      useWebCard: true,
-      child: SafeArea(
+    // a desktop window: the home's wide calm card (the grid gets four columns instead of a narrow strip)
+    return LayoutBuilder(
+      builder: (context, area) => BasePage(
+        key: const ValueKey('my_courses'),
+        appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
+        useWebCard: true,
+        maxWith: homeCardWidth(area.maxWidth),
+        child: SafeArea(child: MyCoursesBody(controller: _search)),
+      ),
+    );
+  }
+}
+
+/// The page under the app bar (also what the visual renders pump with a seeded provider).
+class MyCoursesBody extends StatelessWidget {
+  const MyCoursesBody({super.key, required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: kHomeWideMax),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints:
-                  const BoxConstraints(maxWidth: Breakpoints.contentMax),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 16),
-                      const ParentComponent(
-                          featureKey: 'my_courses.stats', child: _StatsRow()),
-                      const SizedBox(height: 14),
-                      Expanded(child: _CourseList(controller: _search)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            const _ScopeBar(),
+            _Toolbar(controller: controller),
+            Expanded(child: _CourseList(controller: controller)),
           ],
         ),
       ),
@@ -93,191 +102,66 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
   }
 }
 
-// ── Stat cards ────────────────────────────────────────────────────────────────
+// ── Scope chips ───────────────────────────────────────────────────────────────
 
-class _StatsRow extends StatelessWidget {
-  const _StatsRow();
+/// All · Personal · each organization, with counts — drawn only when the student's courses live on more than one
+/// side (or Organization mode is open). A chip changes this list only, never the app mode; the list opens on the
+/// mode's side (MyCoursesProvider.scope).
+class _ScopeBar extends StatelessWidget {
+  const _ScopeBar();
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<MyCoursesProvider>();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          _StatCard(
-            label: 'registered_courses'.tr,
-            count: p.allCount,
-            icon: Icons.library_books_rounded,
-            gradient: context.colors.accentGradient,
-            shadowColor: context.colors.primary,
-          ),
-          const SizedBox(width: 10),
-          _StatCard(
-            label: 'ongoing_courses'.tr,
-            count: p.inProgressCount,
-            icon: Icons.trending_up_rounded,
-            gradient: context.colors.accentGradient,
-            shadowColor: context.colors.accent,
-          ),
-          const SizedBox(width: 10),
-          _StatCard(
-            label: 'completed_courses'.tr,
-            count: p.completedCount,
-            icon: Icons.workspace_premium_rounded,
-            gradient: context.colors.goldCharcoalGradient,
-            shadowColor: context.colors.accent2,
-          ),
-        ],
-      ),
+    return ListenableBuilder(
+      listenable: AppModeController.instance,
+      builder: (context, _) {
+        final mode = p.modeScope;
+        final modeOrg = mode.isOrg ? courseOrgFor(mode.orgId!, p.scopes, AppModeController.instance.current) : null;
+        final chips = courseScopeChips(p.scopes, selected: p.scope, modeOrg: modeOrg);
+        if (chips.length < 2) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 4),
+          child: CourseScopeChipBar(chips: chips, selected: p.scope, onSelect: p.selectScope),
+        );
+      },
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String label;
-  final int count;
-  final IconData icon;
-  final LinearGradient gradient;
-  final Color shadowColor;
+// ── Toolbar: search + filter (the filter carries the counts the old stat cards showed) ──────────────────────
 
-  const _StatCard({
-    required this.label,
-    required this.count,
-    required this.icon,
-    required this.gradient,
-    required this.shadowColor,
-  });
+class _Toolbar extends StatelessWidget {
+  const _Toolbar({required this.controller});
 
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor.withValues(alpha: 0.32),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon, color: context.colors.onHero, size: 18),
-          const SizedBox(height: 10),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              '$count',
-              style: TextStyle(
-                color: context.colors.onHero,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                fontFamily: AppFonts.display,
-                height: 1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: context.colors.onHero,
-              fontSize: 14,
-              fontFamily: AppFonts.display,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-// ── Filter tabs ───────────────────────────────────────────────────────────────
-
-class _FilterTabs extends StatelessWidget {
-  const _FilterTabs({required this.p});
-  final MyCoursesProvider p;
-  static final List<(CourseStatus, String, IconData)> _tabs = [
-    (CourseStatus.all, 'filter_all'.tr, Icons.apps_rounded),
-    (CourseStatus.inProgress, 'ongoing'.tr, Icons.play_arrow_rounded),
-    (
-    CourseStatus.completed,
-    'completed_courses'.tr,
-    Icons.check_circle_rounded
-    ),
-  ];
+  final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 44,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.heroShade.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: _tabs.map((t) {
-          final (status, label, icon) = t;
-          final active = p.activeFilter == status;
-
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => context.read<MyCoursesProvider>().setFilter(status),
-              child: AnimatedContainer(
-                height: 30,
-                margin: const EdgeInsets.all(8),
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOut,
-                decoration: BoxDecoration(
-                  border: Border(
-                      bottom: BorderSide(
-                          color: active
-                              ? context.colors.primary
-                              : context.colors.textLight,
-                          width: 2)),
+    final p = context.watch<MyCoursesProvider>();
+    final counts = !courseFeatureOff('my_courses.stats');
+    final hasSearch = !courseFeatureOff('my_courses.search');
+    final hasFilter = !courseFeatureOff('my_courses.filters');
+    if (!hasSearch && !hasFilter) return const SizedBox(height: 8);
+    return CourseListToolbar(
+      search: hasSearch
+          ? CourseSearchField(controller: controller, hint: 'search_course_by_name_description', onChanged: p.setQuery)
+          : null,
+      filter: hasFilter
+          ? CourseSegments<CourseStatus>(
+              selected: p.activeFilter,
+              onSelect: p.setFilter,
+              segments: [
+                CourseSegment(CourseStatus.all, 'filter_all'.tr, count: counts ? p.allCount : null),
+                CourseSegment(
+                  CourseStatus.inProgress,
+                  'course_list_in_progress'.tr,
+                  count: counts ? p.inProgressCount : null,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 14,
-                      color: active
-                          ? context.colors.primary
-                          : context.colors.textLight,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      label,
-                      style: context.colors.label.copyWith(
-                        color: active
-                            ? context.colors.primary
-                            : context.colors.textLight,
-                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
+                CourseSegment(CourseStatus.completed, 'completed_courses'.tr, count: counts ? p.completedCount : null),
+              ],
+            )
+          : null,
     );
   }
 }
@@ -293,85 +177,96 @@ class _CourseList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<MyCoursesProvider>(builder: (context, provider, child) {
       if (provider.isLoading && provider.allCourses.isEmpty) {
-        return const AppListSkeleton();
+        return const CourseListSkeleton();
       }
-      if (provider.hasError && provider.allCourses.isEmpty) {
-        return ErrorRetry(message: provider.errorMessage ?? 'retry'.tr, onRetry: provider.refresh);
+      final error = provider.hasError
+          ? CourseListError(message: provider.errorMessage ?? 'failed_to_load'.tr, onRetry: provider.refresh)
+          : null;
+      if (error != null && provider.allCourses.isEmpty) {
+        return Column(children: [error, const Spacer()]);
       }
 
       final courses = provider.filteredCourses;
+      // the list mixes the personal account and organizations → every card says where it lives
+      final mixed = courses.map((c) => c.org?.id).toSet().length > 1;
+      final scope = provider.scope;
       // Only show "empty" once the server has nothing more: with client-side search / filter an
       // empty result on page 1 must still be allowed to load page 2.
       final showEmpty = courses.isEmpty && !provider.hasMore;
+      final total = provider.total > provider.allCount ? provider.total : provider.allCount;
 
-      return Column(children: [
-        ParentComponent(
-          featureKey: 'my_courses.search',
-          child: MySearchBar(
-            controller: controller,
-            hint: 'search_course_by_name_description',
-            onChanged: provider.setQuery,
-          ),
-        ),
-        ParentComponent(
-            featureKey: 'my_courses.filters', child: _FilterTabs(p: provider)),
-        const SizedBox(height: 10),
-        if (provider.allCount > 0 && (provider.total > 0 || !provider.hasMore) && (provider.total > provider.allCount
-            ? provider.total
-            : provider.allCount)>20)
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ?error,
+        if (provider.allCount > 0 && (provider.total > 0 || !provider.hasMore) && total > 20)
           PagedCountCard(
             loaded: provider.allCount,
-            total: provider.total > provider.allCount
-                ? provider.total
-                : provider.allCount,
+            total: total,
             loadingMore: provider.isLoadingMore,
             done: !provider.hasMore,
             icon: Icons.library_books_rounded,
-            margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           ),
         Expanded(
           child: showEmpty
-              ? Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color:
-                    context.colors.primaryLight.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.menu_book_rounded,
-                      size: 38, color: context.colors.primary),
-                ),
-                const SizedBox(height: 14),
-                Text('no_courses_in_section'.tr,
-                    style: context.colors.body),
-              ],
-            ),
-          )
+              ? _empty(context, provider, scope)
               : ParentComponent(
-            featureKey: 'my_courses.list',
-            child: HomeCourseList(
-              hasMore: provider.hasMore,
-              courses: courses,
-              loadingMore: provider.isLoadingMore,
-              onLoadMore: provider.loadMore,
-              onRefresh: provider.refresh,
-              onTap: (CourseModel c) {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => CourseDetailScreen(course: c)));
-              },
-              isTeacher: false,
-              pageName: 'My-courses-profile-filtered',
-            ),
-          ),
+                  featureKey: 'my_courses.list',
+                  child: HomeCourseList(
+                    hasMore: provider.hasMore,
+                    courses: courses,
+                    loadingMore: provider.isLoadingMore,
+                    onLoadMore: provider.loadMore,
+                    onRefresh: provider.refresh,
+                    onTap: (CourseModel c) {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => CourseDetailScreen(course: c)));
+                    },
+                    isTeacher: false,
+                    pageName: 'My-courses-profile-filtered',
+                    maxWidth: kHomeWideMax,
+                    badgeFor: mixed ? (c) => CourseOrgBadge(org: c.org) : null,
+                  ),
+                ),
         ),
       ]);
     });
   }
+
+  Widget _empty(BuildContext context, MyCoursesProvider provider, CourseScope scope) {
+    // a search or a filter found nothing → offer to clear them
+    if (controller.text.trim().isNotEmpty || provider.activeFilter != CourseStatus.all) {
+      return CourseListEmpty(
+        icon: Icons.search_off_rounded,
+        message: 'course_list_not_found'.tr,
+        actionLabel: 'course_list_clear_search'.tr,
+        onAction: () {
+          controller.clear();
+          provider.setQuery('');
+          provider.setFilter(CourseStatus.all);
+        },
+      );
+    }
+    if (scope.isOrg) {
+      return CourseListEmpty(
+        icon: Icons.apartment_rounded,
+        message: 'course_scope_org_empty_student'.tr,
+        actionLabel: 'course_scope_browse_org'.tr,
+        onAction: () => _browseOrg(context, scope.orgId!),
+      );
+    }
+    return CourseListEmpty(
+      icon: Icons.menu_book_rounded,
+      message: 'course_list_empty'.tr,
+      actionLabel: 'course_list_browse'.tr,
+      onAction: () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => CoursesListScreen(homeCourses: context.read<HomeProvider>().otherCourses, forMyCourses: false),
+      )),
+    );
+  }
+}
+
+/// The organization's own catalogue (its courses the student has not joined yet).
+void _browseOrg(BuildContext context, int orgId) {
+  final entry = AppModeController.instance.current?['organization'];
+  final org = entry is Map && entry['id'] == orgId ? Map<String, dynamic>.from(entry) : <String, dynamic>{'id': orgId};
+  Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: org)));
 }

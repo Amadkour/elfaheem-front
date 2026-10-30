@@ -12,7 +12,7 @@
 //
 // There is no "next up" hero card any more: it repeated the first row of "Today". What only it said (ends in
 // 50 min · the room) is the second line of that row now (HomeAgenda: homeAgendaNote, the item's place).
-//   StudentCourseSummary(courses:)      "My courses" in one card: figures + the 3 that matter now (homeCourseFocus)
+//   StudentCourseSummary(courses:)      "My courses" in one card: the 3 that matter now (homeCourseFocus)
 //
 // Plain values only (layout-tested in test/ui/student_home_layout_test.dart).
 library;
@@ -187,7 +187,7 @@ class _UpcomingLine extends StatelessWidget {
                   FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.centerStart,
-                      child: Text(day, maxLines: 1, style: appText(12.5, w: FontWeight.w800, c: c.textDark))),
+                      child: Text(day, maxLines: 1, style: appText(12.5, w: FontWeight.w600, c: c.textDark))),
                   FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.centerStart,
@@ -200,7 +200,7 @@ class _UpcomingLine extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark, h: 1.25)),
+                child: Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
               ),
               if (tag != null) ...[
                 const SizedBox(width: 8),
@@ -209,7 +209,7 @@ class _UpcomingLine extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
                   child: Text(tag,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w800, c: appInk(context, tone))),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w500, c: appInk(context, tone))),
                 ),
               ],
             ]),
@@ -221,51 +221,95 @@ class _UpcomingLine extends StatelessWidget {
 }
 
 /// The order the home shows courses in: the soonest scheduled next lecture first, then the furthest along that
-/// is not finished, finished courses last.
-List<MeCourseProgress> homeCourseFocus(List<MeCourseProgress> all) {
-  int rank(MeCourseProgress x) => x.progress >= 100 ? 2 : (x.nextLecture?.scheduledAt != null ? 0 : 1);
+/// is not finished, finished courses last. [events] (the home's today / upcoming rows) count as a course's next
+/// class too: a course with 3 live sessions today is not "no lecture scheduled".
+List<MeCourseProgress> homeCourseFocus(List<MeCourseProgress> all, {List<CalEvent> events = const [], DateTime? nowUtc}) {
+  final next = homeCourseNextEvents(events, nowUtc);
+  DateTime? at(MeCourseProgress x) {
+    final a = x.nextLecture?.scheduledAt, b = next[x.courseId]?.start;
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isBefore(b) ? a : b;
+  }
+
+  int rank(MeCourseProgress x) => x.progress >= 100 ? 2 : (at(x) != null ? 0 : 1);
   return [...all]..sort((a, b) {
       final r = rank(a).compareTo(rank(b));
       if (r != 0) return r;
-      if (rank(a) == 0) return a.nextLecture!.scheduledAt!.compareTo(b.nextLecture!.scheduledAt!);
+      if (rank(a) == 0) return at(a)!.compareTo(at(b)!);
       return b.progress.compareTo(a.progress);
     });
 }
 
-/// "Next: lecture · when", or "no lecture scheduled yet".
-String homeNextLectureLine(MeCourseProgress x) {
+/// Each course's first event that has not ended (declined / cancelled ones left out). Pure.
+Map<int, CalEvent> homeCourseNextEvents(List<CalEvent> events, [DateTime? nowUtc]) {
+  final now = nowUtc ?? DateTime.now().toUtc();
+  final out = <int, CalEvent>{};
+  for (final e in [...events]..sort((a, b) => a.start.compareTo(b.start))) {
+    final id = e.courseId;
+    if (id == null || e.declined || e.cancelled || !e.end.isAfter(now)) continue;
+    out.putIfAbsent(id, () => e);
+  }
+  return out;
+}
+
+/// Each course's latest event that already ended (declined / cancelled ones left out): the home's rows hold today's
+/// past classes too. Pure.
+Map<int, CalEvent> homeCourseLastEvents(List<CalEvent> events, [DateTime? nowUtc]) {
+  final now = nowUtc ?? DateTime.now().toUtc();
+  final out = <int, CalEvent>{};
+  for (final e in [...events]..sort((a, b) => b.end.compareTo(a.end))) {
+    final id = e.courseId;
+    if (id == null || e.declined || e.cancelled || e.end.isAfter(now)) continue;
+    out.putIfAbsent(id, () => e);
+  }
+  return out;
+}
+
+/// "Next: lecture · when", "Today's class ended · time", or "no lecture scheduled yet". [event] is the course's next
+/// calendar event (a live session of today, …): it wins when it comes before the next recorded lecture (M6).
+/// [last] is its latest class that already ended: with nothing coming, the card says so rather than "no lecture
+/// scheduled" next to a Today list that shows the course's classes (M6).
+String homeNextLectureLine(MeCourseProgress x, {CalEvent? event, CalEvent? last, DateTime? nowUtc}) {
   final n = x.nextLecture;
-  if (n == null) return 'home_no_next_lecture'.tr;
-  final when = n.scheduledAt == null ? '' : ' · ${AppTime.dateTime(n.scheduledAt!)}';
+  final lectureAt = n?.scheduledAt;
+  if (event != null && (n == null || lectureAt == null || event.start.isBefore(lectureAt))) {
+    final now = nowUtc ?? DateTime.now().toUtc();
+    if (!event.start.isAfter(now)) return 'home_course_live_now'.tr.replaceAll('{n}', event.title);
+    return 'home_next_lecture'.tr.replaceAll('{n}', event.title) + ' · ${AppTime.dateTime(event.start)}';
+  }
+  if (n == null) {
+    if (last != null) return 'home_course_ended_today'.tr.replaceAll('{t}', AppTime.time(last.end));
+    return 'home_no_next_lecture'.tr;
+  }
+  final when = lectureAt == null ? '' : ' · ${AppTime.dateTime(lectureAt)}';
   return 'home_next_lecture'.tr.replaceAll('{n}', n.name) + when;
 }
 
-/// "My courses" summarized in one card: how many, in progress, completed, the average progress, and the three
-/// courses that matter now (homeCourseFocus); tap → the course, the foot → the courses tab.
+/// "My courses" summarized in one card: the three courses that matter now (homeCourseFocus), each with its next
+/// lecture and progress — the count sits in the section title, the totals on the courses tab; tap → the course,
+/// the foot → the courses tab.
 class StudentCourseSummary extends StatelessWidget {
-  const StudentCourseSummary({super.key, required this.courses, this.onOpen, this.onShowAll});
+  const StudentCourseSummary({super.key, required this.courses, this.events = const [], this.onOpen, this.onShowAll});
   final List<MeCourseProgress> courses;
+
+  /// The home's today + upcoming rows: a course's next class when it has no recorded lecture coming.
+  final List<CalEvent> events;
   final ValueChanged<int>? onOpen;
   final VoidCallback? onShowAll;
 
   @override
   Widget build(BuildContext context) {
-    final done = courses.where((x) => x.progress >= 100).length;
-    final going = courses.where((x) => x.progress > 0 && x.progress < 100).length;
-    final avg = courses.isEmpty ? 0.0 : courses.fold<double>(0, (s, x) => s + x.progress) / courses.length;
-    final top = homeCourseFocus(courses).take(3).toList();
+    final top = homeCourseFocus(courses, events: events).take(3).toList();
+    final next = homeCourseNextEvents(events);
+    final last = homeCourseLastEvents(events);
     return HomeCourseSummary(
-      figures: [
-        ('${courses.length}', 'courses'.tr),
-        ('$going', 'home_courses_going'.tr),
-        ('$done', 'completed'.tr),
-        ('${avg.round()}%', 'home_courses_avg'.tr),
-      ],
+      figures: const [],
       lines: [
         for (final x in top)
           HomeCourseLine(
             title: x.name(AppConfig.lang),
-            subtitle: homeNextLectureLine(x),
+            subtitle: homeNextLectureLine(x, event: next[x.courseId], last: last[x.courseId]),
             imageUrl: x.imageUrl,
             progress: x.progress,
             trailing: '${x.progress.round()}%',

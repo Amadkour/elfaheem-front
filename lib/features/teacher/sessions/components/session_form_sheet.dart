@@ -105,7 +105,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       _type = s.type ?? 'pre-recorded';
       _track = s.track;
       _recordEnabled = s.recordEnabled;
-      _scheduled = s.scheduledAt;
+      _scheduled = s.scheduledAt?.toLocal();
     }
   }
 

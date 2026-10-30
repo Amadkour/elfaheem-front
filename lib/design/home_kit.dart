@@ -2,9 +2,11 @@
 //
 // The HOME language shared by every role's home screen (student · instructor · admin · organization member).
 //
-// Point of view: an editorial, calm home — one strong hero per role, then a few things in a strict rhythm
-// (8 · 16 · 24 · 32). Type scale: greeting 12.5 / name 26 heavy / section 17 heavy / big figures 30–40 heavy.
-// Colours come only from context.colors (server theme); times only through AppTime.
+// Point of view: a calm, light home — a quiet greeting, at most one strong accent (what is live), then a few
+// things in a strict rhythm (8 · 16 · 24 · 32; 24 between sections). Type: greeting 13 regular / name 24 w600 /
+// section 16 w600 / list-row titles w500 / meta w400 muted / figures w600 — never w800 or w900. Surfaces are one
+// card with hairline dividers rather than many tinted tiles; tints stay at a low alpha. Colours come only from
+// context.colors (server theme); times only through AppTime.
 //
 //   HomeHeader         greeting (time of day, effective timezone) + name + trailing actions + the context switcher
 //   HomeEntrance       the ONE entrance motion (fade + 12px rise, staggered, once; off with reduced motion)
@@ -16,8 +18,10 @@
 //   HomeHeroCard       the gradient hero surface (each role puts its own memorable element inside)
 //   HomeDayRibbon      the instructor's hero element: the day as a ribbon with today's sessions and a "now" marker
 //   HomeTodoCard       "To do" from AttentionService (AttentionTabs.home) → the items sheet with deep links
-//   HomeStatStrip      "Needs you" in ONE card of small count tiles (student · instructor homes)
-//   HomeCourseSummary  a role's courses in ONE card: figures, the 3 that matter now as slim lines, "All n courses"
+//   HomeStatStrip      "Needs you" as ONE slim row of pills, the counts above zero only (student · instructor ·
+//                      member homes); it scrolls sideways rather than growing a second line
+//   HomeCourseSummary  a role's courses in ONE card: figures (or none), the 3 that matter now as slim lines, "All n
+//                      courses"
 //   HomeSection        a section whose title folds / unfolds it (animated); the choice is kept per user and section
 //                      on the device (HomeFolds, SharedPreferences) — a calmer home the person shapes. An EMPTY
 //                      section (`empty:`) starts folded, its title quieter, one line saying so ("No classes today ·
@@ -41,8 +45,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -111,51 +117,94 @@ class HomeHeader extends StatelessWidget {
     required this.name,
     this.leading,
     this.actions = const [],
+    this.shellActions = const [],
     this.contextSwitcher,
     this.subtitle,
+    this.wideTrailing,
     this.padding = const EdgeInsets.fromLTRB(20, 20, 20, 8),
   });
 
   final String name;
+
+  /// On the desktop dashboard: drawn at the end of the header, as wide as the side column's cards (the student's
+  /// search). Below it the screen draws it under the header itself ([HomeNarrowOnly]).
+  final Widget? wideTrailing;
   final Widget? leading;
+
+  /// Buttons only the home offers (Meet now …): always drawn.
   final List<Widget> actions;
+
+  /// Buttons the shell's top bar already carries on desktop / tablet (calendar, bell): drawn on phones only, so a
+  /// wide screen never shows the same action twice (M7).
+  final List<Widget> shellActions;
   final Widget? contextSwitcher;
   final String? subtitle;
   final EdgeInsetsGeometry padding;
 
+  /// True while the shell's top bar (sidebar / rail layouts) is on screen around this page.
+  static bool shellTopBar(BuildContext context) {
+    MediaQuery.sizeOf(context); // re-asked when the window is resized
+    final s = ShellScope.maybeOf(context);
+    return s != null && s.sideChrome > 0 && !s.fullScreen;
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final buttons = [...actions, if (!shellTopBar(context)) ...shellActions];
+    // greeting · buttons on the first line, then the name and the day line on the full width: three 48 px buttons
+    // next to the name truncated "Mark Mark…" and the day line at 390 px (M9)
     return ValueListenableBuilder<int>(
       valueListenable: AppTime.version,
-      builder: (context, _, _) => Padding(
-        padding: padding,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      builder: (context, _, _) => LayoutBuilder(builder: (context, box) {
+        // the desktop header: the home's own buttons sit beside the trailing part (search · Meet now, one toolbar
+        // at the end) instead of floating mid-page at the end of the greeting line
+        final wide = wideTrailing != null && homeIsWide(box.maxWidth);
+        final lineButtons = wide ? const <Widget>[] : buttons;
+        final block = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            if (leading != null) ...[leading!, const SizedBox(width: 12)],
+            if (leading != null) ...[leading!, const SizedBox(width: 10)],
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(homeGreetingKey(homeNow().hour).tr,
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w600, c: c.textLight)),
-                const SizedBox(height: 2),
-                Text(name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: appText(26, w: FontWeight.w900, c: c.textDark, h: 1.15).copyWith(letterSpacing: -0.4)),
-                if (subtitle != null && subtitle!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
-                ],
-              ]),
+              child: Text(homeGreetingKey(homeNow().hour).tr,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, c: c.textLight)),
             ),
-            ...actions,
+            ...lineButtons,
           ]),
+          SizedBox(height: lineButtons.isEmpty && leading == null ? 4 : 6),
+          Semantics(
+            header: true,
+            child: Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: appText(24, w: FontWeight.w600, c: c.textDark, h: 1.2).copyWith(letterSpacing: -0.3)),
+          ),
+          if (subtitle != null && subtitle!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.4)),
+          ],
           if (contextSwitcher != null) ...[
             const SizedBox(height: 14),
             Align(alignment: AlignmentDirectional.centerStart, child: contextSwitcher!),
           ],
-        ]),
-      ),
+        ]);
+        return Padding(
+          padding: padding,
+          child: !wide
+              ? block
+              : Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Expanded(child: block),
+                  const SizedBox(width: 24),
+                  // the side column's cards are inset 20 px on each side: the trailing part lines up with them
+                  SizedBox(
+                    width: HomeDashboard.sideWidthFor(box.maxWidth) - 40,
+                    child: Row(children: [
+                      Expanded(child: wideTrailing!),
+                      for (final b in buttons) ...[const SizedBox(width: 8), b],
+                    ]),
+                  ),
+                ]),
+        );
+      }),
     );
   }
 }
@@ -183,6 +232,76 @@ class HomeSplit extends StatelessWidget {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: end)),
         ]);
       });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Desktop page: a wide card, two columns
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The widest a home (or a course list) grows on a desktop window.
+const double kHomeWideMax = 1200;
+
+/// From this content width the home is a two-column dashboard (a 1280 px window with the sidebar is 1012 wide).
+const double kHomeWideMin = 960;
+
+/// True when [width] (the home's content width) takes the desktop dashboard.
+bool homeIsWide(double width) => width >= kHomeWideMin;
+
+/// The width of the page card a wide shell centres over its patterned page background ([BasePage.maxWith]): the
+/// whole body area less a 24 px margin each side (the pattern stays a thin frame at the page edges instead of
+/// fighting the cards), at most [kHomeWideMax]. Null below a desktop body → BasePage's own width.
+double? homeCardWidth(double area) => area >= kHomeWideMin + 48 ? math.min(kHomeWideMax, area - 48) : null;
+
+/// Marks the side column of a [HomeDashboard]: parts that read it (the "Needs you" strip) draw their narrow form.
+class HomeSideColumn extends InheritedWidget {
+  const HomeSideColumn({super.key, required super.child});
+
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<HomeSideColumn>() != null;
+
+  @override
+  bool updateShouldNotify(HomeSideColumn oldWidget) => false;
+}
+
+/// The desktop home: [main] (what happens today: the agenda, my courses) beside a [side] column (what waits for me:
+/// "Needs you" as a list, the inbox) from [kHomeWideMin]; below it the [narrow] order, one column. Sections are
+/// spaced by [gap]; an empty side column gives the whole width to [main].
+class HomeDashboard extends StatelessWidget {
+  const HomeDashboard({super.key, required this.main, required this.side, required this.narrow, this.gap = 24});
+
+  final List<Widget> main, side, narrow;
+  final double gap;
+
+  /// The side column's width for a content [width]: about a third, 320–400.
+  static double sideWidthFor(double width) => (width * 0.34).clamp(320.0, 400.0);
+
+  List<Widget> _spaced(List<Widget> items) => [
+        for (var i = 0; i < items.length; i++) ...[if (i > 0) SizedBox(height: gap), items[i]],
+        if (items.isNotEmpty) SizedBox(height: gap),
+      ];
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        if (!homeIsWide(box.maxWidth) || side.isEmpty || main.isEmpty) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(homeIsWide(box.maxWidth) ? [...main, ...side] : narrow));
+        }
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(main))),
+          SizedBox(
+            width: sideWidthFor(box.maxWidth),
+            child: HomeSideColumn(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(side))),
+          ),
+        ]);
+      });
+}
+
+/// Draws [child] only below the desktop width (what the wide header carries itself, e.g. the student's search).
+class HomeNarrowOnly extends StatelessWidget {
+  const HomeNarrowOnly({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      LayoutBuilder(builder: (context, box) => homeIsWide(box.maxWidth) ? const SizedBox.shrink() : child);
 }
 
 class HomeSectionTitle extends StatelessWidget {
@@ -216,12 +335,8 @@ class HomeSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    // A calm title: no accent bar, a medium weight, the count as quiet muted figures beside it.
     Widget heading = Row(children: [
-      Container(
-          width: 4,
-          height: 18,
-          decoration: BoxDecoration(color: quiet ? c.textLight.withValues(alpha: 0.45) : c.primary, borderRadius: BorderRadius.circular(4))),
-      const SizedBox(width: 10),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
@@ -229,28 +344,25 @@ class HomeSectionTitle extends StatelessWidget {
                 child: Text(title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: appText(17, w: quiet ? FontWeight.w800 : FontWeight.w900, c: quiet ? c.textMedium : c.textDark))),
+                    style: appText(16, w: quiet ? FontWeight.w500 : FontWeight.w600, c: quiet ? c.textMedium : c.textDark))),
             if (count != null && count! > 0) ...[
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(10)),
-                child: Text(count! > 999 ? '999+' : '$count', style: appText(12, w: FontWeight.w800, c: appInk(context, c.primary))),
-              ),
+              Text(count! > 999 ? '999+' : '$count',
+                  style: appText(14, w: FontWeight.w500, c: c.textMedium).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
             ],
             if (onToggle != null) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: 2),
               AnimatedRotation(
                 turns: collapsed ? -0.25 * (Directionality.of(context) == TextDirection.rtl ? -1 : 1) : 0,
                 duration: still ? Duration.zero : const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
-                child: Icon(Icons.expand_more_rounded, size: 22, color: c.textLight),
+                child: Icon(Icons.expand_more_rounded, size: 20, color: c.textLight.withValues(alpha: 0.8)),
               ),
             ],
           ]),
           if (subtitle != null && subtitle!.isNotEmpty)
             // an empty section's line says what comes next: two lines rather than cut mid-title
-            Text(subtitle!, maxLines: quiet ? 2 : 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium, h: 1.3)),
+            Text(subtitle!, maxLines: quiet ? 2 : 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium, h: 1.35)),
         ]),
       ),
     ]);
@@ -262,6 +374,12 @@ class HomeSectionTitle extends StatelessWidget {
         child: InkWell(
           onTap: onToggle,
           borderRadius: BorderRadius.circular(c.radiusMedium),
+          // light washes only: on the web a clicked title keeps the focus, and the default grey focus fill left a
+          // full-width bar that looked disabled (L8)
+          focusColor: c.primary.withValues(alpha: 0.06),
+          hoverColor: c.primary.withValues(alpha: 0.04),
+          highlightColor: c.primary.withValues(alpha: 0.06),
+          splashColor: c.primary.withValues(alpha: 0.08),
           // a 48 px target whatever the title's line height
           child: ConstrainedBox(constraints: const BoxConstraints(minHeight: 48), child: Align(alignment: AlignmentDirectional.centerStart, widthFactor: 1, child: heading)),
         ),
@@ -280,7 +398,7 @@ class HomeSectionTitle extends StatelessWidget {
               onPressed: onAction,
               // horizontally compact only: the vertical density keeps the 48 px tap target (a compact one is 40)
               style: TextButton.styleFrom(visualDensity: const VisualDensity(horizontal: -2), padding: const EdgeInsets.symmetric(horizontal: 8)),
-              child: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: appInk(context, c.primary))),
+              child: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w500, c: appInk(context, c.primary))),
             ),
           ),
       ])),
@@ -310,7 +428,7 @@ class HomeHeroCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: gradient ?? c.primaryGradient,
           borderRadius: r,
-          boxShadow: [BoxShadow(color: (glow ?? c.primary).withValues(alpha: 0.30), blurRadius: 24, offset: const Offset(0, 10))],
+          boxShadow: [BoxShadow(color: (glow ?? c.primary).withValues(alpha: 0.16), blurRadius: 20, offset: const Offset(0, 6))],
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -357,7 +475,7 @@ class HomeHeroTag extends StatelessWidget {
       decoration: BoxDecoration(color: on.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(20)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (icon != null) ...[Icon(icon, size: 13, color: on), const SizedBox(width: 5)],
-        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w800, c: on))),
+        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: on))),
       ]),
     );
   }
@@ -428,13 +546,13 @@ class HomeActionCard extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.topEnd,
                       child: Text(count! > 999 ? '999+' : '$count',
-                          style: appText(26, w: FontWeight.w900, c: hot ? appInk(context, color) : c.textLight, h: 1)),
+                          style: appText(24, w: FontWeight.w600, c: hot ? appInk(context, color) : c.textLight, h: 1)),
                     ),
                   ),
                 ),
             ]),
             const SizedBox(height: 12),
-            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark, h: 1.25)),
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
           ]),
         ),
       ),
@@ -527,6 +645,10 @@ class HomeAgendaItem {
     this.tone,
     this.onTap,
     this.place,
+    this.actionLabel,
+    this.actionIcon,
+    this.onAction,
+    this.onActionLongPress,
   });
 
   /// Display strings (already through AppTime).
@@ -543,6 +665,11 @@ class HomeAgendaItem {
   final String? tag;
   final Color? tone;
   final VoidCallback? onTap;
+
+  /// One button on the line in place of its tag (the instructor's "Enter room" on the session that runs now).
+  final String? actionLabel;
+  final IconData? actionIcon;
+  final VoidCallback? onAction, onActionLongPress;
 }
 
 /// The order a compact agenda shows a day in: what runs now first, then what is still to come (by start), what
@@ -726,7 +853,7 @@ class _AgendaRow extends StatelessWidget {
                     FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: AlignmentDirectional.centerStart,
-                        child: Text(item.start, maxLines: 1, style: appText(14, w: FontWeight.w900, c: c.textDark))),
+                        child: Text(item.start, maxLines: 1, style: appText(14, w: FontWeight.w600, c: c.textDark))),
                     FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: AlignmentDirectional.centerStart,
@@ -757,7 +884,7 @@ class _AgendaRow extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark, h: 1.25)),
+                    Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
                     if (item.subtitle != null && item.subtitle!.isNotEmpty)
                       Text(item.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
                   ]),
@@ -769,7 +896,7 @@ class _AgendaRow extends StatelessWidget {
                     margin: const EdgeInsetsDirectional.only(start: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                    child: Text(item.live ? 'home_live'.tr : item.tag!, maxLines: 1, style: appText(11, w: FontWeight.w800, c: tone)),
+                    child: Text(item.live ? 'home_live'.tr : item.tag!, maxLines: 1, style: appText(11, w: FontWeight.w500, c: tone)),
                   ),
                 ),
             ]),
@@ -824,7 +951,7 @@ class HomeShortcuts extends StatelessWidget {
                     Badge(
                       isLabelVisible: s.badge > 0,
                       backgroundColor: c.danger,
-                      label: Text(s.badge > 99 ? '99+' : '${s.badge}', style: appText(10, w: FontWeight.w800, c: homeOnHero(context))),
+                      label: Text(s.badge > 99 ? '99+' : '${s.badge}', style: appText(10, w: FontWeight.w600, c: homeOnHero(context))),
                       child: Container(
                         width: 52,
                         height: 52,
@@ -842,7 +969,7 @@ class HomeShortcuts extends StatelessWidget {
                         maxLines: 2,
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
-                        style: appText(12, w: FontWeight.w700, c: c.textMedium, h: 1.2)),
+                        style: appText(12, w: FontWeight.w500, c: c.textMedium, h: 1.25)),
                   ]),
                 ),
               ),
@@ -919,9 +1046,9 @@ class HomeDayRibbon extends StatelessWidget {
       ),
       const SizedBox(height: 4),
       Row(children: [
-        Text(AppTime.clockMinutes(a), style: appText(10.5, w: FontWeight.w600, c: on.withValues(alpha: 0.8))),
+        Text(AppTime.clockMinutes(a), style: appText(10.5, w: FontWeight.w500, c: on.withValues(alpha: 0.85))),
         const Spacer(),
-        Text(AppTime.clockMinutes(b % (24 * 60)), style: appText(10.5, w: FontWeight.w600, c: on.withValues(alpha: 0.8))),
+        Text(AppTime.clockMinutes(b % (24 * 60)), style: appText(10.5, w: FontWeight.w500, c: on.withValues(alpha: 0.85))),
       ]),
     ]);
   }
@@ -940,10 +1067,10 @@ class HomeHeroFigure extends StatelessWidget {
       FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          child: Text(value, maxLines: 1, style: appText(24, w: FontWeight.w900, c: on, h: 1.1))),
+          child: Text(value, maxLines: 1, style: appText(24, w: FontWeight.w600, c: on, h: 1.1))),
       const SizedBox(height: 2),
       // two lines: "Earnings this month" was cut to "Earnings thi…" on a phone
-      Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w600, c: on.withValues(alpha: 0.8), h: 1.2)),
+      Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: on.withValues(alpha: 0.85), h: 1.25)),
     ]);
   }
 }
@@ -964,14 +1091,17 @@ class HomeStat {
   final VoidCallback? onTap;
 }
 
-/// "Needs you" as ONE card of small tiles (a tall card per count filled the first screen of a phone).
+//// "Needs you" as ONE slim row of pills — only the counts above zero (a zero says nothing the greeting's "all
+/// caught up" does not): icon · count in the item's tone · label, on the card surface with a hairline. The row
+/// scrolls sideways when it is wider than the screen (it never grows a second line); each pill is a 48 px tap
+/// target (a 40 px pill inside).
 class HomeStatStrip extends StatelessWidget {
   const HomeStatStrip({super.key, required this.items, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
   final List<HomeStat> items;
   final EdgeInsetsGeometry padding;
 
-  /// Every tile in one row from 560 (up to 6); on phones 2 columns for two or four tiles, else 3 — never one
-  /// tile alone on the last row when another split avoids it.
+  /// The older tile grid's split (kept for callers that lay tiles out themselves): every tile in one row from 560
+  /// (up to 6); on phones 2 columns for two or four tiles, else 3.
   static int columnsFor(int n, double width) {
     if (n <= 1) return 1;
     if (width >= 560) return math.min(n, 6);
@@ -981,75 +1111,130 @@ class HomeStatStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
+    final shown = [for (final s in items) if (s.count > 0) s];
+    if (shown.isEmpty) return const SizedBox.shrink();
+    // the dashboard's side column: one card, one row per count (a sideways-scrolling strip in a 380 px column hid
+    // the last pills)
+    if (HomeSideColumn.of(context)) return _StatList(items: shown, padding: padding);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: padding,
+      child: Row(children: [
+        for (var i = 0; i < shown.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          _StatPill(shown[i]),
+        ],
+      ]),
+    );
+  }
+}
+
+/// "Needs you" in the dashboard's side column: one card with hairline dividers, a row per count — icon in its tone,
+/// the label, the count at the end (w600 in the tone), a chevron when it opens something.
+class _StatList extends StatelessWidget {
+  const _StatList({required this.items, required this.padding});
+  final List<HomeStat> items;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
     return Padding(
       padding: padding,
       child: AppCard(
-        padding: const EdgeInsets.all(8),
-        child: LayoutBuilder(builder: (context, box) {
-          final cols = columnsFor(items.length, box.maxWidth);
-          const gap = 6.0;
-          final rows = <Widget>[];
-          for (var i = 0; i < items.length; i += cols) {
-            // a shorter last row spreads over the full width (no empty slot)
-            final row = items.sublist(i, math.min(i + cols, items.length));
-            rows.add(IntrinsicHeight(
-              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                for (var k = 0; k < row.length; k++) ...[
-                  if (k > 0) const SizedBox(width: gap),
-                  Expanded(child: _StatTile(row[k])),
-                ],
-              ]),
-            ));
-            if (i + cols < items.length) rows.add(const SizedBox(height: gap));
-          }
-          return Column(children: rows);
-        }),
+        padding: EdgeInsets.zero,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: c.divider),
+            _StatRow(items[i]),
+          ],
+        ]),
       ),
     );
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile(this.s);
+class _StatRow extends StatelessWidget {
+  const _StatRow(this.s);
   final HomeStat s;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final color = s.tone ?? c.primary;
-    final hot = s.count > 0;
-    final ink = appInk(context, color);
-    final r = BorderRadius.circular(14);
-    return Material(
-      color: hot ? color.withValues(alpha: 0.09) : c.cardBg,
-      borderRadius: r,
+    final ink = appInk(context, s.tone ?? c.primary);
+    final value = s.value ?? (s.count > 999 ? '999+' : '${s.count}');
+    return Semantics(
+      button: s.onTap != null,
+      label: '$value ${s.label}',
+      excludeSemantics: true,
       child: InkWell(
-        borderRadius: r,
         onTap: s.onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Icon(s.icon, size: 18, color: hot ? ink : c.textLight),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(s.value ?? (s.count > 999 ? '999+' : '${s.count}'),
-                        maxLines: 1, style: appText(20, w: FontWeight.w900, c: hot ? ink : c.textLight, h: 1)),
-                  ),
-                ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 52),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 10, 12, 10),
+            child: Row(children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: (s.tone ?? c.primary).withValues(alpha: 0.10), shape: BoxShape.circle),
+                child: Icon(s.icon, size: 17, color: ink),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(s.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
+              ),
+              const SizedBox(width: 8),
+              Text(value, maxLines: 1, style: appText(15, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+              if (s.onTap != null) ...[
+                const SizedBox(width: 2),
+                Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
+              ],
             ]),
-            const SizedBox(height: 8),
-            Text(s.label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: appText(12, w: FontWeight.w700, c: hot ? c.textDark : c.textMedium, h: 1.25)),
-          ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill(this.s);
+  final HomeStat s;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = appInk(context, s.tone ?? c.primary);
+    final r = BorderRadius.circular(999);
+    final value = s.value ?? (s.count > 999 ? '999+' : '${s.count}');
+    return Semantics(
+      button: s.onTap != null,
+      label: '$value ${s.label}',
+      excludeSemantics: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: s.onTap,
+          customBorder: RoundedRectangleBorder(borderRadius: r),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 40),
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 14, 6),
+              decoration: BoxDecoration(color: c.cardBg, borderRadius: r, border: Border.all(color: c.divider)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(s.icon, size: 16, color: ink),
+                const SizedBox(width: 8),
+                Text(value, maxLines: 1, style: appText(14, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                const SizedBox(width: 6),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 220),
+                  child: Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium)),
+                ),
+              ]),
+            ),
+          ),
         ),
       ),
     );
@@ -1067,16 +1252,18 @@ class HomeCourseLine {
   final VoidCallback? onTap;
 }
 
-/// A role's courses in ONE card: a row of figures, the few courses that matter now as slim lines, and
-/// "All n courses" at the foot — the full course cards live on the courses tab.
+/// A role's courses in ONE card: a row of figures (or one quiet [caption] line), the few courses that matter now as
+/// slim lines, and "All n courses" at the foot — the full course cards live on the courses tab.
 class HomeCourseSummary extends StatelessWidget {
   const HomeCourseSummary({
     super.key,
     required this.figures,
     required this.lines,
+    this.caption,
     this.footer,
     this.moreLabel,
     this.onMore,
+    this.onFigures,
     this.padding = const EdgeInsets.symmetric(horizontal: 20),
   });
 
@@ -1084,41 +1271,64 @@ class HomeCourseSummary extends StatelessWidget {
   final List<(String, String)> figures;
   final List<HomeCourseLine> lines;
 
+  /// One quiet line at the top of the card instead of figures ("2 in progress · 1 completed").
+  final String? caption;
+
   /// Under the figures (the instructor's enrollments trend).
   final Widget? footer;
   final String? moreLabel;
   final VoidCallback? onMore;
+
+  /// A tap on the figures (the instructor's analytics); null = not a button.
+  final VoidCallback? onFigures;
   final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final divider = Divider(height: 1, thickness: 1, color: c.divider);
+    final divider = Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: c.divider);
+    Widget? head;
+    if (figures.isNotEmpty) {
+      Widget figure(String value, String label) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(value, maxLines: 1, style: appText(18, w: FontWeight.w600, c: c.textDark, h: 1.2)),
+            ),
+            const SizedBox(height: 4),
+            Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium, h: 1.25)),
+          ]);
+      head = Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        child: LayoutBuilder(builder: (context, box) {
+          // a phone shares the width; a wide card gives each figure a column of its own and leaves the rest calm
+          final wide = box.maxWidth >= math.max(640, figures.length * 168 + 48);
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (final (value, label) in figures)
+              if (wide) SizedBox(width: 168, child: figure(value, label)) else Expanded(child: figure(value, label)),
+            if (wide) const Spacer(),
+            if (onFigures != null) Icon(Icons.chevron_right_rounded, size: 20, color: c.textLight),
+          ]);
+        }),
+      );
+      if (onFigures != null) head = InkWell(onTap: onFigures, child: head);
+    } else if (caption != null && caption!.isNotEmpty) {
+      head = Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        child: Text(caption!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.35)),
+      );
+    }
     return Padding(
       padding: padding,
       child: AppCard(
         padding: EdgeInsets.zero,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (figures.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                for (final (value, label) in figures)
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: AlignmentDirectional.centerStart,
-                        child: Text(value, maxLines: 1, style: appText(20, w: FontWeight.w900, c: c.textDark, h: 1.1)),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.textMedium, h: 1.2)),
-                    ]),
-                  ),
-              ]),
-            ),
-          if (footer != null) Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 12), child: footer),
-          for (final x in lines) ...[divider, _CourseLineRow(x)],
+          ?head,
+          if (footer != null) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: footer),
+          for (var i = 0; i < lines.length; i++) ...[
+            if (i > 0 || head != null || footer != null) divider,
+            _CourseLineRow(lines[i]),
+          ],
           if (moreLabel != null && onMore != null) ...[
             divider,
             InkWell(
@@ -1127,16 +1337,16 @@ class HomeCourseSummary extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 48),
                 child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Flexible(
-                    child: Text(moreLabel!,
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w800, c: appInk(context, c.primary))),
-                  ),
-                  Icon(Icons.chevron_right_rounded,
-                      size: 18, color: appInk(context, c.primary)),
-                ]),
-              ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Flexible(
+                      child: Text(moreLabel!,
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w500, c: appInk(context, c.primary))),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(Icons.chevron_right_rounded, size: 18, color: appInk(context, c.primary)),
+                  ]),
+                ),
               ),
             ),
           ],
@@ -1157,7 +1367,7 @@ class _CourseLineRow extends StatelessWidget {
     return InkWell(
       onTap: x.onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Row(children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
@@ -1166,25 +1376,31 @@ class _CourseLineRow extends StatelessWidget {
               height: 40,
               child: url != null && url.startsWith('http')
                   ? AppNetworkImage(url: url, width: 40, height: 40)
-                  : ColoredBox(color: c.primaryTint, child: Icon(Icons.menu_book_rounded, size: 20, color: appInk(context, c.primary))),
+                  : ColoredBox(
+                      color: c.primary.withValues(alpha: 0.07),
+                      child: Icon(Icons.menu_book_outlined, size: 19, color: appInk(context, c.primary).withValues(alpha: 0.85)),
+                    ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(x.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.textDark, h: 1.25)),
-              if (x.subtitle != null && x.subtitle!.isNotEmpty)
-                Text(x.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium, h: 1.3)),
+              Text(x.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
+              if (x.subtitle != null && x.subtitle!.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(x.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium, h: 1.3)),
+              ],
               if (x.progress != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 // progress is not a grade: the brand colour while under way, success when done
-                AppProgressBar(value: x.progress, height: 4, color: x.progress! >= 100 ? c.success : appChartPalette(context).first),
+                AppProgressBar(value: x.progress, height: 3, color: x.progress! >= 100 ? c.success : appChartPalette(context).first),
               ],
             ]),
           ),
           if (x.trailing != null) ...[
-            const SizedBox(width: 10),
-            Text(x.trailing!, maxLines: 1, style: appText(12.5, w: FontWeight.w800, c: c.textMedium)),
+            const SizedBox(width: 12),
+            Text(x.trailing!,
+                maxLines: 1, style: appText(13, w: FontWeight.w500, c: c.textMedium).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
           ],
         ]),
       ),
@@ -1197,7 +1413,9 @@ class _CourseLineRow extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// One line of the compact agenda: start time · a dot in the item's tone (pulsing while live) · title · tag.
-/// The subtitle (teacher · room · organization) is not drawn; a screen reader still hears it.
+/// The subtitle (teacher · room · organization) is not drawn; a screen reader still hears it. A live item with an
+/// action ("Enter room") draws its button where the tag would be; a live item without one needs no tag (the
+/// pulsing dot and "Ends in …" say it).
 class HomeAgendaLine extends StatelessWidget {
   const HomeAgendaLine({super.key, required this.item, this.done = false, this.focus = false, this.note});
   final HomeAgendaItem item;
@@ -1205,7 +1423,7 @@ class HomeAgendaLine extends StatelessWidget {
   /// Already ended: quieter ink (never an opacity — the text keeps its contrast).
   final bool done;
 
-  /// Runs now: the row is tinted in its tone and its title set heavier.
+  /// Runs now: the row is tinted (very lightly) in its tone and its title set a little heavier.
   final bool focus;
 
   /// A second line under the title ("Ends in 50 min · Lab 3").
@@ -1216,98 +1434,115 @@ class HomeAgendaLine extends StatelessWidget {
     final c = context.colors;
     final x = item;
     final tone = x.live ? c.danger : (x.tone ?? c.primary);
-    final tag = x.live ? 'home_live'.tr : x.tag;
+    final hasAction = x.actionLabel != null && x.onAction != null;
+    final tag = x.live || hasAction ? null : x.tag;
     final hasNote = note != null && note!.isNotEmpty;
     final label = [
       '${x.start} – ${x.end}',
       x.title,
       if (x.subtitle != null && x.subtitle!.isNotEmpty) x.subtitle!,
-      ?tag,
+      if (x.live) 'home_live'.tr else ?x.tag,
       if (hasNote) note!,
     ].join(', ');
     final title = Text(x.title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: appText(14,
-            w: done ? FontWeight.w600 : (focus ? FontWeight.w800 : FontWeight.w700), c: done ? c.textMedium : c.textDark, h: 1.25));
+        style: appText(14, w: done ? FontWeight.w400 : (focus ? FontWeight.w600 : FontWeight.w500), c: done ? c.textMedium : c.textDark, h: 1.3));
     final r = BorderRadius.circular(c.radiusMedium);
-    return Semantics(
-      button: x.onTap != null,
-      label: label,
-      excludeSemantics: true,
+    final row = Container(
+      constraints: const BoxConstraints(minHeight: 52),
+      decoration: focus ? BoxDecoration(color: tone.withValues(alpha: 0.05), borderRadius: r) : null,
       child: Padding(
-        padding: focus ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : EdgeInsets.zero,
-        child: InkWell(
-        onTap: x.onTap,
-        borderRadius: focus ? r : null,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 52),
-          decoration: focus
-              ? BoxDecoration(color: tone.withValues(alpha: 0.07), borderRadius: r, border: Border.all(color: tone.withValues(alpha: 0.20)))
-              : null,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: focus ? 10 : 16, vertical: 8),
-            child: Row(children: [
-              SizedBox(
-                width: 64,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(x.start,
-                      maxLines: 1,
-                      style: appText(13.5, w: FontWeight.w800, c: done ? c.textMedium : c.textDark)
-                          .copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-                ),
-              ),
-              SizedBox(
-                width: 16,
-                child: Center(
-                  child: x.live
-                      ? HomePulseDot(color: tone)
-                      : Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: done ? null : tone,
-                            shape: BoxShape.circle,
-                            border: done ? Border.all(color: c.textLight, width: 1.5) : null,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: !hasNote
-                    ? title
-                    : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                        title,
-                        const SizedBox(height: 2),
-                        Text(note!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: appText(12, w: FontWeight.w700, c: focus ? appInk(context, tone) : c.textMedium, h: 1.25)),
-                      ]),
-              ),
-              if (tag != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 112), // a long tag never squeezes the title out
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                  child: Text(tag,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w800, c: appInk(context, tone))),
-                ),
-              ],
-            ]),
+        padding: EdgeInsets.symmetric(horizontal: focus ? 10 : 16, vertical: 8),
+        child: Row(children: [
+          SizedBox(
+            width: 64,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: ExcludeSemantics(child: Text(x.start,
+                  maxLines: 1,
+                  style: appText(13, w: FontWeight.w500, c: done ? c.textLight : c.textMedium)
+                      .copyWith(fontFeatures: const [FontFeature.tabularFigures()]))),
+            ),
           ),
-        ),
+          SizedBox(
+            width: 16,
+            child: Center(
+              child: x.live
+                  ? HomePulseDot(color: tone, size: 7)
+                  : Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: done ? null : tone.withValues(alpha: 0.85),
+                        shape: BoxShape.circle,
+                        border: done ? Border.all(color: c.textLight, width: 1.2) : null,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ExcludeSemantics(child: !hasNote
+                ? title
+                : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    title,
+                    const SizedBox(height: 2),
+                    Text(note!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: appText(12.5, w: focus ? FontWeight.w500 : FontWeight.w400, c: focus ? appInk(context, tone) : c.textMedium, h: 1.3)),
+                  ])),
+          ),
+          if (hasAction) ...[
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 148),
+              child: FilledButton.icon(
+                onPressed: x.onAction,
+                onLongPress: x.onActionLongPress,
+                // the live tone darkened until its label reaches 4.5:1; the theme's padded 48 px tap target
+                style: FilledButton.styleFrom(
+                  backgroundColor: ensureContrast(tone, [c.onHero]),
+                  foregroundColor: c.onHero,
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  textStyle: appText(13, w: FontWeight.w600),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+                icon: Icon(x.actionIcon ?? Icons.sensors_rounded, size: 16),
+                label: Text(x.actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+          ] else if (tag != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              constraints: const BoxConstraints(maxWidth: 112), // a long tag never squeezes the title out
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: tone.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
+              child: Text(tag, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w500, c: appInk(context, tone))),
+            ),
+          ],
+        ]),
       ),
+    );
+    return Padding(
+      padding: focus ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : EdgeInsets.zero,
+      // with an action the row and its button are two targets: the row's texts are left out (its label says them),
+      // the button stays a node of its own
+      child: Semantics(
+        button: x.onTap != null,
+        label: label,
+        excludeSemantics: !hasAction,
+        child: InkWell(onTap: x.onTap, borderRadius: focus ? r : null, child: row),
       ),
     );
   }
 }
 
-/// "Show all (n)" / "Show less" at the foot of a compact list (a 48 px target).
+// "Show all (n)" / "Show less" at the foot of a compact list (a 48 px target).
 class HomeShowAllRow extends StatelessWidget {
   const HomeShowAllRow({super.key, required this.expanded, required this.count, required this.onTap});
   final bool expanded;
@@ -1329,7 +1564,7 @@ class HomeShowAllRow extends StatelessWidget {
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               Flexible(
                 child: Text(expanded ? 'home_show_less'.tr : 'home_show_all'.tr.replaceAll('{n}', '$count'),
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w800, c: ink)),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w500, c: ink)),
               ),
               const SizedBox(width: 4),
               Icon(expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 18, color: ink),
@@ -1683,37 +1918,38 @@ class _LiveCard extends StatelessWidget {
       onPressed: x.onJoin,
       icon: const Icon(Icons.videocam_rounded, size: 18),
       label: Text('home_live_join'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
+      // the one strong accent of the home: the live tone, darkened until its label reaches 4.5:1
       style: FilledButton.styleFrom(
-        backgroundColor: red,
-        foregroundColor: homeOnHero(context),
-        minimumSize: const Size(0, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        textStyle: appText(14, w: FontWeight.w800),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: ensureContrast(red, [c.onHero]),
+        foregroundColor: c.onHero,
+        minimumSize: const Size(0, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        textStyle: appText(14, w: FontWeight.w600),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 0,
       ),
     );
 
-    final avatar = _HostAvatar(name: x.hostName ?? title, url: x.hostImageUrl, ring: red);
+    Widget avatar(double size) => _HostAvatar(name: x.hostName ?? title, url: x.hostImageUrl, ring: red.withValues(alpha: 0.55), size: size);
 
     final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Row(children: [
         HomePulseDot(color: red, size: 7),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         Flexible(
           child: Text(
             [x.kindLabel ?? 'home_live_badge'.tr, ?since].join(' · '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: appText(12, w: FontWeight.w800, c: redInk).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            style: appText(12.5, w: FontWeight.w500, c: redInk).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
           ),
         ),
       ]),
-      const SizedBox(height: 2),
-      Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15.5, w: FontWeight.w800, c: c.textDark, h: 1.25)),
+      const SizedBox(height: 4),
+      Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w600, c: c.textDark, h: 1.3)),
       if (who.isNotEmpty) ...[
         const SizedBox(height: 2),
-        Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
+        Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.35)),
       ],
     ]);
 
@@ -1727,32 +1963,25 @@ class _LiveCard extends StatelessWidget {
           borderRadius: r,
           onTap: x.onOpen ?? x.onJoin,
           child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: r,
-              border: Border.all(color: red.withValues(alpha: 0.40), width: 1.2),
-              gradient: LinearGradient(
-                begin: AlignmentDirectional.centerStart,
-                end: AlignmentDirectional.centerEnd,
-                colors: [red.withValues(alpha: 0.09), red.withValues(alpha: 0.0)],
-              ),
-              boxShadow: [BoxShadow(color: red.withValues(alpha: 0.14), blurRadius: 22, offset: const Offset(0, 8))],
-            ),
+            // calm: the card surface with a hairline in the live tone — the dot and the button carry the accent
+            decoration: BoxDecoration(borderRadius: r, border: Border.all(color: red.withValues(alpha: 0.28))),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: LayoutBuilder(builder: (context, box) {
                 // the button sits at the end while the text keeps room; on a narrow phone (or big text) it goes under
                 final roomy = box.maxWidth >= 300 * MediaQuery.textScalerOf(context).scale(1);
                 if (roomy) {
+                  final wide = box.maxWidth >= 480;
                   return Row(children: [
-                    avatar,
-                    const SizedBox(width: 12),
+                    avatar(wide ? 48 : 40),
+                    SizedBox(width: wide ? 16 : 12),
                     Expanded(child: text),
-                    const SizedBox(width: 12),
+                    SizedBox(width: wide ? 16 : 12),
                     ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth * 0.36), child: join),
                   ]);
                 }
                 return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [avatar, const SizedBox(width: 16), Expanded(child: text)]),
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [avatar(40), const SizedBox(width: 12), Expanded(child: text)]),
                   const SizedBox(height: 16),
                   join,
                 ]);
@@ -1767,10 +1996,11 @@ class _LiveCard extends StatelessWidget {
 
 /// The host's photo in a red ring (initials over the brand tint without one).
 class _HostAvatar extends StatelessWidget {
-  const _HostAvatar({required this.name, required this.url, required this.ring});
+  const _HostAvatar({required this.name, required this.url, required this.ring, this.size = 48});
   final String name;
   final String? url;
   final Color ring;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -1778,18 +2008,18 @@ class _HostAvatar extends StatelessWidget {
     final initials = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).take(2).map((p) => p.characters.first).join();
     final u = url;
     return Container(
-      width: 52,
-      height: 52,
-      padding: const EdgeInsets.all(2.5),
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ring, width: 2)),
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ring, width: 1.5)),
       child: ClipOval(
         child: u != null && u.startsWith('http')
-            ? AppNetworkImage(url: u, width: 44, height: 44)
+            ? AppNetworkImage(url: u, width: size - 6, height: size - 6)
             : ColoredBox(
                 color: c.primaryTint,
                 child: Center(
                   child: Text(initials.isEmpty ? '•' : initials.toUpperCase(),
-                      maxLines: 1, style: appText(15, w: FontWeight.w900, c: appInk(context, c.primary))),
+                      maxLines: 1, style: appText(size * 0.3, w: FontWeight.w600, c: appInk(context, c.primary))),
                 ),
               ),
       ),
@@ -1802,15 +2032,17 @@ class _HostAvatar extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// "2 sessions today · 1 live now · next at 1:00 PM · 3 to do" — the day in one line under the name, so the home
-/// needs fewer cards. [nextAt] is a display time (through AppTime). Pure.
-String homeDaySummary({required int sessions, int live = 0, int todo = 0, String? nextAt}) {
+/// needs fewer cards. [nextAt] is a display time (through AppTime). [othersWaiting]: something the to-do count
+/// does not hold still waits (unread notifications, an organization's request, a payout) — then the line never
+/// says "all caught up" next to a "Needs you" strip (M6). Pure.
+String homeDaySummary({required int sessions, int live = 0, int todo = 0, String? nextAt, bool othersWaiting = false}) {
   final parts = <String>[
     sessions == 0
         ? 'home_sum_free'.tr
         : (sessions == 1 ? 'home_sum_sessions_one'.tr : 'home_sum_sessions'.tr.replaceAll('{n}', '$sessions')),
     if (live > 0) 'home_sum_live'.tr.replaceAll('{n}', '$live'),
     if (live == 0 && nextAt != null && nextAt.isNotEmpty) 'home_sum_next'.tr.replaceAll('{t}', nextAt),
-    todo > 0 ? 'home_sum_todo'.tr.replaceAll('{n}', '$todo') : 'home_sum_clear'.tr,
+    if (todo > 0) 'home_sum_todo'.tr.replaceAll('{n}', '$todo') else if (!othersWaiting) 'home_sum_clear'.tr,
   ];
   return parts.join(' · ');
 }

@@ -26,6 +26,8 @@ import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/core/offline/offline_strings.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
+import 'package:flutter_education_app/core/app_time.dart' show AppTime;
+import 'package:flutter_education_app/utils/web_entry_route.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -81,6 +83,11 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 /// still out there (shared guest links, bookmarks). Null on mobile and for clean URLs.
 String? _legacyHashRoute;
 
+/// Web: the route the browser URL asked for (`/notifications`, `/profile`, a share link), read in main() BEFORE the
+/// boot splash's Navigator resets the engine's default route to `/` (M20); consumed by the real app's first
+/// Navigator (utils/web_entry_route.dart). Null on mobile and for `/`.
+String? _webEntry;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,6 +101,7 @@ Future<void> main() async {
     if (_legacyHashRoute != null) {
       replaceBrowserUrl(base.removeFragment().resolve(_legacyHashRoute!.substring(1)).toString());
     }
+    _webEntry = _legacyHashRoute ?? webEntryRouteFromUri(base);
   }
 
   if (kIsWeb) {
@@ -115,6 +123,7 @@ Future<void> _bootstrap() async {
   LiveRoomHost.installBackHandler(); // before runApp: the live room answers the back button before WidgetsApp
   if (SplashState.instance.steps > 0) SplashState.instance.reset(); // retry after a fatal start
   SplashState.instance.expected = kIsWeb ? 7 : 10;
+  AppTime.useLatinDigits(); // ONE digit system (0-9) in Arabic too, before any date is formatted (M24)
   // Decode the splash artwork first (bounded): the native splash stays up meanwhile, so Flutter's first
   // frame already shows the logo exactly where the native one was — no blank flash.
   unawaited(SplashTheme.load()); // the user's dark-mode choice, usually read before the first frame
@@ -507,10 +516,16 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     }
     // Student + offline start-up: Dashboard (on its LAST tab) first, Downloads on top of it.
     final bool offlineStudentStart = offlineStart && auth.isStudent;
-    // Web uses the PATH url strategy: `/live/x`, `/c/12?ref=5`, `/dashboard` arrive as the platform's default
-    // route, which WidgetsApp prefers over `initialRoute` whenever it is not `/`. Only the old hash links
-    // (`/#/live/x`) need help: their route was read from the fragment in main() and the URL already cleaned.
-    final String initialRoute = _legacyHashRoute ??
+    // Web uses the PATH url strategy, but the boot splash's own Navigator resets the engine's default route to `/`
+    // before this app starts: the URL (`/notifications`, `/c/12?ref=5`, an old `/#/live/x`) was read in main()
+    // and is honoured here when the person may open it (resolveWebEntry: share links always, sign-in pages when
+    // signed out, argument-free pages over the home when signed in; another role's dashboard → the own home).
+    final entry = resolveWebEntry(_webEntry,
+        signedIn: auth.isAuthenticated,
+        home: auth.homeRoute,
+        isLink: (r) =>
+            guestLiveTokenFromRoute(r) != null || DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null);
+    final String initialRoute = entry?.route ??
         (!auth.isAuthenticated
         ? '/login'
         : (offlineStudentStart
@@ -560,6 +575,13 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                 _router(const RouteSettings(name: '/dashboard'))!,
                 _router(const RouteSettings(name: '/downloads'))!,
               ];
+            }
+            // `/profile` by URL: the home, on its account tab (N10) — the dashboard reads the request when it mounts.
+            final tab = auth.isAuthenticated ? webEntryTab(_webEntry) : null;
+            if (tab != null) AppNavigator.requestedTab.value = tab;
+            _webEntry = null; // one start only: a later Navigator (sign-out / sign-in) opens the usual way
+            if (entry != null && entry.overHome && name == entry.route) {
+              return [_router(RouteSettings(name: auth.homeRoute))!, _router(RouteSettings(name: name))!];
             }
             return [_router(RouteSettings(name: name))!];
           },
@@ -688,7 +710,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         return _fade(const _Guard(child: ParentDashboardScreen()), settings);
       case '/subscription':
         return _fade(const _Guard(child: SubscriptionScreen()), settings);
-      case '/profile':
+      case '/profile': // the role's account tab (N10); the edit-account form is '/edit-account'
+        return _fade(const _Guard(child: _RedirectHome(tab: 'profile')), settings);
+      case '/edit-account':
         return _fade(const _Guard(child: EditAccountScreen()), settings);
       case '/change-password':
         return _fade(const _Guard(child: ChangePasswordScreen()), settings);
@@ -978,7 +1002,11 @@ class _GuardState extends State<_Guard> {
 
 /// Sends the user to their own home screen (used when a route has no usable arguments).
 class _RedirectHome extends StatefulWidget {
-  const _RedirectHome();
+  const _RedirectHome({this.tab});
+
+  /// The dashboard tab to show ('profile' for the `/profile` route, N10): back to the home under this page, or
+  /// the home in its place, which then switches to the tab.
+  final String? tab;
 
   @override
   State<_RedirectHome> createState() => _RedirectHomeState();
@@ -990,9 +1018,16 @@ class _RedirectHomeState extends State<_RedirectHome> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushReplacementNamed(context.read<MyAuthProvider>().homeRoute);
+      final nav = Navigator.of(context);
+      if (widget.tab != null) {
+        AppNavigator.requestedTab.value = null; // re-fire even if the same tab is requested twice
+        AppNavigator.requestedTab.value = widget.tab;
+        if (nav.canPop()) {
+          nav.pop();
+          return;
+        }
+      }
+      nav.pushReplacementNamed(context.read<MyAuthProvider>().homeRoute);
     });
   }
 

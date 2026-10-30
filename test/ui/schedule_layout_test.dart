@@ -7,6 +7,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
+import 'package:flutter_education_app/features/shared/calendar/calendar_views.dart' show CalTimeGrid;
 import 'package:flutter_education_app/features/shared/calendar/schedule_logic.dart';
 import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
 import 'package:flutter_education_app/features/shared/calendar/schedule_parts.dart';
@@ -320,6 +321,44 @@ void main() {
       expect(api.answers.single.$1, 9);
       expect(api.answers.single.$2, {'status': 'accepted'}); // a record holding a map never equals another
       await tester.pump(const Duration(seconds: 4)); // the notice leaves
+    });
+
+    testWidgets('H10: every phone list / grid ends with room for the "+" (and the safe area); it slides away while scrolling down',
+        (tester) async {
+      tester.view.padding = const FakeViewPadding(bottom: 34);
+      addTearDown(tester.view.resetPadding);
+      const fabRoom = 56 + 16 + 16 + 34.0; // the button, its margin, air, the safe area
+      for (final v in CalView.values) {
+        await _pumpPage(tester, SchedulePage(api: _Api(), store: CalendarStore(), now: _now, initialView: v, liveKeys: const {}));
+        expect(find.byKey(const ValueKey('cal.new_meeting')), findsOneWidget);
+        final lists = tester.widgetList<ListView>(find.byType(ListView)).where((l) => l.scrollDirection == Axis.vertical);
+        final grids = tester.widgetList<CalTimeGrid>(find.byType(CalTimeGrid));
+        expect(lists.length + grids.length, greaterThan(0), reason: v.name);
+        for (final l in lists) {
+          expect((l.padding! as EdgeInsets).bottom, greaterThanOrEqualTo(fabRoom), reason: '${v.name} list');
+        }
+        for (final g in grids) {
+          expect(g.bottomPadding, greaterThanOrEqualTo(fabRoom), reason: '${v.name} grid');
+        }
+        await tester.pumpWidget(const SizedBox());
+      }
+
+      // the agenda: a drag down the rows tucks the button away, a drag back brings it
+      await _pumpPage(tester, SchedulePage(api: _Api(), store: CalendarStore(), now: _now, initialView: CalView.agenda, liveKeys: const {}));
+      AnimatedSlide slide() => tester.widget<AnimatedSlide>(
+          find.ancestor(of: find.byKey(const ValueKey('cal.new_meeting')), matching: find.byType(AnimatedSlide)));
+      expect(slide().offset, Offset.zero);
+      final list = find.byWidgetPredicate((w) => w is ListView && w.scrollDirection == Axis.vertical).first;
+      final gesture = await tester.startGesture(tester.getCenter(list));
+      await gesture.moveBy(const Offset(0, -40));
+      await gesture.moveBy(const Offset(0, -40));
+      await tester.pump();
+      expect(slide().offset, isNot(Offset.zero), reason: 'scrolling down through rows: out of the way');
+      await gesture.moveBy(const Offset(0, 30));
+      await gesture.moveBy(const Offset(0, 30));
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(slide().offset, Offset.zero, reason: 'a scroll up brings it back');
     });
 
     testWidgets('desktop: the sidebar holds the mini month, up next, invitations and the filters', (tester) async {

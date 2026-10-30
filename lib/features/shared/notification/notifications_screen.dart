@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, appText;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
@@ -10,7 +10,6 @@ import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_navigator.dart';
 import '../../../utils/widget/base_page.dart';
 import 'notifications_provider.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -46,6 +45,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 onRefresh: provider.fetchNotifications,
                 onLoadMore: provider.hasMore ? () => provider.loadMore() : null,
                 children: [
+                  if (provider.unreadCount > 0)
+                    ParentComponent(featureKey: 'notifications.mark_all_read', child: NotificationsMarkAllBar(
+                      // ONE action for the whole page (N12), not one per day group; one PUT /read-all.
+                      onPressed: () => context.read<NotificationsProvider>().markAllAsRead(),
+                    )),
                   ParentComponent(featureKey: 'notifications.today', child: _NotifGroup(
                     group: NotifGroup.today,
                     groupTitle: 'today'.tr,
@@ -146,35 +150,14 @@ class _NotifGroup extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Group header row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(child: Text(groupTitle, style: context.colors.h2)),
-            ParentComponent(featureKey: 'notifications.mark_all_read', child: TextButton(
-              style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-              onPressed: () async {
-                // FIX: capture provider before the async gap so we never
-                // access context after notifyListeners() may deactivate
-                // this widget.
-                final p = context.read<NotificationsProvider>();
-                await p.markGroupAsRead(group);
-              },
-              child: Text(
-                'mark_all_read'.tr,
-                style: context.colors.label.copyWith(
-                  color: context.colors.primary,
-                ),
-              ),
-            )),
-          ],
-        ),
+        // Group header (the page's single "Mark all read" sits above the groups, N12)
+        Text(groupTitle, style: context.colors.h2),
         const SizedBox(height: 12),
         // Notification tiles
         ...notifs.map(
               (n) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _NotifTile(notif: n),
+            child: NotificationTile(notif: n),
           ),
         ),
       ],
@@ -182,14 +165,81 @@ class _NotifGroup extends StatelessWidget {
   }
 }
 
+/// The page's one "Mark all read", above the day groups (end-aligned, 48 px target).
+class NotificationsMarkAllBar extends StatelessWidget {
+  const NotificationsMarkAllBar({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: TextButton.icon(
+        style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+        onPressed: onPressed,
+        icon: Icon(Icons.done_all_rounded, size: 18, color: context.colors.primary),
+        label: Text('mark_all_read'.tr, style: context.colors.label.copyWith(color: context.colors.primary)),
+      ),
+    );
+  }
+}
+
+/// What a notification is about, for its icon (N12): read from the server's `type` first, then `related_type`.
+enum NotifKind { live, recording, schedule, exam, course, payment, certificate, complaint, announcement, request, organization, person, general }
+
+NotifKind notificationKind(String type, String relatedType) {
+  final t = type.toLowerCase();
+  final r = relatedType.toLowerCase();
+  bool any(List<String> keys) => keys.any((k) => t.contains(k) || r.contains(k));
+  if (t.contains('record') || r.contains('record')) return NotifKind.recording;
+  if (t.contains('session_started') || t.contains('live') || any(['meeting'])) return NotifKind.live;
+  if (any(['exam', 'quiz'])) return NotifKind.exam;
+  if (any(['payment', 'topup', 'subscription', 'fee', 'transfer', 'points'])) return NotifKind.payment;
+  if (any(['certificate', 'badge', 'graduation', 'premium'])) return NotifKind.certificate;
+  if (any(['complain'])) return NotifKind.complaint;
+  if (any(['announcement'])) return NotifKind.announcement;
+  if (any(['schedule', 'timetable', 'session', 'availability', 'calendar'])) return NotifKind.schedule;
+  if (any(['course', 'material', 'learning', 'module', 'lesson', 'enroll'])) return NotifKind.course;
+  if (any(['work_item', 'decision', 'council', 'form', 'request', 'consent', 'review', 'delegation', 'registrar', 'registration', 'program_choice'])) {
+    return NotifKind.request;
+  }
+  if (any(['parent', 'username', 'mention', 'user', 'profile'])) return NotifKind.person;
+  if (t.startsWith('org') || r.startsWith('org')) return NotifKind.organization;
+  return NotifKind.general;
+}
+
+IconData notificationIcon(NotifKind kind) => switch (kind) {
+  NotifKind.live => Icons.videocam_rounded,
+  NotifKind.recording => Icons.play_circle_outline_rounded,
+  NotifKind.schedule => Icons.event_note_rounded,
+  NotifKind.exam => Icons.quiz_outlined,
+  NotifKind.course => Icons.menu_book_rounded,
+  NotifKind.payment => Icons.credit_card_rounded,
+  NotifKind.certificate => Icons.workspace_premium_rounded,
+  NotifKind.complaint => Icons.support_agent_rounded,
+  NotifKind.announcement => Icons.campaign_outlined,
+  NotifKind.request => Icons.assignment_outlined,
+  NotifKind.organization => Icons.apartment_rounded,
+  NotifKind.person => Icons.person_outline_rounded,
+  NotifKind.general => Icons.notifications_none_rounded,
+};
+
 // ── Notification Tile ─────────────────────────────────────────────────────────
 
-class _NotifTile extends StatelessWidget {
+/// One notification row (calm: an unread one adds a dot and a w600 title, M2).
+class NotificationTile extends StatelessWidget {
   final NotificationModel notif;
 
-  const _NotifTile({required this.notif});
+  const NotificationTile({super.key, required this.notif});
 
   Widget _buildIcon(String asset, BuildContext context) {
+    final kind = notificationKind(notif.type, notif.relatedType);
+    if (kind != NotifKind.general) {
+      final c = context.colors;
+      final tone = kind == NotifKind.certificate ? c.accent : c.primary;
+      return _IconBadge(icon: notificationIcon(kind), bg: tone.withValues(alpha: 0.12), iconColor: tone);
+    }
     switch (asset) {
       case 'payment':
         return _IconBadge(
@@ -204,7 +254,11 @@ class _NotifTile extends StatelessWidget {
           iconColor: context.colors.accent,
         );
       case 'new':
-        return _NewBadgeIcon();
+        return _IconBadge(
+          icon: Icons.campaign_outlined,
+          bg: context.colors.primary.withValues(alpha: 0.10),
+          iconColor: context.colors.primary,
+        );
       default:
         return _IconBadge(
           icon: Icons.notifications_rounded,
@@ -217,74 +271,91 @@ class _NotifTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRead = notif.isRead;
+    final c = context.colors;
+    final title = notificationPlainText(notif.title);
+    final body = notificationPlainText(notif.body);
 
-    return GestureDetector(
-      onTap: () async {
-        final provider = context.read<NotificationsProvider>();
-        if (!notif.isRead) {
-          await provider.markAsRead(notif.id);
-        }
-        // Opens the course profile (student or teacher version) / profile / etc. — resolved by the server.
-        await AppNavigator.openNotification(notif.id);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isRead
-              ? context.colors.cardBg
-              : context.colors.primary.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-          border: Border.all(
-            color: isRead
-                ? Colors.transparent
-                : context.colors.primary.withValues(alpha: 0.2),
-          ),
-          boxShadow: context.colors.cardShadow,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildIcon(notif.iconAsset, context),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+    // Calm rows (M2): every row looks the same; an unread one only adds a dot and a w600 title.
+    return Semantics(
+      button: true,
+      label: isRead ? null : (AppConfig.lang == 'ar' ? 'غير مقروء' : 'Unread'),
+      child: Material(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(c.radiusMedium),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(c.radiusMedium),
+          onTap: () async {
+            final provider = context.read<NotificationsProvider>();
+            if (!notif.isRead) {
+              await provider.markAsRead(notif.id);
+            }
+            // Opens the course profile (student or teacher version) / profile / etc. — resolved by the server.
+            await AppNavigator.openNotification(notif.id);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(c.radiusMedium),
+              border: Border.all(color: c.divider),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildIcon(notif.iconAsset, context),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          notif.title,
-                          style: context.colors.h3.copyWith(
-                            color: isRead
-                                ? context.colors.textDark
-                                : context.colors.primary,
-                          ),
-                        ),
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: appText(15, w: isRead ? FontWeight.w500 : FontWeight.w600, c: c.textDark),
                       ),
-                      if (!isRead)
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: context.colors.primary,
-                            shape: BoxShape.circle,
-                          ),
+                      if (body.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          body,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: appText(13, w: FontWeight.w400, c: c.textMedium, h: 1.45),
                         ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(notif.body, style: context.colors.body),
+                ),
+                if (!isRead) ...[
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
+/// A notification's text without emoji / pictographs (the server writes "⏹" / "🎥" into some titles; most fonts
+/// draw them as empty boxes, M2), with the spaces they leave tidied.
+String notificationPlainText(String s) => s
+    .replaceAll(_emoji, '')
+    .replaceAll(RegExp(r' {2,}'), ' ')
+    .trim();
+
+final RegExp _emoji = RegExp(
+  r'[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{20E3}]',
+  unicode: true,
+);
 
 // ── Icon Badges ───────────────────────────────────────────────────────────────
 
@@ -309,31 +380,6 @@ class _IconBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Icon(icon, color: iconColor, size: 26),
-    );
-  }
-}
-
-class _NewBadgeIcon extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: context.colors.danger,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Center(
-        child: Text(
-          'NEW',
-          style: TextStyle(
-            color: context.colors.onHero,
-            fontWeight: FontWeight.w900,
-            fontSize: 12,
-            fontFamily: AppFonts.family,
-          ),
-        ),
-      ),
     );
   }
 }

@@ -28,6 +28,7 @@ import '../../../../design/app_responsive.dart';
 import 'course_space_parts.dart';
 
 export 'course_space_parts.dart';
+export 'course_sessions.dart';
 
 /// The horizontal gutter every block of the page lines up on.
 const double kCourseGutter = 16;
@@ -249,7 +250,7 @@ class CourseSpace extends StatelessWidget {
             tabs: tabs,
             active: active?.id ?? '',
             onTab: onTab,
-            extent: CourseSpaceTabBar.heightFor(context, width: width, count: _visibleTabs),
+            extent: CourseSpaceTabBar.heightFor(context, width: width, tabs: tabs),
             background: context.colors.background,
           ),
         ),
@@ -395,7 +396,7 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
       decoration: BoxDecoration(
         color: background,
         boxShadow: lifted
-            ? [BoxShadow(color: c.heroShade.withValues(alpha: 0.08), blurRadius: 14, offset: const Offset(0, 6))]
+            ? [BoxShadow(color: c.heroShade.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]
             : null,
       ),
       // fills the whole extent: a pinned header whose child is shorter fails its geometry check

@@ -64,14 +64,16 @@ List<AnCourseFacts> studentCourseFacts(StudentAnalyticsProvider prov) => [
       for (final c in prov.courses)
         () {
           final b = prov.blockOf(c.id);
+          final progress = prov.progressOf(c);
           return AnCourseFacts(
             id: c.id,
             title: c.title,
             subtitle: c.teacherName,
-            progress: prov.progressOf(c),
+            progress: progress,
             attendance: b?.attendance,
             exams: b?.examAvg,
-            classProgress: _classAvg(b, 'progress'),
+            // N5: the class on the scale of the enrolment's progress (a cohort of one is level, never "11 below")
+            classProgress: anClassOnScale(shown: progress, mine: b?.progress, cls: _classAvg(b, 'progress')),
             classAttendance: _classAvg(b, 'attendance'),
             classExams: _classAvg(b, 'exam_avg'),
             attended: b?.attended ?? 0,
@@ -126,6 +128,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
           courseTitle: course.title,
           initialTab: tab,
           initialBlock: prov.blockOf(course.id),
+          progress: prov.progressOf(course),
         ),
       ),
     );
@@ -245,7 +248,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
           value: totals.value(m),
           delta: totals.delta(m),
           detail: m == AnMetric.attendance && totals.held > 0
-              ? anFmt('an2_sessions_of', {'a': totals.attended, 'h': totals.held}, '{a} of {h} sessions')
+              ? anFmt('an2_sessions_of', {'a': totals.attended, 'sessions': anSessionsWord(totals.held)}, '{a} of {sessions}')
               : null,
         ),
     ];
@@ -425,6 +428,7 @@ class _AllCoursesPageState extends State<_AllCoursesPage> {
           courseTitle: course.title,
           initialTab: tab,
           initialBlock: prov.blockOf(course.id),
+          progress: prov.progressOf(course),
         ),
       ),
     );

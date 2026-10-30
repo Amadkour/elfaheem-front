@@ -9,6 +9,12 @@
 // The server stores naive UTC; read with orgParseUtc()/DateTime.parse(...).toUtc() and show with [AppTime.time],
 // [AppTime.date], [AppTime.dateTime]. Timetable periods are wall-clock "HH:MM" strings of the organization — they
 // are NOT converted, only formatted ([AppTime.clock] / [AppTime.clockMinutes]).
+//
+// Digits (M24): ONE system app-wide, the Western digits 0-9, in Arabic too — the clocks, counts, prices and codes
+// were already written with them; only intl's Arabic DATES (the symbols flutter_localizations registers) came out
+// in Arabic-Indic (أكتوبر ٢٠٢٦ beside 29 30 31). [AppTime.useLatinDigits] switches every DateFormat to ASCII
+// digits (main() calls it at start-up; [AppTime.date] makes sure), and [latinDigits] turns a string that already
+// holds Arabic-Indic / Persian digits (a server-made title, a pasted value) into the same system.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -123,7 +129,15 @@ class AppTime {
       tzdata.initializeTimeZones();
       initializeDateFormatting(); // local symbol data loads synchronously; enables Arabic month names
     } catch (_) {}
+    useLatinDigits();
     _db = true;
+  }
+
+  /// Every DateFormat made from now on writes Western digits for the Arabic locales (M24). Idempotent.
+  static void useLatinDigits() {
+    for (final l in const ['ar', 'ar_EG', 'ar_SA', 'ar_AR', 'fa', 'ur']) {
+      DateFormat.useNativeDigitsByDefaultFor(l, false);
+    }
   }
 
   /// UTC instant → wall clock of the effective zone (DST aware). Naive input is taken as UTC.
@@ -193,7 +207,7 @@ class AppTime {
   static String date(DateTime utc, {String pattern = 'd MMM y'}) {
     final w = toZone(utc); // also loads the timezone + date-symbol data
     try {
-      return DateFormat(pattern, AppConfig.lang).format(w);
+      return (DateFormat(pattern, AppConfig.lang)..useNativeDigits = false).format(w);
     } catch (_) {
       return DateFormat(pattern).format(w);
     }
@@ -201,4 +215,20 @@ class AppTime {
 
   /// UTC instant → "23 Oct 2026 · 8:30 AM".
   static String dateTime(DateTime utc) => '${date(utc)} · ${time(utc)}';
+}
+
+/// [s] with every Arabic-Indic (٠-٩) and Persian (۰-۹) digit written as 0-9: the app's one digit system (M24).
+String latinDigits(String s) {
+  if (s.isEmpty) return s;
+  final out = StringBuffer();
+  for (final r in s.runes) {
+    if (r >= 0x0660 && r <= 0x0669) {
+      out.writeCharCode(0x30 + r - 0x0660);
+    } else if (r >= 0x06F0 && r <= 0x06F9) {
+      out.writeCharCode(0x30 + r - 0x06F0);
+    } else {
+      out.writeCharCode(r);
+    }
+  }
+  return out.toString();
 }

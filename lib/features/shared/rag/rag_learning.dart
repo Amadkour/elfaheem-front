@@ -158,7 +158,7 @@ Map<String, dynamic> chatVoteBody(int queryId, {required bool helpful, String? r
 
 /// The answer with the asker's rating set (the learning route answers 204, not the row).
 RagAnswer ragAnswerRated(RagAnswer a, bool helpful) => RagAnswer(a.id, a.state, a.question, a.found, a.answer, a.citations, a.error, helpful,
-    a.followUps, a.stage, a.generator, a.app, a.orgId, a.conversationId);
+    a.followUps, a.stage, a.generator, a.app, a.orgId, a.conversationId, a.partial, a.createdAt);
 
 /// The body of an implicit signal on an answer (a citation opened, a deep link followed, "contact support").
 Map<String, dynamic> chatSignalBody(int queryId, String kind, [Map<String, dynamic> value = const {}]) =>

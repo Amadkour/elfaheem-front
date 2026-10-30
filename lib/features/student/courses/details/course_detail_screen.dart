@@ -39,6 +39,7 @@ import 'components/about.dart';
 import 'components/course_detail_parts.dart';
 import 'components/session.dart';
 import 'components/share_link.dart';
+import 'course_access_sheet.dart';
 import 'course_detail_provider.dart';
 import 'course_live_join.dart';
 import '../../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
@@ -97,6 +98,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     super.initState();
     _provider = context.read<CourseDetailProvider>();
     _provider.course = widget.course;
+    _provider.block = null; // a block from the previous course page must not flash here
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _provider.init(widget.course);
     });
@@ -108,13 +110,35 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     // Full-page skeleton only for the FIRST load. While the next page of
     // sessions loads (sessions already on screen) the page must stay put.
     final loading = provider.isLoading && provider.sessions.isEmpty;
+    final block = provider.block;
 
     return BasePage(
       useWebCard: true,
       enableFooterWidget: false,
       maxWith: 1320,
-      child: loading ? const CourseDetailSkeleton() : const _Body(),
+      child: loading
+          ? const CourseDetailSkeleton()
+          : block != null
+          // 404 (draft / unknown) or 403 course_locked: a calm page instead of an empty course
+          ? CourseBlockedView(
+              locked: block == CourseBlock.locked,
+              title: (AppConfig.lang == 'ar' ? provider.course.titleAr : provider.course.titleEn) ??
+                  provider.course.titleEn ??
+                  provider.course.titleAr,
+              onBack: Navigator.canPop(context) ? () => Navigator.maybePop(context) : null,
+              onEnterCode: () => _enterCode(provider),
+            )
+          : const _Body(),
     );
+  }
+
+  Future<void> _enterCode(CourseDetailProvider p) async {
+    final id = int.tryParse(p.course.id);
+    if (id == null) return;
+    final title = (AppConfig.lang == 'ar' ? p.course.titleAr : p.course.titleEn) ?? '';
+    if (await CourseAccessSheet.show(context, courseId: id, courseName: title)) {
+      await p.init(p.course);
+    }
   }
 }
 
@@ -226,7 +250,7 @@ class _CoursePageState extends State<_CoursePage> {
         if (c.type == 'live')
           CourseSpaceBadge(label: gt('بث مباشر', 'Live'), icon: Icons.sensors_rounded, color: col.danger)
         else
-          CourseSpaceBadge(label: gt('مسجّل', 'Recorded'), icon: Icons.play_circle_outline_rounded),
+          CourseSpaceBadge(label: gt('دروس مسجّلة', 'Recorded lessons'), icon: Icons.play_circle_outline_rounded),
         if (c.certificates.isNotEmpty)
           CourseSpaceBadge(label: gt('شهادة', 'Certificate'), icon: Icons.workspace_premium_rounded),
       ],
@@ -239,13 +263,17 @@ class _CoursePageState extends State<_CoursePage> {
               MaterialPageRoute(builder: (_) => InstructorProfileScreen(teacher: c.teacher!)),
             ),
       stats: [
-        CourseSpaceStat(icon: Icons.groups_rounded, value: '${c.studentsCount}', label: 'course_hero_students'.tr),
+        CourseSpaceStat(
+          icon: Icons.groups_rounded,
+          value: '${c.studentsCount}',
+          label: courseStatNoun(c.studentsCount, 'course_hero_students'),
+        ),
         CourseSpaceStat(
           icon: Icons.play_circle_outline_rounded,
           value: '${c.sessionsCount}',
-          label: 'course_hero_lessons'.tr,
+          label: courseStatNoun(c.sessionsCount, 'course_hero_lessons'),
         ),
-        CourseSpaceStat(icon: Icons.schedule_rounded, value: hours, label: 'course_hero_hours'.tr),
+        CourseSpaceStat(icon: Icons.schedule_rounded, value: hours, label: courseStatNoun(c.totalHours, 'course_hero_hours')),
       ],
       progress: c.isEnrolled ? c.progress.clamp(0, 100) / 100 : null,
       progressLabel: gt('تقدّمك', 'Your progress'),
@@ -255,13 +283,8 @@ class _CoursePageState extends State<_CoursePage> {
     final total = c.materialsTotal;
     final done = c.materialsCompleted;
     final learned = total > 0 ? done / total : c.progress.clamp(0, 100) / 100;
-    SessionModel? next;
-    for (final s in p.sessions) {
-      if (!s.isCompleted && p.isSessionUnlockedById(s.id)) {
-        next = s;
-        break;
-      }
-    }
+    // the next thing that can be taken (an ended live session with nothing recorded is skipped, H8)
+    final next = p.nextPlayable;
     final spotlight = <Widget>[
       // Join goes INTO the room (it used to switch to the Live tab only: on a wide window — the card sits in the side
       // column — with that tab already open, the click did nothing); a tap on the card opens the Live tab.
@@ -283,7 +306,7 @@ class _CoursePageState extends State<_CoursePage> {
           total: total,
           nextLesson: next?.name,
           hasCertificates: p.myCertificates.isNotEmpty || c.certificates.isNotEmpty,
-          onContinue: () => p.setTab(CourseDetailTab.lessons),
+          onContinue: next == null ? null : () => p.focusSession(next.id),
           onCertificates: () => p.setTab(CourseDetailTab.about),
         ),
     ];
@@ -309,15 +332,7 @@ class _CoursePageState extends State<_CoursePage> {
             MaterialPageRoute(builder: (_) => StudentAnalyticsProfileScreen.forStudent(courseId: courseId)),
           ),
         ),
-      if (c.isEnrolled)
-        CourseSpaceAction(
-          icon: Icons.assignment_rounded,
-          label: 'exams'.tr,
-          caption: gt('اختبارات الكورس ونتائجك', 'Course exams and your results'),
-          color: col.warning,
-          featureKey: 'exams',
-          onTap: () => p.setTab(CourseDetailTab.exam),
-        ),
+      // (Exams is a tab of its own — no quick action repeating it, H7)
       CourseSpaceAction(
         icon: Icons.headset_mic_rounded,
         label: gt('الدعم', 'Support'),
@@ -341,7 +356,7 @@ class _CoursePageState extends State<_CoursePage> {
         ),
       CourseSpaceTab(
         id: 'lessons',
-        label: 'sessions'.tr,
+        label: gt('الجلسات', 'Sessions'),
         icon: Icons.play_lesson_rounded,
         count: c.sessionsCount > 0 ? c.sessionsCount : p.sessions.length,
         featureKey: 'course_tabs.lessons',
@@ -356,7 +371,7 @@ class _CoursePageState extends State<_CoursePage> {
       ),
       CourseSpaceTab(
         id: 'about',
-        label: 'course_details'.tr,
+        label: gt('عن الكورس', 'About'),
         icon: Icons.info_outline_rounded,
         featureKey: 'course_tabs.about',
         builder: (_) => const AboutTab(),

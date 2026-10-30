@@ -30,7 +30,8 @@ class CategoriesRow extends StatelessWidget {
             .take(5)
             .toList();
         return SizedBox(
-          height: min(context.width / 6, 100) + 30,
+          // avatar + a two-line name (L7: one line cut most names)
+          height: min(context.width / 6, 100) + 8 + 2 * 1.15 * max(11, min(context.width / 6, 100) / 7) * MediaQuery.textScalerOf(context).scale(1),
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,

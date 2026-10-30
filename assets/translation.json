@@ -1,4 +1,52 @@
 {
+  "course_scope_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "course_scope_personal": {
+    "en": "Personal",
+    "ar": "شخصي"
+  },
+  "course_scope_org": {
+    "en": "Organization",
+    "ar": "المؤسسة"
+  },
+  "course_scope_personal_title": {
+    "en": "My personal courses",
+    "ar": "كورساتي الشخصية"
+  },
+  "course_scope_personal_sub": {
+    "en": "Only the courses of your own account — none from your organizations",
+    "ar": "كورسات حسابك الشخصي فقط — بدون كورسات المؤسسات"
+  },
+  "course_scope_org_sub": {
+    "en": "Only this organization's courses",
+    "ar": "كورسات هذه المؤسسة فقط"
+  },
+  "course_scope_elsewhere_orgs": {
+    "en": "+{n} in your organizations",
+    "ar": "+{n} في مؤسساتك"
+  },
+  "course_scope_elsewhere_personal": {
+    "en": "+{n} in your personal account",
+    "ar": "+{n} في حسابك الشخصي"
+  },
+  "course_scope_switch": {
+    "en": "Switch",
+    "ar": "تبديل"
+  },
+  "course_scope_org_empty": {
+    "en": "Courses this organization gives you appear here",
+    "ar": "تظهر هنا الكورسات التي تُسندها إليك هذه المؤسسة"
+  },
+  "course_scope_org_empty_student": {
+    "en": "You have no courses in this organization yet",
+    "ar": "لا كورسات لك في هذه المؤسسة بعد"
+  },
+  "course_scope_browse_org": {
+    "en": "Browse its courses",
+    "ar": "تصفّح كورساتها"
+  },
   "my_calendar": {
     "en": "My calendar",
     "ar": "تقويمي"
@@ -524,8 +572,8 @@
     "ar": "حفظ التغيرات"
   },
   "add_session": {
-    "en": "Add Session",
-    "ar": "اضافة حصة"
+    "en": "Add session",
+    "ar": "إضافة الجلسة"
   },
   "account": {
     "en": "Account",
@@ -533,7 +581,7 @@
   },
   "change_password": {
     "en": "Change Password",
-    "ar": "تغير كلمة المرور"
+    "ar": "تغيير كلمة المرور"
   },
   "cancel": {
     "en": "Cancel",
@@ -708,12 +756,12 @@
     "ar": "س"
   },
   "edit_session": {
-    "en": "Edit Session",
-    "ar": "تعديل المحاضرة"
+    "en": "Edit session",
+    "ar": "تعديل الجلسة"
   },
   "delete_session": {
-    "en": "Delete Session",
-    "ar": "حذف المحاضرة"
+    "en": "Delete session",
+    "ar": "حذف الجلسة"
   },
   "delete_session_successfully": {
     "en": "Delete Session Successfully",
@@ -1217,11 +1265,11 @@
   },
   "cost": {
     "en": "Cost",
-    "ar": "التكلفه"
+    "ar": "التكلفة"
   },
   "duration": {
     "en": "Duration",
-    "ar": "المده"
+    "ar": "المدة"
   },
   "change_language": {
     "en": "Change language",
@@ -1433,7 +1481,7 @@
   },
   "explorer_courses": {
     "en": "Explorer Courses",
-    "ar": "استكشف دورات اخري"
+    "ar": "استكشف دورات أخرى"
   },
   "course_details": {
     "en": "Course Details",
@@ -1569,7 +1617,7 @@
   },
   "other_courses": {
     "en": "Explorer Other Courses",
-    "ar": "اسكشاف دورات اخري"
+    "ar": "استكشاف دورات أخرى"
   },
   "registered_courses": {
     "en": "Recorded",
@@ -1609,7 +1657,7 @@
   },
   "you_are_enrolled": {
     "en": "Your Are enrolled",
-    "ar": "انت مشترك في الدورة"
+    "ar": "أنت مشترك في الدورة"
   },
   "__comment_session_material_card": "─── Keys added for session_material_card.dart ───",
   "save": {
@@ -2902,12 +2950,12 @@
     "ar": "خطأ من الخادم"
   },
   "edit_session_title": {
-    "en": "Edit Lesson",
-    "ar": "تعديل الدرس"
+    "en": "Edit session",
+    "ar": "تعديل الجلسة"
   },
   "new_session_title": {
-    "en": "New Lesson",
-    "ar": "درس جديد"
+    "en": "New session",
+    "ar": "جلسة جديدة"
   },
   "session_edited_success": {
     "en": "Lesson updated",
@@ -3119,7 +3167,7 @@
   },
   "req_min_length": {
     "en": "At least 8 characters",
-    "ar": "٨ أحرف على الأقل"
+    "ar": "8 أحرف على الأقل"
   },
   "req_uppercase": {
     "en": "At least one uppercase letter (A-Z)",
@@ -3206,8 +3254,8 @@
     "ar": "أضف أول درس"
   },
   "add_session_btn": {
-    "en": "Add Lesson",
-    "ar": "إضافة درس"
+    "en": "New session",
+    "ar": "جلسة جديدة"
   },
   "material_type_recorded": {
     "en": "Recorded",
@@ -3227,11 +3275,11 @@
   },
   "are_you_sure_to_delete_account": {
     "en": "Are you sure to delete your account?",
-    "ar": "هل انت متاكد من حذف الحساب ؟"
+    "ar": "هل أنت متأكد من حذف الحساب؟"
   },
   "your_account_will_deleted_successfully_through_14_days": {
     "en": "Your account will deleted successfully through 14 days",
-    "ar": "سوف يتم حذف الحساب نهائيا خلال 14  يوم"
+    "ar": "سيُحذف الحساب نهائيًا خلال 14 يومًا"
   },
   "donnot_have_schedule": {
     "en": "Donn't Have Appointments",
@@ -4267,7 +4315,7 @@
   },
   "not_found": {
     "en": "This Page still loading, click to reload",
-    "ar": "الصفحة قيد التحميل حاول مرة اخري"
+    "ar": "الصفحة قيد التحميل، حاول مرة أخرى"
   },
   "make_all_read": {
     "en": "Make All Read",
@@ -5066,12 +5114,48 @@
     "ar": "طالب"
   },
   "course_hero_lessons": {
-    "en": "Lessons",
-    "ar": "درس"
+    "en": "Sessions",
+    "ar": "جلسة"
   },
   "course_hero_hours": {
     "en": "Hours",
     "ar": "ساعة"
+  },
+  "course_hero_students_one": {
+    "en": "Student",
+    "ar": "طالب"
+  },
+  "course_hero_students_few": {
+    "en": "Students",
+    "ar": "طلاب"
+  },
+  "course_hero_lessons_one": {
+    "en": "Session",
+    "ar": "جلسة"
+  },
+  "course_hero_lessons_few": {
+    "en": "Sessions",
+    "ar": "جلسات"
+  },
+  "course_hero_hours_one": {
+    "en": "Hour",
+    "ar": "ساعة"
+  },
+  "course_hero_hours_few": {
+    "en": "Hours",
+    "ar": "ساعات"
+  },
+  "material_session_recording": {
+    "en": "Session recording",
+    "ar": "تسجيل الحصة"
+  },
+  "material_recording_round": {
+    "en": "round {n}",
+    "ar": "لقاء {n}"
+  },
+  "material_rate_it": {
+    "en": "Rate",
+    "ar": "قيّم"
   },
   "admin_attach_receipt": {
     "en": "Attach receipt",
@@ -6921,6 +7005,38 @@
     "en": "No subscription needed.",
     "ar": "لا حاجة لاشتراك."
   },
+  "sub_covered_title": {
+    "en": "Your organization covers your access",
+    "ar": "مؤسستك تغطي اشتراكك"
+  },
+  "sub_access_paused": {
+    "en": "Your access isn't open yet",
+    "ar": "لم يُفتح حسابك بعد"
+  },
+  "sub_access_paused_hint": {
+    "en": "The server still asks for a subscription. If you study through an organization, contact its administration, then refresh.",
+    "ar": "ما زال الخادم يطلب اشتراكاً. إذا كنت تدرس عبر مؤسسة فتواصل مع إدارتها ثم حدّث الصفحة."
+  },
+  "sub_org_requires_title": {
+    "en": "Your organization requires a subscription",
+    "ar": "مؤسستك تتطلب اشتراكاً"
+  },
+  "sub_org_requires_hint": {
+    "en": "Your organization charges its students a subscription to use the app.",
+    "ar": "تفرض مؤسستك على طلابها اشتراكاً لاستخدام التطبيق."
+  },
+  "sub_org_no_plans": {
+    "en": "No plan can be bought here yet. Contact your organization's administration to open your access.",
+    "ar": "لا توجد باقة متاحة للشراء بعد. تواصل مع إدارة مؤسستك لفتح حسابك."
+  },
+  "sub_no_plans": {
+    "en": "No subscription plan is available right now. Please try again later.",
+    "ar": "لا توجد باقة اشتراك متاحة الآن. حاول لاحقاً."
+  },
+  "sub_org_contact": {
+    "en": "Contact:",
+    "ar": "للتواصل:"
+  },
   "sub_subscribe_to_continue": {
     "en": "Subscribe to continue",
     "ar": "اشترك للمتابعة"
@@ -7106,8 +7222,8 @@
     "ar": "نجحت في {n} من {m}"
   },
   "an2_sessions_of": {
-    "en": "{a} of {h} sessions",
-    "ar": "{a} من {h} محاضرة"
+    "en": "{a} of {sessions}",
+    "ar": "{a} من {sessions}"
   },
   "an2_tile_attended": {
     "en": "Sessions attended",
@@ -7146,8 +7262,8 @@
     "ar": "أقل من 60٪ حضورًا أو 50٪ في الاختبارات"
   },
   "an2_ins_low_att": {
-    "en": "You attended {a} of {h} sessions in {course}. Join the next one to get back on track.",
-    "ar": "حضرت {a} من {h} محاضرة في {course}. احضر المحاضرة القادمة لتعود إلى المسار."
+    "en": "You attended {a} of {sessions} in {course}. Join the next one to get back on track.",
+    "ar": "حضرت {a} من {sessions} في {course}. احضر الجلسة القادمة لتعود إلى المسار."
   },
   "an2_ins_low_exams_review": {
     "en": "Your exam average in {course} is {pct}. Go over the {questions} you saved before the next exam.",
@@ -7229,6 +7345,10 @@
     "en": "{students} could use your attention this week.",
     "ar": "{students} يحتاجون اهتمامك هذا الأسبوع."
   },
+  "an2_thead_steady": {
+    "en": "Your classes are under way. The figures below show where they stand.",
+    "ar": "فصولك جارية، والأرقام أدناه توضّح أين وصلت."
+  },
   "an2_thead_empty": {
     "en": "Class numbers appear once your students start learning.",
     "ar": "تظهر أرقام الفصل عندما يبدأ طلابك التعلّم."
@@ -7306,8 +7426,8 @@
     "ar": "الاختبار غير متاح"
   },
   "sessions_empty": {
-    "en": "No lessons yet",
-    "ar": "لا توجد دروس بعد"
+    "en": "No sessions yet",
+    "ar": "لا توجد جلسات بعد"
   },
   "cas_too_many": {
     "en": "Too many attempts. Try again in {minutes} min",
@@ -9082,24 +9202,24 @@
     "ar": "ناجح"
   },
   "sa_ins_att_excellent": {
-    "en": "Excellent attendance: attended {present} of {total} sessions.",
-    "ar": "التزام ممتاز بالحضور، حضر {present} من {total} محاضرة."
+    "en": "Excellent attendance: you attended {present} of {sessions}.",
+    "ar": "التزام ممتاز بالحضور: حضرت {present} من {sessions}."
   },
   "sa_ins_att_fair": {
-    "en": "Attendance is acceptable, with {absent} sessions missed. More regularity is recommended.",
-    "ar": "نسبة الحضور مقبولة، وقد غاب {absent} محاضرة. يُفضّل الانتظام أكثر."
+    "en": "Your attendance is acceptable: you missed {sessions}. Try to attend more regularly.",
+    "ar": "نسبة حضورك مقبولة: فاتتك {sessions}. حاول الانتظام أكثر."
   },
   "sa_ins_att_low": {
-    "en": "Absences are high ({absent} sessions). We recommend following up with the student.",
-    "ar": "الغياب مرتفع ({absent} محاضرة). ننصح بالمتابعة مع الطالب."
+    "en": "You missed {sessions}. Catch up on them before the next one.",
+    "ar": "غيابك مرتفع: فاتتك {sessions}. راجع ما فاتك قبل الجلسة القادمة."
   },
   "sa_ins_exam_all_passed": {
-    "en": "Passed every exam taken ({n}).",
-    "ar": "اجتاز جميع الاختبارات التي أداها ({n})."
+    "en": "You passed every exam you took ({n}).",
+    "ar": "اجتزت كل الاختبارات التي أدّيتها ({n})."
   },
   "sa_ins_exam_some": {
-    "en": "Passed {passed} of {attempted} exams and did not pass {failed}.",
-    "ar": "اجتاز {passed} من {attempted} اختبار، ولم يجتز {failed}."
+    "en": "You passed {passed} of {exams} and did not pass {failed}.",
+    "ar": "اجتزت {passed} من {exams}، ولم تجتز {failed}."
   },
   "sa_ins_best": {
     "en": "Best result: {name} with {pct}%.",
@@ -10283,7 +10403,7 @@
   },
   "pl_att_attended": {
     "en": "Attended {a} of {b} scheduled sessions.",
-    "ar": "حضر {a} من {b} حصة مجدولة."
+    "ar": "حضر {a} من أصل {b} من الحصص المجدولة."
   },
   "pl_att_late": {
     "en": "Arrived late {n} time(s), by about {m} minutes on average.",
@@ -11614,8 +11734,8 @@
     "en": "your.name"
   },
   "username_rules": {
-    "ar": "من 3 إلى 30 حرفاً: أحرف إنجليزية صغيرة وأرقام و . و _ — يمكنك اختياره لاحقاً من ملفك الشخصي",
-    "en": "3–30 characters: a–z, 0–9, . and _ — you can also pick one later in your profile"
+    "ar": "من 3 إلى 30 حرفاً: أحرف إنجليزية صغيرة وأرقام والنقطة (.) والشرطة السفلية (_). يمكنك اختياره لاحقاً من ملفك الشخصي.",
+    "en": "3–30 characters: a–z, 0–9, dot (.) and underscore (_). You can also pick one later in your profile."
   },
   "username_checking": {
     "ar": "جارٍ التحقق من توفّره…",
@@ -13077,6 +13197,10 @@
     "en": "All my courses",
     "ar": "كل كورساتي"
   },
+  "an2_attended_of": {
+    "en": "Attended {a} of {sessions} so far",
+    "ar": "حضر {a} من {sessions} حتى الآن"
+  },
   "dl_attended": {
     "en": "Attended",
     "ar": "حضر"
@@ -13512,6 +13636,10 @@
   "an_sort_progress": {
     "en": "Progress",
     "ar": "التقدم"
+  },
+  "an_vs_all_level": {
+    "en": "Level with the class average — keep going.",
+    "ar": "أنت مثل متوسط الدفعة — واصل."
   },
   "an_vs_all_above": {
     "en": "Above the class average everywhere — wonderful work! 🌟",
@@ -15382,8 +15510,8 @@
     "ar": "لا مواعيد في هذا اليوم"
   },
   "new_session_subtitle": {
-    "en": "Add a new lesson to the course",
-    "ar": "أضف درساً جديداً للدورة"
+    "en": "Add a new session to the course",
+    "ar": "أضف جلسة جديدة للدورة"
   },
   "reject": {
     "en": "Reject",
@@ -16613,6 +16741,14 @@
     "en": "Load earlier messages",
     "ar": "عرض الرسائل الأقدم"
   },
+  "rag_answer_stalled": {
+    "en": "The assistant could not finish this answer — it may be busy right now. Try again in a moment.",
+    "ar": "تعذّر على المساعد إكمال هذه الإجابة — قد يكون مشغولاً الآن. حاول مرة أخرى بعد قليل."
+  },
+  "rag_retry": {
+    "en": "Try again",
+    "ar": "أعد المحاولة"
+  },
   "rag_feedback_title": {
     "en": "What went wrong?",
     "ar": "ما الذي لم يعجبك؟"
@@ -16871,7 +17007,7 @@
   },
   "home_t_course_line": {
     "en": "{s} students · {n} sessions",
-    "ar": "{s} طالب · {n} محاضرة"
+    "ar": "{s} طالب · {n} جلسة"
   },
   "home_refresh_failed": {
     "en": "Could not refresh — showing the last data",
@@ -16996,6 +17132,10 @@
   "home_online": {
     "en": "Online",
     "ar": "أونلاين"
+  },
+  "home_course_ended_today": {
+    "en": "Today's class ended · {t}",
+    "ar": "انتهت حصة اليوم · {t}"
   },
   "home_no_next_lecture": {
     "en": "No lecture scheduled yet",
@@ -17537,6 +17677,22 @@
     "en": "{n} to do",
     "ar": "{n} مطلوب منك"
   },
+  "home_needs_folded": {
+    "en": "{n} waiting · tap to show",
+    "ar": "{n} بانتظارك · اضغط للعرض"
+  },
+  "shell_navigation": {
+    "en": "Main navigation",
+    "ar": "التنقل الرئيسي"
+  },
+  "shell_top_bar": {
+    "en": "Top bar",
+    "ar": "الشريط العلوي"
+  },
+  "home_course_live_now": {
+    "en": "Live now: {n}",
+    "ar": "مباشر الآن: {n}"
+  },
   "home_sum_live": {
     "en": "{n} live now",
     "ar": "{n} مباشر الآن"
@@ -17952,5 +18108,89 @@
   "lr_self_view_shape_toggle": {
     "en": "Preview shape",
     "ar": "شكل المعاينة"
+  },
+  "course_list_live": {
+    "en": "Live",
+    "ar": "مباشر"
+  },
+  "course_list_recorded": {
+    "en": "Recorded lessons",
+    "ar": "دروس مسجّلة"
+  },
+  "course_list_lessons_1": {
+    "en": "1 session",
+    "ar": "جلسة واحدة"
+  },
+  "course_list_lessons_2": {
+    "en": "2 sessions",
+    "ar": "جلستان"
+  },
+  "course_list_lessons_few": {
+    "en": "{n} sessions",
+    "ar": "{n} جلسات"
+  },
+  "course_list_lessons_many": {
+    "en": "{n} sessions",
+    "ar": "{n} جلسة"
+  },
+  "course_list_hours": {
+    "en": "{n} h",
+    "ar": "{n} ساعة"
+  },
+  "course_list_in_progress": {
+    "en": "In progress",
+    "ar": "قيد الدراسة"
+  },
+  "course_list_more": {
+    "en": "More options",
+    "ar": "خيارات أخرى"
+  },
+  "course_list_new": {
+    "en": "New course",
+    "ar": "كورس جديد"
+  },
+  "course_list_browse": {
+    "en": "Browse courses",
+    "ar": "تصفّح الكورسات"
+  },
+  "course_list_clear_search": {
+    "en": "Clear search",
+    "ar": "مسح البحث"
+  },
+  "course_list_empty": {
+    "en": "No courses here yet",
+    "ar": "لا توجد كورسات هنا بعد"
+  },
+  "course_list_not_found": {
+    "en": "No courses match your search",
+    "ar": "لا توجد كورسات مطابقة"
+  },
+  "course_list_progress_sem": {
+    "en": "{n}% complete",
+    "ar": "أُنجز {n}٪"
+  },
+  "course_list_students_sem": {
+    "en": "{n} students",
+    "ar": "{n} طالب"
+  },
+  "course_list_sessions_sem": {
+    "en": "{n} sessions",
+    "ar": "{n} جلسة"
+  },
+  "course_list_rating_sem": {
+    "en": "Rating {n}",
+    "ar": "التقييم {n}"
+  },
+  "favorite": {
+    "en": "Favorite",
+    "ar": "مفضّل"
+  },
+  "an2_you_attended_of": {
+    "en": "You attended {a} of {sessions} so far",
+    "ar": "حضرت {a} من {sessions} حتى الآن"
+  },
+  "session_rate_it": {
+    "en": "Rate this session",
+    "ar": "قيّم الجلسة"
   }
 }

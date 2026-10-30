@@ -8,11 +8,11 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../config/theme/theme_config_provider.dart';
 import '../core/app_mode.dart';
 import '../features/admin/admin_common.dart' show t;
 import '../features/shared/calendar/calendar_meeting.dart' show startQuickMeeting;
 import '../utils/widget/parent_component.dart';
+import 'chrome_button.dart';
 
 class QuickMeetingIcon extends StatefulWidget {
   const QuickMeetingIcon({super.key});
@@ -37,31 +37,10 @@ class _QuickMeetingIconState extends State<QuickMeetingIcon> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final label = t('اجتماع مباشر الآن', 'Meet now');
     return ParentComponent(
       featureKey: 'live.quick_meeting',
-      child: Tooltip(
-        message: label,
-        child: Semantics(
-          button: true,
-          label: label,
-          child: GestureDetector(
-            onTap: _start,
-            child: Container(
-              padding: const EdgeInsets.all(7),
-              margin: const EdgeInsets.all(5),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: c.danger),
-              child: SizedBox.square(
-                dimension: 20,
-                child: _busy
-                    ? Padding(padding: const EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2, color: c.onHero))
-                    : Icon(Icons.video_call_rounded, color: c.onHero, size: 20),
-              ),
-            ),
-          ),
-        ),
-      ),
+      child: ChromeIconButton(icon: Icons.video_call_rounded, label: label, onTap: _start, busy: _busy),
     );
   }
 }

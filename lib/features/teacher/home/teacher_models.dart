@@ -10,6 +10,7 @@ import 'package:flutter_education_app/features/student/models.dart';
 import '../../../config/app_config.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/rating_widget.dart';
+import '../../shared/course/course_scope.dart' show CourseOrg;
 import '../../shared/category/categories_provider.dart';
 import '../courses/component/teacher_stats.dart';
 
@@ -354,7 +355,11 @@ class TeacherCourse with DiscountInfo {
   /// Plan students see first: 0 yearly · 1 six months · 2 monthly.
   final int defaultPricePlanIndex;
 
+  /// The organization the course belongs to; null = a personal course (or an older server).
+  final CourseOrg? org;
+
   const TeacherCourse({
+    this.org,
     this.priceYearly,
     this.defaultPricePlanIndex = 0,
     this.priceMonthly,
@@ -473,9 +478,11 @@ class TeacherCourse with DiscountInfo {
     titleEn: j['name_en'] as String?,
     descriptionAr: j['description_ar'] as String?,
     descriptionEn: j['description_en'] as String?,
+    org: CourseOrg.fromJson(j['org']),
   );
 
   CourseModel get toCourseModel => CourseModel(
+    org: org,
     titleAr: titleAr,
     titleEn: titleEn,
     descriptionAr: descriptionAr,
@@ -563,6 +570,7 @@ class TeacherCourse with DiscountInfo {
     nextCourses: nextCourses,
     recommendedCourseSummaries: recommendedCourseSummaries,
     similarCourses: similarCourses,
+    org: org,
   );
 }
 

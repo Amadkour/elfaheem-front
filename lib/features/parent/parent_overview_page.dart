@@ -1,7 +1,7 @@
 // lib/features/parent/parent_overview_page.dart — the parent's "Today" tab (Track B.5).
 //
 //   header     greeting · name · calendar · notifications
-//   at a glance   HomeActionGrid: alerts (→ Alerts tab) · pending link requests (→ Link tab) · children (→ Children)
+//   needs you     HomeStatStrip: alerts (→ Alerts tab) · pending link requests (→ Link tab), only counts above zero
 //   today for my children   one AppCard per child: avatar · name · courses, then today's sessions as agenda rows,
 //              attendance of the last 30 days as a pill, the 3 newest marks, the next exam, the open alerts (→ the
 //              Alerts tab filtered on that child); the card opens the child's report
@@ -91,7 +91,7 @@ class _ParentOverviewPageState extends State<ParentOverviewPage> with AutomaticK
                     child: HomeHeader(
                       name: user?.name ?? 'role_parent'.tr,
                       leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-                      actions: [const CalendarEntryIcon(), NotificationIcon(unreadCount: unread)],
+                      shellActions: [const CalendarEntryIcon(), NotificationIcon(unreadCount: unread)],
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -159,34 +159,26 @@ class ParentOverviewBody extends StatelessWidget {
     final pending = d.pendingRequests;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // ── at a glance (every count once)
-      enter(HomeActionGrid(children: [
-        HomeActionCard(
-          icon: Icons.notifications_active_rounded,
-          title: 'pl_tab_alerts'.tr,
-          subtitle: 'pl_ov_alerts_hint'.tr,
-          count: d.alertsTotal,
-          tone: c.danger,
-          onTap: () => onOpenAlerts(null),
-        ),
-        HomeActionCard(
-          icon: Icons.link_rounded,
-          title: 'pl_ov_requests'.tr,
-          subtitle: 'pl_ov_requests_hint'.tr,
-          count: pending,
-          tone: c.warning,
-          onTap: onOpenLink,
-        ),
-        HomeActionCard(
-          icon: Icons.family_restroom_rounded,
-          title: 'pl_tab_children'.tr,
-          subtitle: 'pl_ov_children_hint'.tr,
-          count: d.children.length,
-          tone: c.primary,
-          onTap: onOpenChildren,
-        ),
-      ])),
-      const SizedBox(height: 28),
+      // ── what waits for me: one slim row of the counts above zero (the children are listed below) — the same calm
+      //    "Needs you" strip as the student and instructor homes
+      if (d.alertsTotal > 0 || pending > 0) ...[
+        enter(HomeSection(
+          id: 'parent.needs_you',
+          title: 'home_needs_you'.tr,
+          foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '${d.alertsTotal + pending}'),
+          child: HomeStatStrip(items: [
+            HomeStat(
+              icon: Icons.notifications_active_outlined,
+              label: 'pl_tab_alerts'.tr,
+              count: d.alertsTotal,
+              tone: c.danger,
+              onTap: () => onOpenAlerts(null),
+            ),
+            HomeStat(icon: Icons.link_rounded, label: 'pl_ov_requests'.tr, count: pending, tone: c.warning, onTap: onOpenLink),
+          ]),
+        )),
+        const SizedBox(height: 24),
+      ],
 
       // ── today for my children
       enter(HomeSectionTitle('pl_ov_today'.tr,
@@ -253,21 +245,14 @@ class ParentChildOverviewCard extends StatelessWidget {
       onTap: onOpen,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // ── who
-        Container(
+        Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [c.primary.withValues(alpha: 0.10), c.primary.withValues(alpha: 0)],
-            ),
-          ),
           child: Row(children: [
             AppAvatar(name: ch.name, url: ch.imageUrl.isEmpty ? null : ch.imageUrl, size: 48),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(ch.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.textDark)),
+                Text(ch.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w600, c: c.textDark)),
                 const SizedBox(height: 2),
                 Text(
                   '${'pl_ov_courses_n'.tr.replaceAll('{n}', '${ch.courses}')} · ${'pl_ov_sessions_n'.tr.replaceAll('{n}', '${ch.todaySessions.length}')}',
@@ -354,7 +339,7 @@ class ParentChildOverviewCard extends StatelessWidget {
                       '${'pl_ov_next_exam'.tr} · ${exam.name}${exam.startsAt == null ? '' : ' · ${AppTime.dateTime(exam.startsAt!)}'}',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: appText(12.5, w: FontWeight.w700, c: c.textDark, h: 1.35),
+                      style: appText(12.5, w: FontWeight.w500, c: c.textDark, h: 1.35),
                     ),
             ),
           ]),
@@ -376,7 +361,7 @@ class _Label extends StatelessWidget {
       Icon(icon, size: 15, color: c.textMedium),
       const SizedBox(width: 6),
       Expanded(
-        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w800, c: c.textMedium)),
+        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textMedium)),
       ),
     ]);
   }
@@ -408,7 +393,7 @@ class _SessionRow extends StatelessWidget {
         width: 64,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(s == null ? '—' : AppTime.time(s), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: appText(12, w: FontWeight.w800, c: appInk(context, tone))),
+              style: appText(12, w: FontWeight.w600, c: appInk(context, tone))),
           if (e != null)
             Text(AppTime.time(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10.5, c: c.textLight)),
         ]),
@@ -423,7 +408,7 @@ class _SessionRow extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // the live pill gets its own line: beside a long title it overflowed a 320 px phone
           Text(event.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: appText(13, w: FontWeight.w700, c: past ? c.textMedium : c.textDark, h: 1.25)),
+              style: appText(13, w: FontWeight.w500, c: past ? c.textMedium : c.textDark, h: 1.25)),
           if (live)
             Padding(
               padding: const EdgeInsets.only(top: 3, bottom: 1),
@@ -466,7 +451,7 @@ class _MarkChip extends StatelessWidget {
           border: Border.all(color: color.withValues(alpha: 0.35)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(pct == null ? '—' : '${pct.round()}%', style: appText(13, w: FontWeight.w900, c: color)),
+          Text(pct == null ? '—' : '${pct.round()}%', style: appText(13, w: FontWeight.w600, c: color)),
           const SizedBox(width: 8),
           Flexible(
             child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.textDark)),

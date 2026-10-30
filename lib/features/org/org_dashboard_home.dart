@@ -16,7 +16,7 @@
 //   orgJump / orgPush one tap to a sub-page: the section AND its chip when the section is a tab, else the page is
 //                     pushed on top (phones keep Services inside "More"); back from a pushed page, the home reloads
 //                     only when the organization's attention items changed (OrgDashController.afterReturn).
-// Colours: context.colors only (onHero / heroGlass over the organization's gradient). Texts: t(ar, en).
+// Colours: context.colors only (a calm card; the organization's colour tints its logo tile). Texts: t(ar, en).
 library;
 
 import 'package:flutter/material.dart';
@@ -247,14 +247,12 @@ class OrgHero extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       padding: const EdgeInsets.all(16),
+      // calm like the student / instructor homes: the card surface with a hairline, the organization's colour only
+      // in its logo tile (the gradient hero with loud figures read heavier than everything under it)
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(c.radiusLarge),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [base, c.heroEnd(base)],
-        ),
-        boxShadow: [BoxShadow(color: base.withValues(alpha: 0.30), blurRadius: 20, offset: const Offset(0, 8))],
+        color: c.cardBg,
+        border: Border.all(color: c.divider),
       ),
       child: LayoutBuilder(builder: (context, box) {
         final roomy = box.maxWidth >= 520;
@@ -263,16 +261,16 @@ class OrgHero extends StatelessWidget {
             Container(
               width: 52,
               height: 52,
-              decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(color: base.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(16)),
               clipBehavior: Clip.antiAlias,
               child: spec.logoUrl.isNotEmpty
-                  ? Image.network(spec.logoUrl, fit: BoxFit.cover, errorBuilder: (_, _, _) => Icon(spec.typeIcon, color: c.onHero, size: 26))
-                  : Icon(spec.typeIcon, color: c.onHero, size: 26),
+                  ? Image.network(spec.logoUrl, fit: BoxFit.cover, errorBuilder: (_, _, _) => Icon(spec.typeIcon, color: appInk(context, base), size: 26))
+                  : Icon(spec.typeIcon, color: appInk(context, base), size: 26),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(spec.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(18, w: FontWeight.w800, c: c.onHero, h: 1.2)),
+                Text(spec.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(18, w: FontWeight.w600, c: c.textDark, h: 1.2)),
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   _HeroTag(Icons.verified_rounded, spec.statusLabel),
@@ -314,21 +312,21 @@ class _HeroFigure extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: c.heroGlass,
+        color: c.background,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: hot ? c.onHero.withValues(alpha: 0.6) : c.heroGlassBorder),
+        border: Border.all(color: hot ? c.warning.withValues(alpha: 0.5) : c.divider),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          child: Text(value, maxLines: 1, style: appText(20, w: FontWeight.w900, c: c.onHero, h: 1.1)),
+          child: Text(value, maxLines: 1, style: appText(20, w: FontWeight.w600, c: hot ? appInk(context, c.warning) : c.textDark, h: 1.1)),
         ),
         const SizedBox(height: 2),
         Row(children: [
-          Icon(icon, size: 12, color: c.onHeroMuted),
+          Icon(icon, size: 12, color: c.textLight),
           const SizedBox(width: 4),
-          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10.5, w: FontWeight.w600, c: c.onHeroMuted))),
+          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, c: c.textMedium))),
         ]),
       ]),
     );
@@ -345,8 +343,8 @@ class _HeroIconBox extends StatelessWidget {
     return Container(
       width: 38,
       height: 38,
-      decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.heroGlassBorder)),
-      child: Icon(icon, size: 19, color: c.onHero),
+      decoration: BoxDecoration(color: c.background, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
+      child: Icon(icon, size: 19, color: c.textMedium),
     );
   }
 }
@@ -382,14 +380,14 @@ class _HeroTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: c.heroGlass,
+        color: c.background,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.heroGlassBorder),
+        border: Border.all(color: c.divider),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 13, color: c.onHero),
+        Icon(icon, size: 13, color: c.textLight),
         const SizedBox(width: 4),
-        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w700, c: c.onHero))),
+        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w500, c: c.textMedium))),
       ]),
     );
   }
@@ -447,7 +445,7 @@ class OrgAttentionCard extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(spec.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 14, w: FontWeight.w800)),
+            Text(spec.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 14, w: FontWeight.w600)),
             if (spec.subtitle.isNotEmpty)
               Text(spec.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
           ]),
@@ -461,7 +459,7 @@ class OrgAttentionCard extends StatelessWidget {
             style: TextButton.styleFrom(
                 foregroundColor: appInk(context, color), padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(48, 40)),
             child: Text(spec.action, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
           ),
         ),
       ]),
@@ -557,7 +555,7 @@ class OrgUnitsStrip extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(orgNameOf(u), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
+                Text(orgNameOf(u), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w600)),
                 Text(
                     u['unit_type'] == 'program'
                         ? t('قسم علمي · ${asInt(u['students'])} طالب', 'Academic · ${asInt(u['students'])} students')
@@ -888,7 +886,7 @@ Future<void> _showExpiring(BuildContext context, OrgAttentionItem a) async {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${asMap(m['user'])['name'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(ctx, w: FontWeight.w800)),
+                        Text('${asMap(m['user'])['name'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(ctx, w: FontWeight.w500)),
                         Text(
                             '${memberRoleLabels()['${m['role']}'] ?? m['role']} · '
                             '${t('تنتهي', 'ends')} ${orgParseUtc(m['expires_at']) == null ? '—' : AppTime.date(orgParseUtc(m['expires_at'])!.toUtc())}',

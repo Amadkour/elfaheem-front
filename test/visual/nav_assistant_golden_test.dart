@@ -177,17 +177,26 @@ class _ShellSceneState extends State<_ShellScene> {
     final pad = mq.padding + EdgeInsets.only(left: rtl ? 0 : side, right: rtl ? side : 0);
     final band = appAssistantBand(mq.size, pad,
         bottomBar: bar, topClear: side > 0 ? 64 : kToolbarHeight, bottomClear: appAssistantBottomClear);
-    var pos = AppAssistantSpot.fallback(rtl: side > 0 ? !rtl : rtl).toOffset(mq.size, pad, band);
+    var pos = AppAssistantSpot.fallback(rtl: rtl).toOffset(mq.size, pad, band);
+    final dockLeft = pos.dx + appAssistantBubbleSize / 2 < mq.size.width / 2;
+    final docked = widget.scene != _Scene.drag;
     final target = appAssistantDismissCenter(mq.size, mq.padding, bottomBar: bar);
     if (widget.scene == _Scene.drag) pos = target - const Offset(appAssistantBubbleSize / 2 - 6, appAssistantBubbleSize / 2 - 4);
     final left = pos.dx + appAssistantBubbleSize / 2 < mq.size.width / 2;
     return Stack(children: [
       if (widget.scene == _Scene.drag) Positioned.fill(child: AppAssistantDismissTarget(center: target, active: true)),
-      Positioned(
-        left: pos.dx,
-        top: pos.dy,
-        child: Transform.scale(scale: widget.scene == _Scene.drag ? 0.82 : 1, child: AppAssistantBubble(onTap: () {})),
-      ),
+      if (docked)
+        Positioned(
+          left: appAssistantDockX(mq.size, pad, left: dockLeft),
+          top: pos.dy - (appAssistantTabHeight - appAssistantBubbleSize) / 2,
+          child: AppAssistantEdgeTab(onLeftSide: dockLeft, onTap: () {}),
+        )
+      else
+        Positioned(
+          left: pos.dx,
+          top: pos.dy,
+          child: Transform.scale(scale: 0.82, child: AppAssistantBubble(onTap: () {})),
+        ),
       if (widget.scene == _Scene.menu)
         Positioned(
           left: left ? pos.dx + appAssistantBubbleSize + 8 : pos.dx - 208 - 8,

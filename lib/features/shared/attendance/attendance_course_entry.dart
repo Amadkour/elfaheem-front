@@ -299,7 +299,7 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
             height: 60,
             live: running,
             from: running ? c.success : c.primary,
-            to: running ? c.success.withValues(alpha: 0.78) : c.purple,
+            to: running ? c.success.withValues(alpha: 0.78) : c.heroEnd(c.primary), // M22: theme ink, not purple
             onTap: () {
               if (running) {
                 openAttendanceLive(context);

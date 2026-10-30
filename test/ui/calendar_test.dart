@@ -148,19 +148,20 @@ void main() {
     test('visible days and ranges', () {
       final a = DateTime(2026, 10, 21); // Wednesday
       expect(calVisibleDays(CalView.day, a), [a]);
+      // the week rolls (D-101): the focused day is the second column, whatever the language's first weekday
       final w = calVisibleDays(CalView.week, a, weekStart: DateTime.saturday);
       expect(w.length, 7);
-      expect(w.first, DateTime(2026, 10, 17));
-      expect(w.first.weekday, DateTime.saturday);
-      final wm = calVisibleDays(CalView.week, a, weekStart: DateTime.monday);
-      expect(wm.first, DateTime(2026, 10, 19));
+      expect(w.first, DateTime(2026, 10, 20));
+      expect(w[1], a);
+      expect(calVisibleDays(CalView.week, a, weekStart: DateTime.monday), w);
       final m = calVisibleDays(CalView.month, a, weekStart: DateTime.saturday);
       expect(m.length, 42);
       expect(m.first.isAfter(DateTime(2026, 10, 1)), isFalse);
+      expect(m.first.weekday, DateTime.saturday, reason: 'the month stays a real month grid');
       expect(m.contains(DateTime(2026, 10, 31)), isTrue);
       final (s, e) = calFetchRange(CalView.week, a, weekStart: DateTime.saturday, toUtc: (d) => d);
-      expect(s, DateTime(2026, 10, 17));
-      expect(e, DateTime(2026, 10, 24));
+      expect(s, DateTime(2026, 10, 20));
+      expect(e, DateTime(2026, 10, 27));
       expect(calShift(CalView.month, DateTime(2026, 1, 31), 1), DateTime(2026, 2, 1));
     });
 

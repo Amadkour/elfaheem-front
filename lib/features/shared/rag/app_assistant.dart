@@ -10,6 +10,9 @@
 //   • while a full-screen experience asks for it ([AppAssistant.hide] / [AppAssistant.release]: video player, live
 //     room, exam sitting).
 // The person decides about the BUBBLE (remembered per user on this device, [AppAssistantPrefs]):
+//   • at rest it is a slim tab docked flush against the END side (titles and labels start at the other one), so it
+//     covers as little of the page as it can ([appAssistantDockX], [AppAssistantEdgeTab]); while the person scrolls
+//     it slides out of the way and comes back a moment after the scroll stops (no taps land on it meanwhile);
 //   • drag it to any height of either side — it snaps to the nearer side, above the role's bottom tab bar and the
 //     strip where pages keep their primary buttons, below the app bar ([appAssistantSnap]);
 //   • drag it onto the "×" target that appears at the bottom, or long-press / right-click it → "Hide button": it is
@@ -24,6 +27,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -54,6 +58,17 @@ const _edge = 12.0;
 
 /// Kept free above the bottom tab bar / safe area: where pages put their primary buttons (sticky bars, FABs).
 const appAssistantBottomClear = 72.0;
+
+/// The docked tab (the bubble at rest): flush against the screen edge, so it covers ~28 dp of the page's content
+/// (pages keep a 16 dp gutter) instead of the 60 dp a free-floating disc did (H9).
+const appAssistantTabWidth = 44.0;
+const appAssistantTabHeight = 52.0;
+
+/// What stays visible of the tab while the person scrolls (it slides out and takes no taps).
+const appAssistantTuckedPeek = 6.0;
+
+/// How long after a scroll stops the tab comes back.
+const appAssistantReturnDelay = Duration(milliseconds: 900);
 
 class AppAssistant {
   AppAssistant._();
@@ -145,6 +160,15 @@ Offset appAssistantDismissCenter(Size screen, EdgeInsets padding, {double bottom
 /// True when a bubble whose centre is at [center] was dropped on the hide target.
 bool appAssistantOverDismiss(Offset center, Offset target, {double radius = 56}) => (center - target).distance <= radius;
 
+/// The docked tab's left edge on a [screen]: flush against the chosen side, inside [padding] (safe area + the role
+/// shell's sidebar); [tucked] slides it out until only [appAssistantTuckedPeek] shows.
+double appAssistantDockX(Size screen, EdgeInsets padding, {required bool left, bool tucked = false}) {
+  const hide = appAssistantTabWidth - appAssistantTuckedPeek;
+  return left
+      ? padding.left - (tucked ? hide : 0)
+      : screen.width - padding.right - appAssistantTabWidth + (tucked ? hide : 0);
+}
+
 /// The bubble's remembered place, independent of the window size: a side and where it sits in the band (0 = top).
 class AppAssistantSpot {
   const AppAssistantSpot({required this.left, required this.fraction});
@@ -152,8 +176,13 @@ class AppAssistantSpot {
   final bool left;
   final double fraction;
 
-  /// The default: the start side (floating action buttons sit at the end), two thirds down.
-  static AppAssistantSpot fallback({required bool rtl}) => AppAssistantSpot(left: !rtl, fraction: 0.72);
+  /// The default: the END side (titles, labels and form fields start at the other one; the band already keeps the
+  /// floating action buttons' strip free), low in the band.
+  /// On a [wide] window (no role shell around the page: the shell's top bar has its own entry, see
+  /// [appAssistantEdgeTabShown]) it sits at the very bottom of the band, the bottom END corner above the strip kept
+  /// for primary buttons, where wide pages leave their content gutter — not beside asides and counters (R3).
+  static AppAssistantSpot fallback({required bool rtl, bool wide = false}) =>
+      AppAssistantSpot(left: rtl, fraction: wide ? 1.0 : 0.86);
 
   /// From a snapped top-left inside the band.
   static AppAssistantSpot fromOffset(Offset snapped, Size screen, (double, double) band) {
@@ -179,6 +208,12 @@ class AppAssistantSpot {
     return AppAssistantSpot(left: parts[0] == 'l', fraction: f.clamp(0.0, 1.0));
   }
 }
+
+/// Whether the floating edge tab is drawn. Never while a role shell's top bar is on screen ([sideChrome] > 0: the
+/// desktop sidebar or the tablet rail): that bar already carries the assistant button next to the calendar and the
+/// bell, and a second entry docked on the page edge sat on the course page's aside chevrons and the month view's
+/// counts (R3). The phone's bottom-bar shell has no top-bar entry, so the tab stays there.
+bool appAssistantEdgeTabShown({required double sideChrome}) => sideChrome <= 0;
 
 /// Device-local preference keys, per signed-in user.
 String appAssistantPrefKey(String what, int userId) => 'app_assistant.$what.$userId';
@@ -275,9 +310,12 @@ class AppAssistantHost extends StatefulWidget {
 
 class _AppAssistantHostState extends State<AppAssistantHost> {
   Offset? _drag; // the bubble's top-left while it is being dragged
+  bool _scrollTuck = false; // the person is scrolling: the tab slides out of the way
+  Timer? _tuckTimer;
   bool _menu = false; // the long-press menu is open
   bool _everOpened = false; // the chat stays mounted after the first open (an answer being prepared is kept)
-  final _panelOverlay = GlobalKey<OverlayState>();
+  bool _wasOpen = false; // the pop-up was open at the last build (a new open checks the chat it shows, N6)
+  final _panelNav = GlobalKey<NavigatorState>();
 
   // Chat sessions (Track E.5): the current conversation per scope key (`app_assistant_<org id>`) while the host is
   // alive — a scope that was never opened resumes its latest chat; null = the person started a new chat there.
@@ -310,22 +348,74 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
             AppAssistant.hiddenBy.value == 0 &&
             !appAssistantHiddenRoutes.contains(route?.settings.name);
         final open = allowed && AppAssistant.open.value;
-        final bubble = allowed && onPage && !open && !prefs.bubbleHidden;
+        final bubble = allowed &&
+            onPage &&
+            !open &&
+            !prefs.bubbleHidden &&
+            appAssistantEdgeTabShown(sideChrome: AppShellNav.sideChromeWidth());
         if (!available) _everOpened = false;
+        final org = appAssistantOrg(isOrg: mode.isOrg, orgId: mode.currentOrgId, entry: mode.current);
+        // opened again on a chat that ended on a failure: a new chat with the starter questions instead (N6)
+        if (open && !_wasOpen && _everOpened) {
+          final chat = _chats['app_assistant_${org?.$1}'];
+          WidgetsBinding.instance.addPostFrameCallback((_) => chat?.currentState?.reopened());
+        }
+        _wasOpen = open;
         if (open) _everOpened = true;
         if (!bubble) {
           _drag = null;
           _menu = false;
         }
-        final org = appAssistantOrg(isOrg: mode.isOrg, orgId: mode.currentOrgId, entry: mode.current);
         if (open && AppAssistant.draft.value != null && !_draftScheduled) _takeDraft(org);
         return Stack(fit: StackFit.expand, children: [
-          widget.child,
+          NotificationListener<ScrollNotification>(onNotification: _onScroll, child: widget.child),
           if (allowed && _everOpened) _panel(context, open, org),
-          if (bubble) ..._bubbleLayer(context),
+          // N2: the tab, the bubble, its menu and the hide target take no keyboard focus. They leave the tree in the
+          // very frame a tap opens the pop-up; on the web the browser then hands the focus back to the view, whose
+          // initial-focus search measures every traversable node (FocusNode.rect) — and the tab's InkWell node, parked
+          // under its old focus parent while its element waits to be unmounted, has no render tree to measure ("Null
+          // check operator" in getTransformTo). The keys matter: without them the pop-up, which takes this slot the
+          // first time it opens, reused this ExcludeFocus (switched to focusable) as the parked node's parent.
+          // Keyboard users have the shell's top-bar button and Settings → App assistant.
+          if (bubble)
+            ExcludeFocus(
+              key: const ValueKey('app_assistant.bubble'),
+              child: Stack(fit: StackFit.expand, children: _bubbleLayer(context)),
+            ),
         ]);
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _tuckTimer?.cancel();
+    super.dispose();
+  }
+
+  /// A user's vertical scroll anywhere under the host tucks the tab away; it comes back a moment after the scroll
+  /// stops. Programmatic scrolls (auto-playing sliders) never send a user direction, so they leave it alone.
+  bool _onScroll(ScrollNotification n) {
+    if (n.metrics.axis != Axis.vertical) return false;
+    if (n is UserScrollNotification) {
+      if (n.direction != ScrollDirection.idle) {
+        _tuckTimer?.cancel();
+        if (!_scrollTuck && _drag == null) setState(() => _scrollTuck = true);
+      } else {
+        _scheduleReturn();
+      }
+    } else if (n is ScrollEndNotification) {
+      _scheduleReturn();
+    }
+    return false;
+  }
+
+  void _scheduleReturn() {
+    if (!_scrollTuck) return;
+    _tuckTimer?.cancel();
+    _tuckTimer = Timer(appAssistantReturnDelay, () {
+      if (mounted && _scrollTuck) setState(() => _scrollTuck = false);
+    });
   }
 
   List<Widget> _bubbleLayer(BuildContext context) {
@@ -337,10 +427,15 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
     final pad = mq.padding + EdgeInsets.only(left: rtl ? 0 : side, right: rtl ? side : 0);
     final topClear = side > 0 ? 64.0 : kToolbarHeight;
     final band = appAssistantBand(mq.size, pad, bottomBar: bar, topClear: topClear, bottomClear: appAssistantBottomClear);
-    // default: the start side on a phone (FABs sit at the end); the end side beside a sidebar / rail
-    final spot = AppAssistantPrefs.instance.spot ?? AppAssistantSpot.fallback(rtl: side > 0 ? !rtl : rtl);
+    // default: the end side, docked (see the header)
+    final spot = AppAssistantPrefs.instance.spot ?? AppAssistantSpot.fallback(rtl: rtl, wide: mq.size.width >= 700);
     final rest = spot.toOffset(mq.size, pad, band);
-    final pos = _drag ?? rest;
+    final docked = _drag == null;
+    final tucked = docked && _scrollTuck && !_menu;
+    final dockLeft = rest.dx + appAssistantBubbleSize / 2 < mq.size.width / 2;
+    final dock = Offset(appAssistantDockX(mq.size, pad, left: dockLeft, tucked: tucked),
+        rest.dy - (appAssistantTabHeight - appAssistantBubbleSize) / 2);
+    final pos = _drag ?? dock;
     final target = appAssistantDismissCenter(mq.size, mq.padding, bottomBar: bar);
     const half = appAssistantBubbleSize / 2;
     final over = _drag != null && appAssistantOverDismiss(_drag! + const Offset(half, half), target);
@@ -380,10 +475,13 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
         curve: Curves.easeOutCubic,
         left: pos.dx,
         top: pos.dy,
-        child: GestureDetector(
+        child: IgnorePointer(
+          ignoring: tucked,
+          child: GestureDetector(
           onPanStart: (_) => setState(() {
             _menu = false;
-            _drag = pos;
+            _scrollTuck = false;
+            _drag = Offset(rest.dx, pos.dy);
           }),
           onPanUpdate: (d) => setState(() => _drag = (_drag ?? pos) + d.delta),
           onPanEnd: (_) => drop(),
@@ -393,13 +491,18 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
             setState(() => _menu = true);
           },
           onSecondaryTap: () => setState(() => _menu = true),
-          child: AnimatedScale(
-            scale: over ? 0.82 : (_drag != null ? 1.08 : 1),
-            duration: reduce ? Duration.zero : const Duration(milliseconds: 160),
-            child: AppAssistantBubble(onTap: () {
-              setState(() => _menu = false);
-              AppAssistant.openPanel();
-            }),
+          child: docked
+              ? AppAssistantEdgeTab(
+                  onLeftSide: dockLeft,
+                  onTap: () {
+                    setState(() => _menu = false);
+                    AppAssistant.openPanel();
+                  })
+              : AnimatedScale(
+                  scale: over ? 0.82 : 1.08,
+                  duration: reduce ? Duration.zero : const Duration(milliseconds: 160),
+                  child: AppAssistantBubble(onTap: () => AppAssistant.openPanel()),
+                ),
           ),
         ),
       ),
@@ -436,10 +539,18 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
     final screen = Size(mq.size.width, mq.size.height - mq.viewInsets.bottom);
     final r = appAssistantPanelRect(screen, mq.padding.copyWith(bottom: mq.viewInsets.bottom > 0 ? 0 : mq.padding.bottom), rtl: rtl);
     final wide = mq.size.width >= 700;
-    return Offstage(
+    // A closed pop-up stays mounted (an answer being prepared is kept) but leaves the focus order (N2): its nodes sit
+    // beside the Navigator, in the view's own focus scope, so Tab, the browser handing focus back to the page and
+    // reading-order traversal would otherwise measure them (FocusNode.rect) while they are hidden. Its own traversal
+    // group keeps Tab inside the open card in reading order without sorting it against the rest of the app.
+    return ExcludeFocus(
+      key: const ValueKey('app_assistant.panel'),
+      excluding: !open,
+      child: Offstage(
       offstage: !open,
       child: TickerMode(
         enabled: open,
+        child: FocusTraversalGroup(
         child: Stack(children: [
           if (!wide) Positioned.fill(child: GestureDetector(onTap: _close, child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)))),
           Positioned.fromRect(
@@ -453,10 +564,16 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
                 elevation: 12,
                 clipBehavior: Clip.antiAlias,
                 borderRadius: BorderRadius.circular(context.colors.radiusLarge),
-                child: Overlay(key: _panelOverlay, initialEntries: [
-                  OverlayEntry(
-                    maintainState: true,
-                    builder: (context) {
+                // its own Navigator (not a bare Overlay): the chat's sheets and dialogs (Chats, rename, feedback) need
+                // one, and the app's Navigator is below this layer, not above it (no heroes: the app's controller
+                // belongs to the app's Navigator)
+                child: HeroControllerScope.none(
+                  child: Navigator(
+                  key: _panelNav,
+                  onGenerateRoute: (_) => PageRouteBuilder<void>(
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
+                    pageBuilder: (context, _, _) {
                       // a new key per organization: the history is that organization's
                       final scope = 'app_assistant_${org?.$1}';
                       final chat = _chats.putIfAbsent(scope, GlobalKey<RagChatViewState>.new);
@@ -484,11 +601,14 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
                       ]);
                     },
                   ),
-                ]),
+                  ),
+                ),
               ),
             ),
           ),
         ]),
+        ),
+      ),
       ),
     );
   }
@@ -582,6 +702,58 @@ class AppAssistantBubble extends StatelessWidget {
                       shaderCallback: (r) => c.accentGradient.createShader(r),
                       child: const Icon(Icons.auto_awesome_rounded, size: 22),
                     ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The bubble at rest: a slim tab docked flush against the screen edge ([onLeftSide]: the left edge), rounded on
+/// the page side only, with the assistant's mark. A 44 x 52 touch target that covers ~28 dp of a page's content.
+class AppAssistantEdgeTab extends StatelessWidget {
+  const AppAssistantEdgeTab({super.key, required this.onLeftSide, required this.onTap});
+  final bool onLeftSide;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    const r = Radius.circular(appAssistantTabHeight / 2);
+    final radius = onLeftSide ? const BorderRadius.horizontal(right: r) : const BorderRadius.horizontal(left: r);
+    final ring = c.primary.withValues(alpha: c.isDark ? 0.45 : 0.22);
+    return Semantics(
+      button: true,
+      label: 'assistant_entry_title'.tr,
+      hint: 'assistant_bubble_hide'.tr,
+      child: SizedBox(
+        width: appAssistantTabWidth,
+        height: appAssistantTabHeight,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            boxShadow: [
+              BoxShadow(color: c.primary.withValues(alpha: c.isDark ? 0.28 : 0.18), blurRadius: 12, offset: const Offset(0, 3)),
+            ],
+          ),
+          child: Material(
+            color: c.cardBg,
+            shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: ring)),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                // the mark sits a little toward the page, away from the screen edge
+                padding: EdgeInsets.only(left: onLeftSide ? 4 : 0, right: onLeftSide ? 0 : 4),
+                child: Center(
+                  child: ShaderMask(
+                    blendMode: BlendMode.srcIn,
+                    shaderCallback: (r) => c.accentGradient.createShader(r),
+                    child: const Icon(Icons.auto_awesome_rounded, size: 20),
                   ),
                 ),
               ),

@@ -268,7 +268,7 @@ class AttendanceTeacherAction extends StatelessWidget {
       icon: Icons.sensors_rounded,
       label: attT('att_t_btn'),
       from: c.primary,
-      to: c.purple,
+      to: c.heroEnd(c.primary), // M22: theme ink, not purple
       onTap: () => showTeacherAttendanceSheet(context, sessionId),
     );
   }

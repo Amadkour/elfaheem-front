@@ -118,6 +118,10 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
   void initState() {
     super.initState();
     _store.addListener(_onStore);
+    // The Courses tab may never have been opened (lazy tabs): load the list on demand, once.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<TeacherCoursesProvider>().ensureLoaded();
+    });
   }
 
   void _onStore() {
@@ -232,7 +236,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
     });
 
     final Widget body;
-    if ((prov.isLoading && all.isEmpty) || (all.isNotEmpty && !_store.settled && _store.byCourse.isEmpty)) {
+    if (((prov.isLoading || !prov.loadedOnce) && all.isEmpty) || (all.isNotEmpty && !_store.settled && _store.byCourse.isEmpty)) {
       body = const AnSummarySkeleton();
     } else if (all.isEmpty) {
       body = Padding(
@@ -448,7 +452,7 @@ class _AllClassesPageState extends State<_AllClassesPage> {
         backgroundColor: c.background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: Text(anTr('an2_all_courses_title', 'All courses'), style: anText(17, w: FontWeight.w800, c: c.textDark)),
+        title: Text(anTr('an2_all_courses_title', 'All courses'), style: anText(17, w: FontWeight.w600, c: c.textDark)),
       ),
       body: AppRefresh(
         onRefresh: () => store.load([for (final x in all) x.id], force: true),
@@ -568,7 +572,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
         const SizedBox(width: 6),
         SizedBox(width: 96, child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(11.5, c: c.textMedium))),
         Expanded(child: AnBar(value: v, height: 6)),
-        SizedBox(width: 44, child: Text(anPct(v), textAlign: TextAlign.end, style: anText(12, w: FontWeight.w800, c: anScoreColor(context, v)))),
+        SizedBox(width: 44, child: Text(anPct(v), textAlign: TextAlign.end, style: anText(12, w: FontWeight.w600, c: anScoreColor(context, v)))),
       ]),
     );
 
@@ -599,11 +603,17 @@ class _CourseAnalyticsCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: anText(15, w: FontWeight.w800, c: c.textDark, h: 1.35)),
+                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: anText(15, w: FontWeight.w600, c: c.textDark, h: 1.35)),
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 6, children: [
-                  AnTag('${course.studentsCount} ${'student'.tr}', c.accent2, icon: Icons.people_rounded),
-                  AnTag('${course.sessionsCount} ${'session'.tr}', c.purple, icon: Icons.video_library_outlined),
+                  AnTag(
+                      anStudentsWord(course.studentsCount),
+                      c.accent2,
+                      icon: Icons.people_rounded),
+                  AnTag(
+                      anSessionsWord(course.sessionsCount),
+                      c.purple,
+                      icon: Icons.video_library_outlined),
                   if (risk > 0) AnTag(anFmt('ta_risk_n', {'n': risk}, '{n} need attention'), c.warning, icon: Icons.volunteer_activism_rounded),
                 ]),
               ]),
@@ -727,7 +737,7 @@ class _DataLabButton extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('dl_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(13.5, w: FontWeight.w800, c: c.onHero)),
+                Text('dl_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(13.5, w: FontWeight.w600, c: c.onHero)),
                 Text(
                   published > 0
                       ? anFmt('ta_dl_published', {'n': published}, '{n} columns shared with students')
@@ -777,7 +787,7 @@ class _ActionButton extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(13, w: FontWeight.w800, c: color)),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(13, w: FontWeight.w600, c: color)),
               const SizedBox(height: 1),
               Text(sublabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(10.5, c: context.colors.textMedium)),
             ]),

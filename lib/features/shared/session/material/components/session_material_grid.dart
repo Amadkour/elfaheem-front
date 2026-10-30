@@ -17,6 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../core/api_client.dart';
+import '../../../../../core/app_time.dart';
 import '../../../../../core/live/event_wait.dart';
 import '../../../../../design/app_kit.dart' show showAppSheet, AppSheetHeader, AppBanner, appText, AppListSkeleton;
 import '../../../../../utils/helpers.dart';
@@ -27,6 +28,7 @@ import '../../../../teacher/sessions/sessions_provider.dart';
 import '../../video/video_player_screen.dart';
 import '../session_material_model.dart';
 import 'material_file_style.dart';
+import 'material_title.dart';
 import 'session_exam_tile.dart';
 import 'session_shared_widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -235,11 +237,16 @@ class SessionMaterialGrid extends StatelessWidget {
     final isCompleted = m.completed;
 
     // ── Derived display values ─────────────────────────────────────────────
-    // For recording / recorded, surface the creation date as part of the title.
-    final String displayName = isRecording
-        ? 'recording_in_progress'
-              .tr // hardcoded "Recording in progress…"
-        : (isRecorded ? '${m.name}  •  ${_formatDate(m.createdAt)}' : m.name);
+    // (the recorded item's date sits on the right through AppTime, not glued to the title)
+    // a class recording drops "<session> — تسجيل الحصة": the row above names the session, the pill says "Recorded" (N9)
+    final String displayName = isRecording ? 'recording_in_progress'.tr : materialTitle(m.name, recorded: isRecorded);
+    // Stars only once there are ratings ("0.0 (0)" on every file read as noise, N9); a student who finished a file
+    // with none yet gets a small "Rate" link that opens them.
+    final rating = isRecording
+        ? RatingShow.none
+        : ratingShow(total: m.rateSummary?.total ?? 0, canRate: !isTeacher && isCompleted);
+    final showRating = rating == RatingShow.stars;
+    final offerRating = rating == RatingShow.invite;
 
     return Directionality(
       textDirection: Helpers.textDirOf(displayName),
@@ -252,37 +259,19 @@ class SessionMaterialGrid extends StatelessWidget {
           decoration: BoxDecoration(
             color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(12),
+            // calm hairline; "done" is the check badge, not a heavy green frame
             border: Border.all(
               color: isCompleted
-                  ? context.colors.success.withValues(alpha: 0.35)
-                  : color.withValues(alpha: 0.18),
-              width: isCompleted ? 1.5 : 1.0,
+                  ? context.colors.success.withValues(alpha: 0.22)
+                  : context.colors.divider,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: isCompleted
-                    ? context.colors.success.withValues(alpha: 0.10)
-                    : color.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Column(
               children: [
-                // ── Top accent strip ─────────────────────────────────────────
-                if (isCompleted)
-                  Container(
-                    height: 3,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [context.colors.success, context.colors.success],
-                      ),
-                    ),
-                  )
-                else if (isRecording)
+                // ── Top accent strip (recording only) ───────────────────────
+                if (isRecording)
                   // Pulsing red strip for active recording
                   Container(
                     height: 3,
@@ -306,7 +295,7 @@ class SessionMaterialGrid extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.rectangle,
                           borderRadius: BorderRadius.circular(10),
-                          border: BoxBorder.all(color: context.colors.primary),
+                          border: BoxBorder.all(color: context.colors.primary.withValues(alpha: 0.25)),
                         ),
                         child: Column(
                           children: [
@@ -328,7 +317,8 @@ class SessionMaterialGrid extends StatelessWidget {
                                 : MaterialIconWidget(
                                     icon: icon,
                                     color: color,
-                                    isCompleted: isCompleted,
+                                    // one done mark per card (N9): the check at the end, not a green tile + pill too
+                                    isCompleted: false,
                                     badge: fileStyle?.badge,
                                     badgeTextColor: fileStyle?.badgeTextColor,
                                   ),
@@ -359,7 +349,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                           ? color
                                           : null,
                                     ),
-                                    maxLines: 1,
+                                    maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -367,10 +357,6 @@ class SessionMaterialGrid extends StatelessWidget {
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    if (isCompleted && !isTeacher) ...[
-                                      const MaterialCompletedBadge(),
-                                      const SizedBox(width: 5),
-                                    ],
                                     // For recording, show a live dot instead of age
                                     if (isRecording)
                                       _LiveDotBadge(color: color)
@@ -407,7 +393,8 @@ class SessionMaterialGrid extends StatelessWidget {
                                 if (m.sizeLabel.isNotEmpty && !isRecording) ...[
                                   const SizedBox(width: 6),
                                   Text(
-                                    m.sizeLabel, // KB under 1 MB, else MB
+                                    m.sizeLabel, // KB under 1 MB, else MB — always "15.2 MB", also in RTL
+                                    textDirection: TextDirection.ltr,
                                     style: context.colors.caption.copyWith(
                                       fontSize: 10,
                                     ),
@@ -424,6 +411,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                   const SizedBox(width: 2),
                                   Text(
                                     m.durationLabel, // h:mm:ss
+                                    textDirection: TextDirection.ltr,
                                     style: context.colors.caption.copyWith(
                                       fontSize: 10,
                                     ),
@@ -431,13 +419,15 @@ class SessionMaterialGrid extends StatelessWidget {
                                 ],
                               ],
                             ),
-                            if (!isRecording)
+                            if (showRating)
                               RatingWidget(
                                 type: RateType.material,
                                 sourceId: m.id.toString(),
                                 canEdit: !isTeacher,
                                 rateSummary: m.rateSummary,
-                              ),
+                              )
+                            else if (offerRating)
+                              RateLater(type: RateType.material, sourceId: m.id.toString(), rateSummary: m.rateSummary),
                           ],
                         ),
                       ),
@@ -505,11 +495,14 @@ class SessionMaterialGrid extends StatelessWidget {
                               child: isCompleted
                                   ? Padding(
                                       key: ValueKey('check'),
-                                      padding: EdgeInsetsDirectional.only(end: 5),
-                                      child: Icon(
-                                        Icons.check_circle_rounded,
-                                        size: 15,
-                                        color: context.colors.success,
+                                      padding: EdgeInsetsDirectional.only(end: 6),
+                                      child: Semantics(
+                                        label: 'completed'.tr,
+                                        child: Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 18,
+                                          color: context.colors.success,
+                                        ),
                                       ),
                                     )
                                   : const SizedBox.shrink(
@@ -536,24 +529,8 @@ class SessionMaterialGrid extends StatelessWidget {
 
   // ── Date helper ────────────────────────────────────────────────────────────
 
-  /// Returns a short formatted date string, e.g. "14 Jan 2025".
-  String _formatDate(DateTime dt) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
-  }
+  /// A short date in the platform / organization timezone and the app's language, e.g. "14 Jan 2025".
+  String _formatDate(DateTime dt) => AppTime.date(dt.toUtc(), pattern: 'd MMM y');
 
   // ── Tap handler ────────────────────────────────────────────────────────────
 
@@ -1026,6 +1003,56 @@ class MaterialIconWidget extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// "Rate" link: a finished file (or a held session) with no ratings yet opens the stars on demand (no "0.0 (0)"
+// row, N9)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class RateLater extends StatefulWidget {
+  const RateLater({super.key, required this.type, required this.sourceId, this.rateSummary, this.labelKey = 'material_rate_it'});
+
+  final RateType type;
+  final String sourceId;
+  final RatingSummary? rateSummary;
+
+  /// The link's text (translation key).
+  final String labelKey;
+
+  @override
+  State<RateLater> createState() => _RateLaterState();
+}
+
+class _RateLaterState extends State<RateLater> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_open) {
+      return RatingWidget(
+        type: widget.type,
+        sourceId: widget.sourceId,
+        canEdit: true,
+        rateSummary: widget.rateSummary,
+      );
+    }
+    final c = context.colors;
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextButton.icon(
+        onPressed: () => setState(() => _open = true),
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 32),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          visualDensity: VisualDensity.compact,
+          foregroundColor: c.textMedium,
+        ),
+        icon: Icon(Icons.star_outline_rounded, size: 15, color: c.textLight),
+        label: Text(widget.labelKey.tr, style: appText(12, w: FontWeight.w500, c: c.textMedium)),
+      ),
     );
   }
 }

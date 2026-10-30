@@ -19,11 +19,28 @@ class AttendanceRepository {
   Future<StudentKey> fetchKey() async => StudentKey.fromJson(_m(await _api.get('$_base/my-key')));
 
   /// The open window of one lesson, or (with [courseId]) of any lesson of that course.
-  Future<OpenWindow> openWindow({int? sessionId, int? courseId}) async => OpenWindow.fromJson(
-      _m(await _api.get('$_base/sessions/open', queryParams: {
-        if (sessionId != null) 'session_id': sessionId,
-        if (courseId != null) 'course_id': courseId,
-      })));
+  ///
+  /// "No open window" is a normal answer, asked on every course page: with `none_ok` the server answers
+  /// 200 `null` (an older one 404 `no_open_attendance`). Both come back as the same quiet
+  /// [noOpenWindow] exception, which every caller already reads as "none" — no failed request is logged.
+  Future<OpenWindow> openWindow({int? sessionId, int? courseId}) async {
+    final d = await _api.get('$_base/sessions/open', queryParams: {
+      if (sessionId != null) 'session_id': sessionId,
+      if (courseId != null) 'course_id': courseId,
+      'none_ok': true,
+    });
+    final j = _m(d);
+    if (j['attendance_session_id'] == null) throw noOpenWindow;
+    return OpenWindow.fromJson(j);
+  }
+
+  /// What [openWindow] throws when no window is open (the shape of the older server's 404).
+  static const noOpenWindow = ApiException(
+    statusCode: 404,
+    type: ApiErrorType.notFound,
+    message: 'no_open_attendance',
+    code: 'no_open_attendance',
+  );
 
   /// Every enrolled course (+ lessons) — stored on the phone for offline check-in.
   Future<List<CachedCourse>> myLessons() async {

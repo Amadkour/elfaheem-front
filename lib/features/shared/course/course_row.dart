@@ -1,19 +1,11 @@
-import 'dart:math' as math;
-
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/utils/widget/fit_sections.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/course/private_flag.dart';
-import 'package:flutter_education_app/features/student/models.dart'
-    show CourseModel, AppCurrencyX, DiscountInfoX;
+import 'package:flutter_education_app/features/student/models.dart' show CourseModel, DiscountInfoX;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_network_image.dart';
-import '../profile/course_instractor_profile.dart';
-import 'course_price_tag.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'course_list_card.dart';
+import 'course_price_tag.dart' show coursePriceLabel;
 
 class CoursesRow extends StatelessWidget {
   final List<CourseModel> courses;
@@ -106,7 +98,8 @@ class CoursesRow extends StatelessWidget {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Course Card — full data display
+// Course Card — a CourseModel drawn as the shared CourseListCard
+// (course_list_card.dart: the one card language of every course list)
 // ────────────────────────────────────────────────────────────────────────────
 class CourseCard extends StatelessWidget {
   final CourseModel course;
@@ -116,6 +109,12 @@ class CourseCard extends StatelessWidget {
   final String pageName;
   final void Function(CourseModel course) onTap;
 
+  /// Row (phone list) or tile (grid cell).
+  final CourseCardShape shape;
+
+  /// Leads the meta line in place of the teacher / organization — where the course lives in a mixed list.
+  final Widget? badge;
+
   const CourseCard({
     super.key,
     required this.course,
@@ -124,426 +123,68 @@ class CourseCard extends StatelessWidget {
     required this.onTap,
     this.fullScreen = false,
     required this.pageName,
+    this.shape = CourseCardShape.tile,
+    this.badge,
   });
+
+  /// Exact cell height of a tile in a grid: use it as `mainAxisExtent`.
+  static double cellHeight(BuildContext context, double cellWidth) => CourseListCard.tileHeight(context, cellWidth);
 
   @override
   Widget build(BuildContext context) => ParentComponent(
     featureKey: 'course_card',
-    child: _featureContent(context),
+    child: SizedBox(width: fixedWidth, child: _card(context)),
   );
 
-  Widget _featureContent(BuildContext context) {
-    final hasLectures = course.sessionsCount > 0;
-    final hasHours = course.hoursCount > 0;
-    final hasCertificate = course.certificates.isNotEmpty;
-    final hasStudents = course.studentsCount > 0;
-    final String description =
-        (AppConfig.lang == 'ar'
-            ? course.descriptionAr
-            : course.descriptionEn) ??
-            '';
+  Widget _card(BuildContext context) {
+    final c = course;
+    final ar = AppConfig.lang == 'ar';
+    final title = (ar ? c.titleAr ?? c.titleEn : c.titleEn ?? c.titleAr) ?? '';
+    // who: the organization for an organization course, else the teacher (a teacher's own list skips himself)
+    final who = c.org?.name ?? (isTeacher ? null : c.teacher?.name);
+    final amount = c.sessionsCount > 0
+        ? courseLessonsLabel(c.sessionsCount)
+        : (c.hoursCount > 0 ? courseHoursLabel(c.hoursCount) : null);
+    final meta = <String>[
+      if (badge == null && who != null && !courseFeatureOff('course_card.instructor')) who,
+      ?amount,
+    ];
 
-    return GestureDetector(
-      onTap: () => onTap.call(course),
-      child: Container(
-        width: fixedWidth,
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: context.colors.heroShade.withValues(alpha: 0.07),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: LayoutBuilder(
-          builder: (context, c) {
-            // The info area has a height computed from its content (not half
-            // of the card), so rows never fight for space. The image takes
-            // whatever is left.
-            final design = infoDesignHeight * FitSections.textScale(context);
-            final infoH = c.hasBoundedHeight
-                ? math.min(design, c.maxHeight * 0.62)
-                : design;
+    final Widget footer;
+    if (isTeacher) {
+      footer = CourseStatsFooter(
+        students: c.studentsCount,
+        sessions: c.sessionsCount,
+        rating: c.rateSummary?.average,
+      );
+    } else if (c.isEnrolled) {
+      footer = CourseProgressFooter(progress: c.progress);
+    } else {
+      final off = c.hasDiscount ? c.discountPercentage?.round() : null;
+      footer = CoursePriceFooter(
+        price: coursePriceLabel(c.currency, c.effectivePrice),
+        free: c.effectivePrice == 0,
+        original: c.hasDiscount && c.price > c.effectivePrice ? coursePriceLabel(c.currency, c.price) : null,
+        offPercent: off,
+      );
+    }
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Expanded(
-                  child: _Thumbnail(
-                    course: course,
-                    isTeacher: isTeacher,
-                    fullScreen: fullScreen,
-                    pageName: pageName,
-                  ),
-                ),
-                SizedBox(
-                  height: infoH,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(11, 5, 11, 7),
-                    // Higher priority number = removed first when the card is
-                    // too short. priority 0 (the title) is never removed.
-                    child: FitSections(
-                      sections: [
-                        FitSection(
-                          height: 20,
-                          child:
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  (AppConfig.lang == 'ar'
-                                      ? course.titleAr
-                                      : course.titleEn) ??
-                                      '',
-                                  style: context.colors.h3.copyWith(
-                                    fontSize: 13,
-                                    overflow: TextOverflow.ellipsis,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.2,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (course.rateSummary?.average != null)
-                                _StatsRow(course: course),
-                            ],
-                          ),
-                        ),
-                        const FitSection(
-                          height: 7,
-                          priority: 1,
-                          label: 'divider',
-                          child: _CardDivider(),
-                        ),
-                        if (description.isNotEmpty)
-                          FitSection(
-                            height: 13,
-                            priority: 6,
-                            label: 'description',
-                            child: ParentComponent(
-                              featureKey: 'course_card.description',
-                              child: Text(
-                                description,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: context.colors.caption.copyWith(
-                                  color: context.colors.textLight,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 9,
-                                ),
-                              ),
-                            ),
-                          ),
-                        FitSection(
-                          height: 30,
-                          priority: 3,
-                          label: 'instructor/category/status',
-                          child:
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              if (!isTeacher && course.teacher != null)
-                                Expanded(
-                                  flex: 1,
-                                  child: ParentComponent(featureKey: 'course_card.instructor', child: InstructorAvatar(
-                                    teacher: course.teacher!,
-                                    size: 30,
-                                    canOpen: true,
-                                    showTitle: true,
-                                    showImage: false,
-                                  )),
-                                ),
-                              if (course.category != null)
-                                Flexible(
-                                  flex: 1,
-                                  child: ParentComponent(featureKey: 'course_card.category', child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: context.colors.primary,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      AppConfig.lang == 'ar'
-                                          ? course.category!.nameAr
-                                          : course.category!.nameEn,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: context.colors.onHero,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        fontFamily: AppFonts.display,
-                                      ),
-                                    ),
-                                  )),
-                                ),
-                              if (isTeacher)
-                                Flexible(
-                                  flex: 1,
-                                  child: ParentComponent(featureKey: 'course_card.publish_status', child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 9,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: course.isPublished
-                                          ? context.colors.success
-                                          : context.colors.warning,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      course.isPublished
-                                          ? 'published'.tr
-                                          : 'draft'.tr,
-                                      style: TextStyle(
-                                        color: context.colors.onHero,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        fontFamily: AppFonts.display,
-                                      ),
-                                    ),
-                                  )),
-                                ),
-                            ],
-                          ),
-                        ),
-                        if (hasStudents || hasCertificate)
-                          FitSection(
-                            height: 20,
-                            priority: 5,
-                            label: 'students/certificate',
-                            child: _StudentRow(
-                              course: course,
-                              hasStudents: hasStudents,
-                              hasCertificate: hasCertificate,
-                            ),
-                          ),
-                        if (hasHours || hasLectures)
-                          FitSection(
-                            height: 20,
-                            priority: 4,
-                            label: 'sessions/hours',
-                            child: _MetaRow(
-                              course: course,
-                              hasHours: hasHours,
-                              hasLectures: hasLectures,
-                            ),
-                          ),
-                        if ((course.isEnrolled || isTeacher) &&
-                            course.progress > 0)
-                          FitSection(
-                            height: 14,
-                            priority: 2,
-                            label: 'progress',
-                            child: _ProgressBar(progress: course.progress),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  /// Design height of the info area at text scale 1.0:
-  /// all sections (124) + gaps (18) + vertical padding (12).
-  static const double infoDesignHeight = 154;
-
-  /// Image height = card width * thumbRatio.
-  static const double thumbRatio = 0.6;
-
-  /// Exact cell height for a grid: use it as `mainAxisExtent`.
-  static double cellHeight(BuildContext context, double cellWidth) =>
-      cellWidth * thumbRatio + infoDesignHeight * FitSections.textScale(context);
-}
-
-// ── Thumbnail ────────────────────────────────────────────────────────────────
-class _Thumbnail extends StatelessWidget {
-  final CourseModel course;
-  final bool isTeacher;
-  final bool fullScreen;
-  final String pageName;
-
-  const _Thumbnail({
-    required this.course,
-    required this.isTeacher,
-    required this.fullScreen,
-    required this.pageName,
-  });
-
-  @override
-  Widget build(BuildContext context) => ParentComponent(
-    featureKey: 'course_card.thumbnail',
-    child: _featureContent(context),
-  );
-
-  Widget _featureContent(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: AppNetworkImage(
-            url: course.imageUrl,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            heroTag: "course-row-card-$pageName-${course.id}",
-          ),
-        ),
-        // Bottom dark gradient for readability
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  context.colors.heroShade.withValues(alpha: 0.36),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-        ),
-
-        // Type badge — top right
-        Positioned(
-          top: 10,
-          right: 10,
-          child: ParentComponent(featureKey: 'course_card.type_badge', child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-            decoration: BoxDecoration(
-              color: context.colors.heroShade.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(8),
-              border: BoxBorder.all(color: context.colors.onHero, width: 0.75),
-            ),
-            child: Text(
-              course.type.tr,
-              style: TextStyle(
-                color: context.colors.onHero,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                fontFamily: AppFonts.display,
-              ),
-            ),
-          )),
-        ),
-
-        // Favorite heart — top left
-        if (!isTeacher)
-          Positioned(
-            top: 8,
-            left: 10,
-            child: ParentComponent(featureKey: 'course_card.favorite', child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: context.colors.onHero.withValues(alpha: 0.88),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                course.isFavorite
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                size: 15,
-                color: course.isFavorite
-                    ? context.colors.danger
-                    : context.colors.textLight,
-              ),
-            )),
-          ),
-
-        // Discount ribbon — top right, under the type badge
-        if (course.hasDiscount)
-          Positioned(
-            top: 34,
-            right: 10,
-            child: ParentComponent(featureKey: 'course_card.discount', child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DiscountRibbon.forCourse(course: course),
-                if (course.discountEndsAt != null) ...[
-                  SizedBox(height: 2),
-                  DiscountCountdownBadge(course: course, compact: true),
-                ],
-              ],
-            )),
-          ),
-
-        // Private course flag — bottom left
-        if (course.isPrivate)
-          Positioned(bottom: 10, left: 10, child: ParentComponent(featureKey: 'course_card.private_flag', child: PrivateFlag())),
-
-        // Countdown — bottom left, opposite the price badge. This is the
-        // "hurry up" nudge: calm amber while there's still time, switching
-        // to a pulsing red pill once the discount enters its last 24h.
-
-        // Price badge — bottom right
-        Positioned(
-          bottom: 10,
-          right: 10,
-          child: ParentComponent(featureKey: 'course_card.price', child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: course.effectivePrice == 0
-                  ? context.colors.success
-                  : context.colors.primary,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color:
-                  (course.effectivePrice == 0
-                      ? context.colors.success
-                      : context.colors.primary)
-                      .withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (course.hasDiscount) ...[
-                  Text(
-                    course.currency.format(course.price),
-                    style: TextStyle(
-                      color: context.colors.onHero.withValues(alpha: 0.75),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 9,
-                      fontFamily: AppFonts.display,
-                      decoration: TextDecoration.lineThrough,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Text(
-                  course.currency.format(course.effectivePrice),
-                  style: TextStyle(
-                    color: context.colors.onHero,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    fontFamily: AppFonts.display,
-                  ),
-                ),
-              ],
-            ),
-          )),
-        ),
-      ],
+    return CourseListCard(
+      shape: shape,
+      title: title,
+      imageUrl: c.imageUrl,
+      heroTag: 'course-row-card-$pageName-${c.id}',
+      chip: isTeacher
+          ? (courseFeatureOff('course_card.publish_status')
+              ? null
+              : CourseCoverChip.status(context, published: c.isPublished))
+          : (courseFeatureOff('course_card.type_badge') ? null : CourseCoverChip.type(context, live: c.type == 'live')),
+      corner: !isTeacher && c.isFavorite && !courseFeatureOff('course_card.favorite') ? const CourseFavoriteMark() : null,
+      meta: meta,
+      metaLead: badge,
+      isPrivate: c.isPrivate,
+      footer: footer,
+      onTap: () => onTap(c),
     );
   }
 }
@@ -564,239 +205,6 @@ class IconColored extends StatelessWidget {
         borderRadius: BorderRadius.circular(5),
       ),
       child: Icon(icon, size: 13, color: color),
-    );
-  }
-}
-
-// ── Thin divider ─────────────────────────────────────────────────────────────
-class _CardDivider extends StatelessWidget {
-  const _CardDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Divider(
-        height: 0.5,
-        thickness: 0.5,
-        color: context.colors.heroShade.withValues(alpha: 0.07),
-      ),
-    );
-  }
-}
-
-// ── Rating + students ────────────────────────────────────────────────────────
-class _StatsRow extends StatelessWidget {
-  final CourseModel course;
-
-  const _StatsRow({required this.course});
-
-  @override
-  Widget build(BuildContext context) => ParentComponent(
-    featureKey: 'course_card.rating',
-    child: _featureContent(context),
-  );
-
-  Widget _featureContent(BuildContext context) {
-    return Row(
-      children: [
-        Icon(Icons.star_rounded, color: context.colors.accent, size: 13),
-        const SizedBox(width: 3),
-        Text(
-          course.rateSummary?.average.toStringAsFixed(1) ?? '',
-          style: context.colors.caption.copyWith(
-            color: context.colors.textDark,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Lectures + hours ─────────────────────────────────────────────────────────
-class _MetaRow extends StatelessWidget {
-  final CourseModel course;
-  final bool hasLectures, hasHours;
-
-  const _MetaRow({
-    required this.course,
-    required this.hasLectures,
-    required this.hasHours,
-  });
-
-  @override
-  Widget build(BuildContext context) => ParentComponent(
-    featureKey: 'course_card.meta',
-    child: _featureContent(context),
-  );
-
-  Widget _featureContent(BuildContext context) {
-    // FittedBox(scaleDown): if the row is wider than the card it shrinks a
-    // little instead of overflowing.
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: AlignmentDirectional.centerStart,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (hasLectures)
-            _IconText(
-              color: context.colors.primary,
-              icon: Icons.play_circle_outline_rounded,
-              text: '${course.sessionsCount} ${'session'.tr}',
-            ),
-          if (hasLectures && hasHours) const SizedBox(width: 12),
-          if (hasHours)
-            _IconText(
-              color: context.colors.accent,
-              icon: Icons.access_time_rounded,
-              text: '${course.hoursCount} ${'hours'.tr}',
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Students + certificate ───────────────────────────────────────────────────
-class _StudentRow extends StatelessWidget {
-  final CourseModel course;
-  final bool hasStudents, hasCertificate;
-
-  const _StudentRow({
-    required this.course,
-    required this.hasStudents,
-    required this.hasCertificate,
-  });
-
-  @override
-  Widget build(BuildContext context) => ParentComponent(
-    featureKey: 'course_card.students',
-    child: _featureContent(context),
-  );
-
-  Widget _featureContent(BuildContext context) {
-    return Row(
-      children: [
-        // The certificate title is the only long text: it takes what is left
-        // and ends with an ellipsis.
-        if (hasCertificate)
-          Flexible(
-            child: _IconText(
-              color: context.colors.success,
-              icon: Icons.workspace_premium_rounded,
-              text: course.certificates.first.title,
-              shrinkText: true,
-            ),
-          ),
-        if (hasStudents && hasCertificate) const SizedBox(width: 10),
-        if (hasStudents)
-          // shrinks too: "1300 students" overflowed a 2-column card on a 320 px phone at text scale 1.3
-          Flexible(
-            child: _IconText(
-              color: context.colors.accent2,
-              icon: CupertinoIcons.group,
-              text: '${course.studentsCount} ${'student'.tr}',
-              shrinkText: true,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Small tinted icon + one-line caption.
-class _IconText extends StatelessWidget {
-  final Color color;
-  final IconData icon;
-  final String text;
-
-  /// true → the text may shrink with an ellipsis (put it inside a Flexible).
-  final bool shrinkText;
-
-  const _IconText({
-    required this.color,
-    required this.icon,
-    required this.text,
-    this.shrinkText = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final label = Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: context.colors.caption.copyWith(fontSize: 10),
-    );
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconColored(color: color, icon: icon),
-        const SizedBox(width: 3),
-        if (shrinkText) Flexible(child: label) else label,
-      ],
-    );
-  }
-}
-
-// ── Progress bar ─────────────────────────────────────────────────────────────
-class _ProgressBar extends StatelessWidget {
-  final int progress;
-
-  const _ProgressBar({required this.progress});
-
-  @override
-  Widget build(BuildContext context) => ParentComponent(
-    featureKey: 'course_card.progress',
-    child: _featureContent(context),
-  );
-
-  Widget _featureContent(BuildContext context) {
-    Color primary = progress > 90
-        ? context.colors.success
-        : progress > 30
-        ? context.colors.primary
-        : context.colors.danger;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 72),
-          child: Text(
-            'you_progress'.tr,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.colors.caption.copyWith(fontSize: 10),
-          ),
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3.0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: (progress / 100).clamp(0.0, 1.0),
-                minHeight: 5,
-                backgroundColor: context.colors.primaryLight.withValues(
-                  alpha: 0.3,
-                ),
-                valueColor: AlwaysStoppedAnimation(primary),
-              ),
-            ),
-          ),
-        ),
-        Text(
-          '$progress%',
-          style: context.colors.caption.copyWith(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: primary,
-          ),
-        ),
-      ],
     );
   }
 }

@@ -11,6 +11,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../teacher/data_lab/data_lab_models.dart';
+import 'analytics_summary.dart' show anIsolate;
 
 String get anFont => AppFonts.display;
 
@@ -507,10 +508,14 @@ class AnVsClassCard extends StatelessWidget {
     final c = context.colors;
     final shown = rows.where((r) => r.$2 != null && r.$3 != null).toList();
     if (shown.isEmpty) return const SizedBox.shrink();
-    final above = shown.where((r) => r.$2! >= r.$3!).length;
+    // as shown (whole points): level with the class is neither above nor below (M5)
+    final above = shown.where((r) => r.$2!.round() > r.$3!.round()).length;
+    final below = shown.where((r) => r.$2!.round() < r.$3!.round()).length;
     final body = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(
-          above == shown.length
+          above == 0 && below == 0
+              ? anTr('an_vs_all_level', 'Level with the class average — keep going.')
+              : above == shown.length
               ? anTr('an_vs_all_above', 'Above the class average everywhere — wonderful work! 🌟')
               : above == 0
               ? anTr('an_vs_all_below', 'Below the class average for now — a little extra effort will close the gap.')
@@ -522,7 +527,7 @@ class AnVsClassCard extends StatelessWidget {
           Row(children: [
             Expanded(child: Text(r.$1, style: anText(12.5, w: FontWeight.w700, c: c.textDark))),
             Text(anPct(r.$2), style: anText(13, w: FontWeight.w800, c: anScoreColor(context, r.$2))),
-            Text('  ·  ${anTr('an_class', 'class')} ${anPct(r.$3)}', style: anText(11.5, c: c.textLight)),
+            Text('  ·  ${anTr('an_class', 'class')} ${anIsolate(anPct(r.$3))}', style: anText(11.5, c: c.textLight)),
           ]),
           const SizedBox(height: 5),
           AnBar(value: r.$2, marker: r.$3, height: 7),

@@ -10,6 +10,8 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 // ══════════════════════════════════════════════
 //  ENUM  (mirrors Python RateType)
@@ -467,7 +469,7 @@ class _RatingWidgetState extends State<RatingWidget>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${summary.total} ratings',
+                    countText(summary.total, ar1: 'تقييم واحد', ar2: 'تقييمان', arFew: '{n} تقييمات', arMany: '{n} تقييمًا', en1: '1 rating', en: '{n} ratings'),
                     style: c.caption.copyWith(fontSize: 11),
                   ),
                 ],
@@ -504,7 +506,7 @@ class _RatingWidgetState extends State<RatingWidget>
 
             // ── Interactive stars ────────────────────────────
             Text(
-              _submitted > 0 ? 'Update your rating' : 'Rate this ${widget.type.label.toLowerCase()}',
+              _submitted > 0 ? _t('حدّث تقييمك', 'Update your rating') : _t('أضف تقييمك', 'Rate this ${widget.type.label.toLowerCase()}'),
               style: c.h4,
             ),
             const SizedBox(height: 12),
@@ -739,7 +741,7 @@ class _ReviewField extends StatelessWidget {
       minLines: 2,
       style: c.body.copyWith(fontSize: 13),
       decoration: InputDecoration(
-        hintText: 'Share your experience (optional)...',
+        hintText: _t('شاركنا تجربتك (اختياري)…', 'Share your experience (optional)…'),
         hintStyle: c.caption,
         filled: true,
         fillColor: c.inputBg,
@@ -946,7 +948,7 @@ class _ErrorState extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Could not load ratings',
+              _t('تعذّر تحميل التقييمات', 'Could not load ratings'),
               style: c.body.copyWith(color: c.danger, fontSize: 13),
             ),
           ),
@@ -973,3 +975,5 @@ class _ErrorState extends StatelessWidget {
     );
   }
 }
+
+String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;

@@ -155,7 +155,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             featureKey: 'profile.change_password',
                             child: AppSettingsTile(
                               icon: Icons.lock_reset_rounded,
-                              color: c.accent,
+                              color: c.primary, // the theme accent can be a pale tint: the icon read as disabled (L3)
                               label: 'change_password'.tr,
                               onTap: () => _push(const ChangePasswordScreen()),
                             ),
@@ -178,7 +178,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               featureKey: 'profile.downloads',
                               child: AppSettingsTile(
                                 icon: Icons.download_for_offline_rounded,
-                                color: c.accent,
+                                color: c.primary,
                                 label: offlineT('downloads'),
                                 onTap: () => _push(const DownloadsScreen()),
                               ),
@@ -188,7 +188,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               featureKey: 'profile.my_ads',
                               child: AppSettingsTile(
                                 icon: Icons.campaign_rounded,
-                                color: c.accent,
+                                color: c.primary,
                                 label: 'my_ads'.tr,
                                 onTap: () => _push(const TeacherAdsPage()),
                               ),
@@ -197,7 +197,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               featureKey: 'profile.certificate_designs',
                               child: AppSettingsTile(
                                 icon: Icons.workspace_premium_rounded,
-                                color: c.accent,
+                                color: c.primary,
                                 label: 'cert_my_designs'.tr,
                                 // personal designs: usable on every course of this teacher (no organization needed)
                                 onTap: () => _push(const CertificateDesignsScreen()),
@@ -239,7 +239,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               child: AppSettingsTile(
                                 icon: Icons.payments_rounded,
                                 color: c.danger,
-                                label: 'payout'.tr,
+                                label: 'admin_earnings_payouts'.tr, // the page it opens (L4)
                                 onTap: () => _push(const TeacherPayoutsScreen()),
                               ),
                             ),
@@ -390,7 +390,9 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 },
                                 icon: Icons.support_agent_rounded,
                                 color: c.primary,
-                                label: 'help_center'.tr,
+                                // named after the page it opens (L5: "Help center" opened the complaints list)
+                                label: 'complaints_and_support'.tr,
+                                keywords: 'help center support complaints مساعدة دعم شكاوى',
                               ),
                             ),
                           ),
@@ -425,7 +427,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             featureKey: 'profile.about',
                             child: AppSettingsTile(
                               icon: Icons.info_rounded,
-                              color: c.accent,
+                              color: c.primary,
                               label: 'about'.tr,
                               onTap: () => _push(
                                 ChangeNotifierProvider(

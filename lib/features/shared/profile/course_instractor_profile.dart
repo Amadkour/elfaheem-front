@@ -12,7 +12,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/app_config.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_network_image.dart';
@@ -300,11 +299,7 @@ class _HeroSliverAppBar extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: AlignmentDirectional.topStart,
                   end: AlignmentDirectional.bottomEnd,
-                  colors: [
-                    AppTheme.primary,
-                    AppTheme.primary.withValues(alpha: 0.7),
-                    AppTheme.accent,
-                  ],
+                  colors: [context.colors.primary, context.colors.heroEnd(context.colors.primary)],
                 ),
               ),
             ),
@@ -378,7 +373,7 @@ class _HeroSliverAppBar extends StatelessWidget {
                                   style: TextStyle(
                                     color: context.colors.onHero,
                                     fontSize: 22,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w600,
                                     letterSpacing: -0.5,
                                     height: 1.1,
                                   ),
@@ -450,12 +445,12 @@ class _ProfileCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [AppTheme.primary, AppTheme.accent],
+          colors: [c.primary, c.heroEnd(c.primary)],
         ),
         borderRadius: c.brLarge,
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.4),
+            color: context.colors.primary.withValues(alpha: 0.4),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -473,7 +468,7 @@ class _ProfileCard extends StatelessWidget {
                 style: TextStyle(
                   color: context.colors.onHero,
                   fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: -0.3,
                 ),
                 textAlign: TextAlign.center,
@@ -559,7 +554,7 @@ class InstructorAvatar extends StatelessWidget {
         border: Border.all(color: context.colors.background, width: 1),
       ),
       child: ClipOval(
-        child: teacher.imageUrl != null
+        child: (teacher.imageUrl ?? '').isNotEmpty
             ? AppNetworkImage(
           url: teacher.imageUrl!,
           width: size,
@@ -570,14 +565,16 @@ class InstructorAvatar extends StatelessWidget {
           'instructor_avatar_${teacher.id}-${DateTime.timestamp()}',
         )
             : Container(
-          color: AppTheme.primary.withValues(alpha: 0.2),
+          // opaque card well: the initials stay readable on the coloured hero (M22: dark-on-blue "DO")
+          color: context.colors.cardBg,
           child: Center(
             child: Text(
               teacher.initials,
               style: TextStyle(
-                color: AppTheme.primary,
+                fontFamily: AppFonts.family,
+                color: context.colors.primary,
                 fontSize: size * 0.35,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -681,7 +678,7 @@ class _StatsRow extends StatelessWidget {
           icon: Icons.calendar_today_outlined,
           value: teacher.createdAt.year.toString(),
           label: 'joined'.tr,
-          color: AppTheme.primary,
+          color: context.colors.primary,
         ),
       ],
     );
@@ -920,7 +917,7 @@ class _AboutCardState extends State<_AboutCard> {
               child: Text(
                 _expanded ? 'show_less'.tr : 'show_more'.tr,
                 style: TextStyle(
-                  color: AppTheme.accent,
+                  color: context.colors.primary,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1012,8 +1009,8 @@ class _DocumentCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        AppTheme.primary.withValues(alpha: 0.15),
-                        AppTheme.accent.withValues(alpha: 0.15),
+                        context.colors.primary.withValues(alpha: 0.15),
+                        context.colors.primary.withValues(alpha: 0.08),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -1022,7 +1019,7 @@ class _DocumentCard extends StatelessWidget {
                     doc.isPdf
                         ? Icons.picture_as_pdf_rounded
                         : Icons.image_outlined,
-                    color: AppTheme.primary,
+                    color: context.colors.primary,
                     size: 20,
                   ),
                 ),
@@ -1285,12 +1282,12 @@ class _SectionHeader extends StatelessWidget {
           width: 3,
           height: 20,
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: c.primaryGradient,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
         const SizedBox(width: 10),
-        Icon(icon, color: AppTheme.primary, size: 18),
+        Icon(icon, color: context.colors.primary, size: 18),
         const SizedBox(width: 8),
         Text(title, style: c.h4),
       ],

@@ -18,7 +18,13 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
 import 'package:flutter_education_app/features/student/courses/details/components/about.dart' show CourseAboutView;
 import 'package:flutter_education_app/features/student/courses/details/components/course_detail_parts.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
+import 'package:flutter_education_app/features/shared/course/studend_course_roadmap_section.dart';
+import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
+import 'package:flutter_education_app/features/shared/session/material/components/session_material_grid.dart';
+import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
+import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
+import 'package:flutter_education_app/features/student/models.dart' show CourseModel, CourseSummary, SessionModel;
+import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -120,31 +126,167 @@ Future<void> _render(WidgetTester tester, String name, Widget Function() build) 
   }
 }
 
-Widget _lessonCard(BuildContext context, int n, String title, {bool done = false, bool locked = false}) {
+/// A UTC instant [days] from today at [hour]:[minute] UTC.
+DateTime _at(int days, int hour, [int minute = 0]) {
+  final n = DateTime.now().toUtc();
+  return DateTime.utc(n.year, n.month, n.day + days, hour, minute);
+}
+
+typedef _Row = ({String title, CourseSessionKind kind, int minutes, int files, int filesDone, DateTime? when});
+
+/// The student's lessons: 5 done (folded), the next one under way, one on air, one scheduled, two locked.
+List<_Row> _studentRows() => [
+  (title: tr('مقدمة في بايثون', 'Intro to Python'), kind: CourseSessionKind.recorded, minutes: 35, files: 4, filesDone: 4, when: null),
+  (title: tr('المتغيرات والأنواع', 'Variables and types'), kind: CourseSessionKind.recorded, minutes: 40, files: 3, filesDone: 3, when: null),
+  (title: tr('التحكم في التدفق', 'Control flow'), kind: CourseSessionKind.recorded, minutes: 45, files: 3, filesDone: 3, when: null),
+  (title: tr('الدوال', 'Functions'), kind: CourseSessionKind.recorded, minutes: 50, files: 5, filesDone: 5, when: null),
+  (title: tr('أساسيات NumPy', 'NumPy essentials'), kind: CourseSessionKind.section, minutes: 60, files: 2, filesDone: 2, when: null),
+  (title: tr('تحليل البيانات بـ Pandas', 'Data analysis with Pandas'), kind: CourseSessionKind.recorded, minutes: 55, files: 5, filesDone: 2, when: null),
+  (title: tr('الشبكات العصبية', 'Neural networks'), kind: CourseSessionKind.live, minutes: 90, files: 1, filesDone: 0, when: null),
+  (title: tr('الانحدار اللوجستي', 'Logistic regression'), kind: CourseSessionKind.live, minutes: 90, files: 0, filesDone: 0, when: _at(3, 15)),
+  (title: tr('تقييم النماذج', 'Model evaluation'), kind: CourseSessionKind.recorded, minutes: 45, files: 4, filesDone: 0, when: null),
+  (title: tr('المشروع النهائي', 'Final project'), kind: CourseSessionKind.recorded, minutes: 120, files: 2, filesDone: 0, when: null),
+];
+
+Widget _studentLessons(BuildContext context) {
   final c = context.colors;
-  return Container(
-    margin: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, 10),
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: c.cardBg,
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: c.divider),
-    ),
-    child: Row(
-      children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: (done ? c.success : c.primary).withValues(alpha: 0.12),
-          child: Icon(
-            locked ? Icons.lock_rounded : (done ? Icons.check_rounded : Icons.play_arrow_rounded),
-            color: done ? c.success : c.primary,
-            size: 18,
-          ),
+  final rows = _studentRows();
+  final states = courseStudentStates([
+    for (final (i, r) in rows.indexed)
+      (
+        live: i == 6,
+        locked: i >= 8,
+        done: courseStudentSessionDone(serverDone: true, materials: r.files, materialsDone: r.filesDone, when: r.when, minutes: r.minutes),
+        when: r.when,
+      ),
+  ]);
+  final fold = courseSessionFoldCount(states);
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      CourseSectionHeader(title: tr('الجلسات', 'Sessions'), count: rows.length),
+      CourseSessionsTimeline(
+        itemCount: rows.length,
+        foldCount: fold,
+        itemBuilder: (context, i) {
+          final r = rows[i];
+          var rail = courseSessionRail(states, i);
+          if (fold > 0 && i == 0) rail = (top: CourseRailTone.done, bottom: rail.bottom);
+          final s = states[i];
+          return CourseSessionTile(
+            data: CourseSessionView(
+              number: i + 1,
+              title: r.title,
+              subtitle: tr('أمثلة عملية وتمارين قصيرة', 'Worked examples and short exercises'),
+              kind: r.kind,
+              state: s,
+              when: r.when,
+              durationMinutes: r.minutes,
+              materials: r.files,
+              materialsDone: r.filesDone,
+              showProgress: true,
+            ),
+            rail: rail,
+            wide: MediaQuery.sizeOf(context).width >= 900,
+            onTap: () {},
+            trailing: s == CourseSessionState.locked || r.files == 0 ? null : const CourseSessionChevron(open: false),
+            below: switch (s) {
+              CourseSessionState.live => CourseSessionAction(
+                label: tr('انضم للبث', 'Join live'),
+                icon: Icons.videocam_rounded,
+                tone: c.danger,
+                filled: true,
+                onTap: () {},
+              ),
+              CourseSessionState.next => CourseSessionAction(
+                label: tr('ابدأ الاختبار', 'Start exam'),
+                icon: Icons.quiz_outlined,
+                onTap: () {},
+              ),
+              _ => null,
+            },
+          );
+        },
+      ),
+    ],
+  );
+}
+
+/// The teacher's sessions: 4 delivered, one on air, the next scheduled, one later, an empty one, two recorded.
+List<_Row> _teacherRows() => [
+  (title: tr('مقدمة في بايثون', 'Intro to Python'), kind: CourseSessionKind.live, minutes: 60, files: 4, filesDone: 0, when: _at(-21, 15)),
+  (title: tr('المتغيرات والأنواع', 'Variables and types'), kind: CourseSessionKind.live, minutes: 60, files: 3, filesDone: 0, when: _at(-14, 15)),
+  (title: tr('الدوال', 'Functions'), kind: CourseSessionKind.live, minutes: 90, files: 5, filesDone: 0, when: _at(-7, 15)),
+  (title: tr('أساسيات NumPy', 'NumPy essentials'), kind: CourseSessionKind.section, minutes: 60, files: 2, filesDone: 0, when: _at(-3, 15)),
+  (title: tr('الشبكات العصبية', 'Neural networks'), kind: CourseSessionKind.live, minutes: 90, files: 1, filesDone: 0, when: null),
+  (title: tr('الانحدار اللوجستي', 'Logistic regression'), kind: CourseSessionKind.live, minutes: 90, files: 2, filesDone: 0, when: _at(2, 15)),
+  (title: tr('تقييم النماذج', 'Model evaluation'), kind: CourseSessionKind.live, minutes: 90, files: 0, filesDone: 0, when: _at(9, 15)),
+  (title: tr('مشروع منتصف الفصل', 'Midterm project'), kind: CourseSessionKind.recorded, minutes: 0, files: 0, filesDone: 0, when: null),
+  (title: tr('مراجعة شاملة', 'Full review'), kind: CourseSessionKind.recorded, minutes: 45, files: 6, filesDone: 0, when: null),
+  (title: tr('المشروع النهائي', 'Final project'), kind: CourseSessionKind.recorded, minutes: 120, files: 2, filesDone: 0, when: null),
+];
+
+Widget _teacherSessions(BuildContext context) {
+  final c = context.colors;
+  final rows = _teacherRows();
+  final states = courseTeacherStates([
+    for (final (i, r) in rows.indexed) (live: i == 4, when: r.when, minutes: r.minutes),
+  ]);
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      TeacherSessionsHeader(count: rows.length, onAdd: () {}),
+      CourseSessionsSurface(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, r) in rows.indexed)
+              CourseSessionTile(
+                data: CourseSessionView(
+                  number: i + 1,
+                  title: r.title,
+                  subtitle: tr('الدرس مع التمارين والملفات', 'The lesson with its exercises and files'),
+                  kind: r.kind,
+                  state: states[i],
+                  when: r.when,
+                  durationMinutes: r.minutes,
+                  materials: r.files,
+                  hint: r.files == 0 ? tr('لا مواد بعد', 'No materials yet') : null,
+                ),
+                rail: courseSessionRail(states, i),
+                wide: MediaQuery.sizeOf(context).width >= 900,
+                onTap: () {},
+                trailing: SizedBox(
+                  width: 40,
+                  height: 44,
+                  child: Icon(Icons.more_vert_rounded, size: 20, color: c.textLight),
+                ),
+                below: states[i] == CourseSessionState.live
+                    ? Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          CourseSessionAction(
+                            label: tr('دخول الغرفة', 'Enter room'),
+                            icon: Icons.videocam_rounded,
+                            tone: c.danger,
+                            filled: true,
+                            onTap: () {},
+                          ),
+                          CourseSessionAction(
+                            label: tr('إنهاء', 'End'),
+                            icon: Icons.stop_circle_outlined,
+                            tone: c.danger,
+                            onTap: () {},
+                          ),
+                        ],
+                      )
+                    : null,
+              ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(child: Text('$n. $title', style: c.bodyBold)),
-      ],
-    ),
+      ),
+    ],
   );
 }
 
@@ -166,9 +308,9 @@ Widget _student() => Builder(
         teacherName: tr('د. سارة الحسيني', 'Dr. Sara El-Husseini'),
         onTeacher: () {},
         stats: [
-          CourseSpaceStat(icon: Icons.groups_rounded, value: '1,284', label: tr('طالب', 'Students')),
-          CourseSpaceStat(icon: Icons.play_circle_outline_rounded, value: '36', label: tr('درس', 'Lessons')),
-          CourseSpaceStat(icon: Icons.schedule_rounded, value: '42', label: tr('ساعة', 'Hours')),
+          CourseSpaceStat(icon: Icons.groups_rounded, value: '4', label: courseStatNoun(4, 'course_hero_students')),
+          CourseSpaceStat(icon: Icons.play_circle_outline_rounded, value: '10', label: courseStatNoun(10, 'course_hero_lessons')),
+          CourseSpaceStat(icon: Icons.schedule_rounded, value: '9', label: courseStatNoun(9, 'course_hero_hours')),
         ],
         progress: 0.58,
       ),
@@ -207,21 +349,10 @@ Widget _student() => Builder(
         CourseSpaceTab(id: 'live', label: tr('مباشر', 'Live'), icon: Icons.sensors_rounded, live: true, builder: (_) => const SizedBox()),
         CourseSpaceTab(
           id: 'lessons',
-          label: tr('الدروس', 'Lessons'),
+          label: tr('الجلسات', 'Sessions'),
           icon: Icons.play_lesson_rounded,
-          count: 36,
-          builder: (context) => Column(
-            children: [
-              CourseSectionHeader(title: tr('الدروس', 'Lessons'), count: 36),
-              for (final (i, t) in [
-                tr('مقدمة في بايثون', 'Intro to Python'),
-                tr('المتغيرات والأنواع', 'Variables and types'),
-                tr('الدوال', 'Functions'),
-                tr('مكتبة NumPy', 'NumPy'),
-              ].indexed)
-                _lessonCard(context, i + 1, t, done: i < 2, locked: i == 3),
-            ],
-          ),
+          count: 10,
+          builder: _studentLessons,
         ),
         CourseSpaceTab(id: 'exams', label: tr('الاختبارات', 'Exams'), icon: Icons.assignment_rounded, builder: (_) => const SizedBox()),
         CourseSpaceTab(id: 'about', label: tr('عن الكورس', 'About'), icon: Icons.info_outline_rounded, builder: (_) => const SizedBox()),
@@ -242,6 +373,40 @@ Widget _student() => Builder(
   },
 );
 
+/// The quick-action row with more than fit ("More"), the lecture / section filter and the roadmap card.
+Widget _parts() => Builder(
+  builder: (context) => ListView(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    children: [
+      CourseActionStrip(actions: [
+        for (final (ar, en, i) in [
+          ('جلسة جديدة', 'New session', Icons.add_rounded),
+          ('الطلاب', 'Students', Icons.groups_rounded),
+          ('ملف المقرر', 'Course profile', Icons.dashboard_customize_rounded),
+          ('معمل البيانات', 'Data Lab', Icons.science_rounded),
+          ('الجدول الأسبوعي', 'Weekly schedule', Icons.calendar_month_rounded),
+          ('تعديل الكورس', 'Edit course', Icons.edit_rounded),
+        ])
+          CourseSpaceAction(icon: i, label: tr(ar, en), onTap: () {}),
+      ]),
+      const SizedBox(height: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: SessionTrackTabs(value: 'all', lectures: 16, sections: 16, onChanged: (_) {}),
+      ),
+      const SizedBox(height: 16),
+      CourseRoadmapSection(
+        currentCourseName: tr('أساسيات الخط العربي', 'Arabic calligraphy basics'),
+        recentCompletedCourses: [CourseSummary(id: 1, name: tr('مدخل إلى الفنون الإسلامية', 'Intro to Islamic art'), finalPrice: 0)],
+        nextCourses: [CourseSummary(id: 2, name: tr('خط الثلث المتقدم', 'Advanced Thuluth script'), finalPrice: 0)],
+        recommendedCourses: const [],
+        similarCourses: const [],
+        onTapCourse: (_) {},
+      ),
+    ],
+  ),
+);
+
 Widget _teacher() => Builder(
   builder: (context) {
     final c = context.colors;
@@ -251,7 +416,7 @@ Widget _teacher() => Builder(
         category: tr('البرمجة', 'Programming'),
         badges: [CourseSpaceBadge(label: tr('مسودة', 'Draft'), icon: Icons.edit_note_rounded, color: c.warning)],
         stats: [
-          CourseSpaceStat(icon: Icons.groups_rounded, value: '1,284', label: tr('طالب', 'Students'), onTap: () {}),
+          CourseSpaceStat(icon: Icons.groups_rounded, value: '1,284', label: courseStatNoun(1284, 'course_hero_students'), onTap: () {}),
           CourseSpaceStat(icon: Icons.play_lesson_rounded, value: '36', label: tr('جلسة', 'Sessions')),
           CourseSpaceStat(icon: Icons.timer_rounded, value: '42', label: tr('ساعة', 'Hours')),
           CourseSpaceStat(icon: Icons.sell_rounded, value: '750 EGP', label: tr('السعر', 'Price')),
@@ -284,17 +449,9 @@ Widget _teacher() => Builder(
           id: 'sessions',
           label: tr('الجلسات', 'Sessions'),
           icon: Icons.play_lesson_rounded,
-          count: 36,
-          builder: (context) => Column(
-            children: [
-              CourseSectionHeader(
-                title: tr('الجلسات', 'Sessions'),
-                count: 36,
-                trailing: FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.add_rounded), label: Text(tr('إضافة', 'Add'))),
-              ),
-              for (var i = 1; i <= 3; i++) _lessonCard(context, i, tr('جلسة رقم $i', 'Session $i')),
-            ],
-          ),
+          count: 10,
+          live: true,
+          builder: _teacherSessions,
         ),
         CourseSpaceTab(id: 'details', label: tr('التفاصيل', 'Details'), icon: Icons.info_outline_rounded, builder: (_) => const SizedBox()),
       ],
@@ -389,7 +546,7 @@ Widget _studentReal() => Builder(
         ],
       ),
       tabs: [
-        CourseSpaceTab(id: 'lessons', label: tr('الدروس', 'Lessons'), icon: Icons.play_lesson_rounded, builder: (_) => const SizedBox()),
+        CourseSpaceTab(id: 'lessons', label: tr('الجلسات', 'Sessions'), icon: Icons.play_lesson_rounded, count: 4, builder: (_) => const SizedBox()),
         CourseSpaceTab(id: 'exams', label: tr('الاختبارات', 'Exams'), icon: Icons.assignment_rounded, builder: (_) => const SizedBox()),
         CourseSpaceTab(
           id: 'about',
@@ -403,7 +560,7 @@ Widget _studentReal() => Builder(
             teacherName: tr('د. سارة الحسيني', 'Dr. Sara El-Husseini'),
             category: tr('البرمجة', 'Programming'),
             onTeacher: () {},
-            rating: const Text('★★★★☆ 4.6'),
+            rating: const CourseRatingStars(value: 4.6, count: 128),
             myCertificates: const [],
             schedules: [
               CourseSchedule(id: 1, courseId: 42, day: 'sunday', startTime: '18:00', endTime: '19:30'),
@@ -462,7 +619,7 @@ Widget _teacherReal() => Builder(
           icon: Icons.info_outline_rounded,
           builder: (_) => TeacherCourseDetails(
             course: course,
-            rating: const Text('★★★★☆ 4.6'),
+            rating: const CourseRatingStars(value: 4.6, count: 128),
             onManageSchedule: () {},
             onManageCertificate: (_) {},
           ),
@@ -505,9 +662,55 @@ void main() {
   setUp(() => AppConfig.disableList = []);
 
   testWidgets('course student', (t) => _render(t, 'course_student', _student));
+  testWidgets('course parts', (t) => _render(t, 'course_parts', _parts));
   testWidgets('course teacher', (t) => _render(t, 'course_teacher', _teacher));
   testWidgets('course about', (t) => _render(t, 'course_about', _about));
   testWidgets('course student real pieces', (t) => _render(t, 'course_student_real', _studentReal));
   testWidgets('course teacher real pieces', (t) => _render(t, 'course_teacher_real', _teacherReal));
+  testWidgets('course materials', (t) => _render(t, 'course_materials', _materials));
   testWidgets('course teacher empty', (t) => _render(t, 'course_teacher_empty', _teacherEmpty));
+}
+
+/// N9: a session's files as the student sees them — one done mark, the recording titled "Session recording", stars
+/// only where there are ratings.
+Widget _materials() {
+  final session = SessionModel.fromJson({
+    'id': 11,
+    'course_id': 42,
+    'name': 'نن',
+    'total_materials': 3,
+    'complete_materials': 2,
+    'completeness': false,
+  }).toTeacher;
+  final now = DateTime.now().toUtc();
+  SessionMaterialModel m(int id, String name, String type, {bool done = false, int? size, Map<String, dynamic>? rate}) =>
+      SessionMaterialModel.fromJson({
+        'id': id,
+        'session_id': 11,
+        'name': name,
+        'type': type,
+        'file_size': size,
+        'completed': done,
+        'created_at': now.subtract(Duration(days: id)).toIso8601String(),
+        if (rate != null) 'rate': rate,
+      });
+  final provider = CourseDetailProvider()..course = _studentCourse();
+  return ChangeNotifierProvider<CourseDetailProvider>.value(
+    value: provider,
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: SessionMaterialGrid(
+        session: session,
+        isLoading: false,
+        columns: 1,
+        isTeacher: false,
+        materials: [
+          m(1, 'نن — تسجيل الحصة', 'recorded', done: true, size: 15938355),
+          m(2, 'نن — تسجيل الحصة (لقاء 2)', 'recorded', size: 9938355),
+          m(3, tr('ملخص المحاضرة الأولى', 'Lecture 1 summary'), 'document', done: true, size: 238355, rate: {'average': 4.5, 'total': 12, 'ratings': []}),
+          m(4, tr('رابط المراجع', 'Further reading'), 'link'),
+        ],
+      ),
+    ),
+  );
 }

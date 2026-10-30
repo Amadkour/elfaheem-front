@@ -173,7 +173,8 @@ void main() {
       },
     );
     expect(api.calls, ['sessions 2', 'create 2']);
-    expect(api.createdTitle, goLiveDefaultTitle(_now));
+    expect(api.createdTitle, ''); // no name: the server stores its neutral title (title_auto)
+    expect((r as GoLiveLaunch).title, goLiveDefaultTitle(_now));
     expect(api.createdRecord, isTrue);
     expect(api.createdAt, _now);
     expect(r, isA<GoLiveLaunch>());

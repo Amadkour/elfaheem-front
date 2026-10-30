@@ -209,7 +209,7 @@ class MeLiveRoom {
     return MeLiveRoom(
       kind: m['kind'] == 'meeting' ? 'meeting' : 'session',
       id: id,
-      title: str(m['title']) ?? '',
+      title: m['title_auto'] == true ? (AppConfig.lang == 'ar' ? 'حصة مباشرة' : 'Live session') : str(m['title']) ?? '',
       subtitle: str(m['subtitle']),
       courseId: opt(m['course_id']),
       meetingId: opt(m['meeting_id']),
@@ -512,6 +512,17 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Reload now; a call already in flight is shared.
   Future<void> refresh() => _running ??= _load().whenComplete(() => _running = null);
+
+  /// A GET /me/home answer another loader already fetched (the instructor home asks it beside its dashboard):
+  /// kept as the cached home, so the instructor's Organization mode draws its today / strip / inbox rows from it
+  /// instead of the older self-fetching fallbacks — no second call.
+  void adopt(Map<String, dynamic> json) {
+    home = MeHome.fromJson(json);
+    outcome = MeHomeOutcome.ok;
+    error = null;
+    loadedAt = _clock();
+    notifyListeners();
+  }
 
   Future<void> _load() async {
     String? token;

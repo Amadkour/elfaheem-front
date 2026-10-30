@@ -343,7 +343,9 @@ class MyAuthProvider extends BaseProvider {
     {'text': 'teacher'},
     {'text': 'parent'},
   ];
-  late List<Map<String, dynamic>> specializations;
+  /// Empty until [loadSpecialization] answers (a `late` field here threw LateInitializationError on the teacher's
+  /// edit-account page, H11).
+  List<Map<String, dynamic>> specializations = [];
   Map<String, dynamic>? selectedTeachingType;
   Map<String, dynamic>? selectedPaymentType;
   Map<String, dynamic>? selectedSpecialization;

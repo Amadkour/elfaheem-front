@@ -79,15 +79,15 @@ class CourseAboutView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final col = context.colors;
+    // ONE card, its sections split by hairlines (no stack of boxes)
     return Padding(
       padding: const EdgeInsets.fromLTRB(kCourseGutter, 4, kCourseGutter, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: CourseInfoGroup(
         children: [
           if (myCertificates.isNotEmpty)
             CourseInfoSection(
               title: 'my_certificates_title'.tr,
-              icon: Icons.emoji_events_rounded,
+              icon: Icons.emoji_events_outlined,
               color: col.accent,
               children: [for (final x in myCertificates) _IssuedCertificateCard(cert: x)],
             ),
@@ -97,45 +97,38 @@ class CourseAboutView extends StatelessWidget {
               icon: Icons.info_outline_rounded,
               children: [_ExpandableText(text: description.trim())],
             ),
+          if (teacherName != null) CourseInstructorCard(name: teacherName!, category: category, onTap: onTeacher),
           if (rating != null)
             CourseInfoSection(
               title: gt('التقييم', 'Rating'),
-              icon: Icons.star_rounded,
+              icon: Icons.star_outline_rounded,
               color: col.accent2,
               children: [rating!],
             ),
-          if (teacherName != null) ...[
-            InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: onTeacher,
-              child: CourseInstructorCard(name: teacherName!, category: category),
-            ),
-            const SizedBox(height: 12),
-          ],
           if (schedules.isNotEmpty)
             CourseInfoSection(
               title: gt('المواعيد الأسبوعية', 'Weekly schedule'),
-              icon: Icons.calendar_month_rounded,
+              icon: Icons.calendar_month_outlined,
               children: [CourseScheduleChips(schedules: schedules)],
             ),
           if (certificates.isNotEmpty)
             CourseInfoSection(
               title: gt('الشهادات', 'Certificates'),
-              icon: Icons.workspace_premium_rounded,
+              icon: Icons.workspace_premium_outlined,
               color: col.success,
               children: [
                 for (final x in certificates)
-                  CourseInfoRow(icon: Icons.verified_rounded, color: col.success, title: x.title, subtitle: x.description),
+                  CourseInfoRow(icon: Icons.verified_outlined, color: col.success, title: x.title, subtitle: x.description),
               ],
             ),
           if (tools.isNotEmpty)
             CourseInfoSection(
               title: gt('الأدوات المطلوبة', 'Required tools'),
-              icon: Icons.build_rounded,
+              icon: Icons.build_outlined,
               color: col.warning,
               children: [
                 for (final x in tools)
-                  CourseInfoRow(icon: Icons.settings_rounded, color: col.warning, title: x.name, subtitle: x.description),
+                  CourseInfoRow(icon: Icons.settings_outlined, color: col.warning, title: x.name, subtitle: x.description),
               ],
             ),
           if (prerequisites.isNotEmpty)
@@ -214,109 +207,81 @@ class _ExpandableTextState extends State<_ExpandableText> {
 
 // ── Instructor card ───────────────────────────────────────────────────────────
 
-/// The instructor strip of the About tab (plain values; tested by the layout harness).
+/// The instructor section of the About tab: avatar · "Instructor" · name (two lines at most) · category · chevron
+/// (plain values; tested by the layout harness).
 class CourseInstructorCard extends StatelessWidget {
   final String name, category;
+  final VoidCallback? onTap;
 
-  const CourseInstructorCard({super.key, required this.name, required this.category});
+  const CourseInstructorCard({super.key, required this.name, required this.category, this.onTap});
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      gradient: context.colors.primaryGradient,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: context.colors.primary.withValues(alpha: 0.36),
-          blurRadius: 22,
-          offset: const Offset(0, 7),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            color: context.colors.onHero.withValues(alpha: 0.2),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: context.colors.onHero.withValues(alpha: 0.4),
-              width: 2,
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = c.isDark ? Color.lerp(c.primary, c.textDark, 0.4)! : c.primary;
+    final row = Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: name.isNotEmpty
+                ? Text(
+                    name.characters.first,
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 17, fontWeight: FontWeight.w600, color: ink),
+                  )
+                : Icon(Icons.person_outline_rounded, color: ink, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  gt('المدرس', 'Instructor'),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name.isNotEmpty ? name : gt('المدرس', 'Instructor'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AppFonts.family,
+                    fontSize: 15,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: c.textDark,
+                  ),
+                ),
+                if (category.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    category,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium),
+                  ),
+                ],
+              ],
             ),
           ),
-          alignment: Alignment.center,
-          child: name.isNotEmpty
-              ? Text(
-                  name[0],
-                  style: TextStyle(
-                    color: context.colors.onHero,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: AppFonts.display,
-                  ),
-                )
-              : Icon(Icons.person_rounded, color: context.colors.onHero, size: 28),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name.isNotEmpty ? name : gt('المدرس', 'Instructor'),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: context.colors.h3.copyWith(
-                  color: context.colors.onHero,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              if (category.isNotEmpty) ...[
-                const SizedBox(height: 3),
-                Text(
-                  category,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.colors.caption.copyWith(color: context.colors.onHeroMuted),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Flexible(child: Container(   // the badge gives way on a narrow phone instead of overflowing
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-          decoration: BoxDecoration(
-            color: context.colors.onHero.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: context.colors.onHero.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.verified_rounded, color: context.colors.onHero, size: 13),
-              const SizedBox(width: 5),
-              Flexible(child: Text(
-                gt('مدرس', 'Instructor'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: context.colors.onHero,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: AppFonts.display,
-                ),
-              )),
-            ],
-          ),
-        )),
-      ],
-    ),
-  );
+          if (onTap != null) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, color: c.textLight, size: 20),
+          ],
+        ],
+      ),
+    );
+    if (onTap == null) return row;
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(onTap: onTap, child: row),
+    );
+  }
 }
 
 
@@ -382,7 +347,7 @@ class _IssuedCertificateCard extends StatelessWidget {
                             style: c.label.copyWith(
                               color: c.textDark,
                               fontSize: 14,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                           if (date.isNotEmpty)

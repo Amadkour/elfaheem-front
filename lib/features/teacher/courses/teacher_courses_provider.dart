@@ -24,12 +24,24 @@
 // first page and REPLACES the list, [loadMore] APPENDS the next page. The
 // screen shows "Showing {loadedCount} of {totalCount}" with a progress bar
 // (PagedCountCard) and calls [loadMore] when the scroll nears the end.
+//
+// SCOPE
+// ─────────────────────────────────────────────────────────────────────────
+// The list follows the app mode by itself (AppModeController): the personal
+// account shows only courses outside any organization, Organization mode
+// only that organization's ([setScope], `scope` / `org_id` on the request,
+// lib/features/shared/course/course_scope.dart) — so every reader (courses
+// tab, analytics hub) sees the same side. The first page's `scopes`
+// counts every side for the banner. An older server ignores the scope and
+// answers everything; the list then shows what it got.
 // ─────────────────────────────────────────────────────────────────────────
 
 import 'dart:async';
 
 import '../../../core/api_client.dart';
+import '../../../core/app_mode.dart';
 import '../../../core/base_provider.dart';
+import '../../shared/course/course_scope.dart';
 import '../home/teacher_models.dart';
 
 class TeacherCoursesProvider extends BaseProvider {
@@ -40,8 +52,23 @@ class TeacherCoursesProvider extends BaseProvider {
   /// dashboard) without a hard dependency between the two providers.
   void Function()? onCoursesChanged;
 
-  TeacherCoursesProvider({ApiClient? api, this.onCoursesChanged})
-      : _api = api ?? ApiClient();
+  /// [mode] defaults to the app's AppModeController; tests pass their own (or none via [followMode] false).
+  TeacherCoursesProvider({ApiClient? api, this.onCoursesChanged, AppModeController? mode, bool followMode = true})
+      : _api = api ?? ApiClient(),
+        _mode = followMode ? (mode ?? AppModeController.instance) : null {
+    final m = _mode;
+    if (m != null) {
+      _scope = _modeScope(m);
+      m.addListener(_onMode);
+    }
+  }
+
+  final AppModeController? _mode;
+
+  static CourseScope _modeScope(AppModeController m) =>
+      CourseScope.forMode(isOrg: m.isOrg, orgId: m.currentOrgId);
+
+  void _onMode() => setScope(_modeScope(_mode!));
 
   // ── Course list state ────────────────────────────────────────────────────
 
@@ -70,6 +97,56 @@ class TeacherCoursesProvider extends BaseProvider {
   int _generation = 0;
 
   int get totalCount => _totalCount;
+
+  // ── Scope (personal account ↔ one organization) ─────────────────────────
+
+  CourseScope _scope = CourseScope.all;
+  List<CourseScopeCount> _scopes = const [];
+  bool _scopeApplied = false;
+
+  CourseScope get scope => _scope;
+
+  /// Every side counted by the server (first page); empty on an older server.
+  List<CourseScopeCount> get scopes => _scopes;
+
+  /// The server filtered the list by [scope] (false on an older server: everything is listed).
+  bool get scopeApplied => _scopeApplied;
+
+  /// Courses on the other sides than [scope] (the banner's "+n in your organizations").
+  int get elsewhereCount => _scopes.isEmpty || _scope.isAll
+      ? 0
+      : (countFor(_scopes, CourseScope.all) - countFor(_scopes, _scope)).clamp(0, 1 << 30);
+
+  /// Shows [s] from now on; a change empties the list (the old side's courses never flash) and loads it again —
+  /// only when a list was loaded before: a provider nobody has opened yet makes no request (app start budgets).
+  void setScope(CourseScope s) {
+    if (s == _scope) return;
+    _scope = s;
+    final wasLoaded = _loadedOnce;
+    _generation++; // a page of the old side still in flight is dropped
+    _allCourses = [];
+    _totalCount = 0;
+    _hasMore = true;
+    _scopes = const [];
+    _scopeApplied = false;
+    if (wasLoaded) {
+      refresh();
+    } else {
+      notifyListeners();
+    }
+  }
+
+  bool _loadedOnce = false;
+
+  /// A first load was asked for (the Courses tab, Analytics, …). Before it, an empty list means "not loaded yet".
+  bool get loadedOnce => _loadedOnce;
+
+  /// Loads the first page once, for whichever screen opens first (the tabs are lazy: Analytics may be visited
+  /// before Courses). Nothing happens when a load already ran or is running.
+  Future<void> ensureLoaded() async {
+    if (_loadedOnce || isLoading) return;
+    await refresh();
+  }
 
   /// Courses loaded so far (for the progress card).
   int get loadedCount => _allCourses.length;
@@ -102,6 +179,7 @@ class TeacherCoursesProvider extends BaseProvider {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _mode?.removeListener(_onMode);
     super.dispose();
   }
 
@@ -128,6 +206,7 @@ class TeacherCoursesProvider extends BaseProvider {
     'skip': skip,
     'limit': pageSize,
     if (_query.trim().isNotEmpty) 'search': _query.trim(),
+    ..._scope.query,
   };
 
   /// New shape: {"items": [...], "total": N}. A bare List is kept working for
@@ -158,6 +237,7 @@ class TeacherCoursesProvider extends BaseProvider {
   Future<void> refresh() async {
     final gen = ++_generation;
     _loadMoreFailed = false;
+    _loadedOnce = true;
     final result = await run(() => _api.get(
       '/api/v1/my-courses',
       queryParams: _params(0),
@@ -167,6 +247,8 @@ class TeacherCoursesProvider extends BaseProvider {
     if (page == null) return; // error state already set by run()
     _allCourses = page.items;
     _totalCount = page.total ?? 0; // 0 = unknown (legacy server response)
+    _scopes = parseCourseScopes(result);
+    _scopeApplied = serverScoped(result);
     _hasMore = page.items.length == pageSize;
     notifyListeners();
   }
@@ -225,11 +307,14 @@ class TeacherCoursesProvider extends BaseProvider {
   // Called by CourseFormScreen on successful save so the list stays in sync
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Prepend a newly created course to the list.
+  /// Prepend a newly created course to the list — unless the list shows another side (a course created here is
+  /// a personal one: it does not belong in an organization's list).
   void onCourseCreated(TeacherCourse course) {
-    _allCourses = [course, ..._allCourses];
-    _bumpTotal(1);
-    notifyListeners();
+    if (_scope.matches(course.org)) {
+      _allCourses = [course, ..._allCourses];
+      _bumpTotal(1);
+      notifyListeners();
+    }
     onCoursesChanged?.call();
   }
 

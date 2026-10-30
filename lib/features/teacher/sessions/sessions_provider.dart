@@ -116,10 +116,11 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   Future<void> fetchSessions() async {
     final result = await run(
-          () => _api.get('/api/v1/courses/${_course.id}/sessions'),
+          // the whole course in one page: without `limit` the server sends its default page (20 sessions);
+          // it clamps the limit to 1..500
+          () => _api.get('/api/v1/courses/${_course.id}/sessions', queryParams: {'limit': 500}),
     );
-    print(result);
-    if (result['items'] is List) {
+    if (result is Map && result['items'] is List) {
       if ((result['items'] as List).isNotEmpty) {
         _sessions =
         (result['items'] as List)
@@ -144,7 +145,6 @@ class TeacherCourseScreenProvider extends BaseProvider {
       }
       _materialLoaded.clear();
       _uploadingMaterial.clear();
-      print(_sessions.length);
       notifyListeners();
     }
   }

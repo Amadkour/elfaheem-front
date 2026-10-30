@@ -9,6 +9,7 @@ import '../../../../core/base_provider.dart';
 import '../../../../core/live/event_wait.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/live_events.dart';
+import '../../../shared/course/course_space/course_sessions.dart' show courseStudentSessionDone;
 import '../../../shared/guest/guest_state.dart';
 import '../../models.dart';
 import 'components/issued_certificate.dart';
@@ -76,14 +77,36 @@ class CourseDetailProvider extends BaseProvider {
 
   // ── Course data ───────────────────────────────────────────────────────────
 
+  /// Why the course cannot be shown: the server answers 404 for a draft / unknown course (to non-staff) and
+  /// 403 `course_locked` for a private course without access (both on the course and on its session list).
+  /// Null while the course is reachable.
+  CourseBlock? block;
+
+  /// Remembers a 404 / 403 course_locked on the way through [run] (which turns every ApiException into null).
+  Future<dynamic> _guarded(Future<dynamic> Function() call) async {
+    try {
+      return await call();
+    } on ApiException catch (e) {
+      final b = courseBlockOf(e);
+      if (b != null) block = b;
+      rethrow;
+    }
+  }
+
   Future<void> fetchFull(String courseId) async {
+    block = null;
     final r = await run(
-          () => _api.get('/api/v1/courses/$courseId', auth: true),
+          () => _guarded(() => _api.get('/api/v1/courses/$courseId', auth: true)),
     );
     if (r is Map<String, dynamic>) {
       course = CourseModel.fromJson(r);
       final reel = (r['reel_url'] as String?)?.trim();
       reelUrl = (reel == null || reel.isEmpty) ? null : reel;
+    }
+    if (block == CourseBlock.unavailable) {
+      sessions = [];
+      notifyListeners();
+      return;
     }
     await Future.wait([
       fetchSessions(courseId),
@@ -152,6 +175,9 @@ class CourseDetailProvider extends BaseProvider {
   bool _hasMoreSessions = true;
   static const _sessionsPageSize = 20;
 
+  /// The server clamps a page to 1..500 (`SESSIONS_PAGE_MAX`); the teacher's studio loads the course in one such page.
+  static const _sessionsRestLimit = 500;
+
   bool get hasMoreSessions => _hasMoreSessions;
 
   /// True only while fetching another page onto an already-populated list —
@@ -165,7 +191,10 @@ class CourseDetailProvider extends BaseProvider {
   /// Fetches page 1 fresh (used on pull-to-refresh / first open).
   /// Pass [reset]=false to append the next page instead (see
   /// [loadMoreSessions]).
-  Future<void> fetchSessions(String courseId, {bool reset = true}) async {
+  ///
+  /// A course with sections loads the rest of its sessions right after the first page (N3): the Lectures / Sections
+  /// tabs count and filter the loaded list, and a page of 20 read "Lectures 10 · Sections 10" for a 32-session course.
+  Future<void> fetchSessions(String courseId, {bool reset = true, bool rest = false}) async {
     if (reset) {
       _sessionsSkip = 0;
       _hasMoreSessions = true;
@@ -174,14 +203,15 @@ class CourseDetailProvider extends BaseProvider {
     }
     try {
       final result = await run(
-            () => _api.get(
+            () => _guarded(() => _api.get(
           // Guest: the public outline (titles / order only, never any media URL).
           GuestState.active
               ? '/api/v1/courses/$courseId/sessions/public'
               : '/api/v1/courses/$courseId/sessions',
-          queryParams: {'skip': _sessionsSkip, 'limit': _sessionsPageSize},
-        ),
+          queryParams: {'skip': _sessionsSkip, 'limit': rest ? _sessionsRestLimit : _sessionsPageSize},
+        )),
       );
+      var loadRest = false;
       if (result is Map && result['items'] is List) {
         final items = result['items'] as List;
         final page =
@@ -199,12 +229,17 @@ class CourseDetailProvider extends BaseProvider {
         _storeGates(items);
         sessions = [...sessions, ...page];
         _sessionsSkip += page.length;
-        _hasMoreSessions = page.length == _sessionsPageSize;
+        _hasMoreSessions = page.length == (rest ? _sessionsRestLimit : _sessionsPageSize);
+        loadRest = !rest && _hasMoreSessions && sessions.any((s) => s.track == 'section');
       }
       completedSessionIds.clear();
       completedSessionIds.addAll(
         sessions.where((e) => e.isCompleted).map((e) => e.id),
       );
+      if (loadRest) {
+        notifyListeners();
+        return fetchSessions(courseId, reset: false, rest: true);
+      }
     } on ApiException catch (e) {
       if (e.isDeviceBlocked) {
         // Screen listens to this and shows the device-blocked dialog.
@@ -360,6 +395,48 @@ class CourseDetailProvider extends BaseProvider {
     return isSessionUnlocked(idx);
   }
 
+  /// "Continue learning": the session whose row should open and scroll into view (+ a counter, so a second tap
+  /// on the same session opens it again). The row clears nothing — it compares [focusTick] with the last it saw.
+  int? focusSessionId;
+  int focusTick = 0;
+
+  /// The next thing the student can actually take: the first unlocked, unfinished session that has something to
+  /// play — not a live session whose time is over with nothing recorded in it (that row has nothing to open).
+  SessionModel? get nextPlayable {
+    final now = DateTime.now().toUtc();
+    for (final s in sessions) {
+      if (!isSessionUnlockedById(s.id)) continue;
+      if (s.isLiveActive) return s;
+      // the timeline's own "done" (N1): an empty session the server calls complete is not skipped while ahead
+      final done = courseStudentSessionDone(
+        serverDone: s.isCompleted,
+        materials: s.totalMaterial,
+        materialsDone: s.completeMaterial,
+        when: s.scheduledAt?.toUtc(),
+        minutes: s.durationMinutes,
+        now: now,
+      );
+      if (done) continue;
+      final hasContent = s.totalMaterial > 0 || s.hasRecording;
+      if (s.isLive && !hasContent) {
+        final at = s.scheduledAt;
+        final over = at == null || at.add(Duration(minutes: s.durationMinutes > 0 ? s.durationMinutes : 60)).isBefore(now);
+        if (over) continue;
+      }
+      if (!s.isLive && !hasContent) continue;
+      return s;
+    }
+    return null;
+  }
+
+  /// Opens the Lessons tab on [sessionId]'s row (expanded, scrolled into view).
+  void focusSession(int sessionId) {
+    focusSessionId = sessionId;
+    focusTick++;
+    _activeTab = CourseDetailTab.lessons;
+    notifyListeners();
+  }
+
   void setTab(CourseDetailTab tab) {
     if (_activeTab == tab) return;
     final leavingExams =
@@ -454,7 +531,7 @@ class CourseDetailProvider extends BaseProvider {
     try {
       final cr = await _api.get('/api/v1/courses/${course.id}', auth: true);
       if (cr is Map<String, dynamic>) {
-        course.progress = ((cr['progress'] as num?)?.toDouble() ?? 0.0).toInt();
+        course.progress = ((cr['progress'] as num?)?.toDouble() ?? 0.0).round();
         course.materialsTotal =
             cr['materials_total'] as int? ?? course.materialsTotal;
         course.materialsCompleted =
@@ -497,4 +574,19 @@ class CourseDetailProvider extends BaseProvider {
 //   progressPercentage = double.parse(
 //       ((done / total) * 100).toStringAsFixed(1));
 // }
+}
+/// Why a course page cannot show the course.
+enum CourseBlock {
+  /// 403 `course_locked`: a private course; the access code opens it.
+  locked,
+
+  /// 404: a draft or an unknown course (the server hides drafts from non-staff).
+  unavailable,
+}
+
+/// The [CourseBlock] an API error means, or null for any other failure.
+CourseBlock? courseBlockOf(ApiException e) {
+  if (e.code == 'course_locked') return CourseBlock.locked;
+  if (e.statusCode == 404) return CourseBlock.unavailable;
+  return null;
 }

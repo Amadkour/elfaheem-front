@@ -70,6 +70,9 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
   }
 
   Future<void> _load() async {
+    // The feed is per account (audience, impressions): a signed-out guest has none, and asking would only
+    // answer 401 (QA: guest home).
+    if (!ApiClient().hasSession) return;
     try {
       final r = await ApiClient().get('/api/v1/ads/feed');
       if (!mounted || r is! Map) return;

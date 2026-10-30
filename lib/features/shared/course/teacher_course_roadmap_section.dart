@@ -229,7 +229,7 @@ class _CategoryLabel extends StatelessWidget {
           style: TextStyle(
             fontFamily: AppFonts.family,
             fontSize: 13,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: context.colors.textDark,
           ),
         ),
@@ -306,7 +306,7 @@ class _NextStepsTimeline extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         color: context.colors.onHero,
                       ),
                     ),
@@ -418,7 +418,7 @@ class RecommendCourseCard extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 9,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                             color: badgeColor,
                             letterSpacing: 0.3,
                           ),
@@ -470,7 +470,7 @@ class RecommendCourseCard extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: AppFonts.family,
                           fontSize: 11,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           color: context.colors.primary,
                         ),
                       ),

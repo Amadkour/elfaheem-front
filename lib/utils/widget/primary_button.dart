@@ -32,25 +32,31 @@ class PrimaryButton extends StatelessWidget {
     // `width: double.infinity` throws when the parent gives UNBOUNDED width (e.g. a button placed
     // directly in a Row) — that is what produced the "RenderBox was not laid out" cascade inside the
     // user-detail bottom sheet. Fill the width only when it is bounded; otherwise size to the content.
+    final c = context.colors;
+    // Calm brand fill (M22: the old primary → accent gradient read olive → green). A disabled button is a flat
+    // neutral well with readable muted text (L10: white on a pale half-transparent gradient was unreadable).
+    final off = disabled && !isLoading;
+    final fill = off ? c.inputBg : (background ?? c.primary);
+    final ink = off ? c.textMedium : c.onHero;
     return LayoutBuilder(
       builder: (context, constraints) => SizedBox(
         width: constraints.hasBoundedWidth ? double.infinity : null,
         height: 52,
-        child: Opacity(
-          opacity: disabled && !isLoading ? 0.5 : 1,
+        child: Semantics(
+          button: true,
+          enabled: !off,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: isLoading || disabled ? null : onPressed,
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
               height: 36,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: background,
-                gradient: background != null
-                    ? null
-                    : context.colors.accentGradient,
+                color: fill,
                 borderRadius: BorderRadius.circular(10),
-                boxShadow: context.colors.primaryShadow,
+                border: off ? Border.all(color: c.divider) : null,
+                boxShadow: off ? null : c.primaryShadow,
               ),
               child: isLoading
                   ? AppLoadingIndicator(showLogo: false, size: 50)
@@ -62,7 +68,7 @@ class PrimaryButton extends StatelessWidget {
                         if (icon != null && iconBefore ) ...[
                           Padding(
                             padding: const EdgeInsets.fromLTRB(5.0,0,5,2),
-                            child: Icon(icon, color: Colors.white, size: 18),
+                            child: Icon(icon, color: ink, size: 18),
                           ),
                         ],
                         Flexible(
@@ -74,13 +80,13 @@ class PrimaryButton extends StatelessWidget {
                               fontFamily: AppFonts.family,
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: ink,
                             ),
                           ),
                         ),
                         if (icon != null && !iconBefore ) ...[
                           const SizedBox(width: 6),
-                          Icon(icon, color: Colors.white, size: 18),
+                          Icon(icon, color: ink, size: 18),
                         ],
                       ],
                     ),

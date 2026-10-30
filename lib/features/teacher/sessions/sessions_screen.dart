@@ -30,6 +30,7 @@ import '../../shared/attendance/attendance_course_entry.dart';
 import '../../shared/attendance/teacher_attendance_controller.dart';
 import '../../shared/attendance/teacher_attendance_launcher.dart';
 import '../../shared/course/course_space/course_space.dart';
+import '../../shared/course/course_price_tag.dart' show coursePriceLabel;
 import '../../shared/course/teacher_course_roadmap_section.dart';
 import '../../teacher/courses/course_form_screen.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
@@ -39,7 +40,7 @@ import '../data_lab/data_lab_models.dart';
 import '../data_lab/data_lab_screen.dart';
 import '../home/teacher_models.dart';
 import '../schedules/schedules_screen.dart';
-import '../../student/models.dart' show AppCurrencyX, CourseModel, CourseSummary;
+import '../../student/models.dart' show CourseModel, CourseSummary;
 import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/courses/details/components/share_link.dart';
 import '../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
@@ -249,21 +250,21 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
         if (live)
           CourseSpaceBadge(label: _t('بث مباشر', 'Live'), icon: Icons.sensors_rounded)
         else if (course.type == 'recorded')
-          CourseSpaceBadge(label: _t('مسجّل', 'Recorded'), icon: Icons.play_circle_outline_rounded),
+          CourseSpaceBadge(label: _t('دروس مسجّلة', 'Recorded lessons'), icon: Icons.play_circle_outline_rounded),
       ],
       stats: [
         CourseSpaceStat(
           featureKey: 'course_stats.students',
           icon: Icons.groups_rounded,
           value: '${course.studentsCount}',
-          label: 'student'.tr,
+          label: courseStatNoun(course.studentsCount, 'course_hero_students'),
           onTap: _openStudents,
         ),
         CourseSpaceStat(
           featureKey: 'course_stats.sessions',
           icon: Icons.play_lesson_rounded,
           value: '${d.sessionCount}',
-          label: 'sessions'.tr,
+          label: _t('الجلسات', 'Sessions'),
         ),
         CourseSpaceStat(
           featureKey: 'course_stats.duration',
@@ -274,7 +275,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
         CourseSpaceStat(
           featureKey: 'course_stats.price',
           icon: Icons.sell_rounded,
-          value: course.currency.format(course.finalPrice ?? 0),
+          value: coursePriceLabel(course.currency, course.finalPrice ?? 0),
           label: 'cost'.tr,
         ),
       ],
@@ -361,7 +362,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
         CourseSpaceAction(
           icon: Icons.add_rounded,
           label: 'add_session_btn'.tr,
-          caption: _t('درس جديد بمواده', 'A new lesson with its materials'),
+          caption: _t('جلسة جديدة بموادها', 'A new session with its materials'),
           onTap: _openAddSheet,
         ),
         CourseSpaceAction(
@@ -384,7 +385,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             icon: Icons.science_rounded,
             label: 'dl_title'.tr,
             caption: 'dl_entry_sub'.tr,
-            color: c.accent,
+            color: c.success,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => DataLabScreen(courseId: course.id, courseTitle: title)),
@@ -397,7 +398,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             caption: course.schedules.isEmpty
                 ? _t('لم تُضف مواعيد بعد', 'No times yet')
                 : _t('${course.schedules.length} مواعيد', '${course.schedules.length} times a week'),
-            color: c.success,
+            color: c.accent2,
             onTap: _openSchedules,
           ),
         if (course.certificates.isNotEmpty)
@@ -405,7 +406,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             icon: Icons.workspace_premium_rounded,
             label: 'certificates'.tr,
             caption: 'manage_certificate_btn'.tr,
-            color: c.accent2,
+            color: c.warning,
             onTap: () => course.certificates.length == 1
                 ? _openCertificate(course.certificates.first)
                 : _setTab(_tabDetails),
@@ -414,14 +415,13 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           icon: Icons.edit_rounded,
           label: _t('تعديل الكورس', 'Edit course'),
           caption: _t('السعر، الوصف، النشر', 'Price, description, publishing'),
-          color: c.warning,
           onTap: _openEditCourse,
         ),
       ],
       tabs: [
         CourseSpaceTab(
           id: _tabSessions,
-          label: 'sessions'.tr,
+          label: _t('الجلسات', 'Sessions'),
           icon: Icons.play_lesson_rounded,
           count: d.sessionCount,
           live: d.liveId != -1,
@@ -429,7 +429,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
         ),
         CourseSpaceTab(
           id: _tabDetails,
-          label: 'course_details'.tr,
+          label: _t('عن الكورس', 'About'),
           icon: Icons.info_outline_rounded,
           builder: (_) => TeacherCourseDetails(
             course: course,
@@ -484,7 +484,7 @@ class _AttendanceSpot extends StatelessWidget {
           padding: EdgeInsets.zero,
           sessions: [
             for (var i = 0; i < sessions.length; i++)
-              LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name),
+              LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name, date: sessions[i].scheduledAt),
           ],
         );
       },

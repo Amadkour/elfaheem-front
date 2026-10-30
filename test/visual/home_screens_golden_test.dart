@@ -26,6 +26,9 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/design/app_shell.dart' show NotificationIcon;
+import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon;
+import 'package:flutter_education_app/design/quick_meeting_entry.dart' show QuickMeetingIcon;
 import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_home.dart';
@@ -478,7 +481,14 @@ List<MeLiveRoom> _liveMeeting() => [
       ),
     ];
 
-Widget _header(String name, String? summary) => HomeHeader(name: name, subtitle: summary, padding: const EdgeInsets.fromLTRB(20, 20, 20, 16));
+// the real header buttons (Meet now always; calendar + bell on phones, the top bar carries them on desktop)
+Widget _header(String name, String? summary) => HomeHeader(
+      name: name,
+      subtitle: summary,
+      actions: const [QuickMeetingIcon()],
+      shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+    );
 
 // teacher
 ScheduleSession _session(int id, String name, String start, String end, {bool ongoing = false, int? untilStart, int inDays = 0}) =>
@@ -515,7 +525,7 @@ TeacherHomeExtra _teacherExtra() => TeacherHomeExtra.fromJson({
 
 /// [free]: a day without sessions (the next ones are tomorrow) and no live room — "Today's sessions" folds itself.
 Widget _teacherHome({bool free = false}) => SingleChildScrollView(
-      child: _width(1100, Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      child: _width(kHomeWideMax, Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _header(
             tr('أحمد حمدي', 'Ahmed Hamdy'),
             free
@@ -791,7 +801,7 @@ void main() {
     await _renderAll(tester, 'student_home',
         (_) => SingleChildScrollView(
             child: _width(
-                1000,
+                kHomeWideMax,
                 Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentHome(), 1, _now)),
                   StudentHomeBody(data: StudentHomeData(home: _studentHome(), now: _now, liveNow: _liveSession()), onTab: (_) {}),
@@ -803,7 +813,7 @@ void main() {
     await _renderAll(tester, 'student_home_free',
         (_) => SingleChildScrollView(
             child: _width(
-                1000,
+                kHomeWideMax,
                 Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentFreeDay(), 0, _now)),
                   StudentHomeBody(data: StudentHomeData(home: _studentFreeDay(), now: _now), onTab: (_) {}),

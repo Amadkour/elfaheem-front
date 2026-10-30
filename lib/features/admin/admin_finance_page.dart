@@ -151,7 +151,7 @@ IconData _methodIcon(String? m) => switch (m) {
 
 String _planLabel(String? p) => switch (p) {
   'monthly' => t('شهري', 'Monthly'),
-  'six_months' => t('٦ شهور', '6 months'),
+  'six_months' => t('6 شهور', '6 months'),
   'yearly' => t('سنوي', 'Yearly'),
   _ => p ?? '',
 };
@@ -233,8 +233,8 @@ class _SummaryStrip extends StatelessWidget {
                   height: 14,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              period(7, t('٧ أيام', '7d')),
-              period(30, t('٣٠ يوم', '30d')),
+              period(7, t('7 أيام', '7d')),
+              period(30, t('30 يومًا', '30d')),
               period(0, t('الكل', 'All')),
             ],
           ),
@@ -985,9 +985,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                 label(t('الفترة', 'Date range')),
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   chip(t('اليوم', 'Today'), isQuick(0), () => _quick(0)),
-                  chip(t('٧ أيام', '7 days'), isQuick(7), () => _quick(7)),
-                  chip(t('٣٠ يوم', '30 days'), isQuick(30), () => _quick(30)),
-                  chip(t('٩٠ يوم', '90 days'), isQuick(90), () => _quick(90)),
+                  chip(t('7 أيام', '7 days'), isQuick(7), () => _quick(7)),
+                  chip(t('30 يومًا', '30 days'), isQuick(30), () => _quick(30)),
+                  chip(t('90 يومًا', '90 days'), isQuick(90), () => _quick(90)),
                   ActionChip(
                     avatar: const Icon(Icons.date_range_rounded, size: 16),
                     label: Text(

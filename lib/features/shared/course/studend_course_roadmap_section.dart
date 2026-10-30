@@ -134,7 +134,7 @@ class CourseRoadmapSection extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: AppFonts.family,
                       fontSize: 15,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: context.colors.onHero,
                     ),
                   ),
@@ -169,7 +169,7 @@ class CourseRoadmapSection extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         color: context.colors.onHero,
                       ),
                     ),
@@ -240,55 +240,36 @@ class _RoadmapPath extends StatelessWidget {
   Widget _featureContent(BuildContext context) {
     final completedOldestFirst = completedCourses.reversed.toList();
 
-    final children = <Widget>[];
+    // The stops in order + the line between each pair (drawn by the nodes themselves, half on each side of the
+    // circle, so a node can be wide enough for a whole course name — at 40 px Arabic broke mid-word, M15).
+    final stops = <({String label, String caption, IconData icon, _NodeState state, VoidCallback? onTap})>[
+      for (final c in completedOldestFirst)
+        (label: c.name, caption: 'roadmap_completed_label'.tr, icon: Icons.check_circle_rounded, state: _NodeState.completed, onTap: null),
+      (label: currentCourseName, caption: 'roadmap_you_are_here'.tr, icon: Icons.play_circle_fill_rounded, state: _NodeState.current, onTap: null),
+      if (nextCourses.isEmpty)
+        (label: 'roadmap_more_coming_soon'.tr, caption: '', icon: Icons.hourglass_top_rounded, state: _NodeState.muted, onTap: null)
+      else
+        for (final c in nextCourses)
+          (label: c.name, caption: 'roadmap_next_up'.tr, icon: Icons.arrow_forward_rounded, state: _NodeState.next, onTap: () => onTapCourse(c)),
+    ];
+    // the line leading INTO stop i takes the state of stop i (done → done, next → next, the "coming soon" → muted)
+    _NodeState? lineInto(int i) => i <= 0 ? null : (stops[i].state == _NodeState.current ? _NodeState.completed : stops[i].state);
 
-    for (final c in completedOldestFirst) {
-      children.add(
-        _RoadmapNode(
-          label: c.name,
-          caption: 'roadmap_completed_label'.tr,
-          icon: Icons.check_circle_rounded,
-          state: _NodeState.completed,
-        ),
-      );
-      children.add(const _RoadmapConnector(state: _NodeState.completed));
-    }
-
-    children.add(
-      _RoadmapNode(
-        label: currentCourseName,
-        caption: 'roadmap_you_are_here'.tr,
-        icon: Icons.play_circle_fill_rounded,
-        state: _NodeState.current,
-      ),
-    );
-
-    if (nextCourses.isEmpty) {
-      children.add(const _RoadmapConnector(state: _NodeState.muted));
-      children.add(
-        _RoadmapNode(
-          label: 'roadmap_more_coming_soon'.tr,
-          caption: '',
-          icon: Icons.hourglass_top_rounded,
-          state: _NodeState.muted,
-        ),
-      );
-    } else {
-      for (final c in nextCourses) {
-        children.add(const _RoadmapConnector(state: _NodeState.next));
-        children.add(
-          GestureDetector(
-            onTap: () => onTapCourse(c),
-            child: _RoadmapNode(
-              label: c.name,
-              caption: 'roadmap_next_up'.tr,
-              icon: Icons.arrow_forward_rounded,
-              state: _NodeState.next,
-            ),
+    final children = <Widget>[
+      for (var i = 0; i < stops.length; i++)
+        GestureDetector(
+          onTap: stops[i].onTap,
+          behavior: HitTestBehavior.opaque,
+          child: _RoadmapNode(
+            label: stops[i].label,
+            caption: stops[i].caption,
+            icon: stops[i].icon,
+            state: stops[i].state,
+            lineBefore: lineInto(i),
+            lineAfter: i + 1 < stops.length ? lineInto(i + 1) : null,
           ),
-        );
-      }
-    }
+        ),
+    ];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -301,28 +282,22 @@ class _RoadmapPath extends StatelessWidget {
   }
 }
 
-class _RoadmapConnector extends StatelessWidget {
-  final _NodeState state;
+/// Half of the dashed line between two stops.
+class _RoadmapLine extends StatelessWidget {
+  final _NodeState? state;
 
-  const _RoadmapConnector({required this.state});
+  const _RoadmapLine({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (state) {
+    final s = state;
+    if (s == null) return const SizedBox.shrink();
+    final color = switch (s) {
       _NodeState.completed => context.colors.accent2.withValues(alpha: 0.7),
       _NodeState.next => context.colors.accent2.withValues(alpha: 0.55),
       _ => context.colors.onHero.withValues(alpha: 0.15),
     };
-    return Padding(
-      padding: const EdgeInsets.only(top: 20),
-      child: SizedBox(
-        width: 50,
-        child: CustomPaint(
-          size: const Size(50, 2),
-          painter: _DashedLinePainter(color: color),
-        ),
-      ),
-    );
+    return CustomPaint(size: const Size(double.infinity, 2), painter: _DashedLinePainter(color: color));
   }
 }
 
@@ -357,11 +332,19 @@ class _RoadmapNode extends StatelessWidget {
   final IconData icon;
   final _NodeState state;
 
+  /// The line into this stop and out of it (null = none: the first / the last stop).
+  final _NodeState? lineBefore, lineAfter;
+
+  /// Wide enough for a course name on two lines.
+  static const double width = 104;
+
   const _RoadmapNode({
     required this.label,
     required this.caption,
     required this.icon,
     required this.state,
+    this.lineBefore,
+    this.lineAfter,
   });
 
   @override
@@ -376,11 +359,13 @@ class _RoadmapNode extends StatelessWidget {
         : (isCurrent ? context.colors.onHero : accent);
 
     return SizedBox(
-      width: 40,
+      width: width,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
+          Row(children: [
+            Expanded(child: _RoadmapLine(state: lineBefore)),
+            Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
@@ -401,29 +386,38 @@ class _RoadmapNode extends StatelessWidget {
               color: isCurrent ? context.colors.primaryDark : iconColor,
             ),
           ),
+            Expanded(child: _RoadmapLine(state: lineAfter)),
+          ]),
           const SizedBox(height: 8),
           if (caption.isNotEmpty)
             Text(
               caption,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.family,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w500,
                 color: isMuted ? context.colors.onHeroFaint : context.colors.accent,
                 letterSpacing: 0.4,
               ),
             ),
           const SizedBox(height: 2),
-          Text(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
             label,
             maxLines: 2,
-            overflow: TextOverflow.visible,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: AppFonts.family,
               fontSize: 12,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
               color: isMuted ? context.colors.onHeroFaint : context.colors.onHero,
             ),
+          ),
           ),
         ],
       ),
@@ -461,7 +455,7 @@ class _EnrollRoadmapButton extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: AppFonts.family,
                   fontSize: 13,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   color: ink,
                 ),
               ),

@@ -16,6 +16,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'discount_info.dart';
+import 'package:flutter_education_app/features/student/models.dart' show AppCurrency, AppCurrencyX;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
@@ -94,7 +95,7 @@ class CoursePriceTag extends StatelessWidget {
         format(originalPrice),
         style: TextStyle(
           color: priceColor,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
           fontSize: fontSize,
           fontFamily: AppFonts.display,
         ),
@@ -120,7 +121,7 @@ class CoursePriceTag extends StatelessWidget {
           format(finalPrice),
           style: TextStyle(
             color: priceColor,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             fontSize: fontSize,
             fontFamily: AppFonts.display,
           ),
@@ -171,7 +172,7 @@ class DiscountRibbon extends StatelessWidget {
         '-${percentage.toStringAsFixed(0)}%',
         style: TextStyle(
           color: context.colors.onHero,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
           fontSize: 10,
           fontFamily: AppFonts.display,
         ),
@@ -324,7 +325,7 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
             label,
             style: TextStyle(
               color: context.colors.onHero,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               fontSize: widget.compact ? 9 : 10.5,
               fontFamily: AppFonts.family,
             ),
@@ -333,4 +334,15 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
       ),
     );
   }
+}
+/// A price in the current language: "EGP 450" / "$450" in English, "450 ج.م" in Arabic, "Free" / "مجاني" at zero.
+/// (AppCurrency.format always writes the Arabic symbol, which an English font draws as "450 .".)
+String coursePriceLabel(AppCurrency currency, double price) {
+  if (price == 0) return 'free'.tr;
+  final n = price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2);
+  if (AppConfig.lang == 'ar') return '$n ${currency.symbol}';
+  return switch (currency) {
+    AppCurrency.usd => '\$$n',
+    _ => '${currency.code} $n',
+  };
 }

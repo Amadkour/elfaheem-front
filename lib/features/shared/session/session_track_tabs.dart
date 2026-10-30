@@ -21,6 +21,10 @@ class SessionTrackTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    return LayoutBuilder(builder: (context, box) {
+    // narrow segments drop the icon so the label and its count stay whole (M14: "المحاضر…")
+    final perTab = (box.maxWidth - 8) / (showAll ? 3 : 2);
+    final icons = perTab >= 130;
     Widget tab(String key, IconData icon, String label, int? n, Color tone) {
       final on = value == key;
       return Expanded(
@@ -36,16 +40,18 @@ class SessionTrackTabs extends StatelessWidget {
               boxShadow: on ? c.cardShadow : null,
             ),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, size: 18, color: on ? tone : c.textLight),
-              const SizedBox(width: 6),
-              Flexible(child: Text(label, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? c.textDark : c.textMedium))),
+              if (icons) ...[
+                Icon(icon, size: 17, color: on ? tone : c.textLight),
+                const SizedBox(width: 6),
+              ],
+              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: on ? FontWeight.w600 : FontWeight.w500, color: on ? c.textDark : c.textMedium))),
               if (n != null) ...[
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                   decoration: BoxDecoration(color: (on ? tone : c.textLight).withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
-                  child: Text('$n', style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w800, color: on ? tone : c.textMedium)),
+                  child: Text('$n', style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w600, color: on ? tone : c.textMedium)),
                 ),
               ],
             ]),
@@ -63,5 +69,6 @@ class SessionTrackTabs extends StatelessWidget {
         tab('section', Icons.science_rounded, _t('السكاشن', 'Sections'), sections, c.purple),
       ]),
     );
+    });
   }
 }

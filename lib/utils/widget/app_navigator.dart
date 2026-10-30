@@ -176,8 +176,7 @@ class AppNavigator {
             settings: const RouteSettings(name: '/points'),
             builder: (_) => PointsWalletPage(openPlan: pointsModuleFor(module) == 'live_plan')));
         return;
-      case 'profile':
-        await nav.pushNamed('/profile');
+      case 'profile': // the account tab (N10: '/profile' used to open the edit-account form)
       case 'my_courses':
       // These are tabs inside the dashboards: pop to the root and ask the AppShell to switch (the shell then shows
       // that tab's root page, D-081).

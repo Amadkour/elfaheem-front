@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -193,8 +194,8 @@ class DataExportView extends StatelessWidget {
               style: appText(12.5, c: c.textMedium, h: 1.5)),
           const SizedBox(height: 6),
           Text(
-              t('يُحتفظ بالملف ${s.keepDays} يوم ثم يُحذف، ويمكنك طلب نسخة جديدة مرة كل ${s.cooldownHours} ساعة.',
-                  'The file is kept for ${s.keepDays} day(s), then deleted. You can ask for a new copy once every ${s.cooldownHours} hours.'),
+              t('يُحتفظ بالملف ${daysText(s.keepDays, lang: 'ar')} ثم يُحذف، ويمكنك طلب نسخة جديدة مرة كل ${hoursText(s.cooldownHours, lang: 'ar')}.',
+                  'The file is kept for ${daysText(s.keepDays, lang: 'en')}, then deleted. You can ask for a new copy once every ${hoursText(s.cooldownHours, lang: 'en')}.'),
               style: appText(12, c: c.textMedium, h: 1.5)),
         ]),
       ),

@@ -1,18 +1,23 @@
 // lib/features/shared/course/course_space/course_space_parts.dart
 //
 // The pieces of [CourseSpace] (course_space.dart), each one plain values only so the layout harness can pump it:
-//   CourseSpaceHero        cinematic cover · glass top bar · pills · title · teacher · glass stats + progress ring
-//   CourseSpaceTabBar      the segmented pill bar (scrolls when the tabs do not fit), count + live dot per tab
+//   CourseSpaceHero        cover · glass top bar · pills · title · teacher · glass stats + progress ring
+//   CourseSpaceTabBar      the calm segmented bar (scrolls when the tabs do not fit), count + live dot per tab
 //   CourseSpotlightStack   column of contextual cards that leaves no gap for a card that hides itself
 //   CourseSpotlightCard    one contextual card: icon · title · line · progress · action
 //   CourseReadinessCard    the teacher's setup checklist (n of m done, the open steps as chips)
 //   CourseActionStrip      phones: horizontally scrolling quick-action tiles
 //   CourseActionList       desktop side column: the same actions as a list card
 //   CourseSideCard         the side column's card surface
-//   CourseInfoSection      a titled card of the About / Details tab (+ trailing action)
+//   CourseInfoGroup        the About / Details tab: ONE card, its sections split by hairlines
+//   CourseInfoSection      a titled section of that card (+ trailing action)
 //   CourseInfoRow          icon · title · subtitle · trailing row inside a section
 //   CourseScheduleChips    the weekly schedule as day / time chips
-//   CourseSectionHeader    accent bar · title · count · trailing (the list header of a tab)
+//   CourseRatingStars      ★★★★☆ 4.6 (n) drawn with icons (never star glyphs: the app fonts lack them)
+//   CourseSectionHeader    title · count · trailing (the list header of a tab)
+//
+// Type scale (shared with the homes): hero title w700 · titles w600 · row titles w500 · body / meta w400 muted ·
+// figures w600. Hairline borders, no heavy shadows, one accent per card, the 8 · 16 · 24 · 32 rhythm.
 library;
 
 import 'dart:ui';
@@ -26,12 +31,14 @@ import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/parent_component.dart';
 import '../../../teacher/home/teacher_models.dart' show CourseSchedule;
 import '../private_flag.dart';
-import '../topbar.dart' show GlassBtn;
 import 'course_space.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
+
+TextStyle _ts(double size, FontWeight w, Color color, {double? h}) =>
+    TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: color, height: h);
 
 Widget _keyed(String? featureKey, Widget child) =>
     featureKey == null ? child : ParentComponent(featureKey: featureKey, child: child);
@@ -72,15 +79,15 @@ class CourseSpaceHero extends StatelessWidget {
         final w = box.maxWidth.isFinite ? box.maxWidth : MediaQuery.sizeOf(context).width;
         final big = w >= 640;
         final minH = big ? 340.0 : (w * 0.92).clamp(300.0, 400.0);
-        final pad = big ? 28.0 : 18.0;
+        final pad = big ? 28.0 : 20.0;
         final radius = rounded
             ? BorderRadius.circular(28)
-            : const BorderRadius.vertical(bottom: Radius.circular(30));
-        final top = MediaQuery.paddingOf(context).top;
+            : const BorderRadius.vertical(bottom: Radius.circular(28));
+        final top = rounded ? 0.0 : MediaQuery.paddingOf(context).top;
 
         final pills = <Widget>[
           if (data.category != null && data.category!.isNotEmpty)
-            _keyed('course_hero.category', _HeroPill(label: data.category!, color: c.primary.withValues(alpha: 0.92))),
+            _keyed('course_hero.category', _HeroPill(label: data.category!)),
           if (data.isPrivate) _keyed('course_hero.private', PrivateFlag(label: data.privateLabel)),
           for (final b in data.badges) _keyed(b.featureKey, _HeroPill(label: b.label, icon: b.icon, color: b.color)),
         ];
@@ -88,37 +95,37 @@ class CourseSpaceHero extends StatelessWidget {
         return ClipRRect(
           borderRadius: radius,
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: minH + (rounded ? 0 : top)),
+            constraints: BoxConstraints(minHeight: minH + top),
             child: Stack(
               alignment: AlignmentDirectional.bottomStart,
               children: [
                 Positioned.fill(child: background ?? CourseCover(imageUrl: data.imageUrl)),
-                // cinematic scrim: a soft top for the buttons, a deep bottom for the text
+                // scrim: a soft top so the buttons read on a light image, a deep bottom for the text
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        stops: const [0, 0.3, 0.58, 1],
+                        stops: const [0, 0.28, 0.55, 1],
                         colors: [
-                          c.heroShade.withValues(alpha: 0.55),
-                          c.heroShade.withValues(alpha: 0.05),
-                          c.heroShade.withValues(alpha: 0.35),
-                          c.heroShade.withValues(alpha: 0.96),
+                          c.heroShade.withValues(alpha: 0.5),
+                          c.heroShade.withValues(alpha: 0.08),
+                          c.heroShade.withValues(alpha: 0.4),
+                          c.heroShade.withValues(alpha: 0.95),
                         ],
                       ),
                     ),
                   ),
                 ),
                 Positioned(
-                  top: (rounded ? 0 : top) + 10,
-                  left: pad - 6,
-                  right: pad - 6,
+                  top: top + 8,
+                  left: pad - 8,
+                  right: pad - 8,
                   child: _keyed('course_hero.topbar', _TopBar(onBack: onBack, actions: topActions)),
                 ),
                 Padding(
-                  padding: EdgeInsets.fromLTRB(pad, (rounded ? 0 : top) + 72, pad, big ? 24 : 18),
+                  padding: EdgeInsets.fromLTRB(pad, top + 72, pad, big ? 24 : 20),
                   child: Directionality(
                     textDirection: Helpers.textDirOf(data.title),
                     child: Column(
@@ -135,27 +142,28 @@ class CourseSpaceHero extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: AppFonts.family,
-                            fontSize: big ? 32 : 24,
-                            fontWeight: FontWeight.w800,
-                            height: 1.22,
+                            fontSize: big ? 30 : 24,
+                            fontWeight: FontWeight.w700,
+                            height: 1.25,
+                            letterSpacing: -0.2,
                             color: c.onHero,
-                            shadows: [Shadow(color: c.heroShade.withValues(alpha: 0.5), blurRadius: 14)],
+                            shadows: [Shadow(color: c.heroShade.withValues(alpha: 0.4), blurRadius: 12)],
                           ),
                         ),
                         if (data.subtitle != null && data.subtitle!.trim().isNotEmpty) ...[
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           _keyed(
                             'course_hero.description',
                             Text(
                               data.subtitle!.trim(),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, height: 1.5, color: c.onHeroMuted),
+                              style: _ts(13.5, FontWeight.w400, c.onHeroMuted, h: 1.5),
                             ),
                           ),
                         ],
                         if (data.teacherName != null && data.teacherName!.isNotEmpty) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
                           _keyed(
                             'course_hero.teacher',
                             _TeacherChip(
@@ -228,7 +236,7 @@ class _TopBar extends StatelessWidget {
     return Row(
       children: [
         if (onBack != null)
-          GlassBtn(
+          CourseCoverButton(
             icon: Icons.arrow_back_ios_new_rounded,
             tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             onTap: onBack!,
@@ -243,7 +251,10 @@ class _TopBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   for (final a in actions)
-                    _keyed(a.featureKey, GlassBtn(icon: a.icon, tooltip: a.tooltip, iconColor: a.color, onTap: a.onTap)),
+                    _keyed(
+                      a.featureKey,
+                      CourseCoverButton(icon: a.icon, tooltip: a.tooltip, color: a.color, onTap: a.onTap),
+                    ),
                 ],
               ),
             ),
@@ -254,23 +265,72 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _HeroPill extends StatelessWidget {
-  const _HeroPill({required this.label, this.icon, this.color});
+/// A round frosted button over the cover (back · share · favourite · edit …): a 40 px disc in a 48 px target,
+/// darkened glass so it reads on a light image too.
+class CourseCoverButton extends StatelessWidget {
+  const CourseCoverButton({super.key, required this.icon, required this.onTap, this.tooltip, this.color});
 
-  final String label;
-  final IconData? icon;
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  /// Icon colour; null → the on-hero ink.
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final glass = color == null;
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Center(
+        child: Tooltip(
+          message: tooltip ?? '',
+          child: ClipOval(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Material(
+                color: c.heroShade.withValues(alpha: 0.3),
+                child: InkWell(
+                  onTap: onTap,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: c.heroGlassBorder),
+                    ),
+                    child: Icon(icon, size: 19, color: color ?? c.onHero),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({required this.label, this.icon, this.color});
+
+  final String label;
+  final IconData? icon;
+
+  /// A tinted pill in this colour (draft · live); null → the glass pill.
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tone = color;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color ?? c.heroGlass,
+        color: tone == null ? c.heroGlass : tone.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
-        border: glass ? Border.all(color: c.heroGlassBorder) : null,
+        border: Border.all(color: tone ?? c.heroGlassBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -281,7 +341,7 @@ class _HeroPill extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w800, color: c.onHero),
+              style: _ts(11.5, FontWeight.w500, c.onHero, h: 1.35),
             ),
           ),
         ],
@@ -301,37 +361,36 @@ class _TeacherChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
-    final chip = Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(4, 4, 12, 4),
-      decoration: BoxDecoration(
-        color: c.heroGlass,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: c.heroGlassBorder),
-      ),
+    final chip = Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(0, 2, 8, 2),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: c.heroGlassBorder,
-            backgroundImage: hasImage ? NetworkImage(imageUrl!) : null,
-            onBackgroundImageError: hasImage ? (_, _) {} : null,
-            child: hasImage
-                ? null
-                : Text(name.characters.first, style: TextStyle(color: c.onHero, fontSize: 12)),
+          Container(
+            padding: const EdgeInsets.all(1.5),
+            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.heroGlassBorder)),
+            child: CircleAvatar(
+              radius: 14,
+              backgroundColor: c.heroGlass,
+              backgroundImage: hasImage ? NetworkImage(imageUrl!) : null,
+              onBackgroundImageError: hasImage ? (_, _) {} : null,
+              child: hasImage
+                  ? null
+                  : Text(name.characters.first, style: _ts(12, FontWeight.w600, c.onHero)),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Flexible(
             child: Text(
               name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w700, color: c.onHero),
+              style: _ts(13.5, FontWeight.w500, c.onHero),
             ),
           ),
           if (onTap != null) ...[
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded, size: 18, color: c.onHeroMuted, textDirection: Directionality.of(context)),
+            const SizedBox(width: 2),
+            Icon(Icons.chevron_right_rounded, size: 18, color: c.onHeroMuted),
           ],
         ],
       ),
@@ -339,7 +398,7 @@ class _TeacherChip extends StatelessWidget {
     if (onTap == null) return chip;
     return Material(
       color: Colors.transparent,
-      child: InkWell(borderRadius: BorderRadius.circular(30), onTap: onTap, child: chip),
+      child: InkWell(borderRadius: BorderRadius.circular(24), onTap: onTap, child: chip),
     );
   }
 }
@@ -352,19 +411,19 @@ class _StatsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final divider = Container(width: 1, height: 30, color: c.heroGlassBorder);
+    final divider = Container(width: 1, height: 28, color: c.heroGlassBorder);
     final cells = <Widget>[
       for (final s in data.stats) _keyed(s.featureKey, _StatCell(stat: s)),
     ];
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(18),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           decoration: BoxDecoration(
             color: c.heroGlass,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: c.heroGlassBorder),
           ),
           child: Row(
@@ -405,12 +464,9 @@ class _StatCell extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(stat.icon, size: 15, color: c.onHeroMuted),
+                Icon(stat.icon, size: 14, color: c.onHeroMuted),
                 const SizedBox(width: 5),
-                Text(
-                  stat.value,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 17, fontWeight: FontWeight.w800, color: c.onHero),
-                ),
+                Text(stat.value, style: _ts(16, FontWeight.w600, c.onHero)),
               ],
             ),
           ),
@@ -421,7 +477,8 @@ class _StatCell extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily: AppFonts.family,
-              fontSize: 10.5,
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
               color: c.onHeroMuted,
               decoration: stat.onTap == null ? null : TextDecoration.underline,
               decorationColor: c.onHeroFaint,
@@ -459,7 +516,7 @@ class _ProgressRing extends StatelessWidget {
             SizedBox.expand(
               child: CircularProgressIndicator(
                 value: v,
-                strokeWidth: 3.6,
+                strokeWidth: 3,
                 strokeCap: StrokeCap.round,
                 backgroundColor: c.heroGlassBorder,
                 valueColor: AlwaysStoppedAnimation(c.success),
@@ -469,10 +526,7 @@ class _ProgressRing extends StatelessWidget {
               fit: BoxFit.scaleDown,
               child: Padding(
                 padding: const EdgeInsets.all(6),
-                child: Text(
-                  '${(v * 100).round()}%',
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 10, fontWeight: FontWeight.w800, color: c.onHero),
-                ),
+                child: Text('${(v * 100).round()}%', style: _ts(10.5, FontWeight.w600, c.onHero)),
               ),
             ),
           ],
@@ -493,45 +547,71 @@ class CourseSpaceTabBar extends StatelessWidget {
   final String active;
   final ValueChanged<String> onTab;
 
-  /// Equal segments get a label beside the icon from this width, and the icon above the label from [_stackedW];
+  /// Equal segments get a label beside the icon when every tab's label + count fits whole in its segment (H7:
+  /// "Sessi… 4" at 390 px in English), else the icon above the label (the count beside the icon) from [_stackedW];
   /// narrower still, the row scrolls.
   static const double _rowW = 110, _stackedW = 64;
 
-  static bool _stacked(double inner, int count) {
-    final per = count == 0 ? inner : inner / count;
-    return per < _rowW && per >= _stackedW;
+  /// The width one tab needs laid out as a row: pill padding 14 + 14, hairline, icon 18 + 8, label, count 6 + n.
+  static double _rowNeed(BuildContext context, CourseSpaceTab t) {
+    final scaler = MediaQuery.textScalerOf(context);
+    double w(String text, double size, FontWeight weight) {
+      final tp = TextPainter(
+        text: TextSpan(text: text, style: _ts(size, weight, const Color(0xFF000000), h: 1.4)),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      final width = tp.width;
+      tp.dispose();
+      return width;
+    }
+
+    var need = 28 + 2 + 18 + 8 + w(t.label, 13, FontWeight.w600) + 2;
+    if (t.live) need += 14;
+    if (t.count != null && t.count! > 0) need += 6 + w('${t.count}', 11.5, FontWeight.w600);
+    return need;
   }
 
+  static bool _stacked(BuildContext context, double inner, List<CourseSpaceTab> visible) {
+    if (visible.isEmpty) return false;
+    final per = inner / visible.length;
+    if (per < _stackedW) return false;
+    if (per < _rowW) return true;
+    return visible.any((t) => _rowNeed(context, t) > per);
+  }
+
+  static List<CourseSpaceTab> _visible(List<CourseSpaceTab> tabs) => [
+    for (final t in tabs)
+      if (t.featureKey == null || !AppConfig.disableList.contains(t.featureKey)) t,
+  ];
+
   /// The bar's height for a page [width] at the current text scale (the pinned header needs a fixed extent).
-  static double heightFor(BuildContext context, {required double width, required int count}) {
+  static double heightFor(BuildContext context, {required double width, required List<CourseSpaceTab> tabs}) {
     final scaler = MediaQuery.textScalerOf(context);
-    // padding 10 + 10, container 4 + 4 + border 2, pill 10 + 10 (stacked 8 + 8)
-    if (_stacked(width - kCourseGutter * 2 - 10, count)) {
-      return (20 + 10 + 16 + 18 + 3 + scaler.scale(11.5) * 1.45).ceilToDouble();
+    // padding 8 + 8, track 3 + 3, pill 9 + 9 (stacked 7 + 7), the active pill's hairline 1 + 1
+    if (_stacked(context, width - kCourseGutter * 2 - 6, _visible(tabs))) {
+      return (16 + 6 + 14 + 2 + 18 + 3 + scaler.scale(11.5) * 1.45).ceilToDouble();
     }
     final line = scaler.scale(13) * 1.45;
-    return (20 + 10 + 20 + (line < 20 ? 20 : line)).ceilToDouble();
+    return (16 + 6 + 18 + 2 + (line < 20 ? 20 : line)).ceilToDouble();
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final visible = [
-      for (final t in tabs)
-        if (t.featureKey == null || !AppConfig.disableList.contains(t.featureKey)) t,
-    ];
+    final visible = _visible(tabs);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(kCourseGutter, 10, kCourseGutter, 10),
+      padding: const EdgeInsets.fromLTRB(kCourseGutter, 8, kCourseGutter, 8),
       child: Container(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: c.divider),
+          color: c.textDark.withValues(alpha: c.isDark ? 0.07 : 0.045),
+          borderRadius: BorderRadius.circular(15),
         ),
         child: LayoutBuilder(
           builder: (context, box) {
-            final stacked = _stacked(box.maxWidth, visible.length);
+            final stacked = _stacked(context, box.maxWidth, visible);
             final fits = visible.isEmpty || stacked || box.maxWidth / visible.length >= _rowW;
             Widget item(CourseSpaceTab t) =>
                 _TabPill(tab: t, active: t.id == active, stacked: stacked, onTap: () => onTab(t.id));
@@ -562,35 +642,22 @@ class _TabPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final fg = active ? c.onHero : c.textMedium;
+    final fg = active ? c.textDark : c.textMedium;
+    final iconColor = active ? _lift(context, c.primary) : c.textLight;
     final count = tab.count != null && tab.count! > 0
-        ? Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(
-              color: active ? c.heroGlass : _lift(context, c.primary).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              '${tab.count}',
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: active ? c.onHero : _lift(context, c.primary),
-              ),
-            ),
+        ? Text(
+            '${tab.count}',
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.fade,
+            style: _ts(11.5, FontWeight.w600, active ? c.textMedium : c.textLight, h: stacked ? 1.0 : 1.4),
           )
         : null;
     final label = Text(
       tab.label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        fontFamily: AppFonts.family,
-        fontSize: stacked ? 11.5 : 13,
-        fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-        color: fg,
-      ),
+      style: _ts(stacked ? 11.5 : 13, active ? FontWeight.w600 : FontWeight.w500, fg, h: 1.4),
     );
     final Widget content = stacked
         ? Column(
@@ -601,8 +668,10 @@ class _TabPill extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (tab.live) ...[_LiveDot(color: active ? c.onHero : c.danger), const SizedBox(width: 4)],
-                    Icon(tab.icon, size: 18, color: fg),
+                    if (tab.live) ...[_LiveDot(color: c.danger), const SizedBox(width: 4)],
+                    Icon(tab.icon, size: 18, color: iconColor),
+                    // the count beside the icon, so the label below keeps the whole segment
+                    if (count != null) ...[const SizedBox(width: 4), Flexible(child: count)],
                   ],
                 ),
               ),
@@ -614,9 +683,9 @@ class _TabPill extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (tab.live) ...[_LiveDot(color: active ? c.onHero : c.danger), const SizedBox(width: 6)],
-              Icon(tab.icon, size: 18, color: fg),
-              const SizedBox(width: 7),
+              if (tab.live) ...[_LiveDot(color: c.danger), const SizedBox(width: 6)],
+              Icon(tab.icon, size: 18, color: iconColor),
+              const SizedBox(width: 8),
               Flexible(child: label),
               if (count != null) ...[const SizedBox(width: 6), count],
             ],
@@ -631,13 +700,14 @@ class _TabPill extends StatelessWidget {
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           padding: stacked
-              ? const EdgeInsets.symmetric(horizontal: 4, vertical: 8)
-              : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ? const EdgeInsets.symmetric(horizontal: 4, vertical: 7)
+              : const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
-            gradient: active ? c.primaryGradient : null,
-            borderRadius: BorderRadius.circular(14),
+            color: active ? c.cardBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: active ? c.divider.withValues(alpha: 0.8) : Colors.transparent, width: 0.8),
             boxShadow: active
-                ? [BoxShadow(color: c.primary.withValues(alpha: 0.28), blurRadius: 12, offset: const Offset(0, 4))]
+                ? [BoxShadow(color: c.heroShade.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))]
                 : null,
           ),
           child: content,
@@ -675,7 +745,7 @@ class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin 
   @override
   Widget build(BuildContext context) => FadeTransition(
     opacity: Tween(begin: 0.35, end: 1.0).animate(_a),
-    child: Container(width: 8, height: 8, decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle)),
+    child: Container(width: 7, height: 7, decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle)),
   );
 }
 
@@ -683,7 +753,7 @@ class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin 
 // Spotlight
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// Stacks contextual cards 10 px apart. A child that renders nothing (SizedBox.shrink) shares a run with its
+/// Stacks contextual cards 8 px apart. A child that renders nothing (SizedBox.shrink) shares a run with its
 /// neighbour, so it leaves no gap.
 class CourseSpotlightStack extends StatelessWidget {
   const CourseSpotlightStack({super.key, required this.children});
@@ -693,7 +763,7 @@ class CourseSpotlightStack extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) => Wrap(
-      runSpacing: 10,
+      runSpacing: 8,
       children: [for (final w in children) ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth), child: w)],
     ),
   );
@@ -735,15 +805,14 @@ class CourseSpotlightCard extends StatelessWidget {
   /// A pulsing "live" dot next to the title.
   final bool live;
 
-  /// A gradient card with on-hero ink (the loudest state: live now).
+  /// The loudest state (live now): the whole card takes a soft wash of its tone.
   final bool filled;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final tone = color ?? c.primary;
-    final ink = filled ? c.onHero : c.textDark;
-    final sub = filled ? c.onHeroMuted : c.textMedium;
+    final ink = _lift(context, tone);
 
     Widget? action;
     if (actionLabel != null && onAction != null) {
@@ -752,11 +821,12 @@ class CourseSpotlightCard extends StatelessWidget {
         icon: Icon(actionIcon ?? Icons.arrow_forward_rounded, size: 17),
         label: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis),
         style: FilledButton.styleFrom(
-          backgroundColor: filled ? c.onHero : tone,
-          foregroundColor: filled ? tone : c.onHero,
+          backgroundColor: tone,
+          foregroundColor: c.onHero,
+          elevation: 0,
           minimumSize: const Size(0, 40),
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          textStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w800),
+          textStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
@@ -765,7 +835,7 @@ class CourseSpotlightCard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         // the action sits at the end while the text keeps ~60 % of the card; below that it goes under the text
-        final roomy = box.maxWidth >= 300 * MediaQuery.textScalerOf(context).scale(1);
+        final roomy = box.maxWidth >= 340 * MediaQuery.textScalerOf(context).scale(1);
         final act = action == null
             ? null
             : roomy
@@ -777,24 +847,24 @@ class CourseSpotlightCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                if (live) ...[_LiveDot(color: filled ? c.onHero : c.danger), const SizedBox(width: 7)],
+                if (live) ...[_LiveDot(color: c.danger), const SizedBox(width: 8)],
                 Flexible(
                   child: Text(
                     title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 14.5, fontWeight: FontWeight.w800, color: ink),
+                    style: _ts(14.5, FontWeight.w600, c.textDark, h: 1.35),
                   ),
                 ),
               ],
             ),
             if (subtitle != null && subtitle!.isNotEmpty) ...[
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 subtitle!,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, height: 1.4, color: sub),
+                style: _ts(12.5, FontWeight.w400, c.textMedium, h: 1.45),
               ),
             ],
             if (progress != null) ...[
@@ -803,19 +873,19 @@ class CourseSpotlightCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: progress!.clamp(0.0, 1.0),
-                        minHeight: 7,
-                        backgroundColor: filled ? c.heroGlass : tone.withValues(alpha: 0.12),
-                        valueColor: AlwaysStoppedAnimation(filled ? c.onHero : tone),
+                        minHeight: 4,
+                        backgroundColor: tone.withValues(alpha: 0.12),
+                        valueColor: AlwaysStoppedAnimation(ink),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Text(
                     progressLabel ?? '${(progress!.clamp(0.0, 1.0) * 100).round()}%',
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w800, color: ink),
+                    style: _ts(12, FontWeight.w600, c.textMedium),
                   ),
                 ],
               ),
@@ -823,17 +893,14 @@ class CourseSpotlightCard extends StatelessWidget {
           ],
         );
         final iconTile = Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: filled ? c.heroGlass : tone.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(icon, color: filled ? c.onHero : _lift(context, tone), size: 23),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, color: ink, size: 20),
         );
 
         final body = Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: roomy || act == null
               ? Row(
                   children: [
@@ -858,22 +925,9 @@ class CourseSpotlightCard extends StatelessWidget {
 
         return Container(
           decoration: BoxDecoration(
-            gradient: filled
-                ? LinearGradient(colors: [tone, tone.withValues(alpha: 0.78)])
-                : LinearGradient(
-                    begin: AlignmentDirectional.topStart,
-                    end: AlignmentDirectional.bottomEnd,
-                    colors: [tone.withValues(alpha: 0.10), c.cardBg],
-                  ),
+            color: filled ? Color.alphaBlend(tone.withValues(alpha: c.isDark ? 0.14 : 0.06), c.cardBg) : c.cardBg,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: filled ? tone : tone.withValues(alpha: 0.22)),
-            boxShadow: [
-              BoxShadow(
-                color: (filled ? tone : c.heroShade).withValues(alpha: filled ? 0.3 : 0.05),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
-              ),
-            ],
+            border: Border.all(color: filled ? tone.withValues(alpha: 0.28) : c.divider.withValues(alpha: 0.7)),
           ),
           child: Material(
             color: Colors.transparent,
@@ -908,13 +962,13 @@ class CourseReadinessCard extends StatelessWidget {
     if (items.isEmpty || open.isEmpty) return const SizedBox.shrink();
     final c = context.colors;
     final done = items.length - open.length;
+    final tone = _lift(context, c.warning);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.warning.withValues(alpha: 0.3)),
-        boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.05), blurRadius: 18, offset: const Offset(0, 6))],
+        border: Border.all(color: c.divider.withValues(alpha: 0.7)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -922,13 +976,13 @@ class CourseReadinessCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: c.warning.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
+                  color: c.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.rocket_launch_rounded, color: c.warning, size: 22),
+                child: Icon(Icons.rocket_launch_rounded, color: tone, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -939,31 +993,26 @@ class CourseReadinessCard extends StatelessWidget {
                       title ?? _t('جهّز كورسك', 'Get your course ready'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: c.textDark,
-                      ),
+                      style: _ts(14.5, FontWeight.w600, c.textDark, h: 1.35),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       _t('$done من ${items.length} خطوات مكتملة', '$done of ${items.length} steps done'),
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium),
+                      style: _ts(12.5, FontWeight.w400, c.textMedium),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: done / items.length,
-              minHeight: 6,
+              minHeight: 4,
               backgroundColor: c.warning.withValues(alpha: 0.12),
-              valueColor: AlwaysStoppedAnimation(c.warning),
+              valueColor: AlwaysStoppedAnimation(tone),
             ),
           ),
           const SizedBox(height: 12),
@@ -973,16 +1022,11 @@ class CourseReadinessCard extends StatelessWidget {
             children: [
               for (final i in open)
                 ActionChip(
-                  avatar: Icon(i.icon ?? Icons.add_circle_outline_rounded, size: 16, color: c.primary),
+                  avatar: Icon(i.icon ?? Icons.add_circle_outline_rounded, size: 16, color: _lift(context, c.primary)),
                   label: Text(i.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  labelStyle: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: c.textDark,
-                  ),
-                  backgroundColor: c.primary.withValues(alpha: 0.06),
-                  side: BorderSide(color: c.primary.withValues(alpha: 0.18)),
+                  labelStyle: _ts(12.5, FontWeight.w500, c.textDark),
+                  backgroundColor: c.cardBg,
+                  side: BorderSide(color: c.divider),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onPressed: i.onTap,
                 ),
@@ -1003,7 +1047,8 @@ List<CourseSpaceAction> _visibleActions(List<CourseSpaceAction> all) => [
     if (a.featureKey == null || !AppConfig.disableList.contains(a.featureKey)) a,
 ];
 
-/// Phones: the course's quick actions as a horizontally scrolling row of tiles.
+/// Phones: the course's quick actions as ONE row of tiles that share the width; when they do not all fit, the
+/// last tile is "More", which lists the rest in a sheet (a row cut at the edge read as broken, M14).
 class CourseActionStrip extends StatelessWidget {
   const CourseActionStrip({super.key, required this.actions});
 
@@ -1013,6 +1058,7 @@ class CourseActionStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final shown = _visibleActions(actions);
     if (shown.isEmpty) return const SizedBox.shrink();
+    final c = context.colors;
     return LayoutBuilder(
       builder: (context, box) {
         const pad = kCourseGutter - 4;
@@ -1026,15 +1072,60 @@ class CourseActionStrip extends StatelessWidget {
             ),
           );
         }
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+        final fit = ((box.maxWidth - pad * 2) / _ActionTile.width).floor().clamp(2, shown.length);
+        final head = shown.take(fit - 1).toList();
+        final rest = shown.skip(fit - 1).toList();
+        final more = CourseSpaceAction(
+          icon: Icons.more_horiz_rounded,
+          label: _t('المزيد', 'More'),
+          color: c.textMedium,
+          onTap: () => _openMore(context, rest),
+        );
+        return Padding(
           padding: const EdgeInsets.symmetric(horizontal: pad),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [for (final a in shown) _ActionTile(action: a)],
+            children: [
+              for (final a in head) Expanded(child: _ActionTile(action: a, fill: true)),
+              Expanded(child: _ActionTile(action: more, fill: true)),
+            ],
           ),
         );
       },
+    );
+  }
+
+  static void _openMore(BuildContext context, List<CourseSpaceAction> rest) {
+    final c = context.colors;
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: c.cardBg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (sheet) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+                child: Text(_t('اختصارات الكورس', 'Course shortcuts'), style: _ts(14, FontWeight.w600, c.textDark)),
+              ),
+              for (final a in rest)
+                _ActionRow(
+                  action: a,
+                  onTap: () {
+                    Navigator.of(sheet).pop();
+                    a.onTap();
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1042,7 +1133,7 @@ class CourseActionStrip extends StatelessWidget {
 class _ActionTile extends StatelessWidget {
   const _ActionTile({required this.action, this.fill = false});
 
-  static const double width = 96;
+  static const double width = 84;
 
   final CourseSpaceAction action;
 
@@ -1060,27 +1151,21 @@ class _ActionTile extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             onTap: action.onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _ActionIcon(icon: action.icon, tone: tone, badge: action.badge, size: 54),
-                  const SizedBox(height: 7),
+                  _ActionIcon(icon: action.icon, tone: tone, badge: action.badge, size: 48),
+                  const SizedBox(height: 6),
                   Text(
                     action.label,
                     maxLines: 2,
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 11.5,
-                      height: 1.25,
-                      fontWeight: FontWeight.w700,
-                      color: c.textDark,
-                    ),
+                    style: _ts(11.5, FontWeight.w500, c.textMedium, h: 1.3),
                   ),
                 ],
               ),
@@ -1115,13 +1200,8 @@ class _ActionIcon extends StatelessWidget {
             width: size,
             height: size,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: AlignmentDirectional.topStart,
-                end: AlignmentDirectional.bottomEnd,
-                colors: [tone.withValues(alpha: 0.16), tone.withValues(alpha: 0.06)],
-              ),
-              borderRadius: BorderRadius.circular(size * 0.32),
-              border: Border.all(color: tone.withValues(alpha: 0.18)),
+              color: this.tone.withValues(alpha: c.isDark ? 0.16 : 0.09),
+              borderRadius: BorderRadius.circular(size * 0.34),
             ),
             child: Icon(icon, color: tone, size: size * 0.44),
           ),
@@ -1137,11 +1217,7 @@ class _ActionIcon extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: c.cardBg, width: 1.5),
                 ),
-                child: Text(
-                  badge!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: c.onHero),
-                ),
+                child: Text(badge!, textAlign: TextAlign.center, style: _ts(9.5, FontWeight.w600, c.onHero)),
               ),
             ),
         ],
@@ -1163,7 +1239,7 @@ class CourseActionList extends StatelessWidget {
     if (shown.isEmpty) return const SizedBox.shrink();
     final c = context.colors;
     return CourseSideCard(
-      padding: const EdgeInsets.fromLTRB(8, 14, 8, 8),
+      padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1171,20 +1247,37 @@ class CourseActionList extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
             child: Text(
               title ?? _t('اختصارات الكورس', 'Course shortcuts'),
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w800, color: c.textMedium),
+              style: _ts(12.5, FontWeight.w600, c.textMedium),
             ),
           ),
-          for (final a in shown)
-            Material(
+          for (final a in shown) _ActionRow(action: a, onTap: a.onTap),
+        ],
+      ),
+    );
+  }
+}
+
+/// One action as a list row (the desktop side column and the phone's "More" sheet).
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({required this.action, this.onTap});
+
+  final CourseSpaceAction action;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final a = action;
+    return Material(
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: a.onTap,
+                onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   child: Row(
                     children: [
-                      _ActionIcon(icon: a.icon, tone: a.color ?? c.primary, badge: a.badge, size: 40),
+                      _ActionIcon(icon: a.icon, tone: a.color ?? c.primary, badge: a.badge, size: 38),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -1194,38 +1287,30 @@ class CourseActionList extends StatelessWidget {
                               a.label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontFamily: AppFonts.family,
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: c.textDark,
-                              ),
+                              style: _ts(13.5, FontWeight.w500, c.textDark),
                             ),
                             if (a.caption != null && a.caption!.isNotEmpty)
                               Text(
                                 a.caption!,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight),
+                                style: _ts(11.5, FontWeight.w400, c.textLight),
                               ),
                           ],
                         ),
                       ),
-                      Icon(Icons.chevron_right_rounded, color: c.textLight, textDirection: Directionality.of(context)),
+                      Icon(Icons.chevron_right_rounded, color: c.textLight, size: 20),
                     ],
                   ),
                 ),
               ),
-            ),
-        ],
-      ),
-    );
+            );
   }
 }
 
 /// The card surface of the side column (and of any block that should look like it).
 class CourseSideCard extends StatelessWidget {
-  const CourseSideCard({super.key, required this.child, this.padding = const EdgeInsets.all(18), this.accent});
+  const CourseSideCard({super.key, required this.child, this.padding = const EdgeInsets.all(20), this.accent});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -1241,8 +1326,8 @@ class CourseSideCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: accent?.withValues(alpha: 0.25) ?? c.divider),
-        boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.07), blurRadius: 24, offset: const Offset(0, 8))],
+        border: Border.all(color: accent?.withValues(alpha: 0.22) ?? c.divider.withValues(alpha: 0.7)),
+        boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: child,
     );
@@ -1250,10 +1335,10 @@ class CourseSideCard extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// About / details content
+// Tab content: list header · About / Details
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// Accent bar · title · count · trailing — the header of a list inside a tab.
+/// Title · count · trailing — the header of a list inside a tab.
 class CourseSectionHeader extends StatelessWidget {
   const CourseSectionHeader({super.key, required this.title, this.count, this.trailing, this.padding});
 
@@ -1266,44 +1351,25 @@ class CourseSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: padding ?? const EdgeInsets.fromLTRB(kCourseGutter, 8, kCourseGutter, 10),
+      padding: padding ?? const EdgeInsets.fromLTRB(kCourseGutter + 4, 8, kCourseGutter, 12),
       child: Row(
         children: [
-          Container(
-            width: 4,
-            height: 20,
-            decoration: BoxDecoration(gradient: c.primaryGradient, borderRadius: BorderRadius.circular(2)),
-          ),
-          const SizedBox(width: 10),
           Expanded(
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
                 Flexible(
                   child: Text(
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 16, fontWeight: FontWeight.w800, color: c.textDark),
+                    style: _ts(16, FontWeight.w600, c.textDark),
                   ),
                 ),
                 if (count != null && count! > 0) ...[
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _lift(context, c.primary).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '$count',
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        color: _lift(context, c.primary),
-                      ),
-                    ),
-                  ),
+                  Text('$count', style: _ts(13, FontWeight.w500, c.textLight)),
                 ],
               ],
             ),
@@ -1315,7 +1381,37 @@ class CourseSectionHeader extends StatelessWidget {
   }
 }
 
-/// A titled card of the About / Details tab.
+/// The About / Details tab: ONE card whose sections are split by hairlines (no stack of boxes).
+/// Children that render nothing still take no room; pass the sections in order.
+class CourseInfoGroup extends StatelessWidget {
+  const CourseInfoGroup({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.divider.withValues(alpha: 0.7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: c.divider.withValues(alpha: 0.6)),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A titled section of a [CourseInfoGroup] (on its own it draws no box either).
 class CourseInfoSection extends StatelessWidget {
   const CourseInfoSection({
     super.key,
@@ -1340,37 +1436,24 @@ class CourseInfoSection extends StatelessWidget {
     final tone = color ?? c.primary;
     return _keyed(
       featureKey,
-      Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: c.divider),
-          boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 4))],
-        ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                  child: Icon(icon, size: 18, color: _lift(context, tone)),
-                ),
+                Icon(icon, size: 18, color: _lift(context, tone)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 14.5, fontWeight: FontWeight.w800, color: c.textDark),
+                    style: _ts(14.5, FontWeight.w600, c.textDark, h: 1.35),
                   ),
                 ),
-                ?trailing,
+                if (trailing != null) ...[const SizedBox(width: 8), Flexible(child: trailing!)],
               ],
             ),
             if (children.isNotEmpty) ...[const SizedBox(height: 12), ...children],
@@ -1403,20 +1486,17 @@ class CourseInfoRow extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 1),
-            child: Icon(icon ?? Icons.check_circle_rounded, size: 18, color: _lift(context, tone)),
+            child: Icon(icon ?? Icons.check_circle_rounded, size: 17, color: _lift(context, tone).withValues(alpha: 0.85)),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 13.5, fontWeight: FontWeight.w700, color: c.textDark),
-                ),
+                Text(title, style: _ts(13.5, FontWeight.w500, c.textDark, h: 1.4)),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(subtitle!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, height: 1.45, color: c.textMedium)),
+                  Text(subtitle!, style: _ts(12.5, FontWeight.w400, c.textMedium, h: 1.45)),
                 ],
               ],
             ),
@@ -1447,38 +1527,70 @@ class CourseScheduleChips extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: c.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: c.primary.withValues(alpha: 0.16)),
+              color: c.primary.withValues(alpha: c.isDark ? 0.12 : 0.05),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.event_repeat_rounded, size: 16, color: _lift(context, c.primary)),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        s.dayLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w800, color: c.textDark),
-                      ),
-                      Text(
-                        '${AppTime.clock(s.startTime)} – ${AppTime.clock(s.endTime)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textMedium),
-                      ),
-                    ],
-                  ),
+                Text(
+                  s.dayLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _ts(12.5, FontWeight.w600, c.textDark),
+                ),
+                Text(
+                  AppTime.clockRange(s.startTime, s.endTime),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _ts(12, FontWeight.w400, c.textMedium),
                 ),
               ],
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// ★★★★☆ 4.6 (128) — the stars are icons (the app fonts have no star glyphs).
+class CourseRatingStars extends StatelessWidget {
+  const CourseRatingStars({super.key, required this.value, this.count, this.size = 16, this.color});
+
+  /// 0…5.
+  final double value;
+  final int? count;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tone = color ?? c.accent2;
+    final v = value.clamp(0.0, 5.0);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 1; i <= 5; i++)
+          Icon(
+            v >= i ? Icons.star_rounded : (v >= i - 0.5 ? Icons.star_half_rounded : Icons.star_outline_rounded),
+            size: size,
+            color: v >= i - 0.5 ? tone : c.textLight.withValues(alpha: 0.6),
+          ),
+        const SizedBox(width: 8),
+        Text(v.toStringAsFixed(1), style: _ts(size * 0.85, FontWeight.w600, c.textDark)),
+        if (count != null && count! > 0) ...[
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              '($count)',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _ts(size * 0.75, FontWeight.w400, c.textLight),
+            ),
+          ),
+        ],
       ],
     );
   }

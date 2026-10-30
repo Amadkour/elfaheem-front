@@ -44,7 +44,8 @@ import '../utils/widget/refresh_button.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart';
 import 'calendar_entry.dart';
-import '../features/shared/rag/app_assistant.dart' show AppAssistantIcon;
+import '../features/shared/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
+import 'chrome_button.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,7 +146,13 @@ class _LazyTabStackState extends State<LazyTabStack> {
     final current = widget.index.clamp(0, items.length - 1);
     _visited.add(items[current].label);
     _tabs.setActive(items[current].label);
-    return IndexedStack(
+    // Each tab's navigator draws its pages over a modal barrier, and a barrier BLOCKS the semantics of everything
+    // painted before it in the same semantics container — the sidebar, the rail and the top bar (H12: at 1440 a
+    // screen reader found no navigation at all). A container of its own keeps that block inside the tabs.
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      child: IndexedStack(
       index: current,
       children: [
         for (var i = 0; i < items.length; i++)
@@ -156,6 +163,7 @@ class _LazyTabStackState extends State<LazyTabStack> {
                 )
               : const SizedBox.shrink(),
       ],
+      ),
     );
   }
 }
@@ -402,7 +410,11 @@ class WideShell extends StatelessWidget {
                     const SizedBox(height: 10),
                     // Nav items
                     Expanded(
-                      child: ListView(
+                      child: Semantics(
+                        container: true,
+                        explicitChildNodes: true,
+                        label: 'shell_navigation'.tr,
+                        child: ListView(
                         padding: EdgeInsets.zero,
                         children: [
                           for (int i = 0; i < dashboardItems.length; i++)
@@ -412,6 +424,7 @@ class WideShell extends StatelessWidget {
                               onTap: () => onTap(i),
                             ),
                         ],
+                      ),
                       ),
                     ),
                     Divider(height: 1, color: c.heroDivider),
@@ -478,7 +491,10 @@ class UserChipButton extends StatelessWidget {
     final image = user.imageUrl;
     return Padding(
       padding: showLabel ? const EdgeInsets.fromLTRB(14, 0, 14, 10) : const EdgeInsets.only(bottom: 10),
-      child: InkWell(
+      child: Semantics(
+        button: true,
+        label: name,
+        child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () => AppShellNav.navigatorFor(context).push(MaterialPageRoute(builder: (_) => EditAccountScreen())),
         child: Container(
@@ -510,7 +526,7 @@ class UserChipButton extends StatelessWidget {
                         style: TextStyle(
                           color: c.onHero,
                           fontSize: 15,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           fontFamily: AppFonts.display,
                         ),
                       ),
@@ -544,6 +560,7 @@ class UserChipButton extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -560,11 +577,29 @@ class _SidebarTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
+    // a real button for screen readers and the keyboard (H12): focusable, Enter / Space, selected state read out
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: Semantics(
+        button: true,
+        selected: selected,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            focusColor: c.heroGlass,
+            hoverColor: c.heroGlass.withValues(alpha: 0.08),
+            child: _tile(c),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tile(ThemeConfigProvider c) {
+    return AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: selected ? c.accent2.withValues(alpha: 0.2) : Colors.transparent,
@@ -609,7 +644,7 @@ class _SidebarTile extends StatelessWidget {
                           style: TextStyle(
                             color: c.onHero,
                             fontSize: 10,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                             fontFamily: AppFonts.display,
                           ),
                         ),
@@ -618,8 +653,7 @@ class _SidebarTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 
@@ -635,39 +669,58 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        color: c.isDark ? c.cardBg : c.primary,
-        border: Border(bottom: BorderSide(color: c.primary.withValues(alpha: 0.08))),
-        boxShadow: c.cardShadow,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: c.h2.copyWith(color: c.isDark ? c.textDark : c.onHero, fontWeight: FontWeight.normal),
-            ),
+    // A page pushed inside the tab (a course, a setting …) brings its own title: the tab's name would lie (M8).
+    final shell = ShellScope.maybeOf(context);
+    final pushed = shell?.activeCanPop ?? false;
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: 'shell_top_bar'.tr,
+      child: Container(
+        height: 64,
+        decoration: BoxDecoration(
+          color: c.isDark ? c.cardBg : c.primary,
+          border: Border(bottom: BorderSide(color: c.primary.withValues(alpha: 0.08))),
+          boxShadow: c.cardShadow,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: ChromeBar(
+          child: Row(
+            children: [
+              Expanded(
+                child: pushed
+                    ? const SizedBox.shrink()
+                    : Semantics(
+                        header: true,
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: c.h2.copyWith(color: c.isDark ? c.textDark : c.onHero, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+              ),
+              // the actions scale down instead of overflowing when the shell is squeezed
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (onRefresh != null && !pushed) ...[RefreshButton(onTap: onRefresh!), const SizedBox(width: 6)],
+                    if (!GuestState.active) const CalendarIcon(),
+                    if (!GuestState.active && !AppConfig.disableList.contains(appAssistantFeatureKey))
+                      ChromeIconButton(
+                        icon: Icons.auto_awesome_rounded,
+                        label: 'assistant_entry_title'.tr,
+                        onTap: AppAssistant.openPanel,
+                      ),
+                    NotificationIcon(unreadCount: unread),
+                  ]),
+                ),
+              ),
+            ],
           ),
-          // the actions scale down instead of overflowing when the shell is squeezed
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: AlignmentDirectional.centerEnd,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                if (onRefresh != null) RefreshButton(onTap: onRefresh!),
-                const SizedBox(width: 5),
-                if (!GuestState.active) const CalendarIcon(),
-                if (!GuestState.active) const AppAssistantIcon(),
-                NotificationIcon(unreadCount: unread),
-              ]),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -689,37 +742,12 @@ class NotificationIcon extends StatelessWidget {
   final int unreadCount;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return GestureDetector(
-      onTap: () => AppShellNav.navigatorFor(context).pushNamed('/notifications'),
-      child: Container(
-        padding: const EdgeInsets.all(7),
-        margin: const EdgeInsets.all(5),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: c.accent2),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Icon(Icons.notifications_rounded, color: c.onHero, size: 20),
-            if (unreadCount > 0)
-              Positioned(
-                top: -2,
-                right: -2,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle),
-                  child: Text(
-                    _badgeText(unreadCount),
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 8, fontWeight: FontWeight.w600, color: c.onHero),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ChromeIconButton(
+        icon: Icons.notifications_rounded,
+        label: 'notifications'.tr,
+        badge: unreadCount,
+        onTap: () => AppShellNav.navigatorFor(context).pushNamed('/notifications'),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -899,7 +927,10 @@ class _BottomTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      selected: active,
+      child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Column(
@@ -934,12 +965,13 @@ class _BottomTab extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 10,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
               color: active ? c.primary : c.textLight,
               fontFamily: AppFonts.display,
             ),
           ),
         ],
+      ),
       ),
     );
   }

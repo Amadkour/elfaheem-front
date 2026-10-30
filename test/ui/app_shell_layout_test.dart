@@ -136,6 +136,31 @@ void main() {
     }
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets('the desktop shell is in the semantics tree: tabs and top-bar actions are labelled buttons (H12)',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1440, 900);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(layoutHost(
+        host(WideShell(currentIndex: 0, onTap: (_) {}, dashboardItems: items(), unreadCount: 4)),
+        scaffold: false));
+    await tester.pump();
+    for (final label in ['home', 'my_courses', 'analysis']) {
+      expect(
+        find.bySemanticsLabel(RegExp(label)),
+        findsWidgets,
+        reason: 'sidebar tab "$label" must be reachable',
+      );
+    }
+    final home = tester.getSemantics(find.bySemanticsLabel(RegExp('^home')).first);
+    expect(home, containsSemantics(isButton: true, isSelected: true, isFocusable: true, hasTapAction: true));
+    final bell = tester.getSemantics(find.bySemanticsLabel(RegExp('^notifications, 4')));
+    expect(bell, containsSemantics(isButton: true, hasTapAction: true), reason: 'the bell is a labelled button with its count');
+    expect(find.bySemanticsLabel(RegExp('my_calendar')), findsOneWidget);
+    handle.dispose();
+  });
 }
 
 class _Probe extends StatefulWidget {

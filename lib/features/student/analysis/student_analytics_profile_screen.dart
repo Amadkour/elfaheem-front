@@ -26,6 +26,9 @@ import '../../teacher/data_lab/data_lab_widgets.dart' show DlAvatar;
 import 'flags/student_flags_screen.dart';
 import 'student_analytics_provider.dart';
 import 'student_analytics_widgets.dart';
+import '../../../core/home/me_home.dart';
+import '../../shared/analytics/analytics_summary.dart' show anCoursesCount, anSessionsWord;
+import 'student_analytics_api.dart';
 import 'student_course_analytics_screen.dart';
 
 class StudentAnalyticsProfileScreen extends StatefulWidget {
@@ -55,6 +58,10 @@ class _State extends State<StudentAnalyticsProfileScreen> {
   int? _scope; // course id, null = every course
   bool _allMine = false; // teacher: "all my courses" instead of this one
 
+  /// The student's own view: course id → the enrolment's live progress, which wins over the profile's stored copy
+  /// (N5: the profile said 100 % where every other screen said 89 %). Empty for a teacher.
+  Map<int, double> _live = const {};
+
   @override
   void initState() {
     super.initState();
@@ -68,18 +75,30 @@ class _State extends State<StudentAnalyticsProfileScreen> {
       _error = null;
     });
     try {
+      final live = widget.teacherMode ? Future.value(const <int, double>{}) : _liveProgress();
       final p = widget.teacherMode
           ? await _api.studentProfile(widget.studentId!, courseId: _allMine ? null : widget.courseId, lang: AppConfig.lang)
           : await _api.myProfile(lang: AppConfig.lang);
+      final l = await live;
       if (!mounted) return;
       setState(() {
         _profile = p;
+        _live = l;
         if (_scope != null && !p.courses.any((b) => b.courseId == _scope)) _scope = null;
       });
     } catch (e) {
       if (mounted) setState(() => _error = apiErrorText(ApiException.from(e)));
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// The enrolments' live progress (the hub's call); the cached `/me/home` figures when it fails, never an error.
+  Future<Map<int, double>> _liveProgress() async {
+    try {
+      return anLiveProgress(await StudentAnalyticsApi().fetchMyEnrollments());
+    } catch (_) {
+      return {for (final c in MeHomeService.instance.home?.coursesProgress ?? const <MeCourseProgress>[]) c.courseId: c.progress};
     }
   }
 
@@ -99,7 +118,9 @@ class _State extends State<StudentAnalyticsProfileScreen> {
       final p = _profile!;
       final blocks = _scope == null ? p.courses : p.courses.where((b) => b.courseId == _scope).toList();
       final single = blocks.length == 1;
-      final prog = single ? blocks.first.progress : p.progress;
+      final prog = single
+          ? anBlockProgress(blocks.first, _live)
+          : anProfileProgress(blocks, _live, overall: _scope == null ? p.progress : null);
       final att = single ? blocks.first.attendance : p.attendance;
       final ex = single ? blocks.first.examAvg : p.examAvg;
       body = AppRefresh(
@@ -155,9 +176,10 @@ class _State extends State<StudentAnalyticsProfileScreen> {
             ),
             const SizedBox(height: 12),
             if (single)
-              _CourseDetail(block: blocks.first, teacherMode: widget.teacherMode)
+              _CourseDetail(block: blocks.first, progress: prog, teacherMode: widget.teacherMode)
             else
-              for (final b in blocks) _CourseCompact(block: b, onTap: () => _setScope(b.courseId)),
+              for (final b in blocks)
+                _CourseCompact(block: b, progress: anBlockProgress(b, _live), onTap: () => _setScope(b.courseId)),
             Padding(
               padding: const EdgeInsets.only(top: 14),
               child: Text(widget.teacherMode ? 'dl_profile_teacher_note'.tr : 'dl_profile_student_note'.tr,
@@ -200,7 +222,7 @@ class _State extends State<StudentAnalyticsProfileScreen> {
         const SizedBox(height: 14),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (overall != null) AnGlassPill(icon: Icons.auto_awesome_rounded, label: '${anLevel(overall)} · ${anPct(overall)}'),
-          AnGlassPill(icon: Icons.menu_book_rounded, label: '${p.courses.length} ${anTr('an_courses', 'Courses')}'),
+          AnGlassPill(icon: Icons.menu_book_rounded, label: anCoursesCount(p.courses.length)),
           if (p.reviewFlags + p.readFlags > 0)
             AnGlassPill(icon: Icons.bookmarks_rounded, label: '${p.reviewFlags + p.readFlags} ${anTr('an_saved_flags', 'saved flags')}'),
         ]),
@@ -234,9 +256,12 @@ class _ScopeChip extends StatelessWidget {
 }
 
 class _CourseCompact extends StatelessWidget {
-  const _CourseCompact({required this.block, required this.onTap});
+  const _CourseCompact({required this.block, required this.progress, required this.onTap});
 
   final DlCourseBlock block;
+
+  /// The live progress (see [anBlockProgress]).
+  final double? progress;
   final VoidCallback onTap;
 
   @override
@@ -264,7 +289,7 @@ class _CourseCompact extends StatelessWidget {
           if (attention) ...[AnTag(anTr('an_needs_attention', 'Needs attention'), c.warning), const SizedBox(width: 4)],
           Icon(Icons.chevron_right_rounded, color: c.textLight),
         ]),
-        line('dl_progress'.tr, block.progress),
+        line('dl_progress'.tr, progress),
         line('dl_attendance'.tr, block.attendance),
         line('dl_exams'.tr, block.examAvg),
       ]),
@@ -273,9 +298,12 @@ class _CourseCompact extends StatelessWidget {
 }
 
 class _CourseDetail extends StatelessWidget {
-  const _CourseDetail({required this.block, required this.teacherMode});
+  const _CourseDetail({required this.block, required this.progress, required this.teacherMode});
 
   final DlCourseBlock block;
+
+  /// The live progress (see [anBlockProgress]); the class average is laid on its scale ([anClassOnScale]).
+  final double? progress;
   final bool teacherMode;
 
   double? _avg(String key) {
@@ -290,7 +318,7 @@ class _CourseDetail extends StatelessWidget {
     final c = context.colors;
     final extra = block.extraColumns;
     final vsRows = <(String, double?, double?)>[
-      ('dl_progress'.tr, block.progress, _avg('progress')),
+      ('dl_progress'.tr, progress, anClassOnScale(shown: progress, mine: block.progress, cls: _avg('progress'))),
       ('dl_attendance'.tr, block.attendance, _avg('attendance')),
       ('dl_exams'.tr, block.examAvg, _avg('exam_avg')),
     ];
@@ -303,7 +331,12 @@ class _CourseDetail extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => StudentCourseAnalyticsScreen(courseId: block.courseId, courseTitle: block.title, initialBlock: block),
+              builder: (_) => StudentCourseAnalyticsScreen(
+                courseId: block.courseId,
+                courseTitle: block.title,
+                initialBlock: block,
+                progress: progress,
+              ),
             ),
           ),
           child: Row(children: [
@@ -331,7 +364,9 @@ class _CourseDetail extends StatelessWidget {
             Icon(Icons.event_available_rounded, color: c.success),
             const SizedBox(width: 12),
             Expanded(
-              child: Text('${'dl_attended'.tr} ${block.attended} ${'dl_of'.tr} ${block.held} ${'dl_sessions_held'.tr}',
+              child: Text(
+                  anFmt(teacherMode ? 'an2_attended_of' : 'an2_you_attended_of', {'a': block.attended, 'sessions': anSessionsWord(block.held)},
+                      teacherMode ? 'Attended {a} of {sessions} so far' : 'You attended {a} of {sessions} so far'), // L2
                   style: anText(13, w: FontWeight.w700, c: c.textDark, h: 1.4)),
             ),
           ]),

@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../../core/base_provider.dart';
+import '../../../core/home/me_home.dart';
 import '../../teacher/analysis/attendance/attendance_model.dart';
 import '../../teacher/data_lab/data_lab_models.dart';
 import 'attendance/student_attendance_model.dart';
@@ -27,6 +28,31 @@ double? anAverage(Iterable<double?> xs) {
 
 /// Overall performance of a course: the average of progress, attendance and exams — only those that exist.
 double? anOverall({double? progress, double? attendance, double? exams}) => anAverage([progress, attendance, exams]);
+
+/// The class average [cls] laid on the scale of the figure shown as "you" ([shown]) (N5 / M3). The class average is
+/// the Data Lab column's, while "you" is the enrolment's live figure (the one the home, the course list and the course
+/// page show), and the two can differ; so the gap is measured inside the column (my value there, [mine], vs the
+/// class's) and laid on [shown]. A cohort of one is level with itself. Null when either side is missing.
+double? anClassOnScale({required double? shown, required double? mine, required double? cls}) {
+  if (shown == null || cls == null) return null;
+  if (mine == null) return cls;
+  return (shown + cls - mine).clamp(0, 100).toDouble();
+}
+
+/// course id → the enrolment's live progress (the figure the home, the course list, the course page and the
+/// analytics tab show).
+Map<int, double> anLiveProgress(Iterable<EnrolledCourse> courses) => {for (final c in courses) c.id: c.progress.toDouble()};
+
+/// The progress a Data Lab profile block shows (N5, real app). The profile's copy is the stored
+/// `Enrollment.progress_percentage`, refreshed only when a material is completed: a course whose teacher added a
+/// recording later still read 100 % there while every other screen showed the live 89 %. So the enrolment's live
+/// figure in [live] wins whenever it is known.
+double? anBlockProgress(DlCourseBlock b, Map<int, double> live) => live[b.courseId] ?? b.progress;
+
+/// The progress over a profile's [blocks]: the average of [anBlockProgress], or the profile's own [overall] when no
+/// live figure is known (a teacher looking at a student).
+double? anProfileProgress(Iterable<DlCourseBlock> blocks, Map<int, double> live, {double? overall}) =>
+    live.isEmpty ? overall : anAverage(blocks.map((b) => anBlockProgress(b, live)));
 
 /// A course needs attention when attendance or exams are clearly low.
 bool anNeedsAttention({double? attendance, double? exams}) =>
@@ -71,9 +97,9 @@ class StudentAnalyticsProvider extends BaseProvider {
 
   DlCourseBlock? blockOf(int courseId) => _blocks[courseId];
 
-  /// Best known progress of a course: the profile's (it follows lessons AND the teacher's corrections), else the
-  /// enrolment's.
-  double progressOf(EnrolledCourse c) => _blocks[c.id]?.progress ?? c.progress.toDouble();
+  /// Progress of a course: the enrolment's live % — the same figure (and rounding) the home, the course list and
+  /// the course page show (M3); the Data Lab profile's copy can lag behind it.
+  double progressOf(EnrolledCourse c) => c.progress.toDouble();
 
   double? overallOf(EnrolledCourse c) {
     final b = _blocks[c.id];
@@ -148,9 +174,16 @@ class StudentAnalyticsProvider extends BaseProvider {
 // ── Per-course provider ───────────────────────────────────────────────────────
 
 class StudentCourseAnalyticsProvider extends ChangeNotifier {
-  StudentCourseAnalyticsProvider({required this.courseId, StudentAnalyticsApi? api, DlCourseBlock? initialBlock})
-      : _api = api ?? StudentAnalyticsApi(),
+  StudentCourseAnalyticsProvider({
+    required this.courseId,
+    StudentAnalyticsApi? api,
+    DlCourseBlock? initialBlock,
+    this.enrolledProgress,
+  })  : _api = api ?? StudentAnalyticsApi(),
         _block = initialBlock;
+
+  /// The enrolment's live progress when the caller has it — wins over the profile's copy (one figure app-wide).
+  final double? enrolledProgress;
 
   final StudentAnalyticsApi _api;
   final int courseId;
@@ -203,7 +236,27 @@ class StudentCourseAnalyticsProvider extends ChangeNotifier {
     return done.fold(0.0, (s, e) => s + e.percentage!) / done.length;
   }
 
-  double? get progress => _block?.progress;
+  /// One progress figure app-wide (M3): the enrolment's (the caller's, else the cached `/me/home` copy, no request),
+  /// the Data Lab profile's only when neither is known.
+  double? get progress => enrolledProgress ?? _homeProgress ?? _block?.progress;
+
+  double? get _homeProgress {
+    for (final c in MeHomeService.instance.home?.coursesProgress ?? const <MeCourseProgress>[]) {
+      if (c.courseId == courseId) return c.progress;
+    }
+    return null;
+  }
+
+  /// The class average of a profile column on the scale of [shown], the figure drawn as "you" (see [anClassOnScale]).
+  double? classFor(String key, double? shown) {
+    final mine = switch (key) {
+      'progress' => _block?.progress,
+      'attendance' => _block?.attendance,
+      'exam_avg' => _block?.examAvg,
+      _ => null,
+    };
+    return anClassOnScale(shown: shown, mine: mine, cls: classAvg(key));
+  }
 
   /// Average of progress, attendance and exams — only the parts that exist.
   double? get overall => anOverall(

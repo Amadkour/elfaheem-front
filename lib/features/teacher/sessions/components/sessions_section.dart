@@ -9,7 +9,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../shared/course/course_space/course_space.dart' show kCourseGutter;
+import '../../../../config/theme/theme_config_provider.dart';
+import '../../../shared/course/course_space/course_space.dart';
 import '../../../shared/session/material/session_material_widget.dart';
 import '../sessions_provider.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
@@ -54,26 +55,49 @@ class TeacherSessionsBody extends StatelessWidget {
                 onChanged: provider.setTrackFilter,
               ),
             ),
+          // ONE timeline card (the same look as the student's): live · up next · scheduled · delivered
           Padding(
             key: const ValueKey('teacher_sessions.list'),
-            padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, 16),
-            child: ReorderableListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              buildDefaultDragHandles: false,
-              itemCount: provider.visibleSessions.length,
-              // re-ordering changes the course's real order → only in the "All" view
-              onReorderItem: (oldIndex, newIndex) {
-                if (provider.trackFilter == 'all') provider.reorderSessions(oldIndex, newIndex);
-              },
-              itemBuilder: (ctx, i) => KeyedSubtree(
-                key: ValueKey('session_${provider.visibleSessions[i].id}'),
-                child: SessionMaterialCard(
-                  session: provider.visibleSessions[i],
-                  sessionNumber: i + 1,
-                  course: provider.course,
-                  isTeacher: true,
-                ),
+            padding: const EdgeInsets.only(bottom: 16),
+            child: CourseSessionsSurface(
+              child: Builder(
+                builder: (context) {
+                  final shown = provider.visibleSessions;
+                  final states = courseTeacherStates([
+                    for (final s in shown) (live: s.isLiveActive, when: sessionUtc(s.scheduledAt), minutes: s.durationMinutes),
+                  ]);
+                  // re-ordering changes the course's real order → only in the "All" view
+                  final reorder = provider.trackFilter == 'all';
+                  return ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    buildDefaultDragHandles: false,
+                    itemCount: shown.length,
+                    onReorderItem: (oldIndex, newIndex) {
+                      // onReorderItem already gives the final index; reorderSessions takes the old onReorder one
+                      if (reorder) provider.reorderSessions(oldIndex, newIndex > oldIndex ? newIndex + 1 : newIndex);
+                    },
+                    proxyDecorator: (child, _, _) => Material(
+                      color: context.colors.cardBg,
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(16),
+                      child: child,
+                    ),
+                    itemBuilder: (ctx, i) => KeyedSubtree(
+                      key: ValueKey('session_${shown[i].id}'),
+                      child: SessionMaterialCard(
+                        session: shown[i],
+                        sessionNumber: i + 1,
+                        course: provider.course,
+                        isTeacher: true,
+                        state: states[i],
+                        rail: courseSessionRail(states, i),
+                        liveType: provider.course.type == 'live',
+                        dragIndex: reorder ? i : null,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),

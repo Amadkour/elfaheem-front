@@ -2,16 +2,17 @@
 //
 //   header        greeting · name · calendar · notifications · ContextSwitcher (Personal ↔ organizations) · search
 //   Personal (StudentHomeBody, plain values from ONE call — GET /api/v1/me/home, MeHomeService):
-//     live now    HomeLiveNow: a course session / meeting on air that I may join (one tap), only while it runs
-//                 (no "next up" hero card: it repeated Today's first row, which now says "Ends in … · room")
-//     needs you   ONE card of small tiles (HomeStatStrip): to do (attention) · inbox to-dos · unread notifications ·
-//                 organizations waiting — every count drawn ONCE on this screen
+//     live now    HomeLiveNow: a course session / meeting on air that I may join (one tap), only while it runs — the
+//                 page's one strong accent (no "next up" hero card: it repeated Today's first row, which now says
+//                 "Ends in … · room" / "Starts in …")
+//     needs you   ONE slim row of pills (HomeStatStrip), only the counts above zero: to do (attention) · inbox
+//                 to-dos · unread notifications · organizations waiting — every count drawn ONCE on this screen
 //     today       today's events, one line each (sessions · timetable slots · exams · meetings, exam pauses
 //                 applied); the running one tinted with "Ends in 50 min · Lab 3"; a free day folds by itself
-//                 ("No classes today · Next: … · Thu 30") — the empty courses section too
-//     this week   the next 5 events of the coming 7 days, compact rows
-//     my courses  courses_progress[] summarized in one card (StudentCourseSummary): figures + the 3 that matter now
-//     inbox       the 3 most urgent inbox rows (no second count)
+//                 ("No classes today · Next: … · Thu 30") — the empty courses section too. "This week" left the
+//                 home (the schedule page has it)
+//     my courses  courses_progress[] in one card (StudentCourseSummary): the 3 that matter now, slim lines
+//     inbox       the 3 most urgent inbox rows (no second count); beside Today on a wide window
 //     feeds       ads · organizations · other courses · categories · best teachers (HomeProvider's marketing call,
 //                 never awaited for the first paint; each leaf listens on its own)
 //   Organization: OrgMemberHome of the selected organization (from the same payload's org_overview).
@@ -137,6 +138,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final guest = GuestState.active;
 
+    Widget search({EdgeInsetsGeometry? padding}) => ParentComponent(
+          key: const ValueKey('student_home.search'),
+          child: Selector<HomeProvider, List<CourseModel>>(
+            selector: (_, p) => p.otherCourses,
+            builder: (_, courses, _) =>
+                padding == null ? SearchBarIcon(courses: courses) : SearchBarIcon(courses: courses, padding: padding),
+          ),
+        );
+
     final header = ParentComponent(
       key: const ValueKey('student_home.top_bar'),
       child: HomeEntrance(
@@ -144,14 +154,23 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Selector<MyAuthProvider, UserModel?>(
           selector: (_, p) => p.currentUser,
           builder: (context, user, _) => ListenableBuilder(
-            listenable: MeHomeService.instance,
+            listenable: Listenable.merge([MeHomeService.instance, AppModeController.instance]),
             builder: (context, _) => HomeHeader(
               name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
-              // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card
-              subtitle: guest ? null : studentDaySummary(MeHomeService.instance.home, MeHomeService.instance.liveNow.length),
+              // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card — in
+              // Organization mode from what that organization's home draws (M6)
+              subtitle: guest
+                  ? null
+                  : AppModeController.instance.isOrg
+                      ? orgModeDaySummary(MeHomeService.instance.home, AppModeController.instance, MeHomeService.instance.liveNow.length)
+                      : studentDaySummary(MeHomeService.instance.home, MeHomeService.instance.liveNow.length, null,
+                          contextSwitchVisible(AppModeController.instance) ? AppModeController.instance.pendingTotal : 0),
+              wideTrailing: search(padding: EdgeInsets.zero),
               leading: user == null ? null : UserChipButton(user: user, showLabel: false),
               // the unread count is drawn once, in the "Needs you" grid — the bell stays plain here
-              actions: [if (!guest) const QuickMeetingIcon(), if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
+              actions: [if (!guest) const QuickMeetingIcon()],
+              // the top bar carries these on desktop / tablet: drawn here on phones only (M7)
+              shellActions: [if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
               contextSwitcher: guest ? null : const ContextSwitcher(),
             ),
           ),
@@ -159,29 +178,25 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-    return BasePage(
+    // a desktop window: one wide calm card over the page's pattern (homeCardWidth), the dashboard inside it
+    return LayoutBuilder(
+      builder: (context, area) => BasePage(
       key: const ValueKey('student_home'),
       useWebCard: true,
+      maxWith: homeCardWidth(area.maxWidth),
       child: SafeArea(
         child: AppRefresh(
           onRefresh: _refresh,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
+              constraints: const BoxConstraints(maxWidth: kHomeWideMax),
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                 slivers: [
                   SliverToBoxAdapter(child: header),
-                  SliverToBoxAdapter(
-                    child: ParentComponent(
-                      key: const ValueKey('student_home.search'),
-                      child: Selector<HomeProvider, List<CourseModel>>(
-                        selector: (_, p) => p.otherCourses,
-                        builder: (_, courses, _) => SearchBarIcon(courses: courses),
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  // the desktop header carries the search at its end
+                  SliverToBoxAdapter(child: HomeNarrowOnly(child: Padding(padding: const EdgeInsets.only(bottom: 16), child: search()))),
+                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
                   SliverToBoxAdapter(
                     child: ListenableBuilder(
                       listenable: Listenable.merge([homeTabs, AppModeController.instance]),
@@ -224,13 +239,47 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }
 
+/// Organization mode's greeting line, from exactly what that organization's home draws (OrgMemberHomeBody): its
+/// today, the strip's counts (to do · approvals for a manager · due soon · news) and its "What needs you" rows —
+/// those rows also carry governance work the overview's counts leave out, so "all caught up" never sits beside
+/// "To do 1" (M6). Null without the /me/home payload (an older server: the caller's own line stays).
+String? orgModeDaySummary(MeHome? home, AppModeController ctl, int liveRooms, [DateTime? nowUtc]) {
+  final current = ctl.isOrg ? ctl.current : null;
+  if (home == null || current == null) return null;
+  final orgId = meHomeInt(meHomeMap(current['organization'])['id'], -1);
+  final entry = home.orgEntry(orgId) ?? current;
+  return orgDaySummaryOf(entry, home.todayOf(orgId), home.inboxPreviewOf(orgId), liveRooms, nowUtc);
+}
+
+/// Pure part of [orgModeDaySummary]: the overview [entry], the organization's [today] and its inbox preview rows.
+String orgDaySummaryOf(Map<String, dynamic> entry, List<CalEvent> today, List<Map<String, dynamic>> inbox, int liveRooms,
+    [DateTime? nowUtc]) {
+  final now = nowUtc ?? DateTime.now().toUtc();
+  final todo = meHomeMap(entry['todo']);
+  final ap = meHomeMap(entry['approvals']);
+  final manages = entry['manage'] != null;
+  final strip = meHomeInt(todo['total']) + (manages ? meHomeInt(ap['total']) : 0);
+  final rowsTodo = inbox.where((x) => '${x['segment'] ?? 'todo'}' == 'todo').length;
+  final day = today.where((e) => !e.declined).toList();
+  final running = day.where((e) => !e.start.isAfter(now) && e.end.isAfter(now)).length;
+  final next = day.where((e) => e.start.isAfter(now)).firstOrNull;
+  return homeDaySummary(
+    sessions: day.length,
+    live: liveRooms > running ? liveRooms : running,
+    todo: strip > rowsTodo ? strip : rowsTodo,
+    othersWaiting: meHomeInt(entry['news']) > 0 || meHomeInt(todo['due_soon']) + meHomeInt(todo['overdue']) > 0 || inbox.isNotEmpty,
+    nextAt: next == null ? null : AppTime.time(next.start),
+  );
+}
+
 /// The greeting's one line for a student / member: today's count, what is live (or the next start), the to-dos.
 /// Null while nothing is loaded.
-String? studentDaySummary(MeHome? home, int liveRooms, [DateTime? nowUtc]) {
+String? studentDaySummary(MeHome? home, int liveRooms, [DateTime? nowUtc, int orgWaiting = 0]) {
   if (home == null) return null;
   final now = nowUtc ?? DateTime.now().toUtc();
   final today = home.today.where((e) => !e.declined).toList();
@@ -240,6 +289,7 @@ String? studentDaySummary(MeHome? home, int liveRooms, [DateTime? nowUtc]) {
     sessions: today.length,
     live: liveRooms > running ? liveRooms : running,
     todo: home.attentionCount(AttentionTabs.home) + home.inboxTodo,
+    othersWaiting: home.notificationsUnread > 0 || orgWaiting > 0,
     nextAt: next == null ? null : AppTime.time(next.start),
   );
 }
@@ -354,132 +404,113 @@ class _Sections extends StatelessWidget {
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
     final live = data.liveNow;
     final anyCount = todo > 0 || inboxTodo > 0 || home.notificationsUnread > 0 || data.orgWaiting > 0;
-    final upcoming = home.upcoming.take(5).toList();
 
-    // No "next up" hero card: it repeated the first row of "Today" — that row now carries what only the card said
-    // (tinted while it runs, "Ends in 50 min · Lab 3"; with nothing running the next row says when it starts).
+    // ── what waits for me: one slim row of the counts above zero (the greeting says "all caught up" otherwise)
+    final needs = !anyCount
+        ? null
+        : enter(HomeSection(
+            id: 'student.needs_you',
+            title: 'home_needs_you'.tr,
+            // folded, the title still says how much waits (L8)
+            foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '${todo + inboxTodo + home.notificationsUnread + data.orgWaiting}'),
+            child: HomeStatStrip(items: [
+              HomeStat(icon: Icons.task_alt_rounded, label: 'home_todo'.tr, count: todo, tone: c.danger, onTap: body.onOpenTodo),
+              HomeStat(
+                icon: Icons.inbox_outlined,
+                label: 'inbox_title'.tr,
+                count: inboxTodo,
+                tone: home.inboxOverdue > 0 ? c.danger : (home.inboxDueSoon > 0 ? c.warning : c.primary),
+                onTap: body.onOpenInbox,
+              ),
+              HomeStat(
+                icon: Icons.notifications_none_rounded,
+                label: 'notifications'.tr,
+                count: home.notificationsUnread,
+                tone: c.primary,
+                onTap: body.onOpenNotifications,
+              ),
+              HomeStat(
+                icon: Icons.account_balance_outlined,
+                label: 'home_org_waiting'.tr,
+                count: data.orgWaiting,
+                tone: c.warning,
+                onTap: body.onOpenOrgs,
+              ),
+            ]),
+          ));
+
+    // ── today: one line per item, live first, 3 + "Show all"; a free day folds by itself and names what comes next
+    //    ("This week" left the home: the schedule page has the week, the folded line names the next class)
+    final today = enter(HomeSection(
+      id: 'student.today',
+      title: 'home_today'.tr,
+      count: home.today.length,
+      foldedSummary: home.today.isEmpty ? null : homeDaySummaryOf(home.today, now),
+      empty: home.today.isEmpty,
+      emptySummary: homeFreeDaySummary('home_no_classes_today'.tr, home.firstUpcoming),
+      actionLabel: 'home_full_timetable'.tr,
+      onAction: () => body.onTab('my_schedule'),
+      child: HomeAgenda(
+        nowMin: nowMin,
+        items: [for (final e in home.today) homeAgendaItemOf(context, e, now, onTap: () => _open(e))],
+        emptyTitle: 'home_no_classes_today'.tr,
+        emptyMessage: 'home_s_free_hint'.tr,
+        emptyActionLabel: 'home_full_timetable'.tr,
+        onEmptyAction: () => body.onTab('my_schedule'),
+      ),
+    ));
+
+    // ── my courses, summarized (the full cards live on the courses tab)
+    final courses = enter(HomeSection(
+      id: 'student.courses',
+      title: 'my_courses'.tr,
+      count: home.coursesProgress.length,
+      empty: home.coursesProgress.isEmpty,
+      emptySummary: 'home_s_no_courses'.tr,
+      actionLabel: home.coursesProgress.isEmpty ? 'home_s_browse'.tr : null,
+      onAction: home.coursesProgress.isEmpty ? () => body.onTab('my_courses') : null,
+      child: home.coursesProgress.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: AppEmpty(
+                icon: Icons.auto_stories_rounded,
+                title: 'home_s_no_courses'.tr,
+                message: 'home_s_no_courses_hint'.tr,
+                actionLabel: 'home_s_browse'.tr,
+                onAction: () => body.onTab('my_courses'),
+              ),
+            )
+          : StudentCourseSummary(courses: home.coursesProgress, events: [...home.today, ...home.upcoming], onOpen: body.onOpenCourse, onShowAll: () => body.onTab('my_courses')),
+    ));
+
+    // ── inbox: the 3 most urgent rows (the count already sits in "Needs you")
+    final inbox = inboxRows.isEmpty
+        ? null
+        : enter(HomeSection(
+            id: 'student.inbox',
+            title: 'inbox_title'.tr,
+            actionLabel: 'inbox_see_all'.tr,
+            onAction: body.onOpenInbox,
+            child: InboxCompactList(items: inboxRows, onTap: (x) => body.onOpenInboxItem?.call(x)),
+          ));
+
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // ── live now: a room I'm invited to is on air → one tap into it (appears / leaves by itself)
+      // ── live now: a room I'm invited to is on air → one tap into it (appears / leaves by itself); the only strong
+      //    accent of the page
       if (live.isNotEmpty) HomeLiveNow(rooms: live, now: data.now, padding: _bannerPad),
 
-      // ── what matters now: one card of small tiles, only while something waits (the greeting says "all caught
-      //    up" otherwise)
-      if (anyCount) ...[
-      enter(HomeSection(
-        id: 'student.needs_you',
-        title: 'home_needs_you'.tr,
-        count: todo + inboxTodo + home.notificationsUnread + data.orgWaiting,
-        child: HomeStatStrip(items: [
-        HomeStat(
-          icon: Icons.task_alt_rounded,
-          label: 'home_todo'.tr,
-          count: todo,
-          tone: c.danger,
-          onTap: todo > 0 ? body.onOpenTodo : () => body.onTab('my_courses'),
-        ),
-        HomeStat(
-          icon: Icons.inbox_rounded,
-          label: 'inbox_title'.tr,
-          count: inboxTodo,
-          tone: home.inboxOverdue > 0 ? c.danger : (home.inboxDueSoon > 0 ? c.warning : c.primary),
-          onTap: body.onOpenInbox,
-        ),
-        HomeStat(
-          icon: Icons.notifications_rounded,
-          label: 'notifications'.tr,
-          count: home.notificationsUnread,
-          tone: c.accent2,
-          onTap: body.onOpenNotifications,
-        ),
-        if (data.orgWaiting > 0)
-          HomeStat(
-            icon: Icons.account_balance_rounded,
-            label: 'home_org_waiting'.tr,
-            count: data.orgWaiting,
-            tone: c.warning,
-            onTap: body.onOpenOrgs,
-          ),
-      ]),
-      )),
-      const SizedBox(height: 16),
-      ],
-
-      // ── today | this week (side by side on a wide window): one line per item, live first, 3 + "Show all"; a free
-      //    day stacks them (a folded Today beside the week card left a blank half column)
-      HomeSplit(minWidth: home.today.isEmpty ? double.infinity : 900, start: [
-        enter(HomeSection(
-          id: 'student.today',
-          title: 'home_today'.tr,
-          count: home.today.length,
-          foldedSummary: home.today.isEmpty ? null : homeDaySummaryOf(home.today, now),
-          // a free day folds by itself: one line says so and names what comes next
-          empty: home.today.isEmpty,
-          emptySummary: homeFreeDaySummary('home_no_classes_today'.tr, home.firstUpcoming),
-          actionLabel: 'home_full_timetable'.tr,
-          onAction: () => body.onTab('my_schedule'),
-          child: HomeAgenda(
-            nowMin: nowMin,
-            items: [for (final e in home.today) homeAgendaItemOf(context, e, now, onTap: () => _open(e))],
-            emptyTitle: 'home_no_classes_today'.tr,
-            emptyMessage: 'home_s_free_hint'.tr,
-            emptyActionLabel: 'home_full_timetable'.tr,
-            onEmptyAction: () => body.onTab('my_schedule'),
-          ),
-        )),
-      ], end: [
-        // ── this week (nothing coming → no section)
-        if (upcoming.isNotEmpty)
-          enter(HomeSection(
-            id: 'student.week',
-            title: 'home_this_week'.tr,
-            count: home.upcoming.length,
-            actionLabel: 'home_open_calendar'.tr,
-            onAction: () => Navigator.of(context).pushNamed('/calendar'),
-            child: UpcomingList(events: upcoming, onTap: _open),
-          )),
-      ]),
-      const SizedBox(height: 16),
-
-      // ── my courses, summarized (the full cards live on the courses tab)
-      enter(HomeSection(
-        id: 'student.courses',
-        title: 'my_courses'.tr,
-        count: home.coursesProgress.length,
-        empty: home.coursesProgress.isEmpty,
-        emptySummary: 'home_s_no_courses'.tr,
-        actionLabel: home.coursesProgress.isEmpty ? 'home_s_browse'.tr : null,
-        onAction: home.coursesProgress.isEmpty ? () => body.onTab('my_courses') : null,
-        child: home.coursesProgress.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: AppEmpty(
-                  icon: Icons.auto_stories_rounded,
-                  title: 'home_s_no_courses'.tr,
-                  message: 'home_s_no_courses_hint'.tr,
-                  actionLabel: 'home_s_browse'.tr,
-                  onAction: () => body.onTab('my_courses'),
-                ),
-              )
-            : StudentCourseSummary(courses: home.coursesProgress, onOpen: body.onOpenCourse, onShowAll: () => body.onTab('my_courses')),
-      )),
-      const SizedBox(height: 16),
-
-      // ── inbox: the 3 most urgent rows (the count already sits in "Needs you")
-      if (inboxRows.isNotEmpty) ...[
-        enter(HomeSection(
-          id: 'student.inbox',
-          title: 'inbox_title'.tr,
-          actionLabel: 'inbox_see_all'.tr,
-          onAction: body.onOpenInbox,
-          child: InboxCompactList(items: inboxRows, onTap: (x) => body.onOpenInboxItem?.call(x)),
-        )),
-        const SizedBox(height: 16),
-      ],
+      // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my courses) beside
+      // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
+      HomeDashboard(
+        narrow: [?needs, today, courses, ?inbox],
+        main: [today, if (needs != null || inbox != null) courses],
+        side: needs == null && inbox == null ? [courses] : [?needs, ?inbox],
+      ),
       ?body.feeds,
     ]);
   }
 
-  static const _bannerPad = EdgeInsets.fromLTRB(20, 0, 20, 16);
+  static const _bannerPad = EdgeInsets.fromLTRB(20, 0, 20, 24);
 
   void _open(CalEvent? e) {
     if (e == null) {
@@ -541,6 +572,8 @@ class _MarketingFeeds extends StatelessWidget {
           child: HomeCourseList(
             courses: provider.myCourses,
             pageName: 'home-my-courses',
+            // the home's full width: a narrower centred strip broke the dashboard's edges on a desktop
+            maxWidth: kHomeWideMax,
             isTeacher: false,
             onTap: (CourseModel c) => openCourse(context, c, provider.api),
             hasMore: false,
@@ -564,6 +597,8 @@ class _MarketingFeeds extends StatelessWidget {
           featureKey: 'student_home.other_courses',
           child: HomeCourseList(
             pageName: 'home-other-courses',
+            // the home's full width: a narrower centred strip broke the dashboard's edges on a desktop
+            maxWidth: kHomeWideMax,
             courses: provider.otherCourses.take(8).toList(),
             isTeacher: false,
             // Private courses ask for the access code first.
