@@ -398,3 +398,129 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
         ),
       );
 }
+
+// ── Stream switching (quality / audio) and listen-only (D-104) ─────────────
+
+/// What picking a stream does: nothing (it is the one playing), refuse (no link for it), or switch.
+enum VodSwitch { same, unavailable, go }
+
+VodSwitch vodSwitchDecision(MaterialVariant from, MaterialVariant to) {
+  final url = to.url;
+  if (url == null || url.isEmpty) return VodSwitch.unavailable;
+  if (url == from.url) return VodSwitch.same;
+  return VodSwitch.go;
+}
+
+/// What a stream switch carries from the old stream to the new one: the place, play / pause, speed and captions.
+/// A switch never starts the lecture over and never closes the player; when the new stream fails, the old one
+/// simply goes on.
+class VodCarry {
+  const VodCarry({required this.position, required this.playing, this.speed = 1.0, this.captionsOn = false});
+
+  final Duration position;
+  final bool playing;
+  final double speed;
+  final bool captionsOn;
+
+  /// [position] inside a stream [total] long: another file of the same lecture may be a little shorter (the audio
+  /// track, a re-encoded tier), so the end is kept half a second inside it. An unknown length keeps the position.
+  Duration seekIn(Duration total) {
+    if (position <= Duration.zero) return Duration.zero;
+    if (total <= Duration.zero) return position;
+    final last = total - const Duration(milliseconds: 500);
+    if (last <= Duration.zero) return Duration.zero;
+    return position > last ? last : position;
+  }
+}
+
+/// The stream listen-only mode plays: no picture to decode when the lecture has an audio track (the one paired with
+/// the quality on screen first), else the lightest video tier (the least data while nobody watches). An offline copy
+/// is the only stream there is, and a stream already audio stays.
+MaterialVariant vodListenVariant(SessionMaterialModel m, MaterialVariant current, {bool offline = false}) {
+  if (current.isAudio || offline) return current;
+  bool ok(MaterialVariant v) => v.url != null && v.url!.isNotEmpty;
+  final audio = m.audioVariants.where(ok).toList();
+  if (audio.isNotEmpty) {
+    final paired = current.tier == QualityTier.high ? QualityTier.high : QualityTier.medium;
+    return audio.firstWhere((v) => v.tier == paired, orElse: () => audio.first);
+  }
+  final video = m.videoVariants.where(ok).toList(); // low → high
+  return video.isEmpty ? current : video.first;
+}
+
+/// Where the listen-only bar's progress line is, 0…1 ([dragging] wins while the finger is on it).
+double vodFraction(Duration position, Duration total, {double? dragging}) {
+  if (dragging != null) return dragging.clamp(0.0, 1.0).toDouble();
+  if (total <= Duration.zero) return 0;
+  return (position.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0).toDouble();
+}
+
+/// The lecture is at its end (the replay button replaces play).
+bool vodFinished(Duration position, Duration total, {required bool playing}) =>
+    !playing && total > Duration.zero && position >= total - const Duration(milliseconds: 300);
+
+/// Opens a picker sheet (quality, speed, …) over the player and returns what was picked (null when dismissed).
+///
+/// The sheet is closed with ITS OWN context. Inside a role shell (D-081) a bottom sheet goes to the ROOT navigator
+/// while the player is a page of the tab's navigator, so `Navigator.pop(playerContext)` closed the player instead of
+/// the sheet: that was "switching the quality closes the video".
+Future<T?> showVodPicker<T>(BuildContext context, Widget Function(BuildContext sheetContext, void Function(T value) pick) builder) =>
+    showModalBottomSheet<T>(
+      useSafeArea: true,
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => builder(sheetContext, (v) => Navigator.of(sheetContext).pop(v)),
+    );
+
+/// "Listen only" in the player's top bar: a glass pill over the video — the headphones and a short label (from
+/// 400 px), the icon alone below. The tooltip says what happens.
+class VodListenButton extends StatelessWidget {
+  const VodListenButton({super.key, required this.onTap, required this.tooltip, this.label});
+
+  final VoidCallback onTap;
+  final String tooltip;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = label;
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        excludeSemantics: true,
+        child: InkResponse(
+          onTap: onTap,
+          radius: 26,
+          child: SizedBox(
+            height: 48,
+            child: Center(
+              child: Container(
+                height: 38,
+                constraints: const BoxConstraints(minWidth: 38),
+                padding: EdgeInsets.symmetric(horizontal: l == null ? 0 : 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(19),
+                  color: VodInk.ink(0.10),
+                  border: Border.all(color: VodInk.ink(0.18)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.headphones_rounded, color: VodInk.textHigh, size: 18),
+                  if (l != null) ...[
+                    const SizedBox(width: 6),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 96),
+                      child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: _w(12.5)),
+                    ),
+                  ],
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -50,6 +50,7 @@ import 'features/shared/guest/guest_live_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
 import 'features/shared/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
+import 'features/shared/session/video/vod_listen_layer.dart' show VodListenLayer;
 import 'design/app_keyboard.dart' show AppKeyboardSupport;
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
@@ -604,6 +605,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
             // web / desktop keyboards: Enter walks a form and submits it, Ctrl+Enter from a multi-line field, Esc,
             // Ctrl+K / "/" to the search box — for every text field (design/app_keyboard.dart)
             child: AppKeyboardSupport(
+            // listen-only (D-104): a lecture playing as sound is a bar at the very top; the whole app (assistant,
+            // banners, pages, the live room) is laid out below it (session/video/vod_listen_layer.dart)
+            child: VodListenLayer(
+            navigatorKey: navigatorKey,
             // the floating app assistant: a bubble above every signed-in screen (rag/app_assistant.dart)
             child: AppAssistantHost(
             navigatorKey: navigatorKey,
@@ -630,7 +635,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          ))))),
+          )))))),
         ),
       ),
     ));

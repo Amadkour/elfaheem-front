@@ -34,6 +34,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../admin/admin_common.dart' show t;
 import 'vod_player_parts.dart';
+import 'vod_listen.dart';
+import 'package:flutter_education_app/core/media_focus.dart';
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 // ════════════════════════════════════════════════════════════════════════════
@@ -59,9 +62,14 @@ class VideoPlayerScreen extends StatefulWidget {
     this.autoPlay = true,
     this.startFullScreen = false,
     this.playlist,
+    this.resume,
   });
 
   final SessionMaterialModel material;
+
+  /// Back from the listen-only bar (D-104): plays on with that controller, at the same place, without a new
+  /// POST …/play (which would count another view).
+  final VodListenHandoff? resume;
 
   /// The materials around [material] (e.g. the session's list): enables the lecture list and "up next".
   final List<SessionMaterialModel>? playlist;
@@ -170,6 +178,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// (e.g. the user tapped two qualities quickly) can never win the race.
   int _initToken = 0;
 
+  /// A quality / audio switch is opening the new stream (the old frame stays, dimmed, under a spinner).
+  bool _switching = false;
+
+  /// Listen-only: the picture left the tree, the controller goes to the bar next.
+  bool _handingOff = false;
+
   // ── UI state ──────────────────────────────────────────────────────────────
   bool _isFullScreen = false;
   bool _isLocked = false;
@@ -276,8 +290,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void initState() {
     super.initState();
     AppAssistant.hide(); // full screen: no floating assistant bubble
+    // One sound at a time: a lecture playing in the listen-only bar stops here (D-104).
+    MediaFocus.claim(this);
 
-    _activeVariant = _mat.defaultVideoVariant;
+    final back = widget.resume;
+    if (back != null) {
+      _resolved = back.material;
+      _activeVariant = back.variant;
+      _speed = back.speed;
+      _captionsOn = back.captionsOn;
+      _isOffline = back.isOffline;
+      _downloaded = back.downloaded;
+      _viewsNote = back.viewsNote;
+      _completionSent = back.completionSent;
+      _resumeChecked = true;
+    } else {
+      _activeVariant = _mat.defaultVideoVariant;
+    }
 
     _pulseCtrl = AnimationController(
       vsync: this,
@@ -289,7 +318,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     WakelockPlus.enable().ignore();
     _protectScreen(true);
     _initOrientationAndPip();
-    _startPlayback();
+    if (back != null) {
+      _adopt(back);
+    } else {
+      _startPlayback();
+    }
     _saveTimer = Timer.periodic(const Duration(seconds: 5), (_) => _persistPos());
     _readSystemLevels();
 
@@ -310,6 +343,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
     // Fires on every orientation change (MediaQuery dependency).
     _syncWithOrientation();
+  }
+
+  /// Takes the controller back from the listen-only bar; when the bar had moved to the audio track, the picture's
+  /// stream comes back (same place, same play state).
+  void _adopt(VodListenHandoff h) {
+    final vc = h.controller;
+    _vc = vc;
+    _vcReady = vc.value.isInitialized;
+    _isLoading = !_vcReady;
+    _wasPlaying = vc.value.isPlaying;
+    vc.addListener(_onVcUpdate);
+    if (h.swapped) {
+      _attachCaptions(vc);
+    } else {
+      _hasCaptions = _mat.captionsUrl != null || _isOffline; // the player's own file is still attached
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncPulse();
+      _startHideTimer();
+      final to = h.returnTo;
+      if (to != null) _switchVariant(to);
+    });
   }
 
   /// Blocks screenshots / screen recording while the player is open
@@ -439,6 +495,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
     _restoreSystemUI();
     AppAssistant.release();
+    MediaFocus.release(this);
     super.dispose();
   }
 
@@ -840,13 +897,131 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // Stream switching
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Same lecture, another stream (quality or audio). The old stream stays until the new one is open: it keeps the
+  /// place, play / pause, speed and captions, and when the new stream fails the old one goes on with a notice
+  /// (D-104). Before, a failed init left the error screen, and the picker closed the whole player (see showVodPicker).
   Future<void> _switchVariant(MaterialVariant v) async {
-    if (v.url == _activeVariant.url) return;
-    final wasPlaying = _vc?.value.isPlaying ?? false;
-    // Same content, different stream: always keep the position (the old code
-    // reset to 0 when switching to audio, which lost the student's place).
-    final pos = _vc?.value.position ?? Duration.zero;
-    await _initPlayer(v, seekTo: pos, autoPlay: wasPlaying);
+    switch (vodSwitchDecision(_activeVariant, v)) {
+      case VodSwitch.same:
+        return;
+      case VodSwitch.unavailable:
+        showAppNotice('video_not_available'.tr, error: true);
+        return;
+      case VodSwitch.go:
+        break;
+    }
+    final old = _vc;
+    if (old == null || !old.value.isInitialized || _hasError) {
+      // Nothing playing yet (or the stream failed): a plain start on the chosen stream.
+      await _initPlayer(v, seekTo: old?.value.position ?? Duration.zero, autoPlay: true);
+      return;
+    }
+    _stopBoost();
+    _stopNextTimer();
+    final carry = VodCarry(position: old.value.position, playing: old.value.isPlaying, speed: _speed, captionsOn: _captionsOn);
+    final from = _activeVariant;
+    final token = ++_initToken;
+    setState(() {
+      _isLoading = true;
+      _switching = true;
+    });
+    await old.pause().catchError((Object _) {});
+    VideoPlayerController next;
+    try {
+      next = await openVodController(v,
+          at: carry.position, speed: carry.speed, volume: _touchDevice ? null : _volume);
+    } catch (_) {
+      if (!mounted || token != _initToken) return;
+      setState(() {
+        _isLoading = false;
+        _switching = false;
+      });
+      if (carry.playing) unawaited(old.play());
+      showAppNotice(
+          'vod_switch_failed'.tr.replaceAll('{q}', v.label).replaceAll('{old}', from.label),
+          error: true);
+      return;
+    }
+    if (!mounted || token != _initToken || !identical(_vc, old)) {
+      unawaited(next.dispose());
+      return;
+    }
+    _attachCaptions(next);
+    old.removeListener(_onVcUpdate);
+    next.addListener(_onVcUpdate);
+    _wasPlaying = false;
+    _wasEnded = false;
+    setState(() {
+      _vc = next;
+      _vcReady = true;
+      _activeVariant = v;
+      _isLoading = false;
+      _switching = false;
+    });
+    unawaited(old.dispose());
+    if (carry.playing) {
+      await next.play();
+      _startHideTimer();
+    }
+    _syncPulse();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Listen only (D-104)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  bool get _canListen => _vcReady && _vc != null && !_hasError && !_isLoading && !_inPip && !_handingOff;
+
+  /// Hands the playing controller to the listen-only bar at the top of the app and closes the page: the lecture
+  /// goes on as sound while the person moves around the app, with the screen allowed to sleep.
+  Future<void> _startListenOnly() async {
+    final vc = _vc;
+    if (!_canListen || vc == null) return;
+    HapticFeedback.selectionClick();
+    final v = vc.value;
+    final play = !vodFinished(v.position, v.duration, playing: v.isPlaying);
+    _stopNextTimer();
+    _stopBoost();
+    _hideTimer?.cancel();
+    _persistPos();
+    if (_isFullScreen && kIsWeb) webfs.exitLandscapeFullscreen();
+    // The picture leaves the tree first: on the web a <video> taken off the page is paused by the browser, so the
+    // bar starts it again once that happened.
+    setState(() {
+      _handingOff = true;
+      _isFullScreen = false;
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || !identical(_vc, vc)) return;
+    vc.removeListener(_onVcUpdate);
+    _initToken++; // nothing in flight may touch the controller any more
+    final h = VodListenHandoff(
+      controller: vc,
+      material: _mat,
+      current: _current,
+      variant: _activeVariant,
+      playlist: widget.playlist,
+      speed: _speed,
+      captionsOn: _captionsOn,
+      isOffline: _isOffline,
+      downloaded: _downloaded,
+      viewsNote: _viewsNote,
+      completionSent: _completionSent,
+      progress: _progressProvider,
+    );
+    _vc = null; // ours no more: dispose() must not touch it
+    _vcReady = false;
+    VodListenSession.instance.start(h, play: play);
+    showAppNotice('vod_listen_started'.tr, icon: Icons.headphones_rounded);
+    final route = ModalRoute.of(context);
+    if (route == null) return;
+    final nav = Navigator.of(context);
+    if (route.isCurrent) {
+      nav.pop();
+    } else {
+      nav.removeRoute(route);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1238,40 +1413,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // Sheets
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _openStreamPicker() {
+  // Both sheets close with their OWN context (showVodPicker): inside a role shell the sheet sits on the root
+  // navigator and the player on the tab's, so popping the player's context closed the player (the quality bug).
+
+  Future<void> _openStreamPicker() async {
     _hideTimer?.cancel();
-    showModalBottomSheet<void>(
-      useSafeArea: true,
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _StreamPickerSheet(
-        material: _mat,
-        activeVariant: _activeVariant,
-        onSelect: (v) {
-          Navigator.pop(context);
-          _switchVariant(v);
-        },
-      ),
-    ).whenComplete(_startHideTimer);
+    final picked = await showVodPicker<MaterialVariant>(
+      context,
+      (_, pick) => _StreamPickerSheet(material: _mat, activeVariant: _activeVariant, onSelect: pick),
+    );
+    if (!mounted) return;
+    _startHideTimer();
+    if (picked != null) await _switchVariant(picked);
   }
 
-  void _openSpeedSheet() {
+  Future<void> _openSpeedSheet() async {
     _hideTimer?.cancel();
-    showModalBottomSheet<void>(
-      useSafeArea: true,
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _SpeedSheet(
-        speeds: _speedOptions,
-        current: _speed,
-        onSelect: (s) {
-          Navigator.pop(context);
-          _setSpeed(s);
-        },
-      ),
-    ).whenComplete(_startHideTimer);
+    final picked = await showVodPicker<double>(
+      context,
+      (_, pick) => _SpeedSheet(speeds: _speedOptions, current: _speed, onSelect: pick),
+    );
+    if (!mounted) return;
+    _startHideTimer();
+    if (picked != null) _setSpeed(picked);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1517,7 +1681,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // ── Background ────────────────────────────────────────────────────────────
 
   Widget _buildBackground() {
-    if (_vcReady && _vc != null && !_isAudioMode) {
+    if (_vcReady && _vc != null && !_isAudioMode && !_handingOff) {
       final ar = _vc!.value.aspectRatio;
       return Center(
         child: AspectRatio(
@@ -1791,8 +1955,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             ),
           ),
         ),
-        _ActiveStreamBadge(variant: _activeVariant),
-        const SizedBox(width: 6),
+        // Phones: the quality is on the chip below already; the title and "Listen" need the room.
+        if (MediaQuery.sizeOf(context).width >= 600) ...[
+          _ActiveStreamBadge(variant: _activeVariant),
+          const SizedBox(width: 6),
+        ],
         if (_canDownload) ...[
           _buildDownloadBtn(),
           const SizedBox(width: 6),
@@ -1802,6 +1969,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             icon: Icons.picture_in_picture_alt_rounded,
             tooltip: offlineT('dl_minimize'),
             onTap: _enterPip,
+          ),
+          const SizedBox(width: 6),
+        ],
+        if (_canListen) ...[
+          VodListenButton(
+            label: MediaQuery.sizeOf(context).width >= 360 ? 'vod_listen_short'.tr : null,
+            tooltip: 'vod_listen_only_hint'.tr,
+            onTap: _startListenOnly,
           ),
           const SizedBox(width: 6),
         ],
@@ -2097,7 +2272,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(width: 44, height: 44, child: AppLoadingIndicator()),
           const SizedBox(height: 14),
-          Text('loading_video'.tr,
+          Text((_switching ? 'vod_switching' : 'loading_video').tr,
               style: TextStyle(
                   color: VodInk.textSoft, fontSize: 13, fontFamily: AppFonts.family)),
         ]),

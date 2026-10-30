@@ -11,6 +11,7 @@ import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/media_focus.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -1334,6 +1335,8 @@ class _RoomPageState extends State<RoomPage>
   void initState() {
     super.initState();
     AppAssistant.hide(); // full screen: no floating assistant bubble
+    // One sound at a time: a lecture playing in the listen-only bar stops when the room opens (D-104).
+    MediaFocus.claim(this);
     _setUpListeners();
     // Android: share stopped from the system UI, phone calls (RoomScreenShareMixin).
     initLiveNativeEvents();
@@ -1545,6 +1548,7 @@ class _RoomPageState extends State<RoomPage>
 
   @override
   void dispose() {
+    MediaFocus.release(this);
     _sortThrottle.dispose();
     _sortRecheck?.cancel();
     _lifecycle?.dispose();

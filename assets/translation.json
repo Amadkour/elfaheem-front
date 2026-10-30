@@ -18192,5 +18192,61 @@
   "session_rate_it": {
     "en": "Rate this session",
     "ar": "قيّم الجلسة"
+  },
+  "vod_listen_short": {
+    "en": "Listen",
+    "ar": "استماع"
+  },
+  "vod_listen_only_hint": {
+    "en": "Listen only: keep the lecture playing as sound while you use the app (the screen can sleep)",
+    "ar": "استماع فقط: تابع المحاضرة صوتًا أثناء تنقّلك في التطبيق (ويمكن إطفاء الشاشة)"
+  },
+  "vod_listen_started": {
+    "en": "Listening — the lecture keeps playing at the top of the app. Tap the expand button to watch again.",
+    "ar": "وضع الاستماع — تستمر المحاضرة في أعلى التطبيق. اضغط زر التكبير للعودة إلى الفيديو."
+  },
+  "vod_listening": {
+    "en": "Listening",
+    "ar": "استماع"
+  },
+  "vod_back10": {
+    "en": "Back 10 seconds",
+    "ar": "رجوع 10 ثوانٍ"
+  },
+  "vod_fwd10": {
+    "en": "Forward 10 seconds",
+    "ar": "تقديم 10 ثوانٍ"
+  },
+  "vod_play": {
+    "en": "Play",
+    "ar": "تشغيل"
+  },
+  "vod_pause": {
+    "en": "Pause",
+    "ar": "إيقاف مؤقت"
+  },
+  "vod_replay": {
+    "en": "Replay",
+    "ar": "إعادة التشغيل"
+  },
+  "vod_expand": {
+    "en": "Back to the video",
+    "ar": "العودة إلى الفيديو"
+  },
+  "vod_close_listen": {
+    "en": "Stop and close",
+    "ar": "إيقاف وإغلاق"
+  },
+  "vod_position": {
+    "en": "Playback position",
+    "ar": "موضع التشغيل"
+  },
+  "vod_switching": {
+    "en": "Switching quality…",
+    "ar": "جارٍ تبديل الجودة…"
+  },
+  "vod_switch_failed": {
+    "en": "Couldn't switch to {q}. Still playing {old}.",
+    "ar": "تعذّر التبديل إلى {q}، وما زال التشغيل على {old}."
   }
 }
