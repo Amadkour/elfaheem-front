@@ -1,0 +1,93 @@
+{
+ "items": [
+  {
+   "id": 11,
+   "is_private": false,
+   "allow_resubscribe": true,
+   "name_ar": "أساسيات الخط العربي",
+   "name_en": "Arabic Calligraphy Basics",
+   "description_ar": "أساسيات الخط العربي (دورة تجريبية)",
+   "description_en": "A free recorded course: tools, the Naskh letters and first words.",
+   "fees": 0.0,
+   "type": "recorded",
+   "teacher": {
+    "id": 29,
+    "name": "Teacher",
+    "gmail": null,
+    "phone": null,
+    "username": null,
+    "role": "teacher",
+    "country": "EG",
+    "image_url": null,
+    "is_verified": true,
+    "is_active": true,
+    "login_times": 7,
+    "registration_step": "complete",
+    "created_at": "2026-10-29T08:02:50.973917",
+    "teacher_profile": {
+     "id": 1,
+     "user_id": 29,
+     "experience_years": 7,
+     "specialization": null,
+     "teaching_type": "both",
+     "payment_type": "paid",
+     "about": "Independent teacher (demo account).",
+     "created_at": "2026-10-29T08:02:50.978303"
+    }
+   },
+   "category": {
+    "name_ar": "اللغة العربية",
+    "name_en": "Arabic Language",
+    "description": "نحو وصرف وأدب / Grammar, morphology & literature",
+    "parent_id": null,
+    "image_url": null,
+    "id": 3
+   },
+   "image_url": null,
+   "is_published": true,
+   "max_students": 500,
+   "start_date": null,
+   "end_date": null,
+   "created_at": "2026-10-29T08:02:50.989086",
+   "students_count": 1,
+   "sessions_count": 4,
+   "enrollments_count": 0,
+   "average_rating": 0.0,
+   "total_hours": 12.0,
+   "is_favorite": true,
+   "is_enrolled": true,
+   "progress": 88.9,
+   "materials_total": 9,
+   "materials_completed": 8,
+   "schedules": [],
+   "certificates": [],
+   "tools": [],
+   "prerequisites": [],
+   "currency": "EGP",
+   "status": "in_progress",
+   "next_course_ids": [],
+   "recommended_course_ids": [],
+   "price": 0.0,
+   "final_price": 0.0,
+   "price_yearly": 0.0,
+   "price_monthly": null,
+   "price_six_months": null,
+   "price_options": [],
+   "default_price_plan_index": 0,
+   "default_plan": "yearly",
+   "discount_active": false,
+   "discount_ends_at": null,
+   "discount_percentage": null,
+   "discount_days": null,
+   "org": null
+  }
+ ],
+ "total": 1,
+ "scope": "all",
+ "scopes": [
+  {
+   "kind": "personal",
+   "count": 1
+  }
+ ]
+}

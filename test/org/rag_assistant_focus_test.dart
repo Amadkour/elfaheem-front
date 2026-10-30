@@ -21,6 +21,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/providers.dart';
 import 'package:flutter_education_app/design/app_keyboard.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart';
+import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,6 +78,26 @@ Widget _page(String name) => Scaffold(
       const TextField(),
       for (var i = 0; i < 4; i++) TextButton(onPressed: () {}, child: Text('$name $i')),
     ]));
+
+/// Hands the view its focus back WHILE a frame is painted: after the build removed what a tap replaced, before the
+/// removed elements are unmounted. That is where the web engine reports it (the tapped node's DOM element leaves the
+/// page in the frame's semantics update, the browser moves its focus, the view looks for its initial focus).
+class _FocusBackDuringPaint extends CustomPainter {
+  _FocusBackDuringPaint(this.armed, this.viewId) : super(repaint: AppAssistant.open);
+  final ValueNotifier<bool> armed;
+  final int viewId;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (!armed.value) return;
+    armed.value = false;
+    WidgetsBinding.instance.handleViewFocusChanged(
+        ViewFocusEvent(viewId: viewId, state: ViewFocusState.focused, direction: ViewFocusDirection.forward));
+  }
+
+  @override
+  bool shouldRepaint(_FocusBackDuringPaint oldDelegate) => true;
+}
 
 Future<void> _settle(WidgetTester tester, [int frames = 10]) async {
   for (var i = 0; i < frames; i++) {
@@ -210,6 +231,123 @@ void main() {
     await _settle(tester, 70);
   });
 
+  testWidgets('N2 (real app): a tap on the edge tab removes it in the frame that opens the pop-up; the focus handed back '
+      'to the view in that frame never measures its parked node', (tester) async {
+    final now = DateTime.now().toUtc();
+    backend({
+      'GET /api/v1/rag/conversations': (_) => _conversations(now.subtract(const Duration(days: 2))),
+    });
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final armed = ValueNotifier<bool>(false);
+    final nav = GlobalKey<NavigatorState>();
+    final theme = ThemeConfigProvider(api: ApiClient());
+    await ApiClient().primeSession();
+    await tester.pumpWidget(MultiProvider(
+      providers: appProviders(storage: storage, api: ApiClient()),
+      child: ThemeConfigScope(
+        provider: theme,
+        child: MaterialApp(
+          navigatorKey: nav,
+          theme: theme.materialTheme(dark: false),
+          navigatorObservers: [topRouteObserver],
+          home: CustomPaint(painter: _FocusBackDuringPaint(armed, tester.view.viewId), child: _page('profile')),
+          builder: (context, child) => AppKeyboardSupport(child: AppAssistantHost(navigatorKey: nav, child: child!)),
+        ),
+      ),
+    ));
+    await _settle(tester);
+    expect(find.byType(AppAssistantEdgeTab), findsOneWidget);
+
+    armed.value = true;
+    await tester.tap(find.byType(AppAssistantEdgeTab));
+    await tester.pump();
+    expect(armed.value, isFalse, reason: 'the focus was handed back during that frame');
+    expect(tester.takeException(), isNull);
+    expect(find.byType(AppAssistantEdgeTab), findsNothing, reason: 'the tab gave way to the pop-up');
+    await _settle(tester);
+    expect(find.byType(RagChatView), findsOneWidget);
+
+    // closed from its header: the tab comes back; the same hand-back in that frame is safe too
+    armed.value = true;
+    await tester.tap(find.byTooltip('Close').hitTestable().first);
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    await _settle(tester);
+    expect(find.byType(AppAssistantEdgeTab), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await _settle(tester, 70);
+  });
+
+  testWidgets('the pop-up has a Navigator of its own: Chats opens its sheet inside the card', (tester) async {
+    final now = DateTime.now().toUtc();
+    backend({
+      'GET /api/v1/rag/conversations': (_) => _conversations(now.subtract(const Duration(minutes: 5))),
+      'GET /api/v1/rag/conversations/2/messages': (_) => {'items': [_query(2, 'done', now.subtract(const Duration(minutes: 5)))], 'has_more': false},
+    });
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final nav = GlobalKey<NavigatorState>();
+    final theme = ThemeConfigProvider(api: ApiClient());
+    await ApiClient().primeSession();
+    await tester.pumpWidget(MultiProvider(
+      providers: appProviders(storage: storage, api: ApiClient()),
+      child: ThemeConfigScope(
+        provider: theme,
+        child: MaterialApp(
+          navigatorKey: nav,
+          theme: theme.materialTheme(dark: false),
+          navigatorObservers: [topRouteObserver],
+          home: _page('home'),
+          builder: (context, child) => AppKeyboardSupport(child: AppAssistantHost(navigatorKey: nav, child: child!)),
+        ),
+      ),
+    ));
+    await _settle(tester);
+    AppAssistant.openPanel();
+    await _settle(tester, 12);
+    await tester.tap(find.byTooltip('rag_chats'.tr).hitTestable().first);
+    await _settle(tester, 8);
+    expect(tester.takeException(), isNull, reason: 'showModalBottomSheet found no Navigator above the pop-up');
+    expect(find.byType(BottomSheet), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await _settle(tester, 70);
+  });
+
+  group('the edge tab (R3)', () {
+    test('no tab while a role shell top bar (sidebar / rail) carries the assistant button', () {
+      expect(appAssistantEdgeTabShown(sideChrome: 0), isTrue, reason: 'phone bottom bar, or no shell');
+      expect(appAssistantEdgeTabShown(sideChrome: 67), isFalse, reason: 'tablet rail');
+      expect(appAssistantEdgeTabShown(sideChrome: 240), isFalse, reason: 'desktop sidebar');
+    });
+
+    test('a wide window without a shell docks it in the bottom end corner', () {
+      expect(AppAssistantSpot.fallback(rtl: true, wide: true).fraction, 1.0);
+      expect(AppAssistantSpot.fallback(rtl: true, wide: true).left, isTrue);
+      expect(AppAssistantSpot.fallback(rtl: false).fraction, lessThan(1.0), reason: 'phones keep it above the FAB strip');
+    });
+  });
+
+  group('ragShowsFailure', () {
+    RagAnswer a(int id, String state) => RagAnswer.fromJson(_query(id, state, DateTime.now()));
+    test('the last question failed, or was given up on', () {
+      expect(ragShowsFailure([], {}), isFalse);
+      expect(ragShowsFailure([a(1, 'done'), a(2, 'failed')], {}), isTrue);
+      expect(ragShowsFailure([a(1, 'queued')], {1}), isTrue);
+      expect(ragShowsFailure([a(1, 'queued')], {}), isFalse, reason: 'still being followed');
+      expect(ragShowsFailure([a(1, 'failed'), a(2, 'done')], {}), isFalse, reason: 'only the last one counts');
+    });
+  });
+
   group('N6: never opens on a failure', () {
     Future<void> pumpChat(WidgetTester tester) async {
       await tester.pumpWidget(layoutHost(const SizedBox(height: 700, child: RagChatView(app: true, compact: true)), scale: 1));
@@ -270,6 +408,38 @@ void main() {
       await _settle(tester, 4);
       expect(find.byType(RagAnswerCard), findsNWidgets(2));
       expect(find.byType(RagStarterPrompts), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a reopened recent question that gives up at once: a new chat, not the failure (the panel, N6)', (tester) async {
+      final now = DateTime.now().toUtc();
+      backend({
+        'GET /api/v1/rag/conversations': (_) => _conversations(now.subtract(const Duration(seconds: 20))),
+        'GET /api/v1/rag/conversations/2/messages': (_) => {'items': [_query(2, 'queued', now.subtract(const Duration(seconds: 20)))], 'has_more': false},
+        'GET /api/v1/rag/queries/2': (_) => const FakeResponse(500, {'detail': 'worker gone'}),
+      });
+      await pumpChat(tester);
+      expect(find.byType(RagStalledNote), findsNothing);
+      expect(find.byType(RagStarterPrompts), findsOneWidget);
+      expect(find.text('rag_chats'.tr), findsOneWidget, reason: 'the chat stays under Chats');
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('the pop-up opened again on a chat that ends on a failure: a new chat', (tester) async {
+      final now = DateTime.now().toUtc();
+      backend({
+        'GET /api/v1/rag/conversations': (_) => _conversations(now.subtract(const Duration(minutes: 1))),
+        'GET /api/v1/rag/conversations/2/messages': (_) => {'items': [_query(2, 'failed', now.subtract(const Duration(minutes: 1)))], 'has_more': false},
+      });
+      final key = GlobalKey<RagChatViewState>();
+      // picked by the person (not reopened by itself): the failure stays while they look at it
+      await tester.pumpWidget(layoutHost(SizedBox(height: 700, child: RagChatView(key: key, app: true, compact: true, initialConversationId: 2)), scale: 1));
+      await _settle(tester, 12);
+      expect(find.byType(RagStarterPrompts), findsNothing);
+      key.currentState!.reopened();
+      await _settle(tester, 4);
+      expect(find.byType(RagStarterPrompts), findsOneWidget);
+      expect(key.currentState!.conversationId, isNull);
       await tester.pumpWidget(const SizedBox());
     });
   });

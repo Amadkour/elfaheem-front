@@ -242,9 +242,11 @@ class SessionMaterialGrid extends StatelessWidget {
     final String displayName = isRecording ? 'recording_in_progress'.tr : materialTitle(m.name, recorded: isRecorded);
     // Stars only once there are ratings ("0.0 (0)" on every file read as noise, N9); a student who finished a file
     // with none yet gets a small "Rate" link that opens them.
-    final rated = (m.rateSummary?.total ?? 0) > 0;
-    final showRating = !isRecording && rated;
-    final offerRating = !isRecording && !rated && !isTeacher && isCompleted;
+    final rating = isRecording
+        ? RatingShow.none
+        : ratingShow(total: m.rateSummary?.total ?? 0, canRate: !isTeacher && isCompleted);
+    final showRating = rating == RatingShow.stars;
+    final offerRating = rating == RatingShow.invite;
 
     return Directionality(
       textDirection: Helpers.textDirOf(displayName),
@@ -425,7 +427,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                 rateSummary: m.rateSummary,
                               )
                             else if (offerRating)
-                              _RateLater(materialId: m.id, rateSummary: m.rateSummary),
+                              RateLater(type: RateType.material, sourceId: m.id.toString(), rateSummary: m.rateSummary),
                           ],
                         ),
                       ),
@@ -1006,28 +1008,33 @@ class MaterialIconWidget extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// "Rate" link: a finished file with no ratings yet opens the stars on demand (no "0.0 (0)" row, N9)
+// "Rate" link: a finished file (or a held session) with no ratings yet opens the stars on demand (no "0.0 (0)"
+// row, N9)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _RateLater extends StatefulWidget {
-  const _RateLater({required this.materialId, this.rateSummary});
+class RateLater extends StatefulWidget {
+  const RateLater({super.key, required this.type, required this.sourceId, this.rateSummary, this.labelKey = 'material_rate_it'});
 
-  final int materialId;
+  final RateType type;
+  final String sourceId;
   final RatingSummary? rateSummary;
 
+  /// The link's text (translation key).
+  final String labelKey;
+
   @override
-  State<_RateLater> createState() => _RateLaterState();
+  State<RateLater> createState() => _RateLaterState();
 }
 
-class _RateLaterState extends State<_RateLater> {
+class _RateLaterState extends State<RateLater> {
   bool _open = false;
 
   @override
   Widget build(BuildContext context) {
     if (_open) {
       return RatingWidget(
-        type: RateType.material,
-        sourceId: widget.materialId.toString(),
+        type: widget.type,
+        sourceId: widget.sourceId,
         canEdit: true,
         rateSummary: widget.rateSummary,
       );
@@ -1044,7 +1051,7 @@ class _RateLaterState extends State<_RateLater> {
           foregroundColor: c.textMedium,
         ),
         icon: Icon(Icons.star_outline_rounded, size: 15, color: c.textLight),
-        label: Text('material_rate_it'.tr, style: appText(12, w: FontWeight.w500, c: c.textMedium)),
+        label: Text(widget.labelKey.tr, style: appText(12, w: FontWeight.w500, c: c.textMedium)),
       ),
     );
   }

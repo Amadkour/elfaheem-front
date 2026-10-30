@@ -10,7 +10,6 @@ import '../../../../utils/widget/paged_progress.dart';
 import '../../../shared/course/course_list_card.dart';
 import '../../../shared/course/home_course_list.dart';
 import '../../models.dart';
-import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
 import '../list/courses_list_screen.dart';
 import 'my_courses_provider.dart';
@@ -18,6 +17,7 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgCoursesScreen;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
+import 'package:flutter_education_app/design/home_kit.dart' show homeCardWidth, kHomeWideMax;
 
 /// The student's "My courses": which side (scope chips, only when the courses live on several), then ONE calm
 /// toolbar (search · All / In progress / Completed with their counts), then the shared course cards
@@ -64,11 +64,15 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      key: const ValueKey('my_courses'),
-      appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
-      useWebCard: true,
-      child: SafeArea(child: MyCoursesBody(controller: _search)),
+    // a desktop window: the home's wide calm card (the grid gets four columns instead of a narrow strip)
+    return LayoutBuilder(
+      builder: (context, area) => BasePage(
+        key: const ValueKey('my_courses'),
+        appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
+        useWebCard: true,
+        maxWith: homeCardWidth(area.maxWidth),
+        child: SafeArea(child: MyCoursesBody(controller: _search)),
+      ),
     );
   }
 }
@@ -84,7 +88,7 @@ class MyCoursesBody extends StatelessWidget {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
+        constraints: const BoxConstraints(maxWidth: kHomeWideMax),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -218,6 +222,7 @@ class _CourseList extends StatelessWidget {
                     },
                     isTeacher: false,
                     pageName: 'My-courses-profile-filtered',
+                    maxWidth: kHomeWideMax,
                     badgeFor: mixed ? (c) => CourseOrgBadge(org: c.org) : null,
                   ),
                 ),

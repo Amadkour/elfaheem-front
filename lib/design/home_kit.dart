@@ -120,10 +120,15 @@ class HomeHeader extends StatelessWidget {
     this.shellActions = const [],
     this.contextSwitcher,
     this.subtitle,
+    this.wideTrailing,
     this.padding = const EdgeInsets.fromLTRB(20, 20, 20, 8),
   });
 
   final String name;
+
+  /// On the desktop dashboard: drawn at the end of the header, as wide as the side column's cards (the student's
+  /// search). Below it the screen draws it under the header itself ([HomeNarrowOnly]).
+  final Widget? wideTrailing;
   final Widget? leading;
 
   /// Buttons only the home offers (Meet now …): always drawn.
@@ -151,18 +156,21 @@ class HomeHeader extends StatelessWidget {
     // next to the name truncated "Mark Mark…" and the day line at 390 px (M9)
     return ValueListenableBuilder<int>(
       valueListenable: AppTime.version,
-      builder: (context, _, _) => Padding(
-        padding: padding,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      builder: (context, _, _) => LayoutBuilder(builder: (context, box) {
+        // the desktop header: the home's own buttons sit beside the trailing part (search · Meet now, one toolbar
+        // at the end) instead of floating mid-page at the end of the greeting line
+        final wide = wideTrailing != null && homeIsWide(box.maxWidth);
+        final lineButtons = wide ? const <Widget>[] : buttons;
+        final block = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
             if (leading != null) ...[leading!, const SizedBox(width: 10)],
             Expanded(
               child: Text(homeGreetingKey(homeNow().hour).tr,
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, c: c.textLight)),
             ),
-            ...buttons,
+            ...lineButtons,
           ]),
-          SizedBox(height: buttons.isEmpty && leading == null ? 4 : 6),
+          SizedBox(height: lineButtons.isEmpty && leading == null ? 4 : 6),
           Semantics(
             header: true,
             child: Text(name,
@@ -178,8 +186,25 @@ class HomeHeader extends StatelessWidget {
             const SizedBox(height: 14),
             Align(alignment: AlignmentDirectional.centerStart, child: contextSwitcher!),
           ],
-        ]),
-      ),
+        ]);
+        return Padding(
+          padding: padding,
+          child: !wide
+              ? block
+              : Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Expanded(child: block),
+                  const SizedBox(width: 24),
+                  // the side column's cards are inset 20 px on each side: the trailing part lines up with them
+                  SizedBox(
+                    width: HomeDashboard.sideWidthFor(box.maxWidth) - 40,
+                    child: Row(children: [
+                      Expanded(child: wideTrailing!),
+                      for (final b in buttons) ...[const SizedBox(width: 8), b],
+                    ]),
+                  ),
+                ]),
+        );
+      }),
     );
   }
 }
@@ -207,6 +232,76 @@ class HomeSplit extends StatelessWidget {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: end)),
         ]);
       });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Desktop page: a wide card, two columns
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The widest a home (or a course list) grows on a desktop window.
+const double kHomeWideMax = 1200;
+
+/// From this content width the home is a two-column dashboard (a 1280 px window with the sidebar is 1012 wide).
+const double kHomeWideMin = 960;
+
+/// True when [width] (the home's content width) takes the desktop dashboard.
+bool homeIsWide(double width) => width >= kHomeWideMin;
+
+/// The width of the page card a wide shell centres over its patterned page background ([BasePage.maxWith]): the
+/// whole body area less a 24 px margin each side (the pattern stays a thin frame at the page edges instead of
+/// fighting the cards), at most [kHomeWideMax]. Null below a desktop body → BasePage's own width.
+double? homeCardWidth(double area) => area >= kHomeWideMin + 48 ? math.min(kHomeWideMax, area - 48) : null;
+
+/// Marks the side column of a [HomeDashboard]: parts that read it (the "Needs you" strip) draw their narrow form.
+class HomeSideColumn extends InheritedWidget {
+  const HomeSideColumn({super.key, required super.child});
+
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<HomeSideColumn>() != null;
+
+  @override
+  bool updateShouldNotify(HomeSideColumn oldWidget) => false;
+}
+
+/// The desktop home: [main] (what happens today: the agenda, my courses) beside a [side] column (what waits for me:
+/// "Needs you" as a list, the inbox) from [kHomeWideMin]; below it the [narrow] order, one column. Sections are
+/// spaced by [gap]; an empty side column gives the whole width to [main].
+class HomeDashboard extends StatelessWidget {
+  const HomeDashboard({super.key, required this.main, required this.side, required this.narrow, this.gap = 24});
+
+  final List<Widget> main, side, narrow;
+  final double gap;
+
+  /// The side column's width for a content [width]: about a third, 320–400.
+  static double sideWidthFor(double width) => (width * 0.34).clamp(320.0, 400.0);
+
+  List<Widget> _spaced(List<Widget> items) => [
+        for (var i = 0; i < items.length; i++) ...[if (i > 0) SizedBox(height: gap), items[i]],
+        if (items.isNotEmpty) SizedBox(height: gap),
+      ];
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        if (!homeIsWide(box.maxWidth) || side.isEmpty || main.isEmpty) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(homeIsWide(box.maxWidth) ? [...main, ...side] : narrow));
+        }
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(main))),
+          SizedBox(
+            width: sideWidthFor(box.maxWidth),
+            child: HomeSideColumn(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(side))),
+          ),
+        ]);
+      });
+}
+
+/// Draws [child] only below the desktop width (what the wide header carries itself, e.g. the student's search).
+class HomeNarrowOnly extends StatelessWidget {
+  const HomeNarrowOnly({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      LayoutBuilder(builder: (context, box) => homeIsWide(box.maxWidth) ? const SizedBox.shrink() : child);
 }
 
 class HomeSectionTitle extends StatelessWidget {
@@ -1018,6 +1113,9 @@ class HomeStatStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final shown = [for (final s in items) if (s.count > 0) s];
     if (shown.isEmpty) return const SizedBox.shrink();
+    // the dashboard's side column: one card, one row per count (a sideways-scrolling strip in a 380 px column hid
+    // the last pills)
+    if (HomeSideColumn.of(context)) return _StatList(items: shown, padding: padding);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: padding,
@@ -1027,6 +1125,75 @@ class HomeStatStrip extends StatelessWidget {
           _StatPill(shown[i]),
         ],
       ]),
+    );
+  }
+}
+
+/// "Needs you" in the dashboard's side column: one card with hairline dividers, a row per count — icon in its tone,
+/// the label, the count at the end (w600 in the tone), a chevron when it opens something.
+class _StatList extends StatelessWidget {
+  const _StatList({required this.items, required this.padding});
+  final List<HomeStat> items;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: padding,
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: c.divider),
+            _StatRow(items[i]),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  const _StatRow(this.s);
+  final HomeStat s;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = appInk(context, s.tone ?? c.primary);
+    final value = s.value ?? (s.count > 999 ? '999+' : '${s.count}');
+    return Semantics(
+      button: s.onTap != null,
+      label: '$value ${s.label}',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: s.onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 52),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 10, 12, 10),
+            child: Row(children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: (s.tone ?? c.primary).withValues(alpha: 0.10), shape: BoxShape.circle),
+                child: Icon(s.icon, size: 17, color: ink),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(s.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
+              ),
+              const SizedBox(width: 8),
+              Text(value, maxLines: 1, style: appText(15, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+              if (s.onTap != null) ...[
+                const SizedBox(width: 2),
+                Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
+              ],
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }

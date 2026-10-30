@@ -30,6 +30,7 @@ import 'package:flutter_education_app/features/shared/course/course_list_card.da
 import 'package:flutter_education_app/features/shared/course/course_price_tag.dart' show coursePriceLabel;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
+import 'package:flutter_education_app/design/home_kit.dart' show homeCardWidth, kHomeWideMax;
 
 /// The teacher's "My courses": the side (CourseScopeBanner — the app mode), ONE calm toolbar (search · All /
 /// Published / Drafts) and the shared course cards (course_list_card.dart — the same card the student reads:
@@ -69,9 +70,12 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   Widget build(BuildContext context) {
     final p = context.watch<TeacherCoursesProvider>();
 
-    return BasePage(
+    // a desktop window: the home's wide calm card (the grid gets four columns instead of a narrow strip)
+    return LayoutBuilder(
+      builder: (context, area) => BasePage(
       key: const ValueKey('teacher_courses'),
       useWebCard: true,
+      maxWith: homeCardWidth(area.maxWidth),
       appBar: ScreenAppBar(title: 'my_courses'.tr, showBack: !kIsWeb),
       floatingActionButton: context.showSidebar || p.scope.isOrg
           ? null
@@ -83,6 +87,7 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
         bottom: false,
         child: TeacherCoursesBody(controller: _searchCtrl),
       ),
+    ),
     );
   }
 }
@@ -148,7 +153,7 @@ class TeacherCoursesBody extends StatelessWidget {
   }
 }
 
-/// Centres [child] and caps it at the app's content width.
+/// Centres [child] and caps it at the desktop home's width.
 class _Centered extends StatelessWidget {
   const _Centered({required this.child});
 
@@ -158,7 +163,7 @@ class _Centered extends StatelessWidget {
   Widget build(BuildContext context) => Align(
     alignment: Alignment.topCenter,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
+      constraints: const BoxConstraints(maxWidth: kHomeWideMax),
       child: child,
     ),
   );

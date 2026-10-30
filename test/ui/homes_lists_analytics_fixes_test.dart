@@ -1,5 +1,5 @@
 // Round-3 QA fixes in the homes, course lists and analytics (screenshots/ISSUES.md):
-//   N7 / L7  category initials skip the Arabic article (every "ال…" name drew the same alef, read as "I")
+//   N7 / L7  category initials: one letter, after the Arabic article (every "ال…" name drew the same alef)
 //   N8       "In progress" holds every enrolled course not completed, a 0 % one included (All = In progress + Completed)
 //   M6       the home course line says today's class ended rather than "no lecture scheduled" next to Today's rows;
 //            the teacher's greeting counts the open organization's to-dos
@@ -11,6 +11,7 @@ import 'package:flutter_education_app/features/shared/category/categories_screen
 import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
+import 'package:flutter_education_app/features/student/home/home_screen.dart' show orgDaySummaryOf;
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/features/teacher/home/home_screen.dart' show teacherDaySummary;
 import 'package:flutter_test/flutter_test.dart';
@@ -24,14 +25,14 @@ void main() {
   setUp(() => AppConfig.lang = 'en');
 
   group('N7 category initials', () {
-    test('the Arabic article is skipped; two words give two initials; Latin unchanged', () {
+    test('ONE letter: the first word after the Arabic article; Latin names one letter too', () {
       expect(CategoryAvatar.initialsOf('الرياضيات'), 'ر');
       expect(CategoryAvatar.initialsOf('العلوم'), 'ع');
-      expect(CategoryAvatar.initialsOf('اللغة العربية'), 'ل‌ع');
-      expect(CategoryAvatar.initialsOf('اللغة الإنجليزية'), 'ل‌إ');
+      expect(CategoryAvatar.initialsOf('اللغة العربية'), 'ل');
+      expect(CategoryAvatar.initialsOf('الحاسب الآلي'), 'ح');
       // a short word that only looks like the article keeps its first letter
       expect(CategoryAvatar.initialsOf('الم'), 'ا');
-      expect(CategoryAvatar.initialsOf('Computer Science'), 'CS');
+      expect(CategoryAvatar.initialsOf('Computer Science'), 'C');
       expect(CategoryAvatar.initialsOf(''), '?');
     });
   });
@@ -77,6 +78,32 @@ void main() {
       final s = teacherDaySummary(const [], const {}, 0, orgTodo: 1);
       expect(s, contains('home_sum_todo'));
       expect(s, isNot(contains('home_sum_clear')));
+    });
+
+    test('Organization mode: the line counts the "What needs you" rows the overview leaves out (governance work)', () {
+      // the real teacher payload: overview todo / approvals 0, one governance item in the inbox's to-do segment
+      final entry = {
+        'organization': {'id': 1},
+        'manage': {'my_role': 'dept_staff'},
+        'todo': {'total': 0, 'due_soon': 0, 'overdue': 0},
+        'approvals': {'total': 0},
+        'news': 0,
+      };
+      final rows = [
+        {'key': 'governance:items:1', 'kind': 'approval', 'segment': 'todo', 'org_id': 1},
+      ];
+      final s = orgDaySummaryOf(entry, const [], rows, 0, DateTime.utc(2026, 10, 30, 9));
+      expect(s, contains('home_sum_todo'));
+      expect(s, isNot(contains('home_sum_clear')));
+      // nothing listed and nothing counted → all caught up; a manager's approvals count, a member's do not
+      expect(orgDaySummaryOf(entry, const [], const [], 0), contains('home_sum_clear'));
+      final member = {...entry, 'manage': null, 'approvals': {'total': 3}};
+      expect(orgDaySummaryOf(member, const [], const [], 0), contains('home_sum_clear'));
+      expect(orgDaySummaryOf({...entry, 'approvals': {'total': 3}}, const [], const [], 0), contains('home_sum_todo'));
+      // the organization's own today, not the personal schedule
+      final now = DateTime.utc(2026, 10, 30, 9);
+      final today = [_ev('o', 7, now.add(const Duration(hours: 2)))];
+      expect(orgDaySummaryOf(entry, today, const [], 0, now), startsWith('home_sum_sessions_one'));
     });
   });
 

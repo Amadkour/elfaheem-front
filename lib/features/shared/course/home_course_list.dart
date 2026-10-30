@@ -21,7 +21,11 @@ class HomeCourseList extends StatefulWidget {
     this.onRefresh,
     this.loadingMore = false,
     this.badgeFor,
+    this.maxWidth = Breakpoints.contentMax,
   });
+
+  /// The list's widest (a desktop course list page passes the home's wide width).
+  final double maxWidth;
 
   /// A small mark drawn over each card's picture (under the favourite heart) — e.g. where the course lives when
   /// the list mixes the personal account and organizations. Null (or a null result) draws nothing.
@@ -104,7 +108,7 @@ class _HomeCourseListState extends State<HomeCourseList> {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
+        constraints: BoxConstraints(maxWidth: widget.maxWidth),
         child: LayoutBuilder(builder: (context, box) {
           // rows on a phone, a grid of tiles once there is room (course_list_card.dart)
           final width = math.max(0.0, box.maxWidth - 32);

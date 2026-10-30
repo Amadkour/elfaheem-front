@@ -313,6 +313,15 @@ bool ragOpensOnFailure(List<RagAnswer> items, DateTime nowUtc, {DateTime? askedA
   return at != null && nowUtc.difference(at) >= patience;
 }
 
+/// Whether the chat as shown ends on a failure (N6, the floating pop-up): its last question failed, or was given up on
+/// ([stalled]: the ids drawn with Retry). Opening the assistant on such a chat — the pop-up opened again, or a
+/// reopened question that gave up while the person had not touched the chat yet — starts a new chat instead.
+bool ragShowsFailure(List<RagAnswer> items, Set<int> stalled) {
+  if (items.isEmpty) return false;
+  final last = items.last;
+  return last.state == 'failed' || (!last.done && stalled.contains(last.id));
+}
+
 /// The next poll interval of [RagApi.waitFor]: 1 s growing by 0.5 s up to 4 s, but every 1.5 s at most while a draft
 /// grows ([writing]: the asker is reading it).
 Duration ragNextPoll(Duration every, {bool writing = false}) {

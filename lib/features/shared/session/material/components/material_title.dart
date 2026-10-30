@@ -18,3 +18,15 @@ String materialTitle(String name, {required bool recorded}) {
   final base = 'material_session_recording'.tr;
   return round == null ? base : '$base · ${'material_recording_round'.tr.replaceAll('{n}', round)}';
 }
+
+/// What a rating row draws (N9).
+enum RatingShow { stars, invite, none }
+
+/// The stars only once someone rated: the server sends `rate: {total: 0, average: 0.0}` for every file and session,
+/// and "☆☆☆☆☆ 0.0 (0)" under each read as noise. A student who may rate gets a small "Rate" link instead.
+RatingShow ratingShow({required int total, required bool canRate}) =>
+    total > 0 ? RatingShow.stars : (canRate ? RatingShow.invite : RatingShow.none);
+
+/// A student may rate a session once it has happened or he finished one of its files; a teacher never rates.
+bool sessionRateable({required bool isTeacher, required int completedFiles, DateTime? scheduledAt, DateTime? now}) =>
+    !isTeacher && (completedFiles > 0 || (scheduledAt != null && scheduledAt.isBefore(now ?? DateTime.now())));

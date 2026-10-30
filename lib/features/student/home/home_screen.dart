@@ -138,6 +138,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final guest = GuestState.active;
 
+    Widget search({EdgeInsetsGeometry? padding}) => ParentComponent(
+          key: const ValueKey('student_home.search'),
+          child: Selector<HomeProvider, List<CourseModel>>(
+            selector: (_, p) => p.otherCourses,
+            builder: (_, courses, _) =>
+                padding == null ? SearchBarIcon(courses: courses) : SearchBarIcon(courses: courses, padding: padding),
+          ),
+        );
+
     final header = ParentComponent(
       key: const ValueKey('student_home.top_bar'),
       child: HomeEntrance(
@@ -148,9 +157,15 @@ class _HomeScreenState extends State<HomeScreen> {
             listenable: Listenable.merge([MeHomeService.instance, AppModeController.instance]),
             builder: (context, _) => HomeHeader(
               name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
-              // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card
-              subtitle: guest ? null : studentDaySummary(MeHomeService.instance.home, MeHomeService.instance.liveNow.length, null,
-                  contextSwitchVisible(AppModeController.instance) ? AppModeController.instance.pendingTotal : 0),
+              // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card — in
+              // Organization mode from what that organization's home draws (M6)
+              subtitle: guest
+                  ? null
+                  : AppModeController.instance.isOrg
+                      ? orgModeDaySummary(MeHomeService.instance.home, AppModeController.instance, MeHomeService.instance.liveNow.length)
+                      : studentDaySummary(MeHomeService.instance.home, MeHomeService.instance.liveNow.length, null,
+                          contextSwitchVisible(AppModeController.instance) ? AppModeController.instance.pendingTotal : 0),
+              wideTrailing: search(padding: EdgeInsets.zero),
               leading: user == null ? null : UserChipButton(user: user, showLabel: false),
               // the unread count is drawn once, in the "Needs you" grid — the bell stays plain here
               actions: [if (!guest) const QuickMeetingIcon()],
@@ -163,29 +178,25 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-    return BasePage(
+    // a desktop window: one wide calm card over the page's pattern (homeCardWidth), the dashboard inside it
+    return LayoutBuilder(
+      builder: (context, area) => BasePage(
       key: const ValueKey('student_home'),
       useWebCard: true,
+      maxWith: homeCardWidth(area.maxWidth),
       child: SafeArea(
         child: AppRefresh(
           onRefresh: _refresh,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
+              constraints: const BoxConstraints(maxWidth: kHomeWideMax),
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                 slivers: [
                   SliverToBoxAdapter(child: header),
-                  SliverToBoxAdapter(
-                    child: ParentComponent(
-                      key: const ValueKey('student_home.search'),
-                      child: Selector<HomeProvider, List<CourseModel>>(
-                        selector: (_, p) => p.otherCourses,
-                        builder: (_, courses, _) => SearchBarIcon(courses: courses),
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  // the desktop header carries the search at its end
+                  SliverToBoxAdapter(child: HomeNarrowOnly(child: Padding(padding: const EdgeInsets.only(bottom: 16), child: search()))),
+                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
                   SliverToBoxAdapter(
                     child: ListenableBuilder(
                       listenable: Listenable.merge([homeTabs, AppModeController.instance]),
@@ -228,8 +239,42 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    ),
     );
   }
+}
+
+/// Organization mode's greeting line, from exactly what that organization's home draws (OrgMemberHomeBody): its
+/// today, the strip's counts (to do · approvals for a manager · due soon · news) and its "What needs you" rows —
+/// those rows also carry governance work the overview's counts leave out, so "all caught up" never sits beside
+/// "To do 1" (M6). Null without the /me/home payload (an older server: the caller's own line stays).
+String? orgModeDaySummary(MeHome? home, AppModeController ctl, int liveRooms, [DateTime? nowUtc]) {
+  final current = ctl.isOrg ? ctl.current : null;
+  if (home == null || current == null) return null;
+  final orgId = meHomeInt(meHomeMap(current['organization'])['id'], -1);
+  final entry = home.orgEntry(orgId) ?? current;
+  return orgDaySummaryOf(entry, home.todayOf(orgId), home.inboxPreviewOf(orgId), liveRooms, nowUtc);
+}
+
+/// Pure part of [orgModeDaySummary]: the overview [entry], the organization's [today] and its inbox preview rows.
+String orgDaySummaryOf(Map<String, dynamic> entry, List<CalEvent> today, List<Map<String, dynamic>> inbox, int liveRooms,
+    [DateTime? nowUtc]) {
+  final now = nowUtc ?? DateTime.now().toUtc();
+  final todo = meHomeMap(entry['todo']);
+  final ap = meHomeMap(entry['approvals']);
+  final manages = entry['manage'] != null;
+  final strip = meHomeInt(todo['total']) + (manages ? meHomeInt(ap['total']) : 0);
+  final rowsTodo = inbox.where((x) => '${x['segment'] ?? 'todo'}' == 'todo').length;
+  final day = today.where((e) => !e.declined).toList();
+  final running = day.where((e) => !e.start.isAfter(now) && e.end.isAfter(now)).length;
+  final next = day.where((e) => e.start.isAfter(now)).firstOrNull;
+  return homeDaySummary(
+    sessions: day.length,
+    live: liveRooms > running ? liveRooms : running,
+    todo: strip > rowsTodo ? strip : rowsTodo,
+    othersWaiting: meHomeInt(entry['news']) > 0 || meHomeInt(todo['due_soon']) + meHomeInt(todo['overdue']) > 0 || inbox.isNotEmpty,
+    nextAt: next == null ? null : AppTime.time(next.start),
+  );
 }
 
 /// The greeting's one line for a student / member: today's count, what is live (or the next start), the to-dos.
@@ -346,9 +391,6 @@ class _Sections extends StatelessWidget {
   final DateTime now;
   final StudentHomeBody body;
 
-  /// The rhythm between sections.
-  static const _gap = SizedBox(height: 24);
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -457,26 +499,13 @@ class _Sections extends StatelessWidget {
       //    accent of the page
       if (live.isNotEmpty) HomeLiveNow(rooms: live, now: data.now, padding: _bannerPad),
 
-      if (needs != null) ...[needs, _gap],
-
-      // phone: today · courses · inbox; a wide window: today beside the inbox (two short lists), then the courses
-      LayoutBuilder(builder: (context, box) {
-        if (box.maxWidth >= 900 && inbox != null) {
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            HomeSplit(start: [today], end: [inbox]),
-            _gap,
-            courses,
-            _gap,
-          ]);
-        }
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          today,
-          _gap,
-          courses,
-          _gap,
-          if (inbox != null) ...[inbox, _gap],
-        ]);
-      }),
+      // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my courses) beside
+      // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
+      HomeDashboard(
+        narrow: [?needs, today, courses, ?inbox],
+        main: [today, if (needs != null || inbox != null) courses],
+        side: needs == null && inbox == null ? [courses] : [?needs, ?inbox],
+      ),
       ?body.feeds,
     ]);
   }
@@ -543,6 +572,8 @@ class _MarketingFeeds extends StatelessWidget {
           child: HomeCourseList(
             courses: provider.myCourses,
             pageName: 'home-my-courses',
+            // the home's full width: a narrower centred strip broke the dashboard's edges on a desktop
+            maxWidth: kHomeWideMax,
             isTeacher: false,
             onTap: (CourseModel c) => openCourse(context, c, provider.api),
             hasMore: false,
@@ -566,6 +597,8 @@ class _MarketingFeeds extends StatelessWidget {
           featureKey: 'student_home.other_courses',
           child: HomeCourseList(
             pageName: 'home-other-courses',
+            // the home's full width: a narrower centred strip broke the dashboard's edges on a desktop
+            maxWidth: kHomeWideMax,
             courses: provider.otherCourses.take(8).toList(),
             isTeacher: false,
             // Private courses ask for the access code first.

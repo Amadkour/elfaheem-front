@@ -525,7 +525,7 @@ TeacherHomeExtra _teacherExtra() => TeacherHomeExtra.fromJson({
 
 /// [free]: a day without sessions (the next ones are tomorrow) and no live room — "Today's sessions" folds itself.
 Widget _teacherHome({bool free = false}) => SingleChildScrollView(
-      child: _width(1100, Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      child: _width(kHomeWideMax, Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _header(
             tr('أحمد حمدي', 'Ahmed Hamdy'),
             free
@@ -801,7 +801,7 @@ void main() {
     await _renderAll(tester, 'student_home',
         (_) => SingleChildScrollView(
             child: _width(
-                1000,
+                kHomeWideMax,
                 Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentHome(), 1, _now)),
                   StudentHomeBody(data: StudentHomeData(home: _studentHome(), now: _now, liveNow: _liveSession()), onTab: (_) {}),
@@ -813,7 +813,7 @@ void main() {
     await _renderAll(tester, 'student_home_free',
         (_) => SingleChildScrollView(
             child: _width(
-                1000,
+                kHomeWideMax,
                 Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentFreeDay(), 0, _now)),
                   StudentHomeBody(data: StudentHomeData(home: _studentFreeDay(), now: _now), onTab: (_) {}),

@@ -400,6 +400,13 @@ String anStudentsWord(int n) =>
 String anSessionsWord(int n) =>
     anCountWord(n, en: 'session', enPlural: 'sessions', arOne: 'جلسة واحدة', arTwo: 'جلستان', arFew: 'جلسات', arMany: 'جلسة');
 
+/// "1 course" / "مقرر واحد" · "4 مقررات" (the profile hero's pill read "1 المقررات").
+String anCoursesCount(int n) =>
+    anCountWord(n, en: 'course', enPlural: 'courses', arOne: 'مقرر واحد', arTwo: 'مقرران', arFew: 'مقررات', arMany: 'مقررًا');
+
+String anExamsWord(int n) =>
+    anCountWord(n, en: 'exam', enPlural: 'exams', arOne: 'اختبار واحد', arTwo: 'اختباران', arFew: 'اختبارات', arMany: 'اختبارًا');
+
 String anQuestionsWord(int n) =>
     anCountWord(n, en: 'question', enPlural: 'questions', arOne: 'سؤال واحد', arTwo: 'سؤالان', arFew: 'أسئلة', arMany: 'سؤالًا');
 
@@ -410,7 +417,8 @@ String anInsightText(AnInsight i) {
   final p = <String, Object?>{'course': i.course, 'pct': anIsolate(anPct(i.value)), 'a': i.n, 'h': i.m};
   switch (i.kind) {
     case AnInsightKind.lowAttendance:
-      return anFmt('an2_ins_low_att', p, 'You attended {a} of {h} sessions in {course}. Join the next one to get back on track.');
+      return anFmt('an2_ins_low_att', {...p, 'sessions': anSessionsWord(i.m)},
+          'You attended {a} of {sessions} in {course}. Join the next one to get back on track.');
     case AnInsightKind.lowExams:
       return i.n > 0
           ? anFmt('an2_ins_low_exams_review', {...p, 'questions': anQuestionsWord(i.n)},

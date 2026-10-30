@@ -11,6 +11,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../teacher/data_lab/data_lab_models.dart';
+import 'analytics_summary.dart' show anIsolate;
 
 String get anFont => AppFonts.display;
 
@@ -526,7 +527,7 @@ class AnVsClassCard extends StatelessWidget {
           Row(children: [
             Expanded(child: Text(r.$1, style: anText(12.5, w: FontWeight.w700, c: c.textDark))),
             Text(anPct(r.$2), style: anText(13, w: FontWeight.w800, c: anScoreColor(context, r.$2))),
-            Text('  ·  ${anTr('an_class', 'class')} ${anPct(r.$3)}', style: anText(11.5, c: c.textLight)),
+            Text('  ·  ${anTr('an_class', 'class')} ${anIsolate(anPct(r.$3))}', style: anText(11.5, c: c.textLight)),
           ]),
           const SizedBox(height: 5),
           AnBar(value: r.$2, marker: r.$3, height: 7),

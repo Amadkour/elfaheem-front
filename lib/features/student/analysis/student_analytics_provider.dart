@@ -39,6 +39,21 @@ double? anClassOnScale({required double? shown, required double? mine, required 
   return (shown + cls - mine).clamp(0, 100).toDouble();
 }
 
+/// course id → the enrolment's live progress (the figure the home, the course list, the course page and the
+/// analytics tab show).
+Map<int, double> anLiveProgress(Iterable<EnrolledCourse> courses) => {for (final c in courses) c.id: c.progress.toDouble()};
+
+/// The progress a Data Lab profile block shows (N5, real app). The profile's copy is the stored
+/// `Enrollment.progress_percentage`, refreshed only when a material is completed: a course whose teacher added a
+/// recording later still read 100 % there while every other screen showed the live 89 %. So the enrolment's live
+/// figure in [live] wins whenever it is known.
+double? anBlockProgress(DlCourseBlock b, Map<int, double> live) => live[b.courseId] ?? b.progress;
+
+/// The progress over a profile's [blocks]: the average of [anBlockProgress], or the profile's own [overall] when no
+/// live figure is known (a teacher looking at a student).
+double? anProfileProgress(Iterable<DlCourseBlock> blocks, Map<int, double> live, {double? overall}) =>
+    live.isEmpty ? overall : anAverage(blocks.map((b) => anBlockProgress(b, live)));
+
 /// A course needs attention when attendance or exams are clearly low.
 bool anNeedsAttention({double? attendance, double? exams}) =>
     (attendance != null && attendance < 60) || (exams != null && exams < 50);

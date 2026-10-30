@@ -169,18 +169,18 @@ void main() {
     );
   });
 
-  test('prices follow the language; lesson counts take the Arabic plural forms', () {
+  test('prices follow the language; session counts take the Arabic plural forms (the course page says "Session")', () {
     AppConfig.lang = 'en';
     expect(coursePriceLabel(AppCurrency.egp, 450), 'EGP 450');
     expect(coursePriceLabel(AppCurrency.usd, 19.5), '\$19.50');
     expect(coursePriceLabel(AppCurrency.sar, 0), 'Free');
-    expect(courseLessonsLabel(1), '1 lesson');
-    expect(courseLessonsLabel(12), '12 lessons');
+    expect(courseLessonsLabel(1), '1 session');
+    expect(courseLessonsLabel(12), '12 sessions');
     AppConfig.lang = 'ar';
     expect(coursePriceLabel(AppCurrency.egp, 450), '450 ج.م');
-    expect(courseLessonsLabel(2), 'محاضرتان');
-    expect(courseLessonsLabel(5), '5 محاضرات');
-    expect(courseLessonsLabel(12), '12 محاضرة');
+    expect(courseLessonsLabel(2), 'جلستان');
+    expect(courseLessonsLabel(5), '5 جلسات');
+    expect(courseLessonsLabel(12), '12 جلسة');
     AppConfig.lang = 'en';
   });
 }

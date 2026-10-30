@@ -1,0 +1,50 @@
+[
+ {
+  "name_ar": "الرياضيات",
+  "name_en": "Mathematics",
+  "description": "تعلّم الجبر والهندسة وحساب المثلثات / Mathematics courses",
+  "parent_id": null,
+  "image_url": null,
+  "id": 1
+ },
+ {
+  "name_ar": "العلوم",
+  "name_en": "Science",
+  "description": "فيزياء وكيمياء وأحياء / Physics, Chemistry & Biology",
+  "parent_id": null,
+  "image_url": null,
+  "id": 2
+ },
+ {
+  "name_ar": "اللغة العربية",
+  "name_en": "Arabic Language",
+  "description": "نحو وصرف وأدب / Grammar, morphology & literature",
+  "parent_id": null,
+  "image_url": null,
+  "id": 3
+ },
+ {
+  "name_ar": "اللغة الإنجليزية",
+  "name_en": "English Language",
+  "description": "تحدث وكتابة وقراءة / Speaking, writing & reading",
+  "parent_id": null,
+  "image_url": null,
+  "id": 4
+ },
+ {
+  "name_ar": "الحاسب الآلي",
+  "name_en": "Computer Science",
+  "description": "برمجة وشبكات وذكاء اصطناعي / Programming, networks & AI",
+  "parent_id": null,
+  "image_url": null,
+  "id": 5
+ },
+ {
+  "name_ar": "التاريخ",
+  "name_en": "History",
+  "description": "تاريخ مصر والحضارات القديمة / Egyptian history & ancient civilisations",
+  "parent_id": null,
+  "image_url": null,
+  "id": 6
+ }
+]

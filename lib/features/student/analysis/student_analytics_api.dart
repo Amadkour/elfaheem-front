@@ -33,6 +33,12 @@ class StudentAnalyticsApi {
       if (e.statusCode != 404) rethrow; // route name differs on some backends
       r = await _api.get('/api/v1/my-enrollments');
     }
+    return parseEnrollments(r);
+  }
+
+  /// The courses of a `GET /my-enrolled-courses` answer, each with the enrolment's live progress (pure, tested on the
+  /// real payload in test/fixtures/real/).
+  static List<EnrolledCourse> parseEnrollments(dynamic r) {
     final list = _list(r);
     if (list == null) {
       debugPrint('my-enrolled-courses: unexpected response ${r.runtimeType}');

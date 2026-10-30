@@ -34,6 +34,7 @@ import '../../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../../../teacher/home/teacher_models.dart';
 import '../../../teacher/sessions/sessions_provider.dart';
 import 'components/add_material_sheet.dart';
+import 'components/material_title.dart' show RatingShow, ratingShow, sessionRateable;
 import 'components/session_material_grid.dart';
 import 'components/session_shared_widgets.dart';
 
@@ -362,6 +363,31 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   }
 
   /// Live join / end and the session exam, under the row's meta line; null when there is nothing to show.
+  /// The session's rating under its files: the stars once someone rated, a "Rate this session" link for a student
+  /// once it has happened, nothing else (the "☆☆☆☆☆ 0.0 (0)" row on every session, N9).
+  Widget? _ratingFooter() {
+    final s = _session;
+    final show = ratingShow(
+      total: s.rateSummary?.total ?? 0,
+      canRate: sessionRateable(isTeacher: widget.isTeacher, completedFiles: s.completeMaterial, scheduledAt: s.scheduledAt),
+    );
+    return switch (show) {
+      RatingShow.stars => RatingWidget(
+          type: RateType.session,
+          sourceId: s.id.toString(),
+          canEdit: !widget.isTeacher,
+          rateSummary: s.rateSummary,
+        ),
+      RatingShow.invite => RateLater(
+          type: RateType.session,
+          sourceId: s.id.toString(),
+          rateSummary: s.rateSummary,
+          labelKey: 'session_rate_it',
+        ),
+      RatingShow.none => null,
+    };
+  }
+
   Widget? _below(TeacherCourseScreenProvider prov) {
     final c = context.colors;
     final live = _session.isLiveActive;
@@ -546,12 +572,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
               child: CourseSessionPanel(
                 title: 'attachments'.tr,
                 action: widget.isTeacher ? AddMaterialButton(sessionId: _session.id) : null,
-                footer: RatingWidget(
-                  type: RateType.session,
-                  sourceId: _session.id.toString(),
-                  canEdit: !widget.isTeacher,
-                  rateSummary: _session.rateSummary,
-                ),
+                footer: _ratingFooter(),
                 child: SessionMaterialGrid(
                   isLoading: prov.isLoading && !(prov.materialLoaded[_session.id] ?? false),
                   session: _session,

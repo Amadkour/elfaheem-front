@@ -21,7 +21,7 @@ import 'attendance/student_attendance_model.dart';
 import 'student_analytics_provider.dart';
 import 'student_analytics_profile_screen.dart';
 import 'student_analytics_widgets.dart';
-import '../../shared/analytics/analytics_summary.dart' show anSessionsWord;
+import '../../shared/analytics/analytics_summary.dart' show anExamsWord, anSessionsWord;
 import 'flags/student_flags_screen.dart';
 import 'exam/student_exam_list_screen.dart';
 import 'exam/student_exam_provider.dart';
@@ -480,13 +480,13 @@ class _OverviewTab extends StatelessWidget {
       final rate = prov.attendanceRate.toDouble();
       if (rate >= 85) {
         list.add(_Insight(Icons.verified_rounded, success,
-            _fmt('sa_ins_att_excellent', {'present': prov.presentCount, 'total': prov.totalSessions})));
+            _fmt('sa_ins_att_excellent', {'present': prov.presentCount, 'sessions': anSessionsWord(prov.totalSessions)})));
       } else if (rate >= 60) {
         list.add(_Insight(Icons.info_rounded, context.colors.warning,
-            _fmt('sa_ins_att_fair', {'absent': absent})));
+            _fmt('sa_ins_att_fair', {'sessions': anSessionsWord(absent)})));
       } else {
         list.add(_Insight(Icons.warning_amber_rounded, context.colors.danger,
-            _fmt('sa_ins_att_low', {'absent': absent})));
+            _fmt('sa_ins_att_low', {'sessions': anSessionsWord(absent)})));
       }
     }
 
@@ -497,7 +497,7 @@ class _OverviewTab extends StatelessWidget {
         failed == 0 ? success : context.colors.warning,
         failed == 0
             ? _fmt('sa_ins_exam_all_passed', {'n': prov.passedCount})
-            : _fmt('sa_ins_exam_some', {'passed': prov.passedCount, 'attempted': prov.attemptedCount, 'failed': failed}),
+            : _fmt('sa_ins_exam_some', {'passed': prov.passedCount, 'exams': anExamsWord(prov.attemptedCount), 'failed': failed}),
       ));
 
       final done = prov.exams
@@ -1443,7 +1443,7 @@ class _MarksTab extends StatelessWidget {
                 Icon(Icons.event_available_rounded, size: 16, color: c.success),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(anFmt('an2_attended_of', {'a': b.attended, 'sessions': anSessionsWord(b.held)}, 'Attended {a} of {sessions} so far'),  // L2
+                  child: Text(anFmt('an2_you_attended_of', {'a': b.attended, 'sessions': anSessionsWord(b.held)}, 'You attended {a} of {sessions} so far'),  // L2
                       style: _t(12, c: c.textMedium)),
                 ),
               ]),

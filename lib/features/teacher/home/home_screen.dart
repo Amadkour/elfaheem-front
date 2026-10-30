@@ -25,7 +25,7 @@
 // same account. TeacherHomeBody takes plain values (test/ui/teacher_home_layout_test.dart).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
-import 'package:flutter_education_app/core/home/me_home.dart' show MeLiveRoom;
+import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService, MeLiveRoom;
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart';
@@ -43,6 +43,7 @@ import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart' show HomeLiveNow;
+import 'package:flutter_education_app/features/student/home/home_screen.dart' show orgModeDaySummary;
 import 'package:flutter_education_app/features/teacher/home/go_live.dart' show kQuickLiveFeatureKey;
 import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart' show GoLiveEntry;
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
@@ -165,9 +166,12 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
     final staleError = provider.hasError && provider.loaded ? (provider.errorMessage ?? 'generic_error'.tr) : null;
     final quickLive = !AppConfig.disableList.contains(kQuickLiveFeatureKey); // D-091
 
-    return BasePage(
+    // a desktop window: one wide calm card over the page's pattern (homeCardWidth), the dashboard inside it
+    return LayoutBuilder(
+      builder: (context, area) => BasePage(
       key: const ValueKey('teacher_home'),
       useWebCard: true,
+      maxWith: homeCardWidth(area.maxWidth),
       enableFooterWidget: false,
       child: SafeArea(
         child: AppRefresh(
@@ -185,8 +189,19 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         index: 0,
                         child: HomeHeader(
                           name: user?.name ?? 'sir'.tr,
-                          subtitle: provider.loaded ? teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length,
-                              payoutWaiting: (provider.extra?.pendingPayout ?? 0) > 0, orgTodo: _orgTodo()) : null,
+                          // the day in one line, from exactly what the page below draws (M6): in Organization mode
+                          // that organization's today, strip and "What needs you" rows; else my sessions and pills
+                          subtitle: !provider.loaded
+                              ? null
+                              : (AppModeController.instance.isOrg
+                                      ? orgModeDaySummary(MeHomeService.instance.home, AppModeController.instance,
+                                          MeHomeService.instance.liveNow.length)
+                                      : null) ??
+                                  teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length,
+                                      payoutWaiting: (provider.extra?.pendingPayout ?? 0) > 0,
+                                      orgTodo: _orgTodo(),
+                                      inboxWaiting: !AppModeController.instance.isOrg &&
+                                          (provider.extra?.inboxPreview ?? const []).any((x) => '${x['segment'] ?? 'todo'}' == 'todo')),
                           leading: user == null ? null : UserChipButton(user: user, showLabel: false),
                           actions: [
                             // "Meet now" moved into the Go live sheet; the icon comes back when Go live is switched off
@@ -249,6 +264,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -262,9 +278,10 @@ int _orgTodo() {
 }
 
 /// The greeting's one line: today's sessions, what is live (or the next start), the counts that wait — the same
-/// counts the page's pills show ([orgTodo]: the open organization's, M6), never "nothing waiting" next to them.
+/// counts the page's pills show ([orgTodo]: the open organization's on an older server without /me/home, M6), never
+/// "nothing waiting" next to them. [inboxWaiting]: the inbox preview lists a to-do (it has no pill of its own).
 String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pending, int liveMeetings,
-    {bool payoutWaiting = false, int orgTodo = 0}) {
+    {bool payoutWaiting = false, int orgTodo = 0, bool inboxWaiting = false}) {
   final today = [...schedule.where((s) => s.isToday)]..sort((a, b) => a.startMin.compareTo(b.startMin));
   final live = schedule.where((s) => s.isOngoing || s.isLive).length + liveMeetings;
   final now = DateTime.now().toUtc();
@@ -274,19 +291,19 @@ String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pendin
     sessions: today.length,
     live: live,
     todo: p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests') + orgTodo,
-    othersWaiting: payoutWaiting,
+    othersWaiting: payoutWaiting || inboxWaiting,
     nextAt: next == null ? null : AppTime.time(teacherSessionUtc(next, next.startTime)),
   );
 }
 
-/// Centered, max 1100 wide (web) — phones use the full width.
+/// Centered, at most the desktop home's width — phones use the full width.
 class _Width extends StatelessWidget {
   const _Width({required this.child});
   final Widget child;
 
   @override
   Widget build(BuildContext context) =>
-      Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1100), child: child));
+      Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: kHomeWideMax), child: child));
 }
 
 /// The Personal side of the instructor home (no providers inside → layout-tested on its own).
@@ -354,9 +371,6 @@ class TeacherHomeBody extends StatelessWidget {
 
   /// "Enter room" on the session that runs now; null = the pre-join page (openTeacherPreJoin).
   final ValueChanged<ScheduleSession>? onEnterRoom;
-
-  /// The rhythm between sections.
-  static const _gap = SizedBox(height: 24);
 
   @override
   Widget build(BuildContext context) {
@@ -515,26 +529,13 @@ class TeacherHomeBody extends StatelessWidget {
       //    "Enter room")
       if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(20, 0, 20, 24)),
 
-      if (needsYou != null) ...[needsYou, _gap],
-
-      // phone: today · courses · inbox; a wide window: today beside the inbox (two short lists), then the courses
-      LayoutBuilder(builder: (context, box) {
-        if (box.maxWidth >= 900 && inbox != null) {
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            HomeSplit(start: [todaySection], end: [inbox]),
-            _gap,
-            coursesSection,
-            _gap,
-          ]);
-        }
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          todaySection,
-          _gap,
-          coursesSection,
-          _gap,
-          if (inbox != null) ...[inbox, _gap],
-        ]);
-      }),
+      // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my teaching) beside
+      // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
+      HomeDashboard(
+        narrow: [?needsYou, todaySection, coursesSection, ?inbox],
+        main: [todaySection, if (needsYou != null || inbox != null) coursesSection],
+        side: needsYou == null && inbox == null ? [coursesSection] : [?needsYou, ?inbox],
+      ),
       if (extra == null && showFeeds) const InboxPreviewCard(padding: EdgeInsets.fromLTRB(20, 0, 20, 16)),
 
       if (showFeeds) ...[

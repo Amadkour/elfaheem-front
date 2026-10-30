@@ -248,7 +248,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
           value: totals.value(m),
           delta: totals.delta(m),
           detail: m == AnMetric.attendance && totals.held > 0
-              ? anFmt('an2_sessions_of', {'a': totals.attended, 'h': totals.held}, '{a} of {h} sessions')
+              ? anFmt('an2_sessions_of', {'a': totals.attended, 'sessions': anSessionsWord(totals.held)}, '{a} of {sessions}')
               : null,
         ),
     ];

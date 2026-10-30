@@ -161,6 +161,10 @@ class RagChatViewState extends State<RagChatView> {
 
   /// Unfinished answers reopened from the history that this view is following.
   final Set<int> _following = {};
+
+  /// The chat on screen was opened by itself (the latest conversation, the flat history) and the person has not
+  /// asked or picked anything since (N6): a reopened question that gives up then yields to a new chat.
+  bool _untouched = false;
   String? _error;
 
   // chat sessions (Track E.5)
@@ -255,6 +259,7 @@ class RagChatViewState extends State<RagChatView> {
   /// A clean conversation: nothing shown, no memory; it is created on the server with the first question.
   void newChat() {
     if (_sessions != true) return;
+    _untouched = false;
     setState(() {
       _current = null;
       _items.clear();
@@ -269,6 +274,7 @@ class RagChatViewState extends State<RagChatView> {
   /// Reopens [c]: its messages oldest first (the first page; "Load earlier" pages back). [resumed]: opened by itself
   /// (the latest conversation), not picked — one that ends on a failure then gives way to a new chat (N6).
   Future<void> openConversation(RagConversation c, {bool resumed = false}) async {
+    _untouched = resumed;
     setState(() {
       _current = c;
       _items.clear();
@@ -337,6 +343,25 @@ class RagChatViewState extends State<RagChatView> {
       if (a != null) _items[i] = a;
       if (a == null || !a.done) _stalled.add(id);
     });
+    // N6: a reopened question that gave up before the person did anything is not what the assistant opens on
+    if (_untouched && _items.last.id == id) _startFreshIfFailed();
+  }
+
+  /// The pop-up was opened again (N6): a chat that ends on a failure gives way to a new chat with the starter
+  /// questions (it stays under Chats); nothing changes while a question is being sent or the chat is loading.
+  void reopened() {
+    if (!mounted || _sending || _loading) return;
+    _startFreshIfFailed();
+  }
+
+  void _startFreshIfFailed() {
+    final shown = _items.sublist(_hiddenBefore.clamp(0, _items.length));
+    if (!ragShowsFailure(shown, _stalled)) return;
+    if (_sessions == true) {
+      newChat();
+    } else {
+      setState(() => _hiddenBefore = _items.length); // an older server: folded behind "Earlier questions"
+    }
   }
 
   /// Retry on a stalled answer: the same question again, as a new one.
@@ -476,6 +501,7 @@ class RagChatViewState extends State<RagChatView> {
   Future<void> _history({bool opening = false}) async {
     final r = await _api.history(orgId: widget.orgId, courseId: widget.courseId, app: widget.app);
     if (!mounted) return;
+    if (opening) _untouched = true;
     setState(() {
       _loading = false;
       if (r.ok) {
@@ -504,6 +530,7 @@ class RagChatViewState extends State<RagChatView> {
   Future<void> send(String text) async {
     final q = text.trim();
     if (q.isEmpty || _sending) return;
+    _untouched = false;
     setState(() { _sending = true; _error = null; });
     // a new chat is created on the server with its first question (its title from that question)
     if (_sessions == true && _current == null) {

@@ -7222,8 +7222,8 @@
     "ar": "نجحت في {n} من {m}"
   },
   "an2_sessions_of": {
-    "en": "{a} of {h} sessions",
-    "ar": "{a} من {h} محاضرة"
+    "en": "{a} of {sessions}",
+    "ar": "{a} من {sessions}"
   },
   "an2_tile_attended": {
     "en": "Sessions attended",
@@ -7262,8 +7262,8 @@
     "ar": "أقل من 60٪ حضورًا أو 50٪ في الاختبارات"
   },
   "an2_ins_low_att": {
-    "en": "You attended {a} of {h} sessions in {course}. Join the next one to get back on track.",
-    "ar": "حضرت {a} من {h} محاضرة في {course}. احضر المحاضرة القادمة لتعود إلى المسار."
+    "en": "You attended {a} of {sessions} in {course}. Join the next one to get back on track.",
+    "ar": "حضرت {a} من {sessions} في {course}. احضر الجلسة القادمة لتعود إلى المسار."
   },
   "an2_ins_low_exams_review": {
     "en": "Your exam average in {course} is {pct}. Go over the {questions} you saved before the next exam.",
@@ -9202,24 +9202,24 @@
     "ar": "ناجح"
   },
   "sa_ins_att_excellent": {
-    "en": "Excellent attendance: attended {present} of {total} sessions.",
-    "ar": "التزام ممتاز بالحضور، حضر {present} من {total} محاضرة."
+    "en": "Excellent attendance: you attended {present} of {sessions}.",
+    "ar": "التزام ممتاز بالحضور: حضرت {present} من {sessions}."
   },
   "sa_ins_att_fair": {
-    "en": "Attendance is acceptable, with {absent} sessions missed. More regularity is recommended.",
-    "ar": "نسبة الحضور مقبولة، وقد غاب {absent} محاضرة. يُفضّل الانتظام أكثر."
+    "en": "Your attendance is acceptable: you missed {sessions}. Try to attend more regularly.",
+    "ar": "نسبة حضورك مقبولة: فاتتك {sessions}. حاول الانتظام أكثر."
   },
   "sa_ins_att_low": {
-    "en": "Absences are high ({absent} sessions). We recommend following up with the student.",
-    "ar": "الغياب مرتفع ({absent} محاضرة). ننصح بالمتابعة مع الطالب."
+    "en": "You missed {sessions}. Catch up on them before the next one.",
+    "ar": "غيابك مرتفع: فاتتك {sessions}. راجع ما فاتك قبل الجلسة القادمة."
   },
   "sa_ins_exam_all_passed": {
-    "en": "Passed every exam taken ({n}).",
-    "ar": "اجتاز جميع الاختبارات التي أداها ({n})."
+    "en": "You passed every exam you took ({n}).",
+    "ar": "اجتزت كل الاختبارات التي أدّيتها ({n})."
   },
   "sa_ins_exam_some": {
-    "en": "Passed {passed} of {attempted} exams and did not pass {failed}.",
-    "ar": "اجتاز {passed} من {attempted} اختبار، ولم يجتز {failed}."
+    "en": "You passed {passed} of {exams} and did not pass {failed}.",
+    "ar": "اجتزت {passed} من {exams}، ولم تجتز {failed}."
   },
   "sa_ins_best": {
     "en": "Best result: {name} with {pct}%.",
@@ -17007,7 +17007,7 @@
   },
   "home_t_course_line": {
     "en": "{s} students · {n} sessions",
-    "ar": "{s} طالب · {n} محاضرة"
+    "ar": "{s} طالب · {n} جلسة"
   },
   "home_refresh_failed": {
     "en": "Could not refresh — showing the last data",
@@ -18094,20 +18094,20 @@
     "ar": "دروس مسجّلة"
   },
   "course_list_lessons_1": {
-    "en": "1 lesson",
-    "ar": "محاضرة واحدة"
+    "en": "1 session",
+    "ar": "جلسة واحدة"
   },
   "course_list_lessons_2": {
-    "en": "2 lessons",
-    "ar": "محاضرتان"
+    "en": "2 sessions",
+    "ar": "جلستان"
   },
   "course_list_lessons_few": {
-    "en": "{n} lessons",
-    "ar": "{n} محاضرات"
+    "en": "{n} sessions",
+    "ar": "{n} جلسات"
   },
   "course_list_lessons_many": {
-    "en": "{n} lessons",
-    "ar": "{n} محاضرة"
+    "en": "{n} sessions",
+    "ar": "{n} جلسة"
   },
   "course_list_hours": {
     "en": "{n} h",
@@ -18151,7 +18151,7 @@
   },
   "course_list_sessions_sem": {
     "en": "{n} sessions",
-    "ar": "{n} محاضرة"
+    "ar": "{n} جلسة"
   },
   "course_list_rating_sem": {
     "en": "Rating {n}",
@@ -18160,5 +18160,13 @@
   "favorite": {
     "en": "Favorite",
     "ar": "مفضّل"
+  },
+  "an2_you_attended_of": {
+    "en": "You attended {a} of {sessions} so far",
+    "ar": "حضرت {a} من {sessions} حتى الآن"
+  },
+  "session_rate_it": {
+    "en": "Rate this session",
+    "ar": "قيّم الجلسة"
   }
 }

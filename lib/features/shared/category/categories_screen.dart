@@ -505,21 +505,15 @@ class CategoryAvatar extends StatelessWidget {
     required this.index,
   });
 
-  /// The letters drawn without a picture, from the name in the app's language (L7): Arabic → the first letter after the article,
-  /// of the first and last word, Latin → the first letters of the first and last word.
+  /// The ONE letter drawn without a picture, from the name in the app's language (N7 / L7): the first letter of the
+  /// first word, after the Arabic article "ال" (every "ال…" name drew the same alef, read as a Latin "I"). Two
+  /// letters read as broken glyphs in Arabic ("لع", "حآ"), so a Latin name gets one letter too.
   static String initialsOf(String name) {
     final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
     if (words.isEmpty) return '?';
-    final first = words.first.characters.first;
-    if (RegExp(r'[\u0600-\u06FF]').hasMatch(first)) {
-      // N7: skip the article "ال" (every "ال..." name drew the same alef, which reads as a Latin "I");
-      // two words → both letters, kept apart by a zero-width non-joiner so they stay two initials
-      String stem(String w) => (w.startsWith('ال') && w.characters.length > 3 ? w.substring(2) : w).characters.first;
-      if (words.length == 1) return stem(words.first);
-      return '${stem(words.first)}\u200C${stem(words.last)}';
-    }
-    final last = words.length > 1 ? words.last.characters.first : '';
-    return (first + last).toUpperCase();
+    final w = words.first;
+    final stem = w.startsWith('ال') && w.characters.length > 3 ? w.substring(2) : w;
+    return stem.characters.first.toUpperCase();
   }
 
   @override
@@ -574,7 +568,7 @@ class CategoryAvatar extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: AppFonts.family,
                           color: c.primary,
-                          fontSize: size / 4.5,
+                          fontSize: size / 3,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

@@ -38,7 +38,7 @@ import 'dart:async';
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
-import '../../../core/home/me_home.dart' show MeLiveRoom, liveRoomsAfterEvent;
+import '../../../core/home/me_home.dart' show MeHomeService, MeLiveRoom, liveRoomsAfterEvent;
 import '../../../utils/live_events.dart';
 import '../courses/component/teacher_stats.dart';
 import 'teacher_home_extra.dart';
@@ -168,7 +168,11 @@ class TeacherHomeProvider extends BaseProvider {
     if (_extraMissing) return null;
     try {
       final r = await _api.get('/api/v1/me/home');
-      if (r is Map<String, dynamic>) return TeacherHomeExtra.fromJson(r);
+      if (r is Map<String, dynamic>) {
+        // the same payload feeds the shared home cache: Organization mode (OrgMemberHome) reads it from there
+        MeHomeService.instance.adopt(r);
+        return TeacherHomeExtra.fromJson(r);
+      }
     } on ApiException catch (e) {
       if (teacherHomeExtraMissing(e)) _extraMissing = true;
     } catch (_) {

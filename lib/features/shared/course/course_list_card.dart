@@ -16,12 +16,18 @@
 //                                            │ footer        │ ← progress · price · teacher figures
 //                                            └───────────────┘
 //
+// A grid row is as tall as its tallest tile (CourseCardSliver lays each row out by its content): a lone tile or a
+// row of one-line titles has no blank band between the meta line and the footer; a footer sits at the bottom of
+// its row so the row's footers line up. Under a fixed height (another screen's SliverGrid) the footer still sits
+// at the bottom and a long title gives way first.
+//
 // Type: titles w600, meta w400 muted, figures w600; hairline border, no shadow, one accent per card. The header
 // parts of a course list (CourseSearchField, CourseSegments) and its states (CourseListSkeleton, CourseListEmpty,
 // CourseListError) live here too, so the two screens build the same calm block.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appCompactNumber;
@@ -47,7 +53,8 @@ Color coursePrimaryInk(BuildContext context) {
   return c.isDark ? Color.lerp(c.primary, c.textDark, 0.55)! : c.primary;
 }
 
-/// "12 lessons" in the current language (Arabic plural forms).
+/// "12 sessions" in the current language (Arabic plural forms) — the course page's word for every lecture and
+/// section ("Session").
 String courseLessonsLabel(int n) {
   final key = n == 1
       ? 'course_list_lessons_1'
@@ -220,34 +227,142 @@ class CourseListCard extends StatelessWidget {
         if (corner != null) PositionedDirectional(end: 8, top: 8, child: _CornerBackdrop(child: corner!)),
       ]),
     );
-    final body = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // title + meta on top (a very large text scale clips the title, never overflows), the footer at the bottom
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Flexible(child: _title(context)),
-            const SizedBox(height: 4),
-            _meta(context),
-          ]),
-        ),
-        const SizedBox(height: 8),
-        footer,
-      ]),
-    );
-    return LayoutBuilder(builder: (context, box) {
-      if (!box.hasBoundedHeight) {
-        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          cover,
-          SizedBox(height: 128 * _scale(context), child: body),
-        ]);
-      }
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        cover,
-        Expanded(child: body),
-      ]);
-    });
+    // cover · title + meta · footer; the tile is its content's height, or the height it is given with the footer at
+    // the bottom (a row's footers line up) — the same tree either way, so nothing is rebuilt between the two
+    return _TileLayout(children: [
+      cover,
+      ClipRect(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // a very large text scale in a fixed-height grid clips the title, never overflows
+          Flexible(child: _title(context)),
+          const SizedBox(height: 4),
+          _meta(context),
+        ]),
+      ),
+      footer,
+    ]);
   }
+}
+
+/// A tile's three parts — cover (full width), text block, footer — inset 16 · 12 · 16 · 16 with 12 px between the
+/// text and the footer. Unbounded height → the content's height; a bounded one → that height, the footer at the
+/// bottom and the text block given what is left.
+class _TileLayout extends MultiChildRenderObjectWidget {
+  const _TileLayout({required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderTileLayout();
+}
+
+class _TileParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderTileLayout extends RenderBox
+    with ContainerRenderObjectMixin<RenderBox, _TileParentData>, RenderBoxContainerDefaultsMixin<RenderBox, _TileParentData> {
+  static const _side = 16.0, _top = 12.0, _gap = 12.0, _bottom = 16.0;
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _TileParentData) child.parentData = _TileParentData();
+  }
+
+  @override
+  void performLayout() {
+    final w = constraints.maxWidth;
+    final cover = firstChild!, text = childAfter(cover)!, foot = childAfter(text)!;
+    final inner = math.max(0.0, w - 2 * _side);
+    cover.layout(BoxConstraints.tightFor(width: w), parentUsesSize: true);
+    foot.layout(BoxConstraints(minWidth: inner, maxWidth: inner), parentUsesSize: true);
+    final fixed = cover.size.height + _top + _gap + foot.size.height + _bottom;
+    // the text block gets what a given height leaves (a finite bound either way: its title is Flexible)
+    final room = constraints.hasBoundedHeight ? math.max(0.0, constraints.maxHeight - fixed) : 100000.0;
+    text.layout(BoxConstraints(minWidth: inner, maxWidth: inner, maxHeight: room), parentUsesSize: true);
+    size = constraints.constrain(Size(w, fixed + text.size.height));
+    (cover.parentData! as _TileParentData).offset = Offset.zero;
+    (text.parentData! as _TileParentData).offset = Offset(_side, cover.size.height + _top);
+    (foot.parentData! as _TileParentData).offset = Offset(_side, size.height - _bottom - foot.size.height);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) => defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) => defaultHitTestChildren(result, position: position);
+}
+
+/// A row of [columns] equal cells, as tall as its tallest child: each child is laid out at its content's height,
+/// then the shorter ones again at the row's (a tile puts its footer at the bottom). Cells follow [textDirection];
+/// a short last row leaves its end cells empty.
+class _EqualHeightRow extends MultiChildRenderObjectWidget {
+  const _EqualHeightRow({required this.columns, required this.gap, required this.textDirection, required super.children});
+
+  final int columns;
+  final double gap;
+  final TextDirection textDirection;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderEqualHeightRow(columns, gap, textDirection);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderEqualHeightRow renderObject) => renderObject
+    ..columns = columns
+    ..gap = gap
+    ..textDirection = textDirection;
+}
+
+class _RenderEqualHeightRow extends RenderBox
+    with ContainerRenderObjectMixin<RenderBox, _TileParentData>, RenderBoxContainerDefaultsMixin<RenderBox, _TileParentData> {
+  _RenderEqualHeightRow(this._columns, this._gap, this._dir);
+
+  int _columns;
+  double _gap;
+  TextDirection _dir;
+
+  set columns(int v) {
+    if (v == _columns) return;
+    _columns = v;
+    markNeedsLayout();
+  }
+
+  set gap(double v) {
+    if (v == _gap) return;
+    _gap = v;
+    markNeedsLayout();
+  }
+
+  set textDirection(TextDirection v) {
+    if (v == _dir) return;
+    _dir = v;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _TileParentData) child.parentData = _TileParentData();
+  }
+
+  @override
+  void performLayout() {
+    final w = constraints.maxWidth;
+    final cell = math.max(0.0, (w - _gap * (_columns - 1)) / _columns);
+    var h = 0.0;
+    for (var c = firstChild; c != null; c = childAfter(c)) {
+      c.layout(BoxConstraints.tightFor(width: cell), parentUsesSize: true);
+      h = math.max(h, c.size.height);
+    }
+    var i = 0;
+    for (var c = firstChild; c != null; c = childAfter(c), i++) {
+      if (c.size.height != h) c.layout(BoxConstraints.tightFor(width: cell, height: h), parentUsesSize: true);
+      final x = i * (cell + _gap);
+      (c.parentData! as _TileParentData).offset = Offset(_dir == TextDirection.rtl ? w - x - cell : x, 0);
+    }
+    size = constraints.constrain(Size(w, h));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) => defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) => defaultHitTestChildren(result, position: position);
 }
 
 /// A soft disc behind a corner control that sits on the cover.
@@ -455,17 +570,22 @@ class CourseCardSliver extends StatelessWidget {
         itemBuilder: (context, i) => itemBuilder(context, i, shape),
       );
     }
+    // rows sized by their tiles (no fixed cell height: a one-line title left a blank band above the footer), start
+    // aligned — a lone course is one tile at the start, never stretched
     final cols = courseGridColumns(width);
     const gap = 16.0;
-    final cellW = math.max(1.0, (width - gap * (cols - 1)) / cols);
-    return SliverGrid(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: cols,
-        crossAxisSpacing: gap,
-        mainAxisSpacing: gap,
-        mainAxisExtent: CourseListCard.tileHeight(context, cellW),
+    final rows = (count + cols - 1) ~/ cols;
+    return SliverList.builder(
+      itemCount: rows,
+      itemBuilder: (context, r) => Padding(
+        padding: EdgeInsets.only(bottom: r == rows - 1 ? 0 : gap),
+        child: _EqualHeightRow(
+          columns: cols,
+          gap: gap,
+          textDirection: Directionality.of(context),
+          children: [for (var i = r * cols; i < math.min(count, (r + 1) * cols); i++) itemBuilder(context, i, shape)],
+        ),
       ),
-      delegate: SliverChildBuilderDelegate((context, i) => itemBuilder(context, i, shape), childCount: count),
     );
   }
 }
