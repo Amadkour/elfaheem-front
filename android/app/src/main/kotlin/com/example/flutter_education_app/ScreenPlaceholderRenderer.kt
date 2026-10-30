@@ -5,6 +5,7 @@ import android.graphics.SurfaceTexture
 import android.opengl.EGL14
 import android.opengl.EGLConfig
 import android.opengl.EGLDisplay
+import android.opengl.EGLExt
 import android.opengl.EGLSurface
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
@@ -161,6 +162,7 @@ class ScreenPlaceholderRenderer(
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
+        texW = -1 // a raw room frame re-specifies the texture next time
         placeholderAspect = bitmap.width.toFloat() / bitmap.height.toFloat()
         hasPlaceholderImage = true
         Log.d(TAG, "placeholder bitmap uploaded ${bitmap.width}x${bitmap.height}")
@@ -597,9 +599,83 @@ class ScreenPlaceholderRenderer(
         }, 1000L / (if (liveMode) maxOf(FPS_PLACEHOLDER, captureFps) else FPS_PLACEHOLDER))
     }
 
+    /**
+     * Hands the drawn frame to the encoder stamped with the monotonic clock NOW (D-103): the frame's time in the
+     * recording is the moment it was drawn, on the same clock as the recorder's audio — real-time motion, A/V in sync.
+     */
+    private fun swapToEncoder() {
+        EGLExt.eglPresentationTimeANDROID(eglDisplay, outputSurface, System.nanoTime())
+        EGL14.eglSwapBuffers(eglDisplay, outputSurface)
+    }
+
+    // ── Live room frames (D-103) ────────────────────────────────────────────
+    //
+    // Before a share, the recording shows the room as Dart sees it. It used to arrive as a PNG twice a second
+    // (setPlaceholderBitmap): the camera in the recording moved in ~2 fps jumps — what the owner saw as "slow
+    // motion". Dart now sends raw RGBA frames ~12 times a second; the latest one is copied into ONE reused direct
+    // buffer (any thread) and uploaded to the placeholder texture by the next draw tick (GL thread).
+    private val frameLock = Any()
+    private var frameBuf: ByteBuffer? = null
+    private var frameW = 0
+    private var frameH = 0
+    private var frameDirty = false
+    private var texW = -1
+    private var texH = -1
+
+    /** The latest room frame, [rgba] = width × height × 4 bytes, rows top-down (Flutter's rawRgba). */
+    fun setPlaceholderFrame(rgba: ByteArray, width: Int, height: Int) {
+        val n = width * height * 4
+        if (width <= 0 || height <= 0 || rgba.size < n) return
+        synchronized(frameLock) {
+            var b = frameBuf
+            if (b == null || b.capacity() < n) b = ByteBuffer.allocateDirect(n).order(ByteOrder.nativeOrder())
+            b!!.clear()
+            b.put(rgba, 0, n)
+            b.flip()
+            frameBuf = b
+            frameW = width
+            frameH = height
+            frameDirty = true
+        }
+    }
+
+    /** GL thread, a context current: the pending room frame into the placeholder texture. */
+    private fun uploadPendingFrame() {
+        synchronized(frameLock) {
+            if (!frameDirty) return
+            val b = frameBuf ?: return
+            if (placeholderTextureId == 0) {
+                val tex = IntArray(1)
+                GLES20.glGenTextures(1, tex, 0)
+                placeholderTextureId = tex[0]
+                texW = -1
+            }
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, placeholderTextureId)
+            GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 4)
+            b.position(0)
+            if (frameW != texW || frameH != texH) {
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+                GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, frameW, frameH, 0,
+                        GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, b)
+                texW = frameW
+                texH = frameH
+            } else {
+                GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, frameW, frameH,
+                        GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, b)
+            }
+            placeholderAspect = frameW.toFloat() / frameH.toFloat()
+            hasPlaceholderImage = true
+            frameDirty = false
+        }
+    }
+
     private fun drawPlaceholderFrame() {
         if (offscreen) return // nothing consumes it
         if (!makeCurrentOutput()) return
+        uploadPendingFrame()
         GLES20.glViewport(0, 0, outputWidth, outputHeight)
         GLES20.glClearColor(PLACEHOLDER_R, PLACEHOLDER_G, PLACEHOLDER_B, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
@@ -608,7 +684,7 @@ class ScreenPlaceholderRenderer(
             drawPlaceholderBitmapAspectFit()
         }
 
-        EGL14.eglSwapBuffers(eglDisplay, outputSurface)
+        swapToEncoder()
     }
 
     /**
@@ -687,7 +763,7 @@ class ScreenPlaceholderRenderer(
         // No real frame yet (right after switchToLive): the black clear still
         // goes to the encoder, so it keeps getting frames every tick.
         if (haveLiveFrame) drawInputQuad(fitVertexBuffer())
-        EGL14.eglSwapBuffers(eglDisplay, outputSurface)
+        swapToEncoder()
     }
 
     /** The OES input texture over [verts] (x, y, u, v) into whatever framebuffer is bound. */

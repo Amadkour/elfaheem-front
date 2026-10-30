@@ -387,6 +387,19 @@ class MainActivity : FlutterFragmentActivity() {
 
                         "getChunkIndex" -> result.success(ScreenCaptureService.currentChunkIndex)
 
+                        // D-103: a raw RGBA frame of the room (~12 fps) — the recording's camera moves in real time.
+                        "setPlaceholderFrame" -> {
+                            val bytes = call.argument<ByteArray>("rgba")
+                            val w = call.argument<Int>("width") ?: 0
+                            val h = call.argument<Int>("height") ?: 0
+                            if (bytes == null || w <= 0 || h <= 0) {
+                                result.error("BAD_ARGS", "rgba / width / height missing", null)
+                                return@setMethodCallHandler
+                            }
+                            ScreenCaptureService.placeholderRenderer?.setPlaceholderFrame(bytes, w, h)
+                            result.success(null)
+                        }
+
                         "setPlaceholderImage" -> {
                             val bytes = call.argument<ByteArray>("png")
                             if (bytes == null) {

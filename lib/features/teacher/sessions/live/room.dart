@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, ValueListenabl
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/features/teacher/sessions/live/widgets/record/live_frame_pacing.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
@@ -2004,18 +2005,29 @@ class _RoomPageState extends State<RoomPage>
   // freezes the main isolate. This was the actual bug behind camera+share
   // freezing the app.
   bool _liveScreenCaptureInFlight = false;
+  // D-103: raw RGBA frames (~12 fps, live_frame_pacing.dart) instead of a PNG every 500 ms — the camera in the
+  // recording moved in 2 fps jumps. An older native side without 'setPlaceholderFrame' gets the PNGs again.
+  bool _rawLiveFramesUnsupported = false;
+  int _liveCaptureGen = 0;
 
   void _startLiveScreenCapture() {
     if (!widget.isTeacher || !Platform.isAndroid) return;
     _liveScreenCaptureTimer?.cancel();
-    _liveScreenCaptureTimer = Timer.periodic(
-      const Duration(milliseconds: 500), // ~2fps — see cost note above
-          (_) => unawaited(_captureAndSendLiveScreen()),
-    );
-    unawaited(_captureAndSendLiveScreen()); // don't wait for the first tick
+    final gen = ++_liveCaptureGen;
+    void next(Duration wait) {
+      _liveScreenCaptureTimer = Timer(wait, () async {
+        final sw = Stopwatch()..start();
+        await _captureAndSendLiveScreen();
+        if (gen != _liveCaptureGen || _liveScreenCaptureTimer == null) return; // stopped meanwhile
+        next(_rawLiveFramesUnsupported ? const Duration(milliseconds: 500) : liveFrameDelay(sw.elapsed));
+      });
+    }
+
+    next(Duration.zero);
   }
 
   void _stopLiveScreenCapture() {
+    _liveCaptureGen++;
     _liveScreenCaptureTimer?.cancel();
     _liveScreenCaptureTimer = null;
   }
@@ -2056,12 +2068,25 @@ class _RoomPageState extends State<RoomPage>
       return;
     }
     _liveScreenCaptureInFlight = true;
+    const channel = MethodChannel('com.example.flutter_education_app/native_recorder');
     try {
+      if (!_rawLiveFramesUnsupported) {
+        final frame = await _captureLiveScreenRaw();
+        if (frame == null) return;
+        try {
+          await channel.invokeMethod('setPlaceholderFrame', {
+            'rgba': frame.$1,
+            'width': frame.$2,
+            'height': frame.$3,
+          });
+          return;
+        } on MissingPluginException {
+          _rawLiveFramesUnsupported = true; // an older native side: PNGs below
+        }
+      }
       final png = await _captureLiveScreenPng();
       if (png == null) return;
-      await const MethodChannel(
-        'com.example.flutter_education_app/native_recorder',
-      ).invokeMethod('setPlaceholderImage', {'png': png});
+      await channel.invokeMethod('setPlaceholderImage', {'png': png});
     } catch (e) {
       log('[REC] live screen capture/send error: $e');
     } finally {
@@ -2282,6 +2307,27 @@ class _RoomPageState extends State<RoomPage>
       }
     });
 
+
+  /// D-103: the same screenshot as raw RGBA (rows top-down) + its size — no PNG encode on this isolate and no
+  /// decode on the native side, so the Android recorder can get ~12 frames a second.
+  Future<(Uint8List, int, int)?> _captureLiveScreenRaw() async {
+    if (LiveRoomHost.isMinimized) return null; // offstage in the box: nothing is painted to capture
+    try {
+      final boundary = _liveScreenCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null || boundary.debugNeedsPaint) return null;
+      final image = await boundary.toImage(pixelRatio: 1.0);
+      try {
+        final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        if (data == null) return null;
+        return (data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes), image.width, image.height);
+      } finally {
+        image.dispose();
+      }
+    } catch (e) {
+      log('[REC] _captureLiveScreenRaw error: $e');
+      return null;
+    }
+  }
 
   /// Screenshots the ACTUAL on-screen live screen (_liveScreenCaptureKey) — header, footer/controls, and main content all included —
   /// not a rebuilt duplicate widget — so whatever's genuinely live is what

@@ -1403,3 +1403,45 @@ is shown in the reader's language; Go live sends no name when the teacher typed 
 **Rejected.** A full-bleed coloured hero on every home (it fought the live state for attention); keeping the cover
 grid on phones for the lists (half the screen per course, titles cut to one line); a separate sessions widget per role
 (the two pages drifted apart before); Arabic-Indic digits everywhere (clocks, counts and server text are already 0-9).
+
+## D-103 — The device recording is ONE continuous encode cut into chunks; the server joins it with a stream copy; the room frames reach the Android recorder at ~12 fps · 2026-10-30 · accepted
+
+**Context.** The owner, on the S24 recordings (D-098, client mode): "a leak every 5 seconds — make the video one block
+without any leak", and "the camera is shown in slow motion — make the movement normal". Evidence from the dev stack's
+last Android recordings (run 12, `session_69/…_medium.mp4`, 131.9 s): the recording's own REC clock reads 00:20 /
+01:41 at playback 20 s / 100 s (real time overall — nothing is time-stretched), but the picture changes only every
+~475 ms (152 frozen stretches > 400 ms in 132 s) and video steps of 136 ms plus 31 ms runs of digital silence sit at
+chunk boundaries. Causes: (1) **gaps** — the recorder stopped one MediaRecorder and started the next every 5 s
+("ping-pong"): the renderer moved to the next recorder's surface before the old one stopped (its video ended early),
+the new encoder needed ~100 ms and a key frame, both recorders captured the mic for a moment (sound twice), every file
+began with a new AAC encoder's priming silence, and the server's concat put each file after the previous file's
+longest track; (2) **"slow motion"** — before a share the Android recording draws the room from screenshots Dart sends:
+a PNG every 500 ms (encode + platform channel + decode), so the camera moved in ~2 fps jumps.
+**Decision.** Android records with `SegmentedRecorder` (MediaCodec H.264 on the renderer's input surface + MediaCodec
+AAC on an `AudioRecord(MIC)` stamped from its sample count on the monotonic clock; the renderer stamps every frame with
+`eglPresentationTimeANDROID(System.nanoTime())`): both encoders run for the whole recording (until a pause) and a
+`MediaMuxer` is swapped for a new file at the first key frame ≥ 4.75 s into the chunk (a sync frame is requested
+0.4 s before); the two encoders' output is merged in timestamp order, so every frame and every AAC frame lands in
+exactly one chunk. Chunks keep the same upload protocol (index, epoch, upload token, is_final) plus the form field
+`seamless=1`; a stop while paused sends an empty final chunk (the finalize ping). The MediaRecorder ping-pong stays as
+the fallback when the encoders / mic cannot be set up. The server (`local_recorder.py`) marks such chunks and joins a
+run whose chunks are all marked with the concat demuxer and `-c copy`, each file's `duration` taken from the audio
+clock (`lead_N + audio_span_N − lead_N+1`) — no re-encode, the device's own timestamps; anything inconsistent, an
+unmarked chunk (older apps), iOS and web keep the legacy re-encode unchanged. The room frames: raw RGBA
+(`toImage` → `rawRgba` → `setPlaceholderFrame`) as soon as the previous one is done, at most 12 fps and at most 50 % of
+the time capturing (`live_frame_pacing.dart`); an older native side falls back to the PNGs. Cheap server (D-098 §1.2):
+`FFMPEG_THREADS` defaults to 2, every ffmpeg / ffprobe of the assembly runs under `nice -n 19` + `ionice -c3`
+(`FFMPEG_NICE`), and one assembly at a time per host (`ASSEMBLY_CONCURRENCY`, an asyncio semaphore + `flock`).
+**Measured** (`../back/tests/org_v2/recording_gapless.py`: frame-numbered source + beeps through the real assembly):
+old-style chunks — 9 timeline jumps up to 467 ms, 27 source frames lost, 270 ms of audio holes, A/V error up to 155 ms,
+47 s of class → 48.37 s of video (speed 0.972); new chunks — 0 jumps (max frame step 71 ms = 1.06 frame), 0 lost / 0
+held frames, 0 audio holes at the boundaries, A/V ≤ 10 ms, speed 1.000, duration 47.02 s, stream copy in ~1–3 s
+instead of a full libx264 pass. The same new chunks on an older server still assemble in real time (one 133 ms step,
+A/V ≤ 67 ms).
+**Trade-offs accepted.** The device's AAC encoder delay (~20–45 ms, audio slightly late) is not compensated; a
+recorder restart (reconnect, resume after pause) starts a new encoder, so its first ~20 ms is the encoder's priming;
+the room frames cost the teacher's phone a full-screen read-back ~12 times a second (paced to ≤ 50 % duty, 1×
+logical pixels as before); the iOS recorder (one AVAssetWriter per chunk, untested on a device here) is unchanged.
+**Rejected.** `MediaRecorder.setNextOutputFile` (switches only on a max file size, not on time); fragmented MP4 / a
+hand-written MPEG-TS muxer on the device (more code, and older servers would not accept the new container); a native
+camera-frame bridge into the recording (needs the flutter_webrtc fork, and drops what the room shows around the camera).
