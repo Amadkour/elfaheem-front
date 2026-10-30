@@ -12,7 +12,7 @@
 //
 // There is no "next up" hero card any more: it repeated the first row of "Today". What only it said (ends in
 // 50 min · the room) is the second line of that row now (HomeAgenda: homeAgendaNote, the item's place).
-//   StudentCourseSummary(courses:)      "My courses" in one card: figures + the 3 that matter now (homeCourseFocus)
+//   StudentCourseSummary(courses:)      "My courses" in one card: the 3 that matter now (homeCourseFocus)
 //
 // Plain values only (layout-tested in test/ui/student_home_layout_test.dart).
 library;
@@ -187,7 +187,7 @@ class _UpcomingLine extends StatelessWidget {
                   FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.centerStart,
-                      child: Text(day, maxLines: 1, style: appText(12.5, w: FontWeight.w800, c: c.textDark))),
+                      child: Text(day, maxLines: 1, style: appText(12.5, w: FontWeight.w600, c: c.textDark))),
                   FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.centerStart,
@@ -200,7 +200,7 @@ class _UpcomingLine extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark, h: 1.25)),
+                child: Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
               ),
               if (tag != null) ...[
                 const SizedBox(width: 8),
@@ -209,7 +209,7 @@ class _UpcomingLine extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
                   child: Text(tag,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w800, c: appInk(context, tone))),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w500, c: appInk(context, tone))),
                 ),
               ],
             ]),
@@ -240,8 +240,9 @@ String homeNextLectureLine(MeCourseProgress x) {
   return 'home_next_lecture'.tr.replaceAll('{n}', n.name) + when;
 }
 
-/// "My courses" summarized in one card: how many, in progress, completed, the average progress, and the three
-/// courses that matter now (homeCourseFocus); tap → the course, the foot → the courses tab.
+/// "My courses" summarized in one card: the three courses that matter now (homeCourseFocus), each with its next
+/// lecture and progress — the count sits in the section title, the totals on the courses tab; tap → the course,
+/// the foot → the courses tab.
 class StudentCourseSummary extends StatelessWidget {
   const StudentCourseSummary({super.key, required this.courses, this.onOpen, this.onShowAll});
   final List<MeCourseProgress> courses;
@@ -250,17 +251,9 @@ class StudentCourseSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final done = courses.where((x) => x.progress >= 100).length;
-    final going = courses.where((x) => x.progress > 0 && x.progress < 100).length;
-    final avg = courses.isEmpty ? 0.0 : courses.fold<double>(0, (s, x) => s + x.progress) / courses.length;
     final top = homeCourseFocus(courses).take(3).toList();
     return HomeCourseSummary(
-      figures: [
-        ('${courses.length}', 'courses'.tr),
-        ('$going', 'home_courses_going'.tr),
-        ('$done', 'completed'.tr),
-        ('${avg.round()}%', 'home_courses_avg'.tr),
-      ],
+      figures: const [],
       lines: [
         for (final x in top)
           HomeCourseLine(

@@ -481,7 +481,6 @@ class _InboxCompactRow extends StatelessWidget {
     final x = item;
     final now = DateTime.now();
     final u = inboxUrgency(x, now);
-    final tone = u == 'normal' || u == 'new' ? c.primary : _urgencyColor(context, u);
     final countdown = inboxCountdown(x, now);
     final where = _orgLine(x);
     final line = [
@@ -493,35 +492,40 @@ class _InboxCompactRow extends StatelessWidget {
       else if (where.isNotEmpty)
         where,
     ].join(' · ');
-    final (String, Color)? tag = u == 'overdue'
-        ? ('inbox_overdue'.tr, c.danger)
+    // one accent per row: an overdue row says it in its line ("Overdue by 22 h", in the danger ink) and needs no
+    // tag beside it; a required or due-soon row gets the tag; the kind icon stays neutral
+    final overdue = u == 'overdue';
+    final (String, Color)? tag = overdue
+        ? null
         : x.required && x.segment == InboxSegment.todo
             ? ('inbox_mandatory'.tr, c.danger)
             : u == 'due_soon' && x.kind != 'ad' && x.kind != 'exam'
                 ? ('inbox_due_soon'.tr, c.warning)
                 : null;
+    final ink = appInk(context, c.primary);
     return Semantics(
       button: true,
       label: _title(x),
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Row(children: [
             Container(
               width: 36,
               height: 36,
-              decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(11)),
-              child: Icon(_kindIcon(x), color: tone, size: 19),
+              decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10)),
+              child: Icon(_kindIcon(x), color: ink.withValues(alpha: 0.85), size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_title(x), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.textDark, h: 1.3)),
+                Text(_title(x), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
+                const SizedBox(height: 2),
                 Text(line,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: appText(11.5, w: FontWeight.w600, c: u == 'overdue' ? c.danger : c.textMedium, h: 1.3)),
+                    style: appText(12, w: overdue ? FontWeight.w500 : FontWeight.w400, c: overdue ? appInk(context, c.danger) : c.textMedium, h: 1.3)),
               ]),
             ),
             if (tag != null) ...[
