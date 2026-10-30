@@ -1510,3 +1510,50 @@ sessions keep their texts.
 one chance to fix a wrong camera or a muted microphone); swapping «الحصة» for «الاجتماع» inside one string (gender
 agreement breaks: «انتهت الاجتماع»); an InheritedWidget for the kind (the room's dialogs and sheets live in the room
 layer's own Navigator, outside the page's subtree).
+
+## D-107 — Whiteboard: a continuous page grows sideways when a stroke is held at its left or right edge · 2026-10-30 · proposed
+
+Amends D-093 (continuous page) and D-096 (edge auto-scroll).
+**Context.** The owner: "when try to write on left or right edge of the board the board must scroll right or left to
+extend the area of drawing." A continuous page grew only downward; left / right auto-scrolled only a zoomed page.
+**Decision.** (1) Formats: only the CONTINUOUS page grows sideways (the infinite-canvas format). Landscape and portrait
+stay fixed sheets with a clear edge: they are the slide (the 16:9 recording, the 1920×1080 PNG, a projector) and the
+sheet of paper; "Add page" is their way to more room, and a zoomed fixed page still auto-scrolls inside itself (D-096).
+(2) Coordinates: the column stays at x 0..1 and x may run from −`kBoardSideMax` to 1 + `kBoardSideMax` (1.5: a page 4
+widths wide, ≈ 4 phone screens, ≈ 2 laptop screens); y unchanged. Nothing is rewritten: growing to the LEFT is a
+negative x, so no stroke moves for anyone. The page's reach is derived, never stored (`boardContinuousSpanX`): the
+column, widened to what is drawn outside it + 0.08 width of paper, to the presenter's view and to what this device's
+edge auto-scroll grew it to; content inside the column never widens it (a line written at the very edge of a phone
+does not). A device's sideways position is measured from the column centred on its stage (`ContinuousView.panX`), so
+a page that grows keeps every line where it was on every screen; a page narrower than the stage stays on it (a
+laptop shows the grown paper beside the column without moving), a wider one always covers it. (3) Growing: the D-096
+rules unchanged (zone 12 % of the stage, 28–72 px, armed only after leaving the zone or travelling 24 px towards the
+edge, 60 → 900 px/s quadratic, eased over 250 ms, the held pointer re-mapped every frame so the stroke never gaps);
+on a continuous page the side edges' room is the cap, not the current page: a stroke, shape or moved selection held
+at the right / left edge scrolls that way and the page grows under it (`scrolledBy(grow: true)`), up to the cap. A
+mouse that leaves the column on a laptop simply draws on: the paper grows to the stroke. Text boxes open inside the
+current reach (a box never widens the page by itself). (4) Wire, compatible: x travels on the widest range for ink
+(`boardPoint`), shapes, text boxes and the laser; the annotation over a shared screen keeps its 0..1. An app from
+before this decision clamps x to 0..1, so a drawing beside the column would reach it as a smear along the column's
+edge — therefore the presenter announces `bv: 3` (`kBoardFeatureVersion` 3) as soon as anything on the board lies
+outside the column (sticky while presented in that format; any participant's item counts, the presenter re-sends
+the state before the first such point): an older app shows its existing "update the app" overlay instead of wrong
+content. Until then a continuous board stays `bv: 2`, byte for byte the D-093 packets, and older apps keep drawing it.
+The presenter's view carries its sideways part, `vp {x, w}` (page widths; left out while it is the column — keys older
+apps ignore), clipped to the page's reach (a laptop's wide stage never widens viewers' pages). (5) Viewers: their page
+reaches as far as the content and the presenter's view; "Follow" glides sideways too (`boardFollowLeft`: centred on
+the presenter's view, nothing to do when the viewer sees the whole width); one finger / the mouse / Shift + wheel pans a
+grown page sideways (D-096 hand and non-drawer pan) and leaves "Follow". A second, horizontal rail along the bottom
+(never mirrored: page x runs left to right in every language) shows the view across the page and the presenter's
+mark; the Follow button sits above it. (6) Export: Save as PNG of the whole board is as wide as what is drawn (1600 px
+per width, at most 6400 × 8192, scaled evenly); "visible" is the presenter's view. The 2 fps recording track of a
+continuous page (D-090) is now drawn from the items: the presenter's view widened to 16:9 over the page beside it
+(`boardRecordingWindow`), so a phone presenter fills the frame and a grown page is recorded around the pen, redrawn
+when the view moves. (7) A format change from a grown page to a fixed one centres the content and narrows it to fit.
+Tests: `test/org/board_grow_sideways_test.dart`, `test/ui/whiteboard_grow_layout_test.dart`; renders
+`test/visual/whiteboard_grow_golden_test.dart`.
+**Rejected.** Growing the fixed formats (breaks the 16:9 recording / PNG / projector and the sheet-of-paper metaphor);
+moving the origin or rewriting every item when growing left (every stroke jumps for everyone, a snapshot per growth);
+an extent message on the wire (the reach follows from the content and the presenter's view, as the length does in
+D-093); keeping `bv: 2` and letting older apps clamp (they would show a wrong drawing silently); an unbounded width (no
+bound for snapshots, exports and the recording).

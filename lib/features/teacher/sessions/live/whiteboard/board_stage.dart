@@ -37,6 +37,15 @@
 // (and where the presenter is). Name tags of whoever else draws (presence_tags.dart) sit over the ink; with the host's
 // "Show who drew what", the mouse over an item (or a long press when not drawing) shows its author. A finger's stroke
 // is held for 70 ms before it goes out, so a pinch never shows anybody a dot.
+//
+// Growing sideways (D-107): a continuous page also reaches past its column ([boardContinuousSpanX]) — to what is drawn
+// there, to where the presenter looks and to where this device's edge auto-scroll took it: a stroke held at the left
+// or right edge scrolls that way and the paper grows under it ([ContinuousView.scrolledBy] `grow`), up to
+// [kBoardSideMax] widths past each side. The column stays at x 0..1 and the view's sideways position is measured from
+// it, so growing (to the left too) never moves a line. The page's layers sit in the shown rect, whose left edge is
+// left of the column's once it grew left ([_frame] is that corner; positions inside are `ox + x × width`). A second,
+// horizontal rail along the bottom shows where the view is across the page (and where the presenter is); viewers
+// follow the presenter sideways too ([boardFollowLeft]).
 library;
 
 import 'dart:async';
@@ -132,12 +141,19 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   Rect _shown = Rect.zero;
   Size _box = Size.zero;
 
+  /// The shown rect's top-left corner on the stage: the frame of the page's layers and its pointer listener (left of
+  /// [_origin] once a continuous page grew to the left).
+  Offset _frame = Offset.zero;
+
+  /// As far as a continuous page could ever reach sideways (the edge auto-scroll's room to grow, D-107).
+  Rect _cap = Rect.zero;
+
   // pointer
   int? _pointer;
   PointerDeviceKind? _pointerKind;
 
-  /// The page's corner when the drawing pointer went down: its events stay in that frame (the hit test's), so
-  /// `localPosition + _downOrigin` is the stage position even after the view moved.
+  /// The page layers' corner ([_frame]) when the drawing pointer went down: its events stay in that frame (the hit
+  /// test's), so `localPosition + _downOrigin` is the stage position even after the view moved.
   Offset _downOrigin = Offset.zero;
 
   // edge auto-scroll (D-096)
@@ -235,8 +251,20 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   // ── Following the presenter (continuous) ───────────────────────────────────
   bool _follow = true;
   double? _followTarget;
+
+  /// Sideways (D-107): the page x (widths) the view's left edge glides to.
+  double? _followTargetX;
   double _lastVisible = 0;
   double _lastExtent = 1;
+
+  /// The continuous page's reach sideways at the last build (page widths), and what this device's edge auto-scroll
+  /// grew it to (kept while this page is shown).
+  double _lastXMin = 0, _lastXMax = 1;
+  double _growL = 0, _growR = 1;
+  double _lastVisibleW = 1;
+
+  double? _followLeftFor(BoardViewportPos pv) => boardFollowLeft(
+      presenter: pv, visibleW: _lastVisibleW, xMin: math.min(_lastXMin, pv.left), xMax: math.max(_lastXMax, pv.right));
 
   void _onPresenterViewport() {
     if (!mounted || _c.isLocalPresenting || !_c.isContinuous) return;
@@ -244,30 +272,52 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     if (pv == null) return;
     if (_follow) {
       _followTarget = boardFollowTop(presenter: pv, visible: _lastVisible, extent: math.max(_lastExtent, pv.bottom));
+      _followTargetX = _followLeftFor(pv);
       _kick();
     } else {
-      setState(() {}); // the rail's presenter mark moves
+      setState(() {}); // the rails' presenter marks move
     }
   }
 
-  /// One frame of the eased follow; whether it is still moving.
+  /// One frame of the eased follow (down and sideways); whether it is still moving.
   bool _stepFollow() {
+    if (!_follow || !mounted) return false;
+    var moving = false;
     final target = _followTarget;
-    if (target == null || !_follow || !mounted) return false;
-    final d = target - _scroll;
-    if (d.abs() < 1e-5) {
-      _followTarget = null;
-      return false;
+    if (target != null) {
+      final d = target - _scroll;
+      if (d.abs() < 1e-5) {
+        _followTarget = null;
+      } else {
+        _scroll += d.abs() < 2e-4 ? d : d * 0.22;
+        moving = true;
+      }
     }
-    setState(() => _scroll += d.abs() < 2e-4 ? d : d * 0.22);
-    return true;
+    final tx = _followTargetX;
+    if (tx != null && !_box.isEmpty) {
+      final v = _cvNow(_box);
+      final d = tx - v.viewLeft;
+      final next = v.withViewLeft((d * v.pageWidth).abs() < 0.5 ? tx : v.viewLeft + d * 0.22).panX;
+      if ((next - _cpanX).abs() < 0.25) {
+        _followTargetX = null; // there (or as near as the page lets it)
+        _cpanX = next;
+      } else {
+        _cpanX = next;
+        moving = true;
+      }
+    }
+    if (moving) setState(() {});
+    return moving;
   }
 
   void _followPresenter() {
     final pv = _c.presenterViewport.value;
     setState(() {
       _follow = true;
-      if (pv != null) _followTarget = boardFollowTop(presenter: pv, visible: _lastVisible, extent: math.max(_lastExtent, pv.bottom));
+      if (pv != null) {
+        _followTarget = boardFollowTop(presenter: pv, visible: _lastVisible, extent: math.max(_lastExtent, pv.bottom));
+        _followTargetX = _followLeftFor(pv);
+      }
     });
     _kick();
   }
@@ -277,6 +327,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     if (_c.isLocalPresenting || !_follow) return;
     _follow = false;
     _followTarget = null;
+    _followTargetX = null;
   }
 
   // ── "Drawn by …" ───────────────────────────────────────────────────────────
@@ -288,7 +339,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
 
   void _probeAt(Offset local, {bool autoHide = false}) {
     final n = _norm(local - _origin);
-    final it = (n.dx < 0 || n.dx > 1 || n.dy < 0 || n.dy > 1) ? null : _c.itemAt(n.dx, n.dy);
+    final it = !_onPage(n) ? null : _c.itemAt(n.dx, n.dy);
     final color = switch (it) {
       BoardInk() => it.color,
       BoardShape() => it.color,
@@ -382,6 +433,12 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   Offset _norm(Offset local) =>
       _page.isEmpty ? Offset.zero : Offset(local.dx / _page.width, local.dy / _page.height);
 
+  /// [n] (page coordinates) is on the drawn paper: the page, or a continuous page's whole reach sideways (D-107).
+  bool _onPage(Offset n) {
+    final lo = _c.isContinuous ? _lastXMin : 0.0, hi = _c.isContinuous ? _lastXMax : 1.0;
+    return n.dx >= lo - 1e-9 && n.dx <= hi + 1e-9 && n.dy >= 0 && n.dy <= 1;
+  }
+
   static bool _isStylus(PointerDeviceKind k) => k == PointerDeviceKind.stylus || k == PointerDeviceKind.invertedStylus;
 
   /// A stylus is down or just lifted: a touch now is the palm (it neither draws nor scrolls).
@@ -441,20 +498,21 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         return;
       }
     }
-    final n = _norm(e.localPosition);
-    if (n.dx < 0 || n.dx > 1 || n.dy < 0 || n.dy > 1) return;
+    _downOrigin = _frame;
+    final stage = _stageOf(e);
+    final local = stage - _origin; // on the page (x 0 = the column's left edge)
+    final n = _norm(local);
+    if (!_onPage(n)) return;
     final tool = e.kind == PointerDeviceKind.invertedStylus ? BoardTool.eraser : _c.tool;
     _pointer = e.pointer;
     _pointerKind = e.kind;
-    _downOrigin = _origin;
-    final stage = _stageOf(e);
     var edge = true; // this gesture scrolls the view at the edges
     switch (tool) {
       case BoardTool.pen:
       case BoardTool.highlighter:
         _endTextEdit();
         final ink = AnnotInkFilter(pressure: stylus);
-        final s = ink.start(e.localPosition.dx, e.localPosition.dy, _seconds(e), _pressure(e));
+        final s = ink.start(local.dx, local.dy, _seconds(e), _pressure(e));
         final hold = e.kind == PointerDeviceKind.touch; // a second finger soon after makes it a pinch
         if (_c.beginInk(n.dx, n.dy, p: s.p, stylus: stylus, highlighter: tool == BoardTool.highlighter, hold: hold)) {
           _ink = ink;
@@ -566,7 +624,11 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   bool _stepEdge(double dt) {
     final at = _lastStage;
     if (!_edgeOn || _pointer == null || at == null || !mounted || _box.isEmpty) return false;
-    final v = _edge.velocity(at, _box, room: boardScrollRoom(_shown, _box), dt: dt);
+    // A continuous page may grow sideways into its cap (D-107); down, it grows under the stroke (D-093).
+    final room = _c.isContinuous && !_cap.isEmpty
+        ? boardScrollRoom(Rect.fromLTRB(_cap.left, _shown.top, _cap.right, _shown.bottom), _box)
+        : boardScrollRoom(_shown, _box);
+    final v = _edge.velocity(at, _box, room: room, dt: dt);
     if (v == Offset.zero) return _edge.inZone(at, _box);
     if (dt <= 0) return true;
     _scrollViewBy(v * dt);
@@ -580,26 +642,33 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   void _scrollViewBy(Offset d) {
     if (_c.isContinuous) {
       _leaveFollow();
-      final v = _cvNow(_box).scrolledBy(d.dx, d.dy);
+      final v = _cvNow(_box).scrolledBy(d.dx, d.dy, grow: true);
+      _growL = math.min(_growL, v.xMin);
+      _growR = math.max(_growR, v.xMax);
+      _lastXMin = v.xMin;
+      _lastXMax = v.xMax;
       _scroll = v.scroll;
       _cpanX = v.panX;
       _origin = v.pageRect.topLeft;
       _page = v.pageRect.size;
       _shown = v.shownRect;
+      _frame = _shown.topLeft;
+      _cap = v.capRect;
     } else {
       _pan -= d;
       final r = _pageRect(_box);
       _origin = r.topLeft;
       _page = r.size;
       _shown = r;
+      _frame = r.topLeft;
     }
     setState(() {});
   }
 
   void _hover(PointerHoverEvent e) {
     if (!_c.drawMode || _pointer != null) return;
-    final n = _norm(e.localPosition);
-    final inside = !(n.dx < 0 || n.dx > 1 || n.dy < 0 || n.dy > 1);
+    final n = _norm(e.localPosition + _frame - _origin);
+    final inside = _onPage(n);
     if (_c.tool == BoardTool.select) {
       final over = inside && _c.selectableAt(n.dx, n.dy) != null;
       if (over != _hoverItem) setState(() => _hoverItem = over);
@@ -636,7 +705,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     }
     if (create != null && !cancelled) {
       final w = kBoardDefaultTextWidth;
-      final x = widget.fallbackRtl ? create.dx - w : create.dx;
+      // On the paper there is: the column, or a continuous page's reach (a box never widens the page by itself).
+      final lo = _c.isContinuous ? _lastXMin : 0.0, hi = _c.isContinuous ? _lastXMax : 1.0;
+      final x = (widget.fallbackRtl ? create.dx - w : create.dx).clamp(lo, math.max(lo, hi - w)).toDouble();
       final lineH = _c.fontSize(_c.fontStep) * 1.35 * _c.aspect;
       final id = _c.createText(x, (create.dy - lineH / 2).clamp(0.0, 1.0).toDouble(), boxWidth: w);
       if (id != null) _startTextEdit(id, fresh: true);
@@ -722,7 +793,10 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       _cpanX = 0;
       _follow = true;
       _followTarget = null;
+      _followTargetX = null;
       _followedOnce = false;
+      _growL = _lastXMin = 0;
+      _growR = _lastXMax = 1;
     }
   }
 
@@ -753,22 +827,57 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     return bottom;
   }
 
-  /// This device's view of the continuous page, kept inside it (the extent follows the content and the presenter).
+  final Expando<({int n, double lo, double hi})> _inkSpans = Expando('board.ink.span');
+
+  /// The leftmost and rightmost content of the visible page (page widths), cached per ink by its point count.
+  (double, double)? _contentSpanX() {
+    var lo = double.infinity, hi = double.negativeInfinity;
+    for (final it in _c.scene.visibleItems) {
+      double a, b;
+      if (it is BoardInk) {
+        final hit = _inkSpans[it];
+        if (hit != null && hit.n == it.points.length) {
+          (a, b) = (hit.lo, hit.hi);
+        } else {
+          final s = boardContentSpanX([it]);
+          if (s == null) continue;
+          (a, b) = s;
+          _inkSpans[it] = (n: it.points.length, lo: a, hi: b);
+        }
+      } else {
+        final s = boardContentSpanX([it]);
+        if (s == null) continue;
+        (a, b) = s;
+      }
+      if (a < lo) lo = a;
+      if (b > hi) hi = b;
+    }
+    return lo <= hi ? (lo, hi) : null;
+  }
+
+  /// This device's view of the continuous page, kept inside it (the extent follows the content and the presenter,
+  /// down and — D-107 — sideways).
   ContinuousView _continuousView(Size size) {
-    final base = ContinuousView(box: size, zoom: _zoom, scroll: _scroll, panX: _cpanX);
+    final base = ContinuousView(box: size, zoom: _zoom, scroll: _scroll, panX: _cpanX, xMin: _lastXMin, xMax: _lastXMax);
     final pv = _c.isLocalPresenting ? null : _c.presenterViewport.value;
     final extent = boardContinuousExtent(contentBottom: _contentBottom(), visible: base.visible, presenterBottom: pv?.bottom ?? 0);
-    var start = base;
+    final (xMin, xMax) = boardContinuousSpanX(content: _contentSpanX(), presenter: pv, grown: (_growL, _growR));
+    var start = base.copyWith(extent: extent, xMin: xMin, xMax: xMax);
     if (pv != null && _follow && !_followedOnce) {
       // A viewer who arrives (or a new page) starts where the presenter is.
       _followedOnce = true;
-      start = base.copyWith(scroll: boardFollowTop(presenter: pv, visible: base.visible, extent: extent));
+      start = start.copyWith(scroll: boardFollowTop(presenter: pv, visible: base.visible, extent: extent));
+      final left = boardFollowLeft(presenter: pv, visibleW: start.visibleW, xMin: xMin, xMax: xMax);
+      if (left != null) start = start.withViewLeft(left);
     }
-    final v = start.copyWith(extent: extent).clamped();
+    final v = start.clamped();
     _scroll = v.scroll;
     _cpanX = v.panX;
     _lastVisible = v.visible;
+    _lastVisibleW = v.visibleW;
     _lastExtent = extent;
+    _lastXMin = xMin;
+    _lastXMax = xMax;
     return v;
   }
 
@@ -797,6 +906,8 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         _page = page.size;
         _origin = page.topLeft;
         _shown = shown;
+        _frame = shown.topLeft;
+        _cap = cv?.capRect ?? Rect.zero;
         _box = size;
         final presenting = _c.isLocalPresenting;
         if (cont && presenting) {
@@ -812,9 +923,13 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         final vis = shown.intersect(screen);
         // The visible part of the page, in the page's own coordinates (the empty hint, the tags, the rail).
         final visLocal = vis.isEmpty ? Rect.zero : vis.shift(-shown.topLeft);
+        // Where the column's left edge (x 0) is in the shown rect: right of its left edge once it grew left (D-107).
+        final ox = page.left - shown.left;
+        final sideRail = cont && cv!.xMax - cv.xMin > cv.visibleW + 1e-3 && !vis.isEmpty;
 
         final content = Stack(clipBehavior: Clip.hardEdge, children: [
-          Positioned.fill(child: CustomPaint(painter: BoardBackgroundPainter(scene.background))),
+          Positioned.fill(
+              child: CustomPaint(painter: BoardBackgroundPainter(scene.background, unit: cont ? pw : null, originX: ox))),
           Positioned.fill(
             child: CustomPaint(
               isComplex: true,
@@ -824,6 +939,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
                 laserColor: laser,
                 laserOpacity: _c.laserOpacity,
                 coordSize: cont ? page.size : null,
+                coordOrigin: Offset(ox, 0),
                 repaint: scene,
               ),
             ),
@@ -832,7 +948,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
             if (tx.id != _editingId)
               Positioned(
                 key: ValueKey('board.text.${tx.id}'),
-                left: tx.x * pw,
+                left: ox + tx.x * pw,
                 top: tx.y * ph,
                 width: math.max(8, tx.boxWidth * pw),
                 child: _textView(tx, pw, ph),
@@ -907,6 +1023,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
                             laserColor: laser,
                             laserOpacity: _c.laserOpacity,
                             coordSize: cont ? page.size : null,
+                            coordOrigin: Offset(ox, 0),
                             repaint: scene,
                           ),
                         ),
@@ -944,15 +1061,15 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
                             presence: _c.presence,
                             marks: () => _c.presence.on(scene.page),
                             visible: (m) => _c.presenceShownFor(m.identity),
-                            toLocal: (x, y) => Offset(x * pw, y * ph),
+                            toLocal: (x, y) => Offset(ox + x * pw, y * ph),
                             bounds: (_) => visLocal,
                             fallbackRtl: widget.fallbackRtl,
                           ),
                         ),
                       ),
                     ),
-                    if (_editingId != null) _editor(pw, ph),
-                    if (selected != null && draw) ..._selection(selected, pw, ph),
+                    if (_editingId != null) _editor(pw, ph, ox),
+                    if (selected != null && draw) ..._selection(selected, pw, ph, ox, shown.width),
                   ]),
                 ),
               ),
@@ -962,8 +1079,8 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
           if (cont && !vis.isEmpty)
             Positioned(
               top: vis.top + 10,
-              height: math.max(0.0, vis.height - 20),
-              left: _railLeft(shown, size.width, Directionality.of(context) == TextDirection.rtl),
+              height: math.max(0.0, vis.height - (sideRail ? 30 : 20)),
+              left: _railLeft(vis, size.width, Directionality.of(context) == TextDirection.rtl),
               width: 6,
               child: IgnorePointer(
                 child: _ScrollRail(
@@ -973,11 +1090,29 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
                 ),
               ),
             ),
+          // Across the page (D-107): once it reaches past what one screen shows. Page x runs left to right in every
+          // language, so this rail is never mirrored.
+          if (sideRail)
+            Positioned(
+              top: vis.bottom - 12,
+              height: 6,
+              left: vis.left + (Directionality.of(context) == TextDirection.rtl ? 26 : 12),
+              width: math.max(0.0, vis.width - 38),
+              child: IgnorePointer(
+                child: _SideRail(
+                  key: const ValueKey('board.side_rail'),
+                  xMin: cv.xMin,
+                  xMax: cv.xMax,
+                  view: cv.viewport,
+                  presenter: presenting ? null : _c.presenterViewport.value,
+                ),
+              ),
+            ),
           if (cont && !presenting && !_follow && _c.presenterViewport.value != null)
             Positioned(
               left: 0,
               right: 0,
-              bottom: 14,
+              bottom: sideRail ? 26 : 14,
               child: Center(child: BoardFollowButton(name: widget.presenterName, onTap: _followPresenter)),
             ),
           if (_offer)
@@ -1037,7 +1172,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     );
   }
 
-  /// The rail beside the column's end edge (the left one in Arabic), inside the page when there is no room outside.
+  /// The rail beside the visible page's end edge (the left one in Arabic), inside it when there is no room outside.
   static double _railLeft(Rect shown, double width, bool rtl) {
     if (rtl) return shown.left - 14 >= 2 ? shown.left - 14 : math.max(2.0, shown.left + 4);
     return shown.right + 14 <= width - 2 ? shown.right + 8 : math.min(width - 8, shown.right - 10);
@@ -1092,8 +1227,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   }
 
   /// The continuous view now (the last build's extent).
-  ContinuousView _cvNow(Size size) =>
-      ContinuousView(box: size, zoom: _zoom, scroll: _scroll, panX: _cpanX, extent: _lastExtent).clamped();
+  ContinuousView _cvNow(Size size) => ContinuousView(
+          box: size, zoom: _zoom, scroll: _scroll, panX: _cpanX, extent: _lastExtent, xMin: _lastXMin, xMax: _lastXMax)
+      .clamped();
 
   void _applyView(ContinuousView v) => setState(() {
         _zoom = v.zoom;
@@ -1190,7 +1326,8 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     final d = e.localPosition - vp.start;
     if (_c.isContinuous) {
       if (d.distance > 3) _leaveFollow();
-      final v = ContinuousView(box: size, zoom: _zoom, scroll: vp.scroll, panX: vp.panX, extent: _lastExtent);
+      final v = ContinuousView(
+          box: size, zoom: _zoom, scroll: vp.scroll, panX: vp.panX, extent: _lastExtent, xMin: _lastXMin, xMax: _lastXMax);
       _applyView(v.scrolledBy(-d.dx, -d.dy));
     } else {
       setState(() => _pan = vp.pan + d);
@@ -1264,7 +1401,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     return Text(tx.text, textDirection: dir, textAlign: TextAlign.start, style: style);
   }
 
-  Widget _editor(double pw, double ph) {
+  Widget _editor(double pw, double ph, double ox) {
     final tx = _c.scene.item(_editingId!);
     if (tx is! BoardText) return const SizedBox.shrink();
     final rtl = boardTextIsRtl(_text.text, fallbackRtl: widget.fallbackRtl);
@@ -1272,7 +1409,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     final accent = LivePalette.accent;
     return Positioned(
       key: const ValueKey('board.editor'),
-      left: tx.x * pw - 6,
+      left: ox + tx.x * pw - 6,
       top: tx.y * ph - 4,
       width: math.max(40, tx.boxWidth * pw + 12),
       child: Container(
@@ -1315,13 +1452,15 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     );
   }
 
-  List<Widget> _selection(BoardItem it, double pw, double ph) {
+  /// The selection frame, the width handle and the menu, in the page layers' frame ([ox]: the column's left edge in
+  /// it; [sw]: its width).
+  List<Widget> _selection(BoardItem it, double pw, double ph, double ox, double sw) {
     final Rect r;
     switch (it) {
       case BoardText():
-        r = Rect.fromLTWH(it.x * pw, it.y * ph, it.boxWidth * pw, _c.textHeight(it) * ph);
+        r = Rect.fromLTWH(ox + it.x * pw, it.y * ph, it.boxWidth * pw, _c.textHeight(it) * ph);
       case BoardShape():
-        r = Rect.fromPoints(Offset(it.x1 * pw, it.y1 * ph), Offset(it.x2 * pw, it.y2 * ph));
+        r = Rect.fromPoints(Offset(ox + it.x1 * pw, it.y1 * ph), Offset(ox + it.x2 * pw, it.y2 * ph));
       case BoardInk():
         return const [];
     }
@@ -1381,7 +1520,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
           ),
         ),
       Positioned(
-        left: math.max(0, math.min(frame.left, pw - (it is BoardText ? 156 : 60))),
+        left: math.max(0, math.min(frame.left, sw - (it is BoardText ? 156 : 60))),
         top: math.max(0, chipTop),
         child: Container(
           key: const ValueKey('board.selection_menu'),
@@ -1468,6 +1607,62 @@ class _ScrollRail extends StatelessWidget {
             height: math.min(h, bottom) - top,
             child: DecoratedBox(
               key: const ValueKey('board.rail.thumb'),
+              decoration: BoxDecoration(
+                color: const Color(0xB3475569),
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: const Color(0x66FFFFFF), width: 0.8),
+              ),
+            ),
+          ),
+        ]);
+      });
+}
+
+/// Where this view is across a continuous page grown sideways (D-107): a slim rail along the bottom, the view's thumb
+/// and the presenter's view as an accent mark (viewers). Page x runs left to right in every language.
+class _SideRail extends StatelessWidget {
+  const _SideRail({super.key, required this.xMin, required this.xMax, required this.view, this.presenter});
+
+  final double xMin;
+  final double xMax;
+  final BoardViewportPos view;
+  final BoardViewportPos? presenter;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
+        final w = c.maxWidth;
+        final span = xMax - xMin;
+        if (!w.isFinite || w <= 0 || span <= 0 || view.width >= span - 1e-6) return const SizedBox.shrink();
+        double x(double v) => ((v - xMin) / span).clamp(0.0, 1.0) * w;
+        final left = x(view.left), right = math.max(x(view.right), x(view.left) + 18);
+        final p = presenter;
+        return Stack(clipBehavior: Clip.none, children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: LivePalette.shade(0.18), borderRadius: BorderRadius.circular(3)),
+            ),
+          ),
+          if (p != null && p.width > 0)
+            Positioned(
+              top: -2,
+              bottom: -2,
+              left: x(p.left),
+              width: math.max(4.0, x(p.right) - x(p.left)),
+              child: DecoratedBox(
+                key: const ValueKey('board.side_rail.presenter'),
+                decoration: BoxDecoration(
+                  color: LivePalette.accent.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+            ),
+          Positioned(
+            top: 0,
+            bottom: 0,
+            left: math.min(left, w - 18),
+            width: math.min(w, right) - math.min(left, w - 18),
+            child: DecoratedBox(
+              key: const ValueKey('board.side_rail.thumb'),
               decoration: BoxDecoration(
                 color: const Color(0xB3475569),
                 borderRadius: BorderRadius.circular(3),

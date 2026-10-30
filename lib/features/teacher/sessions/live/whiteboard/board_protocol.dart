@@ -16,7 +16,9 @@
 //   l  landscape 16:9 (the default; absent = l)          [kBoardAspect]
 //   p  portrait 3:4 (fills a portrait phone's width)     [kBoardPortraitAspect]
 //   c  continuous: a column [kBoardContinuousLength] page widths long, shown as far as it is used and scrolled;
-//      x by the width, y by that whole length (one wire unit of y = 20 widths × 1e-5: 0.26 px on a 1280 px column)
+//      x by the width, y by that whole length (one wire unit of y = 20 widths × 1e-5: 0.26 px on a 1280 px column).
+//      It also grows SIDEWAYS (D-107): x may run from −[kBoardSideMax] to 1 + [kBoardSideMax] (4 widths in all), the
+//      column staying at 0..1, so growing to the left never moves anything already drawn
 //
 //   {"v":1,"t":"on","bv":1,"bg":"g","pages":["p0","p1"],"pg":"p1"}        the presenter's board (bg w|b|g|l)
 //   {"v":1,"t":"on","bv":2,"fm":"c","bg":"w","pages":["p0"],"pg":"p0"}    a portrait / continuous board (bv 2)
@@ -38,6 +40,8 @@
 //                                                                          page: top and height (page fractions);
 //                                                                          board.laser while scrolling (≤ 10 Hz),
 //                                                                          once on board when it stops
+//   {"v":1,"t":"vp","y":0.12,"h":0.03,"x":0.4,"w":1}                       … and its left edge and width in page
+//                                                                          widths, once the page grew sideways
 //
 // Compatibility: unknown versions, types, item kinds and malformed packets decode to null and are ignored;
 // unknown keys are ignored. `bv` is the board's FEATURE version: a client that receives a higher one than
@@ -46,6 +50,10 @@
 // they keep showing the presenter's camera tile while a board is presented. A landscape board stays `bv: 1` (every
 // app since D-087 draws it); a portrait or continuous one is `bv: 2`, so an app from before D-093 shows "update the
 // app" over it instead of squeezing it into 16:9. `vp` is a type older apps ignore.
+// A continuous board that holds something outside the column (x < 0 or x > 1, D-107) announces `bv: 3`: an app from
+// before it would clamp those points onto the column's edge (a smear instead of the drawing), so it shows "update the
+// app" instead; until then the board stays `bv: 2`, byte for byte the D-093 packets. `vp`'s `x` / `w` are keys older
+// apps ignore.
 library;
 
 import 'dart:convert';
@@ -58,9 +66,9 @@ const kBoardTopic = 'board';
 const kBoardLaserTopic = 'board.laser';
 const kBoardVersion = 1;
 
-/// The board features this app draws (2: page formats, D-093). A presenter announcing a higher one gets "update the
-/// app" here.
-const kBoardFeatureVersion = 2;
+/// The board features this app draws (2: page formats, D-093; 3: a continuous page grown sideways, D-107). A presenter
+/// announcing a higher one gets "update the app" here.
+const kBoardFeatureVersion = 3;
 
 /// The landscape page is this wide for a height of 1 (a 16:9 slide: the shape of every laptop, projector and
 /// recording).
@@ -71,6 +79,22 @@ const kBoardPortraitAspect = 3 / 4;
 
 /// A continuous page is this many page widths long (≈ 10 portrait phone screens, ≈ 40 laptop screens).
 const kBoardContinuousLength = 20.0;
+
+/// A continuous page grows sideways at most this many page widths past each side of its column (D-107): x runs from
+/// −1.5 to 2.5, a page 4 widths wide (≈ 4 phone screens, ≈ 2 laptop screens).
+const kBoardSideMax = 1.5;
+
+/// [v] (an x in page widths) kept on the widest page there is: −[kBoardSideMax] .. 1 + [kBoardSideMax]. A fixed page
+/// (landscape / portrait) keeps its own 0..1 (the controller clamps what it draws there).
+double boardClampX(double v) => v.isNaN ? 0 : v.clamp(-kBoardSideMax, 1 + kBoardSideMax).toDouble();
+
+/// A board point as it travels: x on the widest page ([boardClampX]), y and the pressure 0..1, rounded like
+/// [AnnotPoint.wire] (which keeps x in 0..1 for the shared screen's annotation).
+AnnotPoint boardPoint(double x, double y, [double p = 0.5]) => AnnotPoint(
+      annotRound(boardClampX(x), kAnnotCoordDigits).toDouble(),
+      annotRound(_c(y), kAnnotCoordDigits).toDouble(),
+      annotRound(_c(p), kAnnotPressureDigits).toDouble(),
+    );
 
 // ── Format ────────────────────────────────────────────────────────────────────
 
@@ -103,8 +127,12 @@ const kBoardTallStyleScale = 1.6;
 
 double boardStyleScale(BoardFormat f) => f == BoardFormat.landscape ? 1.0 : kBoardTallStyleScale;
 
-/// The `bv` a board of [f] announces: landscape stays 1 so every app since D-087 keeps drawing it.
-int boardFeatureVersionFor(BoardFormat f) => f == BoardFormat.landscape ? 1 : 2;
+/// The `bv` a board of [f] announces: landscape stays 1 so every app since D-087 keeps drawing it; a continuous board
+/// that holds something outside its column ([wide], D-107) is 3.
+int boardFeatureVersionFor(BoardFormat f, {bool wide = false}) {
+  if (f == BoardFormat.landscape) return 1;
+  return wide && f == BoardFormat.continuous ? 3 : 2;
+}
 
 const kBoardMaxPages = 30;
 const kBoardMaxItems = 6000;
@@ -269,8 +297,9 @@ final class BoardShape extends BoardItem {
         width: width ?? this.width,
       );
 
-  BoardShape moved(double dx, double dy) =>
-      copyWith(x1: _c(x1 + dx), y1: _c(y1 + dy), x2: _c(x2 + dx), y2: _c(y2 + dy));
+  /// Moved by ([dx], [dy]); x kept within [minX]..[maxX] (a fixed page: 0..1; a continuous one: its widest).
+  BoardShape moved(double dx, double dy, {double minX = 0, double maxX = 1}) => copyWith(
+      x1: _cl(x1 + dx, minX, maxX), y1: _c(y1 + dy), x2: _cl(x2 + dx, minX, maxX), y2: _c(y2 + dy));
 
   /// Too small to mean anything (a click without a drag) on a landscape page.
   bool get isTiny => isTinyAt(kBoardAspect);
@@ -288,9 +317,9 @@ final class BoardShape extends BoardItem {
         'a': author,
         'pg': page,
         'sh': _shapeCode(kind),
-        'x1': _xy(x1),
+        'x1': _xw(x1),
         'y1': _xy(y1),
-        'x2': _xy(x2),
+        'x2': _xw(x2),
         'y2': _xy(y2),
         'c': color,
         'w': annotRound(width),
@@ -352,7 +381,8 @@ final class BoardText extends BoardItem {
         text: text ?? this.text,
       );
 
-  BoardText moved(double dx, double dy) => copyWith(x: _c(x + dx), y: _c(y + dy));
+  BoardText moved(double dx, double dy, {double minX = 0, double maxX = 1}) =>
+      copyWith(x: _cl(x + dx, minX, maxX), y: _c(y + dy));
 
   /// The same content (position, size, colour, text), whatever the revision.
   bool sameAs(BoardText o) =>
@@ -364,7 +394,7 @@ final class BoardText extends BoardItem {
         'id': id,
         'a': author,
         'pg': page,
-        'x': _xy(x),
+        'x': _xw(x),
         'y': _xy(y),
         'bw': annotRound(boxWidth),
         'fs': annotRound(size),
@@ -409,14 +439,14 @@ BoardItem? parseBoardItem(Object? o, {String? author}) {
       final kind = _shapeOf(o['sh']);
       final color = _color(o['c']);
       final width = _width(o['w']);
-      final x1 = _num(o['x1']), y1 = _num(o['y1']), x2 = _num(o['x2']), y2 = _num(o['y2']);
+      final x1 = _numX(o['x1']), y1 = _num(o['y1']), x2 = _numX(o['x2']), y2 = _num(o['y2']);
       if (kind == null || color == null || width == null || x1 == null || y1 == null || x2 == null || y2 == null) {
         return null;
       }
       return BoardShape(
           id: id, author: a, page: page, rev: rev, kind: kind, x1: x1, y1: y1, x2: x2, y2: y2, color: color, width: width);
     case 'tx':
-      final x = _num(o['x']), y = _num(o['y']);
+      final x = _numX(o['x']), y = _num(o['y']);
       final bw = o['bw'], fs = o['fs'];
       final color = _color(o['c']);
       final text = o['tx'];
@@ -458,6 +488,17 @@ class BoardState extends BoardMsg {
     this.format = BoardFormat.landscape,
     int? featureVersion,
   }) : featureVersion = featureVersion ?? (format == BoardFormat.landscape ? 1 : 2);
+
+  /// The board as a presenter announces it ([boardFeatureVersionFor]: 3 once a continuous page grew sideways).
+  factory BoardState.of({
+    required BoardBackground background,
+    required List<String> pages,
+    required String page,
+    BoardFormat format = BoardFormat.landscape,
+    bool wide = false,
+  }) =>
+      BoardState(
+          background: background, pages: pages, page: page, format: format, featureVersion: boardFeatureVersionFor(format, wide: wide));
 
   final BoardBackground background;
   final List<String> pages;
@@ -602,17 +643,22 @@ class BoardLaser extends BoardMsg {
 
   // 5 decimals like ink: a continuous page's y spans 20 widths (older apps read any number).
   @override
-  Map<String, Object?> body() => {'t': 'l', 'x': _xy(x), 'y': _xy(y)};
+  Map<String, Object?> body() => {'t': 'l', 'x': _xw(x), 'y': _xy(y)};
 }
 
-/// The presenter's view of a continuous page (D-093): its top and height, fractions of the page's whole length.
-/// [lossy] while scrolling (topic board.laser, at most 10 a second); the last one goes reliably on `board`.
+/// The presenter's view of a continuous page (D-093): its top and height, fractions of the page's whole length, and
+/// (D-107) its left edge and width in page widths — left out while it is the column (0, 1), so that packet is the
+/// D-093 one. [lossy] while scrolling (topic board.laser, at most 10 a second); the last one goes reliably on `board`.
 class BoardViewport extends BoardMsg {
-  const BoardViewport({required this.top, required this.height, this.lossy = true});
+  const BoardViewport({required this.top, required this.height, this.left = 0, this.width = 1, this.lossy = true});
 
   final double top;
   final double height;
+  final double left;
+  final double width;
   final bool lossy;
+
+  bool get _column => left.abs() < 5e-6 && (width - 1).abs() < 5e-6;
 
   @override
   String get topic => lossy ? kBoardLaserTopic : kBoardTopic;
@@ -621,7 +667,13 @@ class BoardViewport extends BoardMsg {
   bool get reliable => !lossy;
 
   @override
-  Map<String, Object?> body() => {'t': 'vp', 'y': _xy(top), 'h': _xy(height)};
+  Map<String, Object?> body() => {
+        't': 'vp',
+        'y': _xy(top),
+        'h': _xy(height),
+        if (!_column) 'x': _xw(left),
+        if (!_column) 'w': annotRound(width.clamp(0.0, 1 + kBoardSideMax * 2).toDouble(), kAnnotCoordDigits),
+      };
 }
 
 // ── Codec ─────────────────────────────────────────────────────────────────────
@@ -646,7 +698,7 @@ class BoardCodec {
     if (msg is BoardViewport) {
       // Either topic: lossy while scrolling, reliable when it stops.
       if (topic != kBoardTopic && topic != kBoardLaserTopic) return null;
-      return BoardViewport(top: msg.top, height: msg.height, lossy: topic == kBoardLaserTopic);
+      return BoardViewport(top: msg.top, height: msg.height, left: msg.left, width: msg.width, lossy: topic == kBoardLaserTopic);
     }
     if (msg == null || msg.topic != topic) return null;
     return msg;
@@ -728,11 +780,19 @@ class BoardCodec {
       case 'l':
         final x = m['x'], y = m['y'];
         if (x is! num || y is! num || !x.isFinite || !y.isFinite) return null;
-        return BoardLaser(x: _c(x.toDouble()), y: _c(y.toDouble()));
+        return BoardLaser(x: boardClampX(x.toDouble()), y: _c(y.toDouble()));
       case 'vp':
         final y = m['y'], h = m['h'];
         if (y is! num || h is! num || !y.isFinite || !h.isFinite || h <= 0) return null;
-        return BoardViewport(top: _c(y.toDouble()), height: _c(h.toDouble()));
+        // x / w (D-107): absent = the column; a malformed pair is ignored rather than the whole view.
+        final x = m['x'], w = m['w'];
+        final side = x is num && w is num && x.isFinite && w.isFinite && w > 0;
+        return BoardViewport(
+          top: _c(y.toDouble()),
+          height: _c(h.toDouble()),
+          left: side ? boardClampX(x.toDouble()) : 0,
+          width: side ? w.toDouble().clamp(0.0, 1 + kBoardSideMax * 2).toDouble() : 1,
+        );
       default:
         return null;
     }
@@ -853,6 +913,11 @@ double _c(double v) => v.isNaN ? 0 : v.clamp(0.0, 1.0).toDouble();
 
 num _xy(double v) => annotRound(_c(v), kAnnotCoordDigits);
 
+/// An x as it travels: on the widest page (D-107).
+num _xw(double v) => annotRound(boardClampX(v), kAnnotCoordDigits);
+
+double _cl(double v, double lo, double hi) => v.isNaN ? lo : v.clamp(lo, hi).toDouble();
+
 String? _str(Object? o, {int max = kAnnotMaxIdLength}) => o is String && o.isNotEmpty && o.length <= max ? o : null;
 
 int? _color(Object? o) => o is int && o >= 0 && o <= 0xFFFFFFFF ? o : null;
@@ -864,11 +929,23 @@ double? _width(Object? o) {
 
 double? _num(Object? o) => o is num && o.isFinite ? annotRound(_c(o.toDouble()), kAnnotCoordDigits).toDouble() : null;
 
+double? _numX(Object? o) => o is num && o.isFinite ? annotRound(boardClampX(o.toDouble()), kAnnotCoordDigits).toDouble() : null;
+
+/// [AnnotPoint.parse] with x on the widest page ([boardPoint]).
+AnnotPoint? _point(Object? o) {
+  if (o is! List || o.length < 2) return null;
+  final x = o[0], y = o[1];
+  if (x is! num || y is! num) return null;
+  final p = o.length > 2 && o[2] is num ? (o[2] as num).toDouble() : 0.5;
+  if (!x.isFinite || !y.isFinite || !p.isFinite) return null;
+  return boardPoint(x.toDouble(), y.toDouble(), p);
+}
+
 List<AnnotPoint>? _points(Object? o, {required int max}) {
   if (o is! List || o.length > max) return null;
   final out = <AnnotPoint>[];
   for (final e in o) {
-    final p = AnnotPoint.parse(e);
+    final p = _point(e);
     if (p == null) return null;
     out.add(p);
   }

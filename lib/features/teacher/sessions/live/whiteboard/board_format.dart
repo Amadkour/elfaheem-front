@@ -6,9 +6,11 @@
 //     continuous, whose "height" is its whole length ([kBoardContinuousLength] widths). Distances are measured in page
 //     widths on both axes (dy / aspect), so a circle is round on every format;
 //   • a continuous page is shown as far as it is used: [boardContinuousExtent] grows it downward as people draw near
-//     its end;
-//   • the continuous VIEW of one device ([ContinuousView]: a width-filled column, scrolled, zoomed about a point) and
-//     the presenter's viewport that viewers follow ([BoardViewportPos], [boardFollowTop]);
+//     its end, and [boardContinuousSpanX] sideways (D-107) once something is drawn outside its column or a stroke held
+//     at a side edge grew it ([ContinuousView.scrolledBy] `grow`), up to [kBoardSideMax] widths past each side;
+//   • the continuous VIEW of one device ([ContinuousView]: a width-filled column, scrolled, zoomed about a point,
+//     moved sideways over a grown page) and the presenter's viewport that viewers follow ([BoardViewportPos],
+//     [boardFollowTop], [boardFollowLeft]);
 //   • a format change remaps every item ([boardRemapItems]): the geometry is kept in page widths and, when the
 //     content no longer fits the new page, scaled down evenly and centred.
 library;
@@ -60,23 +62,82 @@ double boardContinuousExtent({required double contentBottom, required double vis
   return e.clamp(0.0, 1.0).toDouble();
 }
 
-/// A view of a continuous page: its top and height, fractions of the page's whole length.
+/// A view of a continuous page: its top and height, fractions of the page's whole length, and (D-107) its left edge
+/// and width in page widths (the column: 0 and 1).
 class BoardViewportPos {
-  const BoardViewportPos(this.top, this.height);
+  const BoardViewportPos(this.top, this.height, {this.left = 0, this.width = 1});
 
   final double top;
   final double height;
+  final double left;
+  final double width;
 
   double get bottom => top + height;
+  double get right => left + width;
 
   @override
-  bool operator ==(Object other) => other is BoardViewportPos && other.top == top && other.height == height;
+  bool operator ==(Object other) =>
+      other is BoardViewportPos && other.top == top && other.height == height && other.left == left && other.width == width;
 
   @override
-  int get hashCode => Object.hash(top, height);
+  int get hashCode => Object.hash(top, height, left, width);
 
   @override
-  String toString() => 'BoardViewportPos($top, $height)';
+  String toString() => 'BoardViewportPos($top, $height, x: $left, w: $width)';
+}
+
+/// The leftmost and rightmost point of [items] in page widths (null for none): ink points, shape corners, a text
+/// box's sides. Strokes count by their centre line, so a line written at the column's very edge never widens the page.
+(double, double)? boardContentSpanX(Iterable<BoardItem> items) {
+  var lo = double.infinity, hi = double.negativeInfinity;
+  for (final it in items) {
+    switch (it) {
+      case BoardInk():
+        for (final p in it.points) {
+          if (p.x < lo) lo = p.x;
+          if (p.x > hi) hi = p.x;
+        }
+      case BoardShape():
+        lo = math.min(lo, math.min(it.x1, it.x2));
+        hi = math.max(hi, math.max(it.x1, it.x2));
+      case BoardText():
+        lo = math.min(lo, it.x);
+        hi = math.max(hi, it.x + it.boxWidth);
+    }
+  }
+  return lo <= hi ? (lo, hi) : null;
+}
+
+/// Paper left beyond the outermost line of a page grown sideways (page widths).
+const kBoardSideMargin = 0.08;
+
+/// How far a continuous page reaches sideways (page widths, D-107): its column 0..1, widened to what is drawn outside
+/// it ([content], [boardContentSpanX]) plus [kBoardSideMargin] of paper, to where the presenter looks ([presenter]) and
+/// to what this device grew it to ([grown]: a stroke held at a side edge), never past [kBoardSideMax] on either side.
+/// Content inside the column never widens it.
+(double, double) boardContinuousSpanX({(double, double)? content, BoardViewportPos? presenter, (double, double)? grown}) {
+  var lo = 0.0, hi = 1.0;
+  if (content != null) {
+    if (content.$1 < -1e-6) lo = math.min(lo, content.$1 - kBoardSideMargin);
+    if (content.$2 > 1 + 1e-6) hi = math.max(hi, content.$2 + kBoardSideMargin);
+  }
+  if (presenter != null && presenter.width > 0) {
+    lo = math.min(lo, presenter.left);
+    hi = math.max(hi, presenter.right);
+  }
+  if (grown != null) {
+    lo = math.min(lo, grown.$1);
+    hi = math.max(hi, grown.$2);
+  }
+  return (math.max(-kBoardSideMax, lo), math.min(1 + kBoardSideMax, hi));
+}
+
+/// Where a viewer's view starts sideways (page widths) to follow [presenter]: centred on the presenter's view, kept
+/// within the page's reach [xMin]..[xMax]; null when the viewer's [visibleW] shows that whole width anyway.
+double? boardFollowLeft({required BoardViewportPos presenter, required double visibleW, required double xMin, required double xMax}) {
+  if (!visibleW.isFinite || visibleW <= 0 || visibleW >= xMax - xMin - 1e-6) return null;
+  final left = presenter.left + presenter.width / 2 - visibleW / 2;
+  return left.clamp(xMin, xMax - visibleW).toDouble();
 }
 
 /// Where a viewer's view starts to follow [presenter]: centred on the presenter's view when the viewer sees as much or
@@ -88,9 +149,11 @@ double boardFollowTop({required BoardViewportPos presenter, required double visi
 
 /// One device's view of a continuous page. The column fills the stage's width up to a page width (a laptop gets a
 /// page, not a banner); [zoom] ≥ 1 scales it about a point; [scroll] is the page fraction at the top of the stage;
-/// [panX] moves a zoomed column sideways.
+/// [panX] moves a zoomed column — or a page grown sideways ([xMin] / [xMax], D-107) — sideways: screen pixels from the
+/// column centred on the stage, so growing the page (to the left too) never moves what is drawn.
 class ContinuousView {
-  const ContinuousView({required this.box, this.zoom = 1, this.scroll = 0, this.panX = 0, this.extent = 1});
+  const ContinuousView(
+      {required this.box, this.zoom = 1, this.scroll = 0, this.panX = 0, this.extent = 1, this.xMin = 0, this.xMax = 1});
 
   final Size box;
   final double zoom;
@@ -99,6 +162,13 @@ class ContinuousView {
 
   /// How far the page is shown (page-length fraction, [boardContinuousExtent]).
   final double extent;
+
+  /// How far it reaches sideways (page widths, [boardContinuousSpanX]); the column is 0..1.
+  final double xMin;
+  final double xMax;
+
+  /// The page reaches past its column.
+  bool get grown => xMin < 0 || xMax > 1;
 
   /// The column's width at zoom 1: the stage's width, at most max(480, 0.8 × its height) — on a laptop the shape of a
   /// portrait page fitted to the height (a page, not a banner); a phone's or a tablet's full width.
@@ -114,37 +184,86 @@ class ContinuousView {
 
   double get maxScroll => math.max(0.0, extent - visible);
 
-  /// The same view, scroll and pan kept inside the page.
+  /// The page widths one stage width shows.
+  double get visibleW => pageWidth <= 0 ? 1 : box.width / pageWidth;
+
+  /// The page x (widths) at the stage's left edge.
+  double get viewLeft => pageWidth <= 0 ? 0 : -pageRect.left / pageWidth;
+
+  /// The shown width fits on the stage (it is then not moved by a drag, only kept on the stage).
+  bool get _fits => (xMax - xMin) * pageWidth <= box.width + 0.5;
+
+  /// The same view, scroll and pan kept inside the page: a page wider than the stage always covers it; a narrower
+  /// one stays on it (centred while it never grew: the D-093 column).
   ContinuousView clamped() {
     final s = scroll.isFinite ? scroll.clamp(0.0, maxScroll).toDouble() : 0.0;
     final pw = pageWidth;
-    final slack = (pw - box.width) / 2;
-    final px = pw <= box.width ? 0.0 : panX.clamp(-slack, slack).toDouble();
-    return ContinuousView(box: box, zoom: zoom, scroll: s, panX: px, extent: extent);
+    final anchor = (box.width - pw) / 2;
+    final a = -(anchor + xMin * pw), b = box.width - (anchor + xMax * pw);
+    final double px;
+    if (!grown && pw <= box.width) {
+      px = 0;
+    } else {
+      px = panX.isFinite ? panX.clamp(math.min(a, b), math.max(a, b)).toDouble() : 0.0;
+    }
+    return ContinuousView(box: box, zoom: zoom, scroll: s, panX: px, extent: extent, xMin: xMin, xMax: xMax);
   }
 
-  /// The whole page on screen (its top is above the stage when scrolled).
+  /// The whole page on screen (its top is above the stage when scrolled): x 0..1, the column.
   Rect get pageRect {
     final pw = pageWidth;
     final left = (box.width - pw) / 2 + panX;
     return Rect.fromLTWH(left, -scroll * pageHeight, pw, pageHeight);
   }
 
-  /// The shown part of the page ([extent]) on screen.
+  /// The shown part of the page ([extent] down, [xMin]..[xMax] across) on screen.
   Rect get shownRect {
     final r = pageRect;
-    return Rect.fromLTWH(r.left, r.top, r.width, r.height * extent);
+    return Rect.fromLTWH(r.left + xMin * r.width, r.top, r.width * (xMax - xMin), r.height * extent);
   }
 
-  /// What this device sees.
-  BoardViewportPos get viewport => BoardViewportPos(scroll, math.min(visible, 1));
+  /// As far as the page could ever reach sideways ([kBoardSideMax]), as tall as it is shown: the room an edge
+  /// auto-scroll may grow into.
+  Rect get capRect {
+    final r = pageRect;
+    return Rect.fromLTRB(r.left - kBoardSideMax * r.width, r.top, r.right + kBoardSideMax * r.width, r.top + r.height * extent);
+  }
 
-  ContinuousView copyWith({double? zoom, double? scroll, double? panX, double? extent, Size? box}) => ContinuousView(
-      box: box ?? this.box, zoom: zoom ?? this.zoom, scroll: scroll ?? this.scroll, panX: panX ?? this.panX, extent: extent ?? this.extent);
+  /// What this device sees (sideways: of the page's reach).
+  BoardViewportPos get viewport {
+    final l = math.max(viewLeft, xMin), r = math.min(viewLeft + visibleW, xMax);
+    return BoardViewportPos(scroll, math.min(visible, 1), left: l, width: math.max(0.0, r - l));
+  }
 
-  /// Scrolled by [dy] screen pixels (positive: further down the page), moved sideways by [dx].
-  ContinuousView scrolledBy(double dx, double dy) =>
-      copyWith(scroll: scroll + (pageHeight <= 0 ? 0 : dy / pageHeight), panX: panX - dx).clamped();
+  ContinuousView copyWith({double? zoom, double? scroll, double? panX, double? extent, Size? box, double? xMin, double? xMax}) =>
+      ContinuousView(
+          box: box ?? this.box,
+          zoom: zoom ?? this.zoom,
+          scroll: scroll ?? this.scroll,
+          panX: panX ?? this.panX,
+          extent: extent ?? this.extent,
+          xMin: xMin ?? this.xMin,
+          xMax: xMax ?? this.xMax);
+
+  /// Scrolled by [dy] screen pixels (positive: further down the page), moved sideways by [dx]. [grow] (an edge
+  /// auto-scroll, D-107): sideways past the page's reach, the page grows that way (up to [kBoardSideMax]) — a page
+  /// that fits on the stage grows under a still view, a wider one moves with the pointer as it grows.
+  ContinuousView scrolledBy(double dx, double dy, {bool grow = false}) {
+    final pw = pageWidth;
+    var lo = xMin, hi = xMax;
+    if (grow && pw > 0 && dx != 0) {
+      final d = dx / pw, vl = viewLeft, vr = vl + visibleW;
+      if (d > 0) hi = math.min(1 + kBoardSideMax, math.max(hi, math.min(hi + d, vr + d)));
+      if (d < 0) lo = math.max(-kBoardSideMax, math.min(lo, math.max(lo + d, vl + d)));
+    }
+    final grownView = copyWith(xMin: lo, xMax: hi);
+    return grownView
+        .copyWith(scroll: scroll + (pageHeight <= 0 ? 0 : dy / pageHeight), panX: grownView._fits ? panX : panX - dx)
+        .clamped();
+  }
+
+  /// The view moved sideways so its left edge is at page x [left] (widths).
+  ContinuousView withViewLeft(double left) => copyWith(panX: -left * pageWidth - (box.width - pageWidth) / 2).clamped();
 
   /// Zoomed to [z] (1..[maxZoom]) keeping the page point under [focalBefore] (in this view) under [focalAfter].
   ContinuousView zoomedAt(double z, Offset focalBefore, Offset focalAfter, {double maxZoom = 4}) {
@@ -156,7 +275,9 @@ class ContinuousView {
     final pw = columnWidth(box) * nz, ph = pw * kBoardContinuousLength;
     final left = focalAfter.dx - px * pw;
     final top = focalAfter.dy - py * ph;
-    return ContinuousView(box: box, zoom: nz, scroll: -top / ph, panX: left - (box.width - pw) / 2, extent: extent).clamped();
+    return ContinuousView(
+            box: box, zoom: nz, scroll: -top / ph, panX: left - (box.width - pw) / 2, extent: extent, xMin: xMin, xMax: xMax)
+        .clamped();
   }
 
   /// A stage position → page coordinates (may be outside 0..1).
@@ -168,7 +289,8 @@ class ContinuousView {
 }
 
 /// Every item of [items] moved from a page of format [from] to one of [to]: positions are kept in page widths and,
-/// per page, when the content would run past the new page's bottom it is scaled down evenly and centred sideways.
+/// per page, when the content would run past the new page's bottom — or (a continuous page grown sideways, D-107)
+/// does not fit its width — it is scaled down evenly and centred sideways.
 /// Ink keeps its id and author (a new object with the new points); shapes and text boxes get the next revision.
 /// [textHeight]: a text box's height as a fraction of the OLD page's height (null: estimated).
 List<BoardItem> boardRemapItems(Iterable<BoardItem> items, BoardFormat from, BoardFormat to,
@@ -181,13 +303,24 @@ List<BoardItem> boardRemapItems(Iterable<BoardItem> items, BoardFormat from, Boa
     (byPage[it.page] ??= []).add(it);
   }
   final scale = <String, double>{};
+  final centre = <String, double>{};
   for (final e in byPage.entries) {
     final bottomW = boardContentBottom(e.value, aspect: aF, textHeight: textHeight) / aF;
-    scale[e.key] = bottomW <= heightT ? 1.0 : (heightT * 0.98) / bottomW;
+    var s = bottomW <= heightT ? 1.0 : (heightT * 0.98) / bottomW;
+    var c = 0.5;
+    final span = boardContentSpanX(e.value);
+    if (span != null && (span.$1 < 0 || span.$2 > 1)) {
+      // Drawn beside the column: centred, and narrowed when it is wider than the new page.
+      c = (span.$1 + span.$2) / 2;
+      final w = span.$2 - span.$1;
+      if (w > 0.98) s = math.min(s, 0.98 / w);
+    }
+    scale[e.key] = s;
+    centre[e.key] = c;
   }
   // Rounded as they travel, so the presenter and every receiver of the snapshot hold the same numbers.
   double y(double v, double s) => annotRound(_c((v / aF) * s * aT), kAnnotCoordDigits).toDouble();
-  double x(double v, double s) => annotRound(_c((1 - s) / 2 + v * s), kAnnotCoordDigits).toDouble();
+  double xOn(String page, double v, double s) => annotRound(_c(0.5 + (v - centre[page]!) * s), kAnnotCoordDigits).toDouble();
   return [
     for (final it in items)
       switch (it) {
@@ -198,21 +331,21 @@ List<BoardItem> boardRemapItems(Iterable<BoardItem> items, BoardFormat from, Boa
             ink: it.ink,
             color: it.color,
             width: annotRound(it.width * scale[it.page]!).toDouble(),
-            points: [for (final p in it.points) AnnotPoint.wire(x(p.x, scale[it.page]!), y(p.y, scale[it.page]!), p.p)],
+            points: [for (final p in it.points) AnnotPoint.wire(xOn(it.page, p.x, scale[it.page]!), y(p.y, scale[it.page]!), p.p)],
             open: it.open,
             pressured: it.pressured,
           ),
         BoardShape() => it.copyWith(
             rev: it.rev + 1,
-            x1: x(it.x1, scale[it.page]!),
+            x1: xOn(it.page, it.x1, scale[it.page]!),
             y1: y(it.y1, scale[it.page]!),
-            x2: x(it.x2, scale[it.page]!),
+            x2: xOn(it.page, it.x2, scale[it.page]!),
             y2: y(it.y2, scale[it.page]!),
             width: annotRound(it.width * scale[it.page]!).toDouble(),
           ),
         BoardText() => it.copyWith(
             rev: it.rev + 1,
-            x: x(it.x, scale[it.page]!),
+            x: xOn(it.page, it.x, scale[it.page]!),
             y: y(it.y, scale[it.page]!),
             boxWidth: annotRound((it.boxWidth * scale[it.page]!).clamp(0.04, 1.0).toDouble()).toDouble(),
             size: annotRound((it.size * scale[it.page]!).clamp(0.008, 0.12).toDouble()).toDouble(),

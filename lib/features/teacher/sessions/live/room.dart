@@ -392,7 +392,7 @@ class _RoomPageState extends State<RoomPage>
 
   // ── D-090: the receive side (weak network, hidden video) and the board's recording track ─────────────────
   late final LiveMediaController _media = LiveMediaController(room: widget.room, config: widget.liveConfig);
-  late final BoardVideoPublisher _boardVideo = BoardVideoPublisher(room: widget.room, pageKey: _boardPageKey);
+  late final BoardVideoPublisher _boardVideo = BoardVideoPublisher(room: widget.room, pageKey: _boardPageKey, board: _board);
 
   void _onMediaChanged() {
     if (mounted) setState(() {});
