@@ -65,19 +65,25 @@ List<Color> boardInkColors(BoardBackground b) => boardIsDark(b)
 
 /// The page's background (grid squares are 1/32 of the width, every 4th darker; lines every 1/16 of the height).
 class BoardBackgroundPainter extends CustomPainter {
-  const BoardBackgroundPainter(this.background);
+  const BoardBackgroundPainter(this.background, {this.unit, this.originX = 0});
 
   final BoardBackground background;
+
+  /// The page width (px) the ruling is measured by (null: the painted width), and where the column's left edge (x 0)
+  /// is in the painted area: a continuous page grown sideways (D-107) keeps every square where it was.
+  final double? unit;
+  final double originX;
 
   @override
   void paint(Canvas canvas, Size size) {
     final r = Offset.zero & size;
+    final u = unit ?? size.width;
     switch (background) {
       case BoardBackground.white:
         canvas.drawRect(r, Paint()..color = BoardPaper.white);
       case BoardBackground.blackboard:
         // A tall (continuous) page: the slate darkens toward its sides, not toward one centre.
-        final tall = size.height > size.width * 1.6;
+        final tall = size.height > u * 1.6;
         canvas.drawRect(
           r,
           Paint()
@@ -95,7 +101,7 @@ class BoardBackgroundPainter extends CustomPainter {
         );
       case BoardBackground.grid:
         canvas.drawRect(r, Paint()..color = BoardPaper.grid);
-        final step = size.width / 32;
+        final step = u / 32;
         if (step < 3) return;
         final minor = Paint()
           ..color = BoardPaper.gridMinor
@@ -103,22 +109,23 @@ class BoardBackgroundPainter extends CustomPainter {
         final major = Paint()
           ..color = BoardPaper.gridMajor
           ..strokeWidth = 1;
-        var i = 1;
-        for (var x = step; x < size.width - 0.5; x += step, i++) {
+        // Counted from the column's left edge, so the squares (and every 4th line) stay put as the page grows.
+        for (var i = ((0.5 - originX) / step).ceil(); originX + i * step < size.width - 0.5; i++) {
+          final x = originX + i * step;
           canvas.drawLine(Offset(x, 0), Offset(x, size.height), i % 4 == 0 ? major : minor);
         }
-        i = 1;
+        var i = 1;
         for (var y = step; y < size.height - 0.5; y += step, i++) {
           canvas.drawLine(Offset(0, y), Offset(size.width, y), i % 4 == 0 ? major : minor);
         }
       case BoardBackground.lined:
         canvas.drawRect(r, Paint()..color = BoardPaper.lined);
         // By the width (a 16:9 page's height / 16): the same ruling on every format.
-        final step = size.width * 9 / 256;
+        final step = u * 9 / 256;
         if (step < 3) return;
         final rule = Paint()
           ..color = BoardPaper.lineRule
-          ..strokeWidth = math.max(1.0, size.width / 1600);
+          ..strokeWidth = math.max(1.0, u / 1600);
         for (var y = step * 2; y < size.height - 0.5; y += step) {
           canvas.drawLine(Offset(0, y), Offset(size.width, y), rule);
         }
@@ -126,7 +133,7 @@ class BoardBackgroundPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(BoardBackgroundPainter old) => old.background != background;
+  bool shouldRepaint(BoardBackgroundPainter old) => old.background != background || old.unit != unit || old.originX != originX;
 }
 
 /// The ink and shapes of the visible page ([items]) and the laser dots ([lasers]).
@@ -137,6 +144,7 @@ class BoardItemsPainter extends CustomPainter {
     required this.laserColor,
     required this.laserOpacity,
     this.coordSize,
+    this.coordOrigin = Offset.zero,
     super.repaint,
   });
 
@@ -148,6 +156,9 @@ class BoardItemsPainter extends CustomPainter {
   /// The page's coordinate size when it differs from the painted size (a continuous page is painted as far as it is
   /// shown, its coordinates span its whole length). Null: the painted size.
   final Size? coordSize;
+
+  /// Where the page's x 0 / y 0 is in the painted area (a continuous page grown to the left, D-107: to its right).
+  final Offset coordOrigin;
 
   static final Expando<AnnotStroke> _strokes = Expando('board.ink');
 
@@ -177,7 +188,7 @@ class BoardItemsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & (coordSize ?? size);
+    final rect = coordOrigin & (coordSize ?? size);
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     for (final it in items()) {
@@ -259,7 +270,7 @@ class BoardItemsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(BoardItemsPainter old) =>
-      old.laserColor != laserColor || !identical(old.items, items) || old.coordSize != coordSize;
+      old.laserColor != laserColor || !identical(old.items, items) || old.coordSize != coordSize || old.coordOrigin != coordOrigin;
 }
 
 /// The page fitted into [box] (16:9 unless [aspect] says otherwise, centred), never wider / taller than the box.

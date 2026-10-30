@@ -63,7 +63,7 @@ void main() {
     });
 
     test('an unknown format reads as landscape; a newer bv still asks for an update', () {
-      final raw = utf8.encode(jsonEncode({'v': 1, 't': 'on', 'bv': 3, 'fm': 'z', 'bg': 'w', 'pages': ['p0'], 'pg': 'p0'}));
+      final raw = utf8.encode(jsonEncode({'v': 1, 't': 'on', 'bv': kBoardFeatureVersion + 1, 'fm': 'z', 'bg': 'w', 'pages': ['p0'], 'pg': 'p0'}));
       final s = BoardCodec.decode(raw) as BoardState;
       expect(s.format, BoardFormat.landscape);
       final c = BoardController(localIdentity: 'student_2', autoFlush: false);

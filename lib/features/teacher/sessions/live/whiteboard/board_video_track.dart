@@ -12,6 +12,10 @@
 //
 // Cost on the presenter: one page render + readback every 500 ms only while the page changed (else the last frame
 // is re-sent once a second for key frames), one 2 fps encoder. Viewers: nothing.
+//
+// A continuous page (D-107) is drawn from its items ([boardRecordingRgba]): the presenter's view widened to 16:9 over
+// what the page has beside it, so a phone presenter's narrow view — or a page grown sideways — fills the frame
+// instead of a pillar; the frame is drawn again when the view moves.
 library;
 
 import 'dart:async';
@@ -24,6 +28,9 @@ import 'package:flutter/widgets.dart';
 import 'package:livekit_client/livekit_client.dart';
 
 import '../../../../shared/live/live_media_plan.dart' show kBoardVideoTrackName;
+import 'board_controller.dart';
+import 'board_export.dart' show boardRecordingRgba;
+import 'board_format.dart' show BoardViewportPos;
 import 'board_video_sink_native.dart' if (dart.library.js_interop) 'board_video_sink_web.dart' as sink;
 import 'board_video_source.dart';
 
@@ -62,10 +69,14 @@ Future<Uint8List?> boardPageRgba(GlobalKey pageKey, {int width = kBoardVideoWidt
 }
 
 class BoardVideoPublisher {
-  BoardVideoPublisher({required this.room, required this.pageKey});
+  BoardVideoPublisher({required this.room, required this.pageKey, this.board});
 
   final Room room;
   final GlobalKey pageKey;
+
+  /// The board: a continuous page is drawn from its items around the presenter's view (null: [pageKey] only).
+  final BoardController? board;
+  BoardViewportPos? _lastView;
 
   BoardVideoSource? _source;
   LocalVideoTrack? _track;
@@ -139,8 +150,12 @@ class BoardVideoPublisher {
     _busy = true;
     try {
       final now = DateTime.now();
+      final b = board;
+      final continuous = b != null && b.isContinuous;
+      if (continuous && b.localViewport != _lastView) _dirty = true; // the presenter scrolled
       if (_dirty) {
-        final rgba = await boardPageRgba(pageKey);
+        _lastView = continuous ? b.localViewport : null;
+        final rgba = continuous ? await boardRecordingRgba(b) : await boardPageRgba(pageKey);
         if (rgba != null) {
           _last = rgba;
           _dirty = false;

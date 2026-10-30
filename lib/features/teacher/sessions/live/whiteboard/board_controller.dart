@@ -24,6 +24,11 @@
 // name tags of whoever else is drawing, fed by the packets above (the LiveKit sender, never a payload field). A
 // finger's stroke is HELD for [kBoardTouchHold] before it goes out ([beginInk] `hold`): a second finger landing in
 // that time (a pinch, a two-finger scroll) cancels it without anybody having seen a dot.
+//
+// D-107: a continuous page grows sideways — x may leave its column (−[kBoardSideMax] .. 1 + [kBoardSideMax]); a fixed
+// page keeps 0..1. The first item outside the column makes the board [isWide] (for as long as it is presented in
+// that format), and the presenter announces it again with `bv: 3` so an app from before shows "update the app"
+// rather than a smear along the column's edge. The presenter's view carries its sideways part (`vp` x / w).
 library;
 
 import 'dart:async';
@@ -193,6 +198,7 @@ class BoardController extends ChangeNotifier {
   List<String> _pages = const [];
   bool _needsUpdate = false;
   BoardFormat _format = BoardFormat.landscape;
+  bool _wide = false;
 
   /// Who presents the board now (null: no board).
   String? get presenter => _presenter;
@@ -209,6 +215,40 @@ class BoardController extends ChangeNotifier {
   /// The page's width / height (continuous: of its whole length).
   double get aspect => boardFormatAspect(_format);
   bool get isContinuous => _format == BoardFormat.continuous;
+
+  /// A continuous page holds something outside its column (D-107): the presenter announces `bv: 3`.
+  bool get isWide => _wide;
+
+  /// The x range this format draws on: the column 0..1, or a continuous page's widest reach.
+  double get minX => isContinuous ? -kBoardSideMax : 0;
+  double get maxX => isContinuous ? 1 + kBoardSideMax : 1;
+
+  double _cx(double x) => isContinuous ? boardClampX(x) : _c(x);
+
+  AnnotPoint _pt(double x, double y, double p) => isContinuous ? boardPoint(x, y, p) : AnnotPoint.wire(x, y, p);
+
+  /// [x] lies outside the column of a continuous page: the board is wide from now on (the presenter says so).
+  void _noteX(double x) {
+    if (_wide || !isContinuous || (x >= -1e-6 && x <= 1 + 1e-6)) return;
+    _wide = true;
+    _emitState();
+  }
+
+  void _noteItem(BoardItem it) {
+    if (_wide || !isContinuous) return;
+    switch (it) {
+      case BoardInk():
+        for (final p in it.points) {
+          _noteX(p.x);
+        }
+      case BoardShape():
+        _noteX(it.x1);
+        _noteX(it.x2);
+      case BoardText():
+        _noteX(it.x);
+        _noteX(it.x + it.boxWidth);
+    }
+  }
 
   /// The presenter's board uses features this app does not draw: "update the app".
   bool get needsUpdate => _needsUpdate;
@@ -254,6 +294,10 @@ class BoardController extends ChangeNotifier {
     }
     scene._background = background;
     _format = format;
+    _wide = false;
+    for (final it in scene._items.values) {
+      _noteItem(it);
+    }
     _presenter = me;
     _needsUpdate = false;
     _undo.clear();
@@ -290,6 +334,7 @@ class BoardController extends ChangeNotifier {
     _held = false;
     _shapeDraft = null;
     _format = BoardFormat.landscape;
+    _wide = false;
     _textHeights.clear();
     presence.clear();
     presenterViewport.value = null;
@@ -333,6 +378,10 @@ class BoardController extends ChangeNotifier {
       ..clear()
       ..addAll({for (final i in moved) i.id: i});
     _format = f;
+    _wide = false;
+    for (final it in moved) {
+      _noteItem(it);
+    }
     _textHeights.clear();
     _undo.clear();
     _redo.clear();
@@ -389,7 +438,7 @@ class BoardController extends ChangeNotifier {
 
   void _emitState({List<String>? to}) {
     if (!isLocalPresenting) return;
-    _emit(BoardState(background: scene._background, pages: _pages, page: scene._page, format: _format), to: to);
+    _emit(BoardState.of(background: scene._background, pages: _pages, page: scene._page, format: _format, wide: _wide), to: to);
   }
 
   // ── The presenter's view of a continuous page ──────────────────────────────
@@ -408,7 +457,7 @@ class BoardController extends ChangeNotifier {
     final t = now();
     if (_vpSentAt == null || t.difference(_vpSentAt!) >= kBoardViewportInterval) {
       _vpSentAt = t;
-      _emit(BoardViewport(top: v.top, height: v.height));
+      _emit(BoardViewport(top: v.top, height: v.height, left: v.left, width: v.width));
     }
     _vpTimer?.cancel();
     _vpTimer = autoFlush ? Timer(kBoardViewportSettle, flushViewport) : null;
@@ -420,7 +469,7 @@ class BoardController extends ChangeNotifier {
     _vpTimer = null;
     final v = _localViewport;
     if (v == null || !isLocalPresenting || !isContinuous) return;
-    _emit(BoardViewport(top: v.top, height: v.height, lossy: false), to: to);
+    _emit(BoardViewport(top: v.top, height: v.height, left: v.left, width: v.width, lossy: false), to: to);
   }
 
   // ── The local tool ─────────────────────────────────────────────────────────
@@ -563,9 +612,10 @@ class BoardController extends ChangeNotifier {
       ink: ink,
       color: _color,
       width: annotRound(widths[_thickness] * styleScale).toDouble(),
-      points: [AnnotPoint.wire(x, y, pressured ? p : 0.5)],
+      points: [_pt(x, y, pressured ? p : 0.5)],
       pressured: pressured,
     );
+    _noteX(s.points.first.x);
     _current = s;
     scene._items[s.id] = s;
     scene._changed();
@@ -596,9 +646,10 @@ class BoardController extends ChangeNotifier {
   void moveInk(double x, double y, {double p = 0.5}) {
     final s = _current;
     if (s == null || s.points.length >= kAnnotMaxPointsPerStroke) return;
-    final pt = AnnotPoint.wire(x, y, s.pressured == true ? p : 0.5);
+    final pt = _pt(x, y, s.pressured == true ? p : 0.5);
     final last = s.points.last;
     if (last == pt) return;
+    _noteX(pt.x);
     s.points.add(pt);
     s.version++;
     scene._changed();
@@ -652,9 +703,9 @@ class BoardController extends ChangeNotifier {
       author: localIdentity,
       page: scene._page,
       kind: kind,
-      x1: _c(x),
+      x1: _cx(x),
       y1: _c(y),
-      x2: _c(x),
+      x2: _cx(x),
       y2: _c(y),
       color: _color,
       width: annotRound(kAnnotPenWidths[_thickness] * 1.25 * styleScale).toDouble(),
@@ -669,13 +720,15 @@ class BoardController extends ChangeNotifier {
   void moveShape(double x, double y, {bool square = false}) {
     final s = _shapeDraft;
     if (s == null) return;
-    var nx = _c(x), ny = _c(y);
+    var nx = _cx(x), ny = _c(y);
     if (square) {
       final dx = nx - s.x1, dy = (ny - s.y1) / aspect;
       final m = math.max(dx.abs(), dy.abs());
-      nx = _c(s.x1 + m * dx.sign);
+      nx = _cx(s.x1 + m * dx.sign);
       ny = _c(s.y1 + m * dy.sign * aspect);
     }
+    _noteX(s.x1);
+    _noteX(nx);
     final next = s.copyWith(x2: nx, y2: ny, rev: s.rev + 1);
     _shapeDraft = next;
     scene._items[s.id] = next;
@@ -725,7 +778,7 @@ class BoardController extends ChangeNotifier {
       id: _newId(),
       author: localIdentity,
       page: scene._page,
-      x: _c(math.min(x, 1 - math.min(w, 1))),
+      x: _cx(math.min(x, maxX - math.min(w, 1))),
       y: _c(y),
       boxWidth: w,
       size: fontSize(_fontStep),
@@ -760,10 +813,11 @@ class BoardController extends ChangeNotifier {
     final next = it.copyWith(
       rev: it.rev + 1,
       text: text == null ? null : (text.length > kBoardMaxText ? text.substring(0, kBoardMaxText) : text),
-      x: x == null ? null : _c(x),
+      x: x == null ? null : _cx(x),
       y: y == null ? null : _c(y),
       boxWidth: boxWidth?.clamp(0.06, 1.0).toDouble(),
     );
+    if (next.text.trim().isNotEmpty) _noteItem(next);
     scene._items[id] = next;
     scene._changed();
     if (next.text.trim().isNotEmpty || _sentIds.contains(id)) _queuePut(next);
@@ -775,10 +829,11 @@ class BoardController extends ChangeNotifier {
     if (it == null || it is BoardInk || !_mayEdit(localIdentity, it)) return;
     _editing.putIfAbsent(id, () => it);
     final next = switch (it) {
-      BoardText() => it.moved(dx, dy).copyWith(rev: it.rev + 1),
-      BoardShape() => it.moved(dx, dy).copyWith(rev: it.rev + 1),
+      BoardText() => it.moved(dx, dy, minX: minX, maxX: maxX).copyWith(rev: it.rev + 1),
+      BoardShape() => it.moved(dx, dy, minX: minX, maxX: maxX).copyWith(rev: it.rev + 1),
       BoardInk() => it,
     };
+    if (next is! BoardText || next.text.trim().isNotEmpty) _noteItem(next);
     scene._items[id] = next;
     scene._changed();
     if (next is! BoardText || next.text.trim().isNotEmpty || _sentIds.contains(id)) _queuePut(next);
@@ -973,11 +1028,11 @@ class BoardController extends ChangeNotifier {
   void pointLaser(double x, double y) {
     if (!canDrawLocal) return;
     final t = now();
-    scene._lasers[localIdentity] = AnnotLaserDot(author: localIdentity, x: _c(x), y: _c(y), at: t);
+    scene._lasers[localIdentity] = AnnotLaserDot(author: localIdentity, x: _cx(x), y: _c(y), at: t);
     scene._changed();
     if (_lastLaserSent != null && t.difference(_lastLaserSent!) < batchInterval) return;
     _lastLaserSent = t;
-    _emit(BoardLaser(x: _c(x), y: _c(y)));
+    _emit(BoardLaser(x: _cx(x), y: _c(y)));
   }
 
   /// Drops laser dots older than [laserTtl]; whether any are left.
@@ -1261,6 +1316,11 @@ class BoardController extends ChangeNotifier {
         if (room <= 0) return false;
         s.points.addAll(m.points.take(room));
         s.version++;
+        if (isLocalPresenting) {
+          for (final p in m.points) {
+            _noteX(p.x);
+          }
+        }
         scene._changed();
         final tip = s.points.last;
         presence.mark(sender, name: displayName(sender), x: tip.x, y: tip.y, page: s.page, color: s.color, active: true);
@@ -1289,6 +1349,7 @@ class BoardController extends ChangeNotifier {
           next = _withAuthor(it, isLead(sender) ? it.author : sender);
         }
         scene._items[it.id] = next;
+        if (isLocalPresenting) _noteItem(next);
         if (_selected == it.id && !_editing.containsKey(it.id)) _selected = null;
         scene._changed();
         switch (next) {
@@ -1345,7 +1406,7 @@ class BoardController extends ChangeNotifier {
         return true;
       case BoardViewport():
         if (sender != _presenter || !isContinuous) return false;
-        presenterViewport.value = BoardViewportPos(m.top, m.height);
+        presenterViewport.value = BoardViewportPos(m.top, m.height, left: m.left, width: m.width);
         return true;
     }
   }
@@ -1362,7 +1423,7 @@ class BoardController extends ChangeNotifier {
     final rtl = boardTextIsRtl(t.text, fallbackRtl: false);
     final x = rtl ? t.x + t.boxWidth - rest : t.x + rest;
     final y = t.y + rows * lineH + lineH * 0.8;
-    return (x.clamp(0.0, 1.0).toDouble(), y.clamp(0.0, 1.0).toDouble());
+    return (_cx(x), y.clamp(0.0, 1.0).toDouble());
   }
 
   /// Who sent the ink stream that is still open (only they may add to it).
