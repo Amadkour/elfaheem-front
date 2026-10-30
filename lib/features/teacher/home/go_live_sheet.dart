@@ -605,7 +605,8 @@ class GoLiveSheetView extends StatelessWidget {
         if (!rejoin)
           AppSwitchTile(
             icon: Icons.fiber_manual_record_rounded,
-            activeColor: c.danger,
+            // the switch keeps the app's primary track (M22); only the small dot says "recording" in red
+            iconColor: record ? c.danger : c.textLight,
             title: t('تسجيل الحصة', 'Record this session'),
             subtitle: t('يشاهدها الطلاب لاحقًا من صفحة الكورس', 'Students can watch it later from the course'),
             value: record,

@@ -681,12 +681,18 @@ class CalAgendaDayCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_dayTitle(day.day, nowWall), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w800, c: c.textDark)),
-              Text(_dayDate(day.day, pattern: calDay(day.day).difference(calDay(nowWall)).inDays.abs() <= 1 ? 'EEEE d MMMM' : 'd MMMM y'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.textLight)),
+              // the count rides on the date line, beside the title: at the row's END it sat under the assistant's
+              // docked edge tab on phones (R3), which docks on that side by default
+              Row(children: [
+                Flexible(
+                  child: Text(_dayDate(day.day, pattern: calDay(day.day).difference(calDay(nowWall)).inDays.abs() <= 1 ? 'EEEE d MMMM' : 'd MMMM y'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.textLight)),
+                ),
+                if (count > 0)
+                  Text(t(' · $count ${count == 1 ? 'موعد' : 'مواعيد'}', ' · $count ${count == 1 ? 'event' : 'events'}'),
+                      maxLines: 1, style: appText(11.5, w: FontWeight.w600, c: c.textLight)),
+              ]),
             ]),
           ),
-          if (count > 0)
-            Text(t('$count ${count == 1 ? 'موعد' : 'مواعيد'}', '$count ${count == 1 ? 'event' : 'events'}'),
-                style: appText(11.5, w: FontWeight.w700, c: c.textLight)),
         ]),
       ),
       for (final p in day.pauses) ...[CalPauseBanner(pause: p), const SizedBox(height: 8)],

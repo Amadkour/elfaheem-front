@@ -33,7 +33,6 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<CertificateRequestsProvider>();
-    final c = context.colors;
 
     final body = CertificateRequestsBody(
       loading: p.loading,

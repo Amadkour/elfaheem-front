@@ -180,10 +180,16 @@ void main() {
   });
 
   test('the FCM and the SSE copy of one event reach the bus once, whichever comes first', () async {
-    late HttpResponse res;
-    srv.handler = (req, n) async => res = await srv.sse(req);
+    // The client can read the headers (connected) before the server's flush() future resolves, so the server's
+    // response is awaited on its own rather than read from a variable the handler may not have set yet.
+    final opened = Completer<HttpResponse>();
+    srv.handler = (req, n) async {
+      final r = await srv.sse(req);
+      if (!opened.isCompleted) opened.complete(r);
+    };
     c = make()..bind();
     await until(() => c.connected.value, what: 'connected');
+    final res = await opened.future.timeout(const Duration(seconds: 5));
     expect(c.ingest('job_updated', 'a-1', {'kind': 'k', 'id': '1', 'event_id': 'a-1'}), isTrue); // the FCM twin first
     res.write(serverFrame('a-1', 'job_updated', {'kind': 'k', 'id': '1'}));
     res.write(serverFrame('b-2', 'job_updated', {'kind': 'k', 'id': '2'}));

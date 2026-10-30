@@ -238,7 +238,7 @@ class CourseDetailProvider extends BaseProvider {
       );
       if (loadRest) {
         notifyListeners();
-        return fetchSessions(courseId, reset: false, rest: true);
+        return await fetchSessions(courseId, reset: false, rest: true);
       }
     } on ApiException catch (e) {
       if (e.isDeviceBlocked) {

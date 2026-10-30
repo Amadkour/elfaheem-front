@@ -42,7 +42,6 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<MyCertificatesProvider>();
-    final c = context.colors;
 
     Widget body;
     if (p.loading && p.items.isEmpty) {

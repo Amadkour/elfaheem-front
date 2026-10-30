@@ -121,6 +121,7 @@ class AppSwitchTile extends StatelessWidget {
     this.dense = false,
     this.subtitleWidget,
     this.inactiveColor,
+    this.iconColor,
   });
 
   final String title;
@@ -135,13 +136,17 @@ class AppSwitchTile extends StatelessWidget {
 
   /// Track colour when off; see [AppSwitch.inactiveColor].
   final Color? inactiveColor;
+
+  /// The leading icon's colour (and its tile's tint) when it should differ from the switch's [activeColor], e.g. a
+  /// red recording dot beside a switch drawn in the normal primary colour.
+  final Color? iconColor;
   final EdgeInsetsGeometry padding;
   final bool dense;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final accent = activeColor ?? c.primary;
+    final accent = iconColor ?? activeColor ?? c.primary;
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
