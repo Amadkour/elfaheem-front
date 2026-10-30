@@ -1268,3 +1268,27 @@ quieter; the Today button goes quiet when the page already shows today the way i
 screen); re-centring the window on every tap (the strip would move under the finger); a fixed row on every screen
 (row 5 on a phone pushes the appointment and what follows to the bottom); following the next appointment on every
 clock tick (the grid would move by itself while being read).
+
+## D-102 — Calm homes, one course card, one sessions timeline (student and teacher share the language) · 2026-10-30 · accepted
+
+**Context.** The owner: the homes are "too complex and not attractive"; the course lists and the course page must be
+premium, simple, light on the eyes and consistent between the two roles; the course page has a cover with the image
+and its actions over it, and the sessions below it in a smart, elegant layout. A real-app sweep (web build on the local
+stack, every student / teacher screen captured) then listed what still looked or worked wrong.
+**Decision.** One type scale for these surfaces: titles w600, rows w500, meta w400 in the muted colour, figures w600,
+never w800 / w900 (one hero title may be w700); hairline borders instead of shadows; one strong accent per card.
+Homes: a light greeting header, ONE live / next-up card on a card surface, "Needs you" as one slim row of outlined
+pills (zero counts hidden), Today, a three-line courses card, an inbox preview. "This week" left the student home (the
+schedule page has it) and the teacher's stats hero and separate "Enter room" card left the teacher home (the button
+sits on the running row of Today; students · rating · earnings head the courses card). Course lists: ONE
+`CourseListCard` for both roles — a media row on phones (scans faster than a stack of covers), a tile grid from 600 px;
+the student's three gradient stat cards became the counts on the filter; the teacher's details panel and toolbar became
+the ⋮ menu; the heart shows only on favourites (it was never tappable on the card). Course page: the cover keeps its
+image with one frosted button style for both roles; sessions are ONE timeline (`course_sessions.dart`) whose rows differ
+only by role (progress and Join for the student, ⋮ and reorder for the teacher). The primary gradient is built from the
+primary colour (the server's accent blend made pills, tabs and buttons gold). Digits are Western 0-9 in both languages
+(`AppTime.useLatinDigits`), which most screens already used. A server-generated session title carries `title_auto` and
+is shown in the reader's language; Go live sends no name when the teacher typed none.
+**Rejected.** A full-bleed coloured hero on every home (it fought the live state for attention); keeping the cover
+grid on phones for the lists (half the screen per course, titles cut to one line); a separate sessions widget per role
+(the two pages drifted apart before); Arabic-Indic digits everywhere (clocks, counts and server text are already 0-9).
