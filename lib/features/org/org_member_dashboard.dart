@@ -15,11 +15,16 @@
 //                            "What needs you" (InboxCompactList, 3) → decisions (managers) → what I manage → quick
 //                            actions GROUPED (My studies · Requests & forms · Manage · Organization, ≤ 6 pills each +
 //                            a "More" sheet) → news (3). Sections fold from their titles (HomeSection, remembered).
+//                            A desktop window: HomeDashboard like the student / teacher homes — today leads the main
+//                            column, "What needs you" the side one, and the rest keeps its order split between the
+//                            two at the most even cut (orgHomeColumnSplit); too little for two → one centred column.
 //   OrgMemberDashboardScreen standalone page (route '/org_member', e.g. org staff without a management dashboard)
 //   openOrgApproval          jump from an approval item to the page that decides it (rights checked server-side)
 //
 // Layout test: test/ui/member_home_layout_test.dart.
 library;
+
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -27,7 +32,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -522,175 +526,221 @@ class OrgMemberHomeBody extends StatelessWidget {
       ],
 
     ];
-    final main = <Widget>[
-      // ── today (the same events as the calendar: exam pauses and dated changes applied)
-      if (isMember) ...[
-        if (today == null && todayFallback != null)
-          todayFallback!
-        else
-          HomeSection(
-            id: 'member.today',
-            title: 'home_today'.tr,
-            count: today?.length ?? 0,
-            foldedSummary: (today ?? const []).isEmpty ? null : homeDaySummaryOf(today!, nowUtc),
-            // a free day folds by itself (its line says so); the person's own choice for that state wins
-            empty: (today ?? const []).isEmpty,
-            emptySummary: 'home_no_classes_today'.tr,
-            actionLabel: 'home_full_timetable'.tr,
-            onAction: openTimetable,
+    // ── today (the same events as the calendar: exam pauses and dated changes applied)
+    final todayList = today ?? const <CalEvent>[];
+    final Widget? todayBlock = !isMember
+        ? null
+        : (today == null && todayFallback != null)
+            ? todayFallback!
+            : HomeSection(
+                id: 'member.today',
+                title: 'home_today'.tr,
+                count: todayList.length,
+                foldedSummary: todayList.isEmpty ? null : homeDaySummaryOf(todayList, nowUtc),
+                // a free day folds by itself (its line says so); the person's own choice for that state wins
+                empty: todayList.isEmpty,
+                emptySummary: 'home_no_classes_today'.tr,
+                actionLabel: 'home_full_timetable'.tr,
+                onAction: openTimetable,
+                titlePadding: _titlePad,
+                child: HomeAgenda(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  nowMin: nowMin,
+                  items: [for (final e in todayList) homeAgendaItemOf(context, e, nowUtc, onTap: () => onOpenEvent?.call(e))],
+                  emptyTitle: 'home_no_classes_today'.tr,
+                  emptyMessage: 'home_no_classes_hint'.tr,
+                  emptyActionLabel: 'home_full_timetable'.tr,
+                  onEmptyAction: openTimetable,
+                ),
+              );
+
+    // ── what needs me (the 3 most urgent rows of THIS organization; the counts sit in the strip above)
+    void openInbox() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))));
+    final needsFallback = inboxRows == null && inboxFallback != null;
+    final Widget? needsBlock = needsFallback
+        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            HomeSectionTitle(t('ما ينتظرك', 'What needs you'),
+                padding: const EdgeInsets.fromLTRB(16, 0, 8, 10), actionLabel: t('عرض الكل', 'See all'), onAction: openInbox),
+            inboxFallback!,
+          ])
+        : (inboxRows != null && inboxRows.isNotEmpty)
+            ? HomeSection(
+                id: 'member.needs',
+                title: t('ما ينتظرك', 'What needs you'),
+                count: inboxRows.length,
+                titlePadding: _titlePad,
+                actionLabel: t('عرض الكل', 'See all'),
+                onAction: openInbox,
+                child: InboxCompactList(items: inboxRows.take(3).toList(), padding: const EdgeInsets.symmetric(horizontal: 16), onTap: (x) => onOpenInboxItem?.call(x)),
+              )
+            : null;
+
+    // ── decisions (managers)
+    const decisionKinds = ['form_responses', 'complaints', 'join_requests', 'unit_requests'];
+    final decisionRows = decisionKinds.where((k) => asInt(ap[k]) > 0).length;
+    final Widget? decisionsBlock = !(manage != null && asInt(ap['total']) > 0)
+        ? null
+        : HomeSection(
+            id: 'member.decisions',
+            title: t('بانتظار قرارك', 'Waiting for your decision'),
+            count: asInt(ap['total']),
             titlePadding: _titlePad,
-            child: HomeAgenda(
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              nowMin: nowMin,
-              items: [for (final e in today ?? const <CalEvent>[]) homeAgendaItemOf(context, e, nowUtc, onTap: () => onOpenEvent?.call(e))],
-              emptyTitle: 'home_no_classes_today'.tr,
-              emptyMessage: 'home_no_classes_hint'.tr,
-              emptyActionLabel: 'home_full_timetable'.tr,
-              onEmptyAction: openTimetable,
+              child: Column(children: [
+                for (final (k, icon, label) in [
+                  ('form_responses', Icons.fact_check_rounded, t('طلبات تنتظر مراجعتك', 'Requests to review')),
+                  ('complaints', Icons.support_agent_rounded, t('شكاوى مفتوحة', 'Open complaints')),
+                  ('join_requests', Icons.person_add_alt_1_rounded, t('طلبات انضمام للمؤسسة', 'People asking to join')),
+                  ('unit_requests', Icons.group_add_rounded, t('طلبات انضمام لأقسام', 'Department join requests')),
+                ])
+                  if (asInt(ap[k]) > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: AppActionCard(
+                        icon: icon,
+                        color: k == 'complaints' && asInt(ap['overdue_complaints']) > 0 ? c.danger : c.primary,
+                        title: label,
+                        subtitle: k == 'complaints'
+                            ? [
+                                if (asInt(ap['overdue_complaints']) > 0) t('${ap['overdue_complaints']} متأخرة', '${ap['overdue_complaints']} overdue'),
+                                if (asInt(ap['assigned_to_me']) > 0) t('${ap['assigned_to_me']} مسندة إليك', '${ap['assigned_to_me']} assigned to you'),
+                              ].join(' · ')
+                            : null,
+                        badge: asInt(ap[k]),
+                        onTap: () => openOrgApproval(context, orgId, k),
+                      ),
+                    ),
+              ]),
             ),
-          ),
-        const SizedBox(height: 24),
-      ],
+          );
 
-      // ── what needs me (the 3 most urgent rows of THIS organization; the counts sit in the strip above)
-      if (inboxRows == null && inboxFallback != null) ...[
-        HomeSectionTitle(t('ما ينتظرك', 'What needs you'),
-            padding: const EdgeInsets.fromLTRB(16, 0, 8, 10),
-            actionLabel: t('عرض الكل', 'See all'),
-            onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))))),
-        inboxFallback!,
-        const SizedBox(height: 8),
-      ] else if (inboxRows != null && inboxRows.isNotEmpty) ...[
-        HomeSection(
-          id: 'member.needs',
-          title: t('ما ينتظرك', 'What needs you'),
-          count: inboxRows.length,
-          titlePadding: _titlePad,
-          actionLabel: t('عرض الكل', 'See all'),
-          onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org)))),
-          child: InboxCompactList(items: inboxRows.take(3).toList(), padding: const EdgeInsets.symmetric(horizontal: 16), onTap: (x) => onOpenInboxItem?.call(x)),
-        ),
-        const SizedBox(height: 24),
-      ],
-
-    ];
-    final side = <Widget>[
-      // ── decisions (managers)
-      if (manage != null && asInt(ap['total']) > 0) ...[
-        HomeSection(
-          id: 'member.decisions',
-          title: t('بانتظار قرارك', 'Waiting for your decision'),
-          count: asInt(ap['total']),
-          titlePadding: _titlePad,
-          child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(children: [
-            for (final (k, icon, label) in [
-              ('form_responses', Icons.fact_check_rounded, t('طلبات تنتظر مراجعتك', 'Requests to review')),
-              ('complaints', Icons.support_agent_rounded, t('شكاوى مفتوحة', 'Open complaints')),
-              ('join_requests', Icons.person_add_alt_1_rounded, t('طلبات انضمام للمؤسسة', 'People asking to join')),
-              ('unit_requests', Icons.group_add_rounded, t('طلبات انضمام لأقسام', 'Department join requests')),
-            ])
-              if (asInt(ap[k]) > 0)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: AppActionCard(
-                    icon: icon,
-                    color: k == 'complaints' && asInt(ap['overdue_complaints']) > 0 ? c.danger : c.primary,
-                    title: label,
-                    subtitle: k == 'complaints'
-                        ? [
-                            if (asInt(ap['overdue_complaints']) > 0) t('${ap['overdue_complaints']} متأخرة', '${ap['overdue_complaints']} overdue'),
-                            if (asInt(ap['assigned_to_me']) > 0) t('${ap['assigned_to_me']} مسندة إليك', '${ap['assigned_to_me']} assigned to you'),
-                          ].join(' · ')
-                        : null,
-                    badge: asInt(ap[k]),
-                    onTap: () => openOrgApproval(context, orgId, k),
+    // ── the parts I manage
+    final Widget? manageBlock = depts.isEmpty && subOrgs.isEmpty
+        ? null
+        : HomeSection(
+            id: 'member.manage',
+            title: t('ما تديره', 'What you manage'),
+            count: depts.length + subOrgs.length,
+            titlePadding: _titlePad,
+            subtitle: admin ? t('صلاحيات كاملة على المؤسسة', 'Full rights on the organization') : t('حسب الصلاحيات الممنوحة لك', 'Based on the rights you were given'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(children: [
+                for (final d in depts)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: AppActionCard(
+                      icon: Icons.apartment_rounded,
+                      color: hexColor(d['color'], c.primary),
+                      title: orgNameOf(d),
+                      subtitle: asMap(d['modules']).keys.map(_moduleLabel).join(' · '),
+                      onTap: () => _deptSheet(context, orgId, d),
+                    ),
                   ),
-                ),
-          ]),
-        ),
-        ),
-        const SizedBox(height: 16),
-      ],
+                for (final o in subOrgs)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: AppActionCard(
+                      icon: orgTypeIcons[o['type']] ?? Icons.account_tree_rounded,
+                      color: orgColor(context, o),
+                      title: orgNameOf(o),
+                      subtitle: '${o['status']}' == 'approved' ? t('مؤسسة فرعية', 'Sub-organization') : statusLabel('${o['status']}'),
+                      onTap: () => openOrgManagement(context, asInt(o['id'])),
+                    ),
+                  ),
+              ]),
+            ),
+          );
 
-      // ── the parts I manage
-      if (depts.isNotEmpty || subOrgs.isNotEmpty) ...[
-        HomeSection(
-          id: 'member.manage',
-          title: t('ما تديره', 'What you manage'),
-          count: depts.length + subOrgs.length,
-          titlePadding: _titlePad,
-          subtitle: admin ? t('صلاحيات كاملة على المؤسسة', 'Full rights on the organization') : t('حسب الصلاحيات الممنوحة لك', 'Based on the rights you were given'),
-          child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(children: [
-            for (final d in depts)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: AppActionCard(
-                  icon: Icons.apartment_rounded,
-                  color: hexColor(d['color'], c.primary),
-                  title: orgNameOf(d),
-                  subtitle: asMap(d['modules']).keys.map(_moduleLabel).join(' · '),
-                  onTap: () => _deptSheet(context, orgId, d),
-                ),
-              ),
-            for (final o in subOrgs)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: AppActionCard(
-                  icon: orgTypeIcons[o['type']] ?? Icons.account_tree_rounded,
-                  color: orgColor(context, o),
-                  title: orgNameOf(o),
-                  subtitle: '${o['status']}' == 'approved' ? t('مؤسسة فرعية', 'Sub-organization') : statusLabel('${o['status']}'),
-                  onTap: () => openOrgManagement(context, asInt(o['id'])),
-                ),
-              ),
-          ]),
-        ),
-        ),
-        const SizedBox(height: 16),
-      ],
+    // ── quick actions, grouped (exactly what my rights allow)
+    final quickGroups = orgQuickGroups(context, entry);
+    final quickBlocks = [for (final (gi, g) in quickGroups.indexed) OrgQuickGroupView(group: g, foldId: 'member.quick.$gi')];
 
-      // ── quick actions, grouped (exactly what my rights allow)
-      for (final (gi, g) in orgQuickGroups(context, entry).indexed) ...[
-        OrgQuickGroupView(group: g, foldId: 'member.quick.$gi'),
-        const SizedBox(height: 16),
-      ],
+    // ── news
+    final Widget? newsBlock = !(isMember && news != null)
+        ? null
+        : HomeSection(
+            id: 'member.news',
+            title: t('أخبار المؤسسة', 'News'),
+            titlePadding: _titlePad,
+            actionLabel: t('كل الأخبار', 'All news'),
+            onAction: () => _space(context, org, 0),
+            child: news!,
+          );
 
-      // ── news
-      if (isMember && news != null)
-        HomeSection(
-          id: 'member.news',
-          title: t('أخبار المؤسسة', 'News'),
-          titlePadding: _titlePad,
-          actionLabel: t('كل الأخبار', 'All news'),
-          onAction: () => _space(context, org, 0),
-          child: news!,
-        ),
+    // phone / narrow window: one column, in reading order (unchanged since Track B.4)
+    final narrow = <Widget>[
+      ...top,
+      if (todayBlock != null) ...[todayBlock, const SizedBox(height: 24)],
+      if (needsBlock != null) ...[needsBlock, SizedBox(height: needsFallback ? 8 : 24)],
+      if (decisionsBlock != null) ...[decisionsBlock, const SizedBox(height: 16)],
+      if (manageBlock != null) ...[manageBlock, const SizedBox(height: 16)],
+      for (final q in quickBlocks) ...[q, const SizedBox(height: 16)],
+      ?newsBlock,
+      const SizedBox(height: 24),
     ];
 
-    // A wide window: what is happening (today · what needs you) beside what you act on (decisions · what you
-    // manage · quick actions), at most 1240 wide — one 1400 px column stretched every row into a thin strip.
+    // A desktop window, the student / teacher homes' HomeDashboard: today leads the wide main column and "What
+    // needs you" the side column (as the student's inbox does); the rest (decisions · what I manage · the quick
+    // action groups · news) keeps its reading order and is split between the two so neither column stands empty
+    // beside a tall one — the main column takes the first part, the side column the rest, at the cut whose taller
+    // column is the shortest (estimated heights, orgHomeColumnSplit). Too little for two columns → one centred column.
     return LayoutBuilder(builder: (context, box) {
-      if (box.maxWidth < Breakpoints.desktop || side.isEmpty || main.isEmpty) {
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...top, ...main, ...side, const SizedBox(height: 24)]);
+      final w = math.min(box.maxWidth, kHomeWideMax);
+      if (!homeIsWide(w)) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: narrow);
+      final sideW = HomeDashboard.sideWidthFor(w);
+      final mainW = w - sideW;
+      final flow = <(Widget, double Function(double width))>[
+        if (decisionsBlock != null) (decisionsBlock, (_) => 48.0 + 76 * decisionRows),
+        if (manageBlock != null) (manageBlock, (_) => 68.0 + 76 * (depts.length + subOrgs.length)),
+        for (final (i, q) in quickBlocks.indexed) (q, (width) => _quickHeight(quickGroups[i], width)),
+        if (newsBlock != null) (newsBlock, (_) => asInt(entry['news']) > 0 ? 280.0 : 130.0),
+      ];
+      final todayH = todayBlock == null
+          ? 0.0
+          : (today == null && todayFallback != null)
+              ? 220.0
+              : todayList.isEmpty
+                  ? 52.0
+                  : 52.0 + 56 * math.min(todayList.length, 3) + (todayList.length > 3 ? 40 : 0);
+      final needsH = needsBlock == null ? 0.0 : needsFallback ? 240.0 : 52.0 + 68 * math.min(inboxRows!.length, 3);
+      final cut = orgHomeColumnSplit(
+        main: [for (final f in flow) f.$2(mainW)],
+        side: [for (final f in flow) f.$2(sideW)],
+        mainStart: todayH,
+        sideStart: needsH,
+      );
+      final mainCol = [?todayBlock, for (final f in flow.take(cut)) f.$1];
+      final sideCol = [?needsBlock, for (final f in flow.skip(cut)) f.$1];
+      if (mainCol.isEmpty || sideCol.isEmpty || mainCol.length + sideCol.length < 3) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _singleColumnMax),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: narrow),
+          ),
+        );
       }
       return Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1240),
+          constraints: const BoxConstraints(maxWidth: kHomeWideMax),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             ...top,
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: main)),
-              Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: side)),
-            ]),
-            const SizedBox(height: 24),
+            HomeDashboard(main: mainCol, side: sideCol, narrow: const []),
           ]),
         ),
       );
     });
+  }
+
+  /// One centred column on a desktop window when there is too little for two.
+  static const double _singleColumnMax = 760;
+
+  /// A quick-action group's estimated height in a column [width] wide: its title, then rows of pills (≤ 6 + "More").
+  static double _quickHeight(OrgQuickGroup g, double width) {
+    final pills = math.min(g.actions.length, orgQuickPillsMax) + (g.actions.length > orgQuickPillsMax ? 1 : 0);
+    final perRow = math.max(1, ((width - 32 + 8) / 158).floor());
+    return 48.0 + 48 * (pills / perRow).ceil();
   }
 
   static const _titlePad = EdgeInsets.fromLTRB(16, 0, 8, 4);
@@ -752,6 +802,32 @@ class OrgMemberHomeBody extends StatelessWidget {
       );
     });
   }
+}
+
+/// Where a desktop member home cuts its ordered flow of sections: the first `cut` go under the main column's lead
+/// ([mainStart] high), the rest under the side column's ([sideStart]). [main] / [side] are each section's estimated
+/// height at that column's width; sections are [gap] apart. The cut whose taller column is the shortest wins (ties:
+/// the most sections in the wider main column).
+int orgHomeColumnSplit({required List<double> main, required List<double> side, double mainStart = 0, double sideStart = 0, double gap = 24}) {
+  assert(main.length == side.length);
+  double col(double start, Iterable<double> items) {
+    var h = start;
+    for (final x in items) {
+      h += (h > 0 ? gap : 0) + x;
+    }
+    return h;
+  }
+
+  var best = 0;
+  var bestH = double.infinity;
+  for (var cut = 0; cut <= main.length; cut++) {
+    final h = math.max(col(mainStart, main.take(cut)), col(sideStart, side.skip(cut)));
+    if (h <= bestH) {
+      best = cut;
+      bestH = h;
+    }
+  }
+  return best;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -3,6 +3,8 @@
 // API (a new session is created with the default title, a scheduled one is started as it is, Record turned on).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/features/teacher/home/go_live.dart';
 import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart';
 import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
@@ -129,6 +131,15 @@ void main() {
     await expectNoLayoutErrors(tester, () => _view(busy: true, meetNow: false));
   });
 
+  testWidgets('sheet: the Record switch uses the app primary track, only its dot is red (M22)', (tester) async {
+    await tester.pumpWidget(layoutHost(_view(suggestion: _scheduled)));
+    final tile = tester.widget<AppSwitchTile>(find.widgetWithText(AppSwitchTile, 'Record this session'));
+    expect(tile.activeColor, isNull, reason: 'no red track: AppSwitch falls back to the primary colour');
+    final ctx = tester.element(find.byType(AppSwitchTile));
+    expect(tile.iconColor, ctx.colors.danger);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('sheet: one course · no course (add a course + Meet now)', (tester) async {
     await expectNoLayoutErrors(tester, () => _view(courses: const [GoLiveCourse(id: 5, title: 'Only course')]));
     await expectNoLayoutErrors(tester, () => _view(courses: const []));
@@ -178,7 +189,7 @@ void main() {
     expect(api.createdRecord, isTrue);
     expect(api.createdAt, _now);
     expect(r, isA<GoLiveLaunch>());
-    final go = r as GoLiveLaunch;
+    final go = r;
     expect(go.sessionId, 77);
     expect(go.courseId, 2);
     expect(go.record, isTrue);

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
+import 'package:flutter_education_app/design/home_kit.dart' show HomeSection;
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -147,6 +148,33 @@ void main() {
     })));
     expect(groups.length, 3);
     expect(groups.every((g) => g.actions.isNotEmpty), isTrue);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  test('desktop: the sections are cut between the two columns at the most even point', () {
+    // a student's day: today folded (52) in main, nothing in the side; My studies · Requests · Organization · News
+    final cut = orgHomeColumnSplit(main: [144, 144, 96, 130], side: [240, 240, 144, 130], mainStart: 52);
+    expect(cut, 2, reason: 'main: today · My studies · Requests; side: Organization · News');
+    // nothing to share → everything stays in main (the caller then draws one centred column)
+    expect(orgHomeColumnSplit(main: const [], side: const [], mainStart: 52), 0);
+    // a tall side lead keeps the flow in main
+    expect(orgHomeColumnSplit(main: [100, 100], side: [150, 150], sideStart: 900), 2);
+  });
+
+  testWidgets('desktop: a plain student fills both columns (no empty side beside a tall one)', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(layoutHost(SingleChildScrollView(
+      child: OrgMemberHomeBody(entry: {...student(), 'organization': org}, today: const [], inbox: const [], now: now, news: const SizedBox(height: 120)),
+    )));
+    await tester.pump();
+    final today = tester.getTopLeft(find.byWidgetPredicate((w) => w is HomeSection && w.id == 'member.today')).dx;
+    final groups = find.byType(OrgQuickGroupView);
+    expect(groups, findsNWidgets(3));
+    final xs = {for (var i = 0; i < 3; i++) tester.getTopLeft(groups.at(i)).dx.round()};
+    expect(xs.length, 2, reason: 'the quick-action groups sit in both columns');
+    expect(xs, contains(today.round()), reason: 'the first groups follow today in the main column');
     await tester.pumpWidget(const SizedBox());
   });
 }
