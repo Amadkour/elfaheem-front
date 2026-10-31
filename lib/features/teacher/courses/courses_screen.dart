@@ -23,6 +23,7 @@ import '../sessions/sessions_screen.dart';
 import 'course_form_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_infinite_scroll.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show appConfirm, appText;
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show contextSwitchVisible, showContextSwitcherSheet;
@@ -264,8 +265,8 @@ class _NewCourseButton extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Course list — infinite scroll (same model as the admin lists)
-//  • loads the next page when the scroll nears the end
+//  Course list — infinite scroll (AppInfiniteScroll, the one every course list uses)
+//  • loads the next page when the end is near — also when the pages don't fill the screen
 //  • while a filter is active it keeps loading until every course is loaded,
 //    because the filter runs on the loaded courses
 //  • the shared CourseCardSliver: rows on a phone, a grid of tiles wider
@@ -291,28 +292,12 @@ class _CourseListState extends State<_CourseList> {
     super.dispose();
   }
 
-  /// [userInitiated] = the user scrolled, so a previously failed load is retried.
-  void _maybeLoadMore({bool userInitiated = false}) {
-    final p = widget.p;
-    if (!p.hasMore || p.isLoading || p.loadingMore) return;
-
-    // Not scrollable yet (page too short to fill the screen) counts as
-    // "near the end", so the list keeps filling itself until it scrolls.
-    final nearEnd = !_scroll.hasClients || _scroll.position.extentAfter < 600;
-    final needEverything = p.activeFilter != TeacherCourseStatus.all;
-    if (nearEnd || needEverything) p.loadMore(retry: userInitiated);
-  }
-
   @override
   Widget build(BuildContext context) {
     final p = widget.p;
 
-    // Runs after every rebuild — each finished load notifies, which chains
-    // the next page until the screen is filled (or everything is loaded).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _maybeLoadMore();
-    });
-
+    // A filter runs on the loaded courses: it must see every page (it keeps loading, the skeleton meanwhile).
+    final needEverything = p.activeFilter != TeacherCourseStatus.all;
     if (p.isLoading && p.filteredCourses.isEmpty) {
       return const CourseListSkeleton();
     }
@@ -329,6 +314,7 @@ class _CourseListState extends State<_CourseList> {
     if (courses.isEmpty) {
       // Still looking through further pages for this filter.
       if (p.hasMore && !p.loadMoreFailed) {
+        if (needEverything && !p.loadingMore) WidgetsBinding.instance.addPostFrameCallback((_) => p.loadMore());
         return const CourseListSkeleton();
       }
       return _empty(context, p);
@@ -339,17 +325,17 @@ class _CourseListState extends State<_CourseList> {
       hasMore: p.hasMore,
     );
 
-    return AppRefresh(
-      // Pull-to-refresh means "get me the latest": reload the first page.
-      onRefresh: p.refresh,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (n) {
-          if (n.depth == 0 &&
-              (n is ScrollUpdateNotification || n is OverscrollNotification)) {
-            _maybeLoadMore(userInitiated: true);
-          }
-          return false;
-        },
+    return AppInfiniteScroll(
+      controller: _scroll,
+      hasMore: p.hasMore,
+      loading: p.isLoading || p.loadingMore,
+      failed: p.loadMoreFailed,
+      onLoadMore: p.loadMore,
+      onRetry: () => p.loadMore(retry: true),
+      threshold: needEverything ? double.infinity : 600,
+      child: AppRefresh(
+        // Pull-to-refresh means "get me the latest": reload the first page.
+        onRefresh: p.refresh,
         child: _Centered(
           child: LayoutBuilder(
             builder: (context, box) => CustomScrollView(

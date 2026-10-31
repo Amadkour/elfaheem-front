@@ -4,6 +4,11 @@
 // bar of the path done. Read from /me/home's `journey` (no call of its own); no clear field → no card at all.
 // Card surface + hairline like the rest of the calm home (D-102); the attendance entry's light sweep (AppShineBand)
 // crosses it slowly every few seconds, parked by Reduce motion. Tap → the whole path (JourneyPage).
+//
+// When it shows ([homeJourney]): the personal context only (never in Organization mode, never for an org-admin /
+// org-staff login), the switches `roadmap` / `roadmap.journey` on, and a clear field — the server's block is null
+// only when the student has no roadmap course, no completed course and no chosen interest yet (or turned
+// recommendations off). That "no data" state is the one intentional reason the card is absent.
 library;
 
 import 'package:flutter/material.dart';
@@ -12,6 +17,13 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_shine.dart';
 import '../../shared/roadmap/roadmap_api.dart';
+
+/// The card's data from /me/home's raw `journey` block, or null when no card is drawn: not the personal context
+/// ([roadmapOrgAccount]: Organization mode or an organization login), a switch off, or no clear interest yet.
+Journey? homeJourney(Map<String, dynamic>? raw, {String? role}) {
+  if (raw == null || roadmapOff(kRoadmapJourneyKey) || roadmapOrgAccount(role)) return null;
+  return Journey.fromJson(raw);
+}
 
 class HomeJourneyCard extends StatelessWidget {
   const HomeJourneyCard({super.key, required this.journey, this.onTap});

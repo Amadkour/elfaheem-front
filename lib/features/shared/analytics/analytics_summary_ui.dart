@@ -18,8 +18,8 @@
 //   AnExamRow · AnPersonRow   rows for the compact lists
 //   AnSummarySkeleton the page's shape while it loads (shimmer, no spinner)
 //
-// Colours: the three metrics keep ONE categorical slot each across rings, legend and bars (appChartPalette 0 · 1 ·
-// 2 — colour follows the entity); status colours (success / warning / danger) only mark state, always with an icon
+// Colours: the three metrics keep ONE colour each across rings, legend and bars (anMetricColors: the primary, then
+// palette slots kept 70° of OKLCH hue apart — colour follows the entity); status colours (success / warning / danger) only mark state, always with an icon
 // or a word. Text wears text tokens. Layout test: test/ui/analytics_summary_layout_test.dart.
 library;
 
@@ -32,12 +32,80 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'analytics_summary.dart';
 import 'analytics_ui.dart' show anPct, anTr, anFmt;
 
-/// The metric's colour (the same in the rings, the legend and the bars).
-Color anMetricColor(BuildContext context, AnMetric m) => appChartPalette(context)[switch (m) {
-      AnMetric.progress => 0,
-      AnMetric.attendance => 1,
-      AnMetric.exams => 2,
-    }];
+/// The metric's colour (the same in the rings, the legend, the bars and the tiles).
+Color anMetricColor(BuildContext context, AnMetric m) => anMetricColors(context)[m.index];
+
+/// The three metric colours, in [AnMetric] order. Progress is the theme's primary (palette slot 0). Attendance and
+/// exams take, in the palette's own order (gold · primary −60° · purple · primary +90°, then hues derived from the
+/// primary at +120° / −120° / +150°), the first colour whose OKLCH hue sits at least [_kMetricHueGap] away from the
+/// colours already taken. A fixed slot 2 made a teal or green primary (the Normal and Green presets) draw progress
+/// and exams in two greens; the Blue preset keeps indigo · gold · teal. Every candidate sits in the mode's lightness
+/// band (chartSnapLightness), so the three read in light and dark.
+List<Color> anMetricColors(BuildContext context) =>
+    anDistinctColors(appChartPalette(context), dark: context.colors.isDark, n: 3);
+
+/// A fourth colour for a tile that sits beside the three metric tiles (students, saved to review …), kept apart from
+/// them the same way.
+Color anSpareColor(BuildContext context) =>
+    anDistinctColors(appChartPalette(context), dark: context.colors.isDark, n: 4).last;
+
+/// The pure half of [anMetricColors]: [n] colours from [palette] (appChartPalette, slot 0 = the primary) and the
+/// hues derived from its primary, each [_kMetricHueGap] of OKLCH hue away from the ones before when possible.
+@visibleForTesting
+List<Color> anDistinctColors(List<Color> palette, {required bool dark, int n = 3}) {
+  final p = HSLColor.fromColor(palette[0]);
+  Color derived(double shift) => chartSnapLightness(
+      p.withHue((p.hue + shift + 360) % 360).withSaturation(math.max(p.saturation, 0.55)).toColor(),
+      dark: dark);
+  final candidates = [...palette.skip(1), derived(120), derived(-120), derived(150)];
+  final taken = [palette[0]];
+  while (taken.length < n) {
+    Color? best;
+    var bestGap = -1.0;
+    for (final x in candidates) {
+      if (taken.contains(x)) continue;
+      final gap = taken.map((t) => _hueGap(x, t)).reduce(math.min);
+      if (gap >= _kMetricHueGap) {
+        best = x;
+        break;
+      }
+      if (gap > bestGap) {
+        best = x;
+        bestGap = gap;
+      }
+    }
+    taken.add(best!);
+  }
+  return taken;
+}
+
+/// The smallest OKLCH hue distance (degrees) that keeps two metric colours apart at a glance.
+const double _kMetricHueGap = 70;
+
+/// OKLCH hue distance between [a] and [b] in degrees (0–180); 0 when either is nearly grey (no usable hue).
+@visibleForTesting
+double anHueGap(Color a, Color b) => _hueGap(a, b);
+
+double _hueGap(Color a, Color b) {
+  final (ca, ha) = _oklch(a);
+  final (cb, hb) = _oklch(b);
+  if (ca < 0.04 || cb < 0.04) return 0;
+  final d = (ha - hb).abs() % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+/// OKLCH chroma and hue (degrees) of [col].
+(double, double) _oklch(Color col) {
+  double lin(double v) => v <= 0.04045 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+  final r = lin(col.r), g = lin(col.g), b = lin(col.b);
+  double cbrt(double v) => v < 0 ? -math.pow(-v, 1 / 3).toDouble() : math.pow(v, 1 / 3).toDouble();
+  final l = cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  final m = cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  final s = cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  final aa = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  final bb = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  return (math.sqrt(aa * aa + bb * bb), (math.atan2(bb, aa) * 180 / math.pi + 360) % 360);
+}
 
 IconData anMetricIcon(AnMetric m) => switch (m) {
       AnMetric.progress => Icons.route_rounded,

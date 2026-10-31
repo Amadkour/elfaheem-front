@@ -23,6 +23,7 @@ import '../../student/models.dart';
 import '../../teacher/courses/component/teacher_stats.dart';
 import '../../teacher/home/home_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'instructor_courses_section.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCREEN
@@ -52,6 +53,10 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
 
+  /// The teacher's public, personal courses (GET /courses?teacher_id=…&scope=personal), page by page.
+  late final InstructorCoursesController _courses =
+      InstructorCoursesController(teacherId: widget.teacher.id);
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +80,8 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
       if (mounted) _contentAnim.forward();
     });
 
+    _courses.load();
+
     // Load approved public docs for this teacher
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TeacherDocumentProvider>().loadPublicDocuments(
@@ -85,6 +92,7 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
 
   @override
   void dispose() {
+    _courses.dispose();
     _heroAnim.dispose();
     _contentAnim.dispose();
     super.dispose();
@@ -106,6 +114,7 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
             slideUp: _slideUp,
             studentView: widget.studentView,
             stats: widget.stats,
+            courses: _courses,
           )
               : _NarrowLayout(
             teacher: widget.teacher,
@@ -114,6 +123,7 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
             slideUp: _slideUp,
             studentView: widget.studentView,
             stats: widget.stats,
+            courses: _courses,
           ),
         ),
       ),
@@ -132,6 +142,7 @@ class _NarrowLayout extends StatelessWidget {
   final Animation<Offset> slideUp;
   final bool studentView;
   final TeacherStats? stats;
+  final InstructorCoursesController courses;
 
   const _NarrowLayout({
     required this.teacher,
@@ -140,6 +151,7 @@ class _NarrowLayout extends StatelessWidget {
     required this.slideUp,
     required this.studentView,
     this.stats,
+    required this.courses,
   });
 
   @override
@@ -164,6 +176,8 @@ class _NarrowLayout extends StatelessWidget {
                     _BadgesRow(teacher: teacher),
                     const SizedBox(height: 24),
                     _AboutCard(teacher: teacher),
+                    const SizedBox(height: 24),
+                    InstructorCoursesBlock(controller: courses),
                     const SizedBox(height: 24),
                     _DocumentsSection(teacherId: teacher.id),
                     const SizedBox(height: 24),
@@ -192,6 +206,7 @@ class _WideLayout extends StatelessWidget {
   final Animation<Offset> slideUp;
   final bool studentView;
   final TeacherStats? stats;
+  final InstructorCoursesController courses;
 
   const _WideLayout({
     required this.teacher,
@@ -200,6 +215,7 @@ class _WideLayout extends StatelessWidget {
     required this.slideUp,
     required this.studentView,
     this.stats,
+    required this.courses,
   });
 
   @override
@@ -250,6 +266,8 @@ class _WideLayout extends StatelessWidget {
                     _AboutCard(teacher: teacher),
                     const SizedBox(height: 28),
                     _StatsRow(teacher: teacher),
+                    const SizedBox(height: 28),
+                    InstructorCoursesBlock(controller: courses),
                     const SizedBox(height: 28),
                     _DocumentsSection(teacherId: teacher.id),
                     const SizedBox(height: 28),
@@ -463,15 +481,19 @@ class _ProfileCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                teacher.name,
-                style: TextStyle(
-                  color: context.colors.onHero,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.3,
+              Flexible(
+                child: Text(
+                  teacher.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.colors.onHero,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.3,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
               ),
               if (teacher.isVerified) ...[
                 const SizedBox(width: 6),
@@ -1289,7 +1311,7 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 10),
         Icon(icon, color: context.colors.primary, size: 18),
         const SizedBox(width: 8),
-        Text(title, style: c.h4),
+        Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h4)),
       ],
     );
   }

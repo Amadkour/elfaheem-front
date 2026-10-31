@@ -215,7 +215,9 @@ class _CourseList extends StatelessWidget {
                     hasMore: provider.hasMore,
                     courses: courses,
                     loadingMore: provider.isLoadingMore,
+                    loadFailed: provider.pageFailed,
                     onLoadMore: provider.loadMore,
+                    onRetry: () => provider.loadMore(retry: true),
                     onRefresh: provider.refresh,
                     onTap: (CourseModel c) {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => CourseDetailScreen(course: c)));

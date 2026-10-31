@@ -1950,3 +1950,46 @@ neither chosen nor taken, nor a sub-field of one, with the reason `explore_field
 to you"). One field per slot; skipped on a cold start (everything is new then) and when the top 5 already reaches
 outside. Rejected: a random pick (the list would change on every visit and the reason could not be told); a
 separate "Explore" row (a second list beside the roadmap and the recommendations).
+**Amendment (2026-10-31, "personal context, not personal account").** The roadmap and the home card never appeared
+for most students: (1) *who* — any live membership of an approved organization closed every part in every mode, on
+the server (`access.is_org_account` → `/me/home` journey null, 403 `individual_only`, course detail lists emptied, no
+tick, no notice) and in the app (`roadmapOrgAccount` read `AppModeController.available`); (2) *data* — the interest
+card waited for a cached "Recommended for you" list, so a student who never opened the profile list got no card
+even with a completed course or a chosen interest. Now: hidden only in Organization mode (`isOrg`) and for
+org-admin / org-staff logins; a member's personal space gets the path, the list, the card and the notice for
+personal courses. The server has no per-request mode, so its guarantee is the data one: an organization course
+(`Course.org_link`) never reaches a roadmap list, a journey step or pick, or a served recommendation — filtered at
+read time too, so a course moved into an organization after it was cached / named drops out. With no cached list
+the card takes the field's most popular personal course (one query; the engine still never runs inside the home).
+The card's only intentional absence is "no clear interest yet" (no roadmap course, no completed course, no chosen
+interest) or recommendations turned off by the student. App gate: `homeJourney()` (`home_journey.dart`).
+
+## D-136 — Brand gradient: primary fills are a gradient derived from the primary family, every stop AA under the on-hero ink · 2026-10-31 · accepted
+
+**Context.** The owner: "why is primary only one flat colour? Give primary buttons and the overall UI some gradient so
+it feels premium." The server already sends `gradient_primary`, but it is built from the two ACCENT colours (gold /
+olive, M22), and the production `primary_light` (#34A883) carries white text at 2.97:1 only.
+
+**Decision.** `ThemeConfigProvider` derives the brand gradient roles from `primary_light` / `primary` / `primary_dark`
+(no new server key; optional `primary_gradient_start` / `_end` replace the outer stops and pass the same guard):
+`brandStops(dark:)` = lift · primary · deep, the lift moved toward primary_light (≤ 55 % light, ≤ 35 % dark) only as
+far as `onHero` keeps 4.6:1 on it, the deep end stopping short of primary_dark in dark mode so the fill still
+separates from the page. Roles: `primaryGradient` (135°, `AlignmentDirectional.topStart → bottomEnd`, mirrored in
+Arabic), `primaryGradientPressed` (each stop 16 % toward hero_shade), `heroGradient` (primary → deeper; no lift under a
+hero's muted subtitle) + `heroGlow` (a radial accent2 light in the top-end corner, alpha capped by the same contrast
+rule), `surfaceGlow` (a 5 % / 10 % wash for headers) and `primaryButtonShadow`. Flat `primary` stays THE colour for
+text, icons, outlines and focus rings. Production: lift #178467 (4.6:1), primary #0F7B5F (5.2:1), deep #0A5642
+(8.7:1).
+
+Applied in shared widgets only: the Filled / Elevated button themes paint the gradient (an `Ink` in
+`backgroundBuilder`, so the ripple, hover and focus overlays draw on top) when the button's Material colour IS the
+primary, so a danger / success / tinted / disabled button keeps its own fill without any screen change;
+`PrimaryButton` (now an InkWell with a ripple, a pressed variant and a keyboard focus ring), `AppPrimaryButton`
+(+ soft coloured shadow; disabled = flat neutral well), `OrgPrimaryButton` (through the theme) and the org page FAB,
+`AppHero` and `HomeHeroCard` (hero gradient + glow), `AppChoiceChip` selected, the phone bar's active tab (it used the
+server accent gradient, which faded to cream under a white icon), the light sidebar (`slideBarGradient`: the brand
+gradient instead of the server's `gradient_slider`, which faded to the cream accent under the on-hero labels) and the
+dark sidebar's selected item (a brand pill). Not changed: the raw `FloatingActionButton` theme
+(Material cannot take a gradient there), chart colours (D-063), progress bars (they carry score colours). Checked by
+`test/ui/brand_gradient_test.dart` (contrast of every stop for four palettes, the button rule) and by eye in
+`test/visual/brand_gradient_golden_test.dart`.

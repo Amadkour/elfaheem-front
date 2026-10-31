@@ -85,6 +85,8 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     final mine = widget.forMyCourses;
     final List<CourseModel> courses;
     final bool loading, error, hasMore, loadingMore;
+    var loadFailed = false;
+    Future<void> Function()? retry;
     final int loaded, total;
     final String? errorText;
     final Future<void> Function() refresh;
@@ -101,6 +103,8 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       total = p.total;
       refresh = p.refresh;
       loadMore = p.loadMore;
+      loadFailed = p.pageFailed;
+      retry = () => p.loadMore(retry: true);
     } else {
       final p = context.watch<CoursesProvider>();
       // exploring = what the student does not follow yet; a search finds every match
@@ -112,8 +116,11 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       loadingMore = p.isLoadingMore;
       loaded = p.courses.length;
       total = p.total;
+      loadFailed = p.pageFailed;
+      // page 1's filter is kept by the provider for every next page (and for a mode switch's reload)
       refresh = () => p.fetchCourses(search: _search);
-      loadMore = () => p.loadMore(search: _search);
+      loadMore = p.loadMore;
+      retry = () => p.loadMore(retry: true);
     }
     final shownTotal = total > loaded ? total : loaded;
     return BasePage(
@@ -159,7 +166,9 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                   hasMore: hasMore,
                   courses: courses,
                   loadingMore: loadingMore,
+                  loadFailed: loadFailed,
                   onLoadMore: loadMore,
+                  onRetry: retry,
                   onRefresh: refresh,
                   onTap: (CourseModel c) {
                     Navigator.pushNamed(context, '/course-detail',

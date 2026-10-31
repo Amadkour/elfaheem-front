@@ -18,6 +18,8 @@
 // Register the route in main.dart:  case '/admin_dashboard': → AdminDashboardScreen()
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
@@ -37,6 +39,7 @@ import '../../design/calendar_entry.dart';
 import '../../utils/helpers.dart';
 import '../../design/app_language_switch.dart' show AppLanguageTile;
 import '../shared/display/display_settings_page.dart' show DisplaySettingsTile;
+import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
 import '../shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import '../shared/profile/compalints/complaint_provider.dart';
 import 'admin_common.dart';
@@ -49,6 +52,7 @@ import 'admin_services_hub.dart';
 import 'admin_users_page.dart';
 import 'enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 
 /// Current tab of the admin shell (the teacher uses TeacherDashboardProvider).
 class AdminDashboardProvider extends ChangeNotifier {
@@ -108,9 +112,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'developer',
   ].contains(context.read<MyAuthProvider>().currentUser?.role ?? '');
 
+  // The help-center tile's count (ComplaintProvider) follows the complaints another reviewer handled or opened
+  // (`complaints_updated`, `attention_changed` related_type complaint); it was loaded once and kept counting them.
+  StreamSubscription<LiveEvent>? _live;
+
   @override
   void initState() {
     super.initState();
+    _live = LiveEvents.instance.listen({LiveEvents.complaints, LiveEvents.attentionChanged}, (e) {
+      if (!mounted || !_isAdmin) return;
+      if (e.type == LiveEvents.complaints || e.relatedType == 'complaint') _complaints.refreshCount();
+    });
 
     // ── tabs 0-3: same in every layout ─────────────────────────────────
     final overview = _AdminTab(
@@ -264,6 +276,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   void dispose() {
+    _live?.cancel();
     _tabs.dispose();
     _payouts.dispose();
     _complaints.dispose();
@@ -460,6 +473,7 @@ class _MorePageState extends State<_MorePage> {
             ),
             AppLanguageTile(color: AdminPalette.violet.last),
             const DisplaySettingsTile(),
+            if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device
             const AppAssistantOpenTile(),
             const AppAssistantBubbleTile(),
             AppSettingsTile(

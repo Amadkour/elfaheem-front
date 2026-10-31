@@ -289,6 +289,8 @@ Map<String, String> _codeTexts() => {
       'cannot_shift': t('لا يوجد وقت فارغ قريب لنقل الحصص المتعارضة', 'No nearby free time to move the clashing sessions'),
       // organization / department profile
       'logo_url_not_allowed': t('ارفع الشعار من التطبيق أو استخدم رابط https عاماً', 'Upload the logo in the app or use a public https link'),
+      // ads (ads_pages.dart saves through OrgApi): the home slider is personal, never an organization course
+      'org_course_ad': t('لا يمكن الإعلان عن كورس تابع لمؤسسة', 'An ad can\'t open an organization course'),
     };
 
 /// The text of one server code (local checks reuse the server's wording).

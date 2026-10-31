@@ -5,6 +5,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
 
 import '../../teacher/analysis/attendance/attendance_model.dart';
 import '../../teacher/data_lab/data_lab_api.dart';
@@ -28,7 +29,8 @@ class StudentAnalyticsApi {
   Future<List<EnrolledCourse>> fetchMyEnrollments() async {
     dynamic r;
     try {
-      r = await _api.get('/api/v1/my-enrolled-courses');
+      // the mode's side (the server's default is the personal account)
+      r = await _api.get('/api/v1/my-enrolled-courses', queryParams: {'limit': 100, ...modeCourseScopeQuery()});
     } on ApiException catch (e) {
       if (e.statusCode != 404) rethrow; // route name differs on some backends
       r = await _api.get('/api/v1/my-enrollments');

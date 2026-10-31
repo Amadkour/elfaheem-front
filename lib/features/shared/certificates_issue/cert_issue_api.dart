@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../../../core/api_client.dart';
+import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
 import 'cert_issue_logic.dart';
 
 /// A course the issuer may pick in "Link to a course".
@@ -174,6 +175,7 @@ class CertIssueApi {
         : await _api.get('/api/v1/my-courses', queryParams: {
             'limit': 100,
             if (search != null && search.isNotEmpty) 'search': search,
+            ...modeCourseScopeQuery(), // the mode's side (the server's default is the personal account)
           });
     final m = _m(r);
     final list = r is List ? r : (m['items'] as List? ?? const []);

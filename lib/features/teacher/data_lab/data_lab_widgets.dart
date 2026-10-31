@@ -89,49 +89,48 @@ class DlHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final r = BorderRadius.circular(c.radiusLarge);
+    // the brand hero gradient with a faint warm glow in the top-end corner behind the content (D-136)
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        gradient: LinearGradient(
-          colors: [c.primary, c.primaryDark],
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-        ),
-        boxShadow: c.primaryShadow,
-      ),
-      child: Column(children: [
-        Row(children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: dlText(20, w: FontWeight.w800, c: c.onHero)),
-              const SizedBox(height: 4),
-              Text(subtitle, style: dlText(12.5, c: c.onHero.withValues(alpha: 0.70), h: 1.5)),
+      decoration: BoxDecoration(borderRadius: r, gradient: c.heroGradient, boxShadow: c.primaryShadow),
+      child: DecoratedBox(
+        decoration: BoxDecoration(borderRadius: r, gradient: c.heroGlow),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(children: [
+            Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: dlText(20, w: FontWeight.w800, c: c.onHero)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: dlText(12.5, c: c.onHero.withValues(alpha: 0.70), h: 1.5)),
+                ]),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: c.onHero.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: c.heroGlassBorder),
+                ),
+                child: Icon(icon, color: c.onHero, size: 26),
+              ),
             ]),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: c.onHero.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: c.heroGlassBorder),
-            ),
-            child: Icon(icon, color: c.onHero, size: 26),
-          ),
-        ]),
-        if (stats.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Row(children: [
-            for (var i = 0; i < stats.length; i++) ...[
-              if (i > 0) const SizedBox(width: 10),
-              Expanded(child: stats[i]),
+            if (stats.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(children: [
+                for (var i = 0; i < stats.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  Expanded(child: stats[i]),
+                ],
+              ]),
             ],
           ]),
-        ],
-      ]),
+        ),
+      ),
     );
   }
 }
@@ -472,22 +471,35 @@ class DlPrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // the brand gradient comes from the Filled button theme (D-136: a primary fill is painted with it); busy keeps
+    // the brand colour behind the spinner, a disabled button is a flat neutral well with readable muted ink (L10)
+    final off = onPressed == null && !busy;
+    final r = BorderRadius.circular(16);
     return SizedBox(
       width: double.infinity,
       height: 50,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: c.primary,
-          disabledBackgroundColor: c.primary.withValues(alpha: 0.35),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: DecoratedBox(
+        decoration: BoxDecoration(borderRadius: r, boxShadow: off ? null : c.primaryButtonShadow),
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: c.primary,
+            foregroundColor: c.onHero,
+            disabledBackgroundColor: busy ? c.primary : c.inputBg,
+            disabledForegroundColor: busy ? c.onHero : c.textMedium,
+            shape: RoundedRectangleBorder(borderRadius: r, side: off ? BorderSide(color: c.divider) : BorderSide.none),
+          ),
+          onPressed: busy ? null : onPressed,
+          child: busy
+              ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: c.onHero))
+              : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            if (icon != null) ...[Icon(icon, size: 19), const SizedBox(width: 8)],
+            Flexible(
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: dlText(14.5, w: FontWeight.w800, c: off ? c.textMedium : c.onHero))),
+          ]),
         ),
-        onPressed: busy ? null : onPressed,
-        child: busy
-            ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: c.onHero))
-            : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          if (icon != null) ...[Icon(icon, size: 19), const SizedBox(width: 8)],
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(14.5, w: FontWeight.w800, c: c.onHero))),
-        ]),
       ),
     );
   }
@@ -578,9 +590,10 @@ class DlChoiceChip extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
-            color: selected ? c.primary : c.inputBg,
+            color: selected ? null : c.inputBg,
+            gradient: selected ? c.primaryGradient : null,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: selected ? c.primary : c.divider),
+            border: Border.all(color: selected ? Colors.transparent : c.divider),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             if (icon != null) ...[Icon(icon, size: 16, color: selected ? c.onHero : c.textMedium), const SizedBox(width: 6)],

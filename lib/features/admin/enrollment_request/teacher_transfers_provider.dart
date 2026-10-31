@@ -6,17 +6,31 @@
 ///   POST /api/v1/payments/transfers/{id}/reject
 library;
 
+import 'dart:async';
+
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
+import '../../../utils/live_events.dart';
 import '../../student/enrollment/enrollment_models.dart';
 
 class TeacherTransfersProvider extends BaseProvider {
-  TeacherTransfersProvider({ApiClient? api}) : api = api ?? ApiClient();
+  TeacherTransfersProvider({ApiClient? api}) : api = api ?? ApiClient() {
+    // Another reviewer approved / rejected one, or a student sent a new one (`transfers_updated`, to every
+    // reviewer but the one who acted): the list and the services-hub badge follow. Before, the badge was loaded once
+    // per app session (ensureLoaded) and kept counting requests a colleague had already handled.
+    _live = LiveEvents.instance.listen({LiveEvents.transfers}, (_) {
+      if (hasLoaded && !isLoading) load();
+    });
+  }
   final ApiClient api;
+  StreamSubscription<LiveEvent>? _live;
 
   List<PendingTransfer> _items = [];
   int _total = 0;
   final Set<int> _processing = {};
+
+  /// Decided here and already taken off [total], still on the list for its exit animation.
+  final Set<int> _decided = {};
 
   /// True once the first load finished successfully. The screen shows a
   /// loader (or an error + retry) until then, never a false "empty" state.
@@ -31,6 +45,12 @@ class TeacherTransfersProvider extends BaseProvider {
   /// Loads only if nothing was loaded yet and no load is running, so the
   /// dashboard badge and the screen share ONE request.
   Future<void> ensureLoaded() async {
+    if (hasLoaded && _decided.isNotEmpty) {
+      // decided while its card was animating out, but the screen closed first: never show it again
+      _items.removeWhere((t) => _decided.contains(t.paymentId));
+      _decided.clear();
+      notifyListeners();
+    }
     if (hasLoaded || isLoading) return;
     await load();
   }
@@ -41,6 +61,7 @@ class TeacherTransfersProvider extends BaseProvider {
     _items = [];
     _total = 0;
     _processing.clear();
+    _decided.clear();
     hasLoaded = false;
     notifyListeners();
   }
@@ -55,6 +76,7 @@ class TeacherTransfersProvider extends BaseProvider {
         PendingTransfer.fromJson(Map<String, dynamic>.from(raw as Map)),
     ];
     _total = ((json['total'] as num?)?.toInt() ?? _items.length);
+    _decided.clear(); // the server's answer no longer holds what was decided
     hasLoaded = true;
     notifyListeners();
   }
@@ -70,6 +92,7 @@ class TeacherTransfersProvider extends BaseProvider {
         ) !=
             null;
     _processing.remove(paymentId);
+    if (ok) _markDecided(paymentId);
     notifyListeners();
     return ok;
   }
@@ -87,15 +110,30 @@ class TeacherTransfersProvider extends BaseProvider {
         ) !=
             null;
     _processing.remove(paymentId);
+    if (ok) _markDecided(paymentId);
     notifyListeners();
     return ok;
+  }
+
+  /// The badge ([total]) drops the moment the server accepted the decision — not when the card's exit animation
+  /// ends: a reviewer who went back before it ended (the card's widget gone, [removeItem] never called) kept the
+  /// old count until the next app start.
+  void _markDecided(int paymentId) {
+    if (_decided.add(paymentId) && _total > 0) _total--;
   }
 
   /// Drops a handled request from the list (called after the exit animation).
   void removeItem(int paymentId) {
     final before = _items.length;
     _items.removeWhere((t) => t.paymentId == paymentId);
-    if (_items.length != before && _total > 0) _total--;
+    final counted = _decided.remove(paymentId);
+    if (_items.length != before && !counted && _total > 0) _total--;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _live?.cancel();
+    super.dispose();
   }
 }

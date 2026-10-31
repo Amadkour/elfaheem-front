@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/config/translation_source_stub.dart'
+    if (dart.library.js_interop) 'package:flutter_education_app/config/translation_source_web.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 /// Application configuration and context.colors.
@@ -139,14 +141,32 @@ String resolveApiBaseUrl(String override, {required bool release}) {
 Map<String, dynamic> translation = {};
 
 Future<void> readLanguage() async {
-  final String response = await rootBundle.loadString(
-    'assets/translation.json',
-  );
-  translation = await json.decode(response);
+  Map<String, dynamic>? fresh;
+  try {
+    // web: past the browser's HTTP cache (translation_source_web.dart); null elsewhere
+    final text = await fetchFreshTranslations();
+    if (text != null) fresh = json.decode(text) as Map<String, dynamic>;
+  } catch (_) {}
+  translation = fresh ?? json.decode(await rootBundle.loadString('assets/translation.json')) as Map<String, dynamic>;
+  // The start-up waits for this with a timeout: when it lands after the app is on screen, redraw it so no page keeps
+  // the raw keys it was built with.
+  try {
+    if (WidgetsBinding.instance.rootElement != null) AppConfig._rebuildWholeApp();
+  } catch (_) {}
 }
 
+/// The text of [key] in the open language; when that one is missing or empty, the other language (better than a
+/// raw key), and only then the key itself.
 String translate(String key) {
-  return translation[key]?[AppConfig.lang] ?? key;
+  final e = translation[key];
+  if (e is! Map) return key;
+  final v = e[AppConfig.lang];
+  if (v is String && v.isNotEmpty) return v;
+  for (final other in const ['en', 'ar']) {
+    final o = e[other];
+    if (o is String && o.isNotEmpty) return o;
+  }
+  return key;
 }
 
 TextDirection get pageDirection {

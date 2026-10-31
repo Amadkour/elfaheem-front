@@ -37,6 +37,7 @@
 import 'dart:async';
 
 import '../../../core/api_client.dart';
+import '../../../core/app_mode.dart';
 import '../../../core/base_provider.dart';
 import '../../../core/home/me_home.dart' show MeHomeService, MeLiveRoom, liveRoomsAfterEvent;
 import '../../../utils/live_events.dart';
@@ -47,7 +48,35 @@ import 'teacher_models.dart';
 class TeacherHomeProvider extends BaseProvider {
   final ApiClient _api;
 
-  TeacherHomeProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  TeacherHomeProvider({ApiClient? api}) : _api = api ?? ApiClient() {
+    _side = _sideKey;
+    AppModeController.instance.addListener(_onMode);
+  }
+
+  // ── Side (personal account ↔ organization) ───────────────────────────────
+  // GET /teacher/dashboard and GET /me/home carry the mode's `scope` / `org_id` (MeHomeService.scopeQuery): the
+  // course preview, stats and Go live list are that side's. A switch drops the other side's preview at once and
+  // reloads; an answer that arrives after a switch is dropped.
+
+  late String _side;
+
+  static String get _sideKey {
+    final q = MeHomeService.scopeQuery();
+    return '${q['scope']}:${q['org_id'] ?? ''}';
+  }
+
+  void _onMode() {
+    final now = _sideKey;
+    if (now == _side) return;
+    _side = now;
+    if (!_loaded) return; // the home never loaded: nothing to reload
+    _homeCourses = [];
+    _stats = const TeacherStats();
+    _schedule = [];
+    _pending = const {};
+    notifyListeners();
+    _fetchDashboard();
+  }
 
   // ── Dashboard state ──────────────────────────────────────────────────────
 
@@ -116,6 +145,7 @@ class TeacherHomeProvider extends BaseProvider {
   @override
   void dispose() {
     _liveSub?.cancel();
+    AppModeController.instance.removeListener(_onMode);
     super.dispose();
   }
 
@@ -143,12 +173,14 @@ class TeacherHomeProvider extends BaseProvider {
   Future<void> refreshSilently() => _fetchDashboard(silent: true);
 
   Future<void> _fetchDashboard({bool silent = false}) async {
+    final side = _side;
     final extraFuture = _fetchExtra();
     final result = await run(
-      () => _api.get('/api/v1/teacher/dashboard'),
+      () => _api.get('/api/v1/teacher/dashboard', queryParams: MeHomeService.scopeQuery()),
       makLoading: !silent,
     );
     final extra = await extraFuture;
+    if (side != _side) return; // the mode changed meanwhile: the reload it started answers for the new side
     if (result is Map<String, dynamic>) {
       final data = TeacherDashboardData.fromJson(result);
       _stats = data.stats;
@@ -167,10 +199,12 @@ class TeacherHomeProvider extends BaseProvider {
   Future<TeacherHomeExtra?> _fetchExtra() async {
     if (_extraMissing) return null;
     try {
-      final r = await _api.get('/api/v1/me/home');
+      final query = MeHomeService.scopeQuery(); // the mode's side, as the course lists — captured before the GET
+      final r = await _api.get('/api/v1/me/home', queryParams: query);
       if (r is Map<String, dynamic>) {
-        // the same payload feeds the shared home cache: Organization mode (OrgMemberHome) reads it from there
-        MeHomeService.instance.adopt(r);
+        // the same payload feeds the shared home cache: Organization mode (OrgMemberHome) reads it from there —
+        // only while the side it was asked for is still the current one (a switch meanwhile = the other side's home)
+        MeHomeService.instance.adopt(r, query: query);
         return TeacherHomeExtra.fromJson(r);
       }
     } on ApiException catch (e) {

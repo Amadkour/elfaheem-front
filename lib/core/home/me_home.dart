@@ -22,6 +22,12 @@
 //                           ([liveRoomsAfterEvent]). Each such event also reloads the home (at most once per 2 s).
 //     ensure()              load when nothing is cached (or the cache is stale) — the screen's initState
 //     refresh()             reload now (pull-to-refresh); in-flight calls are shared
+//     scopeQuery()          the side the home is for, sent on every GET /me/home as the course lists send it:
+//                           Individual mode `scope=personal`, Organization mode `scope=org&org_id=…`
+//                           (AppModeController). The cached home belongs to one side: a mode / organization switch
+//                           drops its course blocks at once and reloads (while something listens; else the next
+//                           ensure() does), and an answer that arrives after a switch is thrown away — never the
+//                           other side's courses.
 //   Older server (bare 404 / 405 on /me/home) → [MeHomeOutcome.legacy]: the same MeHome is composed from today's
 //   separate calls (GET /me/calendar for today + 7 days, /me/attention, /me/inbox), each best-effort, so the
 //   screens have ONE code path. Parents get 403 `role_not_supported` → [MeHomeOutcome.unsupported] (no home).
@@ -40,6 +46,7 @@ import '../../config/app_config.dart';
 import '../../features/shared/calendar/calendar_models.dart' show CalEvent;
 import '../../utils/live_events.dart';
 import '../api_client.dart';
+import '../app_mode.dart';
 import '../app_time.dart';
 import '../offline/app_connectivity.dart';
 
@@ -457,10 +464,32 @@ MeHomeOutcome meHomeOutcomeOf(ApiException e) {
 typedef MeHomeFetch = Future<dynamic> Function(String path, {Map<String, dynamic>? query});
 
 class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
-  MeHomeService({MeHomeFetch? fetch, Future<String?> Function()? token, DateTime Function()? clock})
-      : _fetch = fetch ?? _apiFetch,
+  MeHomeService({
+    MeHomeFetch? fetch,
+    Future<String?> Function()? token,
+    DateTime Function()? clock,
+    Map<String, dynamic> Function()? scope,
+  })  : _fetch = fetch ?? _apiFetch,
         _token = token ?? _apiToken,
-        _clock = clock ?? (() => DateTime.now().toUtc());
+        _clock = clock ?? (() => DateTime.now().toUtc()),
+        _scope = scope ?? scopeQuery;
+
+  /// The side the home's course blocks are for — the same `scope` / `org_id` the course lists send
+  /// (course_scope.dart): Organization mode → that organization, else the personal account.
+  static Map<String, dynamic> scopeQuery([AppModeController? mode]) {
+    final m = mode ?? AppModeController.instance;
+    final orgId = m.isOrg ? m.currentOrgId : null;
+    return orgId != null ? {'scope': 'org', 'org_id': orgId} : const {'scope': 'personal'};
+  }
+
+  static String _keyOf(Map<String, dynamic> q) => '${q['scope']}:${q['org_id'] ?? ''}';
+
+  final Map<String, dynamic> Function() _scope;
+
+  /// The side the cached [home] was loaded for (null = nothing cached).
+  String? _homeKey;
+
+  String get _scopeKey => _keyOf(_scope());
 
   static final MeHomeService instance = MeHomeService();
 
@@ -514,7 +543,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
   bool get _stale => loadedAt == null || _clock().difference(loadedAt!) > staleAfter;
 
   /// Once per open: load when nothing is cached or the cache is stale; a cached home paints at once.
-  Future<void> ensure() => home == null || _stale ? refresh() : Future.value();
+  Future<void> ensure() => home == null || _stale || _homeKey != _scopeKey ? refresh() : Future.value();
 
   /// Reload now; a call already in flight is shared.
   Future<void> refresh() => _running ??= _load().whenComplete(() => _running = null);
@@ -522,12 +551,19 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
   /// A GET /me/home answer another loader already fetched (the instructor home asks it beside its dashboard):
   /// kept as the cached home, so the instructor's Organization mode draws its today / strip / inbox rows from it
   /// instead of the older self-fetching fallbacks — no second call.
-  void adopt(Map<String, dynamic> json) {
+  ///
+  /// [query] is the `scope` / `org_id` the answer was ASKED with ([scopeQuery] captured before the GET): when the
+  /// side changed while it was on its way, it is the other side's home and is not kept (returns false).
+  bool adopt(Map<String, dynamic> json, {Map<String, dynamic>? query}) {
+    final key = query != null ? _keyOf(query) : _scopeKey;
+    if (key != _scopeKey) return false;
     home = MeHome.fromJson(json);
+    _homeKey = key;
     outcome = MeHomeOutcome.ok;
     error = null;
     loadedAt = _clock();
     notifyListeners();
+    return true;
   }
 
   Future<void> _load() async {
@@ -536,11 +572,23 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
       token = await _token();
     } catch (_) {}
     if (token == null || token.isEmpty) return; // guest / signed out: no call, no 401 redirect
+    final query = _scope();
+    final key = _keyOf(query);
     loading = true;
     notifyListeners();
     try {
-      final r = await _fetch(path);
+      final r = await _fetch(path, query: query);
+      if (_scopeKey != key) {
+        // the person switched side while this answer was on its way: it is the other side's home — its course
+        // blocks are dropped, the rest (today, inbox, organization slices) is drawn until the right one lands
+        if (r is Map && home == null) home = _withoutSide(Map<String, dynamic>.from(r));
+        loading = false;
+        notifyListeners();
+        Future<void>.delayed(Duration.zero, refresh); // once this call is no longer the shared one
+        return;
+      }
       if (r is Map) {
+        _homeKey = key;
         home = MeHome.fromJson(Map<String, dynamic>.from(r));
         outcome = MeHomeOutcome.ok;
         error = null;
@@ -552,6 +600,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
       if (o == MeHomeOutcome.legacy) {
         outcome = o;
         home = await _legacyLoad();
+        _homeKey = key;
         error = null;
         loadedAt = _clock();
       } else if (o == MeHomeOutcome.unsupported) {
@@ -617,6 +666,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
   /// Logout.
   void clear() {
     home = null;
+    _homeKey = null;
     error = null;
     loadedAt = null;
     outcome = MeHomeOutcome.ok;
@@ -636,6 +686,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged}, (_) => _quietRefresh());
     _liveRooms = LiveEvents.instance.listen({LiveEvents.sessionLive, LiveEvents.meetingLive}, onLiveRoomEvent);
     AppConnectivity.instance.online.addListener(_onConnectivity);
+    AppModeController.instance.addListener(onScopeChanged);
   }
 
   @override
@@ -648,7 +699,27 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     _liveRooms?.cancel();
     _liveRooms = null;
     AppConnectivity.instance.online.removeListener(_onConnectivity);
+    AppModeController.instance.removeListener(onScopeChanged);
     WidgetsBinding.instance.removeObserver(this);
+  }
+
+  static MeHome _withoutSide(Map<String, dynamic> raw) =>
+      MeHome.fromJson({...raw, 'courses_progress': const [], 'journey': null});
+
+  /// The app mode / organization changed: the side's blocks of a home cached for the other side (its courses,
+  /// the journey card) are dropped at once — never the other side's courses on screen — and the new side's home is
+  /// loaded. The rest (today, inbox, the organization slices) stays drawn meanwhile: blanking it made the
+  /// Organization-mode pages fall back to their own calls for one frame.
+  @visibleForTesting
+  void onScopeChanged() {
+    if (_homeKey == null || _homeKey == _scopeKey) return;
+    final h = home;
+    home = h == null || h.legacy ? null : _withoutSide(h.raw);
+    _homeKey = null;
+    loadedAt = null;
+    error = null;
+    notifyListeners();
+    refresh();
   }
 
   DateTime? _lastQuiet, _lastLive;

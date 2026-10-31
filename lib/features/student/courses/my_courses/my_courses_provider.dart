@@ -96,6 +96,9 @@ class MyCoursesProvider extends BaseProvider {
 
   bool get hasMore => _hasMore;
 
+  /// The last page request failed: auto-paging waits; the list's retry row calls [loadMore] with `retry`.
+  bool get pageFailed => _pageFailed;
+
   /// Total enrolled courses on the server — drives the "Showing 40 of 134" card.
   int get total => _total;
 
@@ -176,9 +179,12 @@ class MyCoursesProvider extends BaseProvider {
   }
 
   /// Fetches the next page and appends it. No-ops while a fetch is already
-  /// in flight, once the server has told us there's nothing more, or after a failure.
-  Future<void> loadMore() async {
-    if (!_hasMore || isLoading || _pageFailed || _pageGen == _gen) return;
+  /// in flight, once the server has told us there's nothing more, or after a failure (until [retry]: the person
+  /// tapped retry / scrolled again — as CoursesProvider.loadMore).
+  Future<void> loadMore({bool retry = false}) async {
+    if (!_hasMore || isLoading || _pageGen == _gen) return;
+    if (_pageFailed && !retry) return;
+    _pageFailed = false;
     await _loadPage();
   }
 
@@ -207,17 +213,20 @@ class MyCoursesProvider extends BaseProvider {
     (r['items'] as List).map((e) => CourseModel.fromJson(e)).toList();
     if (replace) {
       _all = page;
+      _skip = page.length;
     } else {
       final seen = {for (final c in _all) c.id};
       _all = [..._all, ...page.where((c) => seen.add(c.id))]; // never the same course twice
+      // the server rows consumed, not the unique count: a page that only repeats known courses still moves the
+      // offset on (otherwise the same page was asked again and again)
+      _skip += page.length;
     }
-    _skip = _all.length;
     final hasTotal = r['total'] is num;
     if (hasTotal) _total = (r['total'] as num).toInt();
     // Trust the server total (the old `page.length == 20` test kept a spinner forever when the
     // last page happened to be exactly full, and when the list was seeded from the home screen).
     _hasMore = page.isNotEmpty &&
-        (hasTotal ? _all.length < _total : page.length >= _pageSize);
+        (serverHasMore(r) ?? (hasTotal ? _skip < _total : page.length >= _pageSize));
     _takeScopes(r);
   }
 
@@ -238,11 +247,15 @@ class MyCoursesProvider extends BaseProvider {
 
   static bool _done(CourseModel c) => c.progress >= 100;
 
-  /// Called with the home screen's already-fetched courses (every enrolment, any side) for an instant first
-  /// paint. They stand for page 1 only while the side shown is "All"; another side loads its own page 1
+  /// The side the home's course list was fetched for (GET /teacher/student-dashboard sends the mode's `scope`); "All"
+  /// when the list does not follow the mode (tests).
+  CourseScope get _homeSide => _mode == null ? CourseScope.all : _modeScope;
+
+  /// Called with the home screen's already-fetched courses (the mode's side) for an instant first paint. They stand
+  /// for page 1 only while the side shown is the home's; another side (a chip, "All") loads its own page 1
   /// (refreshed in place when it is already on screen).
   Future<void> init(List<CourseModel> homeCourses) async {
-    if (!scope.isAll) {
+    if (scope != _homeSide) {
       if (_started && _loadedScope == scope && _all.isNotEmpty) {
         await refresh();
       } else {
@@ -255,7 +268,7 @@ class MyCoursesProvider extends BaseProvider {
     } else {
       _started = true;
       _gen++;
-      _loadedScope = CourseScope.all;
+      _loadedScope = scope;
       _pageFailed = false;
       _all = List.of(homeCourses); // own copy: the home list is replaced / mutated independently
       _skip = homeCourses.length;

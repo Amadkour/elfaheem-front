@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
+import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
 import '../../shared/category/categories_provider.dart';
 import '../../student/models.dart'
     show AppCurrency, AppCurrencyX, CourseStatus, CourseStatusX;
@@ -195,7 +196,8 @@ class CourseFormProvider extends BaseProvider {
   }
 
   Future<void> _loadOtherCourses({int? excludeCourseId}) async {
-    final result = await run(() => _api.get('/api/v1/my-courses'));
+    // the mode's side only (an organization's course links to its own courses), every course (not the first 20)
+    final result = await run(() => _api.get('/api/v1/my-courses', queryParams: {'limit': 100, ...modeCourseScopeQuery()}));
     if (result['items'] is List) {
       otherCourses = (result['items'] as List<dynamic>)
           .whereType<dynamic>()

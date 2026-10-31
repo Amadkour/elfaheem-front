@@ -1780,6 +1780,10 @@
     "en": "PDF / Document",
     "ar": "PDF / مستند"
   },
+  "other_file": {
+    "en": "Other file",
+    "ar": "ملف آخر"
+  },
   "__comment_video_player": "─── Keys added for video_player_screen.dart ───",
   "audio_only_mode": {
     "en": "Audio Only",
@@ -2388,6 +2392,10 @@
   "complaint_title_hint": {
     "en": "Write the complaint title...",
     "ar": "اكتب عنوان الشكوى..."
+  },
+  "complaint_history_summary": {
+    "en": "{n} complaints sent · {open} still open",
+    "ar": "أرسلت {n} شكوى · {open} منها ما زالت مفتوحة"
   },
   "title_too_short": {
     "en": "Title is too short",
@@ -12497,6 +12505,10 @@
     "en": "Turn it on from the phone's quick settings (an app cannot switch it on by itself)",
     "ar": "فعّله من الإعدادات السريعة للهاتف (لا يمكن للتطبيق تشغيله بنفسه)"
   },
+  "att_radio_hint_ios": {
+    "en": "Swipe down from the top-right corner to Control Center and switch it on there",
+    "ar": "اسحب من أعلى يمين الشاشة لمركز التحكم وشغّله من هناك"
+  },
   "att_t_shared_auto": {
     "en": "Your location was shared with the web app",
     "ar": "تمت مشاركة موقعك مع نسخة الويب"
@@ -21332,5 +21344,69 @@
   "exs_st_withdrawn": {
     "en": "Withdrawn",
     "ar": "مسحوبة"
+  },
+  "get_app_title_android": {
+    "en": "Get the Android app",
+    "ar": "حمّل تطبيق أندرويد"
+  },
+  "get_app_title_ios": {
+    "en": "Get the iPhone app",
+    "ar": "حمّل تطبيق الآيفون"
+  },
+  "get_app_title_ipados": {
+    "en": "Get the iPad app",
+    "ar": "حمّل تطبيق الآيباد"
+  },
+  "get_app_title_windows": {
+    "en": "Get the Windows app",
+    "ar": "حمّل تطبيق ويندوز"
+  },
+  "get_app_title_macos": {
+    "en": "Get the Mac app",
+    "ar": "حمّل تطبيق ماك"
+  },
+  "get_app_title_linux": {
+    "en": "Get the Linux app",
+    "ar": "حمّل تطبيق لينكس"
+  },
+  "get_app_banner_body": {
+    "en": "Smoother lessons and offline downloads.",
+    "ar": "دروس أسلس وتنزيلات تعمل دون إنترنت."
+  },
+  "get_app_google_play": {
+    "en": "Google Play",
+    "ar": "Google Play"
+  },
+  "get_app_app_store": {
+    "en": "App Store",
+    "ar": "App Store"
+  },
+  "get_app_download": {
+    "en": "Download",
+    "ar": "تنزيل"
+  },
+  "get_app_dismiss": {
+    "en": "Dismiss",
+    "ar": "إخفاء"
+  },
+  "get_app_banner_label": {
+    "en": "App download suggestion",
+    "ar": "اقتراح تنزيل التطبيق"
+  },
+  "get_app_entry": {
+    "en": "Get the app",
+    "ar": "حمّل التطبيق"
+  },
+  "get_app_open_failed": {
+    "en": "Couldn't open the link. Try again.",
+    "ar": "تعذّر فتح الرابط. حاول مرة أخرى."
+  },
+  "instructor_courses_more": {
+    "en": "Show more courses",
+    "ar": "عرض المزيد من الكورسات"
+  },
+  "instructor_courses_empty": {
+    "en": "No public courses yet",
+    "ar": "لا توجد كورسات عامة بعد"
   }
 }

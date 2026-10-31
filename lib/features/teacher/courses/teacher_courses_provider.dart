@@ -249,7 +249,7 @@ class TeacherCoursesProvider extends BaseProvider {
     _totalCount = page.total ?? 0; // 0 = unknown (legacy server response)
     _scopes = parseCourseScopes(result);
     _scopeApplied = serverScoped(result);
-    _hasMore = page.items.length == pageSize;
+    _hasMore = serverHasMore(result) ?? page.items.length == pageSize;
     notifyListeners();
   }
 
@@ -279,7 +279,7 @@ class TeacherCoursesProvider extends BaseProvider {
       final fresh = page.items.where((c) => seen.add(c.id)).toList();
       _allCourses = [..._allCourses, ...fresh];
       if (page.total != null) _totalCount = page.total!;
-      _hasMore = page.items.length == pageSize;
+      _hasMore = serverHasMore(result) ?? page.items.length == pageSize;
       // Nothing new although the server says more exist → stop auto-loading.
       if (fresh.isEmpty) _loadMoreFailed = true;
     } catch (_) {

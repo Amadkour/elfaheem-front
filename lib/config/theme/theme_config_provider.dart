@@ -370,22 +370,108 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   // hex values here a second time, so the two files can never drift apart.
   // ══════════════════════════════════════════════════════════════════════
 
-  /// Always the light brand gradient, regardless of dark mode — for
-  /// content painted *on top of* a coloured surface (e.g. button icons),
-  /// which shouldn't flip to the charcoal variant in dark mode.
-  ///
-  /// Built from [primary] (primary → a deeper primary), not from the server's `gradient_primary`: the server derives
-  /// that one from the two ACCENT colours, which painted every "brand" tab, pill and hero gold / olive (M22).
-  LinearGradient get primaryGradientOnColor => LinearGradient(
+  // ── Brand gradients (D-136) ────────────────────────────────────────────
+  // Derived from the primary family the server already sends (primary_light → primary → primary_dark), never from
+  // the server's `gradient_primary`: that one is built from the two ACCENT colours and painted every "brand" tab,
+  // pill and hero gold / olive (M22). The optional `primary_gradient_start` / `primary_gradient_end` keys replace
+  // the outer stops when a theme sends them. Every stop keeps the on-hero ink (button labels, hero titles) at WCAG AA
+  // (4.5:1): the light stop moves toward primary_light only as far as that holds, so the light end is a sheen, not a
+  // pale corner under white text. 135° (top-start → bottom-end), mirrored in Arabic. Flat [primary] stays THE colour
+  // for text, icons, outlines and focus rings.
+
+  /// The three stops of the brand fill in [dark] mode: lift (toward primary_light) · primary · deep.
+  List<Color> brandStops({required bool dark}) {
+    final key = Object.hash(_model, dark, onHero);
+    final hit = _stopCache[key];
+    if (hit != null) return hit;
+    final ink = onHero;
+    Color safe(Color c) => ensureContrast(c, [ink], min: _kBrandInk);
+    final mid = safe(primary);
+    // light: up to 55 % of the way to primary_light; dark: a shorter lift (a bright edge glares on a dark page)
+    final lift = _model?.primaryGradientStart != null
+        ? safe(_model!.primaryGradientStart!)
+        : _liftToward(mid, primaryLight, dark ? 0.35 : 0.55, ink);
+    final deepBase = _model?.primaryGradientEnd ?? primaryDark;
+    // dark: stop short of primary_dark so the fill still separates from the dark page around it
+    final deep = safe(dark ? Color.lerp(mid, deepBase, 0.7)! : deepBase);
+    if (_stopCache.length > 8) _stopCache.clear();
+    return _stopCache[key] = [lift, mid, deep];
+  }
+
+  static const double _kBrandInk = 4.6; // WCAG AA (4.5) with a rounding margin
+  final Map<int, List<Color>> _stopCache = {};
+
+  /// [from] moved toward [to] by at most [maxT], as far as [ink] keeps [_kBrandInk] on it.
+  static Color _liftToward(Color from, Color to, double maxT, Color ink) {
+    for (var t = maxT; t > 0; t -= 0.01) {
+      final c = Color.lerp(from, to, t)!;
+      if (contrastRatio(ink, c) >= _kBrandInk) return c;
+    }
+    return from;
+  }
+
+  LinearGradient _brand(List<Color> stops) => LinearGradient(
     begin: AlignmentDirectional.topStart,
     end: AlignmentDirectional.bottomEnd,
-    colors: [primary, heroEnd(primary, 0.22)],
+    colors: stops,
+    stops: const [0, 0.5, 1],
   );
 
-  /// In dark mode this intentionally resolves to the charcoal slide-bar
-  /// gradient rather than a dark variant of the brand gradient — a large
-  /// brand-coloured block doesn't read as premium in dark mode.
-  LinearGradient get primaryGradient => primaryGradientOnColor;
+  /// The brand fill for a primary button / selected pill / active tab, in the open mode.
+  LinearGradient get primaryGradient => _brand(brandStops(dark: isDark));
+
+  /// [primaryGradient] pressed: every stop a shade deeper (hover is the ripple's overlay).
+  LinearGradient get primaryGradientPressed => primaryGradientPressedFor(dark: isDark);
+
+  LinearGradient primaryGradientPressedFor({required bool dark}) =>
+      _brand([for (final s in brandStops(dark: dark)) heroEnd(s, 0.16)]);
+
+  /// Always the light-mode brand gradient, whatever the mode (content drawn ON a coloured surface).
+  LinearGradient get primaryGradientOnColor => _brand(brandStops(dark: false));
+
+  /// A hero header / banner: primary at the start (where the title sits, so its muted subtitle keeps the contrast
+  /// it had on the flat primary) deepening toward the end. Pair it with [heroGlow] (a warm accent2 light in the
+  /// top-end corner) as an inner layer behind the content — see AppHero.
+  LinearGradient get heroGradient {
+    final s = brandStops(dark: isDark);
+    return LinearGradient(
+      begin: AlignmentDirectional.topStart,
+      end: AlignmentDirectional.bottomEnd,
+      colors: [s[1], Color.lerp(s[1], s[2], 0.55)!, heroEnd(s[2], isDark ? 0.18 : 0.10)],
+      stops: const [0, 0.5, 1],
+    );
+  }
+
+  /// A faint warm glow (accent2) for the top-end corner of a hero, at most as strong as the on-hero ink allows
+  /// over every hero stop.
+  RadialGradient get heroGlow {
+    final stops = heroGradient.colors;
+    var a = 0.22;
+    while (a > 0 && stops.any((s) => contrastRatio(onHero, Color.alphaBlend(accent2.withValues(alpha: a), s)) < _kBrandInk)) {
+      a -= 0.02;
+    }
+    return RadialGradient(
+      center: AlignmentDirectional.topEnd,
+      radius: 1.1,
+      colors: [accent2.withValues(alpha: a.clamp(0.0, 1.0)), accent2.withValues(alpha: 0)],
+    );
+  }
+
+  /// A soft brand wash for a card / page header (top → transparent). Decorative only: text on it reads as on the
+  /// surface below.
+  LinearGradient get surfaceGlow => LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [primary.withValues(alpha: isDark ? 0.10 : 0.05), primary.withValues(alpha: 0)],
+  );
+
+  /// The soft coloured shadow under a gradient button (smaller than [primaryShadow], which suits heroes).
+  List<BoxShadow> get primaryButtonShadow {
+    final shadowColor = isDark
+        ? (_model?.primaryShadowColorDark ?? AppTheme.primaryShadowColorDark)
+        : (_model?.primaryShadowColor ?? AppTheme.primaryShadowColor);
+    return [BoxShadow(color: shadowColor, blurRadius: 14, offset: const Offset(0, 5))];
+  }
 
   /// Same "charcoal instead of brand colour" behaviour as [primaryGradient].
   LinearGradient get primarySliderGradient => _sliderGradient;
@@ -447,8 +533,18 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Background gradient adapts to mode; light/dark variants use different
   /// alignments (matching the original hand-tuned AppTheme definitions).
-  LinearGradient get slideBarGradient =>
-      isDark ? _darkSlideBarGradient : _sliderGradient;
+  ///
+  /// Light: the brand gradient running down the sidebar (D-136), not the server's `gradient_slider`, which fades
+  /// to the cream accent at the bottom where the on-hero labels fell below AA.
+  LinearGradient get slideBarGradient {
+    if (isDark) return _darkSlideBarGradient;
+    final s = brandStops(dark: false);
+    return LinearGradient(
+      begin: AlignmentDirectional.topStart,
+      end: AlignmentDirectional.bottomEnd,
+      colors: [s[1], Color.lerp(s[1], s[2], 0.7)!],
+    );
+  }
 
   // Shared building blocks for the gradients above that reuse the same
   // stops under more than one name (primaryGradient in dark mode,
@@ -592,6 +688,29 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
     TextStyle ts(double size, [FontWeight w = FontWeight.w600, Color? c]) =>
         TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: c);
+    // D-136: a Filled / Elevated button whose fill IS the brand primary (the theme default, or a screen that asks
+    // for `backgroundColor: c.primary`) is painted with the brand gradient; any other fill (danger, success, a
+    // tint, the disabled well) keeps its own colour. The gradient is an Ink on the button's own Material, so the
+    // ripple, hover and focus overlays still draw on top of it.
+    final brand = _brand(brandStops(dark: dark));
+    final brandPressed = primaryGradientPressedFor(dark: dark);
+    Widget brandFill(BuildContext context, Set<WidgetState> states, Widget? child) {
+      if (states.contains(WidgetState.disabled)) return child ?? const SizedBox.shrink();
+      return Builder(builder: (context) {
+        // the button's own Material (the nearest one above this builder): its colour says whether this is a brand
+        // fill, its shape clips the gradient (a FilledButton does not clip its Material by default)
+        final m = context.findAncestorWidgetOfExactType<Material>();
+        if (m == null || m.color != p) return child ?? const SizedBox.shrink();
+        final shape = m.shape;
+        return Ink(
+          decoration: ShapeDecoration(
+            shape: shape is OutlinedBorder ? shape.copyWith(side: BorderSide.none) : (shape ?? const RoundedRectangleBorder()),
+            gradient: states.contains(WidgetState.pressed) ? brandPressed : brand,
+          ),
+          child: child,
+        );
+      });
+    }
     final r14 = RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
     WidgetStateProperty<Color?> on(Color sel, Color off) =>
         WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? sel : off);
@@ -627,6 +746,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
           textStyle: WidgetStatePropertyAll(ts(14.5, FontWeight.w800)),
           minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
           elevation: const WidgetStatePropertyAll(0),
+          backgroundBuilder: brandFill,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -637,6 +757,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
           shape: r14,
           minimumSize: const Size(64, 48),
           textStyle: ts(14.5, FontWeight.w800),
+          backgroundBuilder: brandFill,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(

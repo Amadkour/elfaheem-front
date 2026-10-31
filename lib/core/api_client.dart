@@ -17,6 +17,7 @@ import 'package:path/path.dart' as p;
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/token_storage.dart';
+import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_education_app/main.dart';
 import 'package:flutter/material.dart' show MaterialPageRoute;
 import '../features/admin/admin_mfa_page.dart' show AdminMfaPage;
@@ -967,6 +968,11 @@ class ApiClient {
           d != null &&
           d['device_allowed'] == false) {
         _showDeviceBlocked(delay: const Duration(milliseconds: 900));
+      }
+      // A decision (approve / reject / …) went through: the badges that counted it reload (decision_refresh.dart).
+      final status = response.statusCode ?? 0;
+      if (status >= 200 && status < 300) {
+        DecisionRefresh.onSuccess(response.requestOptions.method, response.requestOptions.path);
       }
       handler.next(response);
     },

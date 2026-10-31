@@ -311,7 +311,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
         icon: Icons.people_rounded,
         label: anTr('an2_tile_students', 'Students'),
         value: appCompactNumber(all.fold<int>(0, (s, x) => s + x.studentsCount)),
-        color: appChartPalette(context)[3],
+        color: anSpareColor(context),
       ),
       AnTileSpec(
         icon: Icons.volunteer_activism_rounded,

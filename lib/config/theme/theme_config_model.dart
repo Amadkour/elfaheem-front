@@ -96,6 +96,12 @@ class ThemeConfigModel {
   /// The dark tone a hero gradient fades into (`hero_shade`).
   final Color? heroShade;
 
+  // ── Brand gradient stops (optional, D-136: derived from the primary family when absent) ──
+  /// The light outer stop of the brand gradient (`primary_gradient_start`).
+  final Color? primaryGradientStart;
+  /// The deep outer stop of the brand gradient (`primary_gradient_end`).
+  final Color? primaryGradientEnd;
+
   // ── Meta ─────────────────────────────────────────────────────────────────
   final String platform;
   final bool isActive;
@@ -158,6 +164,8 @@ class ThemeConfigModel {
     required this.gradientTeal,
     this.onHero,
     this.heroShade,
+    this.primaryGradientStart,
+    this.primaryGradientEnd,
     required this.platform,
     required this.isActive,
     this.updatedAt, required this.surfaceCard,
@@ -277,6 +285,8 @@ class ThemeConfigModel {
       // On-hero roles (optional)
       onHero: _opt(j['on_hero']),
       heroShade: _opt(j['hero_shade']),
+      primaryGradientStart: _opt(j['primary_gradient_start']),
+      primaryGradientEnd: _opt(j['primary_gradient_end']),
 
       // Meta
       platform: j['platform'] as String,
@@ -345,6 +355,8 @@ class ThemeConfigModel {
     'gradient_teal': _hexList(gradientTeal),
     if (onHero != null) 'on_hero': _hex(onHero!),
     if (heroShade != null) 'hero_shade': _hex(heroShade!),
+    if (primaryGradientStart != null) 'primary_gradient_start': _hex(primaryGradientStart!),
+    if (primaryGradientEnd != null) 'primary_gradient_end': _hex(primaryGradientEnd!),
     'platform': platform,
     'is_active': isActive,
     'updated_at': updatedAt,

@@ -426,7 +426,7 @@ class HomeHeroCard extends StatelessWidget {
       padding: margin ?? const EdgeInsets.symmetric(horizontal: 20),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: gradient ?? c.primaryGradient,
+          gradient: gradient ?? c.heroGradient,
           borderRadius: r,
           boxShadow: [BoxShadow(color: (glow ?? c.primary).withValues(alpha: 0.16), blurRadius: 20, offset: const Offset(0, 6))],
         ),
@@ -438,6 +438,8 @@ class HomeHeroCard extends StatelessWidget {
             child: ClipRRect(
               borderRadius: r,
               child: Stack(children: [
+                // the brand hero's faint warm glow (D-136), only on the default gradient
+                if (gradient == null) Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: c.heroGlow))),
                 // a single quiet ornament: a large ring bleeding off the end edge
                 PositionedDirectional(
                   end: -60,

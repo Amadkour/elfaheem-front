@@ -18,6 +18,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
+import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
 import 'model.dart';
 
 // ── CategoryModel ─────────────────────────────────────────────────────────────
@@ -182,11 +183,11 @@ class CategoriesProvider extends BaseProvider {
     isLoadingCourse = true;
     notifyListeners();
 
-    final params = <String, dynamic>{'search': q, 'limit': 30, 'skip': 0};
+    final params = <String, dynamic>{'search': q, 'limit': 30, 'skip': 0, ..._side};
     if (_selectedId != null) params['category_id'] = _selectedId;
 
     final result = await run(
-      () => _api.get('/api/v1/courses', queryParams: params, auth: false),
+      () => _api.get('/api/v1/courses', queryParams: params, auth: _sideNeedsAuth),
     );
 
     _applyCoursesResult(result);
@@ -240,14 +241,19 @@ class CategoriesProvider extends BaseProvider {
 
   // ── Private ──────────────────────────────────────────────────────────────
 
+  /// The mode's side on GET /courses (the server's default is the personal account). An organization's side is
+  /// for its members only, so that request goes signed in; the personal catalogue stays public (guests).
+  Map<String, dynamic> get _side => modeCourseScopeQuery();
+  bool get _sideNeedsAuth => _side['scope'] == 'org';
+
   Future<void> _fetchCoursesFor(String categoryId) async {
     isLoadingCourse = true;
     notifyListeners();
     final result = await run(
       () => _api.get(
         '/api/v1/courses',
-        queryParams: {'category_id': categoryId, 'limit': 20, 'skip': 0},
-        auth: false,
+        queryParams: {'category_id': categoryId, 'limit': 20, 'skip': 0, ..._side},
+        auth: _sideNeedsAuth,
       ),
     );
     _applyCoursesResult(result);
@@ -261,8 +267,8 @@ class CategoriesProvider extends BaseProvider {
     final result = await run(
       () => _api.get(
         '/api/v1/courses',
-        queryParams: {'limit': 20, 'skip': 0},
-        auth: false,
+        queryParams: {'limit': 20, 'skip': 0, ..._side},
+        auth: _sideNeedsAuth,
       ),
     );
     _applyCoursesResult(result);

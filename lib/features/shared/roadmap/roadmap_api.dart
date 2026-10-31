@@ -41,10 +41,12 @@ const roadmapLevels = ['beginner', 'intermediate', 'advanced'];
 /// A roadmap kill switch is off: the key itself or the whole `roadmap`.
 bool roadmapOff(String key) => AppConfig.disableList.contains(kRoadmapKey) || AppConfig.disableList.contains(key);
 
-/// The account works in an organization (an org-admin / org-staff login, or a live membership while organizations
-/// are on): it gets no roadmap and no recommendations. The server decides too; this only spares the calls.
-bool roadmapOrgAccount(String? role) =>
-    role == 'org-admin' || role == 'org-staff' || AppModeController.instance.available;
+/// Not the personal context: an org-admin / org-staff login, or Organization mode (AppModeController.isOrg) — no
+/// roadmap and no recommendations there. A student / teacher who is ALSO an organization member keeps both in their
+/// personal space (D-120, amended 2026-10-31: before, any live membership hid them in every mode, so the home card
+/// and the Path tab never appeared for members). The server refuses org-admin / org-staff accounts and never returns
+/// an organization course; the mode is the app's to apply.
+bool roadmapOrgAccount(String? role) => role == 'org-admin' || role == 'org-staff' || AppModeController.instance.isOrg;
 
 String roadmapLevelLabel(String? level) => switch (level) {
   'beginner' => t('مبتدئ', 'Beginner'),

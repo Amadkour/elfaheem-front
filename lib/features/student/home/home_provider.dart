@@ -12,6 +12,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import '../../../core/api_client.dart';
+import '../../../core/app_mode.dart';
+import '../../shared/course/course_scope.dart' show modeCourseScopeQuery;
 import '../../shared/category/categories_provider.dart';
 import '../../shared/guest/guest_state.dart';
 import '../models.dart';
@@ -79,7 +81,38 @@ class HomeProvider extends BaseProvider {
   // ── State ──────────────────────────────────────────────────────────────────
   final ApiClient api;
 
-  HomeProvider({ApiClient? api}) : api = api ?? ApiClient();
+  HomeProvider({ApiClient? api}) : api = api ?? ApiClient() {
+    _side = _sideKey;
+    AppModeController.instance.addListener(_onMode);
+  }
+
+  // GET /teacher/student-dashboard carries the mode's side (`scope` / `org_id`, the server's default is the
+  // personal account): "My courses" and "Other courses" are that side's. A switch drops the other side's lists at
+  // once and reloads (once the home was loaded); an answer that arrives after a switch is dropped.
+  late String _side;
+  bool _fetched = false;
+
+  static String get _sideKey {
+    final q = modeCourseScopeQuery();
+    return '${q['scope']}:${q['org_id'] ?? ''}';
+  }
+
+  void _onMode() {
+    final now = _sideKey;
+    if (now == _side) return;
+    _side = now;
+    if (!_fetched || GuestState.active) return;
+    myCourses = [];
+    otherCourses = [];
+    notifyListeners();
+    fetchStudentDashboard();
+  }
+
+  @override
+  void dispose() {
+    AppModeController.instance.removeListener(_onMode);
+    super.dispose();
+  }
 
   // Upcoming banner — in production this comes from the dashboard API
   final UpcomingCourse upcomingCourse = const UpcomingCourse(
@@ -122,13 +155,18 @@ class HomeProvider extends BaseProvider {
   Future<void> fetchStudentDashboard() async {
     makeLoading();
     loadFailed = false;
+    _fetched = true;
+    final side = _side;
     final result = await run(
           () => api.get(
         '/api/v1/teacher/student-dashboard',
+        // the mode's side; a guest has none (no token at all → the server answers with the public catalogue)
+        queryParams: GuestState.active ? null : modeCourseScopeQuery(),
         // Guest: no token at all → the server answers with the public catalogue.
         auth: !GuestState.active,
       ),
     );
+    if (side != _side) return; // the mode changed meanwhile: its own reload answers for the new side
     // Request failed → run() already holds the error. This used to throw "operator [] on null" here.
     if (result is! Map) {
       loadFailed = true;

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
+import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
 import 'package:flutter_education_app/core/live/live_events_client.dart';
 import 'package:http/http.dart' hide MultipartFile;
 import '../../../config/storage_service.dart';
@@ -239,7 +240,7 @@ class ProfileProvider extends BaseProvider {
   bool darkMode = false;
 
   Future<void> fetchMyFavorites() async {
-    final r = await run(() => _api.get('/api/v1/my-favorites'));
+    final r = await run(() => _api.get('/api/v1/my-favorites', queryParams: modeCourseScopeQuery())); // the mode's side
     if (r is List) {
       _favourites = r.map((e) => CourseModel.fromJson(e)).toList();
       notifyListeners();

@@ -58,6 +58,7 @@ import 'features/shared/exports/exports_center_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
 import 'features/shared/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
+import 'features/shared/get_app/get_app_banner.dart' show GetAppBanner;
 import 'features/shared/session/video/vod_listen_layer.dart' show VodListenLayer;
 import 'design/app_keyboard.dart' show AppKeyboardSupport;
 import 'features/shared/notification/admin_message_dialogs.dart';
@@ -639,7 +640,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                     ],
                     useShortestSide: true,
                     // the live room above the Navigator: full-screen, or a box while moving around the app
-                    child: LiveRoomLayer(child: child!),
+                    child: LiveRoomLayer(child: GetAppBanner(child: child!)), // web: "Get the app" strip above the role homes
                   ),
                 ),
               ),

@@ -307,7 +307,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
           icon: Icons.bookmark_rounded,
           label: anTr('an2_tile_saved', 'Saved to review'),
           value: '${p.reviewFlags}',
-          color: appChartPalette(context)[3],
+          color: anSpareColor(context),
         ),
       ] else ...[
         AnTileSpec(

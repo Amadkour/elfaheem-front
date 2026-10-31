@@ -218,14 +218,24 @@ class _Fab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return FloatingActionButton.extended(
-      key: ValueKey('org.page.${action.id}'),
-      heroTag: 'org.page.${action.id}',
-      backgroundColor: c.primary,
-      foregroundColor: c.onHero,
-      onPressed: action.onTap,
-      icon: Icon(action.icon),
-      label: Text(action.label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
+    // the brand gradient (D-136) behind a transparent FAB: its ripple, hover and focus overlays draw on top
+    final r = BorderRadius.circular(18);
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: r, gradient: c.primaryGradient, boxShadow: c.primaryButtonShadow),
+      child: FloatingActionButton.extended(
+        key: ValueKey('org.page.${action.id}'),
+        heroTag: 'org.page.${action.id}',
+        backgroundColor: Colors.transparent,
+        foregroundColor: c.onHero,
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: r),
+        onPressed: action.onTap,
+        icon: Icon(action.icon),
+        label: Text(action.label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
+      ),
     );
   }
 }

@@ -42,7 +42,6 @@ import 'package:flutter_education_app/features/shared/calendar/calendar_models.d
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxCompactList, InboxItem, InboxScreen, openInboxItem;
 import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_api.dart' show Journey, kRoadmapJourneyKey, roadmapOff;
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
 import 'package:flutter_education_app/features/student/home/home_journey.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart';
@@ -496,7 +495,7 @@ class _Sections extends StatelessWidget {
     ));
 
     // ── the ONE journey card (D-120), under the courses and with them on every layout; no clear field → nothing
-    final j = roadmapOff(kRoadmapJourneyKey) || home.journey == null ? null : Journey.fromJson(home.journey);
+    final j = homeJourney(home.journey);
     final coursesBlock = j == null
         ? courses
         : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

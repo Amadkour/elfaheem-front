@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../../student/courses/details/components/app_responsive.dart';
 import 'course_list_card.dart';
 import 'course_row.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_infinite_scroll.dart';
 
 class HomeCourseList extends StatefulWidget {
   const HomeCourseList({
@@ -20,6 +22,8 @@ class HomeCourseList extends StatefulWidget {
     this.onLoadMore,
     this.onRefresh,
     this.loadingMore = false,
+    this.loadFailed = false,
+    this.onRetry,
     this.badgeFor,
     this.maxWidth = Breakpoints.contentMax,
   });
@@ -37,11 +41,16 @@ class HomeCourseList extends StatefulWidget {
   final void Function(CourseModel course) onTap;
   final bool isTeacher;
 
-  /// Passing this turns on view-as style pagination (scroll trigger, footer, pull-to-refresh).
-  /// Without it the list behaves exactly as before (used by the home screen).
-  final VoidCallback? onLoadMore;
+  /// Passing this turns on infinite scroll (AppInfiniteScroll: the next page whenever the end is near, also when
+  /// the pages don't fill the screen; footer; pull-to-refresh). Without it the list behaves exactly as before
+  /// (used by the home screen).
+  final FutureOr<void> Function()? onLoadMore;
   final Future<void> Function()? onRefresh;
   final bool loadingMore;
+
+  /// The last next-page request failed: only scrolling again asks again (through [onRetry] when given).
+  final bool loadFailed;
+  final FutureOr<void> Function()? onRetry;
 
   @override
   State<HomeCourseList> createState() => _HomeCourseListState();
@@ -53,42 +62,9 @@ class _HomeCourseListState extends State<HomeCourseList> {
   bool get _paged => widget.onLoadMore != null;
 
   @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(_onScroll);
-    _fillViewport();
-  }
-
-  @override
-  void didUpdateWidget(covariant HomeCourseList old) {
-    super.didUpdateWidget(old);
-    _fillViewport();
-  }
-
-  @override
   void dispose() {
     _scroll.dispose();
     super.dispose();
-  }
-
-  /// Near the bottom → fetch the next page automatically.
-  void _onScroll() {
-    if (!_paged || widget.loadingMore || !widget.hasMore) return;
-    if (_scroll.hasClients && _scroll.position.extentAfter < 320) {
-      widget.onLoadMore!();
-    }
-  }
-
-  /// If the loaded pages don't fill the screen there is nothing to scroll, so keep loading.
-  void _fillViewport() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_paged || !_scroll.hasClients) return;
-      if (_scroll.position.maxScrollExtent <= 0 &&
-          widget.hasMore &&
-          !widget.loadingMore) {
-        widget.onLoadMore!();
-      }
-    });
   }
 
   Widget _card(CourseModel c, CourseCardShape shape) => CourseCard(
@@ -133,7 +109,15 @@ class _HomeCourseListState extends State<HomeCourseList> {
               ],
             );
             if (widget.onRefresh != null) body = AppRefresh(onRefresh: widget.onRefresh!, child: body);
-            return body;
+            return AppInfiniteScroll(
+              controller: _scroll,
+              hasMore: widget.hasMore,
+              loading: widget.loadingMore,
+              failed: widget.loadFailed,
+              onLoadMore: widget.onLoadMore!,
+              onRetry: widget.onRetry,
+              child: body,
+            );
           }
           // Inside a page's own scroll (the home, categories) the list sizes itself; given a height (favourites)
           // it scrolls.

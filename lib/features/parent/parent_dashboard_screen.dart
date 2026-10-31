@@ -45,6 +45,7 @@ import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/features/shared/display/display_settings_page.dart' show DisplaySettingsTile;
+import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 
@@ -364,6 +365,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
           children: [
             const AppLanguageTile(),
             const DisplaySettingsTile(),
+            if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device
             const AppAssistantOpenTile(),
             const AppAssistantBubbleTile(),
             AppSettingsTile(

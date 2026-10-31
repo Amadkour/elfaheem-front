@@ -44,7 +44,10 @@ const homeBudgets = <String, HomeBudget>{
   'parent': (open: 3, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
   // +1 = the lazy Insights section (D-103): GET …/insights, started in parallel with the dashboard (no waterfall)
   'org-admin': (open: 6, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
-  'org-member': (open: 3, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
+  // 2026-10-31: open 3 → 4 — GET /me/home carries the mode's side (scope / org_id, the server's default is the
+  // personal account). On a first launch the mode is only known from the overview's smart default, so the home asked
+  // in parallel is the personal side's: its course block is dropped and the organization's home is asked once more.
+  'org-member': (open: 4, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
 };
 
 class HomeMetrics {

@@ -16,6 +16,7 @@
 library;
 
 import '../../../config/app_config.dart';
+import '../../../core/app_mode.dart';
 
 enum CourseScopeKind { all, personal, org }
 
@@ -38,9 +39,10 @@ class CourseScope {
   bool get isPersonal => kind == CourseScopeKind.personal;
   bool get isOrg => kind == CourseScopeKind.org;
 
-  /// Query parameters for the list routes (none for "all", so an older server sees the request it always got).
+  /// Query parameters for the list routes. "all" is sent too: the server's default side is the personal account
+  /// (an older server ignores the parameter and lists everything anyway).
   Map<String, dynamic> get query => switch (kind) {
-        CourseScopeKind.all => const {},
+        CourseScopeKind.all => const {'scope': 'all'},
         CourseScopeKind.personal => const {'scope': 'personal'},
         CourseScopeKind.org => {'scope': 'org', 'org_id': orgId},
       };
@@ -61,6 +63,18 @@ class CourseScope {
   @override
   String toString() => isOrg ? 'org:$orgId' : kind.name;
 }
+
+/// The `scope` / `org_id` of the app mode's side (Individual mode → personal, Organization mode → that organization) for
+/// a course request that is not a scoped list of its own (analytics, the course form's pickers, favourites, the
+/// student home, categories). The server's default without `scope` is the personal account, so Organization mode must
+/// say so.
+Map<String, dynamic> modeCourseScopeQuery([AppModeController? mode]) {
+  final m = mode ?? AppModeController.instance;
+  return CourseScope.forMode(isOrg: m.isOrg, orgId: m.currentOrgId).query;
+}
+
+/// The server's `has_more` when it sends one (null on an older server: the caller falls back to `total`).
+bool? serverHasMore(dynamic body) => body is Map && body['has_more'] is bool ? body['has_more'] as bool : null;
 
 /// The organization a course belongs to.
 class CourseOrg {

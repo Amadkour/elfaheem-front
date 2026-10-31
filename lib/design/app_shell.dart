@@ -624,10 +624,14 @@ class _SidebarTile extends StatelessWidget {
     return AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        // selected: a warm accent2 wash on the light (brand) sidebar; the brand gradient pill on the dark one (D-136)
         decoration: BoxDecoration(
-          color: selected ? c.accent2.withValues(alpha: 0.2) : Colors.transparent,
+          // (no colour under the gradient: a transparent paint colour would fade the shader to nothing)
+          color: selected && c.isDark ? null : (selected ? c.accent2.withValues(alpha: 0.2) : Colors.transparent),
+          gradient: selected && c.isDark ? c.primaryGradient : null,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: selected ? c.primary.withValues(alpha: 0.3) : Colors.transparent),
+          border: Border.all(color: selected && !c.isDark ? c.primary.withValues(alpha: 0.3) : Colors.transparent),
+          boxShadow: selected && c.isDark ? c.primaryButtonShadow : null,
         ),
         child: Row(
           children: [
@@ -969,7 +973,8 @@ class _BottomTab extends StatelessWidget {
             width: 42,
             height: 30,
             decoration: BoxDecoration(
-              gradient: active ? c.accentGradient : null,
+              // the brand gradient (D-136); the server's accent gradient faded to cream under a white icon
+              gradient: active ? c.primaryGradient : null,
               borderRadius: BorderRadius.circular(10),
               boxShadow: active
                   ? [BoxShadow(color: c.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))]

@@ -38,6 +38,7 @@ import 'about/about_and_terms_screen.dart';
 import 'about/about_terms_provider.dart';
 import '../../../design/app_language_switch.dart' show AppLanguageTile;
 import '../display/display_settings_page.dart' show DisplaySettingsTile;
+import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
 import '../rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'change_password_widget.dart';
 import 'compalints/complaint_provider.dart';
@@ -343,6 +344,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           ),
                           const AppLanguageTile(),
                           const DisplaySettingsTile(),
+                          if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device
                           const AppAssistantOpenTile(),
                           const AppAssistantBubbleTile(),
                           ParentComponent(

@@ -28,6 +28,13 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
   List<DeviceSwitchItem> items = [];
   final Set<int> _processing = {};
 
+  /// Decided here, still on [items] while its card animates out.
+  final Set<int> _decided = {};
+
+  /// The badge: requests still waiting. Drops the moment the server accepted the decision — counting [items] kept
+  /// a handled request on the badge whenever the screen closed before the card's exit animation ended.
+  int get pendingCount => items.where((e) => !_decided.contains(e.id)).length;
+
   /// True once the first load finished successfully.
   bool hasLoaded = false;
   bool isProcessing(int id) => _processing.contains(id);
@@ -35,6 +42,12 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
   /// Loads only if nothing was loaded yet and no load is running, so the
   /// dashboard badge and the screen share ONE request.
   Future<void> ensureLoaded() async {
+    if (hasLoaded && _decided.isNotEmpty) {
+      // decided while its card was animating out, but the screen closed first: never show it again
+      items.removeWhere((e) => _decided.contains(e.id));
+      _decided.clear();
+      notifyListeners();
+    }
     if (hasLoaded || isLoading) return;
     await load();
   }
@@ -44,6 +57,7 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
   void reset() {
     items = [];
     _processing.clear();
+    _decided.clear();
     hasLoaded = false;
     notifyListeners();
   }
@@ -55,6 +69,7 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
       for (final raw in (json['items'] as List? ?? const []))
         DeviceSwitchItem.fromJson(Map<String, dynamic>.from(raw as Map)),
     ];
+    _decided.clear();
     hasLoaded = true;
     notifyListeners();
   }
@@ -75,6 +90,7 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
     )) !=
         null;
     _processing.remove(id);
+    if (ok) _decided.add(id);
     notifyListeners();
     return ok; // on failure `errorMessage` (e.g. "one switch per month") is shown by the screen
   }
@@ -82,6 +98,7 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
   /// Drops a handled request from the list (called after the exit animation).
   void removeItem(int id) {
     items.removeWhere((e) => e.id == id);
+    _decided.remove(id);
     notifyListeners();
   }
 }

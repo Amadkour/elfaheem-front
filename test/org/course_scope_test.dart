@@ -37,8 +37,8 @@ void main() {
   setUp(() => AppConfig.lang = 'en');
 
   group('CourseScope', () {
-    test('query: nothing for All (an older server sees the old request), personal, org + org_id', () {
-      expect(CourseScope.all.query, isEmpty);
+    test('query: All is explicit (the server defaults to personal), personal, org + org_id', () {
+      expect(CourseScope.all.query, {'scope': 'all'});
       expect(CourseScope.personal.query, {'scope': 'personal'});
       expect(const CourseScope.org(4).query, {'scope': 'org', 'org_id': 4});
     });
@@ -265,7 +265,7 @@ void main() {
 
       await p.init(const []);
       await pumpEventQueue();
-      expect(fake.calls.map((c) => c.query['scope']).toList(), ['personal', null]); // personal is empty → All
+      expect(fake.calls.map((c) => c.query['scope']).toList(), ['personal', 'all']); // personal is empty → All
       expect(p.scope, CourseScope.all);
       expect(p.allCourses.single.org?.id, 7);
 

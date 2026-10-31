@@ -1,5 +1,7 @@
 library;
 
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
@@ -11,6 +13,7 @@ import 'package:flutter_education_app/features/shared/profile/compalints/complai
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../utils/widget/app_navigator.dart' show AppNavigator;
@@ -37,8 +40,12 @@ class _State extends State<TeacherDashboardScreen> {
   // so the badge and the list always use the same instance.
   final _complaints = ComplaintProvider();
 
+  // The help-center count follows complaints handled / opened by another reviewer (it was loaded once).
+  StreamSubscription<LiveEvent>? _live;
+
   @override
   void dispose() {
+    _live?.cancel();
     AppNavigator.requestedTab.removeListener(_onTabRequested);
     _complaints.dispose();
     super.dispose();
@@ -70,6 +77,9 @@ class _State extends State<TeacherDashboardScreen> {
   void initState() {
     super.initState();
     AppNavigator.requestedTab.addListener(_onTabRequested);
+    _live = LiveEvents.instance.listen({LiveEvents.complaints, LiveEvents.attentionChanged}, (e) {
+      if (mounted && (e.type == LiveEvents.complaints || e.relatedType == 'complaint')) _complaints.refreshCount();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final devices = context.read<TeacherDeviceRequestsProvider>();
       await Future.wait([
@@ -150,7 +160,7 @@ class _State extends State<TeacherDashboardScreen> {
                 // not on every loading/processing notification of the providers.
                 final pending =
                 context.select<TeacherDeviceRequestsProvider, int>(
-                      (p) => p.items.length,
+                      (p) => p.pendingCount, // drops as soon as a request is decided
                 );
                 // Profile tab hosts the device-switch requests (not in the attention feed) and the help center
                 // (complaint replies: AttentionTabs.profile, drawn at the leaf).

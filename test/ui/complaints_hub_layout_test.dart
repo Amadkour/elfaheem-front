@@ -9,6 +9,7 @@ import 'package:flutter_education_app/features/shared/profile/compalints/complai
 import 'package:flutter_education_app/features/shared/profile/compalints/complaints_hub_model.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaints_hub_widgets.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -270,6 +271,7 @@ void main() {
       expect(await ok, isTrue);
       expect(api.calls.where((c) => c.method == 'PUT').map((c) => c.path),
           ['/api/v1/org/orgs/3/complaints/11', '/api/v1/org/orgs/3/complaints/11', '/api/v1/complaints/2']);
+      await t.pump(DecisionRefresh.coalesce); // the badge refresh a successful decision schedules
     });
   });
 }

@@ -9,8 +9,9 @@
 //   AttentionService.instance.refresh()                                     → reload now
 //
 // Refreshes: on the live event `attention_changed` (the SSE stream / a silent push, LiveEventsClient) and the
-// `*_updated` events, every 60 s as a fallback (5 min while the stream is connected), on app resume and on
-// route push/return (TopRouteObserver → onRouteChanged, throttled).
+// `*_updated` events, every 60 s as a fallback (5 min while the stream is connected), on app resume, on
+// route push/return (TopRouteObserver → onRouteChanged, throttled) and — at once — after this user's own
+// approve / reject / decide call succeeded (decision_refresh.dart → onDecision; the server tells only the others).
 // Listen with ListenableBuilder(listenable: AttentionService.instance, …) (or AttentionBadge); polling (and the
 // live stream it binds) runs only while something listens.
 library;
@@ -23,6 +24,7 @@ import 'package:flutter/widgets.dart';
 import '../../utils/live_events.dart';
 import '../api_client.dart';
 import '../live/live_events_client.dart';
+import 'decision_refresh.dart';
 
 /// When a live event that changes the badges should reload them: [Duration.zero] = now; otherwise after the delay
 /// (a reload ran less than [gap] ago, or is running — its answer may predate the change). Dropping such an event
@@ -110,7 +112,8 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     super.addListener(listener);
     if (_timer != null) return;
     WidgetsBinding.instance.addObserver(this);
-    _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged}, (_) => _onLiveEvent());
+    _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged},
+        (e) => DecisionRefresh.isLocal(e) ? onDecision() : _onLiveEvent());
     final stream = LiveEventsClient.instance;
     stream.connected.addListener(_onStreamChanged);
     stream.bind();
@@ -136,6 +139,25 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
       _trailing = null;
       if (_timer == null) return; // stopped meanwhile
       _onLiveEvent();
+    });
+  }
+
+  /// THIS user just decided something (decision_refresh.dart): reload now — never throttled, since the badge must
+  /// drop while the person is still looking at it. A reload that is already running may have read the count
+  /// before the decision, so one more runs right after it.
+  @visibleForTesting
+  void onDecision() {
+    if (_timer == null) return; // nothing on screen counts
+    final running = _running;
+    if (running == null) {
+      refresh();
+      return;
+    }
+    if (_afterRunning) return;
+    _afterRunning = true;
+    running.whenComplete(() {
+      _afterRunning = false;
+      if (_timer != null) refresh();
     });
   }
 
@@ -172,6 +194,7 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
 
   Timer? _timer;
   Timer? _trailing;
+  bool _afterRunning = false;
   StreamSubscription<LiveEvent>? _live;
   List<AttentionItem> _items = const [];
   List<AttentionItem> _focusItems = const [];
