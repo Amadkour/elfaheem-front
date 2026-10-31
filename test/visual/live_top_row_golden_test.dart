@@ -10,8 +10,14 @@
 //   creator   a meeting creator before recording, on the waiting card (no logo): the free-time countdown with
 //             Upgrade and the red Record button.
 //   paused    the teacher's recording paused, the room locked, a student's camera on the stage.
-//   student   a student watching the whiteboard while the server records: REC without controls.
-//   focus     full view: the shared slides on the whole screen, the self-view box and the exit button.
+//   student   a student watching the whiteboard while the server records: REC without controls; the page number
+//             on the same line (D-108).
+//   board     the teacher presenting the whiteboard while recording: the board's title, ‹ 2 / 3 › + Page, Board
+//             options and Stop on the recording's line — ONE line (D-108); a phone folds the rest into ⋮.
+//   boardmore the same on a crowded row with the ⋮ menu open.
+//   focus     full view (D-108): only the shared slides and the presenter's camera box — no bars, no self-view.
+//   focusbars full view after a tap: the top row (Exit) and the bar slid in over the content.
+//   focusboard full view of the whiteboard page after a tap.
 @Tags(['visual'])
 library;
 
@@ -24,6 +30,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/features/shared/live/live_presenter_cam.dart' show PresenterCamPrefs;
 import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
 import 'package:flutter_education_app/features/shared/live/live_share_arbiter.dart';
 import 'package:flutter_education_app/features/shared/live/live_time_limit.dart' show LiveLimitTone;
@@ -31,7 +38,9 @@ import 'package:flutter_education_app/features/teacher/sessions/live/widgets/con
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_avatar.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_control_bar.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_focus_chrome.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_top_row.dart';
+import 'package:flutter_education_app/features/teacher/sessions/live/widgets/presenter_cam_box.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/recording_placeholder.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/self_view_pip.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -221,22 +230,40 @@ Widget _bar({required bool host, bool sharing = false}) {
   );
 }
 
-/// The room page as room.dart lays it out: the top row, the stage (rounded, with the participant badge or, in
-/// full view, the exit button; the self-view box), the bar.
-Widget _room({required LiveTopRow? row, required Widget stage, Widget? bar, bool focus = false, bool selfBox = true, bool share = false}) =>
+/// The presenter's camera box over the content (kept in full view: it is part of what is presented).
+Widget _presenterCam() => Positioned.fill(
+      child: PresenterCamLayer(
+        prefs: const PresenterCamPrefs(),
+        keepOut: const SelfViewKeepOut(base: EdgeInsets.fromLTRB(12, 12, 12, 24)),
+        selfSide: SelfViewSide.right,
+        onMoved: (_, _) {},
+        showChrome: false,
+        main: PresenterCamItem(id: 'p', name: _tr('منى السيد', 'Mona Elsayed'), video: _camera(warm: false)),
+      ),
+    );
+
+/// The room page as room.dart lays it out: the top row, the stage (rounded, with the participant badge; the
+/// self-view box), the bar — or, in full view (D-108), the content alone with LiveFocusChrome's bars over it.
+Widget _room({required LiveTopRow? row, required Widget stage, Widget? bar, bool focus = false, bool bars = false, bool selfBox = true, bool share = false}) =>
     Builder(builder: (context) {
-      final compact = MediaQuery.sizeOf(context).width < kLiveTopRowCompactWidth;
+      if (focus) {
+        return Stack(fit: StackFit.expand, children: [
+          SafeArea(child: Stack(fit: StackFit.expand, children: [ClipRRect(borderRadius: BorderRadius.circular(20), child: stage), _presenterCam()])),
+          LiveFocusChrome(
+            shown: bars,
+            hint: !bars,
+            top: row == null ? null : Padding(padding: const EdgeInsets.fromLTRB(10, 4, 10, 4), child: row),
+            bottom: bar,
+          ),
+        ]);
+      }
       return SafeArea(
         child: Column(children: [
-          if (row != null && !focus) Padding(padding: const EdgeInsets.fromLTRB(10, 4, 10, 4), child: row),
+          if (row != null) Padding(padding: const EdgeInsets.fromLTRB(10, 4, 10, 4), child: row),
           Expanded(
             child: Stack(fit: StackFit.expand, children: [
               ClipRRect(borderRadius: BorderRadius.circular(20), child: stage),
-              Positioned(
-                bottom: 14,
-                right: 14,
-                child: focus ? LiveFocusExitButton(onTap: _noop, recording: true, compact: compact) : _peopleBadge(),
-              ),
+              Positioned(bottom: 14, right: 14, child: _peopleBadge()),
               if (selfBox)
                 Positioned.fill(
                   child: SelfViewLayer(
@@ -307,19 +334,59 @@ Widget _pausedScene(BuildContext context) => _room(
     );
 
 Widget _studentScene(BuildContext context) => _room(
-      row: const LiveTopRow(
+      row: LiveTopRow(
         onInfo: _noop,
-        liveFor: Duration(minutes: 33, seconds: 2),
-        recording: LiveTopRecording(phase: LiveRecPhase.server),
+        liveFor: const Duration(minutes: 33, seconds: 2),
+        recording: const LiveTopRecording(phase: LiveRecPhase.server),
+        board: LiveTopBoard(presenting: false, pageIndex: 1, pageCount: 3, presenterName: _tr('منى السيد', 'Mona Elsayed'), canDraw: true),
         onFocus: _noop,
         onMinimize: _noop,
       ),
       stage: _board(),
       bar: _bar(host: false),
+      selfBox: false,
+    );
+
+LiveTopRow _boardRow({bool crowded = false, bool focused = false}) => LiveTopRow(
+      onInfo: _noop,
+      liveFor: const Duration(minutes: 24, seconds: 51),
+      netLowered: crowded,
+      locked: crowded,
+      onLocked: _noop,
+      limit: crowded ? const LiveTopLimit(remaining: Duration(minutes: 2, seconds: 20), tone: LiveLimitTone.warn, showUpgrade: true, onUpgrade: _noop) : null,
+      recording: LiveTopRecording(
+        phase: LiveRecPhase.recording,
+        elapsed: const Duration(minutes: 18, seconds: 7),
+        onPause: _noop,
+      ),
+      board: const LiveTopBoard(
+          presenting: true, pageIndex: 1, pageCount: 3, onPrevious: _noop, onNext: _noop, onAddPage: _noop, onOptions: _noop, onStop: _noop),
+      onFocus: _noop,
+      focused: focused,
+      onMinimize: _noop,
+    );
+
+Widget _boardScene(BuildContext context) => _room(row: _boardRow(), stage: _board(), bar: _bar(host: true), selfBox: false);
+
+Widget _boardMoreScene(BuildContext context) => _room(row: _boardRow(crowded: true), stage: _board(), bar: _bar(host: true), selfBox: false);
+
+LiveTopRow _focusRow() => LiveTopRow(
+      onInfo: _noop,
+      liveFor: const Duration(minutes: 24, seconds: 51),
+      recording: LiveTopRecording(phase: LiveRecPhase.recording, elapsed: const Duration(minutes: 18, seconds: 7), onPause: _noop),
+      onFocus: _noop,
+      focused: true,
+      onMinimize: _noop,
     );
 
 Widget _focusScene(BuildContext context) =>
-    _room(row: _teacherRow(), stage: _shareStage(), bar: _bar(host: true, sharing: true), focus: true, share: true);
+    _room(row: _focusRow(), stage: _shareStage(), bar: _bar(host: true, sharing: true), focus: true, share: true);
+
+Widget _focusBarsScene(BuildContext context) =>
+    _room(row: _focusRow(), stage: _shareStage(), bar: _bar(host: true, sharing: true), focus: true, bars: true, share: true);
+
+Widget _focusBoardScene(BuildContext context) =>
+    _room(row: _boardRow(focused: true), stage: _board(), bar: _bar(host: true), focus: true, bars: true);
 
 Future<void> _render(WidgetTester tester, String name, Widget Function(BuildContext) scene, {Future<void> Function(WidgetTester)? act}) async {
   final prevLang = AppConfig.lang;
@@ -362,11 +429,21 @@ void main() {
 
   testWidgets('teacher', (t) => _render(t, 'teacher', _teacherScene));
   testWidgets('menu', (t) => _render(t, 'menu', _menuScene, act: (t) async {
-        await t.tap(find.byKey(const ValueKey('live_room.rec_control')));
+        await t.tap(find.byKey(const ValueKey('live_room.rec_control')).hitTestable());
         await t.pump();
       }));
   testWidgets('creator', (t) => _render(t, 'creator', _creatorScene));
   testWidgets('paused', (t) => _render(t, 'paused', _pausedScene));
   testWidgets('student', (t) => _render(t, 'student', _studentScene));
+  testWidgets('board', (t) => _render(t, 'board', _boardScene));
+  testWidgets('boardmore', (t) => _render(t, 'boardmore', _boardMoreScene, act: (t) async {
+        final more = find.byKey(const ValueKey('live_room.top_more')).hitTestable();
+        if (more.evaluate().isNotEmpty) {
+          await t.tap(more);
+          await t.pump();
+        }
+      }));
   testWidgets('focus', (t) => _render(t, 'focus', _focusScene));
+  testWidgets('focusbars', (t) => _render(t, 'focusbars', _focusBarsScene));
+  testWidgets('focusboard', (t) => _render(t, 'focusboard', _focusBoardScene));
 }

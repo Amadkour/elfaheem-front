@@ -2,6 +2,8 @@
 //
 // The whiteboard as the room's stage (D-087): WhiteboardRoomView = the bar over the page (WhiteboardTopBar), the
 // page (WhiteboardStage) and, for whoever may draw, the tool dock (WhiteboardToolbar) — bound to a BoardController.
+// In the live room the bar is off (`showTopBar: false`): the room's top row carries it on the recording's line
+// (D-108); in full view (`viewOnly`) the page is alone and takes no input.
 // RoomPage puts it where the shared screen would go while a board is presented, for the presenter and every viewer;
 // the room's recorder captures the room UI, so the board is in the recording as everyone sees it.
 //
@@ -41,9 +43,18 @@ class WhiteboardRoomView extends StatefulWidget {
     this.onOptions,
     this.pageKey,
     this.keyboard,
+    this.showTopBar = true,
+    this.viewOnly = false,
   });
 
   final BoardController controller;
+
+  /// The bar over the page (WhiteboardTopBar). The live room passes false: its top row carries the title, the
+  /// page and the presenter's controls on the same line as the recording (D-108).
+  final bool showTopBar;
+
+  /// Full view (D-108): the page alone — no bar, no tool dock, no input (a tap toggles the room's bars).
+  final bool viewOnly;
 
   /// The viewers' title ("`name`'s whiteboard").
   final String presenterName;
@@ -108,7 +119,7 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
     super.dispose();
   }
 
-  bool _onKey(KeyEvent e) => mounted && boardHandleKey(e, _c);
+  bool _onKey(KeyEvent e) => mounted && !widget.viewOnly && boardHandleKey(e, _c);
 
   void _onBoard() {
     if (_c.background != _bg) {
@@ -137,15 +148,16 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
       listenable: Listenable.merge([_c, _c.scene]),
       builder: (context, _) {
         final presenting = _c.isLocalPresenting;
-        final canDraw = _c.canDrawLocal;
+        final canDraw = _c.canDrawLocal && !widget.viewOnly;
+        final bar = widget.showTopBar && !widget.viewOnly;
         final colors = boardInkColors(_c.background);
         final textStyle = _c.tool == BoardTool.text || _c.selectedItem is BoardText;
         return LayoutBuilder(builder: (context, box) {
           // The dock's own height (one row on wide screens, two otherwise); its shapes / style panel opens over the
           // page. The bar, the page and the dock stay together in the middle when the page is shorter than the room.
           final wideDock = box.maxWidth - 16 >= kBoardDockWideWidth;
-          final dockH = canDraw ? (wideDock ? 70.0 : 121.0) : 10.0;
-          const topH = 64.0;
+          final dockH = canDraw ? (wideDock ? 70.0 : 121.0) : (widget.viewOnly ? 0.0 : 10.0);
+          final topH = bar ? 64.0 : (widget.viewOnly ? 0.0 : 6.0);
           final side = box.maxWidth < 600 ? 4.0 : 12.0; // a phone gives the page every pixel of its width
           // A continuous page takes all the height there is (it scrolls); a fixed one what its shape needs.
           final idealStage = _c.isContinuous ? double.infinity : (box.maxWidth - side * 2) / _c.aspect + 4;
@@ -153,6 +165,9 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
           final free = math.max(0.0, box.maxHeight - topH - stageH - dockH);
           final column = Column(children: [
             SizedBox(height: free / 2),
+            if (!bar)
+              SizedBox(height: topH)
+            else
             SizedBox(
               height: topH,
               child: Padding(
@@ -176,16 +191,20 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
               height: stageH,
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: side),
-                child: WhiteboardStage(
-                  controller: _c,
-                  pageKey: widget.pageKey,
-                  fallbackRtl: widget.fallbackRtl,
-                  presenterName: widget.presenterName,
+                child: IgnorePointer(
+                  ignoring: widget.viewOnly,
+                  child: WhiteboardStage(
+                    controller: _c,
+                    pageKey: widget.pageKey,
+                    fallbackRtl: widget.fallbackRtl,
+                    presenterName: widget.presenterName,
+                  ),
                 ),
               ),
             ),
           ]);
-          if (!canDraw) return column;
+          // Always a Stack: the page keeps its state (zoom, scroll) when the dock comes and goes (full view, D-108).
+          if (!canDraw) return Stack(children: [Positioned.fill(child: column)]);
           return Stack(children: [
             Positioned.fill(child: column),
             PositionedDirectional(
