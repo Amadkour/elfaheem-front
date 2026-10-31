@@ -47,6 +47,14 @@ import 'features/shared/attendance/attendance_store.dart';
 import 'features/shared/attendance/attendance_teacher_banner.dart';
 import 'features/shared/guest/guest_live_api.dart' show guestLiveTokenFromRoute, legacyHashRoute;
 import 'features/shared/guest/guest_live_page.dart';
+import 'features/shared/certificates_issue/cert_issue_logic.dart' show certVerifyTokenFromRoute;
+import 'features/shared/certificates_issue/cert_verify_page.dart';
+import 'design/export/export_studio_api.dart' show exportLinkTokenFromRoute;
+import 'features/shared/exports/export_link_open_page.dart';
+import 'features/shared/exports/export_links_page.dart';
+import 'features/shared/exports/export_log_page.dart';
+import 'features/shared/exports/export_schedules_page.dart';
+import 'features/shared/exports/exports_center_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
 import 'features/shared/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
@@ -524,7 +532,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         signedIn: auth.isAuthenticated,
         home: auth.homeRoute,
         isLink: (r) =>
-            guestLiveTokenFromRoute(r) != null || DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null);
+            guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || exportLinkTokenFromRoute(r) != null ||
+            DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null);
     final String initialRoute = entry?.route ??
         (!auth.isAuthenticated
         ? '/login'
@@ -643,6 +652,21 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     if (guestToken != null) {
       return _fade(GuestLivePage(token: guestToken), settings);
     }
+    // /verify/<token> — a certificate's public verification page (the link / QR printed on it). No account needed,
+    // outside _Guard: the page calls only the public verify route with auth: false.
+    final verifyToken = certVerifyTokenFromRoute(settings.name);
+    if (verifyToken != null) {
+      return _fade(CertVerifyPage(token: verifyToken), settings);
+    }
+    // /e/<token> — an Export Studio share link (D-134): sign-in required, the page downloads the file
+    final exportToken = exportLinkTokenFromRoute(settings.name);
+    if (exportToken != null) {
+      if (!context.read<MyAuthProvider>().isAuthenticated) {
+        ExportLinkPending.set(exportToken); // opened right after login (_Guard)
+        return _fade(const LoginScreen(), const RouteSettings(name: '/login'));
+      }
+      return _fade(_Guard(child: ExportLinkOpenPage(token: exportToken)), settings);
+    }
     final link = DeepLinkService.parse(settings.name); // /c/12?ref=5
     if (link != null) {
       if (!context.read<MyAuthProvider>().isAuthenticated) {
@@ -736,6 +760,14 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         final cid = settings.arguments;
         if (cid is! int) return _fade(const _Guard(child: _RedirectHome()), settings);
         return _fade(_Guard(child: CourseProfileScreen(courseId: cid)), settings);
+      case '/exports': // the Export Studio hub; arguments: true → admins (shows the export log)
+        return _fade(_Guard(child: ExportsCenterPage(admin: settings.arguments == true)), settings);
+      case '/exports/log': // arguments: an organization id (int) or null
+        return _fade(_Guard(child: ExportLogPage(orgId: settings.arguments is int ? settings.arguments as int : null)), settings);
+      case '/exports/schedules':
+        return _fade(const _Guard(child: ExportSchedulesPage()), settings);
+      case '/exports/links':
+        return _fade(const _Guard(child: ExportLinksPage()), settings);
       case '/calendar': // arguments: a meeting id (int, notification tap) or {org_id?, dept_id?, meeting_id?}
         final a = settings.arguments;
         final m = a is Map ? a : const {};
@@ -984,6 +1016,7 @@ class _GuardState extends State<_Guard> {
         return;
       }
       DeepLinkService.instance.consumePending(); // link opened while logged out
+      ExportLinkPending.consume(Navigator.of(context)); // an export share link, likewise
       if (!ViewAsState.active) {
         AdminMessageDialogs.checkPending(); // dialogs sent by admins
       }

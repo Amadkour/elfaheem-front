@@ -106,6 +106,13 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             color: AdminPalette.orange.last,
             label: t('تصميمات الشهادات', 'Certificate designs'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CertificateDesignsScreen(orgId: s.currentId)))),
+      // Export Studio (D-130): scheduled exports and shared links; org admins also get the export log
+      AppSettingsTile(
+          icon: Icons.ios_share_rounded,
+          featureKey: 'export.studio',
+          label: t('التصدير', 'Exports'),
+          subtitle: t('التصدير المجدول والروابط المشتركة وسجل التصدير', 'Scheduled exports, shared links and the export log'),
+          onTap: () => Navigator.pushNamed(context, '/exports', arguments: s.isOrgAdmin)),
     ];
     // D-103 page anatomy: a slim profile row (the big hero pushed the settings below the fold on phones), then the
     // groups, the organization's own entries first — edit · join code · sub-organization (they left the Home) —

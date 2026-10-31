@@ -87,7 +87,7 @@ class MyCertificatesProvider extends BaseProvider {
       if (bytes.isEmpty) return false;
       final safe = cert.title.replaceAll(RegExp(r'[^\w؀-ۿ]+'), '_');
       await FileSaver.instance.saveFile(
-        name: 'certificate_${safe}_${cert.courseId}${arabic && cert.hasArabic ? '_ar' : '_en'}',
+        name: 'certificate_${safe}_${cert.courseId}_${cert.langFor(arabic)}',
         bytes: bytes,
         fileExtension: 'png',
         mimeType: MimeType.png,

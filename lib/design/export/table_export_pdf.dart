@@ -3,7 +3,8 @@
 // PDF via package:pdf with the bundled Arabic fonts (Tajawal regular, Bahij bold — the schedule export's pair).
 // Brand header band (theme primary), info lines, a table whose header row repeats on every page, zebra rows,
 // status pills, group sections with subtotals, a totals row, "Page x of y" footer. Auto landscape and auto font
-// scaling for wide tables; RTL column order and alignment when Arabic.
+// scaling for wide tables; RTL column order and alignment when Arabic. Export Studio options: conditional styling
+// rules (cell fill / colour / bold / label, hidden rows) and Arabic-Indic digits in every printed text.
 library;
 
 import 'dart:typed_data';
@@ -11,15 +12,29 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import 'export_studio_model.dart';
 import 'table_export_model.dart';
+
+final RegExp _arabicLetters = RegExp(r'[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]');
+
+/// The direction of one text in a PDF: inside an RTL document, a text without Arabic letters (a Latin name, an e-mail,
+/// a number) is laid out LTR — package:pdf wraps an RTL paragraph word-reversed, so "Mark Marketplace Student" printed
+/// as "Student / Marketplace / Mark". The caller keeps its own alignment.
+pw.TextDirection exportPdfTextDir(String s, bool rtl) =>
+    rtl && _arabicLetters.hasMatch(s) ? pw.TextDirection.rtl : pw.TextDirection.ltr;
 
 PdfColor _pc(String hex) => PdfColor.fromInt(0xFF000000 | int.parse(hex, radix: 16));
 
 /// Body font size (pt) for [columns] columns.
 double pdfFontSize(int columns) => columns <= 5 ? 9.5 : columns <= 8 ? 8.5 : columns <= 11 ? 7.5 : columns <= 14 ? 6.6 : 5.8;
 
-/// [regular] / [bold]: TTF bytes with Arabic glyphs.
-Future<Uint8List> appTablePdf(AppTableExport e, {required ByteData regular, required ByteData bold, List<String>? columns}) async {
+/// [regular] / [bold]: TTF bytes with Arabic glyphs. [rules] style the matching cells or leave rows out;
+/// [numerals] = the printed digits.
+Future<Uint8List> appTablePdf(AppTableExport e,
+    {required ByteData regular, required ByteData bold, List<String>? columns, List<ExportRule> rules = const [], ExportNumerals numerals = ExportNumerals.western}) async {
+  final visible = exportVisibleRows(rules, e.rows);
+  if (!identical(visible, e.rows)) e = e.copyWith(rows: visible);
+  String p(String s) => exportDigits(s, numerals);
   final cols0 = e.resolve(columns);
   final brand = brandOf(e);
   final head = shadeHex(brand, .18);
@@ -51,10 +66,11 @@ Future<Uint8List> appTablePdf(AppTableExport e, {required ByteData regular, requ
   final pad = pw.EdgeInsets.symmetric(horizontal: fs * .55, vertical: fs * .45);
   final flexWidths = {for (var k = 0; k < widths.length; k++) k: pw.FlexColumnWidth(widths[k])};
 
-  pw.Widget text(String s, AppColAlign a, {bool bold = false, PdfColor? color, double? size}) => pw.Container(
+  pw.Widget text(String s, AppColAlign a, {bool bold = false, PdfColor? color, double? size, String? fill}) => pw.Container(
         padding: pad,
         alignment: boxAlign(a),
-        child: pw.Text(s, textAlign: align(a), style: pw.TextStyle(fontSize: size ?? fs, fontWeight: bold ? pw.FontWeight.bold : null, color: color)),
+        decoration: fill == null ? null : pw.BoxDecoration(color: _pc(fill)),
+        child: pw.Text(p(s), textAlign: align(a), textDirection: exportPdfTextDir(s, e.rtl), style: pw.TextStyle(fontSize: size ?? fs, fontWeight: bold ? pw.FontWeight.bold : null, color: color)),
       );
 
   pw.TableRow headerRow() => pw.TableRow(
@@ -84,22 +100,26 @@ Future<Uint8List> appTablePdf(AppTableExport e, {required ByteData regular, requ
     );
   }
 
-  pw.Widget dataCell(int k, Map<String, Object?> r) {
+  pw.Widget dataCell(int k, Map<String, Object?> r, ExportRowLook look) {
     final c = cols[k];
     final v = r[c.id];
+    final rule = look.of(c.id);
     if (c.type == AppColType.status && '${v ?? ''}'.isNotEmpty) {
-      final (fill, ink) = toneColors(statusTone(c, v));
+      var (fill, ink) = toneColors(statusTone(c, v));
+      fill = rule?.background ?? fill;
+      ink = rule?.color ?? ink;
       return pw.Container(
         padding: pw.EdgeInsets.symmetric(vertical: fs * .3, horizontal: fs * .3),
         alignment: pw.Alignment.center,
         child: pw.Container(
           padding: pw.EdgeInsets.symmetric(horizontal: fs * .7, vertical: fs * .18),
           decoration: pw.BoxDecoration(color: _pc(fill), borderRadius: pw.BorderRadius.circular(fs)),
-          child: pw.Text(cellText(c, v), style: pw.TextStyle(fontSize: fs * .92, fontWeight: pw.FontWeight.bold, color: _pc(ink))),
+          child: pw.Text(p(look.textOf(c.id, cellText(c, v))), style: pw.TextStyle(fontSize: fs * .92, fontWeight: pw.FontWeight.bold, color: _pc(ink))),
         ),
       );
     }
-    return text(cellText(c, v, decimals: c.numeric ? decimals[k] : null), c.resolvedAlign);
+    return text(look.textOf(c.id, cellText(c, v, decimals: c.numeric ? decimals[k] : null)), c.resolvedAlign,
+        bold: rule?.bold ?? false, color: rule?.color == null ? null : _pc(rule!.color!), fill: rule?.background);
   }
 
   pw.Widget table(List<pw.TableRow> rows) => pw.Table(
@@ -127,8 +147,8 @@ Future<Uint8List> appTablePdf(AppTableExport e, {required ByteData regular, requ
             border: e.rtl ? pw.Border(right: pw.BorderSide(color: _pc(brand), width: 3)) : pw.Border(left: pw.BorderSide(color: _pc(brand), width: 3)),
           ),
           child: pw.Row(children: [
-            pw.Expanded(child: pw.Text(g.label!, style: pw.TextStyle(fontSize: fs + 1.5, fontWeight: pw.FontWeight.bold, color: _pc(shadeHex(brand, .2))))),
-            pw.Text('${g.rows.length}', style: pw.TextStyle(fontSize: fs + .5, color: muted)),
+            pw.Expanded(child: pw.Text(p(g.label!), style: pw.TextStyle(fontSize: fs + 1.5, fontWeight: pw.FontWeight.bold, color: _pc(shadeHex(brand, .2))))),
+            pw.Text(p('${g.rows.length}'), style: pw.TextStyle(fontSize: fs + .5, color: muted)),
           ]),
         ));
       }
@@ -137,7 +157,9 @@ Future<Uint8List> appTablePdf(AppTableExport e, {required ByteData regular, requ
         for (var i = 0; i < g.rows.length; i++)
           pw.TableRow(
             decoration: i.isOdd ? pw.BoxDecoration(color: _pc(exportZebraHex)) : null,
-            children: [for (var k = 0; k < cols.length; k++) dataCell(k, g.rows[i])],
+            children: [
+              for (var k = 0, look = exportRowLook(rules, g.rows[i]); k < cols.length; k++) dataCell(k, g.rows[i], look),
+            ],
           ),
         if (g.label != null && totals && e.groupTotals) totalRow(tx('tx_subtotal', 'Subtotal', 'المجموع الفرعي'), g.rows, grand: false),
       ]));
@@ -167,12 +189,12 @@ Future<Uint8List> appTablePdf(AppTableExport e, {required ByteData regular, requ
               padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 11),
               decoration: pw.BoxDecoration(color: _pc(brand), borderRadius: pw.BorderRadius.circular(7)),
               child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                pw.Text(e.title, style: pw.TextStyle(color: onBrand, fontSize: 17, fontWeight: pw.FontWeight.bold)),
+                pw.Text(p(e.title), style: pw.TextStyle(color: onBrand, fontSize: 17, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 3),
-                pw.Text(brandLine, style: pw.TextStyle(color: onBrand, fontSize: 8.5)),
+                pw.Text(p(brandLine), style: pw.TextStyle(color: onBrand, fontSize: 8.5)),
               ]),
             ),
-            for (final l in e.infoLines) pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: pw.Text(l, style: pw.TextStyle(color: muted, fontSize: 8.5))),
+            for (final l in e.infoLines) pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: pw.Text(p(l), style: pw.TextStyle(color: muted, fontSize: 8.5))),
             pw.SizedBox(height: 10),
           ])
         : pw.Container(
@@ -180,8 +202,8 @@ Future<Uint8List> appTablePdf(AppTableExport e, {required ByteData regular, requ
             padding: const pw.EdgeInsets.only(bottom: 4),
             decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: _pc(brand), width: 1.2))),
             child: pw.Row(children: [
-              pw.Expanded(child: pw.Text(e.title, maxLines: 1, style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _pc(shadeHex(brand, .2))))),
-              if ((e.brand ?? '').isNotEmpty) pw.Text(e.brand!, style: pw.TextStyle(fontSize: 8, color: muted)),
+              pw.Expanded(child: pw.Text(p(e.title), maxLines: 1, style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _pc(shadeHex(brand, .2))))),
+              if ((e.brand ?? '').isNotEmpty) pw.Text(p(e.brand!), style: pw.TextStyle(fontSize: 8, color: muted)),
             ]),
           ),
     footer: (c) => pw.Container(
@@ -189,8 +211,8 @@ Future<Uint8List> appTablePdf(AppTableExport e, {required ByteData regular, requ
       padding: const pw.EdgeInsets.only(top: 4),
       decoration: pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: line, width: .5))),
       child: pw.Row(children: [
-        pw.Expanded(child: pw.Text(e.stamp, maxLines: 1, style: pw.TextStyle(color: muted, fontSize: 7.5))),
-        pw.Text(e.rtl ? 'صفحة ${c.pageNumber} من ${c.pagesCount}' : 'Page ${c.pageNumber} of ${c.pagesCount}', style: pw.TextStyle(color: muted, fontSize: 7.5)),
+        pw.Expanded(child: pw.Text(p(e.stamp), maxLines: 1, style: pw.TextStyle(color: muted, fontSize: 7.5))),
+        pw.Text(p(e.rtl ? 'صفحة ${c.pageNumber} من ${c.pagesCount}' : 'Page ${c.pageNumber} of ${c.pagesCount}'), style: pw.TextStyle(color: muted, fontSize: 7.5)),
       ]),
     ),
     build: (_) => content,

@@ -93,6 +93,16 @@
                     android:host="nextbrain.site"
                     android:pathPrefix="/@"
                     android:scheme="https" />
+                <!-- certificate verification links / QR https://nextbrain.site/verify/<token> (D-132) -->
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/verify/"
+                    android:scheme="https" />
+                <!-- expiring export download links https://nextbrain.site/e/<token> (D-134, sign-in required) -->
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/e/"
+                    android:scheme="https" />
             </intent-filter>
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"

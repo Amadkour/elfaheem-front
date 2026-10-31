@@ -5,14 +5,21 @@
 // it with files from disk. Page size / orientation / margins, header and footer with "{{page}} / {{pages}}",
 // text · logo · signature · line blocks at their fractions, the table block flowing over pages with a repeating
 // header, and the items block (one card per council item with the vote result beside / below / both).
+// Export Studio: the table block applies the content's rules (cell styles, hidden rows), group headings with
+// subtotals, a totals row and header overrides ([HubTablePlan], shared with the Word / Excel writers); Arabic-Indic
+// digits in every printed text; the page frame and the watermark drawn behind every page; block backgrounds.
 library;
 
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show ByteData, rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../export/export_studio_model.dart';
+import '../export/table_export_model.dart' show AppColType, AppExportColumn, AppTotal, aggregate, aggregateText, decimalsOf, tintHex;
+import '../export/table_export_pdf.dart' show exportPdfTextDir;
 import 'export_design.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -91,6 +98,8 @@ class ExportLabels {
   String get page => l('صفحة', 'Page');
   String get of => l('من', 'of');
   String get item => l('البند', 'Item');
+  String get total => l('الإجمالي', 'Total');
+  String get subtotal => l('المجموع الفرعي', 'Subtotal');
   String outcome(String o) => switch (o) {
         'approved' => l('موافقة', 'Approved'),
         'rejected' => l('رفض', 'Rejected'),
@@ -111,10 +120,80 @@ class ExportLabels {
       ].join(' · ');
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+//  The table block's shape (shared by the three hub writers)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// What the table block prints: the columns (a group-by column leaves the body — its value heads each group),
+/// their headers (the content's label overrides first), the rows no rule hides, the groups in first-appearance
+/// order and the aggregates of the subtotal / totals rows (types and formatting from lib/design/export).
+class HubTablePlan {
+  HubTablePlan._(this.cols, this.app, this.headers, this.rows, this.groups, this.totals, this.rules, this._decimals);
+
+  final List<ExportColumn> cols;
+
+  /// The table exporter's columns, in [cols] order (aggregates and their text).
+  final List<AppExportColumn> app;
+  final List<String> headers;
+
+  /// The visible rows (a rule with `hide` drops a row before grouping, totals and the row count).
+  final List<Map<String, Object?>> rows;
+
+  /// (heading, rows); one group with a null heading when the table is not grouped, none without rows.
+  final List<(String?, List<Map<String, Object?>>)> groups;
+
+  /// A totals row (and a subtotal per group): asked for and at least one column aggregates.
+  final bool totals;
+  final List<ExportRule> rules;
+  final List<int> _decimals;
+
+  bool get grouped => groups.any((g) => g.$1 != null);
+
+  /// The column that carries the "Total" label: the first one without an aggregate.
+  int get labelAt {
+    final i = app.indexWhere((x) => x.total == AppTotal.none);
+    return i < 0 ? 0 : i;
+  }
+
+  bool aggregates(int k) => app[k].total != AppTotal.none;
+  num? aggregateOf(int k, List<Map<String, Object?>> rows) => aggregate(app[k], rows);
+  String aggregateTextOf(int k, List<Map<String, Object?>> rows) =>
+      aggregateText(app[k], aggregate(app[k], rows), app[k].total == AppTotal.average && app[k].type == AppColType.integer ? 1 : _decimals[k]);
+  ExportRowLook look(Map<String, Object?> row) => exportRowLook(rules, row);
+
+  factory HubTablePlan.of(ExportDesign d, ExportDataset data, ExportContent c) {
+    final lang = c.langFor(d);
+    var cols = data.columnsFor(d, c.columns);
+    final g = c.groupBy == null ? null : data.column(c.groupBy!);
+    if (g != null && cols.length > 1) cols = [for (final x in cols) if (x.id != g.id) x];
+    final rows = exportVisibleRows(c.rules, data.rows);
+    final app = [for (final x in cols) x.toAppColumn(lang)];
+    final headers = [for (final x in cols) (c.labels[x.id] ?? '').trim().isNotEmpty ? c.labels[x.id]!.trim() : x.label(lang)];
+    final groups = <(String?, List<Map<String, Object?>>)>[];
+    if (rows.isNotEmpty) {
+      if (g == null) {
+        groups.add((null, rows));
+      } else {
+        final map = <String, List<Map<String, Object?>>>{};
+        for (final r in rows) {
+          (map[data.cell(g, r[g.id]).trim()] ??= []).add(r);
+        }
+        for (final e in map.entries) {
+          groups.add((e.key.isEmpty ? '-' : e.key, e.value));
+        }
+      }
+    }
+    return HubTablePlan._(cols, app, headers, rows, groups, c.totals && app.any((x) => x.total != AppTotal.none), c.rules,
+        [for (final x in app) decimalsOf(x, rows.map((r) => r[x.id]))]);
+  }
+}
+
 Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c, {required ExportFontSet fonts, Map<String, Uint8List> images = const {}}) async {
   final lang = c.langFor(d);
   final lb = ExportLabels(lang);
-  final values = data.placeholderValues(lang);
+  final plan = HubTablePlan.of(d, data, c);
+  final values = data.placeholderValues(lang)..['rows'] = '${plan.rows.length}';
+  String p(String s) => exportDigits(s, c.numerals);
   final rtl = d.rtl;
   final dir = rtl ? pw.TextDirection.rtl : pw.TextDirection.ltr;
   final (pwMm, phMm) = d.page.mm;
@@ -166,7 +245,7 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
   }
 
   pw.Widget text(String s, {BlockFont? f, double? size, bool? bold, String? color, String a = 'start', int? maxLines}) =>
-      pw.Text(s, textAlign: align(a), textDirection: dir, maxLines: maxLines, style: style(f: f, size: size, bold: bold, color: color));
+      pw.Text(p(s), textAlign: align(a), textDirection: exportPdfTextDir(s, rtl), maxLines: maxLines, style: style(f: f, size: size, bold: bold, color: color));
 
   pw.Widget block(ExportBlock b) {
     final bw = b.w * cw, bh = b.h * ch;
@@ -193,6 +272,13 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
     }
   }
 
+  // a block with its background fill (text / logo / signature)
+  pw.Widget placed(ExportBlock b) {
+    final w = block(b);
+    if (b.background.isEmpty || b.kind == 'line' || b.isFlow) return w;
+    return pw.Container(width: b.w * cw, constraints: pw.BoxConstraints(minHeight: b.h * ch), color: _pc(b.background), child: w);
+  }
+
   // the static blocks of one area, positioned relative to [top] (a fraction of the content height)
   pw.Widget area(List<ExportBlock> blocks, double top) {
     if (blocks.isEmpty) return pw.SizedBox();
@@ -201,56 +287,109 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
       width: cw,
       height: height.clamp(0, ch).toDouble(),
       child: pw.Stack(overflow: pw.Overflow.visible, children: [
-        for (final b in blocks) pw.Positioned(left: b.x * cw, top: (b.y - top) * ch, child: block(b)),
+        for (final b in blocks) pw.Positioned(left: b.x * cw, top: (b.y - top) * ch, child: placed(b)),
       ]),
     );
   }
 
   // ── table
-  pw.Widget table(ExportBlock tb) {
-    final cols0 = data.columnsFor(d, c.columns);
-    final cols = rtl ? cols0.reversed.toList() : cols0;
+  List<pw.Widget> table(ExportBlock tb) {
+    final cols0 = plan.cols;
+    // pw.Table lays columns out left → right: reverse them for Arabic (k is the plan's index)
+    final order = [for (var k = 0; k < cols0.length; k++) k];
+    final ks = rtl ? order.reversed.toList() : order;
     final fs = d.table.fontSize;
     final head = d.table.headerColor, onHead = d.table.headerTextColor;
     final st = d.table.style;
     final pad = pw.EdgeInsets.symmetric(horizontal: fs * .5, vertical: fs * .4 * d.lineSpacing);
     double flex(ExportColumn col) => col.id == 'n' ? .45 : col.numeric ? .9 : (col.id == 'title' || col.id == 'subject' || col.id == 'body' ? 2.6 : 1.2);
-    pw.Widget cell(String s, ExportColumn col, {bool header = false}) => pw.Container(
+    pw.Widget cell(String s, ExportColumn col, {bool header = false, bool bold = false, String? color, String? fill}) => pw.Container(
           padding: pad,
           alignment: col.numeric && !header ? (rtl ? pw.Alignment.centerLeft : pw.Alignment.centerRight) : (rtl ? pw.Alignment.centerRight : pw.Alignment.centerLeft),
-          child: pw.Text(s,
-              textDirection: dir,
+          decoration: fill == null ? null : pw.BoxDecoration(color: _pc(fill)),
+          child: pw.Text(p(s),
+              textDirection: exportPdfTextDir(s, rtl),
               textAlign: col.numeric && !header ? (rtl ? pw.TextAlign.left : pw.TextAlign.right) : (rtl ? pw.TextAlign.right : pw.TextAlign.left),
-              style: style(size: fs, bold: header, color: header ? (st == 'minimal' ? head : onHead) : null)),
+              style: style(size: fs, bold: header || bold, color: header ? (st == 'minimal' ? head : onHead) : color)),
         );
     final border = switch (st) {
       'grid' => pw.TableBorder.all(color: line, width: .5),
       'minimal' => pw.TableBorder(horizontalInside: pw.BorderSide(color: _pc('EEF2F7'), width: .4), bottom: pw.BorderSide(color: line, width: .6)),
       _ => pw.TableBorder(horizontalInside: pw.BorderSide(color: line, width: .4), bottom: pw.BorderSide(color: line, width: .4)),
     };
-    final rows = data.rows;
-    final body = rows.isEmpty || cols.isEmpty
-        ? pw.Padding(padding: const pw.EdgeInsets.all(18), child: pw.Center(child: text(lb.noRows, color: exportMuted)))
-        : pw.Table(
-            columnWidths: {for (var k = 0; k < cols.length; k++) k: pw.FlexColumnWidth(flex(cols[k]))},
-            border: border,
-            defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
-            children: [
-              pw.TableRow(
-                repeat: true,
-                decoration: st == 'minimal'
-                    ? pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: _pc(head), width: 1.2)))
-                    : pw.BoxDecoration(color: _pc(head)),
-                children: [for (final col in cols) cell(col.label(lang), col, header: true)],
-              ),
-              for (var i = 0; i < rows.length; i++)
-                pw.TableRow(
-                  decoration: st == 'zebra' && i.isOdd ? pw.BoxDecoration(color: _pc('F6F8FA')) : null,
-                  children: [for (final col in cols) cell(data.cell(col, rows[i][col.id]), col)],
-                ),
-            ],
-          );
-    return pw.Padding(padding: pw.EdgeInsets.only(left: tb.x * cw, right: (1 - tb.x - tb.w) * cw), child: body);
+    pw.Widget padded(pw.Widget w) => pw.Padding(padding: pw.EdgeInsets.only(left: tb.x * cw, right: (1 - tb.x - tb.w) * cw), child: w);
+    if (plan.rows.isEmpty || cols0.isEmpty) {
+      return [padded(pw.Padding(padding: const pw.EdgeInsets.all(18), child: pw.Center(child: text(lb.noRows, color: exportMuted))))];
+    }
+    pw.TableRow headerRow() => pw.TableRow(
+          repeat: true,
+          decoration: st == 'minimal'
+              ? pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: _pc(head), width: 1.2)))
+              : pw.BoxDecoration(color: _pc(head)),
+          children: [for (final k in ks) cell(plan.headers[k], cols0[k], header: true)],
+        );
+    pw.TableRow dataRow(Map<String, Object?> r, int i) {
+      final look = plan.look(r);
+      return pw.TableRow(
+        decoration: st == 'zebra' && i.isOdd ? pw.BoxDecoration(color: _pc('F6F8FA')) : null,
+        children: [
+          for (final k in ks)
+            () {
+              final col = cols0[k];
+              final rule = look.of(col.id);
+              return cell(look.textOf(col.id, data.cell(col, r[col.id])), col, bold: rule?.bold ?? false, color: rule?.color, fill: rule?.background);
+            }(),
+        ],
+      );
+    }
+
+    pw.TableRow totalRow(String label, List<Map<String, Object?>> rows, {required bool grand}) => pw.TableRow(
+          decoration: pw.BoxDecoration(
+            color: _pc(tintHex(head, grand ? .2 : .08)),
+            border: grand ? pw.Border(top: pw.BorderSide(color: _pc(head), width: 1.2)) : null,
+          ),
+          children: [
+            for (final k in ks) cell(plan.aggregates(k) ? plan.aggregateTextOf(k, rows) : (k == plan.labelAt ? label : ''), cols0[k], bold: true),
+          ],
+        );
+    pw.Widget tableOf(List<pw.TableRow> rows) => pw.Table(
+          columnWidths: {for (var i = 0; i < ks.length; i++) i: pw.FlexColumnWidth(flex(cols0[ks[i]]))},
+          border: border,
+          defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
+          children: rows,
+        );
+    final out = <pw.Widget>[];
+    if (!plan.grouped) {
+      out.add(padded(tableOf([
+        headerRow(),
+        for (var i = 0; i < plan.rows.length; i++) dataRow(plan.rows[i], i),
+        if (plan.totals) totalRow(lb.total, plan.rows, grand: true),
+      ])));
+      return out;
+    }
+    for (var gi = 0; gi < plan.groups.length; gi++) {
+      final (label, rows) = plan.groups[gi];
+      final edge = pw.BorderSide(color: _pc(head), width: 3);
+      out.add(padded(pw.Container(
+        margin: pw.EdgeInsets.only(top: gi == 0 ? 0 : 10, bottom: 3),
+        padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: pw.BoxDecoration(color: _pc(tintHex(head, .14)), border: rtl ? pw.Border(right: edge) : pw.Border(left: edge)),
+        child: pw.Row(children: [
+          pw.Expanded(child: text(label ?? '-', size: fs + 1, bold: true)),
+          text('${rows.length}', size: fs, color: exportMuted),
+        ]),
+      )));
+      out.add(padded(tableOf([
+        headerRow(),
+        for (var i = 0; i < rows.length; i++) dataRow(rows[i], i),
+        if (plan.totals) totalRow('${lb.subtotal} · $label', rows, grand: false),
+      ])));
+    }
+    if (plan.totals) {
+      out.add(pw.SizedBox(height: 8));
+      out.add(padded(tableOf([totalRow(lb.total, plan.rows, grand: true)])));
+    }
+    return out;
   }
 
   // ── votes
@@ -273,7 +412,7 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
     return pw.Container(
       padding: pw.EdgeInsets.symmetric(horizontal: size * .8, vertical: size * .25),
       decoration: pw.BoxDecoration(color: _pc(fill), borderRadius: pw.BorderRadius.circular(size)),
-      child: pw.Text(label, textDirection: dir, style: style(size: size, bold: true, color: inkHex)),
+      child: pw.Text(p(label), textDirection: dir, style: style(size: size, bold: true, color: inkHex)),
     );
   }
 
@@ -333,7 +472,7 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
       final source = it.source(lang);
       final metaLine = source;
       pw.Widget metaRow() => pw.Row(mainAxisAlignment: rtl ? pw.MainAxisAlignment.end : pw.MainAxisAlignment.start, children: [
-            if (it.ref.isNotEmpty) pw.Text(it.ref, textDirection: pw.TextDirection.ltr, style: style(size: d.fontSize * .8, color: exportMuted)),
+            if (it.ref.isNotEmpty) pw.Text(p(it.ref), textDirection: pw.TextDirection.ltr, style: style(size: d.fontSize * .8, color: exportMuted)),
             if (it.ref.isNotEmpty && source.isNotEmpty) pw.Text('  ·  ', style: style(size: d.fontSize * .8, color: exportMuted)),
             if (source.isNotEmpty) pw.Flexible(child: text(source, size: d.fontSize * .8, color: exportMuted)),
           ]);
@@ -344,7 +483,7 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
             height: d.fontSize * 1.9,
             alignment: pw.Alignment.center,
             decoration: pw.BoxDecoration(color: _pc(d.table.headerColor), borderRadius: pw.BorderRadius.circular(4)),
-            child: pw.Text('${i + 1}', style: style(size: d.fontSize * .9, bold: true, color: d.table.headerTextColor)),
+            child: pw.Text(p('${i + 1}'), style: style(size: d.fontSize * .9, bold: true, color: d.table.headerTextColor)),
           ),
           pw.SizedBox(width: 8),
           pw.Expanded(
@@ -431,20 +570,65 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
     if (f != null) {
       content.add(pw.SizedBox(height: ((f.y - cursor).clamp(0, 1) * ch).toDouble()));
       if (f.kind == 'table') {
-        content.add(table(f));
+        content.addAll(table(f));
       } else {
         content.addAll(items(f));
       }
       cursor = f.y + f.h;
     }
   }
-  doc.addPage(pw.MultiPage(
-    pageFormat: format,
-    textDirection: dir,
-    maxPages: 2000,
-    header: header,
-    footer: footer,
-    build: (_) => content,
-  ));
+  // ── frame and watermark: the same background on every page (the content box inflated by the inset)
+  final fr = d.frame, wm = d.watermark;
+  pw.Widget frameBox(double w, double h) {
+    final side = pw.Border.all(color: _pc(fr.color), width: fr.width, style: fr.style == 'dashed' ? pw.BorderStyle.dashed : pw.BorderStyle.solid);
+    pw.BoxDecoration deco(double radius) => pw.BoxDecoration(border: side, borderRadius: radius > 0 ? pw.BorderRadius.circular(radius) : null);
+    if (fr.style != 'double') return pw.Container(width: w, height: h, decoration: deco(fr.radius));
+    final gap = fr.width * 2 + 1.5;
+    return pw.Container(
+      width: w,
+      height: h,
+      decoration: deco(fr.radius),
+      child: pw.Container(margin: pw.EdgeInsets.all(gap), decoration: deco(math.max(0, fr.radius - gap))),
+    );
+  }
+
+  pw.Widget pageBackground(pw.Context ctx) {
+    final ins = fr.inset * PdfPageFormat.mm;
+    return pw.SizedBox(
+      width: cw,
+      height: ch,
+      child: pw.Stack(overflow: pw.Overflow.visible, alignment: pw.Alignment.center, children: [
+        if (wm.visible)
+          pw.Center(
+            child: pw.Transform.rotate(
+              angle: -wm.angle * math.pi / 180,
+              child: pw.Opacity(
+                opacity: wm.opacity,
+                child: pw.Text(p(wm.text.trim()),
+                    softWrap: false, textDirection: dir, style: pw.TextStyle(font: theme.defaultTextStyle.font, fontBold: theme.defaultTextStyle.fontBold, fontSize: wm.size, fontWeight: pw.FontWeight.bold, color: _pc(wm.color))),
+              ),
+            ),
+          ),
+        if (fr.visible) pw.Positioned(left: -ins, top: -ins, child: frameBox(cw + 2 * ins, ch + 2 * ins)),
+      ]),
+    );
+  }
+
+  doc.addPage(fr.visible || wm.visible
+      ? pw.MultiPage(
+          pageTheme: pw.PageTheme(pageFormat: format, textDirection: dir, buildBackground: pageBackground),
+          maxPages: 2000,
+          header: header,
+          footer: footer,
+          build: (_) => content,
+        )
+      : pw.MultiPage(
+          pageFormat: format,
+          textDirection: dir,
+          maxPages: 2000,
+          header: header,
+          footer: footer,
+          build: (_) => content,
+        ));
   return doc.save();
 }

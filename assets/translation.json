@@ -18168,5 +18168,2873 @@
   "session_rate_it": {
     "en": "Rate this session",
     "ar": "قيّم الجلسة"
+  },
+  "studio_canvas": {
+    "en": "Design canvas",
+    "ar": "لوحة التصميم"
+  },
+  "studio_undo": {
+    "en": "Undo",
+    "ar": "تراجع"
+  },
+  "studio_redo": {
+    "en": "Redo",
+    "ar": "إعادة"
+  },
+  "studio_zoom": {
+    "en": "Zoom",
+    "ar": "التكبير"
+  },
+  "studio_zoom_in": {
+    "en": "Zoom in",
+    "ar": "تكبير"
+  },
+  "studio_zoom_out": {
+    "en": "Zoom out",
+    "ar": "تصغير"
+  },
+  "studio_fit": {
+    "en": "Fit page",
+    "ar": "ملاءمة الصفحة"
+  },
+  "studio_snap": {
+    "en": "Snap",
+    "ar": "الالتقاط"
+  },
+  "studio_align": {
+    "en": "Align",
+    "ar": "محاذاة"
+  },
+  "studio_align_left": {
+    "en": "Align left",
+    "ar": "محاذاة لليسار"
+  },
+  "studio_align_center_h": {
+    "en": "Align centres",
+    "ar": "توسيط أفقي"
+  },
+  "studio_align_right": {
+    "en": "Align right",
+    "ar": "محاذاة لليمين"
+  },
+  "studio_align_top": {
+    "en": "Align top",
+    "ar": "محاذاة للأعلى"
+  },
+  "studio_align_middle": {
+    "en": "Align middles",
+    "ar": "توسيط رأسي"
+  },
+  "studio_align_bottom": {
+    "en": "Align bottom",
+    "ar": "محاذاة للأسفل"
+  },
+  "studio_distribute_h": {
+    "en": "Distribute horizontally",
+    "ar": "توزيع أفقي متساوٍ"
+  },
+  "studio_distribute_v": {
+    "en": "Distribute vertically",
+    "ar": "توزيع رأسي متساوٍ"
+  },
+  "studio_align_to_page": {
+    "en": "Relative to the page",
+    "ar": "بالنسبة إلى الصفحة"
+  },
+  "studio_delete": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
+  "studio_duplicate": {
+    "en": "Duplicate",
+    "ar": "تكرار"
+  },
+  "studio_bring_forward": {
+    "en": "Bring forward",
+    "ar": "تقديم للأمام"
+  },
+  "studio_send_backward": {
+    "en": "Send backward",
+    "ar": "إرجاع للخلف"
+  },
+  "studio_bring_front": {
+    "en": "Bring to front",
+    "ar": "إحضار إلى المقدمة"
+  },
+  "studio_send_back": {
+    "en": "Send to back",
+    "ar": "إرسال إلى الخلف"
+  },
+  "studio_font": {
+    "en": "Font",
+    "ar": "الخط"
+  },
+  "studio_size": {
+    "en": "Size",
+    "ar": "الحجم"
+  },
+  "studio_weight": {
+    "en": "Weight",
+    "ar": "سُمك الخط"
+  },
+  "studio_weight_regular": {
+    "en": "Regular",
+    "ar": "عادي"
+  },
+  "studio_weight_medium": {
+    "en": "Medium",
+    "ar": "متوسط"
+  },
+  "studio_weight_bold": {
+    "en": "Bold",
+    "ar": "عريض"
+  },
+  "studio_color": {
+    "en": "Colour",
+    "ar": "اللون"
+  },
+  "studio_hex": {
+    "en": "Hex code",
+    "ar": "رمز اللون"
+  },
+  "studio_none_color": {
+    "en": "No colour",
+    "ar": "بلا لون"
+  },
+  "studio_text_align": {
+    "en": "Text alignment",
+    "ar": "محاذاة النص"
+  },
+  "studio_align_text_left": {
+    "en": "Left",
+    "ar": "يسار"
+  },
+  "studio_align_text_center": {
+    "en": "Centre",
+    "ar": "وسط"
+  },
+  "studio_align_text_right": {
+    "en": "Right",
+    "ar": "يمين"
+  },
+  "studio_align_text_justify": {
+    "en": "Justify",
+    "ar": "ضبط"
+  },
+  "studio_border": {
+    "en": "Border",
+    "ar": "الإطار"
+  },
+  "studio_border_none": {
+    "en": "None",
+    "ar": "بلا"
+  },
+  "studio_border_solid": {
+    "en": "Solid",
+    "ar": "متصل"
+  },
+  "studio_border_dashed": {
+    "en": "Dashed",
+    "ar": "متقطع"
+  },
+  "studio_border_double": {
+    "en": "Double",
+    "ar": "مزدوج"
+  },
+  "studio_border_width": {
+    "en": "Border width",
+    "ar": "سُمك الإطار"
+  },
+  "studio_border_color": {
+    "en": "Border colour",
+    "ar": "لون الإطار"
+  },
+  "studio_radius": {
+    "en": "Corner radius",
+    "ar": "استدارة الزوايا"
+  },
+  "studio_background": {
+    "en": "Background",
+    "ar": "الخلفية"
+  },
+  "studio_opacity": {
+    "en": "Opacity",
+    "ar": "العتامة"
+  },
+  "studio_increase": {
+    "en": "Increase",
+    "ar": "زيادة"
+  },
+  "studio_decrease": {
+    "en": "Decrease",
+    "ar": "إنقاص"
+  },
+  "studio_small_title": {
+    "en": "Best on a bigger screen",
+    "ar": "الأفضل على شاشة أكبر"
+  },
+  "studio_small_body": {
+    "en": "The full editor works best on a tablet or computer. You can still continue on this phone — the page will be small and some tools sit in menus.",
+    "ar": "يعمل المحرر الكامل بأفضل شكل على جهاز لوحي أو كمبيوتر. يمكنك المتابعة على هذا الهاتف — ستظهر الصفحة صغيرة وبعض الأدوات داخل القوائم."
+  },
+  "studio_small_continue": {
+    "en": "Continue anyway",
+    "ar": "المتابعة على أي حال"
+  },
+  "studio_small_back": {
+    "en": "Go back",
+    "ar": "رجوع"
+  },
+  "ci_title": {
+    "en": "Issue certificates",
+    "ar": "إصدار الشهادات"
+  },
+  "ci_issue_action": {
+    "en": "Issue certificates",
+    "ar": "إصدار شهادات"
+  },
+  "ci_step_how": {
+    "en": "How",
+    "ar": "الطريقة"
+  },
+  "ci_step_who": {
+    "en": "Who",
+    "ar": "المستلمون"
+  },
+  "ci_step_preview": {
+    "en": "Preview",
+    "ar": "المعاينة"
+  },
+  "ci_step_issue": {
+    "en": "Issue",
+    "ar": "الإصدار"
+  },
+  "ci_next": {
+    "en": "Next",
+    "ar": "التالي"
+  },
+  "ci_back": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "ci_retry": {
+    "en": "Try again",
+    "ar": "إعادة المحاولة"
+  },
+  "ci_more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
+  "ci_optional": {
+    "en": "optional",
+    "ar": "اختياري"
+  },
+  "ci_load_failed": {
+    "en": "Could not load this design. Check your connection and try again.",
+    "ar": "تعذّر تحميل التصميم. تحقّق من الاتصال وحاول مرة أخرى."
+  },
+  "ci_load_more": {
+    "en": "Show more",
+    "ar": "عرض المزيد"
+  },
+  "ci_mode_title": {
+    "en": "How do you want to issue?",
+    "ar": "كيف تريد إصدار الشهادات؟"
+  },
+  "ci_mode_sub": {
+    "en": "Pick one — you can change it before issuing.",
+    "ar": "اختر طريقة — يمكنك تغييرها قبل الإصدار."
+  },
+  "ci_mode_standalone": {
+    "en": "Standalone (no course)",
+    "ar": "شهادات مستقلة (بدون دورة)"
+  },
+  "ci_mode_standalone_sub": {
+    "en": "Search students, paste a list of names or upload a sheet.",
+    "ar": "ابحث عن الطلاب، أو الصق قائمة أسماء، أو ارفع ملفًا."
+  },
+  "ci_mode_course": {
+    "en": "Link to a course",
+    "ar": "مرتبطة بدورة"
+  },
+  "ci_mode_course_sub": {
+    "en": "Every active student of the course gets a certificate.",
+    "ar": "يحصل كل طالب نشط في الدورة على شهادة."
+  },
+  "ci_pick_course": {
+    "en": "Choose the course",
+    "ar": "اختر الدورة"
+  },
+  "ci_no_courses": {
+    "en": "No courses yet",
+    "ar": "لا توجد دورات بعد"
+  },
+  "ci_no_courses_sub": {
+    "en": "Courses you teach or manage show up here.",
+    "ar": "تظهر هنا الدورات التي تدرّسها أو تديرها."
+  },
+  "ci_students_n": {
+    "en": "{n} students",
+    "ar": "{n} طالب"
+  },
+  "ci_same_for_all": {
+    "en": "Same on every certificate",
+    "ar": "قيم موحدة لكل الشهادات"
+  },
+  "ci_same_for_all_sub": {
+    "en": "Leave a field empty to keep the design's own text.",
+    "ar": "اترك الحقل فارغًا لاستخدام نص التصميم."
+  },
+  "ci_who_title": {
+    "en": "Who gets a certificate?",
+    "ar": "من سيحصل على الشهادة؟"
+  },
+  "ci_who_sub": {
+    "en": "Add people in any of the three ways — they all land in one list below.",
+    "ar": "أضف الأشخاص بأي طريقة من الثلاث — كلهم يظهرون في قائمة واحدة بالأسفل."
+  },
+  "ci_send_email": {
+    "en": "Send each certificate by email",
+    "ar": "إرسال كل شهادة بالبريد الإلكتروني"
+  },
+  "ci_send_email_sub": {
+    "en": "Adds an Email column to the list and the sheet.",
+    "ar": "يضيف عمود البريد الإلكتروني للقائمة والملف."
+  },
+  "ci_send_email_course_sub": {
+    "en": "Students get it at their account's email.",
+    "ar": "يصل للطلاب على بريد حساباتهم."
+  },
+  "ci_email_on": {
+    "en": "Certificates will also be emailed.",
+    "ar": "سيتم إرسال الشهادات بالبريد أيضًا."
+  },
+  "ci_email_off": {
+    "en": "Certificates will not be emailed.",
+    "ar": "لن يتم إرسال الشهادات بالبريد."
+  },
+  "ci_open_list": {
+    "en": "Open a saved list",
+    "ar": "فتح قائمة محفوظة"
+  },
+  "ci_save_list": {
+    "en": "Save as list",
+    "ar": "حفظ كقائمة"
+  },
+  "ci_save_list_title": {
+    "en": "Save these recipients",
+    "ar": "حفظ هؤلاء المستلمين"
+  },
+  "ci_save_list_sub": {
+    "en": "Give the list a name, e.g. \"October batch\", to reuse it later.",
+    "ar": "سمِّ القائمة، مثل \"دفعة أكتوبر\"، لتستخدمها لاحقًا."
+  },
+  "ci_list_name": {
+    "en": "List name",
+    "ar": "اسم القائمة"
+  },
+  "ci_list_saved": {
+    "en": "List saved",
+    "ar": "تم حفظ القائمة"
+  },
+  "ci_list_loaded": {
+    "en": "{n} people added from the list",
+    "ar": "تمت إضافة {n} شخص من القائمة"
+  },
+  "ci_tab_search": {
+    "en": "Search",
+    "ar": "بحث"
+  },
+  "ci_tab_paste": {
+    "en": "Paste",
+    "ar": "لصق"
+  },
+  "ci_tab_upload": {
+    "en": "Upload",
+    "ar": "رفع ملف"
+  },
+  "ci_columns_title": {
+    "en": "Columns, in this order",
+    "ar": "الأعمدة بهذا الترتيب"
+  },
+  "ci_example_line": {
+    "en": "Example line",
+    "ar": "مثال لسطر"
+  },
+  "ci_paste_label": {
+    "en": "One person per line",
+    "ar": "شخص واحد في كل سطر"
+  },
+  "ci_paste_hint": {
+    "en": "Paste from Excel or type: values separated by commas or tabs",
+    "ar": "الصق من Excel أو اكتب: القيم مفصولة بفواصل أو مسافات جدولة"
+  },
+  "ci_paste_tip": {
+    "en": "A header row is fine — it is skipped.",
+    "ar": "لا بأس بسطر العناوين — سيتم تجاهله."
+  },
+  "ci_checking": {
+    "en": "Checking…",
+    "ar": "جارٍ الفحص…"
+  },
+  "ci_lines_read": {
+    "en": "{n} lines read",
+    "ar": "تمت قراءة {n} سطر"
+  },
+  "ci_sample_title": {
+    "en": "Start from the sample sheet",
+    "ar": "ابدأ من الملف النموذجي"
+  },
+  "ci_sample_sub": {
+    "en": "It has exactly this design's columns and one example row.",
+    "ar": "يحتوي على أعمدة هذا التصميم بالضبط وسطر مثال."
+  },
+  "ci_sample_xlsx": {
+    "en": "Sample Excel",
+    "ar": "نموذج Excel"
+  },
+  "ci_sample_csv": {
+    "en": "Sample CSV",
+    "ar": "نموذج CSV"
+  },
+  "ci_sample_file": {
+    "en": "sample",
+    "ar": "نموذج"
+  },
+  "ci_pick_file": {
+    "en": "Choose a file",
+    "ar": "اختر ملفًا"
+  },
+  "ci_pick_file_sub": {
+    "en": ".xlsx or .csv, up to 5 MB",
+    "ar": "ملف ‎.xlsx أو ‎.csv حتى 5 ميجابايت"
+  },
+  "ci_file_unreadable": {
+    "en": "Could not read the file — pick it again.",
+    "ar": "تعذّرت قراءة الملف — اختره مرة أخرى."
+  },
+  "ci_file_too_big": {
+    "en": "The file must be smaller than 5 MB",
+    "ar": "يجب ألا يتجاوز حجم الملف 5 ميجابايت"
+  },
+  "ci_file_saved": {
+    "en": "File saved",
+    "ar": "تم حفظ الملف"
+  },
+  "ci_file_failed": {
+    "en": "Could not save the file",
+    "ar": "تعذّر حفظ الملف"
+  },
+  "ci_search_hint": {
+    "en": "Search by name, username or email",
+    "ar": "ابحث بالاسم أو اسم المستخدم أو البريد"
+  },
+  "ci_search_course": {
+    "en": "Students of",
+    "ar": "طلاب دورة"
+  },
+  "ci_search_pick_course": {
+    "en": "Choose a course first",
+    "ar": "اختر دورة أولًا"
+  },
+  "ci_search_pick_course_sub": {
+    "en": "You can search the students of your courses.",
+    "ar": "يمكنك البحث بين طلاب دوراتك."
+  },
+  "ci_search_empty": {
+    "en": "No students found",
+    "ar": "لا يوجد طلاب"
+  },
+  "ci_search_empty_sub": {
+    "en": "Try another name, or paste the list instead.",
+    "ar": "جرّب اسمًا آخر، أو الصق القائمة بدلًا من ذلك."
+  },
+  "ci_selected_n": {
+    "en": "{n} selected",
+    "ar": "تم اختيار {n}"
+  },
+  "ci_showing_n": {
+    "en": "showing {n} of {t}",
+    "ar": "عرض {n} من {t}"
+  },
+  "ci_select_all": {
+    "en": "Select all",
+    "ar": "اختيار الكل"
+  },
+  "ci_unselect_all": {
+    "en": "Clear selection",
+    "ar": "إلغاء الاختيار"
+  },
+  "ci_review_title": {
+    "en": "Recipients",
+    "ar": "المستلمون"
+  },
+  "ci_review_empty": {
+    "en": "No one yet",
+    "ar": "لا يوجد أحد بعد"
+  },
+  "ci_review_empty_sub": {
+    "en": "Search, paste or upload — people show up here to review.",
+    "ar": "ابحث أو الصق أو ارفع ملفًا — يظهر الأشخاص هنا للمراجعة."
+  },
+  "ci_clear": {
+    "en": "Clear",
+    "ar": "مسح"
+  },
+  "ci_clear_confirm": {
+    "en": "Remove everyone from this list?",
+    "ar": "إزالة الجميع من هذه القائمة؟"
+  },
+  "ci_ready": {
+    "en": "Ready",
+    "ar": "جاهز"
+  },
+  "ci_attention": {
+    "en": "Needs attention",
+    "ar": "تحتاج مراجعة"
+  },
+  "ci_skipped": {
+    "en": "Skipped",
+    "ar": "لن تُصدر"
+  },
+  "ci_filter_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "ci_manual_all": {
+    "en": "Issue to people not on the platform",
+    "ar": "الإصدار لأشخاص غير مسجلين في المنصة"
+  },
+  "ci_manual_all_sub": {
+    "en": "{n} names did not match a student — they get a certificate by name only.",
+    "ar": "{n} اسم لم يطابق طالبًا — يحصلون على شهادة بالاسم فقط."
+  },
+  "ci_manual_one": {
+    "en": "Issue to this name anyway",
+    "ar": "الإصدار لهذا الاسم على أي حال"
+  },
+  "ci_manual_recipient": {
+    "en": "By name (not on the platform)",
+    "ar": "بالاسم (غير مسجل في المنصة)"
+  },
+  "ci_unmatched": {
+    "en": "Not on the platform — skipped",
+    "ar": "غير مسجل في المنصة — لن يُصدر"
+  },
+  "ci_on_platform": {
+    "en": "On the platform",
+    "ar": "مسجل في المنصة"
+  },
+  "ci_matched_to": {
+    "en": "Matched:",
+    "ar": "مطابق:"
+  },
+  "ci_ambiguous": {
+    "en": "{n} students have this name — pick the right one",
+    "ar": "{n} طلاب بهذا الاسم — اختر الصحيح"
+  },
+  "ci_duplicates_n": {
+    "en": "{n} rows repeat an earlier one",
+    "ar": "{n} سطر مكرر لسطر سابق"
+  },
+  "ci_remove_duplicates": {
+    "en": "Remove duplicates",
+    "ar": "حذف المكرر"
+  },
+  "ci_duplicates_removed": {
+    "en": "{n} duplicates removed",
+    "ar": "تم حذف {n} مكرر"
+  },
+  "ci_line_n": {
+    "en": "line {n}",
+    "ar": "سطر {n}"
+  },
+  "ci_no_name": {
+    "en": "No name",
+    "ar": "بدون اسم"
+  },
+  "ci_edit": {
+    "en": "Edit",
+    "ar": "تعديل"
+  },
+  "ci_edit_row": {
+    "en": "Edit recipient",
+    "ar": "تعديل المستلم"
+  },
+  "ci_remove": {
+    "en": "Remove",
+    "ar": "إزالة"
+  },
+  "ci_preview_step_title": {
+    "en": "Check and issue",
+    "ar": "راجع ثم أصدر"
+  },
+  "ci_preview_sub": {
+    "en": "{n} certificates will be issued. This is how the first one looks.",
+    "ar": "سيتم إصدار {n} شهادة. هكذا تبدو الأولى."
+  },
+  "ci_preview_course_sub": {
+    "en": "Every active student of {course} gets one. This is a sample.",
+    "ar": "يحصل كل طالب نشط في {course} على شهادة. هذه عينة."
+  },
+  "ci_preview_title": {
+    "en": "Preview",
+    "ar": "المعاينة"
+  },
+  "ci_preview_for": {
+    "en": "For {name}",
+    "ar": "باسم {name}"
+  },
+  "ci_preview_none": {
+    "en": "No preview yet",
+    "ar": "لا توجد معاينة بعد"
+  },
+  "ci_langs_title": {
+    "en": "Languages",
+    "ar": "اللغات"
+  },
+  "ci_langs_sub": {
+    "en": "Each person gets one certificate per language.",
+    "ar": "يحصل كل شخص على شهادة لكل لغة."
+  },
+  "ci_batch_title": {
+    "en": "Name of this issue (optional)",
+    "ar": "اسم هذا الإصدار (اختياري)"
+  },
+  "ci_issue_n": {
+    "en": "Issue {n}",
+    "ar": "إصدار {n}"
+  },
+  "ci_issue_course": {
+    "en": "Issue to the course",
+    "ar": "الإصدار لطلاب الدورة"
+  },
+  "ci_batch_queued": {
+    "en": "Getting ready…",
+    "ar": "جارٍ التجهيز…"
+  },
+  "ci_batch_running": {
+    "en": "Issuing certificates…",
+    "ar": "جارٍ إصدار الشهادات…"
+  },
+  "ci_batch_done": {
+    "en": "Certificates issued",
+    "ar": "تم إصدار الشهادات"
+  },
+  "ci_batch_failed": {
+    "en": "Issuing failed",
+    "ar": "فشل الإصدار"
+  },
+  "ci_batch_failed_sub": {
+    "en": "No certificate could be issued. Check the design and try again.",
+    "ar": "تعذّر إصدار أي شهادة. راجع التصميم وحاول مرة أخرى."
+  },
+  "ci_batch_background": {
+    "en": "You can leave this page — issuing continues and the result stays in the history.",
+    "ar": "يمكنك مغادرة الصفحة — يستمر الإصدار وتبقى النتيجة في السجل."
+  },
+  "ci_progress_n": {
+    "en": "{d} of {t} issued",
+    "ar": "تم إصدار {d} من {t}"
+  },
+  "ci_failed_n": {
+    "en": "{n} failed",
+    "ar": "فشل {n}"
+  },
+  "ci_emailed_n": {
+    "en": "{n} emailed",
+    "ar": "أُرسل {n} بالبريد"
+  },
+  "ci_email_failed_n": {
+    "en": "{n} emails failed",
+    "ar": "فشل إرسال {n} بريد"
+  },
+  "ci_download_zip": {
+    "en": "Download ZIP",
+    "ar": "تنزيل ZIP"
+  },
+  "ci_download_pdf": {
+    "en": "Download PDF",
+    "ar": "تنزيل PDF"
+  },
+  "ci_download_image": {
+    "en": "Download image",
+    "ar": "تنزيل الصورة"
+  },
+  "ci_view_issued": {
+    "en": "View issued list",
+    "ar": "عرض الشهادات المُصدرة"
+  },
+  "ci_issue_more": {
+    "en": "Issue more certificates",
+    "ar": "إصدار شهادات أخرى"
+  },
+  "ci_open_failed": {
+    "en": "Could not open the file",
+    "ar": "تعذّر فتح الملف"
+  },
+  "ci_history": {
+    "en": "Issued history",
+    "ar": "سجل الإصدار"
+  },
+  "ci_history_empty": {
+    "en": "Nothing issued yet",
+    "ar": "لم يتم إصدار شيء بعد"
+  },
+  "ci_history_empty_sub": {
+    "en": "Certificates you issue from a design show up here.",
+    "ar": "تظهر هنا الشهادات التي تصدرها من التصاميم."
+  },
+  "ci_pick_batch": {
+    "en": "Choose an issue on the left",
+    "ar": "اختر إصدارًا من القائمة"
+  },
+  "ci_untitled": {
+    "en": "Certificates",
+    "ar": "شهادات"
+  },
+  "ci_by_you": {
+    "en": "by you",
+    "ar": "بواسطتك"
+  },
+  "ci_by_email": {
+    "en": "Sent by email",
+    "ar": "أُرسلت بالبريد"
+  },
+  "ci_batch": {
+    "en": "Issue",
+    "ar": "الإصدار"
+  },
+  "ci_issued_title": {
+    "en": "Issued certificates",
+    "ar": "الشهادات المُصدرة"
+  },
+  "ci_issued_search": {
+    "en": "Search by name or serial",
+    "ar": "ابحث بالاسم أو رقم الشهادة"
+  },
+  "ci_issued_empty": {
+    "en": "No certificates match",
+    "ar": "لا توجد شهادات مطابقة"
+  },
+  "ci_issued_wait": {
+    "en": "Certificates appear here as they are issued",
+    "ar": "تظهر الشهادات هنا عند إصدارها"
+  },
+  "ci_valid": {
+    "en": "Valid",
+    "ar": "سارية"
+  },
+  "ci_revoked": {
+    "en": "Revoked",
+    "ar": "ملغاة"
+  },
+  "ci_emailed": {
+    "en": "Emailed",
+    "ar": "أُرسلت بالبريد"
+  },
+  "ci_reason": {
+    "en": "Reason",
+    "ar": "السبب"
+  },
+  "ci_view": {
+    "en": "View certificate",
+    "ar": "عرض الشهادة"
+  },
+  "ci_copy_link": {
+    "en": "Copy verification link",
+    "ar": "نسخ رابط التحقق"
+  },
+  "ci_link_copied": {
+    "en": "Link copied",
+    "ar": "تم نسخ الرابط"
+  },
+  "ci_revoke": {
+    "en": "Revoke",
+    "ar": "إلغاء الشهادة"
+  },
+  "ci_revoke_title": {
+    "en": "Revoke this certificate?",
+    "ar": "إلغاء هذه الشهادة؟"
+  },
+  "ci_revoke_sub": {
+    "en": "{name}'s certificate will show as revoked on its verification page.",
+    "ar": "ستظهر شهادة {name} كملغاة في صفحة التحقق."
+  },
+  "ci_revoked_done": {
+    "en": "Certificate revoked",
+    "ar": "تم إلغاء الشهادة"
+  },
+  "ci_reissue": {
+    "en": "Re-issue",
+    "ar": "إعادة الإصدار"
+  },
+  "ci_reissue_title": {
+    "en": "Re-issue with changes",
+    "ar": "إعادة الإصدار مع تعديل"
+  },
+  "ci_reissue_email": {
+    "en": "Email the new certificate",
+    "ar": "إرسال الشهادة الجديدة بالبريد"
+  },
+  "ci_reissued_done": {
+    "en": "New certificate issued — the old one is revoked",
+    "ar": "تم إصدار شهادة جديدة — وأُلغيت القديمة"
+  },
+  "ci_bad_email": {
+    "en": "That email doesn't look right",
+    "ar": "البريد الإلكتروني غير صحيح"
+  },
+  "ci_saved_lists": {
+    "en": "Saved lists",
+    "ar": "القوائم المحفوظة"
+  },
+  "ci_lists_empty": {
+    "en": "No saved lists",
+    "ar": "لا توجد قوائم محفوظة"
+  },
+  "ci_lists_empty_sub": {
+    "en": "Save recipients while issuing to reuse them here.",
+    "ar": "احفظ المستلمين أثناء الإصدار لتستخدمهم هنا."
+  },
+  "ci_people_n": {
+    "en": "{n} people",
+    "ar": "{n} شخص"
+  },
+  "ci_add_person": {
+    "en": "Add a person",
+    "ar": "إضافة شخص"
+  },
+  "ci_add": {
+    "en": "Add",
+    "ar": "إضافة"
+  },
+  "ci_issue_now": {
+    "en": "Issue a certificate to this person now",
+    "ar": "إصدار شهادة لهذا الشخص الآن"
+  },
+  "ci_person_added": {
+    "en": "Person added",
+    "ar": "تمت إضافة الشخص"
+  },
+  "ci_person_issued": {
+    "en": "Person added — issuing their certificate",
+    "ar": "تمت الإضافة — جارٍ إصدار شهادته"
+  },
+  "ci_issue_list": {
+    "en": "Issue to everyone",
+    "ar": "الإصدار للجميع"
+  },
+  "ci_issue_list_confirm": {
+    "en": "Issue a certificate to all {n} people on this list?",
+    "ar": "إصدار شهادة لكل الأشخاص في القائمة ({n})؟"
+  },
+  "ci_list_no_design": {
+    "en": "Open this list from a design to issue from it.",
+    "ar": "افتح هذه القائمة من تصميم لتصدر منها."
+  },
+  "ci_list_empty_people": {
+    "en": "No one on this list yet",
+    "ar": "لا يوجد أحد في هذه القائمة بعد"
+  },
+  "ci_rename": {
+    "en": "Rename",
+    "ar": "إعادة التسمية"
+  },
+  "ci_delete_list_confirm": {
+    "en": "Delete this list? Issued certificates stay.",
+    "ar": "حذف هذه القائمة؟ تبقى الشهادات المُصدرة."
+  },
+  "ci_verify_bar": {
+    "en": "Certificate verification",
+    "ar": "التحقق من الشهادة"
+  },
+  "ci_verify_title": {
+    "en": "Is this certificate genuine?",
+    "ar": "هل هذه الشهادة صحيحة؟"
+  },
+  "ci_verify_valid": {
+    "en": "Valid certificate",
+    "ar": "شهادة صحيحة"
+  },
+  "ci_verify_valid_sub": {
+    "en": "It was issued on this platform and has not been revoked.",
+    "ar": "صدرت من هذه المنصة ولم يتم إلغاؤها."
+  },
+  "ci_verify_revoked": {
+    "en": "Revoked certificate",
+    "ar": "شهادة ملغاة"
+  },
+  "ci_verify_revoked_sub": {
+    "en": "It was issued on this platform but is no longer valid.",
+    "ar": "صدرت من هذه المنصة لكنها لم تعد سارية."
+  },
+  "ci_verify_not_found": {
+    "en": "Certificate not found",
+    "ar": "الشهادة غير موجودة"
+  },
+  "ci_verify_not_found_sub": {
+    "en": "No certificate matches this link. Check that it was copied in full.",
+    "ar": "لا توجد شهادة بهذا الرابط. تأكد من نسخه كاملًا."
+  },
+  "ci_verify_error": {
+    "en": "Could not check the certificate right now. Try again.",
+    "ar": "تعذّر التحقق من الشهادة الآن. حاول مرة أخرى."
+  },
+  "ci_verify_recipient": {
+    "en": "Awarded to",
+    "ar": "مُنحت إلى"
+  },
+  "ci_verify_cert": {
+    "en": "Certificate",
+    "ar": "الشهادة"
+  },
+  "ci_verify_issuer": {
+    "en": "Issued by",
+    "ar": "الجهة المُصدرة"
+  },
+  "ci_verify_date": {
+    "en": "Issued on",
+    "ar": "تاريخ الإصدار"
+  },
+  "ci_verify_serial": {
+    "en": "Serial number",
+    "ar": "رقم الشهادة"
+  },
+  "ci_verify_revoked_on": {
+    "en": "Revoked on",
+    "ar": "تاريخ الإلغاء"
+  },
+  "ci_defaults_title": {
+    "en": "Values for everyone",
+    "ar": "قيم لكل المستلمين"
+  },
+  "ci_defaults_sub": {
+    "en": "Used wherever a recipient's own value is empty.",
+    "ar": "تُستخدم حين تكون قيمة المستلم فارغة."
+  },
+  "ci_missing_values": {
+    "en": "To fill: {cols} — edit here or set it for everyone on the next step",
+    "ar": "مطلوب: {cols} — عدّله هنا أو حدّده للجميع في الخطوة التالية"
+  },
+  "certd_add_text": {
+    "en": "Text",
+    "ar": "نص"
+  },
+  "certd_add_field": {
+    "en": "Dynamic value",
+    "ar": "قيمة متغيرة"
+  },
+  "certd_add_logo": {
+    "en": "Logo",
+    "ar": "شعار"
+  },
+  "certd_add_signature": {
+    "en": "Signature",
+    "ar": "توقيع"
+  },
+  "certd_add_line": {
+    "en": "Line",
+    "ar": "خط"
+  },
+  "certd_add_photo": {
+    "en": "Student photo",
+    "ar": "صورة الطالب"
+  },
+  "certd_add_qr": {
+    "en": "Verification QR",
+    "ar": "رمز التحقق QR"
+  },
+  "certd_appearance": {
+    "en": "Appearance",
+    "ar": "المظهر"
+  },
+  "certd_forward": {
+    "en": "Bring forward",
+    "ar": "تقديم للأمام"
+  },
+  "certd_backward": {
+    "en": "Send backward",
+    "ar": "إرجاع للخلف"
+  },
+  "certd_to_front": {
+    "en": "Bring to front",
+    "ar": "إلى المقدمة"
+  },
+  "certd_to_back": {
+    "en": "Send to back",
+    "ar": "إلى الخلف تمامًا"
+  },
+  "certd_order": {
+    "en": "Order",
+    "ar": "الترتيب"
+  },
+  "certd_duplicate": {
+    "en": "Duplicate",
+    "ar": "تكرار"
+  },
+  "certd_delete": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
+  "certd_bg_none_en": {
+    "en": "No background in English",
+    "ar": "بدون خلفية بالإنجليزية"
+  },
+  "certd_caption_size": {
+    "en": "Caption size",
+    "ar": "حجم النص أسفل التوقيع"
+  },
+  "certd_captions": {
+    "en": "Under the signature",
+    "ar": "أسفل التوقيع"
+  },
+  "certd_sig_name": {
+    "en": "Signer's name",
+    "ar": "اسم الموقّع"
+  },
+  "certd_sig_title": {
+    "en": "Signer's title",
+    "ar": "صفة الموقّع"
+  },
+  "certd_custom_field": {
+    "en": "Add a field…",
+    "ar": "إضافة حقل…"
+  },
+  "certd_custom_field_title": {
+    "en": "Custom dynamic field",
+    "ar": "حقل متغير مخصص"
+  },
+  "certd_custom_field_body": {
+    "en": "The value is filled in for each person when certificates are issued (for example from your sheet's column of the same name).",
+    "ar": "تُملأ القيمة لكل شخص عند إصدار الشهادات (مثلًا من عمود بنفس الاسم في ملفك)."
+  },
+  "certd_custom_field_key": {
+    "en": "Field key",
+    "ar": "مفتاح الحقل"
+  },
+  "certd_custom_field_hint": {
+    "en": "Lowercase letters, digits and _ — e.g. grade",
+    "ar": "حروف إنجليزية صغيرة وأرقام و _ — مثل grade"
+  },
+  "certd_custom_field_sample": {
+    "en": "Sample value for the preview (optional)",
+    "ar": "قيمة تجريبية للمعاينة (اختياري)"
+  },
+  "certd_key_empty": {
+    "en": "Enter a key",
+    "ar": "اكتب مفتاح الحقل"
+  },
+  "certd_key_invalid": {
+    "en": "Use only a–z, 0–9 and _ (up to 40 characters)",
+    "ar": "استخدم a–z و 0–9 و _ فقط (حتى 40 حرفًا)"
+  },
+  "certd_insert": {
+    "en": "Insert",
+    "ar": "إدراج"
+  },
+  "certd_insert_value": {
+    "en": "Insert a value",
+    "ar": "إدراج قيمة"
+  },
+  "certd_customize_en": {
+    "en": "Customize for English",
+    "ar": "تخصيص للإنجليزية"
+  },
+  "certd_reset_to_ar": {
+    "en": "Reset to Arabic",
+    "ar": "مثل العربية"
+  },
+  "certd_same_as_ar": {
+    "en": "Same as Arabic",
+    "ar": "مثل العربية"
+  },
+  "certd_none_in_en": {
+    "en": "None in English",
+    "ar": "لا يوجد في النسخة الإنجليزية"
+  },
+  "certd_own_en": {
+    "en": "English only",
+    "ar": "خاص بالإنجليزية"
+  },
+  "certd_dark_page": {
+    "en": "Dark page",
+    "ar": "صفحة داكنة"
+  },
+  "certd_dark_page_hint": {
+    "en": "Used when there is no background image",
+    "ar": "تُستخدم عند عدم وجود صورة خلفية"
+  },
+  "certd_default_hint": {
+    "en": "Used by every logo or signature box that has no image of its own.",
+    "ar": "تُستخدم في كل مربع شعار أو توقيع ليس له صورة خاصة."
+  },
+  "certd_default_logo": {
+    "en": "Default logo",
+    "ar": "الشعار الافتراضي"
+  },
+  "certd_default_signature": {
+    "en": "Default signature",
+    "ar": "التوقيع الافتراضي"
+  },
+  "certd_defaults": {
+    "en": "Default logo and signature",
+    "ar": "الشعار والتوقيع الافتراضيان"
+  },
+  "certd_disable_lang_confirm": {
+    "en": "Turn off {lang}? Its design is kept, but certificates will no longer be issued in it.",
+    "ar": "إيقاف {lang}؟ سيبقى تصميمها محفوظًا، لكن لن تُصدر الشهادات بها بعد الآن."
+  },
+  "certd_turn_off": {
+    "en": "Turn off",
+    "ar": "إيقاف"
+  },
+  "certd_drag_reorder": {
+    "en": "Drag to reorder",
+    "ar": "اسحب لتغيير الترتيب"
+  },
+  "certd_editing": {
+    "en": "Editing",
+    "ar": "تحرير"
+  },
+  "certd_font_size": {
+    "en": "Size",
+    "ar": "الحجم"
+  },
+  "certd_w": {
+    "en": "Width",
+    "ar": "العرض"
+  },
+  "certd_h": {
+    "en": "Height",
+    "ar": "الارتفاع"
+  },
+  "certd_size": {
+    "en": "Size",
+    "ar": "الحجم"
+  },
+  "certd_image": {
+    "en": "Image",
+    "ar": "الصورة"
+  },
+  "certd_ink_original": {
+    "en": "Original ink",
+    "ar": "لون الحبر الأصلي"
+  },
+  "certd_lang_ar": {
+    "en": "Arabic",
+    "ar": "العربية"
+  },
+  "certd_lang_en": {
+    "en": "English",
+    "ar": "الإنجليزية"
+  },
+  "certd_langs": {
+    "en": "Languages",
+    "ar": "اللغات"
+  },
+  "certd_langs_ar_only": {
+    "en": "Arabic only",
+    "ar": "العربية فقط"
+  },
+  "certd_langs_en_only": {
+    "en": "English only",
+    "ar": "الإنجليزية فقط"
+  },
+  "certd_langs_both": {
+    "en": "Both",
+    "ar": "كلتاهما"
+  },
+  "certd_langs_hint": {
+    "en": "Certificates are issued only in the languages turned on. Each language has its own design.",
+    "ar": "تُصدر الشهادات باللغات المفعّلة فقط، ولكل لغة تصميمها الخاص."
+  },
+  "certd_layers": {
+    "en": "Layers",
+    "ar": "الطبقات"
+  },
+  "certd_tools": {
+    "en": "Add",
+    "ar": "إضافة"
+  },
+  "certd_properties": {
+    "en": "Properties",
+    "ar": "الخصائص"
+  },
+  "certd_page": {
+    "en": "Page",
+    "ar": "الصفحة"
+  },
+  "certd_default_name": {
+    "en": "Certificate design",
+    "ar": "تصميم شهادة"
+  },
+  "certd_max_fields": {
+    "en": "A certificate can hold up to 60 elements",
+    "ar": "يمكن أن تحتوي الشهادة على 60 عنصرًا كحد أقصى"
+  },
+  "certd_multi_selected": {
+    "en": "{n} elements selected",
+    "ar": "{n} عناصر محددة"
+  },
+  "certd_multi_hint": {
+    "en": "Move them together, align them from the toolbar, or select one to edit its properties.",
+    "ar": "حرّكها معًا أو حاذِها من شريط الأدوات، أو اختر عنصرًا واحدًا لتعديل خصائصه."
+  },
+  "certd_no_image": {
+    "en": "No image yet",
+    "ar": "لا توجد صورة بعد"
+  },
+  "certd_own_image": {
+    "en": "Its own image",
+    "ar": "صورة خاصة به"
+  },
+  "certd_uses_default": {
+    "en": "Uses the default image (Page settings)",
+    "ar": "يستخدم الصورة الافتراضية (إعدادات الصفحة)"
+  },
+  "certd_replace_image": {
+    "en": "Replace image",
+    "ar": "تغيير الصورة"
+  },
+  "certd_upload_image": {
+    "en": "Upload image",
+    "ar": "رفع صورة"
+  },
+  "certd_use_default_logo": {
+    "en": "Use the default logo",
+    "ar": "استخدام الشعار الافتراضي"
+  },
+  "certd_use_default_sig": {
+    "en": "Use the default signature",
+    "ar": "استخدام التوقيع الافتراضي"
+  },
+  "certd_upload_failed": {
+    "en": "The image could not be uploaded",
+    "ar": "تعذّر رفع الصورة"
+  },
+  "certd_orientation_own": {
+    "en": "The English page can have its own orientation.",
+    "ar": "يمكن أن يكون للصفحة الإنجليزية اتجاه مختلف."
+  },
+  "certd_photo_hint": {
+    "en": "Each certificate shows the student's own profile photo.",
+    "ar": "تظهر في كل شهادة صورة الملف الشخصي للطالب."
+  },
+  "certd_position": {
+    "en": "Position and size",
+    "ar": "الموضع والحجم"
+  },
+  "certd_preview": {
+    "en": "Preview",
+    "ar": "معاينة"
+  },
+  "certd_preview_hint": {
+    "en": "Drawn by the server with sample data — exactly what students receive.",
+    "ar": "يرسمها الخادم ببيانات تجريبية — تمامًا كما يستلمها الطلاب."
+  },
+  "certd_save": {
+    "en": "Save",
+    "ar": "حفظ"
+  },
+  "certd_saved": {
+    "en": "Saved",
+    "ar": "تم الحفظ"
+  },
+  "certd_qr_content": {
+    "en": "QR content",
+    "ar": "محتوى الرمز"
+  },
+  "certd_qr_verify": {
+    "en": "Verification link",
+    "ar": "رابط التحقق"
+  },
+  "certd_qr_custom": {
+    "en": "Custom text",
+    "ar": "نص مخصص"
+  },
+  "certd_qr_text": {
+    "en": "Text in the QR code",
+    "ar": "النص داخل الرمز"
+  },
+  "certd_qr_hint": {
+    "en": "Each issued certificate gets its own code that opens its verification page.",
+    "ar": "تحصل كل شهادة صادرة على رمز خاص يفتح صفحة التحقق منها."
+  },
+  "certd_qr_ink": {
+    "en": "Code colour",
+    "ar": "لون الرمز"
+  },
+  "certd_regenerate_ar_only": {
+    "en": "Generating a background from the theme works on the Arabic design. Upload an image for English, or keep it the same as Arabic.",
+    "ar": "إنشاء الخلفية من الألوان متاح للتصميم العربي. ارفع صورة للإنجليزية أو اتركها مثل العربية."
+  },
+  "certd_select_hint": {
+    "en": "Select an element on the page to edit it, or add one from the tools.",
+    "ar": "اختر عنصرًا في الصفحة لتعديله، أو أضف عنصرًا من الأدوات."
+  },
+  "certd_shape": {
+    "en": "Shape",
+    "ar": "الشكل"
+  },
+  "certd_shape_circle": {
+    "en": "Circle",
+    "ar": "دائرة"
+  },
+  "certd_shape_rounded": {
+    "en": "Rounded square",
+    "ar": "مربع بحواف دائرية"
+  },
+  "certd_text": {
+    "en": "Text",
+    "ar": "النص"
+  },
+  "certd_text_ar": {
+    "en": "Arabic wording",
+    "ar": "النص بالعربية"
+  },
+  "certd_text_en": {
+    "en": "English wording",
+    "ar": "النص بالإنجليزية"
+  },
+  "certd_theme": {
+    "en": "Theme colours",
+    "ar": "ألوان التصميم"
+  },
+  "certd_theme_accent": {
+    "en": "Accent colour",
+    "ar": "اللون الرئيسي"
+  },
+  "certd_typography": {
+    "en": "Font",
+    "ar": "الخط"
+  },
+  "exs_err_template_forbidden": {
+    "en": "You may not change this template",
+    "ar": "لا تملك صلاحية تعديل هذا القالب"
+  },
+  "exs_err_template_not_found": {
+    "en": "This template no longer exists",
+    "ar": "هذا القالب لم يعد موجودًا"
+  },
+  "exs_err_org_required": {
+    "en": "Choose the organization for an organization template",
+    "ar": "اختر المؤسسة لقالب المؤسسة"
+  },
+  "exs_err_org_forbidden": {
+    "en": "You are not a member of this organization",
+    "ar": "لست عضوًا في هذه المؤسسة"
+  },
+  "exs_err_template_not_org": {
+    "en": "A personal template cannot be the organization default",
+    "ar": "القالب الشخصي لا يكون افتراضيًا للمؤسسة"
+  },
+  "exs_err_page_key": {
+    "en": "This page cannot store templates",
+    "ar": "لا يمكن حفظ قوالب لهذه الصفحة"
+  },
+  "exs_err_design_big": {
+    "en": "The design is too large to save (512 KB)",
+    "ar": "التصميم أكبر من المسموح (512 كيلوبايت)"
+  },
+  "exs_err_schema": {
+    "en": "This template needs a newer app",
+    "ar": "هذا القالب يحتاج إصدارًا أحدث من التطبيق"
+  },
+  "exs_err_invalid": {
+    "en": "Something in the design is not valid",
+    "ar": "في التصميم قيمة غير صالحة"
+  },
+  "exs_err_log_forbidden": {
+    "en": "You may not read this export log",
+    "ar": "لا تملك صلاحية على هذا السجل"
+  },
+  "exs_err_feature_disabled": {
+    "en": "This feature is switched off",
+    "ar": "هذه الميزة متوقفة"
+  },
+  "exs_err_dataset": {
+    "en": "This data source is not available",
+    "ar": "مصدر البيانات غير متاح"
+  },
+  "exs_err_dataset_forbidden": {
+    "en": "You may not export this data",
+    "ar": "لا تملك صلاحية تصدير هذه البيانات"
+  },
+  "exs_err_params": {
+    "en": "The data source settings are not valid",
+    "ar": "إعدادات مصدر البيانات غير صالحة"
+  },
+  "exs_err_schedule": {
+    "en": "This schedule no longer exists",
+    "ar": "هذه الجدولة لم تعد موجودة"
+  },
+  "exs_err_run": {
+    "en": "This file no longer exists",
+    "ar": "هذا الملف لم يعد موجودًا"
+  },
+  "exs_err_run_not_ready": {
+    "en": "The file is not ready yet",
+    "ar": "الملف لم يجهز بعد"
+  },
+  "exs_err_run_expired": {
+    "en": "This file has expired",
+    "ar": "انتهت صلاحية هذا الملف"
+  },
+  "exs_err_link_not_found": {
+    "en": "This link is not valid",
+    "ar": "هذا الرابط غير صالح"
+  },
+  "exs_err_link_expired": {
+    "en": "This link has expired",
+    "ar": "انتهت صلاحية هذا الرابط"
+  },
+  "exs_err_link_revoked": {
+    "en": "This link was revoked",
+    "ar": "أُلغي هذا الرابط"
+  },
+  "exs_err_link_forbidden": {
+    "en": "You may not open this file",
+    "ar": "لا تملك صلاحية فتح هذا الملف"
+  },
+  "exs_err_link_other_org": {
+    "en": "This link is for members of another organization",
+    "ar": "هذا الرابط لأعضاء مؤسسة أخرى"
+  },
+  "exs_err_too_large": {
+    "en": "The file is larger than 25 MB",
+    "ar": "الملف أكبر من 25 ميجابايت"
+  },
+  "exs_err_type": {
+    "en": "Only Excel, Word and PDF files can be shared",
+    "ar": "يمكن مشاركة ملفات Excel وWord وPDF فقط"
+  },
+  "exs_err_recipients": {
+    "en": "Check the e-mail addresses",
+    "ar": "راجع عناوين البريد"
+  },
+  "exs_err_recipient_not_allowed": {
+    "en": "Files can only be e-mailed to people of the same organization",
+    "ar": "يُرسل الملف بالبريد لأعضاء المؤسسة نفسها فقط"
+  },
+  "exs_err_delivery": {
+    "en": "Choose how the file is delivered",
+    "ar": "اختر طريقة التسليم"
+  },
+  "exs_err_cadence": {
+    "en": "Check the repeat settings",
+    "ar": "راجع إعدادات التكرار"
+  },
+  "exs_err_timezone": {
+    "en": "The timezone is not valid",
+    "ar": "المنطقة الزمنية غير صالحة"
+  },
+  "exs_err_schedule_limit": {
+    "en": "You reached the number of scheduled exports allowed",
+    "ar": "وصلت إلى الحد المسموح من التصديرات المجدولة"
+  },
+  "exs_err_runs_in_flight": {
+    "en": "Several files are being prepared — try again in a minute",
+    "ar": "تُجهَّز ملفات عدة الآن — حاول بعد دقيقة"
+  },
+  "exs_err_owner_inactive": {
+    "en": "The account that owns this export is no longer active",
+    "ar": "الحساب صاحب هذا التصدير لم يعد نشطًا"
+  },
+  "exs_err_export_forbidden": {
+    "en": "You may not export this data",
+    "ar": "لا تملك صلاحية تصدير هذه البيانات"
+  },
+  "exs_err_link_expiry": {
+    "en": "A link lasts 1 to 30 days",
+    "ar": "مدة الرابط من يوم إلى 30 يومًا"
+  },
+  "exs_err_audience_org": {
+    "en": "Sharing with the organization needs an organization",
+    "ar": "المشاركة مع المؤسسة تحتاج مؤسسة"
+  },
+  "exs_err_filters": {
+    "en": "The filters could not be saved with the export",
+    "ar": "تعذّر حفظ التصفية مع التصدير"
+  },
+  "exs_err_format": {
+    "en": "This format or language is not supported",
+    "ar": "الصيغة أو اللغة غير مدعومة"
+  },
+  "exs_err_signin": {
+    "en": "Sign in to continue",
+    "ar": "سجّل الدخول للمتابعة"
+  },
+  "exs_err_generic": {
+    "en": "Something went wrong. Try again.",
+    "ar": "حدث خطأ. حاول مرة أخرى."
+  },
+  "exs_needs_update": {
+    "en": "This needs a server update",
+    "ar": "هذه الميزة تحتاج تحديث الخادم"
+  },
+  "exs_step_format": {
+    "en": "Format",
+    "ar": "الصيغة"
+  },
+  "exs_step_fields": {
+    "en": "Fields",
+    "ar": "الحقول"
+  },
+  "exs_step_language": {
+    "en": "Language",
+    "ar": "اللغة"
+  },
+  "exs_step_design": {
+    "en": "Design",
+    "ar": "التصميم"
+  },
+  "exs_step_export": {
+    "en": "Export",
+    "ar": "التصدير"
+  },
+  "exs_studio": {
+    "en": "Design studio",
+    "ar": "استوديو التصميم"
+  },
+  "exs_use_design": {
+    "en": "Use this design",
+    "ar": "استخدام هذا التصميم"
+  },
+  "exs_pick_one": {
+    "en": "Pick at least one field",
+    "ar": "اختر حقلًا واحدًا على الأقل"
+  },
+  "exs_export_failed": {
+    "en": "Could not create the file. Try again.",
+    "ar": "تعذّر إنشاء الملف. حاول مرة أخرى."
+  },
+  "exs_saved": {
+    "en": "Saved",
+    "ar": "تم الحفظ"
+  },
+  "exs_save_template": {
+    "en": "Save as template",
+    "ar": "حفظ كقالب"
+  },
+  "exs_save_template_both": {
+    "en": "Saves the Arabic and the English design, each with its headers.",
+    "ar": "يحفظ التصميم العربي والإنجليزي، كلٌّ بعناوينه."
+  },
+  "exs_save_template_hint": {
+    "en": "Fields, headers, design and rules — reuse them in one tap next time.",
+    "ar": "الحقول والعناوين والتصميم والقواعد — أعد استخدامها بنقرة في المرة القادمة."
+  },
+  "exs_template_name": {
+    "en": "Template name",
+    "ar": "اسم القالب"
+  },
+  "exs_scope_me": {
+    "en": "Only me",
+    "ar": "لي فقط"
+  },
+  "exs_scope_org": {
+    "en": "My organization",
+    "ar": "مؤسستي"
+  },
+  "exs_make_default": {
+    "en": "Use it by default on this page",
+    "ar": "استخدمه افتراضيًا في هذه الصفحة"
+  },
+  "exs_save": {
+    "en": "Save",
+    "ar": "حفظ"
+  },
+  "exs_name_needed": {
+    "en": "Give the template a name",
+    "ar": "اكتب اسم القالب"
+  },
+  "exs_template_saved": {
+    "en": "Template saved",
+    "ar": "حُفظ القالب"
+  },
+  "exs_delete_template_q": {
+    "en": "Delete the template",
+    "ar": "حذف القالب"
+  },
+  "exs_rows": {
+    "en": "rows",
+    "ar": "صف"
+  },
+  "exs_filters": {
+    "en": "filters applied",
+    "ar": "تصفية مطبقة"
+  },
+  "exs_close": {
+    "en": "Close",
+    "ar": "إغلاق"
+  },
+  "exs_live_preview": {
+    "en": "Live preview",
+    "ar": "معاينة حية"
+  },
+  "exs_fields_lower": {
+    "en": "fields",
+    "ar": "حقل"
+  },
+  "exs_done": {
+    "en": "Done",
+    "ar": "تم"
+  },
+  "exs_quick": {
+    "en": "Quick export",
+    "ar": "تصدير سريع"
+  },
+  "exs_customize": {
+    "en": "Customize",
+    "ar": "تخصيص"
+  },
+  "exs_export_as": {
+    "en": "Export to",
+    "ar": "تصدير إلى"
+  },
+  "exs_next": {
+    "en": "Next",
+    "ar": "التالي"
+  },
+  "exs_back": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "exs_design_custom": {
+    "en": "Your design",
+    "ar": "تصميمك"
+  },
+  "exs_pick_format": {
+    "en": "Choose a format",
+    "ar": "اختر الصيغة"
+  },
+  "exs_quick_title": {
+    "en": "Quick export uses",
+    "ar": "التصدير السريع يستخدم"
+  },
+  "exs_template": {
+    "en": "Template",
+    "ar": "قالب"
+  },
+  "exs_rules_lower": {
+    "en": "rules",
+    "ar": "قواعد"
+  },
+  "exs_selected_rows": {
+    "en": "selected rows",
+    "ar": "الصفوف المحددة"
+  },
+  "exs_quick_hint": {
+    "en": "Change anything with “Customize”.",
+    "ar": "غيّر أي شيء من «تخصيص»."
+  },
+  "exs_rows_title": {
+    "en": "Rows",
+    "ar": "الصفوف"
+  },
+  "exs_all_rows": {
+    "en": "All rows",
+    "ar": "كل الصفوف"
+  },
+  "exs_selected_rows_cap": {
+    "en": "Selected",
+    "ar": "المحددة"
+  },
+  "exs_summary_title": {
+    "en": "Groups and totals",
+    "ar": "المجموعات والإجماليات"
+  },
+  "exs_group_by": {
+    "en": "Group rows by",
+    "ar": "تجميع الصفوف حسب"
+  },
+  "exs_no_group": {
+    "en": "No grouping",
+    "ar": "بدون تجميع"
+  },
+  "exs_totals": {
+    "en": "Totals row",
+    "ar": "صف الإجماليات"
+  },
+  "exs_totals_groups": {
+    "en": "With a subtotal under each group",
+    "ar": "مع مجموع فرعي تحت كل مجموعة"
+  },
+  "exs_pick_language": {
+    "en": "Language of the file",
+    "ar": "لغة الملف"
+  },
+  "exs_design_for": {
+    "en": "Design for",
+    "ar": "التصميم لـ"
+  },
+  "exs_themes": {
+    "en": "Start from a theme",
+    "ar": "ابدأ من سمة"
+  },
+  "exs_using_template": {
+    "en": "Using a saved template.",
+    "ar": "يُستخدم قالب محفوظ."
+  },
+  "exs_using_custom": {
+    "en": "Using your design from the studio.",
+    "ar": "يُستخدم تصميمك من الاستوديو."
+  },
+  "exs_open_sheet_studio": {
+    "en": "Open Excel studio",
+    "ar": "فتح استوديو Excel"
+  },
+  "exs_open_studio": {
+    "en": "Open studio",
+    "ar": "فتح الاستوديو"
+  },
+  "exs_rules_title": {
+    "en": "Highlight rules",
+    "ar": "قواعد التمييز"
+  },
+  "exs_saved_templates": {
+    "en": "Saved templates",
+    "ar": "القوالب المحفوظة"
+  },
+  "exs_templates_missing": {
+    "en": "Saved templates need a server update.",
+    "ar": "القوالب المحفوظة تحتاج تحديث الخادم."
+  },
+  "exs_retry": {
+    "en": "Try again",
+    "ar": "أعد المحاولة"
+  },
+  "exs_templates_empty": {
+    "en": "None yet — “Save as template” in the last step keeps this setup.",
+    "ar": "لا قوالب بعد — «حفظ كقالب» في الخطوة الأخيرة يحفظ هذا الإعداد."
+  },
+  "exs_default": {
+    "en": "Default",
+    "ar": "افتراضي"
+  },
+  "exs_last_used": {
+    "en": "Last used",
+    "ar": "آخر استخدام"
+  },
+  "exs_template_options": {
+    "en": "Template options",
+    "ar": "خيارات القالب"
+  },
+  "exs_make_my_default": {
+    "en": "Make it my default",
+    "ar": "اجعله افتراضيًا لي"
+  },
+  "exs_make_org_default": {
+    "en": "Make it the organization default",
+    "ar": "اجعله افتراضيًا للمؤسسة"
+  },
+  "exs_delete": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
+  "exs_ready": {
+    "en": "Ready to export",
+    "ar": "جاهز للتصدير"
+  },
+  "exs_grouped": {
+    "en": "grouped",
+    "ar": "مجمّعة"
+  },
+  "exs_file_names": {
+    "en": "File names",
+    "ar": "أسماء الملفات"
+  },
+  "exs_file_name": {
+    "en": "File name",
+    "ar": "اسم الملف"
+  },
+  "exs_done_title": {
+    "en": "Your file is ready",
+    "ar": "ملفك جاهز"
+  },
+  "exs_share_link": {
+    "en": "Share link",
+    "ar": "رابط مشاركة"
+  },
+  "exs_schedule": {
+    "en": "Schedule this export",
+    "ar": "جدولة هذا التصدير"
+  },
+  "exs_done_hint": {
+    "en": "Links need sign-in and expire; scheduled exports run on the server with your saved template.",
+    "ar": "الروابط تحتاج تسجيل الدخول وتنتهي صلاحيتها؛ والتصدير المجدول يعمل على الخادم بقالبك المحفوظ."
+  },
+  "exs_lang_both": {
+    "en": "Both",
+    "ar": "كلتاهما"
+  },
+  "exs_step_of": {
+    "en": "Step",
+    "ar": "الخطوة"
+  },
+  "exs_fmt_xlsx_hint": {
+    "en": "Sort, filter and calculate",
+    "ar": "فرز وتصفية وحساب"
+  },
+  "exs_fmt_docx_hint": {
+    "en": "Edit the document",
+    "ar": "مستند قابل للتعديل"
+  },
+  "exs_fmt_pdf_hint": {
+    "en": "Ready to print and send",
+    "ar": "جاهز للطباعة والإرسال"
+  },
+  "exs_fields_n": {
+    "en": "Fields",
+    "ar": "الحقول"
+  },
+  "exs_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "exs_none": {
+    "en": "None",
+    "ar": "لا شيء"
+  },
+  "exs_fields_hint": {
+    "en": "Tick what to export, drag to reorder, rename a header for each language.",
+    "ar": "اختر ما يُصدَّر، واسحب لترتيبه، وأعد تسمية العنوان لكل لغة."
+  },
+  "exs_search_fields": {
+    "en": "Search fields",
+    "ar": "ابحث في الحقول"
+  },
+  "exs_clear": {
+    "en": "Clear",
+    "ar": "مسح"
+  },
+  "exs_no_field_match": {
+    "en": "No field matches",
+    "ar": "لا يوجد حقل مطابق"
+  },
+  "exs_drag": {
+    "en": "Drag to reorder",
+    "ar": "اسحب للترتيب"
+  },
+  "exs_always": {
+    "en": "Always exported",
+    "ar": "يُصدَّر دائمًا"
+  },
+  "exs_heads_groups": {
+    "en": "Heads each group",
+    "ar": "عنوان كل مجموعة"
+  },
+  "exs_renamed": {
+    "en": "Renamed",
+    "ar": "أُعيدت تسميته"
+  },
+  "exs_rename": {
+    "en": "Rename",
+    "ar": "إعادة تسمية"
+  },
+  "exs_rename_title": {
+    "en": "Rename the header",
+    "ar": "إعادة تسمية العنوان"
+  },
+  "exs_rename_hint": {
+    "en": "Each language prints its own header. Leave a field empty to use the original.",
+    "ar": "لكل لغة عنوانها في الملف. اترك الحقل فارغًا لاستخدام الأصلي."
+  },
+  "exs_reset_names": {
+    "en": "Use the original names",
+    "ar": "استخدام الأسماء الأصلية"
+  },
+  "exs_lang_ar_sub": {
+    "en": "Right to left",
+    "ar": "من اليمين إلى اليسار"
+  },
+  "exs_lang_en_sub": {
+    "en": "Left to right",
+    "ar": "من اليسار إلى اليمين"
+  },
+  "exs_lang_both_title": {
+    "en": "Both — two files",
+    "ar": "كلتاهما — ملفان"
+  },
+  "exs_lang_both_sub": {
+    "en": "Each language with its own design and headers",
+    "ar": "لكل لغة تصميمها وعناوينها"
+  },
+  "exs_digits": {
+    "en": "Digits in the Arabic file",
+    "ar": "الأرقام في الملف العربي"
+  },
+  "exs_digits_western": {
+    "en": "Western 123",
+    "ar": "غربية 123"
+  },
+  "exs_digits_arabic": {
+    "en": "Arabic ١٢٣",
+    "ar": "عربية ١٢٣"
+  },
+  "exs_digits_hint": {
+    "en": "Excel keeps numbers as numbers so they still add up.",
+    "ar": "يحتفظ Excel بالأرقام أرقامًا لتبقى قابلة للحساب."
+  },
+  "exs_op_eq": {
+    "en": "= equals",
+    "ar": "= يساوي"
+  },
+  "exs_op_ne": {
+    "en": "≠ is not",
+    "ar": "≠ لا يساوي"
+  },
+  "exs_op_gt": {
+    "en": "> greater than",
+    "ar": "> أكبر من"
+  },
+  "exs_op_ge": {
+    "en": "≥ at least",
+    "ar": "≥ أكبر من أو يساوي"
+  },
+  "exs_op_lt": {
+    "en": "< less than",
+    "ar": "< أصغر من"
+  },
+  "exs_op_le": {
+    "en": "≤ at most",
+    "ar": "≤ أصغر من أو يساوي"
+  },
+  "exs_op_contains": {
+    "en": "contains",
+    "ar": "يحتوي على"
+  },
+  "exs_op_empty": {
+    "en": "is empty",
+    "ar": "فارغ"
+  },
+  "exs_op_not_empty": {
+    "en": "is not empty",
+    "ar": "غير فارغ"
+  },
+  "exs_rule_hide_short": {
+    "en": "hide the row",
+    "ar": "إخفاء الصف"
+  },
+  "exs_rule_color_short": {
+    "en": "text colour",
+    "ar": "لون النص"
+  },
+  "exs_rule_bg_short": {
+    "en": "background",
+    "ar": "خلفية"
+  },
+  "exs_rule_bold_short": {
+    "en": "bold",
+    "ar": "عريض"
+  },
+  "exs_rules_hint": {
+    "en": "Style the cells that match a condition — in Excel, Word and PDF alike.",
+    "ar": "نسّق الخلايا التي تطابق شرطًا — في Excel وWord وPDF معًا."
+  },
+  "exs_rules_empty": {
+    "en": "No rules yet. Example: Status = Late → red text.",
+    "ar": "لا قواعد بعد. مثال: الحالة = متأخر ← نص أحمر."
+  },
+  "exs_rule_add": {
+    "en": "Add a rule",
+    "ar": "إضافة قاعدة"
+  },
+  "exs_rule_bg": {
+    "en": "Cell background",
+    "ar": "خلفية الخلية"
+  },
+  "exs_rule_color": {
+    "en": "Text colour",
+    "ar": "لون النص"
+  },
+  "exs_apply": {
+    "en": "Apply",
+    "ar": "تطبيق"
+  },
+  "exs_rule_field": {
+    "en": "Field",
+    "ar": "الحقل"
+  },
+  "exs_rule_condition": {
+    "en": "Condition",
+    "ar": "الشرط"
+  },
+  "exs_rule": {
+    "en": "Rule",
+    "ar": "قاعدة"
+  },
+  "exs_rule_delete": {
+    "en": "Delete the rule",
+    "ar": "حذف القاعدة"
+  },
+  "exs_rule_value": {
+    "en": "Value",
+    "ar": "القيمة"
+  },
+  "exs_rule_then": {
+    "en": "Then",
+    "ar": "عندها"
+  },
+  "exs_rule_bold": {
+    "en": "Bold",
+    "ar": "عريض"
+  },
+  "exs_rule_hide": {
+    "en": "Hide the row",
+    "ar": "إخفاء الصف"
+  },
+  "exs_rule_label": {
+    "en": "Show this text instead (optional)",
+    "ar": "اعرض هذا النص بدلًا منها (اختياري)"
+  },
+  "exs_apply_rules": {
+    "en": "Apply the rules",
+    "ar": "تطبيق القواعد"
+  },
+  "exs_more_rows": {
+    "en": "more rows",
+    "ar": "صفًا أخرى"
+  },
+  "exs_no_rows": {
+    "en": "No rows to export",
+    "ar": "لا توجد صفوف للتصدير"
+  },
+  "exs_sheet_preview": {
+    "en": "Sheet preview",
+    "ar": "معاينة الورقة"
+  },
+  "exs_use_settings": {
+    "en": "Use these settings",
+    "ar": "استخدام هذه الإعدادات"
+  },
+  "exs_sheet_studio": {
+    "en": "Excel studio",
+    "ar": "استوديو Excel"
+  },
+  "exs_sheet_preview_hint": {
+    "en": "The first rows with your rules applied.",
+    "ar": "أول الصفوف مع تطبيق قواعدك."
+  },
+  "exs_sheet_title": {
+    "en": "Title band",
+    "ar": "شريط العنوان"
+  },
+  "exs_sheet_title_row": {
+    "en": "Show a title above the table",
+    "ar": "عنوان فوق الجدول"
+  },
+  "exs_sheet_title_text": {
+    "en": "Title (empty = the page title)",
+    "ar": "العنوان (فارغ = عنوان الصفحة)"
+  },
+  "exs_sheet_logo": {
+    "en": "Logo image link",
+    "ar": "رابط صورة الشعار"
+  },
+  "exs_upload_logo": {
+    "en": "Upload a logo",
+    "ar": "رفع شعار"
+  },
+  "exs_sheet_header": {
+    "en": "Header row",
+    "ar": "صف العناوين"
+  },
+  "exs_sheet_header_color": {
+    "en": "Fill",
+    "ar": "التعبئة"
+  },
+  "exs_sheet_header_ink": {
+    "en": "Text colour (empty = automatic)",
+    "ar": "لون النص (فارغ = تلقائي)"
+  },
+  "exs_sheet_header_bold": {
+    "en": "Bold headers",
+    "ar": "عناوين عريضة"
+  },
+  "exs_sheet_font_size": {
+    "en": "Font size",
+    "ar": "حجم الخط"
+  },
+  "exs_sheet_freeze": {
+    "en": "Keep the header visible while scrolling",
+    "ar": "تثبيت صف العناوين عند التمرير"
+  },
+  "exs_sheet_rows": {
+    "en": "Rows",
+    "ar": "الصفوف"
+  },
+  "exs_sheet_striping": {
+    "en": "Striped rows",
+    "ar": "صفوف متبادلة"
+  },
+  "exs_sheet_stripe": {
+    "en": "Stripe colour",
+    "ar": "لون الشريط"
+  },
+  "exs_sheet_borders": {
+    "en": "Cell borders",
+    "ar": "حدود الخلايا"
+  },
+  "exs_sheet_border_color": {
+    "en": "Border colour",
+    "ar": "لون الحدود"
+  },
+  "exs_sheet_formats": {
+    "en": "Number and date formats",
+    "ar": "تنسيق الأرقام والتواريخ"
+  },
+  "exs_sheet_numbers": {
+    "en": "Numbers",
+    "ar": "الأرقام"
+  },
+  "exs_auto": {
+    "en": "Automatic",
+    "ar": "تلقائي"
+  },
+  "exs_sheet_dates": {
+    "en": "Dates",
+    "ar": "التواريخ"
+  },
+  "exs_sheet_widths": {
+    "en": "Column widths",
+    "ar": "عرض الأعمدة"
+  },
+  "exs_sheet_widths_hint": {
+    "en": "0 = fit the content.",
+    "ar": "0 = حسب المحتوى."
+  },
+  "exs_sheet_direction": {
+    "en": "Sheet direction",
+    "ar": "اتجاه الورقة"
+  },
+  "exs_dir_auto": {
+    "en": "By language",
+    "ar": "حسب اللغة"
+  },
+  "exs_dir_rtl": {
+    "en": "Right to left",
+    "ar": "من اليمين"
+  },
+  "exs_dir_ltr": {
+    "en": "Left to right",
+    "ar": "من اليسار"
+  },
+  "exs_theme_clean": {
+    "en": "Clean",
+    "ar": "بسيط"
+  },
+  "exs_theme_formal": {
+    "en": "Formal",
+    "ar": "رسمي"
+  },
+  "exs_theme_colorful": {
+    "en": "Colorful",
+    "ar": "ملوّن"
+  },
+  "exs_theme_standard": {
+    "en": "Standard",
+    "ar": "قياسي"
+  },
+  "exs_theme_clean_hint": {
+    "en": "Quiet title and a light table",
+    "ar": "عنوان هادئ وجدول خفيف"
+  },
+  "exs_theme_formal_hint": {
+    "en": "Letterhead, frame and signature",
+    "ar": "ترويسة وإطار وتوقيع"
+  },
+  "exs_theme_colorful_hint": {
+    "en": "A colour band and striped rows",
+    "ar": "شريط ملوّن وصفوف متبادلة"
+  },
+  "exs_theme_standard_hint": {
+    "en": "The app’s ready layout",
+    "ar": "التنسيق الجاهز للتطبيق"
+  },
+  "tx_export_saved_file": {
+    "en": "Saved",
+    "ar": "تم الحفظ"
+  },
+  "exs_format_file": {
+    "en": "File",
+    "ar": "ملف"
+  },
+  "exs_needs_update_long": {
+    "en": "This needs a server update. Ask your administrator to update the server.",
+    "ar": "هذه الميزة تحتاج تحديث الخادم. اطلب من المسؤول تحديثه."
+  },
+  "exs_load_failed": {
+    "en": "Could not load this page",
+    "ar": "تعذّر تحميل الصفحة"
+  },
+  "exs_center_title": {
+    "en": "Exports",
+    "ar": "التصدير"
+  },
+  "exs_center_mine": {
+    "en": "My exports",
+    "ar": "تصديراتي"
+  },
+  "exs_center_schedules_sub": {
+    "en": "Files prepared for you on a timetable",
+    "ar": "ملفات تُجهَّز لك في مواعيد ثابتة"
+  },
+  "exs_center_links_sub": {
+    "en": "Links to your files that expire on their own",
+    "ar": "روابط لملفاتك تنتهي صلاحيتها تلقائيًا"
+  },
+  "exs_center_admin": {
+    "en": "Administration",
+    "ar": "الإدارة"
+  },
+  "exs_center_log_sub": {
+    "en": "Who exported what, and when",
+    "ar": "من صدّر ماذا ومتى"
+  },
+  "exs_links_title": {
+    "en": "Shared links",
+    "ar": "روابط المشاركة"
+  },
+  "exs_audience_me": {
+    "en": "Only me",
+    "ar": "أنا فقط"
+  },
+  "exs_audience_org": {
+    "en": "My organization",
+    "ar": "مؤسستي"
+  },
+  "exs_days_1": {
+    "en": "1 day",
+    "ar": "يوم واحد"
+  },
+  "exs_days_2": {
+    "en": "2 days",
+    "ar": "يومان"
+  },
+  "exs_days_few": {
+    "en": "{n} days",
+    "ar": "{n} أيام"
+  },
+  "exs_days_many": {
+    "en": "{n} days",
+    "ar": "{n} يومًا"
+  },
+  "exs_link_revoked": {
+    "en": "Revoked",
+    "ar": "أُلغي"
+  },
+  "exs_link_expired": {
+    "en": "Expired",
+    "ar": "انتهت صلاحيته"
+  },
+  "exs_link_active": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "exs_link_expires_today": {
+    "en": "Expires within a day",
+    "ar": "ينتهي خلال يوم"
+  },
+  "exs_link_expires_in": {
+    "en": "Expires in {d}",
+    "ar": "ينتهي بعد {d}"
+  },
+  "exs_link_copied": {
+    "en": "Link copied",
+    "ar": "نُسخ الرابط"
+  },
+  "exs_revoke": {
+    "en": "Revoke",
+    "ar": "إلغاء الرابط"
+  },
+  "exs_link_revoke_q": {
+    "en": "Revoke the link to \"{name}\"? Nobody can open it after this.",
+    "ar": "إلغاء رابط «{name}»؟ لن يتمكن أحد من فتحه بعد ذلك."
+  },
+  "exs_link_revoked_done": {
+    "en": "Link revoked",
+    "ar": "أُلغي الرابط"
+  },
+  "exs_read_failed": {
+    "en": "The file could not be read",
+    "ar": "تعذّرت قراءة الملف"
+  },
+  "exs_link_new": {
+    "en": "New link",
+    "ar": "رابط جديد"
+  },
+  "exs_links_empty": {
+    "en": "No shared links yet",
+    "ar": "لا روابط مشاركة بعد"
+  },
+  "exs_links_empty_sub": {
+    "en": "Share a file with a link that expires on its own. Whoever opens it signs in first.",
+    "ar": "شارك ملفًا برابط تنتهي صلاحيته تلقائيًا، ومن يفتحه يسجّل الدخول أولًا."
+  },
+  "exs_link_once_note": {
+    "en": "A link is shown once, when it is made. To share a file again, make a new link.",
+    "ar": "يظهر الرابط مرة واحدة عند إنشائه. لمشاركة الملف مرة أخرى أنشئ رابطًا جديدًا."
+  },
+  "exs_link_file": {
+    "en": "File",
+    "ar": "ملف"
+  },
+  "exs_link_downloads_1": {
+    "en": "1 download",
+    "ar": "تنزيل واحد"
+  },
+  "exs_link_downloads_n": {
+    "en": "{n} downloads",
+    "ar": "{n} تنزيلات"
+  },
+  "exs_link_created": {
+    "en": "Made {t}",
+    "ar": "أُنشئ {t}"
+  },
+  "exs_link_copy": {
+    "en": "Copy link",
+    "ar": "نسخ الرابط"
+  },
+  "exs_link_from_run": {
+    "en": "From a prepared file",
+    "ar": "من ملف جاهز"
+  },
+  "exs_link_from_run_sub": {
+    "en": "A file your scheduled exports made",
+    "ar": "ملف أعدّته تصديراتك المجدولة"
+  },
+  "exs_link_upload": {
+    "en": "Upload a file",
+    "ar": "رفع ملف"
+  },
+  "exs_link_upload_sub": {
+    "en": "Excel, Word or PDF, up to 25 MB",
+    "ar": "Excel أو Word أو PDF حتى 25 ميجابايت"
+  },
+  "exs_link_no_runs": {
+    "en": "No prepared files",
+    "ar": "لا ملفات جاهزة"
+  },
+  "exs_link_no_runs_sub": {
+    "en": "Files made by your scheduled exports show here for a week.",
+    "ar": "تظهر هنا لمدة أسبوع الملفات التي تعدّها تصديراتك المجدولة."
+  },
+  "exs_link_pick_run": {
+    "en": "Choose a file",
+    "ar": "اختر ملفًا"
+  },
+  "exs_link_share_title": {
+    "en": "Share with a link",
+    "ar": "مشاركة برابط"
+  },
+  "exs_link_ready": {
+    "en": "Your link is ready",
+    "ar": "الرابط جاهز"
+  },
+  "exs_link_signin_note": {
+    "en": "Anyone opening it must sign in, and only people allowed to see this data can download it.",
+    "ar": "من يفتحه يجب أن يسجّل الدخول، ولا ينزّله إلا من يحق له رؤية هذه البيانات."
+  },
+  "exs_link_until": {
+    "en": "Until {t}",
+    "ar": "حتى {t}"
+  },
+  "exs_link_once": {
+    "en": "This link is shown only once. Copy it now.",
+    "ar": "يظهر هذا الرابط مرة واحدة فقط. انسخه الآن."
+  },
+  "exs_link_who": {
+    "en": "Who can open it",
+    "ar": "من يمكنه فتحه"
+  },
+  "exs_link_expires_after": {
+    "en": "Expires after",
+    "ar": "تنتهي صلاحيته بعد"
+  },
+  "exs_link_create": {
+    "en": "Create link",
+    "ar": "إنشاء الرابط"
+  },
+  "exs_save_failed": {
+    "en": "The file could not be saved",
+    "ar": "تعذّر حفظ الملف"
+  },
+  "exs_open_title": {
+    "en": "Shared file",
+    "ar": "ملف مشارَك"
+  },
+  "exs_open_loading": {
+    "en": "Opening the file…",
+    "ar": "جارٍ فتح الملف…"
+  },
+  "exs_open_loading_sub": {
+    "en": "It will be saved on this device.",
+    "ar": "سيُحفظ على هذا الجهاز."
+  },
+  "exs_open_saved": {
+    "en": "File saved",
+    "ar": "حُفظ الملف"
+  },
+  "exs_open_again": {
+    "en": "Download again",
+    "ar": "تنزيل مرة أخرى"
+  },
+  "exs_open_ask_new": {
+    "en": "Ask the person who shared it for a new link.",
+    "ar": "اطلب من صاحب المشاركة رابطًا جديدًا."
+  },
+  "exs_open_forbidden_sub": {
+    "en": "This file is shared only with people who may see its data.",
+    "ar": "هذا الملف مشارَك فقط مع من يحق له رؤية بياناته."
+  },
+  "exs_open_other_org_sub": {
+    "en": "Sign in with the account you use in that organization.",
+    "ar": "سجّل الدخول بالحساب الذي تستخدمه في تلك المؤسسة."
+  },
+  "exs_open_check_link": {
+    "en": "Check that the whole link was copied.",
+    "ar": "تأكد من نسخ الرابط كاملًا."
+  },
+  "exs_open_signin": {
+    "en": "Sign in to open this file",
+    "ar": "سجّل الدخول لفتح هذا الملف"
+  },
+  "exs_open_signin_sub": {
+    "en": "Shared files open only for signed-in people.",
+    "ar": "الملفات المشارَكة تُفتح للمستخدمين المسجّلين فقط."
+  },
+  "exs_open_failed": {
+    "en": "The file could not be opened",
+    "ar": "تعذّر فتح الملف"
+  },
+  "exs_log_title": {
+    "en": "Export log",
+    "ar": "سجل التصدير"
+  },
+  "exs_channel_schedule": {
+    "en": "Scheduled",
+    "ar": "مجدول"
+  },
+  "exs_channel_link": {
+    "en": "Shared link",
+    "ar": "رابط مشاركة"
+  },
+  "exs_channel_interactive": {
+    "en": "From the app",
+    "ar": "من التطبيق"
+  },
+  "exs_rows_n": {
+    "en": "{n} rows",
+    "ar": "{n} صف"
+  },
+  "exs_columns_n": {
+    "en": "{n} columns",
+    "ar": "{n} عمود"
+  },
+  "exs_log_col_user": {
+    "en": "User",
+    "ar": "المستخدم"
+  },
+  "exs_log_col_user_id": {
+    "en": "User ID",
+    "ar": "رقم المستخدم"
+  },
+  "exs_log_col_page": {
+    "en": "Page",
+    "ar": "الصفحة"
+  },
+  "exs_log_col_format": {
+    "en": "Format",
+    "ar": "الصيغة"
+  },
+  "exs_log_col_rows": {
+    "en": "Rows",
+    "ar": "الصفوف"
+  },
+  "exs_log_col_columns": {
+    "en": "Columns",
+    "ar": "الأعمدة"
+  },
+  "exs_log_col_channel": {
+    "en": "Channel",
+    "ar": "القناة"
+  },
+  "exs_log_col_time": {
+    "en": "Time",
+    "ar": "الوقت"
+  },
+  "exs_log_empty": {
+    "en": "No exports match",
+    "ar": "لا تصديرات مطابقة"
+  },
+  "exs_log_empty_sub": {
+    "en": "Change the filters, or come back later.",
+    "ar": "غيّر التصفية أو عُد لاحقًا."
+  },
+  "exs_log_count": {
+    "en": "{n} exports",
+    "ar": "{n} عملية تصدير"
+  },
+  "exs_export": {
+    "en": "Export",
+    "ar": "تصدير"
+  },
+  "exs_load_more": {
+    "en": "Load more",
+    "ar": "عرض المزيد"
+  },
+  "exs_log_forbidden": {
+    "en": "Only admins can read the export log",
+    "ar": "سجل التصدير للمسؤولين فقط"
+  },
+  "exs_log_forbidden_sub": {
+    "en": "Platform admins see every export; organization admins see their organization's.",
+    "ar": "يرى مسؤولو المنصة كل عمليات التصدير، ويرى مسؤولو المؤسسات عمليات مؤسساتهم."
+  },
+  "exs_filter_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "exs_filter_user": {
+    "en": "User ID",
+    "ar": "رقم المستخدم"
+  },
+  "exs_filter_page": {
+    "en": "Page key",
+    "ar": "مفتاح الصفحة"
+  },
+  "exs_filter_format": {
+    "en": "Format",
+    "ar": "الصيغة"
+  },
+  "exs_filter_channel": {
+    "en": "Channel",
+    "ar": "القناة"
+  },
+  "exs_filter_any_date": {
+    "en": "Any date",
+    "ar": "أي تاريخ"
+  },
+  "exs_filter_apply": {
+    "en": "Apply",
+    "ar": "تطبيق"
+  },
+  "exs_filter_clear": {
+    "en": "Clear",
+    "ar": "مسح"
+  },
+  "exs_log_system": {
+    "en": "System",
+    "ar": "النظام"
+  },
+  "exs_sched_title": {
+    "en": "Scheduled exports",
+    "ar": "التصدير المجدول"
+  },
+  "exs_cadence_daily_at": {
+    "en": "Every day at {t}",
+    "ar": "كل يوم الساعة {t}"
+  },
+  "exs_cadence_monthly_at": {
+    "en": "Every month on day {d} at {t}",
+    "ar": "كل شهر يوم {d} الساعة {t}"
+  },
+  "exs_cadence_weekly_at": {
+    "en": "Every {w} at {t}",
+    "ar": "كل {w} الساعة {t}"
+  },
+  "exs_pause_owner": {
+    "en": "You paused it",
+    "ar": "أوقفتها أنت"
+  },
+  "exs_pause_failures": {
+    "en": "Paused after three runs failed in a row",
+    "ar": "أُوقفت بعد فشل ثلاث مرات متتالية"
+  },
+  "exs_pause_permission": {
+    "en": "Paused: you no longer have access to this data",
+    "ar": "أُوقفت: لم تعد تملك صلاحية على هذه البيانات"
+  },
+  "exs_pause_other": {
+    "en": "Paused",
+    "ar": "متوقفة"
+  },
+  "exs_run_queued": {
+    "en": "Waiting",
+    "ar": "في الانتظار"
+  },
+  "exs_run_running": {
+    "en": "Preparing",
+    "ar": "قيد التجهيز"
+  },
+  "exs_run_ready": {
+    "en": "Ready",
+    "ar": "جاهز"
+  },
+  "exs_run_failed": {
+    "en": "Failed",
+    "ar": "فشل"
+  },
+  "exs_run_expired": {
+    "en": "Expired",
+    "ar": "منتهي"
+  },
+  "exs_param_org_id": {
+    "en": "Organization number",
+    "ar": "رقم المؤسسة"
+  },
+  "exs_param_course_id": {
+    "en": "Course number",
+    "ar": "رقم المقرر"
+  },
+  "exs_param_dept_id": {
+    "en": "Department number",
+    "ar": "رقم القسم"
+  },
+  "exs_param_roles": {
+    "en": "Roles (comma-separated)",
+    "ar": "الأدوار (مفصولة بفواصل)"
+  },
+  "exs_param_status": {
+    "en": "Status",
+    "ar": "الحالة"
+  },
+  "exs_param_include_dropped": {
+    "en": "Include dropped students (yes / no)",
+    "ar": "تضمين المنسحبين (نعم / لا)"
+  },
+  "exs_sched_paused": {
+    "en": "Schedule paused",
+    "ar": "أُوقفت الجدولة"
+  },
+  "exs_sched_resumed": {
+    "en": "Schedule resumed",
+    "ar": "استُؤنفت الجدولة"
+  },
+  "exs_preparing": {
+    "en": "Preparing the file…",
+    "ar": "جارٍ تجهيز الملف…"
+  },
+  "exs_sched_delete_q": {
+    "en": "Delete \"{name}\"? Files already prepared stay in your list until they expire.",
+    "ar": "حذف «{name}»؟ الملفات الجاهزة تبقى في قائمتك حتى تنتهي صلاحيتها."
+  },
+  "exs_sched_deleted": {
+    "en": "Schedule deleted",
+    "ar": "حُذفت الجدولة"
+  },
+  "exs_sched_new": {
+    "en": "New schedule",
+    "ar": "جدولة جديدة"
+  },
+  "exs_sched_empty": {
+    "en": "No scheduled exports yet",
+    "ar": "لا تصديرات مجدولة بعد"
+  },
+  "exs_sched_empty_sub": {
+    "en": "Schedule an export to get a fresh file every day, week or month.",
+    "ar": "جدوِل تصديرًا لتصلك نسخة حديثة كل يوم أو أسبوع أو شهر."
+  },
+  "exs_sched_status_paused": {
+    "en": "Paused",
+    "ar": "متوقفة"
+  },
+  "exs_sched_status_active": {
+    "en": "Active",
+    "ar": "نشطة"
+  },
+  "exs_sched_next": {
+    "en": "Next file: {t}",
+    "ar": "الملف التالي: {t}"
+  },
+  "exs_sched_email_to": {
+    "en": "E-mailed to {list}",
+    "ar": "يُرسل بالبريد إلى {list}"
+  },
+  "exs_sched_email_me": {
+    "en": "your e-mail",
+    "ar": "بريدك"
+  },
+  "exs_sched_keep": {
+    "en": "Kept in your exports list",
+    "ar": "يُحفظ في قائمة تصديراتك"
+  },
+  "exs_sched_last": {
+    "en": "Last file: {status}",
+    "ar": "آخر ملف: {status}"
+  },
+  "exs_resume": {
+    "en": "Resume",
+    "ar": "استئناف"
+  },
+  "exs_pause": {
+    "en": "Pause",
+    "ar": "إيقاف مؤقت"
+  },
+  "exs_run_now": {
+    "en": "Run now",
+    "ar": "تشغيل الآن"
+  },
+  "exs_files": {
+    "en": "Files",
+    "ar": "الملفات"
+  },
+  "exs_edit": {
+    "en": "Edit",
+    "ar": "تعديل"
+  },
+  "exs_runs_empty": {
+    "en": "No files yet",
+    "ar": "لا ملفات بعد"
+  },
+  "exs_runs_empty_sub": {
+    "en": "Each run of this schedule leaves a file here for a week.",
+    "ar": "كل تشغيل لهذه الجدولة يترك ملفًا هنا لمدة أسبوع."
+  },
+  "exs_download": {
+    "en": "Download",
+    "ar": "تنزيل"
+  },
+  "exs_sched_pick_dataset": {
+    "en": "Choose a data source",
+    "ar": "اختر مصدر البيانات"
+  },
+  "exs_sched_created": {
+    "en": "Schedule created",
+    "ar": "أُنشئت الجدولة"
+  },
+  "exs_sched_saved": {
+    "en": "Schedule saved",
+    "ar": "حُفظت الجدولة"
+  },
+  "exs_sched_edit_title": {
+    "en": "Edit schedule",
+    "ar": "تعديل الجدولة"
+  },
+  "exs_sched_new_title": {
+    "en": "Schedule an export",
+    "ar": "جدولة تصدير"
+  },
+  "exs_sched_bad_email": {
+    "en": "Not an e-mail address: {list}",
+    "ar": "ليس عنوان بريد: {list}"
+  },
+  "exs_sched_name": {
+    "en": "Name",
+    "ar": "الاسم"
+  },
+  "exs_sched_name_hint": {
+    "en": "Empty = the data source's name",
+    "ar": "فارغ = اسم مصدر البيانات"
+  },
+  "exs_sched_dataset": {
+    "en": "Data source",
+    "ar": "مصدر البيانات"
+  },
+  "exs_sched_template": {
+    "en": "Saved template",
+    "ar": "القالب المحفوظ"
+  },
+  "exs_loading": {
+    "en": "Loading…",
+    "ar": "جارٍ التحميل…"
+  },
+  "exs_standard_layout": {
+    "en": "Standard layout",
+    "ar": "التنسيق القياسي"
+  },
+  "exs_sched_format": {
+    "en": "Format",
+    "ar": "الصيغة"
+  },
+  "exs_sched_lang": {
+    "en": "Language",
+    "ar": "اللغة"
+  },
+  "exs_sched_repeat": {
+    "en": "Repeat",
+    "ar": "التكرار"
+  },
+  "exs_cadence_daily": {
+    "en": "Daily",
+    "ar": "يوميًا"
+  },
+  "exs_cadence_weekly": {
+    "en": "Weekly",
+    "ar": "أسبوعيًا"
+  },
+  "exs_cadence_monthly": {
+    "en": "Monthly",
+    "ar": "شهريًا"
+  },
+  "exs_sched_on_day": {
+    "en": "On",
+    "ar": "في يوم"
+  },
+  "exs_sched_monthday": {
+    "en": "Day of the month",
+    "ar": "يوم الشهر"
+  },
+  "exs_sched_monthday_note": {
+    "en": "A month without this day uses its last day.",
+    "ar": "الشهر الذي لا يحتوي هذا اليوم يُستخدم آخر أيامه."
+  },
+  "exs_sched_time": {
+    "en": "Time",
+    "ar": "الوقت"
+  },
+  "exs_sched_zone": {
+    "en": "Times are in {zone}",
+    "ar": "الأوقات بتوقيت {zone}"
+  },
+  "exs_sched_delivery": {
+    "en": "Delivery",
+    "ar": "التسليم"
+  },
+  "exs_delivery_list": {
+    "en": "Keep in my exports list",
+    "ar": "الحفظ في قائمة تصديراتي"
+  },
+  "exs_delivery_email": {
+    "en": "E-mail",
+    "ar": "البريد الإلكتروني"
+  },
+  "exs_sched_recipients": {
+    "en": "Recipients",
+    "ar": "المستلمون"
+  },
+  "exs_add": {
+    "en": "Add",
+    "ar": "إضافة"
+  },
+  "exs_remove": {
+    "en": "Remove",
+    "ar": "إزالة"
+  },
+  "exs_sched_recipients_note": {
+    "en": "Leave it empty to send the file to your own e-mail. Only people who may see this data can receive it.",
+    "ar": "اتركه فارغًا ليصلك الملف على بريدك. لا يستلمه إلا من يملك صلاحية رؤية هذه البيانات."
+  },
+  "exs_save_changes": {
+    "en": "Save changes",
+    "ar": "حفظ التغييرات"
+  },
+  "exs_sched_create": {
+    "en": "Create schedule",
+    "ar": "إنشاء الجدولة"
+  },
+  "ci_replace_existing": {
+    "en": "Replace existing certificates",
+    "ar": "استبدال الشهادات الحالية"
+  },
+  "ci_replace_existing_sub": {
+    "en": "Also issue again to students who already hold this course certificate",
+    "ar": "أصدرها من جديد أيضًا للطلاب الحاصلين على شهادة هذه الدورة"
+  },
+  "exs_rules_left_out": {
+    "en": "Rules on fields not in the file were left out",
+    "ar": "استُبعدت القواعد على حقول غير موجودة في الملف"
   }
 }

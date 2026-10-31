@@ -214,7 +214,16 @@ class _CertificateCard extends StatelessWidget {
         backgroundColor: context.colors.heroShade,
         insetPadding: const EdgeInsets.all(12),
         child: Stack(children: [
-          InteractiveViewer(child: Image.network(cert.urlFor(ar)!, fit: BoxFit.contain)),
+          InteractiveViewer(
+            child: Image.network(
+              cert.urlFor(ar)!,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => SizedBox(
+                height: 240,
+                child: Center(child: Icon(Icons.broken_image_outlined, color: context.colors.onHeroMuted, size: 40)),
+              ),
+            ),
+          ),
           PositionedDirectional(
             top: 4,
             end: 4,

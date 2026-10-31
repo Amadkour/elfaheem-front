@@ -3,18 +3,22 @@
 // Word (WordprocessingML written by hand, zipped with `archive`). A brand title block, info lines, one styled table
 // whose header row repeats on every page, zebra rows, status cells, group rows with subtotals, a totals row, and a
 // "Page x of y" footer. Landscape when the table is wide; RTL (bidi paragraphs, bidiVisual table) when Arabic.
+// Export Studio options: conditional styling rules (cell fill / colour / bold / label, hidden rows) and
+// Arabic-Indic digits in every printed text (the PAGE / NUMPAGES fields stay fields).
 library;
 
 import 'dart:typed_data';
 
+import 'export_studio_model.dart';
 import 'table_export_model.dart';
 
 class _Doc {
-  _Doc(this.rtl);
+  _Doc(this.rtl, [this.numerals = ExportNumerals.western]);
   final bool rtl;
+  final ExportNumerals numerals;
 
   String run(String text, {bool bold = false, String color = exportInkHex, int halfPt = 18, bool italic = false}) {
-    final lines = text.split('\n');
+    final lines = exportDigits(text, numerals).split('\n');
     final rpr = '<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>${bold ? '<w:b/><w:bCs/>' : ''}${italic ? '<w:i/><w:iCs/>' : ''}'
         '<w:color w:val="$color"/><w:sz w:val="$halfPt"/><w:szCs w:val="$halfPt"/>${rtl ? '<w:rtl/>' : ''}</w:rPr>';
     return [for (var i = 0; i < lines.length; i++) '<w:r>$rpr${i > 0 ? '<w:br/>' : ''}<w:t xml:space="preserve">${xmlEsc(lines[i])}</w:t></w:r>'].join();
@@ -43,8 +47,11 @@ class _Doc {
 /// Body font size (half points) for [columns] columns.
 int docxFontHalfPt(int columns) => columns <= 5 ? 20 : columns <= 8 ? 18 : columns <= 11 ? 16 : columns <= 14 ? 14 : 12;
 
-Uint8List appTableDocx(AppTableExport e, {List<String>? columns}) {
-  final w = _Doc(e.rtl);
+/// [e] as a Word document. [rules] style the matching cells or leave rows out; [numerals] = the printed digits.
+Uint8List appTableDocx(AppTableExport e, {List<String>? columns, List<ExportRule> rules = const [], ExportNumerals numerals = ExportNumerals.western}) {
+  final visible = exportVisibleRows(rules, e.rows);
+  if (!identical(visible, e.rows)) e = e.copyWith(rows: visible);
+  final w = _Doc(e.rtl, numerals);
   final cols = e.resolve(columns);
   final brand = brandOf(e);
   final head = shadeHex(brand, .18);
@@ -115,16 +122,23 @@ Uint8List appTableDocx(AppTableExport e, {List<String>? columns}) {
       for (var i = 0; i < g.rows.length; i++) {
         final r = g.rows[i];
         final zebra = i.isOdd ? exportZebraHex : null;
+        final look = exportRowLook(rules, r);
         rows.add(w.row([
           for (var k = 0; k < cols.length; k++)
             () {
               final c = cols[k];
               final v = r[c.id];
+              final rule = look.of(c.id);
               if (c.type == AppColType.status && '${v ?? ''}'.isNotEmpty) {
                 final (fill, ink) = toneColors(statusTone(c, v));
-                return w.cell(w.para(w.run(cellText(c, v), bold: true, color: ink, halfPt: fs - 1), jc: 'center'), width: grid[k], fill: fill);
+                return w.cell(w.para(w.run(look.textOf(c.id, cellText(c, v)), bold: true, color: rule?.color ?? ink, halfPt: fs - 1), jc: 'center'),
+                    width: grid[k], fill: rule?.background ?? fill);
               }
-              return w.cell(w.para(w.run(cellText(c, v, decimals: c.numeric ? decimals[k] : null), halfPt: fs), jc: jc(c.resolvedAlign)), width: grid[k], fill: zebra);
+              return w.cell(
+                  w.para(w.run(look.textOf(c.id, cellText(c, v, decimals: c.numeric ? decimals[k] : null)), bold: rule?.bold ?? false, color: rule?.color ?? exportInkHex, halfPt: fs),
+                      jc: jc(c.resolvedAlign)),
+                  width: grid[k],
+                  fill: rule?.background ?? zebra);
             }(),
         ]));
       }

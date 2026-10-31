@@ -211,8 +211,13 @@ AppTableExport adminWithdrawalsExport(List<Map<String, dynamic>> rows) => AppTab
     );
 
 /// Organization members (students / teachers / staff).
-AppTableExport orgMembersExport(String kind, List<Map<String, dynamic>> rows, {String? orgName}) => AppTableExport(
+/// [orgId] / [roles] / [status] (the people page's tab and filter) make it an organization export: templates can be
+/// shared with the organization, and "Share link" / "Schedule" use the server dataset `org.people` (Export Studio).
+AppTableExport orgMembersExport(String kind, List<Map<String, dynamic>> rows, {String? orgName, int? orgId, String? roles, String? status}) => AppTableExport(
       id: 'org.members.$kind',
+      orgId: orgId,
+      serverDataset: orgId == null ? null : 'org.people',
+      serverParams: orgId == null ? null : {'org_id': orgId, 'roles': ?roles, 'status': ?status},
       title: switch (kind) { 'teachers' => t('المعلمون', 'Teachers'), 'staff' => t('فريق العمل', 'Staff'), _ => t('الطلاب', 'Students') },
       brand: orgName,
       columns: [

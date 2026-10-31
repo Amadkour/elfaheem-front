@@ -6,17 +6,22 @@
 // Arabic, blocks in bands (side by side through a borderless table), pictures through relationships, the table
 // block with borders / shading per style and a repeating header row, and the items block: a heading paragraph
 // per council item, a 2-column table (item | result) for "beside", a result paragraph for "below".
+// Export Studio: the table block's rules, group headings with subtotals, a totals row and header overrides
+// ([HubTablePlan]); Arabic-Indic digits in every printed run (PAGE / NUMPAGES stay fields); the page frame as
+// page borders; the watermark as the standard VML text in the header part; block backgrounds as shading.
 library;
 
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:image/image.dart' as img;
 
-import '../export/table_export_model.dart' show xmlEsc;
+import '../export/export_studio_model.dart' show exportDigits;
+import '../export/table_export_model.dart' show tintHex, xmlEsc;
 import 'export_design.dart';
-import 'export_pdf.dart' show ExportLabels, voteOutcomeColors, voteApproveHex, voteRejectHex, voteAbstainHex, voteRestHex;
+import 'export_pdf.dart' show ExportLabels, HubTablePlan, voteOutcomeColors, voteApproveHex, voteRejectHex, voteAbstainHex, voteRestHex;
 
 const _wNs = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
     'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
@@ -61,7 +66,9 @@ String _picture(String rid, int id, int cx, int cy) =>
 Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<String, Uint8List> images = const {}}) {
   final lang = c.langFor(d);
   final lb = ExportLabels(lang);
-  final values = data.placeholderValues(lang);
+  final plan = HubTablePlan.of(d, data, c);
+  final values = data.placeholderValues(lang)..['rows'] = '${plan.rows.length}';
+  String p(String s) => exportDigits(s, c.numerals);
   final rtl = d.rtl;
   const twipToEmu = 635;
   final (pageW, pageH) = docxPageTwips(d.page);
@@ -87,7 +94,7 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
   String run(String text, {double? size, bool bold = false, String? color, String family = ''}) {
     final hp = ((size ?? d.fontSize) * 2).round();
     final font = family.isEmpty ? baseFont : docxFontName(family);
-    final parts = text.split('\n');
+    final parts = p(text).split('\n');
     final t = [for (var i = 0; i < parts.length; i++) '${i > 0 ? '<w:br/>' : ''}<w:t xml:space="preserve">${xmlEsc(parts[i])}</w:t>'].join();
     return '<w:r><w:rPr><w:rFonts w:ascii="$font" w:hAnsi="$font" w:cs="$font"/>${bold ? '<w:b/><w:bCs/>' : ''}'
         '<w:color w:val="${color ?? d.fontColor}"/><w:sz w:val="$hp"/><w:szCs w:val="$hp"/>${rtl ? '<w:rtl/>' : ''}</w:rPr>$t</w:r>';
@@ -112,18 +119,19 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
   // the content of one static block, as paragraphs (no indentation: the caller places it)
   String blockBody(ExportBlock b, {int before = 0, int start = 0, int end = 0}) {
     final wTw = b.w * cw, hTw = b.h * ch;
+    final shade = b.background.isEmpty ? null : b.background;
     switch (b.kind) {
       case 'logo':
-        return para(imageRun(b.url, wTw, hTw), jc: b.align, before: before, start: start, end: end);
+        return para(imageRun(b.url, wTw, hTw), jc: b.align, before: before, start: start, end: end, shade: shade);
       case 'signature':
         final name = fill(b.name).trim(), title = fill(b.title).trim();
-        return para(imageRun(b.url, wTw, hTw * .6), jc: b.align, before: before, start: start, end: end) +
-            (name.isEmpty ? '' : para(runF(name, b.font, bold: true), jc: b.align, start: start, end: end)) +
-            (title.isEmpty ? '' : para(runF(title, b.font, size: b.font.size * .85), jc: b.align, start: start, end: end));
+        return para(imageRun(b.url, wTw, hTw * .6), jc: b.align, before: before, start: start, end: end, shade: shade) +
+            (name.isEmpty ? '' : para(runF(name, b.font, bold: true), jc: b.align, start: start, end: end, shade: shade)) +
+            (title.isEmpty ? '' : para(runF(title, b.font, size: b.font.size * .85), jc: b.align, start: start, end: end, shade: shade));
       case 'line':
         return para('', before: before, start: start, end: end, border: b.color.isEmpty ? exportLine : b.color);
       default:
-        return para(runF(fill(b.text), b.font), jc: b.align, before: before, start: start, end: end);
+        return para(runF(fill(b.text), b.font), jc: b.align, before: before, start: start, end: end, shade: shade);
     }
   }
 
@@ -139,7 +147,7 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
 
   // ── table block
   String table(ExportBlock tb) {
-    final cols = data.columnsFor(d, c.columns);
+    final cols = plan.cols;
     final fs = d.table.fontSize;
     final head = d.table.headerColor, onHead = d.table.headerTextColor, st = d.table.style;
     double flex(ExportColumn col) => col.id == 'n' ? .45 : col.numeric ? .9 : (col.id == 'title' || col.id == 'subject' || col.id == 'body' ? 2.6 : 1.2);
@@ -157,19 +165,41 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
     b.write('<w:tblGrid>${grid.map((g) => '<w:gridCol w:w="$g"/>').join()}</w:tblGrid>');
     b.write('<w:tr><w:trPr><w:tblHeader/></w:trPr>');
     for (var k = 0; k < cols.length; k++) {
-      final content = para(run(cols[k].label(lang), size: fs, bold: true, color: st == 'minimal' ? head : onHead));
+      final content = para(run(plan.headers[k], size: fs, bold: true, color: st == 'minimal' ? head : onHead));
       b.write(st == 'minimal' ? cellXml(content, grid[k], bottomOnly: head) : cellXml(content, grid[k], fill: head));
     }
     b.write('</w:tr>');
-    final rows = data.rows;
-    for (var i = 0; i < rows.length; i++) {
+    final rows = plan.rows;
+    void totalRow(String label, List<Map<String, Object?>> rows, {required bool grand}) {
       b.write('<w:tr><w:trPr><w:cantSplit/></w:trPr>');
       for (var k = 0; k < cols.length; k++) {
-        final col = cols[k];
-        b.write(cellXml(para(run(data.cell(col, rows[i][col.id]), size: fs), jc: col.numeric ? 'end' : 'start'), grid[k], fill: st == 'zebra' && i.isOdd ? 'F6F8FA' : null));
+        final agg = plan.aggregates(k);
+        b.write(cellXml(para(run(agg ? plan.aggregateTextOf(k, rows) : (k == plan.labelAt ? label : ''), size: fs, bold: true), jc: agg && cols[k].numeric ? 'end' : 'start'), grid[k],
+            fill: tintHex(head, grand ? .2 : .08)));
       }
       b.write('</w:tr>');
     }
+
+    for (final (label, group) in plan.groups) {
+      if (label != null) {
+        b.write('<w:tr><w:trPr><w:cantSplit/></w:trPr><w:tc><w:tcPr><w:tcW w:w="$width" w:type="dxa"/><w:gridSpan w:val="${cols.isEmpty ? 1 : cols.length}"/>'
+            '<w:shd w:val="clear" w:color="auto" w:fill="${tintHex(head, .14)}"/></w:tcPr>'
+            '${para(run('$label  (${group.length})', size: fs + 1, bold: true))}</w:tc></w:tr>');
+      }
+      for (var i = 0; i < group.length; i++) {
+        final look = plan.look(group[i]);
+        b.write('<w:tr><w:trPr><w:cantSplit/></w:trPr>');
+        for (var k = 0; k < cols.length; k++) {
+          final col = cols[k];
+          final rule = look.of(col.id);
+          b.write(cellXml(para(run(look.textOf(col.id, data.cell(col, group[i][col.id])), size: fs, bold: rule?.bold ?? false, color: rule?.color), jc: col.numeric ? 'end' : 'start'), grid[k],
+              fill: rule?.background ?? (st == 'zebra' && i.isOdd ? 'F6F8FA' : null)));
+        }
+        b.write('</w:tr>');
+      }
+      if (label != null && plan.totals) totalRow('${lb.subtotal} · $label', group, grand: false);
+    }
+    if (plan.totals && rows.isNotEmpty) totalRow(lb.total, rows, grand: true);
     if (rows.isEmpty) {
       b.write('<w:tr><w:tc><w:tcPr><w:tcW w:w="$width" w:type="dxa"/><w:gridSpan w:val="${cols.isEmpty ? 1 : cols.length}"/></w:tcPr>'
           '${para(run(lb.noRows, size: fs, color: exportMuted), jc: 'center')}</w:tc></w:tr>');
@@ -199,7 +229,7 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
     final hp = (s * 2).round();
     return '<w:r><w:rPr><w:rFonts w:ascii="$baseFont" w:hAnsi="$baseFont" w:cs="$baseFont"/><w:b/><w:bCs/><w:color w:val="$inkHex"/>'
         '${v.style == 'pill' || v.style == 'bar' ? '<w:shd w:val="clear" w:color="auto" w:fill="$fillHex"/>' : ''}'
-        '<w:sz w:val="$hp"/><w:szCs w:val="$hp"/>${rtl ? '<w:rtl/>' : ''}</w:rPr><w:t xml:space="preserve"> ${xmlEsc(v.style == 'text' ? '${lb.result}: ${lb.outcome(r.outcome)}' : lb.outcome(r.outcome))} </w:t></w:r>';
+        '<w:sz w:val="$hp"/><w:szCs w:val="$hp"/>${rtl ? '<w:rtl/>' : ''}</w:rPr><w:t xml:space="preserve"> ${xmlEsc(p(v.style == 'text' ? '${lb.result}: ${lb.outcome(r.outcome)}' : lb.outcome(r.outcome)))} </w:t></w:r>';
   }
 
   String resultText(ExportVoteResult r) => [
@@ -358,7 +388,8 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
     return '$b';
   }
 
-  final hasHeader = d.headerText.trim().isNotEmpty || d.showDate;
+  final wm = d.watermark, fr = d.frame;
+  final hasHeader = d.headerText.trim().isNotEmpty || d.showDate || wm.visible;
   final hasFooter = d.footerText.trim().isNotEmpty || d.showPageNumbers;
   final hfNs = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
   final hs = d.fontSize * .78;
@@ -373,8 +404,36 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
         '${cells.map((c) => '<w:tc><w:tcPr><w:tcW w:w="${c.$1}" w:type="dxa"/></w:tcPr>${c.$2}</w:tc>').join()}</w:tr></w:tbl>';
   }
 
-  final header = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $hfNs>'
-      '${hfTable(withFields(fill(d.headerText), hs), d.showDate ? run(values['date'] ?? '', size: hs, color: exportMuted) : '')}<w:p/></w:hdr>';
+  // the standard Word watermark: WordArt text (VML shapetype 136) behind the page, anchored in the header
+  String watermark() {
+    final text = p(wm.text.trim());
+    final wPt = math.max(wm.size, math.min(cw / 20, wm.size * .62 * text.length)), hPt = wm.size;
+    final rotation = ((wm.angle.round() % 360) + 360) % 360;
+    final font = docxFontName(d.fontFamily);
+    return '<w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:pict>'
+        '<v:shapetype id="_x0000_t136" coordsize="21600,21600" o:spt="136" adj="10800" path="m@7,l@8,m@5,21600l@6,21600e">'
+        '<v:formulas><v:f eqn="sum #0 0 10800"/><v:f eqn="prod #0 2 1"/><v:f eqn="sum 21600 0 @1"/><v:f eqn="sum 0 0 @2"/><v:f eqn="sum 21600 0 @3"/>'
+        '<v:f eqn="if @0 @3 0"/><v:f eqn="if @0 21600 @1"/><v:f eqn="if @0 0 @2"/><v:f eqn="if @0 @4 21600"/><v:f eqn="mid @5 @6"/><v:f eqn="mid @8 @5"/>'
+        '<v:f eqn="mid @7 @8"/><v:f eqn="mid @6 @7"/><v:f eqn="sum @6 0 @5"/></v:formulas>'
+        '<v:path textpathok="t" o:connecttype="custom" o:connectlocs="@9,0;@10,10800;@11,21600;@12,10800" o:connectangles="270,180,90,0"/>'
+        '<v:textpath on="t" fitshape="t"/><v:handles><v:h position="#0,bottomRight" xrange="6629,14971"/></v:handles><o:lock v:ext="edit" text="t" shapetype="t"/></v:shapetype>'
+        '<v:shape id="NextBrainWatermark" o:spid="_x0000_s2049" type="#_x0000_t136" '
+        'style="position:absolute;margin-left:0;margin-top:0;width:${wPt.toStringAsFixed(1)}pt;height:${hPt.toStringAsFixed(1)}pt;rotation:$rotation;z-index:-251657216;'
+        'mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" '
+        'o:allowincell="f" fillcolor="#${wm.color}" stroked="f"><v:fill opacity="${wm.opacity.toStringAsFixed(2)}"/>'
+        '<v:textpath style="font-family:&quot;${xmlEsc(font)}&quot;;font-size:1pt" string="${xmlEsc(text)}"/></v:shape></w:pict></w:r></w:p>';
+  }
+
+  final header = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $hfNs xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">'
+      '${wm.visible ? watermark() : ''}'
+      '${d.headerText.trim().isNotEmpty || d.showDate ? hfTable(withFields(fill(d.headerText), hs), d.showDate ? run(values['date'] ?? '', size: hs, color: exportMuted) : '') : ''}<w:p/></w:hdr>';
+  String pageBorders() {
+    if (!fr.visible) return '';
+    final val = switch (fr.style) { 'dashed' => 'dashed', 'double' => 'double', _ => 'single' };
+    final sz = (fr.width * 8).round().clamp(2, 96), space = (fr.inset * 72 / 25.4).round().clamp(0, 31);
+    final side = 'w:val="$val" w:sz="$sz" w:space="$space" w:color="${fr.color}"';
+    return '<w:pgBorders w:offsetFrom="text"><w:top $side/><w:left $side/><w:bottom $side/><w:right $side/></w:pgBorders>';
+  }
   final footer = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr $hfNs>'
       '${hfTable(withFields(fill(d.footerText), hs), d.showPageNumbers ? '${run('${lb.page} ', size: hs, color: exportMuted)}${field('PAGE', hs)}${run(' ${lb.of} ', size: hs, color: exportMuted)}${field('NUMPAGES', hs)}' : '', top: true)}'
       '<w:p/></w:ftr>';
@@ -383,7 +442,7 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
       '<w:sectPr>${hasHeader ? '<w:headerReference w:type="default" r:id="rHdr"/>' : ''}${hasFooter ? '<w:footerReference w:type="default" r:id="rFtr"/>' : ''}'
       '<w:pgSz w:w="$pageW" w:h="$pageH"${d.page.landscape ? ' w:orient="landscape"' : ''}/>'
       '<w:pgMar w:top="$mTop" w:right="$mRight" w:bottom="$mBottom" w:left="$mLeft" w:header="${(mTop * .45).round()}" w:footer="${(mBottom * .45).round()}" w:gutter="0"/>'
-      '${rtl ? '<w:bidi/>' : ''}</w:sectPr></w:body></w:document>';
+      '${pageBorders()}${rtl ? '<w:bidi/>' : ''}</w:sectPr></w:body></w:document>';
 
   final a = Archive();
   void put(String name, String body) => a.add(ArchiveFile.bytes(name, utf8.encode(body)));

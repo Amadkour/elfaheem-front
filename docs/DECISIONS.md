@@ -1317,3 +1317,62 @@ role shell makes. The membership overview is loaded only when the switcher is us
 **Rejected.** A separate "staff dashboard" route (two UIs to keep in step); keeping the hop for members without rights
 (the same person would land on different pages by a cached flag); hiding the dashboard's student block behind a client
 check only (the server is the authority, the app follows its 403).
+
+## D-130 — Export Studio: interactive exports render in the app, scheduled ones on the server · 2026-10-31 · accepted
+
+**Context.** The Export Studio brief asks for PDF / Word generated on the server for Arabic correctness. The app
+already writes PDF / Word / Excel itself (`lib/design/export/`, `lib/design/export_hub/`): Arabic shaping and embedded
+fonts are done and unit-tested, and the rows come from the API that served the page, which already applied the
+caller's permissions, filters and sort. Scheduled exports and expiring links, however, run when no app is open.
+**Decision.** An interactive export keeps rendering on the device from the saved template (`ExportDesign` JSON,
+versioned); the app reports it to the export log (column keys and row count only). The server renders only what it
+must: scheduled runs and links made from a server run, from the SAME template JSON, through a registry of server
+datasets (`../back/services/export_datasets.py`) whose columns each carry a visibility rule, so a forbidden field is
+never produced. Formula injection: the app writes every text cell as an inline string (never parsed as a formula),
+the server passes every text cell through `helpers/xlsx_safe.py`.
+**Cost.** Two renderers (Dart, Python) read one template schema; the server's covers the table-oriented subset and
+datasets are added one by one.
+**Rejected.** Moving every export to the server (re-implements tested writers, sends every page's data back up, adds
+load for the common two-click export); client-only schedules (impossible without an open app).
+
+## D-131 — Certificate design v2: independent language designs, many logos and signatures · 2026-10-31 · accepted
+
+**Context.** One design row held both layouts but SHARED orientation, background, logo, signature and theme, and a
+single logo / signature URL was pasted into every logo / signature box. Saving reset 20 of 28 fonts to Tajawal (stale
+allow-list on the server), which is what made "the Arabic design" fail to save.
+**Decision.** The font allow-list is the renderer's catalog. English gets its own nullable `*_en` columns
+(orientation, background, theme, logo, signature); NULL means "same as Arabic", so every existing design renders
+exactly as before. Each logo / signature box carries its own image (`src`, checked like every uploaded image) and a
+signature box its name and title; `langs` says whether a certificate is Arabic, English or both, and issuing renders
+only those. One `design_spec(design, lang)` builds what the renderer draws, for preview, course issuing and
+standalone issuing alike.
+**Rejected.** A second row per language (breaks every course link to a design); a JSON blob replacing the columns
+(no backward-compatible read for older apps).
+
+## D-132 — Standalone certificate issuing · 2026-10-31 · accepted
+
+**Context.** Issuing required a course and an enrolled student; organizations also certify workshops, competitions
+and external participants.
+**Decision.** Separate tables (`cert_issue_batches`, `cert_issued`, `cert_recipient_lists`); the course flow and its
+tables are untouched. The template's dynamic fields decide the columns of a pasted list or sheet; rows are validated
+and matched to platform students, unmatched names may still be issued as manual recipients. Every issued
+certificate stores a serial and a random verify token (public verify route, QR field kind); revoke and re-issue keep
+history. Batches run as background jobs in chunks and produce a ZIP and a merged PDF.
+
+## D-133 — One studio engine, two data models · 2026-10-31 · accepted
+
+**Context.** The certificate designer (logical units, server-rendered) and the Export Hub designer (page fractions,
+client-rendered) each had their own canvas, drag, resize, snap and undo.
+**Decision.** `lib/design/studio/` owns selection, move / resize, snap guides, align, undo / redo, zoom and the
+property primitives, and talks to each studio through a host adapter; each studio keeps its own document model and
+renderer. A fix in the engine reaches both.
+**Rejected.** One shared document schema for certificates and exports (forces a migration of every stored design for
+no user-visible gain).
+
+## D-134 — Expiring export links require sign-in · 2026-10-31 · accepted
+
+**Context.** Shared download links must "never expose data to unauthorized users", and exports often hold students'
+personal data.
+**Decision.** A link is a hashed random token with an expiry (default 7 days, max 30) and revoke; downloading needs a
+signed-in user who passes the audience rule (`me`, or `org` = members of the same organization who pass the
+dataset's permission check). Every download is logged. No anonymous public links.

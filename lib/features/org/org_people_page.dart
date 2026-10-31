@@ -135,7 +135,7 @@ class _MembersView extends StatelessWidget {
           OrgMenuItem(
             icon: Icons.ios_share_rounded,
             label: t('تصدير (Excel · Word · PDF)', 'Export (Excel · Word · PDF)'),
-            onTap: () => exportPagedList(context, p, (rows) => orgMembersExport(kind, rows, orgName: s.name)),
+            onTap: () => exportPagedList(context, p, (rows) => orgMembersExport(kind, rows, orgName: s.name, orgId: s.currentId, roles: roles, status: p.status)),
           ),
       ],
       child: PagedList<OrgMembersProvider>(
