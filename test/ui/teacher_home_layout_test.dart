@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry;
 import 'package:flutter_education_app/features/teacher/courses/component/teacher_stats.dart';
 import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
@@ -121,7 +122,7 @@ void main() {
     await expectNoLayoutErrors(tester, () => body(courses: courses.take(2).toList()));
     await tester.pumpWidget(layoutHost(body(extra: extra, schedule: [session(1, '08:00', '09:30')])));
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.byType(TeacherInboxPreview), findsOneWidget);
+    expect(find.byType(InboxEntry), findsOneWidget);
     expect(find.byType(TeacherHomeBody), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
@@ -133,7 +134,7 @@ void main() {
     );
     await tester.pumpWidget(layoutHost(body(schedule: [session(1, '08:00', '09:30')])));
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.byType(TeacherInboxPreview), findsNothing);
+    expect(find.byType(InboxEntry), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 

@@ -2,7 +2,7 @@
 //
 // Pure: parsed from the payload, no widgets, no network. GET /teacher/dashboard stays the main aggregate;
 // this call adds what it lacks — the earnings figures, the pending counters (used when the dashboard carries
-// none), the inbox preview, the unread notifications count — and an optional enrollment series when a server
+// none), the inbox preview and counts, the unread notifications count — and an optional enrollment series when a server
 // sends one (`enrollments_series`: numbers, oldest first; absent today → no sparkline is drawn).
 // An older server answers a bare 404 / 405: [teacherHomeExtraMissing] tells it apart, the tiles then stay hidden.
 library;
@@ -17,6 +17,7 @@ class TeacherHomeExtra {
     this.earningsMonth,
     this.pendingPayout,
     this.inboxPreview = const [],
+    this.inboxCounts = const {},
     this.notificationsUnread,
     this.enrollmentSeries = const [],
     this.liveNow = const [],
@@ -33,6 +34,10 @@ class TeacherHomeExtra {
 
   /// The unified inbox's most urgent items (raw rows of GET /me/inbox, ≤ 5) — InboxItem(raw) draws them.
   final List<Map<String, dynamic>> inboxPreview;
+
+  /// `inbox_counts`: todo · news · offers · done · overdue · due_soon · mandatory (the home's inbox entry); empty
+  /// on a server that sends none (the entry then counts the preview rows).
+  final Map<String, int> inboxCounts;
   final int? notificationsUnread;
 
   /// Enrollments per day, oldest first; empty unless the server sends `enrollments_series`.
@@ -52,6 +57,7 @@ class TeacherHomeExtra {
         earningsMonth: earningsMonth,
         pendingPayout: pendingPayout,
         inboxPreview: inboxPreview,
+        inboxCounts: inboxCounts,
         notificationsUnread: notificationsUnread,
         enrollmentSeries: enrollmentSeries,
         liveNow: rooms,
@@ -74,6 +80,11 @@ class TeacherHomeExtra {
           for (final x in j['inbox_preview'] as List)
             if (x is Map) Map<String, dynamic>.from(x),
       ],
+      inboxCounts: {
+        if (j['inbox_counts'] is Map)
+          for (final e in (j['inbox_counts'] as Map).entries)
+            if (e.value is num) '${e.key}': (e.value as num).toInt(),
+      },
       notificationsUnread: (j['notifications_unread'] as num?)?.toInt(),
       enrollmentSeries: [
         if (j['enrollments_series'] is List)

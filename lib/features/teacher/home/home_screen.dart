@@ -39,7 +39,7 @@ import 'package:flutter_education_app/features/org/org_member_dashboard.dart' sh
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart' show CourseScope;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
-    show InboxCompactList, InboxItem, InboxPreviewCard, InboxScreen, openInboxItem;
+    show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryHasAny;
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart' show HomeLiveNow;
@@ -255,7 +255,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         onNewCourse: _newCourse,
                         onOpenEarnings: _openEarnings,
                         onOpenInbox: _openInbox,
-                        onInboxChanged: provider.refreshSilently,
                       ),
                     ),
                   ),
@@ -325,7 +324,6 @@ class TeacherHomeBody extends StatelessWidget {
     this.onRetry,
     this.onOpenEarnings,
     this.onOpenInbox,
-    this.onInboxChanged,
     this.showFeeds = true,
     this.liveNow = const [],
     this.now,
@@ -363,10 +361,7 @@ class TeacherHomeBody extends StatelessWidget {
   final VoidCallback? onOpenEarnings;
   final VoidCallback? onOpenInbox;
 
-  /// An inbox item was acted on from the preview → reload the home silently.
-  final VoidCallback? onInboxChanged;
-
-  /// Ads / organizations / the self-fetching inbox card (network widgets) — off in layout tests.
+  /// Ads / organizations / the self-fetching inbox entry (network widgets) — off in layout tests.
   final bool showFeeds;
 
   /// "Enter room" on the session that runs now; null = the pre-join page (openTeacherPreJoin).
@@ -417,7 +412,11 @@ class TeacherHomeBody extends StatelessWidget {
     final payout = extra?.pendingPayout;
     final hasPayout = payout != null && payout > 0;
     final needs = p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests') + (hasPayout ? 1 : 0);
-    final inboxRows = [for (final raw in extra?.inboxPreview ?? const <Map<String, dynamic>>[]) InboxItem(raw)];
+    final inboxCounts = inboxEntryCounts(
+      [for (final raw in extra?.inboxPreview ?? const <Map<String, dynamic>>[]) InboxItem(raw)],
+      counts: extra?.inboxCounts ?? const {},
+      now: now,
+    );
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
 
@@ -508,10 +507,9 @@ class TeacherHomeBody extends StatelessWidget {
             ),
     ));
 
-    // ── inbox: the preview from /me/home; an older server gets the self-fetching card (at the end)
-    final inbox = extra != null && inboxRows.isNotEmpty
-        ? enter(TeacherInboxPreview(items: inboxRows, onOpenAll: onOpenInbox, onChanged: onInboxChanged))
-        : null;
+    // ── inbox: ONE slim entry into the inbox page over the /me/home counts, only while the inbox holds something;
+    //    an older server gets the self-fetching entry (at the end)
+    final inbox = extra != null && inboxEntryHasAny(inboxCounts) ? enter(InboxEntry(counts: inboxCounts, onTap: onOpenInbox)) : null;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (staleError != null)
@@ -536,7 +534,7 @@ class TeacherHomeBody extends StatelessWidget {
         main: [todaySection, if (needsYou != null || inbox != null) coursesSection],
         side: needsYou == null && inbox == null ? [coursesSection] : [?needsYou, ?inbox],
       ),
-      if (extra == null && showFeeds) const InboxPreviewCard(padding: EdgeInsets.fromLTRB(20, 0, 20, 16)),
+      if (extra == null && showFeeds) const InboxEntryCard(padding: EdgeInsets.fromLTRB(20, 0, 20, 16)),
 
       if (showFeeds) ...[
         const HomeAdsSlider(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
@@ -617,37 +615,6 @@ class TeacherCourseSummary extends StatelessWidget {
       ],
       moreLabel: courses.length > top.length ? 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}') : null,
       onMore: onShowAll,
-    );
-  }
-}
-
-/// The inbox preview over plain values (the `inbox_preview` rows of GET /me/home): the 3 most urgent to-dos →
-/// the full inbox. Draws nothing when the preview is empty (no empty box on a fresh account).
-class TeacherInboxPreview extends StatelessWidget {
-  const TeacherInboxPreview({super.key, required this.items, this.onOpenAll, this.onChanged});
-
-  final List<InboxItem> items;
-  final VoidCallback? onOpenAll;
-  final VoidCallback? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
-    return HomeSection(
-      id: 'teacher.inbox',
-      title: 'inbox_title'.tr,
-      count: items.length,
-      actionLabel: 'inbox_see_all'.tr,
-      onAction: onOpenAll,
-      child: InboxCompactList(
-        items: items.take(3).toList(),
-        onTap: (x) async {
-          if (await openInboxItem(context, x)) {
-            onChanged?.call();
-            AppModeController.instance.refresh();
-          }
-        },
-      ),
     );
   }
 }

@@ -123,7 +123,7 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
   Widget build(BuildContext context) {
     final m = _mix;
     final weight = asInt(m?['org_weight']);
-    // "Needs your action" lives in ONE place: the unified inbox card (InboxPreviewCard) above this block.
+    // "Needs your action" lives in ONE place: the unified inbox entry (InboxEntry) above this block.
     // Here only the "join your university" entry for people outside any organization; the organization itself
     // lives in its own home tab.
     if (m == null || weight <= 10) return const OrgHomeEntry();

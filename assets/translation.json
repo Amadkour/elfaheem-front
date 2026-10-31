@@ -275,6 +275,10 @@
     "en": "{n} due soon",
     "ar": "{n} قريب الموعد"
   },
+  "inbox_entry_hint": {
+    "en": "Opens the inbox",
+    "ar": "يفتح صندوق الوارد"
+  },
   "inbox_ref": {
     "en": "Ref.",
     "ar": "رقم"

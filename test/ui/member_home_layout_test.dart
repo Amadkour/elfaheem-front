@@ -103,7 +103,7 @@ void main() {
         now: now,
         onPick: () {},
         onOpenEvent: (_) {},
-        onOpenInboxItem: (_) {},
+        onInboxClosed: () {},
       )),
       act: (t) async {
         expect(more(), findsWidgets, reason: 'My studies has more than 6 actions for a student-teacher');

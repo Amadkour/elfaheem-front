@@ -40,7 +40,7 @@ import 'package:flutter_education_app/features/org/org_member_dashboard.dart' sh
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxCompactList, InboxItem, InboxScreen, openInboxItem;
+import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryHasAny;
 import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
 import 'package:flutter_education_app/features/student/home/home_journey.dart';
@@ -227,10 +227,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     MaterialPageRoute(settings: const RouteSettings(name: '/journey'), builder: (_) => const JourneyPage()),
                                   ),
                                   onOpenEvent: (e) => openHomeEvent(context, e),
-                                  onOpenInbox: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InboxScreen())),
-                                  onOpenInboxItem: (x) async {
-                                    if (await openInboxItem(context, x)) svc.refresh();
-                                  },
+                                  // what was answered there leaves the counts: the home reloads when the inbox closes
+                                  onOpenInbox: () => Navigator.of(context)
+                                      .push(MaterialPageRoute(builder: (_) => const InboxScreen()))
+                                      .then((_) => svc.refresh()),
                                   onOpenNotifications: () => Navigator.of(context).pushNamed('/notifications'),
                                   onOpenTodo: () => showAttentionItems(context, AttentionTabs.home),
                                   onOpenOrgs: () => showContextSwitcherSheet(context),
@@ -316,7 +316,6 @@ class StudentHomeBody extends StatelessWidget {
     this.onOpenJourney,
     this.onOpenEvent,
     this.onOpenInbox,
-    this.onOpenInboxItem,
     this.onOpenNotifications,
     this.onOpenTodo,
     this.onOpenOrgs,
@@ -334,7 +333,6 @@ class StudentHomeBody extends StatelessWidget {
   final VoidCallback? onOpenJourney;
   final ValueChanged<CalEvent>? onOpenEvent;
   final VoidCallback? onOpenInbox;
-  final ValueChanged<InboxItem>? onOpenInboxItem;
   final VoidCallback? onOpenNotifications, onOpenTodo, onOpenOrgs;
 
   /// Ads, organizations, other courses … (network widgets) — null in layout tests.
@@ -410,7 +408,7 @@ class _Sections extends StatelessWidget {
     final nowMin = wallNow.hour * 60 + wallNow.minute;
     final todo = home.attentionCount(AttentionTabs.home);
     final inboxTodo = home.inboxTodo;
-    final inboxRows = home.inboxPreview.take(3).map(InboxItem.new).toList();
+    final inboxCounts = inboxEntryCounts(home.inboxPreview.map(InboxItem.new).toList(), counts: home.inboxCounts, now: now);
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
     final live = data.liveNow;
@@ -506,16 +504,8 @@ class _Sections extends StatelessWidget {
             )),
           ]);
 
-    // ── inbox: the 3 most urgent rows (the count already sits in "Needs you")
-    final inbox = inboxRows.isEmpty
-        ? null
-        : enter(HomeSection(
-            id: 'student.inbox',
-            title: 'inbox_title'.tr,
-            actionLabel: 'inbox_see_all'.tr,
-            onAction: body.onOpenInbox,
-            child: InboxCompactList(items: inboxRows, onTap: (x) => body.onOpenInboxItem?.call(x)),
-          ));
+    // ── inbox: ONE slim entry into the inbox page (its rows live there), only while the inbox holds something
+    final inbox = !inboxEntryHasAny(inboxCounts) ? null : enter(InboxEntry(counts: inboxCounts, onTap: body.onOpenInbox));
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── live now: a room I'm invited to is on air → one tap into it (appears / leaves by itself); the only strong

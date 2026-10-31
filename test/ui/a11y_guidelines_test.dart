@@ -240,7 +240,7 @@ void main() {
                   now: member.now,
                   onPick: () {},
                   onOpenEvent: (_) {},
-                  onOpenInboxItem: (_) {},
+                  onInboxClosed: () {},
                 ),
               ));
     });

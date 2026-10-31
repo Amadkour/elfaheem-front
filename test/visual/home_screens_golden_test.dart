@@ -418,7 +418,7 @@ Widget _memberHome() {
       liveNow: _liveMeeting(),
       onPick: () {},
       onOpenEvent: (_) {},
-      onOpenInboxItem: (_) {},
+      onInboxClosed: () {},
     ),
   );
 }

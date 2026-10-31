@@ -12,11 +12,11 @@
 //                            OrgHero → "Live now" (HomeLiveBanner: a room I'm invited to is live, one-tap Join) →
 //                            status banner → HomeStatStrip (to do · due soon · awaiting you · news, once; hidden
 //                            while all are zero) → today agenda (one line each, live first, 3 + "Show all") →
-//                            "What needs you" (InboxCompactList, 3) → decisions (managers) → what I manage → quick
+//                            the inbox entry (InboxEntry, one row) → decisions (managers) → what I manage → quick
 //                            actions GROUPED (My studies · Requests & forms · Manage · Organization, ≤ 6 pills each +
 //                            a "More" sheet) → news (3). Sections fold from their titles (HomeSection, remembered).
 //                            A desktop window: HomeDashboard like the student / teacher homes — today leads the main
-//                            column, "What needs you" the side one, and the rest keeps its order split between the
+//                            column, the inbox entry the side one, and the rest keeps its order split between the
 //                            two at the most even cut (orgHomeColumnSplit); too little for two → one centred column.
 //   OrgMemberDashboardScreen standalone page (route '/org_member', e.g. org staff without a management dashboard)
 //   openOrgApproval          jump from an approval item to the page that decides it (rights checked server-side)
@@ -404,14 +404,16 @@ class OrgMemberHome extends StatelessWidget {
             liveNow: svc.liveNow,
             onPick: () => showMemberOrgPicker(context),
             onOpenEvent: (e) => openHomeEvent(context, e, inOrg: true),
-            onOpenInboxItem: (x) async {
-              if (await openInboxItem(context, x)) {
-                svc.refresh();
-                ctl.refresh();
-              }
+            // what was answered in the inbox leaves the counts: the home and the overview reload when it closes
+            onInboxClosed: () {
+              svc.refresh();
+              ctl.refresh();
             },
             todayFallback: me == null ? OrgTodayAgenda(key: ValueKey('today-$orgId'), orgId: orgId) : null,
-            inboxFallback: me == null ? UnifiedInbox(key: ValueKey('inbox-$orgId'), orgId: orgId, shrinkWrap: true, limit: 5) : null,
+            inboxFallback: me == null
+                ? InboxEntryCard(
+                    key: ValueKey('inbox-$orgId'), orgId: orgId, title: orgNameOf(_orgOf(entry)), padding: const EdgeInsets.symmetric(horizontal: 16))
+                : null,
             news: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: OrgAnnouncementFeed(orgId: orgId, limit: 3, compact: true),
@@ -434,7 +436,7 @@ class OrgMemberHomeBody extends StatelessWidget {
     this.now,
     this.onPick,
     this.onOpenEvent,
-    this.onOpenInboxItem,
+    this.onInboxClosed,
     this.todayFallback,
     this.inboxFallback,
     this.news,
@@ -458,9 +460,11 @@ class OrgMemberHomeBody extends StatelessWidget {
   final DateTime? now;
   final VoidCallback? onPick;
   final ValueChanged<CalEvent>? onOpenEvent;
-  final ValueChanged<InboxItem>? onOpenInboxItem;
 
-  /// Network widgets (null in layout tests): the older today agenda, the embeddable inbox, the news feed.
+  /// The inbox page this home opened was closed (its counts may have changed).
+  final VoidCallback? onInboxClosed;
+
+  /// Network widgets (null in layout tests): the older today agenda, the self-loading inbox entry, the news feed.
   final Widget? todayFallback, inboxFallback, news;
 
   @override
@@ -480,12 +484,15 @@ class OrgMemberHomeBody extends StatelessWidget {
     final wall = AppTime.toZone(nowUtc);
     final nowMin = wall.hour * 60 + wall.minute;
     final inboxRows = inbox?.map(InboxItem.new).toList();
+    void openInbox() => Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))))
+        .then((_) => onInboxClosed?.call());
 
     final soon = asInt(todo['due_soon']) + asInt(todo['overdue']);
     final stats = <HomeStat>[
       HomeStat(icon: Icons.task_alt_rounded, label: t('مطلوب منك', 'To do'), count: asInt(todo['total']),
           tone: asInt(todo['overdue']) > 0 ? c.danger : c.primary,
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))))),
+          onTap: openInbox),
       HomeStat(icon: Icons.schedule_rounded, label: t('قريب الموعد', 'Due soon'), count: soon, tone: c.warning),
       if (manage != null)
         HomeStat(icon: Icons.fact_check_rounded, label: t('بانتظار قرارك', 'Awaiting you'), count: asInt(ap['total']),
@@ -554,25 +561,19 @@ class OrgMemberHomeBody extends StatelessWidget {
                 ),
               );
 
-    // ── what needs me (the 3 most urgent rows of THIS organization; the counts sit in the strip above)
-    void openInbox() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))));
+    // ── the inbox of THIS organization: ONE slim entry into its page (the rows live there), over the overview's
+    //    counts and this organization's preview rows (they also carry governance work the overview leaves out);
+    //    drawn only while the inbox holds something. No /me/home (older server) → the self-loading entry.
+    final inboxCounts = inboxEntryCounts(inboxRows ?? const [], now: nowUtc, counts: {
+      'todo': asInt(todo['total']),
+      'overdue': asInt(todo['overdue']),
+      'due_soon': asInt(todo['due_soon']),
+    });
     final needsFallback = inboxRows == null && inboxFallback != null;
     final Widget? needsBlock = needsFallback
-        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            HomeSectionTitle(t('ما ينتظرك', 'What needs you'),
-                padding: const EdgeInsets.fromLTRB(16, 0, 8, 10), actionLabel: t('عرض الكل', 'See all'), onAction: openInbox),
-            inboxFallback!,
-          ])
-        : (inboxRows != null && inboxRows.isNotEmpty)
-            ? HomeSection(
-                id: 'member.needs',
-                title: t('ما ينتظرك', 'What needs you'),
-                count: inboxRows.length,
-                titlePadding: _titlePad,
-                actionLabel: t('عرض الكل', 'See all'),
-                onAction: openInbox,
-                child: InboxCompactList(items: inboxRows.take(3).toList(), padding: const EdgeInsets.symmetric(horizontal: 16), onTap: (x) => onOpenInboxItem?.call(x)),
-              )
+        ? inboxFallback!
+        : (inboxRows != null && inboxEntryHasAny(inboxCounts))
+            ? InboxEntry(counts: inboxCounts, onTap: openInbox, padding: const EdgeInsets.symmetric(horizontal: 16))
             : null;
 
     // ── decisions (managers)
@@ -673,7 +674,7 @@ class OrgMemberHomeBody extends StatelessWidget {
     final narrow = <Widget>[
       ...top,
       if (todayBlock != null) ...[todayBlock, const SizedBox(height: 24)],
-      if (needsBlock != null) ...[needsBlock, SizedBox(height: needsFallback ? 8 : 24)],
+      if (needsBlock != null) ...[needsBlock, const SizedBox(height: 24)],
       if (decisionsBlock != null) ...[decisionsBlock, const SizedBox(height: 16)],
       if (manageBlock != null) ...[manageBlock, const SizedBox(height: 16)],
       for (final q in quickBlocks) ...[q, const SizedBox(height: 16)],
@@ -704,7 +705,7 @@ class OrgMemberHomeBody extends StatelessWidget {
               : todayList.isEmpty
                   ? 52.0
                   : 52.0 + 56 * math.min(todayList.length, 3) + (todayList.length > 3 ? 40 : 0);
-      final needsH = needsBlock == null ? 0.0 : needsFallback ? 240.0 : 52.0 + 68 * math.min(inboxRows!.length, 3);
+      final needsH = needsBlock == null ? 0.0 : 72.0;
       final cut = orgHomeColumnSplit(
         main: [for (final f in flow) f.$2(mainW)],
         side: [for (final f in flow) f.$2(sideW)],
