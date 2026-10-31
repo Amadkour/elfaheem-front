@@ -81,6 +81,7 @@ class VodListenLayer extends StatelessWidget {
                     onSeekTo: s.seekToFraction,
                     onExpand: _expand,
                     onClose: () => s.stop(),
+                    onSpeed: s.cycleSpeed,
                   );
                 },
               ),

@@ -8,8 +8,12 @@
 //   layer       the bar at the top of the app, the app below it without the status-bar inset twice, Expand back to
 //               the player with the SAME controller, Listen only from the player, close
 //   layout      the bar in every state and the player's button at 320×640 / 1400×900, ar / en, text × 1.3
+//   round 7     the speed chip (1× → 1.5× → 2×), what the OS hears (VodMediaSync) and the commands it sends back
+//               (notification / lock screen / headset over the vod_media channel), the quality sheet's "Audio only"
+//               row closing the player into the bar
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
@@ -23,6 +27,7 @@ import 'package:flutter_education_app/features/shared/session/video/video_player
 import 'package:flutter_education_app/features/shared/session/video/vod_listen.dart';
 import 'package:flutter_education_app/features/shared/session/video/vod_listen_bar.dart';
 import 'package:flutter_education_app/features/shared/session/video/vod_listen_layer.dart';
+import 'package:flutter_education_app/features/shared/session/video/vod_media_controls.dart';
 import 'package:flutter_education_app/features/shared/session/video/vod_player_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -380,9 +385,10 @@ void main() {
 
         final sem = tester.ensureSemantics();
         await tester.pump();
-        expect(find.semantics.byLabel('vod_expand'), findsOneWidget, reason: 'the bar is in the semantics tree');
+        expect(find.semantics.byLabel(RegExp('vod_expand')), findsOneWidget, reason: 'the bar is in the semantics tree');
         sem.dispose();
-        await tester.tap(find.byIcon(Icons.open_in_full_rounded));
+        // like WhatsApp's bar: a tap on the title goes back to the video
+        await tester.tap(find.descendant(of: find.byType(VodListenBar), matching: find.text(_lecture().name)));
         for (var i = 0; i < 20; i++) {
           await tester.pump(const Duration(milliseconds: 50));
         }
@@ -428,6 +434,7 @@ void main() {
                 onSeekTo: (_) {},
                 onExpand: () {},
                 onClose: () {},
+                onSpeed: () {},
               ),
             ),
           VodListenBar(
@@ -479,12 +486,53 @@ void main() {
         onSeekTo: (_) {},
         onExpand: () => taps.add('expand'),
         onClose: () => taps.add('close'),
+        onSpeed: () => taps.add('speed'),
       )));
-      for (final l in ['vod_pause', 'vod_back10', 'vod_fwd10', 'vod_expand', 'vod_close_listen']) {
+      for (final l in ['vod_pause', 'vod_back10', 'vod_fwd10', 'vod_expand', 'vod_close_listen', 'vod_speed 1×']) {
         tester.semantics.tap(find.semantics.byLabel(l));
       }
-      expect(taps, ['play', 'seek-10', 'seek10', 'expand', 'close']);
+      tester.semantics.tap(find.semantics.byLabel(RegExp(r'^Lecture, .*vod_expand$')));
+      expect(taps, ['play', 'seek-10', 'seek10', 'expand', 'close', 'speed', 'expand']);
       handle.dispose();
+    });
+
+    testWidgets('the speed chip is drawn whole at a phone width (it was cut at 390 px)', (tester) async {
+      for (final lang in ['ar', 'en']) {
+        AppConfig.lang = lang;
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(390, 844);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(layoutHost(VodListenBar(
+          title: _barStates.first.$1,
+          position: const Duration(minutes: 12, seconds: 3),
+          duration: const Duration(hours: 1, minutes: 12, seconds: 9),
+          playing: true,
+          speed: 1.5,
+          onPlayPause: () {},
+          onSeekBy: (_) {},
+          onSeekTo: (_) {},
+          onExpand: () {},
+          onClose: () {},
+          onSpeed: () {},
+        )));
+        final chip = find.text('1.5×');
+        expect(chip, findsOneWidget);
+        final para = tester.renderObject<RenderParagraph>(chip);
+        expect(para.didExceedMaxLines, isFalse, reason: '$lang: the label fits its pill');
+        expect(tester.getSize(chip).width, greaterThanOrEqualTo(para.getMaxIntrinsicWidth(double.infinity) - 0.5));
+        final close = tester.getRect(find.byIcon(Icons.close_rounded));
+        expect(close.right, lessThanOrEqualTo(390));
+        expect(close.left, greaterThanOrEqualTo(0));
+      }
+      AppConfig.lang = 'en';
+    });
+
+    testWidgets('the Audio only row never overflows', (tester) async {
+      await expectNoLayoutErrors(
+        tester,
+        () => Padding(padding: const EdgeInsets.all(16), child: VodAudioOnlyTile(onTap: () {})),
+      );
     });
 
     testWidgets('the player button never overflows', (tester) async {
@@ -500,6 +548,155 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('round 7: speed chip, OS controls, Audio only', () {
+    test('the chip steps 1× → 1.5× → 2× → 1×; a speed in between goes to the next one up', () {
+      const steps = VodListenSession.chipSpeeds;
+      expect(vodNextChipSpeed(1.0, steps), 1.5);
+      expect(vodNextChipSpeed(1.5, steps), 2.0);
+      expect(vodNextChipSpeed(2.0, steps), 1.0);
+      expect(vodNextChipSpeed(1.25, steps), 1.5);
+      expect(vodNextChipSpeed(0.75, steps), 1.0);
+      expect(vodSpeedLabel(1.0), '1×');
+      expect(vodSpeedLabel(1.5), '1.5×');
+      expect(vodSpeedLabel(0.75), '0.75×');
+    });
+
+    test('the OS hears a change of state or a jump, not every tick', () {
+      final sync = VodMediaSync();
+      final t0 = DateTime(2026, 10, 31, 10);
+      const playing = VodMediaState(playing: true, position: Duration(minutes: 1), duration: Duration(minutes: 40));
+      expect(sync.needs(playing, t0), isTrue, reason: 'nothing sent yet');
+      sync.sent(playing, t0);
+      // 5 s later, 5 s further on: the OS ran its own clock
+      expect(sync.needs(const VodMediaState(playing: true, position: Duration(minutes: 1, seconds: 5), duration: Duration(minutes: 40)),
+          t0.add(const Duration(seconds: 5))), isFalse);
+      // a seek
+      expect(sync.needs(const VodMediaState(playing: true, position: Duration(minutes: 9), duration: Duration(minutes: 40)),
+          t0.add(const Duration(seconds: 5))), isTrue);
+      // paused
+      expect(sync.needs(const VodMediaState(playing: false, position: Duration(minutes: 1, seconds: 5), duration: Duration(minutes: 40)),
+          t0.add(const Duration(seconds: 5))), isTrue);
+      // the speed: at 2× the clock runs twice as fast
+      sync.sent(const VodMediaState(playing: true, position: Duration.zero, duration: Duration(minutes: 40), speed: 2), t0);
+      expect(sync.needs(const VodMediaState(playing: true, position: Duration(seconds: 20), duration: Duration(minutes: 40), speed: 2),
+          t0.add(const Duration(seconds: 10))), isFalse);
+      // the slow re-sync
+      expect(sync.needs(const VodMediaState(playing: true, position: Duration(seconds: 62), duration: Duration(minutes: 40), speed: 2),
+          t0.add(const Duration(seconds: 31))), isTrue);
+      expect(vodMediaCommandOf('pause'), VodMediaCommand.pause);
+      expect(vodMediaCommandOf('nonsense'), isNull);
+    });
+
+    testWidgets('the bar starts the OS controls, obeys their commands and stops them on close', (tester) async {
+      const ch = MethodChannel('com.example.flutter_education_app/vod_media');
+      final calls = <String>[];
+      final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(ch, (c) async {
+        calls.add(c.method);
+        return true;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(ch, null));
+      Future<void> command(String cmd, [int? ms]) async {
+        await messenger.handlePlatformMessage(
+          ch.name,
+          const StandardMethodCodec().encodeMethodCall(MethodCall('command', {'cmd': cmd, 'ms': ?ms})),
+          (_) {},
+        );
+      }
+
+      final m = _lecture();
+      final vc = FakeVc(at: const Duration(minutes: 2), playing: true);
+      final s = VodListenSession.instance;
+      s.start(VodListenHandoff(controller: vc, material: m, current: m, variant: m.audioVariants.first), play: true);
+      await tester.pump();
+      expect(calls, contains('start'));
+
+      await command('pause');
+      expect(vc.value.isPlaying, isFalse);
+      await command('play');
+      expect(vc.value.isPlaying, isTrue);
+      await command('forward');
+      expect(vc.value.position, const Duration(minutes: 2, seconds: 10));
+      await command('back');
+      expect(vc.value.position, const Duration(minutes: 2));
+      await command('seek', const Duration(minutes: 30).inMilliseconds);
+      expect(vc.value.position, const Duration(minutes: 30));
+
+      s.cycleSpeed();
+      expect(s.handoff!.speed, 1.5);
+      expect(vc.value.playbackSpeed, 1.5);
+      expect(calls, contains('update'));
+
+      await command('stop');
+      await tester.pump();
+      expect(s.active, isFalse);
+      expect(vc.disposed, isTrue);
+      expect(calls.last, 'stop');
+    });
+
+    testWidgets('the quality sheet\'s "Audio only" closes the player into the bar, same controller, same place',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS; // no Android PiP timer in tests
+      VodListenLayer.debugSignedIn = (_) => true;
+      AppConfig.lang = 'en';
+      try {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(390, 844);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final key = GlobalKey<NavigatorState>();
+        await tester.pumpWidget(ThemeConfigScope(
+          provider: ThemeConfigProvider(api: ApiClient()),
+          child: MaterialApp(
+            navigatorKey: key,
+            builder: (context, child) => VodListenLayer(navigatorKey: key, child: child!),
+            home: Scaffold(
+              appBar: AppBar(title: const Text('Courses home')),
+              body: Builder(
+                builder: (context) => Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                        builder: (_) => VideoPlayerScreen(material: _lecture(audio: false), resume: _fresh()))),
+                    child: const Text('open lecture'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ));
+        await tester.tap(find.text('open lecture'));
+        for (var i = 0; i < 10; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        final vc = _lastFresh!;
+        await vc.seekTo(const Duration(minutes: 7));
+        await tester.tap(find.byIcon(Icons.hd_rounded));
+        for (var i = 0; i < 10; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        expect(find.byType(VodAudioOnlyTile), findsOneWidget);
+        await tester.ensureVisible(find.byType(VodAudioOnlyTile));
+        await tester.tap(find.byType(VodAudioOnlyTile));
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        expect(find.byType(VideoPlayerScreen), findsNothing, reason: 'the player page closed');
+        expect(find.byType(VodAudioOnlyTile), findsNothing, reason: 'the sheet closed too');
+        expect(find.byType(VodListenBar), findsOneWidget);
+        expect(find.text('Courses home'), findsOneWidget);
+        expect(VodListenSession.instance.handoff!.controller, same(vc));
+        expect(vc.value.position, const Duration(minutes: 7));
+        expect(vc.value.isPlaying, isTrue);
+        await VodListenSession.instance.stop();
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 1));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+        VodListenLayer.debugSignedIn = null;
+      }
     });
   });
 }

@@ -1,12 +1,14 @@
-// The listen-only bar (D-104): a slim strip pinned to the top of the app while a lecture plays as sound. Plain values
-// only, so the layout harness and the visual renders can pump it; VodListenLayer feeds it from the session.
+// The listen-only bar (D-104): a slim strip pinned to the top of the app while a lecture plays as sound, drawn like
+// WhatsApp's voice-note bar. Plain values only, so the layout harness and the visual renders can pump it;
+// VodListenLayer feeds it from the session.
 //
-//   [art] Title of the lecture ……………………  [-10] (▶) [+10]  [⤢] [×]
-//         ≋ Listening · 12:03 / 45:10 · 1.5×
-//   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  progress line (drag or tap to move; the thumb shows while dragging)
+//   (▶)  Title of the lecture ……………………   [1.5×]  [×]          tap the title → back to the video
+//        ≋ Listening · 12:03 / 45:10
+//   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  progress line (drag or tap to move; the thumb shows while dragging)
 //
-// Under 520 px the art tile and the word "Listening" go (the equalizer says it), under 360 px the ±10 s buttons
-// go (the line still seeks). The transport group and the line stay left-to-right in Arabic, like the full player.
+// The speed chip steps 1× → 1.5× → 2× and is its own fixed box, so it is never cut. From 600 px the ±10 s buttons
+// and an explicit "back to the video" button come back; under 520 px the word "Listening" goes (the equalizer says
+// it). The progress line stays left-to-right in Arabic, like the full player.
 library;
 
 import 'dart:math' as math;
@@ -34,6 +36,7 @@ class VodListenBar extends StatefulWidget {
     required this.onSeekTo,
     required this.onExpand,
     required this.onClose,
+    this.onSpeed,
   });
 
   /// Height below the status bar.
@@ -50,6 +53,9 @@ class VodListenBar extends StatefulWidget {
   final bool busy;
   final double speed;
   final VoidCallback onPlayPause, onExpand, onClose;
+
+  /// The speed chip (1× → 1.5× → 2×); null draws the chip as a plain label.
+  final VoidCallback? onSpeed;
   final void Function(int seconds) onSeekBy;
   final void Function(double fraction) onSeekTo;
 
@@ -78,7 +84,6 @@ class _VodListenBarState extends State<VodListenBar> {
     final finished = vodFinished(w.position, w.duration, playing: w.playing);
     final frac = vodFraction(w.position, w.duration, dragging: _drag);
     final shown = _drag == null ? w.position : Duration(milliseconds: (frac * w.duration.inMilliseconds).round());
-    final speed = w.speed == 1.0 ? '' : '${_speedLabel(w.speed)}×';
     final time = w.duration > Duration.zero ? '${vodFmt(shown)} / ${vodFmt(w.duration)}' : vodFmt(shown);
 
     // A fixed-height strip: the text grows with the person's text size up to a point, then stays inside it.
@@ -93,79 +98,84 @@ class _VodListenBarState extends State<VodListenBar> {
             child: SizedBox(
               height: VodListenBar.height,
               child: LayoutBuilder(builder: (context, box) {
-                // Phones: the time is what matters — the word "Listening" and the art tile come back from 520 px.
-                final art = box.maxWidth >= 520;
-                final skip = box.maxWidth >= 360;
+                final wide = box.maxWidth >= 600; // ±10 s and the explicit expand button
+                final word = box.maxWidth >= 520; // the word "Listening" before the time
                 return Column(children: [
                   Expanded(
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 1080),
                         child: Padding(
-                          padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 4, 0),
+                          padding: const EdgeInsetsDirectional.fromSTEB(4, 2, 4, 0),
                           child: Row(children: [
-                            if (art) ...[
-                              _Art(playing: w.playing),
-                              const SizedBox(width: 12),
-                            ],
+                            if (wide)
+                              _BarButton(
+                                  icon: Icons.replay_10_rounded, label: 'vod_back10'.tr, onTap: () => w.onSeekBy(-10)),
+                            _PlayButton(
+                              playing: w.playing,
+                              finished: finished,
+                              busy: w.busy,
+                              onTap: w.onPlayPause,
+                            ),
+                            if (wide)
+                              _BarButton(
+                                  icon: Icons.forward_10_rounded, label: 'vod_fwd10'.tr, onTap: () => w.onSeekBy(10)),
+                            const SizedBox(width: 4),
+                            // The title and time: a tap goes back to the video (like tapping WhatsApp's bar).
                             Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(w.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
-                                  const SizedBox(height: 2),
-                                  Row(children: [
-                                    _Equalizer(playing: w.playing, color: c.primary, size: 11),
-                                    const SizedBox(width: 6),
-                                    Flexible(
-                                      child: Text.rich(
-                                        TextSpan(children: [
-                                          if (art) ...[
-                                            TextSpan(
-                                                text: 'vod_listening'.tr,
-                                                style: appText(11.5, w: FontWeight.w600, c: c.primary)),
-                                            TextSpan(text: ' · ', style: appText(11.5, w: FontWeight.w400, c: c.textLight)),
-                                          ],
-                                          // "12:03 / 45:10" reads the same way in Arabic
-                                          TextSpan(text: '$_lri$time$_pdi'),
-                                          if (speed.isNotEmpty) ...[
-                                            TextSpan(text: ' · ', style: appText(11.5, w: FontWeight.w400, c: c.textLight)),
-                                            TextSpan(text: '$_lri$speed$_pdi', style: appText(11.5, w: FontWeight.w600, c: c.primary)),
-                                          ],
+                              child: Semantics(
+                                button: true,
+                                label: '${w.title}, $time. ${'vod_expand'.tr}',
+                                excludeSemantics: true,
+                                onTap: w.onExpand,
+                                child: InkWell(
+                                  onTap: w.onExpand,
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: SizedBox(
+                                    height: 48,
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(w.title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
+                                        const SizedBox(height: 2),
+                                        Row(children: [
+                                          _Equalizer(playing: w.playing, color: c.primary, size: 11),
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text.rich(
+                                              TextSpan(children: [
+                                                if (word) ...[
+                                                  TextSpan(
+                                                      text: 'vod_listening'.tr,
+                                                      style: appText(11.5, w: FontWeight.w600, c: c.primary)),
+                                                  TextSpan(
+                                                      text: ' · ',
+                                                      style: appText(11.5, w: FontWeight.w400, c: c.textLight)),
+                                                ],
+                                                // "12:03 / 45:10" reads the same way in Arabic
+                                                TextSpan(text: '$_lri$time$_pdi'),
+                                              ]),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: appText(11.5, w: FontWeight.w400, c: c.textMedium)
+                                                  .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                                            ),
+                                          ),
                                         ]),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: appText(11.5, w: FontWeight.w400, c: c.textMedium)
-                                            .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-                                      ),
+                                      ],
                                     ),
-                                  ]),
-                                ],
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 4),
-                            Directionality(
-                              textDirection: TextDirection.ltr,
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                if (skip)
-                                  _BarButton(
-                                      icon: Icons.replay_10_rounded, label: 'vod_back10'.tr, onTap: () => w.onSeekBy(-10)),
-                                _PlayButton(
-                                  playing: w.playing,
-                                  finished: finished,
-                                  busy: w.busy,
-                                  onTap: w.onPlayPause,
-                                ),
-                                if (skip)
-                                  _BarButton(
-                                      icon: Icons.forward_10_rounded, label: 'vod_fwd10'.tr, onTap: () => w.onSeekBy(10)),
-                              ]),
-                            ),
-                            _BarButton(icon: Icons.open_in_full_rounded, label: 'vod_expand'.tr, onTap: w.onExpand, size: 20),
+                            _SpeedChip(speed: w.speed, onTap: w.onSpeed),
+                            if (wide)
+                              _BarButton(icon: Icons.open_in_full_rounded, label: 'vod_expand'.tr, onTap: w.onExpand, size: 20),
                             _BarButton(icon: Icons.close_rounded, label: 'vod_close_listen'.tr, onTap: w.onClose),
                           ]),
                         ),
@@ -193,28 +203,54 @@ class _VodListenBarState extends State<VodListenBar> {
   // Left-to-right isolate around the clock, so "12:03 / 45:10" is not reordered inside Arabic text.
   static final _lri = String.fromCharCode(0x2066);
   static final _pdi = String.fromCharCode(0x2069);
-
-  static String _speedLabel(double s) => s == s.roundToDouble() ? s.toStringAsFixed(0) : '$s';
 }
 
 // ── Parts ───────────────────────────────────────────────────────────────────
 
-class _Art extends StatelessWidget {
-  const _Art({required this.playing});
-  final bool playing;
+/// The speed as a small pill ("1×", "1.5×") in a 48 px target — a fixed box of its own, never cut by the title.
+class _SpeedChip extends StatelessWidget {
+  const _SpeedChip({required this.speed, this.onTap});
+  final double speed;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(11),
-        color: c.primaryTint,
-        border: Border.all(color: c.primary.withValues(alpha: 0.22)),
+    final on = speed != 1.0;
+    final label = vodSpeedLabel(speed);
+    return Semantics(
+      button: onTap != null,
+      label: '${'vod_speed'.tr} $label',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: SizedBox(
+        height: 48,
+        child: InkResponse(
+          onTap: onTap,
+          radius: 26,
+          child: Center(
+            child: Container(
+              height: 26,
+              constraints: const BoxConstraints(minWidth: 42),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(13),
+                color: on ? c.primary : c.primaryTint,
+                border: Border.all(color: c.primary.withValues(alpha: on ? 1 : 0.3)),
+              ),
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                textDirection: TextDirection.ltr,
+                style: appText(12, w: FontWeight.w700, c: on ? c.onHero : c.primary)
+                    .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+              ),
+            ),
+          ),
+        ),
       ),
-      child: Icon(Icons.headphones_rounded, size: 19, color: c.primary),
     );
   }
 }

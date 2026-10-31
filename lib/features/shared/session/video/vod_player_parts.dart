@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../design/app_kit.dart';
 import '../../../admin/admin_common.dart' show t;
@@ -459,6 +460,18 @@ double vodFraction(Duration position, Duration total, {double? dragging}) {
 bool vodFinished(Duration position, Duration total, {required bool playing}) =>
     !playing && total > Duration.zero && position >= total - const Duration(milliseconds: 300);
 
+/// The listen bar's speed chip: the next of [steps] after [current] (a speed between two steps goes to the next one
+/// above it; past the last one, back to the first).
+double vodNextChipSpeed(double current, List<double> steps) {
+  for (final s in steps) {
+    if (s > current + 0.001) return s;
+  }
+  return steps.first;
+}
+
+/// "1×", "1.5×", "0.75×" — the speed as the bar's chip shows it.
+String vodSpeedLabel(double s) => '${s == s.roundToDouble() ? s.toStringAsFixed(0) : s.toString()}×';
+
 /// Opens a picker sheet (quality, speed, …) over the player and returns what was picked (null when dismissed).
 ///
 /// The sheet is closed with ITS OWN context. Inside a role shell (D-081) a bottom sheet goes to the ROOT navigator
@@ -519,6 +532,62 @@ class VodListenButton extends StatelessWidget {
                 ]),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// What the quality sheet answers for its "Audio only" row.
+const Object vodAudioOnlyChoice = #vodAudioOnly;
+
+/// The quality sheet's last row: "Audio only — close the video and keep listening (also in the background)".
+class VodAudioOnlyTile extends StatelessWidget {
+  const VodAudioOnlyTile({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: '${'vod_audio_only_title'.tr}. ${'vod_audio_only_sub'.tr}',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Material(
+        color: c.accent2.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          key: const ValueKey('vod_audio_only'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: c.accent2.withValues(alpha: 0.35)),
+            ),
+            child: Row(children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: c.accent2.withValues(alpha: 0.15)),
+                child: Icon(Icons.headphones_rounded, size: 18, color: c.accent2),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text('vod_audio_only_title'.tr, style: appText(13, w: FontWeight.w600, c: c.textDark)),
+                  const SizedBox(height: 2),
+                  Text('vod_audio_only_sub'.tr, style: appText(11, w: FontWeight.w400, c: c.textLight)),
+                ]),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.arrow_forward_rounded, size: 18, color: c.accent2),
+            ]),
           ),
         ),
       ),
