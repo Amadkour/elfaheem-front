@@ -2,10 +2,14 @@
 // `attention_changed` (only the other reviewers are), and the route-pop refresh is throttled to one per 15 s. After
 // a successful decision call the app now reloads the badge counts itself (lib/core/attention/decision_refresh.dart →
 // AttentionService.onDecision), and the review lists' own badges drop the moment the server said yes.
+import 'dart:async';
+
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/attention/decision_refresh.dart';
+import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/features/admin/enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -181,6 +185,83 @@ void main() {
       expect(p.total, 0);
       expect(p.items, isEmpty);
     });
+  });
+
+  // "the badge drops but the home still shows the old number": the home counters (teacher `pending`, the shared
+  // /me/home, the admin overview) skipped a reload that came less than 5 s after the last one — approve, go back
+  // and the home kept the decided request.
+  test('teacher home: the pending counters reload right after a decision, even inside the 5 s window', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+    mockRequestPlugins();
+    DecisionRefresh.enabled = true;
+    var waiting = 3;
+    final fake = FakeApi({
+      'GET /api/v1/teacher/dashboard': (_) => {
+            'stats': {},
+            'courses': [],
+            'schedule': [],
+            'pending': {'enrollment_requests': waiting},
+          },
+      'POST /api/v1/payments/transfers/7/approve': (_) {
+        waiting--;
+        return {'ok': true};
+      },
+    }, latency: Duration.zero);
+    fake.install();
+    addTearDown(fake.uninstall);
+    final p = TeacherHomeProvider();
+    addTearDown(p.dispose);
+    await p.init();
+    expect(p.pending['enrollment_requests'], 3);
+    int reads() => fake.calls.where((c) => c.key == 'GET /api/v1/teacher/dashboard').length;
+    final before = reads();
+
+    // another reviewer's change right after the load: throttled
+    LiveEvents.instance.emit(LiveEvents.attentionChanged, {'tab': null});
+    await _settle(const Duration(milliseconds: 50));
+    expect(reads(), before);
+
+    await ApiClient().post('/api/v1/payments/transfers/7/approve', body: {});
+    await _until(() => p.pending['enrollment_requests'] == 2);
+    expect(p.pending['enrollment_requests'], 2, reason: '${fake.calls}');
+  });
+
+  test('/me/home: a decision always reloads, and once more after a load that was already running', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    var fetches = 0;
+    final gates = <Completer<void>>[];
+    final home = MeHomeService(
+      fetch: (path, {query}) async {
+        fetches++;
+        final g = Completer<void>();
+        gates.add(g);
+        await g.future;
+        return <String, dynamic>{'role': 'teacher'};
+      },
+      token: () async => 't',
+      scope: () => const {'scope': 'personal'},
+    );
+    final first = home.refresh();
+    await _settle(const Duration(milliseconds: 20));
+    expect(fetches, 1);
+    LiveEvent decision() => LiveEvent(LiveEvents.attentionChanged, {'tab': null, 'local': DecisionRefresh.marker});
+    home.onAttentionEvent(decision()); // decided while the first load (asked before it) is still running
+    await _settle(const Duration(milliseconds: 20));
+    expect(fetches, 1, reason: 'not two at once');
+    gates.first.complete();
+    await first;
+    await _settle(const Duration(milliseconds: 20));
+    expect(fetches, 2, reason: 'the load that may still count the decided item is followed by a fresh one');
+    gates[1].complete();
+    await _settle(const Duration(milliseconds: 20));
+    home.onAttentionEvent(LiveEvent(LiveEvents.attentionChanged, {'tab': null})); // someone else, < 5 s later
+    await _settle(const Duration(milliseconds: 20));
+    expect(fetches, 2, reason: 'other events stay throttled');
+    home.onAttentionEvent(decision()); // a decision of mine, < 5 s later
+    await _settle(const Duration(milliseconds: 20));
+    expect(fetches, 3);
+    gates[2].complete();
   });
 
   test('device-switch requests: the profile badge (pendingCount) drops on a successful decision', () async {

@@ -48,6 +48,7 @@ import '../../utils/live_events.dart';
 import '../api_client.dart';
 import '../app_mode.dart';
 import '../app_time.dart';
+import '../attention/decision_refresh.dart';
 import '../offline/app_connectivity.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -683,7 +684,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     if (_wired) return;
     _wired = true;
     WidgetsBinding.instance.addObserver(this);
-    _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged}, (_) => _quietRefresh());
+    _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged}, _quietRefresh);
     _liveRooms = LiveEvents.instance.listen({LiveEvents.sessionLive, LiveEvents.meetingLive}, onLiveRoomEvent);
     AppConnectivity.instance.online.addListener(_onConnectivity);
     AppModeController.instance.addListener(onScopeChanged);
@@ -745,11 +746,22 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     refresh();
   }
 
-  /// Events can burst (several `*_updated` in a row): at most one reload per 5 s.
-  void _quietRefresh() {
+  /// Events can burst (several `*_updated` in a row): at most one reload per 5 s — except a decision made on this
+  /// device (DecisionRefresh: approve / reject …), which always reloads, and once more after a load that was already
+  /// running (it was asked before the decision, so it may still count the decided item).
+  @visibleForTesting
+  void onAttentionEvent(LiveEvent e) => _quietRefresh(e);
+
+  void _quietRefresh(LiveEvent e) {
     final now = _clock();
-    if (_lastQuiet != null && now.difference(_lastQuiet!) < const Duration(seconds: 5)) return;
+    final mine = DecisionRefresh.isLocal(e);
+    if (!mine && _lastQuiet != null && now.difference(_lastQuiet!) < const Duration(seconds: 5)) return;
     _lastQuiet = now;
+    final running = _running;
+    if (mine && running != null) {
+      running.whenComplete(refresh);
+      return;
+    }
     refresh();
   }
 

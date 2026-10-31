@@ -23,6 +23,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
+import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
@@ -121,7 +122,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     super.initState();
     _live = LiveEvents.instance.listen({LiveEvents.complaints, LiveEvents.attentionChanged}, (e) {
       if (!mounted || !_isAdmin) return;
-      if (e.type == LiveEvents.complaints || e.relatedType == 'complaint') _complaints.refreshCount();
+      // a decision on this device (DecisionRefresh) may have been a complaint status / reply
+      if (e.type == LiveEvents.complaints || e.relatedType == 'complaint' || DecisionRefresh.isLocal(e)) {
+        _complaints.refreshCount();
+      }
     });
 
     // ── tabs 0-3: same in every layout ─────────────────────────────────

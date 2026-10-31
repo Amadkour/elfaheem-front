@@ -16,6 +16,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart';
@@ -109,7 +110,7 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _sub = LiveEvents.instance.listen(
       {LiveEvents.attentionChanged, LiveEvents.transfers, LiveEvents.payouts, LiveEvents.payments},
-      (_) => _reloadQuietly(),
+      (e) => _reloadQuietly(decision: DecisionRefresh.isLocal(e)),
     );
   }
 
@@ -125,9 +126,9 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) _reloadQuietly();
   }
 
-  void _reloadQuietly() {
+  void _reloadQuietly({bool decision = false}) {
     if (!mounted) return;
-    context.read<AdminOverviewProvider>().load(quiet: true);
+    context.read<AdminOverviewProvider>().load(quiet: true, decision: decision);
     context.read<AdminPendingPayoutsProvider>().refresh();
     _loadAssistant();
   }

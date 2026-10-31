@@ -38,6 +38,7 @@ import 'dart:async';
 
 import '../../../core/api_client.dart';
 import '../../../core/app_mode.dart';
+import '../../../core/attention/decision_refresh.dart';
 import '../../../core/base_provider.dart';
 import '../../../core/home/me_home.dart' show MeHomeService, MeLiveRoom, liveRoomsAfterEvent;
 import '../../../utils/live_events.dart';
@@ -119,6 +120,42 @@ class TeacherHomeProvider extends BaseProvider {
 
   void _wireLive() {
     _liveSub ??= LiveEvents.instance.listen({LiveEvents.meetingLive, LiveEvents.sessionLive}, onLiveRoomEvent);
+    _attentionSub ??= LiveEvents.instance.listen({LiveEvents.attentionChanged}, onAttentionEvent);
+  }
+
+  // ── Pending counters after a decision ──
+  // Approving / rejecting (an enrollment request, a transfer receipt, a device request …) changes `pending`: a
+  // decision made on this device (DecisionRefresh) reloads the dashboard quietly at once, and once more after a
+  // reload already running (asked before the decision, it may still count the decided item); another reviewer's
+  // `attention_changed` reloads at most once per 5 s.
+  StreamSubscription<LiveEvent>? _attentionSub;
+  DateTime? _lastAttention;
+  Future<void>? _quietRun;
+  bool _quietAgain = false;
+
+  /// An `attention_changed` event (public for tests).
+  void onAttentionEvent(LiveEvent e) {
+    if (!_loaded) return;
+    final now = DateTime.now();
+    if (!DecisionRefresh.isLocal(e) && _lastAttention != null && now.difference(_lastAttention!) < const Duration(seconds: 5)) {
+      return;
+    }
+    _lastAttention = now;
+    _reloadQuietly();
+  }
+
+  void _reloadQuietly() {
+    if (_quietRun != null) {
+      _quietAgain = true;
+      return;
+    }
+    _quietRun = _fetchDashboard(silent: true).whenComplete(() {
+      _quietRun = null;
+      if (_quietAgain) {
+        _quietAgain = false;
+        _reloadQuietly();
+      }
+    });
   }
 
   /// A room went live / ended (public for tests).
@@ -145,6 +182,7 @@ class TeacherHomeProvider extends BaseProvider {
   @override
   void dispose() {
     _liveSub?.cancel();
+    _attentionSub?.cancel();
     AppModeController.instance.removeListener(_onMode);
     super.dispose();
   }

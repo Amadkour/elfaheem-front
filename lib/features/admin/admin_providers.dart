@@ -232,9 +232,13 @@ class AdminOverviewProvider extends AdminBase {
 
   /// Loads GET /admin/overview. [quiet]: keep the current numbers on screen (no skeleton) and skip the call when
   /// one finished less than 5 s ago (resume · attention_changed · silent pushes may fire together).
-  Future<void> load({bool quiet = false}) {
-    if (quiet && _loadedAt != null && DateTime.now().difference(_loadedAt!) < const Duration(seconds: 5)) {
-      return _running ?? Future.value();
+  /// [decision]: a decision made on this device (DecisionRefresh) — always reloads, and once more after a load
+  /// that was already running (asked before the decision, it may still count the decided item).
+  Future<void> load({bool quiet = false, bool decision = false}) {
+    final running = _running;
+    if (decision && running != null) return running.whenComplete(() => load(quiet: true));
+    if (!decision && quiet && _loadedAt != null && DateTime.now().difference(_loadedAt!) < const Duration(seconds: 5)) {
+      return running ?? Future.value();
     }
     return _running ??= _load(quiet: quiet).whenComplete(() => _running = null);
   }
