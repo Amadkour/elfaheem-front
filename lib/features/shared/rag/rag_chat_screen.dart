@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -38,14 +39,32 @@ import 'package:flutter_education_app/design/app_icons.dart';
 export 'rag_chat_sessions.dart';
 
 class RagChatScreen extends StatefulWidget {
-  const RagChatScreen({super.key, this.orgId, this.courseId, this.app = false, this.title, this.conversationId});
+  const RagChatScreen(
+      {super.key,
+      this.orgId,
+      this.courseId,
+      this.app = false,
+      this.title,
+      this.conversationId,
+      this.resumeLatest = true,
+      this.draft,
+      this.onClosed});
   final int? orgId;
   final int? courseId;
   final bool app;
   final String? title;
 
-  /// The conversation to open (the pop-up's current one when it expands); null = the latest.
+  /// The conversation to open (the pop-up's current one when it expands); null = the latest if [resumeLatest], else
+  /// a new chat (the pop-up expanding on a new chat passes false: the new chat stays new).
   final int? conversationId;
+  final bool resumeLatest;
+
+  /// Typed into the box, not sent (the pop-up's unsent question when it expands).
+  final String? draft;
+
+  /// The page is leaving: the conversation it ended on (null = a new chat) and the unsent text in its box — the
+  /// pop-up picks both up again.
+  final void Function(int? conversationId, String draft)? onClosed;
 
   @override
   State<RagChatScreen> createState() => _RagChatScreenState();
@@ -55,9 +74,25 @@ class _RagChatScreenState extends State<RagChatScreen> {
   final _chat = GlobalKey<RagChatViewState>();
   bool _manager = false; // library managers get the Library action (from the documents list: manager: true)
   bool _sessions = false; // the server has chat sessions: New chat + Chats actions
+  bool _closed = false;
 
   @override
   Widget build(BuildContext context) {
+    final page = _page(context);
+    if (widget.onClosed == null) return page;
+    // read while the chat is still mounted (its state is gone by the time this page is disposed)
+    return PopScope<Object?>(
+      onPopInvokedWithResult: (didPop, _) {
+        final chat = _chat.currentState;
+        if (!didPop || _closed || chat == null) return;
+        _closed = true;
+        widget.onClosed!(chat.conversationId, chat.draftText);
+      },
+      child: page,
+    );
+  }
+
+  Widget _page(BuildContext context) {
     return BasePage(
       key: const ValueKey('rag.assistant'),
       appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
@@ -79,6 +114,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
           courseId: widget.courseId,
           app: widget.app,
           initialConversationId: widget.conversationId,
+          resumeLatest: widget.resumeLatest,
+          initialDraft: widget.draft,
           onSessionsSupported: (s) {
             if (s != _sessions) setState(() => _sessions = s);
           },
@@ -107,6 +144,7 @@ class RagChatView extends StatefulWidget {
     this.onSessionsSupported,
     this.onNavigate,
     this.learning,
+    this.initialDraft,
   });
   final int? orgId;
   final int? courseId;
@@ -137,6 +175,9 @@ class RagChatView extends StatefulWidget {
 
   /// Track F: the vote with its reason and the implicit signals (citation opened, deep link, contact support).
   final LearningSignals? learning;
+
+  /// Typed into the box at the start, not sent (the pop-up's unsent question when it expands to the full page).
+  final String? initialDraft;
 
   @override
   State<RagChatView> createState() => RagChatViewState();
@@ -180,9 +221,52 @@ class RagChatViewState extends State<RagChatView> {
   /// The open conversation's id (null = a new chat).
   int? get conversationId => _current?.id;
 
+  /// The unsent text in the box.
+  String get draftText => _input.text;
+
+  /// Takes the unsent text out of the box (the pop-up expanding hands it to the full page).
+  String takeDraft() {
+    final text = _input.text;
+    if (text.isNotEmpty) _input.clear();
+    return text;
+  }
+
+  /// Back from the full page (the pop-up): shows the conversation the page ended on ([conversationId], null = a new
+  /// chat) with its latest messages, and puts the page's unsent [draft] back in the box. Counts as picked by the
+  /// person (never swapped for a new chat by itself, N6).
+  Future<void> resumeFrom(int? conversationId, String draft) async {
+    if (!mounted) return;
+    _setDraft(draft);
+    if (_sessions != true) {
+      if (_sessions == false) await _history();
+      return;
+    }
+    await _loadConversations();
+    if (!mounted) return;
+    final c = conversationId == null ? null : _convs.where((x) => x.id == conversationId).firstOrNull;
+    if (c == null) {
+      newChat();
+    } else {
+      await openConversation(c);
+    }
+  }
+
+  void _setDraft(String text) {
+    if (text == _input.text) return;
+    setState(() {
+      _input.text = text;
+      _input.selection = TextSelection.collapsed(offset: text.length);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    final draft = widget.initialDraft;
+    if (draft != null && draft.isNotEmpty) {
+      _input.text = draft;
+      _input.selection = TextSelection.collapsed(offset: draft.length);
+    }
     _boot();
     _loadStarters();
     if (widget.onManager != null) _checkManager();
@@ -304,6 +388,7 @@ class RagChatViewState extends State<RagChatView> {
     // questions instead; the conversation stays under Chats
     if (resumed && r.ok && ragOpensOnFailure(_items, DateTime.now().toUtc(), askedAt: c.lastAt)) {
       newChat();
+      _noticeSwapped();
       return;
     }
     _followUnfinished();
@@ -328,6 +413,7 @@ class RagChatViewState extends State<RagChatView> {
   }
 
   Future<void> _follow(int id, Duration timeout) async {
+    final clock = Stopwatch()..start();
     final r = await _api.waitFor(id, timeout: timeout, onUpdate: (a) {
       if (!mounted) return;
       final i = _items.indexWhere((x) => x.id == a.id);
@@ -339,18 +425,20 @@ class RagChatViewState extends State<RagChatView> {
     final i = _items.indexWhere((x) => x.id == id);
     if (i < 0) return;
     setState(() {
-      final a = r.ok ? RagAnswer.fromJson(r.map) : null;
-      if (a != null) _items[i] = a;
-      if (a == null || !a.done) _stalled.add(id);
+      if (r.ok) _items[i] = RagAnswer.fromJson(r.map);
+      // given up on only when it is really past its patience (or gone): a passing poll failure is not a failure
+      if (ragGivesUp(_items[i], r, DateTime.now().toUtc(), timedOut: clock.elapsed >= timeout)) _stalled.add(id);
     });
     // N6: a reopened question that gave up before the person did anything is not what the assistant opens on
     if (_untouched && _items.last.id == id) _startFreshIfFailed();
   }
 
-  /// The pop-up was opened again (N6): a chat that ends on a failure gives way to a new chat with the starter
-  /// questions (it stays under Chats); nothing changes while a question is being sent or the chat is loading.
+  /// The pop-up was opened again (N6): a chat the assistant opened BY ITSELF (the latest conversation, never touched
+  /// since) that ends on a failure gives way to a new chat with the starter questions (it stays under Chats). A chat
+  /// the person started, asked in or picked stays as it is, its failed answer with Retry; nothing changes while a
+  /// question is being sent or the chat is loading.
   void reopened() {
-    if (!mounted || _sending || _loading) return;
+    if (!mounted || _sending || _loading || !_untouched) return;
     _startFreshIfFailed();
   }
 
@@ -359,9 +447,19 @@ class RagChatViewState extends State<RagChatView> {
     if (!ragShowsFailure(shown, _stalled)) return;
     if (_sessions == true) {
       newChat();
+      _noticeSwapped();
     } else {
       setState(() => _hiddenBefore = _items.length); // an older server: folded behind "Earlier questions"
     }
+  }
+
+  /// After a swap for a new chat (N6): the person is told where the previous chat went, with Chats one tap away.
+  /// Only while the chat is on screen (a closed pop-up keeps its tickers off): a notice about a hidden chat would
+  /// make no sense.
+  void _noticeSwapped() {
+    if (!mounted || !TickerMode.getValuesNotifier(context).value.enabled) return;
+    showAppNotice(t('محادثتك السابقة محفوظة في «المحادثات»', 'Your previous chat is saved under Chats'),
+        icon: Icons.history_rounded, actionLabel: 'rag_chats'.tr, onAction: showSessions);
   }
 
   /// Retry on a stalled answer: the same question again, as a new one.
@@ -560,12 +658,16 @@ class RagChatViewState extends State<RagChatView> {
     }
     _input.clear();
     final pending = RagAnswer.fromJson(r.map);
-    if (_current?.id != conversation?.id) return; // the person moved to another chat meanwhile
+    if (_current?.id != conversation?.id) {
+      setState(() => _sending = false); // the person moved to another chat meanwhile (the question is in the other)
+      return;
+    }
     setState(() {
       _items.add(pending);
       _touchCurrent();
     });
     _toEnd();
+    final clock = Stopwatch()..start();
     final done = await _api.waitFor(pending.id, onUpdate: (a) {
       if (!mounted) return;
       final i = _items.indexWhere((x) => x.id == a.id);
@@ -579,8 +681,10 @@ class RagChatViewState extends State<RagChatView> {
       _sending = false;
       final i = _items.indexWhere((a) => a.id == pending.id);
       if (done.ok && i >= 0) _items[i] = RagAnswer.fromJson(done.map);
-      // no answer in time (or the polling failed): the card turns into a calm error with Retry (M16)
-      if (!done.ok || !RagAnswer.fromJson(done.map).done) _stalled.add(pending.id);
+      // no answer within its patience (or the question is gone): the card turns into a calm error with Retry (M16);
+      // a poll that failed in passing on the way never does
+      final now = DateTime.now().toUtc();
+      if (ragGivesUp(i >= 0 ? _items[i] : pending, done, now, timedOut: clock.elapsed >= ragAnswerPatience)) _stalled.add(pending.id);
     });
     _toEnd();
   }
@@ -661,7 +765,8 @@ class RagChatViewState extends State<RagChatView> {
     final hidden = _hiddenBefore.clamp(0, _items.length);
     final visible = hidden == 0 ? _items : _items.sublist(hidden);
     final last = visible.isEmpty ? null : visible.last;
-    final retention = _sessions == true && !_loading && _items.isEmpty ? retentionText(_retentionDays, AppConfig.lang) : '';
+    // no retention notice on the empty chat: "chats are deleted after N days" on a chat just started read as "this new
+    // chat gets deleted"; the Chats list (RagSessionsPanel) keeps it at its foot
     return Column(children: [
       Expanded(
         child: ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(side, 8, side, 16), children: [
@@ -689,10 +794,6 @@ class RagChatViewState extends State<RagChatView> {
                 compact: widget.compact,
                 onNewChat: _sessions == true && _current != null ? newChat : null,
                 onChats: _sessions == true && _convs.isNotEmpty ? showSessions : null),
-          if (retention.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            AppBanner(icon: Icons.auto_delete_outlined, color: c.textMedium, text: retention),
-          ],
           if (_hasMore)
             Align(
               alignment: Alignment.center,

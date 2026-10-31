@@ -6,7 +6,8 @@
 // Pure parts (unit-tested): [RagCitation], [RagAnswer], [answerRuns] (the answer text split at its `[n]` markers),
 // [answerBlocks] (paragraphs, bullet and numbered lists, **bold** runs), [ragStageText], [ragStarterPrompts],
 // [ragCodeText], [ragChatResultText], [ragOrgBlocked], [ragAnswerChanged], [ragNextPoll], [RagDelivery],
-// [ragAnswerStalled] / [ragWaitLeft] (an answer the worker never finished: a calm error with Retry, M16).
+// [ragAnswerStalled] / [ragWaitLeft] (an answer the worker never finished: a calm error with Retry, M16),
+// [ragPollGivesUp] / [ragGivesUp] (a passing poll failure never gives up on an answer).
 //
 // Delivery telemetry: when an answer finishes after the first response, [RagApi.waitFor] tells the server once,
 // fire-and-forget, how it got it — `stream` (the fetch that found it done was woken by the live job_updated event),
@@ -286,6 +287,24 @@ Duration ragWaitLeft(RagAnswer a, DateTime nowUtc, {Duration patience = ragAnswe
   if (at == null) return patience;
   final left = patience - nowUtc.difference(at);
   return left < const Duration(seconds: 15) ? const Duration(seconds: 15) : left;
+}
+
+/// Whether a failed poll of an answer ends the wait at once: the server says the question is gone (404) or not the
+/// asker's (403), or the session is over (401: the client already tried to renew it and is sending the person to
+/// sign in). Anything else — no network, a timeout, a 5xx, a 503 `server_busy` — is passing: [RagApi.waitFor] keeps
+/// polling until its deadline (the worker may well finish the answer).
+bool ragPollGivesUp(EngineResult r) => !r.ok && (r.status == 404 || r.status == 403 || r.status == 401);
+
+/// Whether an answer still unfinished when a wait ended is given up on (drawn as a calm error with Retry, M16):
+/// [last] (the wait's result) says the question is gone or not the asker's ([ragPollGivesUp]), the wait ran to its
+/// deadline ([timedOut]: the patience the answer had was spent, by this device's clock), or the answer is past its
+/// patience by the server's clock ([ragAnswerStalled]). A passing poll failure alone never gives up on it, and a
+/// finished answer never is.
+bool ragGivesUp(RagAnswer? answer, EngineResult last, DateTime nowUtc, {required bool timedOut, Duration patience = ragAnswerPatience}) {
+  final a = last.ok ? RagAnswer.fromJson(last.map) : answer;
+  if (a != null && a.done) return false;
+  if (ragPollGivesUp(last) || timedOut) return true;
+  return a != null && ragAnswerStalled(a, nowUtc, patience: patience);
 }
 
 /// How long the latest conversation stays the one the assistant reopens by itself (N6): older than this, opening the
@@ -597,6 +616,9 @@ class RagApi {
   /// shown at once, the draft fetched) comes early; the last state otherwise (the screen keeps it as "still working"
   /// and asks again on refresh). [onUpdate] gets every poll (the stage and the draft change on the way). An answer
   /// that finishes after the first fetch is reported once ([RagDelivery], [reportDelivery]), without waiting for it.
+  /// A poll that fails in passing (no network, a 5xx, 503 `server_busy`) does not end the wait: the next one is tried
+  /// as planned until [timeout]; only [ragPollGivesUp] (404 / 403 / 401) ends it at once. The result is the last
+  /// answer read — the failure only when none was read, or when the server gave up on the question.
   Future<EngineResult> waitFor(int id, {Duration timeout = ragAnswerPatience, void Function(RagAnswer)? onUpdate}) async {
     final end = DateTime.now().add(timeout);
     final clock = Stopwatch()..start();
@@ -604,23 +626,30 @@ class RagApi {
     var every = const Duration(seconds: 1);
     var r = await query(id);
     if (r.ok) onUpdate?.call(RagAnswer.fromJson(r.map));
+    RagAnswer? read = r.ok ? RagAnswer.fromJson(r.map) : null; // the last answer read
+    Map<String, dynamic> readMap = r.ok ? r.map : const {};
     final watch = JobWatch(kind: 'rag_query', id: '$id');
     try {
-      while (r.ok && !RagAnswer.fromJson(r.map).done && DateTime.now().isBefore(end)) {
+      while (!ragPollGivesUp(r) && !(read?.done ?? false) && DateTime.now().isBefore(end)) {
         final event = await watch.next(every, fallbackEvery: waitLive);
         delivery.wake(byEvent: event != null, connected: watch.connected);
         final stage = event?.stage;
-        if (stage != null && stage.isNotEmpty) onUpdate?.call(RagAnswer.fromJson({...r.map, 'stage': stage}));
-        every = ragNextPoll(every, writing: RagAnswer.fromJson(r.map).provisional);
+        if (stage != null && stage.isNotEmpty && read != null) onUpdate?.call(RagAnswer.fromJson({...readMap, 'stage': stage}));
+        every = ragNextPoll(every, writing: read?.provisional ?? false);
         r = await query(id);
-        if (r.ok) onUpdate?.call(RagAnswer.fromJson(r.map));
+        if (r.ok) {
+          read = RagAnswer.fromJson(r.map);
+          readMap = r.map;
+          onUpdate?.call(read);
+        }
       }
     } finally {
       watch.dispose();
     }
-    final report = r.ok && RagAnswer.fromJson(r.map).done ? delivery.body(clock.elapsed) : null;
+    final report = (read?.done ?? false) ? delivery.body(clock.elapsed) : null;
     if (report != null) unawaited(reportDelivery(id, report));
-    return r;
+    if (r.ok || ragPollGivesUp(r) || read == null) return r;
+    return EngineResult.ok(readMap); // the last poll failed in passing: the answer as it was last read
   }
 
   static List<RagAnswer> items(EngineResult r) => asMapList(asMap(r.map)['items']).map(RagAnswer.fromJson).toList();

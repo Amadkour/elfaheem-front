@@ -7,7 +7,12 @@
 // value" in RenderObject.getTransformTo on the web.
 //
 // N6: opening the assistant never shows a failure first — an old latest chat, or one whose last answer failed or was
-// abandoned, opens on a new chat with the starter questions (the history stays reachable).
+// abandoned, opens on a new chat with the starter questions (the history stays reachable). Only a chat the assistant
+// opened BY ITSELF is swapped, and the person is told where it went; a chat they started, asked in or picked keeps its
+// failure with Retry. A poll that fails in passing (500 / 503) never gives up on an answer.
+//
+// The pop-up follows the open organization (its page reads the host's current scope, not the one it was built with),
+// and Full screen from a new chat stays on a new chat with the unsent question, which comes back with the pop-up.
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
@@ -18,11 +23,14 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/providers.dart';
 import 'package:flutter_education_app/design/app_keyboard.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
+import 'package:flutter_education_app/main.dart' as app show navigatorKey;
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -98,6 +106,14 @@ class _FocusBackDuringPaint extends CustomPainter {
   @override
   bool shouldRepaint(_FocusBackDuringPaint oldDelegate) => true;
 }
+
+/// Answers the calls in turn (the last one again once the list is spent).
+FakeHandler _inTurn(List<Object?> answers) {
+  var n = 0;
+  return (_) => answers[n < answers.length ? n++ : answers.length - 1];
+}
+
+const _swappedNotice = 'Your previous chat is saved under Chats';
 
 Future<void> _settle(WidgetTester tester, [int frames = 10]) async {
   for (var i = 0; i < frames; i++) {
@@ -323,6 +339,139 @@ void main() {
     await _settle(tester, 70);
   });
 
+  /// The host as in main.dart over [home], with the app's providers; the app Navigator's key is returned.
+  Future<GlobalKey<NavigatorState>> pumpHost(WidgetTester tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final nav = GlobalKey<NavigatorState>();
+    final theme = ThemeConfigProvider(api: ApiClient());
+    await ApiClient().primeSession();
+    await tester.pumpWidget(MultiProvider(
+      providers: appProviders(storage: storage, api: ApiClient()),
+      child: ThemeConfigScope(
+        provider: theme,
+        child: MaterialApp(
+          navigatorKey: nav,
+          theme: theme.materialTheme(dark: false),
+          navigatorObservers: [topRouteObserver],
+          home: _page('home'),
+          builder: (context, child) => AppKeyboardSupport(child: AppAssistantHost(navigatorKey: nav, child: child!)),
+        ),
+      ),
+    ));
+    await _settle(tester);
+    return nav;
+  }
+
+  testWidgets('Full screen from a new chat: the page stays on a new chat (not the latest) with the unsent question; '
+      'back, the pop-up gets the page\'s chat and text', (tester) async {
+    final now = DateTime.now().toUtc();
+    final api = backend({
+      'GET /api/v1/rag/conversations': (_) => _conversations(now.subtract(const Duration(minutes: 5))),
+      'GET /api/v1/rag/conversations/2/messages': (_) => {'items': [_query(2, 'done', now.subtract(const Duration(minutes: 5)))], 'has_more': false},
+    });
+    final nav = await pumpHost(tester);
+    AppAssistant.openPanel();
+    await _settle(tester, 12);
+    final popup = tester.state<RagChatViewState>(find.byType(RagChatView));
+    expect(popup.conversationId, 2, reason: 'the recent chat is resumed');
+    await tester.tap(find.byTooltip('rag_new_chat'.tr).hitTestable().first);
+    await _settle(tester, 4);
+    expect(popup.conversationId, isNull);
+    await tester.enterText(find.descendant(of: find.byType(RagChatView), matching: find.byType(TextField)), 'How do I pay?');
+    await tester.pump();
+    final opened = api.calls.where((c) => c.path.endsWith('/messages')).length;
+
+    await tester.tap(find.byTooltip('Full screen').hitTestable().first);
+    await _settle(tester, 12);
+    final pageView = find.descendant(of: find.byType(RagChatScreen), matching: find.byType(RagChatView));
+    final page = tester.state<RagChatViewState>(pageView);
+    expect(page.conversationId, isNull, reason: 'a new chat stays new: the latest conversation is not reopened');
+    expect(page.draftText, 'How do I pay?', reason: 'the unsent question moved along');
+    expect(api.calls.where((c) => c.path.endsWith('/messages')).length, opened, reason: 'no conversation was opened');
+    expect(find.descendant(of: find.byType(RagChatScreen), matching: find.byType(RagStarterPrompts)), findsOneWidget);
+    expect(popup.draftText, isEmpty, reason: 'taken out of the pop-up while the page has it');
+
+    await tester.enterText(find.descendant(of: pageView, matching: find.byType(TextField)), 'How do I pay by card?');
+    await tester.pump();
+    nav.currentState!.pop();
+    await _settle(tester, 12);
+    expect(find.byType(RagChatScreen), findsNothing);
+    expect(popup.mounted, isTrue, reason: 'the pop-up stayed mounted while closed');
+    expect(popup.draftText, 'How do I pay by card?', reason: 'the page\'s unsent text comes back');
+    expect(popup.conversationId, isNull);
+
+    await tester.pumpWidget(const SizedBox());
+    await _settle(tester, 70);
+  });
+
+  group('the pop-up follows the open organization', () {
+    final overview = {
+      'items': [
+        {'organization': {'id': 7, 'name': 'Nile', 'status': 'approved'}, 'role': 'member'},
+      ],
+    };
+    final apply = AppModeController.applyContext;
+    setUp(() {
+      AppConfig.setOrgsEnabled(true);
+      AppModeController.applyContext = (_) {};
+      AppModeController.instance.debugSet(overview, mode: AppMode.individual, orgId: 7);
+    });
+    tearDown(() {
+      AppModeController.instance.debugSet(const {}, mode: AppMode.individual);
+      AppModeController.applyContext = apply;
+    });
+
+    testWidgets('switched to Organization mode and back while the pop-up is mounted: each scope\'s chat at once', (tester) async {
+      final now = DateTime.now().toUtc();
+      final orgAsked = now.subtract(const Duration(minutes: 2));
+      backend({
+        'GET /api/v1/rag/conversations': (o) => o.uri.queryParameters['org_id'] == '7'
+            ? {
+                'items': [
+                  {
+                    'id': 9,
+                    'title': 'The organization rules',
+                    'scope': {'app': true, 'org_id': 7, 'course_id': null},
+                    'created_at': _iso(orgAsked),
+                    'last_at': _iso(orgAsked),
+                    'turns': 1,
+                  },
+                ],
+                'retention_days': 90,
+              }
+            : _conversations(now.subtract(const Duration(minutes: 5))),
+        'GET /api/v1/rag/conversations/2/messages': (_) => {'items': [_query(2, 'done', now.subtract(const Duration(minutes: 5)))], 'has_more': false},
+        'GET /api/v1/rag/conversations/9/messages': (_) => {'items': [{..._query(9, 'done', orgAsked), 'conversation_id': 9, 'org_id': 7}], 'has_more': false},
+      });
+      await pumpHost(tester);
+      AppAssistant.openPanel();
+      await _settle(tester, 12);
+      RagChatView view() => tester.widget<RagChatView>(find.byType(RagChatView));
+      RagChatViewState chat() => tester.state<RagChatViewState>(find.byType(RagChatView));
+      expect(view().orgId, isNull);
+      expect(chat().conversationId, 2);
+
+      AppModeController.instance.debugSet(overview, mode: AppMode.organization, orgId: 7);
+      await _settle(tester, 12);
+      expect(view().orgId, 7, reason: 'the pop-up follows the organization now, not when it is next rebuilt');
+      expect(find.text('About the app and Nile'), findsOneWidget);
+      expect(chat().conversationId, 9);
+
+      AppModeController.instance.debugSet(overview, mode: AppMode.individual, orgId: 7);
+      await _settle(tester, 12);
+      expect(view().orgId, isNull);
+      expect(chat().conversationId, 2, reason: 'the personal chat the person was in comes back');
+
+      await tester.pumpWidget(const SizedBox());
+      await _settle(tester, 70);
+    });
+  });
+
   group('the edge tab (R3)', () {
     test('no tab while a role shell top bar (sidebar / rail) carries the assistant button', () {
       expect(appAssistantEdgeTabShown(sideChrome: 0), isTrue, reason: 'phone bottom bar, or no shell');
@@ -334,6 +483,32 @@ void main() {
       expect(AppAssistantSpot.fallback(rtl: true, wide: true).fraction, 1.0);
       expect(AppAssistantSpot.fallback(rtl: true, wide: true).left, isTrue);
       expect(AppAssistantSpot.fallback(rtl: false).fraction, lessThan(1.0), reason: 'phones keep it above the FAB strip');
+    });
+  });
+
+  group('ragPollGivesUp / ragGivesUp', () {
+    RagAnswer a(String state, DateTime asked) => RagAnswer.fromJson(_query(1, state, asked));
+    final now = DateTime.now().toUtc();
+    test('only a 404 / 403 / 401 ends the wait; a 500, a 503 or no network is passing', () {
+      expect(ragPollGivesUp(EngineResult.fail(404, 'query_not_found', 'gone')), isTrue);
+      expect(ragPollGivesUp(EngineResult.fail(403, 'not_owner', 'no')), isTrue);
+      expect(ragPollGivesUp(EngineResult.fail(401, null, 'signed out')), isTrue);
+      expect(ragPollGivesUp(EngineResult.fail(500, null, 'boom')), isFalse);
+      expect(ragPollGivesUp(EngineResult.fail(503, 'server_busy', 'busy')), isFalse);
+      expect(ragPollGivesUp(EngineResult.fail(0, null, 'offline')), isFalse);
+      expect(ragPollGivesUp(EngineResult.ok(const {})), isFalse);
+    });
+    test('an unfinished answer is given up on only past its patience, at the deadline, or when it is gone', () {
+      final fresh = a('queued', now.subtract(const Duration(seconds: 30)));
+      final busy = EngineResult.fail(503, 'server_busy', 'busy');
+      expect(ragGivesUp(fresh, busy, now, timedOut: false), isFalse, reason: 'a passing failure');
+      expect(ragGivesUp(fresh, EngineResult.ok(_query(1, 'running', now)), now, timedOut: false), isFalse);
+      expect(ragGivesUp(fresh, busy, now, timedOut: true), isTrue, reason: 'the wait spent its patience');
+      expect(ragGivesUp(fresh, EngineResult.fail(404, null, 'gone'), now, timedOut: false), isTrue);
+      expect(ragGivesUp(a('queued', now.subtract(const Duration(minutes: 4))), busy, now, timedOut: false), isTrue,
+          reason: 'past its patience by the server clock');
+      expect(ragGivesUp(fresh, EngineResult.ok(_query(1, 'done', now)), now, timedOut: true), isFalse, reason: 'finished');
+      expect(ragGivesUp(a('done', now), busy, now, timedOut: true), isFalse);
     });
   });
 
@@ -411,35 +586,109 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('a reopened recent question that gives up at once: a new chat, not the failure (the panel, N6)', (tester) async {
+    /// Under the app's own Navigator key, where [showAppNotice] draws.
+    Future<GlobalKey<RagChatViewState>> pumpRooted(WidgetTester tester, {int? conversationId}) async {
+      final key = GlobalKey<RagChatViewState>();
+      await tester.pumpWidget(ThemeConfigScope(
+        provider: ThemeConfigProvider(api: ApiClient()),
+        child: MaterialApp(
+          navigatorKey: app.navigatorKey,
+          home: Scaffold(
+              body: SizedBox(height: 700, child: RagChatView(key: key, app: true, compact: true, initialConversationId: conversationId))),
+        ),
+      ));
+      await _settle(tester, 12);
+      return key;
+    }
+
+    testWidgets('a reopened recent question the server no longer has (404): a new chat, and a notice says where the chat went', (tester) async {
       final now = DateTime.now().toUtc();
       backend({
         'GET /api/v1/rag/conversations': (_) => _conversations(now.subtract(const Duration(seconds: 20))),
         'GET /api/v1/rag/conversations/2/messages': (_) => {'items': [_query(2, 'queued', now.subtract(const Duration(seconds: 20)))], 'has_more': false},
-        'GET /api/v1/rag/queries/2': (_) => const FakeResponse(500, {'detail': 'worker gone'}),
+        'GET /api/v1/rag/queries/2': (_) => const FakeResponse(404, {'detail': {'code': 'query_not_found', 'message': 'gone'}}),
       });
-      await pumpChat(tester);
+      final key = await pumpRooted(tester);
       expect(find.byType(RagStalledNote), findsNothing);
       expect(find.byType(RagStarterPrompts), findsOneWidget);
-      expect(find.text('rag_chats'.tr), findsOneWidget, reason: 'the chat stays under Chats');
+      expect(key.currentState!.conversationId, isNull);
+      expect(find.text('rag_chats'.tr), findsWidgets, reason: 'the chat stays under Chats');
+      expect(find.text(_swappedNotice), findsOneWidget, reason: 'the person is told where the chat went');
+      await _settle(tester, 70); // the notice times out
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('the pop-up opened again on a chat that ends on a failure: a new chat', (tester) async {
+    testWidgets('a reopened recent question whose polls fail in passing (503, 500): followed on, the answer arrives, the chat stays', (tester) async {
+      final now = DateTime.now().toUtc();
+      final api = backend({
+        'GET /api/v1/rag/conversations': (_) => _conversations(now.subtract(const Duration(seconds: 20))),
+        'GET /api/v1/rag/conversations/2/messages': (_) => {'items': [_query(2, 'queued', now.subtract(const Duration(seconds: 20)))], 'has_more': false},
+        'GET /api/v1/rag/queries/2': _inTurn([
+          const FakeResponse(503, {'detail': {'code': 'server_busy', 'message': 'busy'}}),
+          const FakeResponse(500, {'detail': 'worker hiccup'}),
+          _query(2, 'done', now.subtract(const Duration(seconds: 20))),
+        ]),
+      });
+      final key = await pumpRooted(tester);
+      await _settle(tester, 60);
+      expect(api.calls.where((c) => c.path == '/api/v1/rag/queries/2').length, greaterThanOrEqualTo(3));
+      expect(key.currentState!.conversationId, 2);
+      expect(find.byType(RagAnswerCard), findsOneWidget);
+      expect(find.byType(RagStalledNote), findsNothing, reason: 'a passing poll failure is not a failure');
+      expect(find.byType(RagStarterPrompts), findsNothing);
+      expect(find.text(_swappedNotice), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a question asked in a new chat survives a failed poll mid-answer; opening the pop-up again keeps the chat', (tester) async {
+      final now = DateTime.now().toUtc();
+      final api = backend({
+        'GET /api/v1/rag/conversations': (_) => {'items': [], 'retention_days': 90},
+        'POST /api/v1/rag/conversations': (_) => {
+              'id': 11,
+              'title': 'Explain the privacy policy',
+              'scope': {'app': true, 'org_id': null, 'course_id': null},
+              'created_at': _iso(now),
+              'last_at': _iso(now),
+              'turns': 0,
+            },
+        'POST /api/v1/rag/ask': (_) => {..._query(5, 'queued', now), 'conversation_id': 11},
+        'GET /api/v1/rag/queries/5': _inTurn([
+          {..._query(5, 'running', now), 'conversation_id': 11},
+          const FakeResponse(503, {'detail': {'code': 'server_busy', 'message': 'busy'}}),
+          {..._query(5, 'done', now), 'conversation_id': 11},
+        ]),
+      });
+      final key = await pumpRooted(tester);
+      expect(key.currentState!.conversationId, isNull, reason: 'no chat yet: a new one');
+      key.currentState!.send('Explain the privacy policy: what data do you keep about me?');
+      await _settle(tester, 60);
+      expect(api.calls.where((c) => c.path == '/api/v1/rag/queries/5').length, greaterThanOrEqualTo(3));
+      expect(key.currentState!.conversationId, 11);
+      expect(find.byType(RagAnswerCard), findsOneWidget);
+      expect(find.byType(RagStalledNote), findsNothing, reason: 'one 503 mid-answer does not mark it failed');
+      key.currentState!.reopened();
+      await _settle(tester, 4);
+      expect(key.currentState!.conversationId, 11, reason: 'the new chat is not swapped away');
+      expect(find.byType(RagAnswerCard), findsOneWidget);
+      expect(find.text(_swappedNotice), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('the pop-up opened again on a chat the person picked that ends on a failure: it stays, with Retry', (tester) async {
       final now = DateTime.now().toUtc();
       backend({
         'GET /api/v1/rag/conversations': (_) => _conversations(now.subtract(const Duration(minutes: 1))),
         'GET /api/v1/rag/conversations/2/messages': (_) => {'items': [_query(2, 'failed', now.subtract(const Duration(minutes: 1)))], 'has_more': false},
       });
-      final key = GlobalKey<RagChatViewState>();
-      // picked by the person (not reopened by itself): the failure stays while they look at it
-      await tester.pumpWidget(layoutHost(SizedBox(height: 700, child: RagChatView(key: key, app: true, compact: true, initialConversationId: 2)), scale: 1));
-      await _settle(tester, 12);
+      // picked by the person (not reopened by itself)
+      final key = await pumpRooted(tester, conversationId: 2);
       expect(find.byType(RagStarterPrompts), findsNothing);
       key.currentState!.reopened();
       await _settle(tester, 4);
-      expect(find.byType(RagStarterPrompts), findsOneWidget);
-      expect(key.currentState!.conversationId, isNull);
+      expect(find.byType(RagStarterPrompts), findsNothing, reason: 'a chat the person chose is never swapped by itself');
+      expect(key.currentState!.conversationId, 2);
+      expect(find.text(_swappedNotice), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
   });

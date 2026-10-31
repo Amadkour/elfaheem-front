@@ -317,6 +317,11 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
   bool _wasOpen = false; // the pop-up was open at the last build (a new open checks the chat it shows, N6)
   final _panelNav = GlobalKey<NavigatorState>();
 
+  /// The organization the chat follows, as of the last build. The pop-up's Navigator builds its one route once, so
+  /// its page must read this field, never a value captured when the route was made: that kept the first scope after
+  /// an Organization / Individual switch until the panel was rebuilt (and then jumped to another scope's chat).
+  (int, String)? _org;
+
   // Chat sessions (Track E.5): the current conversation per scope key (`app_assistant_<org id>`) while the host is
   // alive — a scope that was never opened resumes its latest chat; null = the person started a new chat there.
   final _conversation = <String, int?>{};
@@ -355,6 +360,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
             appAssistantEdgeTabShown(sideChrome: AppShellNav.sideChromeWidth());
         if (!available) _everOpened = false;
         final org = appAssistantOrg(isOrg: mode.isOrg, orgId: mode.currentOrgId, entry: mode.current);
+        _org = org;
         // opened again on a chat that ended on a failure: a new chat with the starter questions instead (N6)
         if (open && !_wasOpen && _everOpened) {
           final chat = _chats['app_assistant_${org?.$1}'];
@@ -369,7 +375,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
         if (open && AppAssistant.draft.value != null && !_draftScheduled) _takeDraft(org);
         return Stack(fit: StackFit.expand, children: [
           NotificationListener<ScrollNotification>(onNotification: _onScroll, child: widget.child),
-          if (allowed && _everOpened) _panel(context, open, org),
+          if (allowed && _everOpened) _panel(context, open),
           // N2: the tab, the bubble, its menu and the hide target take no keyboard focus. They leave the tree in the
           // very frame a tap opens the pop-up; on the web the browser then hands the focus back to the view, whose
           // initial-focus search measures every traversable node (FocusNode.rect) — and the tab's InkWell node, parked
@@ -533,7 +539,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
     );
   }
 
-  Widget _panel(BuildContext context, bool open, (int, String)? org) {
+  Widget _panel(BuildContext context, bool open) {
     final mq = MediaQuery.of(context);
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final screen = Size(mq.size.width, mq.size.height - mq.viewInsets.bottom);
@@ -574,13 +580,15 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
                     transitionDuration: Duration.zero,
                     reverseTransitionDuration: Duration.zero,
                     pageBuilder: (context, _, _) {
-                      // a new key per organization: the history is that organization's
+                      // a new key per organization: the history is that organization's. [_org], not a captured value:
+                      // this route is made once, its page is rebuilt with every build of the host
+                      final org = _org;
                       final scope = 'app_assistant_${org?.$1}';
                       final chat = _chats.putIfAbsent(scope, GlobalKey<RagChatViewState>.new);
                       return Column(children: [
                         AppAssistantHeader(
                             onClose: _close,
-                            onExpand: () => _expand(org),
+                            onExpand: _expand,
                             orgName: org?.$2,
                             onNewChat: _sessions ? () => chat.currentState?.newChat() : null,
                             onChats: _sessions ? () => chat.currentState?.showSessions() : null),
@@ -646,16 +654,29 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
   }
 
   /// Full screen: the same chat as a page, on the pop-up's current conversation (its messages come back from the
-  /// server).
-  void _expand((int, String)? org) {
-    _close();
+  /// server) — or on a NEW chat when the pop-up is on one (never the latest conversation instead), with the unsent
+  /// question moved along. Back from the page, the pop-up follows the conversation the page ended on and gets the
+  /// page's unsent text back.
+  void _expand() {
+    final org = _org;
     final scope = 'app_assistant_${org?.$1}';
+    final chat = _chats[scope]?.currentState;
+    final id = chat != null ? chat.conversationId : _conversation[scope];
+    final draft = chat?.takeDraft() ?? '';
+    _close();
     widget.navigatorKey.currentState?.push(MaterialPageRoute(
         builder: (_) => RagChatScreen(
             app: true,
             orgId: org?.$1,
-            conversationId: _chats[scope]?.currentState?.conversationId ?? _conversation[scope],
-            title: org == null ? null : t('مساعد التطبيق · ${org.$2}', 'App assistant · ${org.$2}'))));
+            conversationId: id,
+            resumeLatest: id != null,
+            draft: draft,
+            title: org == null ? null : t('مساعد التطبيق · ${org.$2}', 'App assistant · ${org.$2}'),
+            onClosed: (conversationId, text) {
+              if (!mounted) return;
+              _conversation[scope] = conversationId;
+              _chats[scope]?.currentState?.resumeFrom(conversationId, text);
+            })));
   }
 }
 

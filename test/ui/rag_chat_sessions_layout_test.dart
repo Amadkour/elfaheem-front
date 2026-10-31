@@ -1,6 +1,6 @@
 // Layout smoke for the chat sessions widgets (lib/features/shared/rag/rag_chat_sessions.dart, rag_chat_screen.dart):
 // the conversations panel and its rows (current, long titles, no meta), the empty panel with the retention notice,
-// the empty chat with the New chat button and the retention banner, the thumbs-down comment sheet, the rename
+// the empty chat with the New chat button (no retention banner there), the thumbs-down comment sheet, the rename
 // dialog, and an answer card with a curated source and its deep link — at 320x640 and 1400x900, Arabic and
 // English, textScaler 1.3.
 import 'dart:convert';
@@ -84,13 +84,12 @@ void main() {
     expect(renamed, 8); // twice per size × language
   });
 
-  testWidgets('the empty chat: starter prompts with New chat and Chats, then the retention banner', (tester) async {
+  // the empty chat shows no retention banner (it read as "this new chat gets deleted"); the Chats panel keeps it
+  testWidgets('the empty chat: starter prompts with New chat and Chats', (tester) async {
     await expectNoLayoutErrors(
         tester,
         () => ListView(padding: const EdgeInsets.all(12), children: [
               RagStarterPrompts(context_: RagContext.org, onPick: (_) {}, onNewChat: () {}, onChats: () {}),
-              const SizedBox(height: 10),
-              AppBanner(icon: Icons.auto_delete_outlined, text: retentionText(90, AppConfig.lang)),
             ]));
     await expectNoLayoutErrors(tester, () => ListView(children: [RagStarterPrompts(context_: RagContext.app, onPick: (_) {}, compact: true, onNewChat: () {})]));
   });
