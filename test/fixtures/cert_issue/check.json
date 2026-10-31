@@ -1,0 +1,37 @@
+{
+  "columns": [
+    {"key": "student_name", "label_ar": "اسم الطالب", "label_en": "Student name", "required": true},
+    {"key": "grade", "label_ar": "التقدير", "label_en": "Grade", "required": true},
+    {"key": "email", "label_ar": "البريد الإلكتروني", "label_en": "Email", "required": false}
+  ],
+  "rows": [
+    {"line": 1, "raw": ["سارة علي", "ممتاز", "sara@test.dev"],
+     "values": {"student_name": "سارة علي", "grade": "ممتاز", "email": "sara@test.dev"},
+     "issues": [], "status": "ready",
+     "match": {"status": "matched", "by": "email",
+               "student": {"id": 11, "name": "سارة علي", "username": "sara", "email_hint": "s***@test.dev", "image_url": null}}},
+    {"line": 2, "raw": ["Omar Hassan", "A"],
+     "values": {"student_name": "Omar Hassan", "grade": "A", "email": ""},
+     "issues": [{"code": "too_few_values", "message_ar": "قيم أقل من الأعمدة المطلوبة", "message_en": "Fewer values than the expected columns", "expected": 3, "got": 2}],
+     "status": "needs_attention",
+     "match": {"status": "ambiguous", "candidates": [
+       {"id": 21, "name": "Omar Hassan", "username": "omar1", "email_hint": "o***@a.dev", "image_url": null},
+       {"id": 22, "name": "Omar Hassan", "username": "omar2", "email_hint": "o***@b.dev", "image_url": null}]}},
+    {"line": 3, "raw": ["Mona Adel", "B", ""],
+     "values": {"student_name": "Mona Adel", "grade": "B", "email": ""},
+     "issues": [], "status": "ready", "match": {"status": "unmatched"}},
+    {"line": 4, "raw": ["Laila Samir", "", "laila@"],
+     "values": {"student_name": "Laila Samir", "grade": "", "email": "laila@"},
+     "issues": [{"code": "empty_value", "message_ar": "قيمة فارغة", "message_en": "Empty value", "column": "grade"},
+                {"code": "bad_email", "message_ar": "بريد إلكتروني غير صحيح", "message_en": "Invalid email", "column": "email"}],
+     "status": "needs_attention", "match": {"status": "unmatched"}},
+    {"line": 5, "raw": ["mona adel", "B", ""],
+     "values": {"student_name": "mona adel", "grade": "B", "email": ""},
+     "issues": [{"code": "duplicate", "message_ar": "مكرر", "message_en": "Duplicate", "of_line": 3}],
+     "status": "needs_attention", "match": {"status": "unmatched"}}
+  ],
+  "summary": {"total": 5, "ready": 2, "attention": 3, "match": {"matched": 1, "ambiguous": 1, "unmatched": 3}},
+  "delimiter": ",",
+  "header_skipped": false,
+  "langs": ["ar", "en"]
+}

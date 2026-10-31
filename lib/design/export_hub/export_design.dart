@@ -19,7 +19,8 @@ import 'dart:math' as math;
 import 'package:flutter_education_app/core/app_time.dart';
 
 import '../../features/admin/admin_common.dart' show asMap, asMapList, t;
-import '../export/table_export_model.dart' show AppColType, AppExportColumn, AppTableExport, cellText;
+import '../export/export_studio_model.dart' show ExportNumerals, ExportRule;
+import '../export/table_export_model.dart' show AppColType, AppExportColumn, AppTableExport, AppTotal, cellText;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Vocabularies
@@ -90,7 +91,13 @@ Map<String, String> exportPlaceholderLabels() => {
       'session_date': t('تاريخ الجلسة', 'Session date'),
       'page': t('رقم الصفحة', 'Page number'),
       'pages': t('عدد الصفحات', 'Page count'),
+      'org_name': t('اسم المؤسسة', 'Organization name'),
+      'rows': t('عدد الصفوف', 'Number of rows'),
+      'exporter': t('اسم المُصدِّر', 'Exported by'),
     };
+
+/// The header / footer variables of the Export Studio (the server fills the same names in scheduled runs).
+const exportStudioVariables = ['org_name', 'date', 'page', 'pages', 'rows', 'exporter'];
 
 final _ph = RegExp(r'\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}');
 
@@ -166,6 +173,7 @@ class ExportBlock {
     this.name = '',
     this.title = '',
     this.color = '',
+    this.background = '',
   }) : font = font ?? BlockFont();
 
   final String id, kind;
@@ -187,6 +195,9 @@ class ExportBlock {
   /// line: RRGGBB (empty = the page's line colour).
   String color;
 
+  /// text / signature / logo: a fill behind the block (RRGGBB, empty = none).
+  String background;
+
   bool get isFlow => exportFlowKinds.contains(kind);
   bool get isImage => kind == 'logo' || kind == 'signature';
 
@@ -204,6 +215,7 @@ class ExportBlock {
         name: '${j['name'] ?? ''}',
         title: '${j['title'] ?? ''}',
         color: j['color'] == null || '${j['color']}'.isEmpty ? '' : hexOf(j['color'], ''),
+        background: j['background'] == null || '${j['background']}'.isEmpty ? '' : hexOf(j['background'], ''),
       )..clamp();
 
   Map<String, dynamic> toJson() => {
@@ -219,6 +231,7 @@ class ExportBlock {
         if (isImage) 'url': url,
         if (kind == 'signature') ...{'name': name, 'title': title},
         if (kind == 'line') 'color': color.isEmpty ? '' : hexJson(color),
+        if (!isFlow && kind != 'line' && background.isNotEmpty) 'background': hexJson(background),
       };
 
   ExportBlock copy() => ExportBlock.fromJson(toJson(), baseSize: font.size);
@@ -337,6 +350,57 @@ class ExportVotes {
       };
 }
 
+const exportFrameStyles = ['none', 'solid', 'dashed', 'double'];
+
+/// A border drawn around every page: [inset] millimetres outside the content box (inside the margins).
+class ExportFrame {
+  ExportFrame({this.style = 'none', this.width = 1, this.color = exportLine, this.radius = 0, this.inset = 4});
+
+  /// none | solid | dashed | double
+  String style;
+
+  /// Line width and corner radius in points (Word draws square corners: page borders have no radius).
+  double width, radius;
+  String color;
+
+  /// Millimetres between the content box and the frame.
+  double inset;
+
+  bool get visible => style != 'none' && width > 0;
+
+  factory ExportFrame.fromJson(Map<String, dynamic> j) => ExportFrame(
+        style: _pick(j['style'], exportFrameStyles, 'none'),
+        width: _d(j['width'], 1).clamp(.25, 12).toDouble(),
+        color: hexOf(j['color'], exportLine),
+        radius: _d(j['radius'], 0).clamp(0, 40).toDouble(),
+        inset: _d(j['inset'], 4).clamp(0, 30).toDouble(),
+      );
+
+  Map<String, dynamic> toJson() => {'style': style, 'width': width, 'color': hexJson(color), 'radius': radius, 'inset': inset};
+}
+
+/// Diagonal text behind the content of every page ("DRAFT", "Confidential"); empty text = none.
+class ExportWatermark {
+  ExportWatermark({this.text = '', this.color = '94A3B8', this.opacity = .14, this.size = 64, this.angle = -40});
+
+  String text, color;
+
+  /// 0 – 1, the font size in points and the angle in degrees (negative = rising to the end of the line).
+  double opacity, size, angle;
+
+  bool get visible => text.trim().isNotEmpty && opacity > 0;
+
+  factory ExportWatermark.fromJson(Map<String, dynamic> j) => ExportWatermark(
+        text: '${j['text'] ?? ''}',
+        color: hexOf(j['color'], '94A3B8'),
+        opacity: _d(j['opacity'], .14).clamp(0, 1).toDouble(),
+        size: _d(j['size'], 64).clamp(12, 160).toDouble(),
+        angle: _d(j['angle'], -40).clamp(-90, 90).toDouble(),
+      );
+
+  Map<String, dynamic> toJson() => {'text': text, 'color': hexJson(color), 'opacity': opacity, 'size': size, 'angle': angle};
+}
+
 /// One print area: [blocks] (static, top to bottom) followed by [flow] (the table / items block, or null at the end).
 class ExportSegment {
   const ExportSegment(this.blocks, this.flow, this.top);
@@ -365,10 +429,14 @@ class ExportDesign {
     ExportTableStyle? table,
     ExportVotes? votes,
     List<ExportBlock>? blocks,
+    ExportFrame? frame,
+    ExportWatermark? watermark,
   })  : page = page ?? ExportPage(),
         table = table ?? ExportTableStyle(),
         votes = votes ?? ExportVotes(),
-        blocks = blocks ?? [];
+        blocks = blocks ?? [],
+        frame = frame ?? ExportFrame(),
+        watermark = watermark ?? ExportWatermark();
 
   static const version = 2;
 
@@ -384,6 +452,10 @@ class ExportDesign {
   final ExportTableStyle table;
   final ExportVotes votes;
   final List<ExportBlock> blocks;
+
+  /// The page border and the watermark (additive keys of schema v2: an older app ignores them).
+  final ExportFrame frame;
+  final ExportWatermark watermark;
 
   String get lang => rtl ? 'ar' : 'en';
 
@@ -468,6 +540,8 @@ class ExportDesign {
       table: ExportTableStyle.fromJson(asMap(j['table'])),
       votes: ExportVotes.fromJson(asMap(j['votes'])),
       blocks: [for (final b in asMapList(j['blocks'])) ExportBlock.fromJson(b, baseSize: size)],
+      frame: ExportFrame.fromJson(asMap(j['frame'])),
+      watermark: ExportWatermark.fromJson(asMap(j['watermark'])),
     );
   }
 
@@ -481,6 +555,8 @@ class ExportDesign {
         'table': table.toJson(),
         'votes': votes.toJson(),
         'blocks': [for (final b in blocks) b.toJson()],
+        if (frame.visible) 'frame': frame.toJson(),
+        if (watermark.visible) 'watermark': watermark.toJson(),
       };
 
   ExportDesign copy() => ExportDesign.fromJson(toJson());
@@ -555,11 +631,36 @@ class ExportDesign {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class ExportColumn {
-  const ExportColumn(this.id, {this.labelAr = '', this.labelEn = '', this.type = 'text'});
+  const ExportColumn(this.id, {this.labelAr = '', this.labelEn = '', this.type = 'text', this.total = 'none', this.currency = ''});
   final String id, labelAr, labelEn;
 
   /// text | number | integer | money | percent | date | datetime | status
   final String type;
+
+  /// The aggregate of the totals / subtotal rows: none | sum | average | count | min | max.
+  final String total;
+
+  /// Money suffix ("EGP").
+  final String currency;
+
+  /// The table exporter's column for this one in [lang] (types, totals and formatting are shared with
+  /// lib/design/export: groups, aggregates and cell text come from there).
+  AppExportColumn toAppColumn(String lang, {String? label}) => AppExportColumn(
+        id,
+        label ?? this.label(lang),
+        type: switch (type) {
+          'number' => AppColType.number,
+          'integer' || 'int' => AppColType.integer,
+          'money' => AppColType.money,
+          'percent' => AppColType.percent,
+          'date' => AppColType.date,
+          'datetime' || 'date_time' => AppColType.dateTime,
+          'status' => AppColType.status,
+          _ => AppColType.text,
+        },
+        total: AppTotal.values.where((x) => x.name == total).firstOrNull ?? AppTotal.none,
+        currency: currency.isEmpty ? null : currency,
+      );
 
   String label(String lang) {
     final a = labelAr.isEmpty ? labelEn : labelAr, e = labelEn.isEmpty ? labelAr : labelEn;
@@ -574,9 +675,18 @@ class ExportColumn {
         labelAr: '${j['label_ar'] ?? j['label'] ?? ''}',
         labelEn: '${j['label_en'] ?? j['label'] ?? ''}',
         type: '${j['type'] ?? 'text'}'.toLowerCase(),
+        total: '${j['total'] ?? 'none'}',
+        currency: '${j['currency'] ?? ''}',
       );
 
-  Map<String, dynamic> toJson() => {'id': id, 'label_ar': labelAr, 'label_en': labelEn, 'type': type};
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'label_ar': labelAr,
+        'label_en': labelEn,
+        'type': type,
+        if (total != 'none') 'total': total,
+        if (currency.isNotEmpty) 'currency': currency,
+      };
 }
 
 class ExportVoteResult {
@@ -745,6 +855,9 @@ class ExportDataset {
       'session_date': meta['session_date'] == null ? '' : _dateText(DateTime.tryParse('${meta['session_date']}')?.toUtc(), lang),
       'page': '{{page}}',
       'pages': '{{pages}}',
+      'org_name': s(meta['org']),
+      'rows': '${meta['rows'] ?? rows.length}',
+      'exporter': s(meta['exporter']),
     };
     if (out['session_date']!.isEmpty && meta['session_date'] != null) out['session_date'] = s(meta['session_date']);
     return out;
@@ -776,7 +889,7 @@ class ExportDataset {
 
   /// A generic table (the AppTableExport sheet's "Design…" entry): columns keep their type, every row is kept,
   /// the brand becomes `org` and the info lines become `period`.
-  factory ExportDataset.fromTable(AppTableExport e, {String module = 'table'}) => ExportDataset(
+  factory ExportDataset.fromTable(AppTableExport e, {String module = 'table', String? exporter}) => ExportDataset(
         id: 'table.${e.id}',
         module: module,
         title: e.title,
@@ -787,8 +900,13 @@ class ExportDataset {
           'period': e.infoLines.join(' · '),
           'count': e.rows.length,
           'signer': '',
+          'exporter': exporter ?? '',
         },
-        columns: [for (final c in e.columns) ExportColumn(c.id, labelAr: c.label, labelEn: c.label, type: c.type.name.toLowerCase())],
+        columns: [
+          for (final c in e.columns)
+            ExportColumn(c.id,
+                labelAr: c.labelIn('ar'), labelEn: c.labelIn('en'), type: c.type.name.toLowerCase(), total: c.total.name, currency: c.currency ?? ''),
+        ],
         rows: [
           for (final r in e.rows)
             {for (final c in e.columns) c.id: c.type == AppColType.status ? cellText(c, r[c.id]) : r[c.id]},
@@ -804,13 +922,36 @@ class ExportDataset {
 /// What the file holds: the switches of the hub sheet. [langs] is `ar` · `en` · `both` ("both" renders two
 /// files, each from its own template); [lang] is the language of ONE rendering, resolved from the design.
 class ExportContent {
-  ExportContent({this.votes = true, this.decisions = true, this.notes = true, this.audit = false, this.columns, this.langs = 'both'});
+  ExportContent({
+    this.votes = true,
+    this.decisions = true,
+    this.notes = true,
+    this.audit = false,
+    this.columns,
+    this.langs = 'both',
+    List<ExportRule>? rules,
+    this.numerals = ExportNumerals.western,
+    this.groupBy,
+    this.totals = false,
+    Map<String, String>? labels,
+  })  : rules = rules ?? [],
+        labels = labels ?? {};
 
   bool votes, decisions, notes, audit;
 
   /// Column ids to print (null = the design's columns, else every dataset column).
   List<String>? columns;
   String langs;
+
+  /// The Export Studio's table choices (not part of the content JSON — they belong to the template): conditional
+  /// styling rules, the digits, a group-by column (each group gets a heading and, with [totals], a subtotal row),
+  /// a totals row (the columns whose [ExportColumn.total] aggregates), and header overrides per column id in the
+  /// rendering's language.
+  List<ExportRule> rules;
+  ExportNumerals numerals;
+  String? groupBy;
+  bool totals;
+  Map<String, String> labels;
 
   List<String> get languages => langs == 'both' ? const ['ar', 'en'] : [langs];
 

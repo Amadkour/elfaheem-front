@@ -26,6 +26,10 @@ import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_flow.dart' show openCertIssueFlow;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_history.dart' show CertIssueHistoryPage;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_lists.dart' show CertSavedListsPage;
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 class CertificateDesignsProvider extends BaseProvider {
   final ApiClient _api;
@@ -41,7 +45,7 @@ class CertificateDesignsProvider extends BaseProvider {
     notifyListeners();
     final r = await run(() => _api.get(
           '/api/v1/certificate-designs',
-          queryParams: {if (orgId != null) 'org_id': orgId},
+          queryParams: {'org_id': ?orgId},
         ));
     if (r is List) {
       items = r.whereType<Map<String, dynamic>>().map(CertDesign.fromJson).toList();
@@ -123,12 +127,14 @@ class _View extends StatelessWidget {
             maxCrossAxisExtent: 340,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.92,
+            // room for the "Issue certificates" button under each card
+            childAspectRatio: 0.8,
           ),
           itemCount: p.items.length,
           itemBuilder: (_, i) => _DesignCard(
             design: p.items[i],
             certificateId: certificateId,
+            orgId: orgId,
             onOpen: () => _open(context, designId: p.items[i].id),
           ),
         ),
@@ -136,7 +142,29 @@ class _View extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text('cert_designs_title'.tr, style: c.h2.copyWith(fontSize: 16)), centerTitle: true),
+      appBar: AppBar(
+        title: Text('cert_designs_title'.tr, style: c.h2.copyWith(fontSize: 16)),
+        centerTitle: true,
+        actions: [
+          // standalone issuing (features/shared/certificates_issue): saved recipient lists + the issued history
+          if (certificateId == null)
+            ParentComponent(
+              featureKey: 'certificates.standalone',
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(
+                  tooltip: 'ci_saved_lists'.tr,
+                  icon: const Icon(Icons.groups_2_outlined),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CertSavedListsPage(orgId: orgId))),
+                ),
+                IconButton(
+                  tooltip: 'ci_history'.tr,
+                  icon: const Icon(Icons.history_rounded),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CertIssueHistoryPage(orgId: orgId))),
+                ),
+              ]),
+            ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _open(context),
         icon: const Icon(Icons.add_rounded),
@@ -150,9 +178,10 @@ class _View extends StatelessWidget {
 class _DesignCard extends StatelessWidget {
   final CertDesign design;
   final int? certificateId;
+  final int? orgId;
   final VoidCallback onOpen;
 
-  const _DesignCard({required this.design, required this.certificateId, required this.onOpen});
+  const _DesignCard({required this.design, required this.certificateId, required this.onOpen, this.orgId});
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +206,7 @@ class _DesignCard extends StatelessWidget {
                   decoration: BoxDecoration(color: c.cardBg, boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.2), blurRadius: 6)]),
                   child: design.backgroundUrl == null
                       ? Icon(Icons.workspace_premium_outlined, color: c.textLight)
-                      : Image.network(design.backgroundUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined)),
+                      : Image.network(design.backgroundUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined)),
                 ),
               ),
             ),
@@ -229,6 +258,24 @@ class _DesignCard extends StatelessWidget {
               ),
           ]),
         ),
+        // Issue certificates from this design: to a course's students or standalone (a list / a sheet)
+        if (certificateId == null)
+          ParentComponent(
+            featureKey: 'certificates.standalone',
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () => openCertIssueFlow(context, designId: design.id, designName: design.name, orgId: orgId),
+                  icon: const Icon(Icons.workspace_premium_outlined, size: 16),
+                  label: Text('ci_issue_action'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ),
+          ),
         if (certificateId != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),

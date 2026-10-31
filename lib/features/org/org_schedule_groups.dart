@@ -161,7 +161,7 @@ class _GroupsPageState extends State<_GroupsPage> {
     final name = courseName(courses.firstWhere((l) => asInt(l['course_id']) == course, orElse: () => const {}));
     showAppExportSheet(
         context,
-        AppTableExport(
+        bilingualExport(() => AppTableExport(
           id: 'org.groups.roster',
           title: t('قائمة المجموعات', 'Group roster'),
           subtitle: name,
@@ -172,7 +172,7 @@ class _GroupsPageState extends State<_GroupsPage> {
             AppExportColumn('code', t('الرقم الجامعي', 'Student ID')),
           ],
           rows: rosterRows(data ?? const {}),
-        ));
+        )));
   }
 
   @override

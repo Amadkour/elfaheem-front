@@ -1,0 +1,87 @@
+{
+ "departments": [
+  {
+   "id": 1,
+   "unit_type": "dept",
+   "name_ar": "شؤون الطلاب",
+   "name_en": "Student Affairs"
+  },
+  {
+   "id": 6,
+   "unit_type": "dept",
+   "name_ar": "قسم علوم الحاسب",
+   "name_en": "Computer Science Department"
+  },
+  {
+   "id": 7,
+   "unit_type": "dept",
+   "name_ar": "مجلس قسم علوم الحاسب",
+   "name_en": "Computer Science Department Council"
+  }
+ ],
+ "people": [
+  {
+   "user_id": 10,
+   "name": "CS Student 1",
+   "avatar_url": null,
+   "member_role": "student",
+   "dept_id": null
+  },
+  {
+   "user_id": 11,
+   "name": "CS Student 2",
+   "avatar_url": null,
+   "member_role": "student",
+   "dept_id": null
+  },
+  {
+   "user_id": 12,
+   "name": "CS Student 3",
+   "avatar_url": null,
+   "member_role": "student",
+   "dept_id": null
+  },
+  {
+   "user_id": 13,
+   "name": "CS Student 4",
+   "avatar_url": null,
+   "member_role": "student",
+   "dept_id": null
+  },
+  {
+   "user_id": 14,
+   "name": "Law Student 1",
+   "avatar_url": null,
+   "member_role": "student",
+   "dept_id": null
+  },
+  {
+   "user_id": 15,
+   "name": "Law Student 2",
+   "avatar_url": null,
+   "member_role": "student",
+   "dept_id": null
+  },
+  {
+   "user_id": 16,
+   "name": "Law Student 3",
+   "avatar_url": null,
+   "member_role": "student",
+   "dept_id": null
+  },
+  {
+   "user_id": 17,
+   "name": "Law Student 4",
+   "avatar_url": null,
+   "member_role": "student",
+   "dept_id": null
+  },
+  {
+   "user_id": 9,
+   "name": "Tarek Adel",
+   "avatar_url": null,
+   "member_role": "teacher_assistant",
+   "dept_id": null
+  }
+ ]
+}

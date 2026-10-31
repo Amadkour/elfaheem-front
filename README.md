@@ -58,8 +58,8 @@ By default the app talks to production (`AppConfig.baseUrl` in `lib/config/app_c
 ## Tests and checks
 
 ```bash
-flutter analyze                                   # gate: no " warning - " / " error - " lines (info lints are allowed)
-flutter test test/org/ test/export/ test/ui/ test/auth/ test/contract/
+flutter analyze --no-fatal-infos --fatal-warnings   # the CI gate (exit 0); plain `flutter analyze` exits 1 on info lints, which are allowed
+flutter test test/org/ test/export/ test/ui/ test/auth/ test/perf/ test/contract/   # the CI suites
 flutter test test/ui/vod_player_layout_test.dart --plain-name "name"   # one test
 EXPORT_SAMPLES=<dir> flutter test test/org/org_export_test.dart        # writes sample .xlsx/.docx/.pdf to open in Office
 ```
@@ -68,7 +68,7 @@ EXPORT_SAMPLES=<dir> flutter test test/org/org_export_test.dart        # writes 
 through `test/ui/layout_harness.dart` (`expectNoLayoutErrors`: 320×640 and 1400×900, Arabic and English, text scale
 1.3). `test/contract/` checks that every API path the app calls exists in the backend's route snapshot
 (`test/contract/api_paths.json`, regenerated from `../back` with
-`python scripts/contract/export_api_paths.py --front ../nextbrain-front` after a server route is added).
+`.venv312/Scripts/python scripts/contract/export_api_paths.py --front ../nextbrain-front` (or `py -3.12`; plain `python` is not on PATH) after a server route is added).
 
 ## Build and release
 

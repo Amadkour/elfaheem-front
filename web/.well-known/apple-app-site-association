@@ -8,9 +8,11 @@
         "components": [
           { "/": "/c/*", "comment": "course share links" },
           { "/": "/@*", "comment": "profile links (D-074)" },
-          { "/": "/live/*", "comment": "live guest links" }
+          { "/": "/live/*", "comment": "live guest links" },
+          { "/": "/verify/*", "comment": "certificate verification links / QR (D-132)" },
+          { "/": "/e/*", "comment": "expiring export download links (D-134)" }
         ],
-        "paths": ["/c/*", "/@*", "/live/*"]
+        "paths": ["/c/*", "/@*", "/live/*", "/verify/*", "/e/*"]
       }
     ]
   }

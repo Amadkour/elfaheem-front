@@ -51,6 +51,8 @@ class AppExportColumn {
     this.currency,
     this.statusLabels,
     this.statusTones,
+    this.labels,
+    this.statusLabelsByLang,
   });
 
   /// Key of the value in each row map.
@@ -80,6 +82,46 @@ class AppExportColumn {
 
   /// Raw status value → tone; unknown values are guessed from the words (paid / active → good, pending → warn …).
   final Map<String, AppStatusTone>? statusTones;
+
+  /// The header per language (`{'ar': 'الاسم', 'en': 'Name'}`) when the caller knows both; the Export Studio
+  /// prints the one of the file's language. Missing = [label].
+  final Map<String, String>? labels;
+
+  /// [statusLabels] per language (filled by [bilingualExport]); the Export Studio prints the file's language.
+  final Map<String, Map<String, String>>? statusLabelsByLang;
+
+  /// The header in [lang]: [labels], else [label].
+  String labelIn(String lang) {
+    final l = labels?[lang];
+    return l == null || l.trim().isEmpty ? label : l;
+  }
+
+  AppExportColumn copyWith({
+    String? label,
+    double? width,
+    AppTotal? total,
+    bool? locked,
+    bool? visible,
+    Map<String, String>? labels,
+    Map<String, String>? statusLabels,
+    Map<String, Map<String, String>>? statusLabelsByLang,
+  }) =>
+      AppExportColumn(
+        id,
+        label ?? this.label,
+        type: type,
+        align: align,
+        visible: visible ?? this.visible,
+        width: width ?? this.width,
+        locked: locked ?? this.locked,
+        total: total ?? this.total,
+        decimals: decimals,
+        currency: currency,
+        statusLabels: statusLabels ?? this.statusLabels,
+        statusTones: statusTones,
+        labels: labels ?? this.labels,
+        statusLabelsByLang: statusLabelsByLang ?? this.statusLabelsByLang,
+      );
 
   bool get numeric => type == AppColType.number || type == AppColType.integer || type == AppColType.money || type == AppColType.percent;
 
@@ -112,6 +154,11 @@ class AppTableExport {
     this.brandColor,
     bool? rtl,
     DateTime? generatedAt,
+    this.selectedRows,
+    this.orgId,
+    this.serverDataset,
+    this.serverParams,
+    this.titles,
   })  : rtl = rtl ?? AppConfig.lang == 'ar',
         generatedAt = generatedAt ?? DateTime.now().toUtc();
 
@@ -151,6 +198,61 @@ class AppTableExport {
 
   /// UTC instant.
   final DateTime generatedAt;
+
+  /// The rows the person ticked on the page (a subset of [rows]); the Export Studio then offers "Selected rows"
+  /// next to "All rows". null = the page has no selection.
+  final List<Map<String, Object?>>? selectedRows;
+
+  /// The organization the data belongs to (export log, organization templates); null = the open organization.
+  final int? orgId;
+
+  /// The server dataset that produces the same table (`GET /api/v1/exports/datasets`, e.g. `org.people`) and its
+  /// parameters: with it the flow offers "Schedule" (a server run of the saved template, D-130).
+  final String? serverDataset;
+  final Map<String, Object?>? serverParams;
+
+  /// [title] per language (filled by [bilingualExport]); null = [title] in every language.
+  final Map<String, String>? titles;
+
+  /// A copy with other rows / columns / direction / grouping (the Export Studio builds one per language).
+  AppTableExport copyWith({
+    String? title,
+    List<AppExportColumn>? columns,
+    List<Map<String, Object?>>? rows,
+    bool? rtl,
+    String? groupBy,
+    bool clearGroupBy = false,
+    bool? showTotals,
+    String? brand,
+    List<String>? meta,
+    Map<String, String>? filters,
+    List<Map<String, Object?>>? selectedRows,
+    Map<String, String>? titles,
+  }) =>
+      AppTableExport(
+        id: id,
+        title: title ?? this.title,
+        columns: columns ?? this.columns,
+        rows: rows ?? this.rows,
+        subtitle: subtitle,
+        brand: brand ?? this.brand,
+        meta: meta ?? this.meta,
+        filters: filters ?? this.filters,
+        groupBy: clearGroupBy ? null : (groupBy ?? this.groupBy),
+        groupTotals: groupTotals,
+        showTotals: showTotals ?? this.showTotals,
+        totalLabel: totalLabel,
+        allowColumnSelection: allowColumnSelection,
+        fileName: fileName,
+        brandColor: brandColor,
+        rtl: rtl ?? this.rtl,
+        generatedAt: generatedAt,
+        selectedRows: selectedRows ?? this.selectedRows,
+        orgId: orgId,
+        serverDataset: serverDataset,
+        serverParams: serverParams,
+        titles: titles ?? this.titles,
+      );
 
   AppExportColumn? column(String id) => columns.where((c) => c.id == id).firstOrNull;
 
@@ -196,6 +298,40 @@ class AppTableExport {
       ];
 
   String get totalText => totalLabel ?? tx('tx_total', 'Total', 'الإجمالي');
+}
+
+/// Builds the export with [build] in Arabic and in English and returns the build of the app language carrying both
+/// headers ([AppExportColumn.labels]), both status texts ([AppExportColumn.statusLabelsByLang]) and both titles
+/// ([AppTableExport.titles]), so an English or "Both" export prints English headers in the Arabic app (and the reverse).
+/// [build] must be synchronous and read the language through `t()` / `tx()` / `translate()` at call time; labels the
+/// caller already gave per language win.
+AppTableExport bilingualExport(AppTableExport Function() build) {
+  final keep = AppConfig.lang;
+  AppTableExport inLang(String lang) {
+    AppConfig.lang = lang;
+    try {
+      return build();
+    } finally {
+      AppConfig.lang = keep;
+    }
+  }
+
+  final cur = build();
+  final other = inLang(keep == 'ar' ? 'en' : 'ar');
+  final (ar, en) = keep == 'ar' ? (cur, other) : (other, cur);
+  return cur.copyWith(
+    columns: [
+      for (final c in cur.columns)
+        () {
+          final a = ar.column(c.id), e = en.column(c.id);
+          return c.copyWith(
+            labels: {'ar': a?.labelIn('ar') ?? c.label, 'en': e?.labelIn('en') ?? c.label, ...?c.labels},
+            statusLabelsByLang: c.statusLabels == null ? null : {'ar': ?a?.statusLabels, 'en': ?e?.statusLabels},
+          );
+        }(),
+    ],
+    titles: {'ar': ar.title, 'en': en.title},
+  );
 }
 
 /// A translated string with an inline fallback (works before translation.json loads, e.g. in tests).

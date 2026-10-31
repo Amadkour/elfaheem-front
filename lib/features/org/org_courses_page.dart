@@ -12,6 +12,8 @@ import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'org_page_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'org_academic_pages.dart' show CourseArchiveScreen;
 import '../admin/admin_table_export.dart' show exportPagedList, orgCoursesExport;
 import '../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
@@ -36,6 +38,8 @@ class OrgCoursesPage extends StatelessWidget {
   }
 }
 
+/// The page anatomy (D-103, org_page_kit.dart): search · More (⋯: import / template / enrollments / exports) ·
+/// ONE primary action "New course" (FAB on phones, button when wide) · the course cards.
 class _CoursesView extends StatelessWidget {
   const _CoursesView();
 
@@ -43,70 +47,57 @@ class _CoursesView extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<OrgCoursesProvider>();
     final s = context.watch<OrgSession>();
-    final c = context.colors;
-    final header = Column(children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-        child: SearchBox(hint: t('بحث باسم الكورس', 'Search courses'), onChanged: p.setSearch),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-        child: Wrap(spacing: 8, runSpacing: 6, children: [
-          if (s.can('courses', 'insert')) ...[
-            ActionChip(
-              avatar: Icon(Icons.upload_file_rounded, size: 18, color: c.primary),
-              label: Text(t('استيراد كورسات', 'Import courses'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
-              onPressed: () async {
-                if (await importExcelFlow(context, 'courses') && context.mounted) p.refresh();
+    return OrgPageBody(
+      primary: s.can('courses', 'insert')
+          ? OrgPrimaryAction(
+              id: 'new_course',
+              icon: Icons.add_rounded,
+              label: t('مقرر جديد', 'New course'),
+              onTap: () async {
+                if (await showOrgCourseForm(context) != null) p.refresh();
               },
-            ),
-            ActionChip(
-              avatar: Icon(Icons.description_outlined, size: 18, color: c.textMedium),
-              label: Text(t('نموذج الكورسات', 'Courses template'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
-              onPressed: () => downloadExcel(context, 'template/courses'),
-            ),
-          ],
-          if (s.can('students', 'insert'))
-            ActionChip(
-              avatar: Icon(Icons.how_to_reg_rounded, size: 18, color: c.primary),
-              label: Text(t('استيراد تسجيلات', 'Import enrollments'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
-              onPressed: () => importExcelFlow(context, 'enrollments').then((_) => p.refresh()),
-            ),
-          ActionChip(
-            avatar: Icon(Icons.ios_share_rounded, size: 18, color: c.success),
-            label: Text(t('تصدير الكورسات', 'Export courses'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
-            onPressed: () => exportPagedList(context, p, (rows) => orgCoursesExport(rows, orgName: s.name)),
+            )
+          : null,
+      search: OrgSearchField(hint: t('ابحث باسم المقرر', 'Search courses'), onChanged: p.setSearch),
+      more: [
+        if (s.can('courses', 'insert')) ...[
+          OrgMenuItem(
+            icon: Icons.upload_file_rounded,
+            label: t('استيراد مقررات من Excel', 'Import courses from Excel'),
+            onTap: () async {
+              if (await importExcelFlow(context, 'courses') && context.mounted) p.refresh();
+            },
           ),
-          ActionChip(
-            avatar: Icon(Icons.download_rounded, size: 18, color: c.success),
-            label: Text(t('تصدير التسجيلات', 'Export enrollments'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
-            onPressed: () => downloadExcel(context, 'export/enrollments'),
+          OrgMenuItem(
+            icon: Icons.description_outlined,
+            label: t('تنزيل نموذج المقررات', 'Download the courses template'),
+            onTap: () => downloadExcel(context, 'template/courses'),
           ),
-        ]),
-      ),
-    ]);
-
-    return Stack(children: [
-      PagedList<OrgCoursesProvider>(
-        header: header,
-        emptyText: t('لا توجد كورسات بعد', 'No courses yet'),
+        ],
+        if (s.can('students', 'insert'))
+          OrgMenuItem(
+            icon: Icons.how_to_reg_rounded,
+            label: t('استيراد تسجيلات الطلاب', 'Import enrollments'),
+            onTap: () => importExcelFlow(context, 'enrollments').then((_) => p.refresh()),
+          ),
+        OrgMenuItem(
+          icon: Icons.ios_share_rounded,
+          label: t('تصدير المقررات', 'Export courses'),
+          onTap: () => exportPagedList(context, p, (rows) => orgCoursesExport(rows, orgName: s.name)),
+        ),
+        OrgMenuItem(
+          icon: Icons.download_rounded,
+          label: t('تصدير التسجيلات', 'Export enrollments'),
+          onTap: () => downloadExcel(context, 'export/enrollments'),
+        ),
+      ],
+      child: PagedList<OrgCoursesProvider>(
+        emptyText: p.search.isNotEmpty
+            ? t('لا مقررات بهذا الاسم', 'No course matches this search')
+            : t('لا توجد مقررات بعد — أضف أول مقرر أو استوردها من Excel', 'No courses yet — add the first one or import them from Excel'),
         itemBuilder: (ctx, row) => _CourseTile(row: row),
       ),
-      if (s.can('courses', 'insert'))
-        PositionedDirectional(
-          bottom: 16,
-          end: 16,
-          child: FloatingActionButton.extended(
-            heroTag: 'org_add_course',
-            backgroundColor: c.primary,
-            onPressed: () async {
-              if (await showOrgCourseForm(context) != null) p.refresh();
-            },
-            icon: Icon(Icons.add_rounded, color: c.onHero),
-            label: Text(t('كورس جديد', 'New course'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
-          ),
-        ),
-    ]);
+    );
   }
 }
 
@@ -122,18 +113,18 @@ class _CourseTile extends StatelessWidget {
     final name = t('${row['name_ar'] ?? row['name_en'] ?? ''}', '${row['name_en'] ?? row['name_ar'] ?? ''}');
     final teacher = (row['teacher'] as Map?)?['name'];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
         child: Row(children: [
           IconBadge(Icons.menu_book_rounded, c.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+              Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               Text(teacher == null ? t('بلا مدرس بعد', 'No teacher yet') : '$teacher', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: teacher == null ? c.warning : c.textMedium)),
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 4, children: [
-                InfoChip(Icons.groups_rounded, '${row['students']}', c.primary),
+                InfoChip(Icons.groups_rounded, t('${row['students']} طالب', '${row['students']} students'), c.textMedium),
                 InfoChip(Icons.payments_rounded, asDouble(row['fees']) == 0 ? t('مجاني', 'Free') : money(asDouble(row['fees'])), c.success),
                 if (row['members_only'] == true) InfoChip(Icons.lock_rounded, t('للأعضاء فقط', 'Members only'), context.colors.purple),
                 if (row['is_published'] != true) StatusChip(t('غير منشور', 'Draft'), c.warning),

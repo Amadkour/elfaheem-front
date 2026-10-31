@@ -1132,4 +1132,4 @@ AppTableExport examTableExport({
 
 Future<bool> showExamExport(BuildContext context,
         {required String title, required List<Map<String, dynamic>> exams, required TimetableNames names, String by = 'date', List<String> meta = const []}) =>
-    showAppExportSheet(context, examTableExport(title: title, exams: exams, names: names, by: by, meta: meta));
+    showAppExportSheet(context, bilingualExport(() => examTableExport(title: title, exams: exams, names: names, by: by, meta: meta)));

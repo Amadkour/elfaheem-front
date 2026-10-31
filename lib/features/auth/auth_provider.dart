@@ -466,17 +466,11 @@ class MyAuthProvider extends BaseProvider {
     'developer' => '/admin_dashboard',
     'teacher' => '/teacher_dashboard',
     'parent' => '/parent_dashboard',
-    // organizations: org admins and their staff (admin assistants, department staff) open the org dashboard
-    // (both: the personal dashboard instead when they left their organization last time — remembered per user)
-    'org-admin' => AppModeController.orgRoleHome('/org_dashboard', personal: _personalHome),
-    // … unless the member dashboard already knows this staff member manages nothing (e.g. an assistant only)
-    // (on a cold start the overview is not loaded yet → the answer cached by the last run)
-    'org-staff' => AppModeController.orgRoleHome(
-        AppModeController.orgStaffHome(
-            loaded: AppModeController.instance.loaded,
-            managesNothing: AppModeController.instance.managesNothing,
-            cached: currentUser == null ? null : _storage.getFlag(AppModeController.managesNothingKey(currentUser!.id))),
-        personal: _personalHome),
+    // organizations: org admins and their staff (admin assistants, department staff, members without any right)
+    // open the ONE organization dashboard (D-103 — staff who manage nothing no longer hop to '/org_member', which
+    // stays the student's organization page); the personal dashboard instead when they left their organization
+    // last time (remembered per user)
+    'org-admin' || 'org-staff' => AppModeController.orgRoleHome('/org_dashboard', personal: _personalHome),
     _ => '/dashboard',
   };
 

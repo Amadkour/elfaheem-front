@@ -33,12 +33,17 @@ typedef HomeBudget = ({int open, int duplicates, int depth, int refresh, int ref
 // built on its first visit, so the other tabs load nothing on open): student 17 → 11, teacher 15 → 11, super admin
 // 10 → 7, org admin 15 → 4 on open; refresh unchanged. The super admin's refresh is 4 since the home's RAG card
 // (monitoring alerts + summary, 4f69dfe) joined the overview and the payouts count.
+// 2026-10-31, D-103: org admin open 4 → 5 — the organization dashboard's pages now carry a header with the
+// notifications bell on every width (the shell top bar is off), and its unread count is the same ONE
+// GET /notifications every other role shell makes (no server field carries it); `/org/mine` gained `?members=1`
+// (same call). The membership overview is NOT loaded on open — only when the header's switcher is used.
 const homeBudgets = <String, HomeBudget>{
   'student': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'teacher': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'super-admin': (open: 7, duplicates: 0, depth: 1, refresh: 4, refreshDepth: 1),
   'parent': (open: 3, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
-  'org-admin': (open: 4, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
+  // +1 = the lazy Insights section (D-103): GET …/insights, started in parallel with the dashboard (no waterfall)
+  'org-admin': (open: 6, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
   'org-member': (open: 3, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
 };
 
@@ -69,7 +74,9 @@ Map<String, FakeHandler> homeRoutes({bool memberOfOrg = false}) => {
       'GET /api/v1/me/home': (_) => payload(memberOfOrg ? 'me_home_student.json' : 'me_home_student_no_org.json'),
       'GET /api/v1/admin/overview': (_) => payload('admin_overview.json'),
       'GET /api/v1/parent/overview': (_) => payload('parent_overview.json'),
-      'GET /api/v1/org/orgs/1/dashboard': (_) => payload('org_dashboard.json'),
+      // an org admin sees Insights (D-103), so its call is really measured
+      'GET /api/v1/org/orgs/1/dashboard': (_) => {...(payload('org_dashboard.json') as Map), 'can_insights': true},
+      'GET /api/v1/org/orgs/1/insights': (_) => payload('org_insights.json'),
       'GET /api/v1/org/mine': (_) => {
             'items': [
               {..._org, 'my_role': 'org_admin', 'is_admin': true},

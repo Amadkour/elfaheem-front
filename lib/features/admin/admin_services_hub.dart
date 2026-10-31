@@ -415,6 +415,14 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           featureKey: 'data_lab.admin',
           onTap: () => push(const AdminDataLabPage()),
         ),
+        // Export Studio (D-130): the export log, scheduled exports and shared links; each section has its own key
+        AdminService(
+          labelKey: 'exs_center_title',
+          descKey: 'exs_center_admin',
+          icon: Icons.ios_share_rounded,
+          colors: AdminPalette.teal,
+          onTap: () => Navigator.pushNamed(context, '/exports', arguments: true),
+        ),
         AdminService(
           labelKey: 'svc_app_assistant',
           descKey: 'svc_app_assistant_d',

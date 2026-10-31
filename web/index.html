@@ -1,6 +1,4 @@
 <!DOCTYPE html><html><head>
-  <script src="video_protection.js"></script>
-
   <script>
   // Prevent Flutter from trying to load Noto Color Emoji from Google
   window._flutter = window._flutter || {};
@@ -11,6 +9,8 @@
   };
 </script>
   <base href="$FLUTTER_BASE_HREF">
+  <!-- after <base>: a relative src before it 404s on deep links such as /verify/<token> -->
+  <script src="video_protection.js"></script>
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">

@@ -57,23 +57,8 @@ Future<void> exportPagedList(BuildContext context, AdminPagedProvider p, AppTabl
     if (p.hasMore) toast(t('جارٍ تجهيز كل الصفوف…', 'Preparing every row…'));
     final rows = await fetchAllRows(p);
     if (!context.mounted) return;
-    final e = build(rows);
-    await showAppExportSheet(
-        context,
-        AppTableExport(
-          id: e.id,
-          title: e.title,
-          subtitle: e.subtitle,
-          brand: e.brand,
-          meta: e.meta,
-          filters: {...activeFiltersOf(p), ...e.filters},
-          columns: e.columns,
-          rows: e.rows,
-          groupBy: e.groupBy,
-          totalLabel: e.totalLabel,
-          showTotals: e.showTotals,
-          allowColumnSelection: e.allowColumnSelection,
-        ));
+    final e = bilingualExport(() => build(rows));
+    await showAppExportSheet(context, e.copyWith(filters: {...activeFiltersOf(p), ...e.filters}));
   } catch (err) {
     toast(ApiException.from(err).message, error: true);
   } finally {
@@ -211,8 +196,13 @@ AppTableExport adminWithdrawalsExport(List<Map<String, dynamic>> rows) => AppTab
     );
 
 /// Organization members (students / teachers / staff).
-AppTableExport orgMembersExport(String kind, List<Map<String, dynamic>> rows, {String? orgName}) => AppTableExport(
+/// [orgId] / [roles] / [status] (the people page's tab and filter) make it an organization export: templates can be
+/// shared with the organization, and "Share link" / "Schedule" use the server dataset `org.people` (Export Studio).
+AppTableExport orgMembersExport(String kind, List<Map<String, dynamic>> rows, {String? orgName, int? orgId, String? roles, String? status}) => AppTableExport(
       id: 'org.members.$kind',
+      orgId: orgId,
+      serverDataset: orgId == null ? null : 'org.people',
+      serverParams: orgId == null ? null : {'org_id': orgId, 'roles': ?roles, 'status': ?status},
       title: switch (kind) { 'teachers' => t('المعلمون', 'Teachers'), 'staff' => t('فريق العمل', 'Staff'), _ => t('الطلاب', 'Students') },
       brand: orgName,
       columns: [

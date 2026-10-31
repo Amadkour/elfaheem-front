@@ -4,27 +4,37 @@
 // One sheet: brand title band, info lines, a styled header row that is frozen, filtered (autofilter) and repeated on
 // printed pages; typed cells with real number / date formats; zebra rows; status pills; collapsible groups (outline)
 // with SUBTOTAL rows; a totals row whose SUBTOTAL formulas follow the filter. RTL sheet when Arabic.
+//
+// The Export Studio's options (export_studio_model.dart) are optional: the sheet options (title band, freeze,
+// striping, borders, header colours, font size, widths, number / date formats, direction), conditional styling
+// rules, Arabic-Indic digits in the text cells and a logo drawn over the title band.
 library;
 
+import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
+import 'package:image/image.dart' as img;
+
+import 'export_studio_model.dart';
 import 'table_export_model.dart';
 
 class _St {
-  const _St({this.fill, this.color = exportInkHex, this.bold = false, this.size = 10, this.h = 'general', this.wrap = false, this.border = 'thin', this.italic = false, this.fmt});
+  const _St({this.fill, this.color = exportInkHex, this.bold = false, this.size = 10, this.h = 'general', this.wrap = false, this.border = 'thin', this.italic = false, this.fmt, this.indent = 0});
   final String? fill, fmt;
   final String color, h, border;
   final bool bold, wrap, italic;
   final double size;
-  String get key => '$fill|$color|$bold|$size|$h|$wrap|$border|$italic|$fmt';
+  final int indent;
+  String get key => '$fill|$color|$bold|$size|$h|$wrap|$border|$italic|$fmt|$indent';
 }
 
 class _Styles {
-  _Styles(this.rtl, this.brand) {
+  _Styles(this.rtl, this.brand, {this.line = exportLineHex}) {
     style(const _St(border: 'none'));
   }
   final bool rtl;
-  final String brand;
+  final String brand, line;
   final _fonts = <String>[], _fills = <String>[], _xfs = <String>[], _fmts = <String>[];
   final _index = <String, int>{};
 
@@ -39,24 +49,24 @@ class _Styles {
         final font = _add(_fonts, '<font>${s.bold ? '<b/>' : ''}${s.italic ? '<i/>' : ''}<sz val="${s.size}"/><color rgb="FF${s.color}"/><name val="Arial"/><family val="2"/></font>');
         final fill = s.fill == null ? 0 : 2 + _add(_fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF${s.fill}"/><bgColor indexed="64"/></patternFill></fill>');
         final fmt = s.fmt == null ? 0 : 164 + _add(_fmts, s.fmt!);
-        final border = switch (s.border) { 'thin' => 1, 'total' => 2, _ => 0 };
+        final border = switch (s.border) { 'thin' => 1, 'total' => 2, 'band' => 3, _ => 0 };
         _xfs.add('<xf numFmtId="$fmt" fontId="$font" fillId="$fill" borderId="$border" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">'
-            '<alignment horizontal="${s.h}" vertical="center"${s.wrap ? ' wrapText="1"' : ''}${rtl ? ' readingOrder="2"' : ''}/></xf>');
+            '<alignment horizontal="${s.h}" vertical="center"${s.wrap ? ' wrapText="1"' : ''}${s.indent > 0 ? ' indent="${s.indent}"' : ''}${rtl ? ' readingOrder="2"' : ''}/></xf>');
         return _xfs.length - 1;
       });
 
   String xml() {
-    const line = exportLineHex;
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
         '${_fmts.isEmpty ? '' : '<numFmts count="${_fmts.length}">${[for (var i = 0; i < _fmts.length; i++) '<numFmt numFmtId="${164 + i}" formatCode="${xmlEsc(_fmts[i])}"/>'].join()}</numFmts>'}'
         '<fonts count="${_fonts.length}">${_fonts.join()}</fonts>'
         '<fills count="${_fills.length + 2}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${_fills.join()}</fills>'
-        '<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border>'
+        '<borders count="4"><border><left/><right/><top/><bottom/><diagonal/></border>'
         '<border><left style="thin"><color rgb="FF$line"/></left><right style="thin"><color rgb="FF$line"/></right>'
         '<top style="thin"><color rgb="FF$line"/></top><bottom style="thin"><color rgb="FF$line"/></bottom><diagonal/></border>'
         '<border><left style="thin"><color rgb="FF$line"/></left><right style="thin"><color rgb="FF$line"/></right>'
-        '<top style="medium"><color rgb="FF$brand"/></top><bottom style="medium"><color rgb="FF$brand"/></bottom><diagonal/></border></borders>'
+        '<top style="medium"><color rgb="FF$brand"/></top><bottom style="medium"><color rgb="FF$brand"/></bottom><diagonal/></border>'
+        '<border><left/><right/><top style="medium"><color rgb="FF$brand"/></top><bottom style="medium"><color rgb="FF$brand"/></bottom><diagonal/></border></borders>'
         '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
         '<cellXfs count="${_xfs.length}">${_xfs.join()}</cellXfs>'
         '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
@@ -110,47 +120,106 @@ String _num(num v) {
 /// The SUBTOTAL function number of an aggregate (109 = SUM of visible rows …).
 int? _subtotalFn(AppTotal t) => switch (t) { AppTotal.sum => 109, AppTotal.average => 101, AppTotal.count => 103, AppTotal.min => 105, AppTotal.max => 104, _ => null };
 
-Uint8List appTableXlsx(AppTableExport e, {List<String>? columns}) {
-  final cols = e.resolve(columns);
+/// 'png' / 'jpeg' for image bytes Excel can show, else null.
+String? _imageExt(Uint8List b) {
+  if (b.length > 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) return 'png';
+  if (b.length > 3 && b[0] == 0xFF && b[1] == 0xD8) return 'jpeg';
+  return null;
+}
+
+final _vars = RegExp(r'\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}');
+
+/// [e] as an Excel workbook. [sheet] = the Excel studio's options (null = the standard sheet); [rules] style the
+/// matching cells or leave rows out; [numerals] turns the digits of the text cells into Arabic-Indic ones (numbers
+/// and dates stay real numbers); [logo] (PNG / JPEG bytes) is drawn at the start of the title band; [exporter]
+/// fills {{exporter}} in the sheet title.
+Uint8List appTableXlsx(AppTableExport e,
+    {List<String>? columns, XlsxSheetOptions? sheet, List<ExportRule> rules = const [], ExportNumerals numerals = ExportNumerals.western, Uint8List? logo, String? exporter}) {
+  final visible = exportVisibleRows(rules, e.rows);
+  final ex = identical(visible, e.rows) ? e : e.copyWith(rows: visible);
+  final so = sheet;
+  final rtl = so?.rtl ?? e.rtl;
+  final cols = ex.resolve(columns);
   final n = cols.isEmpty ? 1 : cols.length;
   final brand = brandOf(e);
-  final head = shadeHex(brand, .18);
+  final fs = so?.fontSize ?? 10.0;
+  final cellBorder = (so?.borders ?? true) ? 'thin' : 'none';
+  final zebraFill = so == null ? exportZebraHex : (so.striping ? so.stripeColor : null);
+  final head = so != null && so.headerColor.isNotEmpty ? so.headerColor : shadeHex(brand, .18);
+  final headInk = so != null && so.headerFontColor.isNotEmpty ? so.headerFontColor : onColorHex(head);
+  final headBold = so?.headerBold ?? true;
+  final titleRow = so?.titleRow ?? true;
   final onBrand = onColorHex(brand);
-  final st = _Styles(e.rtl, brand);
-  final widths = columnWidths(cols, e.rows);
-  final decimals = [for (final c in cols) decimalsOf(c, e.rows.map((r) => r[c.id]))];
-  final groups = groupRows(e);
-  final grouped = e.groupBy != null;
-  final totals = hasTotals(e, cols);
+  final st = _Styles(rtl, brand, line: so?.borderColor ?? exportLineHex);
+  final measured = columnWidths(cols, ex.rows);
+  final widths = [for (var k = 0; k < cols.length; k++) so?.widths[cols[k].id] ?? measured[k]];
+  final decimals = [for (final c in cols) decimalsOf(c, ex.rows.map((r) => r[c.id]))];
+  final groups = groupRows(ex);
+  final grouped = ex.groupBy != null;
+  final totals = hasTotals(ex, cols);
+  String p(String s) => exportDigits(s, numerals);
   String phys(AppColAlign a) => switch (a) {
         AppColAlign.center => 'center',
-        AppColAlign.start => e.rtl ? 'right' : 'left',
-        AppColAlign.end => e.rtl ? 'left' : 'right',
+        AppColAlign.start => rtl ? 'right' : 'left',
+        AppColAlign.end => rtl ? 'left' : 'right',
         AppColAlign.auto => 'general',
       };
+  String? fmtOf(AppExportColumn c, int dec) {
+    if (so != null) {
+      if (c.type == AppColType.date) return so.dateFormat;
+      if (c.type == AppColType.dateTime) return '${so.dateFormat} hh:mm';
+      if (so.numberFormat != 'auto' && (c.type == AppColType.number || c.type == AppColType.integer || c.type == AppColType.money)) {
+        return c.type == AppColType.money && (c.currency ?? '').isNotEmpty ? '${so.numberFormat} "${c.currency!.replaceAll('"', '')}"' : so.numberFormat;
+      }
+    }
+    return xlsxFormat(c, dec);
+  }
 
-  final sTitle = st.style(_St(fill: brand, color: onBrand, bold: true, size: 16, border: 'none', h: e.rtl ? 'right' : 'left'));
-  final sBrand = st.style(_St(fill: brand, color: onBrand, size: 9.5, border: 'none', h: e.rtl ? 'right' : 'left'));
-  final sInfo = st.style(_St(color: exportMutedHex, italic: true, size: 9, border: 'none', h: e.rtl ? 'right' : 'left'));
-  final sHead = [for (final c in cols) st.style(_St(fill: head, color: onColorHex(head), bold: true, size: 10, h: phys(c.resolvedAlign), wrap: true))];
-  int body(int k, {bool zebra = false, AppStatusTone? tone}) {
+  // ── the logo (drawn over the start of the title band; the band's text is indented past it)
+  final logoExt = titleRow && logo != null ? _imageExt(logo) : null;
+  var logoCx = 0, logoCy = 0;
+  if (logoExt != null) {
+    var (iw, ih) = (4, 3);
+    try {
+      final bytes = logo!;
+      final info = img.findDecoderForData(bytes)?.startDecode(bytes);
+      if (info != null && info.width > 0 && info.height > 0) (iw, ih) = (info.width, info.height);
+    } catch (_) {}
+    logoCy = 576000; // 1.6 cm
+    logoCx = (logoCy * iw / ih).round().clamp(180000, 2160000);
+  }
+  final bandIndent = logoExt == null ? 0 : ((logoCx / 12700 + 8) / 12).ceil().clamp(1, 15);
+
+  final sTitle = st.style(_St(fill: brand, color: onBrand, bold: true, size: 16, border: 'none', h: rtl ? 'right' : 'left', indent: bandIndent));
+  final sBrand = st.style(_St(fill: brand, color: onBrand, size: 9.5, border: 'none', h: rtl ? 'right' : 'left', indent: bandIndent));
+  final sInfo = st.style(_St(color: exportMutedHex, italic: true, size: 9, border: 'none', h: rtl ? 'right' : 'left'));
+  final sHead = [for (final c in cols) st.style(_St(fill: head, color: headInk, bold: headBold, size: fs, h: phys(c.resolvedAlign), wrap: true, border: cellBorder))];
+  int body(int k, {bool zebra = false, AppStatusTone? tone, ExportRuleStyle? rule}) {
     final c = cols[k];
     if (tone != null) {
       final (fill, ink) = toneColors(tone);
-      return st.style(_St(fill: fill, color: ink, bold: true, size: 9.5, h: 'center'));
+      return st.style(_St(fill: rule?.background ?? fill, color: rule?.color ?? ink, bold: true, size: fs - .5, h: 'center', border: cellBorder));
     }
-    return st.style(_St(fill: zebra ? exportZebraHex : null, size: 10, h: phys(c.resolvedAlign), wrap: c.type == AppColType.text, fmt: xlsxFormat(c, decimals[k])));
+    return st.style(_St(
+        fill: rule?.background ?? (zebra ? zebraFill : null),
+        color: rule?.color ?? exportInkHex,
+        bold: rule?.bold ?? false,
+        size: fs,
+        h: phys(c.resolvedAlign),
+        wrap: c.type == AppColType.text,
+        border: cellBorder,
+        fmt: fmtOf(c, decimals[k])));
   }
 
-  final sGroup = st.style(_St(fill: tintHex(brand, .14), color: shadeHex(brand, .2), bold: true, size: 10.5, h: e.rtl ? 'right' : 'left'));
+  final sGroup = st.style(_St(fill: tintHex(brand, .14), color: shadeHex(brand, .2), bold: true, size: fs + .5, h: rtl ? 'right' : 'left', border: cellBorder));
   int sub(int k, {required bool grand}) => st.style(_St(
       fill: grand ? tintHex(brand, .2) : tintHex(brand, .07),
       color: grand ? shadeHex(brand, .35) : exportInkHex,
       bold: true,
-      size: grand ? 10.5 : 10,
-      border: grand ? 'total' : 'thin',
-      h: k < 0 ? (e.rtl ? 'right' : 'left') : phys(cols[k].resolvedAlign),
-      fmt: k < 0 || cols[k].total == AppTotal.count ? (k >= 0 ? '#,##0' : null) : xlsxFormat(cols[k], cols[k].total == AppTotal.average && cols[k].type == AppColType.integer ? 1 : decimals[k])));
+      size: grand ? fs + .5 : fs,
+      border: grand ? (cellBorder == 'thin' ? 'total' : 'band') : cellBorder,
+      h: k < 0 ? (rtl ? 'right' : 'left') : phys(cols[k].resolvedAlign),
+      fmt: k < 0 || cols[k].total == AppTotal.count ? (k >= 0 ? '#,##0' : null) : fmtOf(cols[k], cols[k].total == AppTotal.average && cols[k].type == AppColType.integer ? 1 : decimals[k])));
 
   final b = StringBuffer();
   var r = 0; // 0-based row index
@@ -163,8 +232,9 @@ Uint8List appTableXlsx(AppTableExport e, {List<String>? columns}) {
   }
 
   String ref(int c, int ri) => '${xlsxCol(c)}${ri + 1}';
+  // every text cell is an inline string (never a formula, whatever it starts with)
   String str(int c, int ri, String v, int s) =>
-      v.isEmpty ? '<c r="${ref(c, ri)}" s="$s"/>' : '<c r="${ref(c, ri)}" s="$s" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>';
+      v.isEmpty ? '<c r="${ref(c, ri)}" s="$s"/>' : '<c r="${ref(c, ri)}" s="$s" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(p(v))}</t></is></c>';
   String number(int c, int ri, num v, int s) => '<c r="${ref(c, ri)}" s="$s"><v>${_num(v)}</v></c>';
   String formula(int c, int ri, String f, num? cached, int s) => '<c r="${ref(c, ri)}" s="$s"><f>${xmlEsc(f)}</f>${cached == null ? '' : '<v>${_num(cached)}</v>'}</c>';
   void band(String text, int style, {double? height}) {
@@ -175,41 +245,60 @@ Uint8List appTableXlsx(AppTableExport e, {List<String>? columns}) {
   }
 
   // ── title block
-  band(e.title, sTitle, height: 30);
-  band([if ((e.brand ?? '').isNotEmpty) e.brand!, e.stamp, '${e.rows.length} ${tx('tx_rows', 'rows', 'صف')}'].join('  ·  '), sBrand, height: 18);
-  for (final l in e.infoLines) {
-    band(l, sInfo, height: 16);
+  if (titleRow) {
+    var title = e.title;
+    if (so != null && so.title.trim().isNotEmpty) {
+      final values = {
+        'org_name': e.brand ?? '',
+        'date': cellText(const AppExportColumn('d', 'd', type: AppColType.date), e.generatedAt),
+        'rows': '${ex.rows.length}',
+        'exporter': exporter ?? '',
+        'title': e.title,
+      };
+      title = so.title.replaceAllMapped(_vars, (m) => values[m.group(1)!] ?? m.group(0)!);
+    }
+    band(title, sTitle, height: 30);
+    band([if ((e.brand ?? '').isNotEmpty) e.brand!, e.stamp, '${ex.rows.length} ${tx('tx_rows', 'rows', 'صف')}'].join('  ·  '), sBrand, height: 18);
+    for (final l in e.infoLines) {
+      band(l, sInfo, height: 16);
+    }
+    r++; // spacer
   }
-  r++; // spacer
   final headerRow = r;
   heights[r] = 24;
   row(r, [for (var k = 0; k < cols.length; k++) str(k, r, cols[k].label, sHead[k])]);
   r++;
   final firstData = r;
 
-  /// The cell of [v] in column [k].
-  String cell(int k, int ri, Object? v, bool zebra) {
+  /// The cell of [v] in column [k] ([look]: what the rules do to its row).
+  String cell(int k, int ri, Object? v, bool zebra, ExportRowLook look) {
     final c = cols[k];
-    if (v == null || (v is String && v.trim().isEmpty)) return '<c r="${ref(k, ri)}" s="${body(k, zebra: zebra)}"/>';
+    final rule = look.of(c.id);
+    final blank = v == null || (v is String && v.trim().isEmpty);
+    final label = rule?.label;
+    if (label != null && label.isNotEmpty) {
+      return str(k, ri, label, body(k, zebra: zebra, rule: rule, tone: c.type == AppColType.status && !blank ? statusTone(c, v) : null));
+    }
+    if (blank) return '<c r="${ref(k, ri)}" s="${body(k, zebra: zebra, rule: rule)}"/>';
+    final s = c.type == AppColType.status ? body(k, tone: statusTone(c, v), rule: rule) : body(k, zebra: zebra, rule: rule);
     switch (c.type) {
       case AppColType.number:
       case AppColType.integer:
       case AppColType.money:
         final x = numValue(v);
-        return x == null ? str(k, ri, '$v', body(k, zebra: zebra)) : number(k, ri, x, body(k, zebra: zebra));
+        return x == null ? str(k, ri, '$v', s) : number(k, ri, x, s);
       case AppColType.percent:
         final x = numValue(v);
-        return x == null ? str(k, ri, '$v', body(k, zebra: zebra)) : number(k, ri, x / 100, body(k, zebra: zebra));
+        return x == null ? str(k, ri, '$v', s) : number(k, ri, x / 100, s);
       case AppColType.date:
       case AppColType.dateTime:
         final d = dateValue(v, withTime: c.type == AppColType.dateTime);
-        if (d == null) return str(k, ri, '$v', body(k, zebra: zebra));
+        if (d == null) return str(k, ri, '$v', s);
         final serial = c.type == AppColType.date ? xlsxSerial(d.$1).floorToDouble() : xlsxSerial(d.$1);
-        return number(k, ri, serial, body(k, zebra: zebra));
+        return number(k, ri, serial, s);
       case AppColType.status:
-        return str(k, ri, cellText(c, v), body(k, tone: statusTone(c, v)));
       case AppColType.text:
-        return str(k, ri, cellText(c, v), body(k, zebra: zebra));
+        return str(k, ri, cellText(c, v), s);
     }
   }
 
@@ -254,35 +343,39 @@ Uint8List appTableXlsx(AppTableExport e, {List<String>? columns}) {
     final gFirst = r;
     for (final data in g.rows) {
       if (grouped) outline.add(r);
-      row(r, [for (var k = 0; k < cols.length; k++) cell(k, r, data[cols[k].id], zebra)]);
+      final look = exportRowLook(rules, data);
+      row(r, [for (var k = 0; k < cols.length; k++) cell(k, r, data[cols[k].id], zebra, look)]);
       zebra = !zebra;
       r++;
     }
-    if (grouped && totals && e.groupTotals && g.rows.isNotEmpty) {
+    if (grouped && totals && ex.groupTotals && g.rows.isNotEmpty) {
       totalRow('${tx('tx_subtotal', 'Subtotal', 'المجموع الفرعي')} · ${g.label}', g.rows, gFirst, r - 1, grand: false);
     }
   }
   final lastData = r - 1;
-  if (totals && e.rows.isNotEmpty) totalRow(e.totalText, e.rows, firstData, lastData, grand: true);
-  if (e.rows.isEmpty) band(tx('tx_no_rows', 'No rows to export', 'لا توجد صفوف للتصدير'), sInfo);
+  if (totals && ex.rows.isNotEmpty) totalRow(ex.totalText, ex.rows, firstData, lastData, grand: true);
+  if (ex.rows.isEmpty) band(tx('tx_no_rows', 'No rows to export', 'لا توجد صفوف للتصدير'), sInfo);
 
   final name = xlsxSheetName(e.title);
   final quoted = "'${name.replaceAll("'", "''")}'";
   final filterRef = '${ref(0, headerRow)}:${ref(n - 1, lastData < headerRow ? headerRow : lastData)}';
   final freezeCol = cols.length > 6 ? 1 : 0;
   final topLeft = ref(freezeCol, headerRow + 1);
-  final pane = freezeCol == 0
-      ? '<pane ySplit="${headerRow + 1}" topLeftCell="$topLeft" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="$topLeft" sqref="$topLeft"/>'
-      : '<pane xSplit="1" ySplit="${headerRow + 1}" topLeftCell="$topLeft" activePane="bottomRight" state="frozen"/>'
-          '<selection pane="topRight"/><selection pane="bottomLeft"/><selection pane="bottomRight" activeCell="$topLeft" sqref="$topLeft"/>';
+  final pane = !(so?.freezeHeader ?? true)
+      ? ''
+      : freezeCol == 0
+          ? '<pane ySplit="${headerRow + 1}" topLeftCell="$topLeft" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="$topLeft" sqref="$topLeft"/>'
+          : '<pane xSplit="1" ySplit="${headerRow + 1}" topLeftCell="$topLeft" activePane="bottomRight" state="frozen"/>'
+              '<selection pane="topRight"/><selection pane="bottomLeft"/><selection pane="bottomRight" activeCell="$topLeft" sqref="$topLeft"/>';
   final landscape = wideTable(cols, widths);
-  final footerText = e.rtl ? '&amp;L&amp;8صفحة &amp;P من &amp;N&amp;R&amp;8${xmlEsc(e.title)}' : '&amp;L&amp;8${xmlEsc(e.title)}&amp;R&amp;8Page &amp;P of &amp;N';
+  final footTitle = xmlEsc(p(e.title));
+  final footerText = e.rtl ? '&amp;L&amp;8صفحة &amp;P من &amp;N&amp;R&amp;8$footTitle' : '&amp;L&amp;8$footTitle&amp;R&amp;8Page &amp;P of &amp;N';
 
-  final sheet = StringBuffer('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+  final sheetXml = StringBuffer('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
       '<sheetPr filterMode="0"><outlinePr summaryBelow="1"/><pageSetUpPr fitToPage="1"/></sheetPr>'
       '<dimension ref="A1:${ref(n - 1, r - 1 < 0 ? 0 : r - 1)}"/>'
-      '<sheetViews><sheetView workbookViewId="0" showGridLines="0"${e.rtl ? ' rightToLeft="1"' : ''}>$pane</sheetView></sheetViews>'
+      '<sheetViews><sheetView workbookViewId="0" showGridLines="0"${rtl ? ' rightToLeft="1"' : ''}>$pane</sheetView></sheetViews>'
       '<sheetFormatPr defaultRowHeight="18"${outline.isEmpty ? '' : ' outlineLevelRow="1"'}/>'
       '<cols>${[for (var k = 0; k < n; k++) '<col min="${k + 1}" max="${k + 1}" width="${(k < widths.length ? widths[k] : 20).toStringAsFixed(1)}" customWidth="1"/>'].join()}</cols>'
       '<sheetData>$b</sheetData>'
@@ -292,16 +385,19 @@ Uint8List appTableXlsx(AppTableExport e, {List<String>? columns}) {
       '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.6" header="0.3" footer="0.3"/>'
       '<pageSetup orientation="${landscape ? 'landscape' : 'portrait'}" paperSize="9" fitToWidth="1" fitToHeight="0"/>'
       '<headerFooter><oddFooter>$footerText</oddFooter></headerFooter>'
+      '${logoExt == null ? '' : '<drawing r:id="rId1"/>'}'
       '</worksheet>');
 
-  return zipFiles({
+  final files = <String, String>{
     '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
         '<Default Extension="xml" ContentType="application/xml"/>'
+        '${logoExt == null ? '' : '<Default Extension="$logoExt" ContentType="image/$logoExt"/>'}'
         '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
         '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
         '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        '${logoExt == null ? '' : '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>'}'
         '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'
         '</Types>',
     '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -312,7 +408,7 @@ Uint8List appTableXlsx(AppTableExport e, {List<String>? columns}) {
     'docProps/core.xml': coreProps(e),
     'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-        '<bookViews><workbookView${e.rtl ? ' rightToLeft="1"' : ''}/></bookViews>'
+        '<bookViews><workbookView/></bookViews>' // RTL lives on each sheetView (CT_BookView has no rightToLeft)
         '<sheets><sheet name="${xmlEsc(name)}" sheetId="1" r:id="rId1"/></sheets>'
         '<definedNames>'
         '${cols.isEmpty ? '' : '<definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">${xmlEsc("$quoted!\$${xlsxCol(0)}\$${headerRow + 1}:\$${xlsxCol(n - 1)}\$${(lastData < headerRow ? headerRow : lastData) + 1}")}</definedName>'}'
@@ -322,7 +418,28 @@ Uint8List appTableXlsx(AppTableExport e, {List<String>? columns}) {
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
         '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
-    'xl/worksheets/sheet1.xml': sheet.toString(),
+    'xl/worksheets/sheet1.xml': sheetXml.toString(),
     'xl/styles.xml': st.xml(),
-  });
+  };
+  if (logoExt == null) return zipFiles(files);
+
+  files['xl/worksheets/_rels/sheet1.xml.rels'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>';
+  files['xl/drawings/_rels/drawing1.xml.rels'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.$logoExt"/></Relationships>';
+  files['xl/drawings/drawing1.xml'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      '<xdr:oneCellAnchor editAs="oneCell"><xdr:from><xdr:col>0</xdr:col><xdr:colOff>50800</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>25400</xdr:rowOff></xdr:from>'
+      '<xdr:ext cx="$logoCx" cy="$logoCy"/>'
+      '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
+      '<xdr:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+      '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="$logoCx" cy="$logoCy"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>'
+      '<xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>';
+  final a = Archive();
+  files.forEach((name, body) => a.add(ArchiveFile.bytes(name, utf8.encode(body))));
+  a.add(ArchiveFile.bytes('xl/media/image1.$logoExt', logo!));
+  return ZipEncoder().encodeBytes(a);
 }

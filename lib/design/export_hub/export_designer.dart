@@ -1,16 +1,22 @@
 // lib/design/export_hub/export_designer.dart
 //
-// The Export Hub's visual designer: a page canvas with the live preview (blocks at their fractions, drag to move,
-// a corner handle to resize, snapping to a 2 % grid), and the settings of the selected block / the page / the
-// table / the votes layout in a side panel (wide) or a bottom sheet (phone). "Preview PDF" renders the real file
-// through export_pdf.dart and saves / shares it like every export. Undo keeps a small history of the design.
+// The Export Studio's page designer, on the shared studio engine (lib/design/studio/, D-133): the sheet with its
+// margins, header / footer, frame and watermark, every block at its place (drag, resize with 8 handles, snap guides,
+// align / distribute, nudge with the arrows, duplicate, delete, z order, undo / redo, zoom — the engine's
+// StudioToolbar and keyboard), and a property panel built from studio_props.dart: the selected element (text,
+// placeholders, image, signature name + title, font, size, weight, colour, alignment, background, position and size
+// in millimetres), the page (paper, orientation, margins, direction, base font, header / footer with
+// {{org_name}} {{date}} {{page}} {{pages}} {{rows}} {{exporter}}, page numbers, frame, watermark), the table and the
+// vote results. Phones get a calm notice first (StudioSmallScreenGate), then the canvas with the panel in a sheet.
 //
-//     ExportDesignerPage(design: d, dataset: ds, module: 'council', lang: 'ar', onSave: (design, name) async {…})
+//     ExportDesignerPage(design: d, dataset: ds, module: 'table', lang: 'ar', onSave: (design, name) async {…})
 //
-// `ExportPagePreview` and `VoteResultPreview` take plain values and are what the layout harness pumps
-// (test/ui/export_hub_layout_test.dart). Pure model: export_design.dart.
+// The document stays ExportDesign (export_design.dart): the adapter maps its blocks (fractions of the content box,
+// x from the PHYSICAL left like the writers) to engine items in millimetres; snapshot = design.toJson().
+// `ExportPagePreview` and `VoteResultPreview` take plain values (the flow's live preview, the layout harness).
 library;
 
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -25,8 +31,12 @@ import 'package:http/http.dart' as http;
 import '../../features/admin/admin_common.dart' show SheetHeader, t, toast;
 import '../../features/org/org_providers.dart' show orgBase;
 import '../../features/org/org_ui.dart' show orgFileUrl;
+import '../../features/shared/rag/app_assistant.dart' show AppAssistant;
 import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
 import '../app_kit.dart';
+import '../app_tokens.dart';
+import '../export/export_studio_model.dart';
+import '../studio/studio.dart';
 import 'export_design.dart';
 import 'export_pdf.dart';
 
@@ -44,6 +54,10 @@ String exportFlutterFont(String family) => switch (family) { 'bahij' => 'bahji',
 /// Swatches offered for text, lines and the table header.
 const exportSwatches = ['1E293B', '64748B', '0F766E', '1E40AF', '7C3AED', '991B1B', '92400E', '166534', '000000', 'FFFFFF'];
 
+List<Color> get _studioSwatches => [for (final h in exportSwatches) exportColor(h)];
+
+String? _hexOfColor(Color? c) => c == null ? null : studioHex(c);
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Images
 // ═════════════════════════════════════════════════════════════════════════════
@@ -56,17 +70,22 @@ Future<Map<String, Uint8List>> loadExportImages(ExportDesign d) async {
   final out = <String, Uint8List>{};
   for (final b in d.blocks) {
     if (!b.isImage || b.url.isEmpty) continue;
-    final cached = _imageCache[b.url];
-    if (cached != null) {
-      out[b.url] = cached;
-      continue;
-    }
-    try {
-      final res = await http.get(Uri.parse(orgFileUrl(b.url))).timeout(const Duration(seconds: 25));
-      if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) out[b.url] = _imageCache[b.url] = res.bodyBytes;
-    } catch (_) {}
+    final bytes = await loadExportImage(b.url);
+    if (bytes != null) out[b.url] = bytes;
   }
   return out;
+}
+
+/// One image by URL (cached); null when it cannot be read.
+Future<Uint8List?> loadExportImage(String url) async {
+  if (url.isEmpty) return null;
+  final cached = _imageCache[url];
+  if (cached != null) return cached;
+  try {
+    final res = await http.get(Uri.parse(orgFileUrl(url))).timeout(const Duration(seconds: 25));
+    if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) return _imageCache[url] = res.bodyBytes;
+  } catch (_) {}
+  return null;
 }
 
 /// Remembers bytes for a URL (after an upload, so the preview does not download what it just sent).
@@ -143,11 +162,200 @@ class VoteResultPreview extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  Shared drawing: paper decorations and block content
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The values a preview fills in: the dataset's placeholders plus the visible row count after the rules.
+Map<String, String> _previewValues(ExportDesign d, ExportDataset ds, ExportContent? c) {
+  final v = ds.placeholderValues(d.lang);
+  if (c != null && c.rules.isNotEmpty) v['rows'] = '${exportVisibleRows(c.rules, ds.rows).length}';
+  return v;
+}
+
+String _digits(String s, ExportContent? c) => c == null ? s : exportDigits(s, c.numerals);
+
+/// The paper's own layer (behind the blocks): header and footer text in the margins, the frame, the watermark.
+/// [scale] = screen pixels per millimetre; [box] = the paper size in pixels.
+class _PaperDecor extends StatelessWidget {
+  const _PaperDecor({required this.design, required this.values, required this.scale, this.content});
+  final ExportDesign design;
+  final Map<String, String> values;
+  final double scale;
+  final ExportContent? content;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = design;
+    final ml = d.page.left * scale, mr = d.page.right * scale, mt = d.page.top * scale, mb = d.page.bottom * scale;
+    final st = TextStyle(fontFamily: exportFlutterFont(d.fontFamily), fontSize: (d.fontSize * .78 * .3528 * scale).clamp(3, 40), color: exportColor(exportMuted));
+    String fill(String s) => _digits(fillPlaceholders(s, values).replaceAll('{{page}}', '1').replaceAll('{{pages}}', '1'), content);
+    Widget hf(String start, String end) => Row(children: [
+          Expanded(child: Text(start, maxLines: 1, overflow: TextOverflow.ellipsis, style: st)),
+          if (end.isNotEmpty) Flexible(child: Text(end, maxLines: 1, overflow: TextOverflow.clip, style: st)),
+        ]);
+    final lb = ExportLabels(d.lang);
+    return Stack(clipBehavior: Clip.hardEdge, children: [
+      if (d.watermark.visible) Positioned.fill(child: _Watermark(mark: d.watermark, family: exportFlutterFont(d.fontFamily), scale: scale)),
+      if (d.frame.visible)
+        Positioned(
+          left: math.max(0, ml - d.frame.inset * scale),
+          top: math.max(0, mt - d.frame.inset * scale),
+          right: math.max(0, mr - d.frame.inset * scale),
+          bottom: math.max(0, mb - d.frame.inset * scale),
+          child: StudioBorderBox(
+            // points → millimetres → pixels
+            border: StudioBorder(
+              style: StudioBorderStyle.values.byName(d.frame.style == 'none' ? 'none' : d.frame.style),
+              width: d.frame.width * .3528,
+              color: exportColor(d.frame.color),
+              radius: d.frame.radius * .3528,
+            ),
+            scale: scale,
+          ),
+        ),
+      if (d.headerText.trim().isNotEmpty || d.showDate)
+        Positioned(left: ml, right: mr, top: (mt * .4).clamp(1, math.max(1.0, mt)), child: hf(fill(d.headerText), d.showDate ? _digits(values['date'] ?? '', content) : '')),
+      if (d.footerText.trim().isNotEmpty || d.showPageNumbers)
+        Positioned(
+          left: ml,
+          right: mr,
+          bottom: (mb * .35).clamp(1, math.max(1.0, mb)),
+          child: hf(fill(d.footerText), d.showPageNumbers ? _digits('${lb.page} 1 ${lb.of} 1', content) : ''),
+        ),
+    ]);
+  }
+}
+
+class _Watermark extends StatelessWidget {
+  const _Watermark({required this.mark, required this.family, required this.scale});
+  final ExportWatermark mark;
+  final String family;
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: Center(
+          child: Transform.rotate(
+            angle: mark.angle * math.pi / 180,
+            child: Text(
+              mark.text,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                fontFamily: family,
+                fontSize: (mark.size * .3528 * scale).clamp(4, 400),
+                fontWeight: FontWeight.w800,
+                color: exportColor(mark.color).withValues(alpha: mark.opacity.clamp(0, 1).toDouble()),
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+/// One block's printed content at [scale] px / mm (no selection chrome: the engine / the preview draws that).
+class _BlockContent extends StatelessWidget {
+  const _BlockContent({required this.design, required this.dataset, required this.block, required this.values, required this.scale, this.images, this.content, this.placeholders = true});
+  final ExportDesign design;
+  final ExportDataset dataset;
+  final ExportBlock block;
+  final Map<String, String> values;
+  final double scale;
+  final Map<String, Uint8List>? images;
+  final ExportContent? content;
+
+  /// An empty logo / signature box shows where it sits (the studio); a print preview draws nothing there.
+  final bool placeholders;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = design;
+    final b = block;
+    // 1 pt = 0.3528 mm on paper
+    double pt(double size) => (size * .3528 * scale).clamp(2.0, 120.0);
+    final family = exportFlutterFont(b.font.family.isEmpty ? d.fontFamily : b.font.family);
+    final ta = switch (b.align) { 'center' => TextAlign.center, 'end' => TextAlign.end, _ => TextAlign.start };
+    final dir = d.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final al = switch (b.align) {
+      'center' => Alignment.topCenter,
+      'end' => AlignmentDirectional.topEnd.resolve(dir),
+      _ => AlignmentDirectional.topStart.resolve(dir),
+    };
+    final ink = b.font.color.isEmpty ? d.fontColor : b.font.color;
+    TextStyle st({double? size, bool? bold, String? color}) => TextStyle(
+        fontFamily: family, fontSize: pt(size ?? b.font.size), color: exportColor(color ?? ink), height: d.lineSpacing, fontWeight: (bold ?? b.font.bold) ? FontWeight.w800 : FontWeight.w500);
+    String fill(String s) => _digits(fillPlaceholders(s, values), content);
+    Widget body;
+    switch (b.kind) {
+      case 'table':
+        body = _TablePreview(design: d, dataset: dataset, fs: pt(d.table.fontSize), family: exportFlutterFont(d.fontFamily), content: content);
+      case 'items':
+        body = _ItemsPreview(design: d, dataset: dataset, pt: pt, family: exportFlutterFont(d.fontFamily));
+      case 'logo':
+        body = _netImage(b.url, Icons.image_rounded, t('الشعار', 'Logo'), al);
+      case 'signature':
+        final name = fill(b.name).trim(), title = fill(b.title).trim();
+        body = Column(children: [
+          Expanded(child: _netImage(b.url, Icons.draw_rounded, t('التوقيع', 'Signature'), al)),
+          if (name.isNotEmpty) Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: ta, style: st(bold: true)),
+          if (title.isNotEmpty) Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: ta, style: st(size: b.font.size * .85, bold: false, color: exportMuted)),
+        ]);
+      case 'line':
+        body = LayoutBuilder(
+            builder: (context, box) => Align(
+                alignment: Alignment.topCenter,
+                child: Container(height: box.maxHeight.clamp(.5, 6).toDouble(), color: exportColor(b.color.isEmpty ? exportLine : b.color))));
+      default:
+        body = Align(alignment: al, child: Text(fill(b.text), textAlign: ta, overflow: TextOverflow.fade, style: st()));
+    }
+    // flow blocks print as many rows as there are; the box shows what fits (never an overflow)
+    if (b.isFlow) body = SingleChildScrollView(physics: const NeverScrollableScrollPhysics(), child: body);
+    final framed = Directionality(textDirection: dir, child: ClipRect(child: body));
+    if (b.background.isEmpty || b.isFlow || b.kind == 'line') return framed;
+    return DecoratedBox(
+      decoration: BoxDecoration(color: exportColor(b.background), borderRadius: BorderRadius.circular(1.2 * scale)),
+      child: Padding(padding: EdgeInsets.symmetric(horizontal: 1.6 * scale, vertical: .8 * scale), child: framed),
+    );
+  }
+
+  Widget _netImage(String url, IconData icon, String label, AlignmentGeometry al) {
+    final cached = images?[url] ?? cachedExportImage(url);
+    if (cached != null) return Align(alignment: al, child: Image.memory(cached, fit: BoxFit.contain));
+    if (url.isNotEmpty) return Align(alignment: al, child: Image.network(orgFileUrl(url), fit: BoxFit.contain, errorBuilder: (_, _, _) => _placeholder(icon, label)));
+    return _placeholder(icon, label);
+  }
+
+  Widget _empty() => const SizedBox.shrink();
+
+  Widget _placeholder(IconData icon, String label) {
+    if (!placeholders) return _empty();
+    final ink = exportColor(exportInk);
+    return DecoratedBox(
+      decoration: BoxDecoration(color: ink.withValues(alpha: .04), borderRadius: BorderRadius.circular(4), border: Border.all(color: ink.withValues(alpha: .12))),
+      child: Center(
+        child: FittedBox(
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: 14, color: ink.withValues(alpha: .45)),
+              const SizedBox(width: 4),
+              Text(label, style: TextStyle(fontSize: 10, color: ink.withValues(alpha: .6))),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  Page preview (presentational)
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// The designed page at any width: the paper, the margin guide, every block at its fractions. Interactive when
-/// [onSelect] is given (tap, drag to move, corner handle to resize); read-only otherwise (the hub's preview).
+/// The designed page at any width: the paper, the margin guide, header / footer, frame, watermark and every block
+/// at its fractions. Interactive when [onSelect] is given (tap, drag to move, corner handle to resize — kept for
+/// older callers; the designer itself uses the studio engine); read-only otherwise (the flow's live preview).
+/// [content] applies the flow's choices to the table (columns, labels, rules, numerals).
 class ExportPagePreview extends StatelessWidget {
   const ExportPagePreview({
     super.key,
@@ -161,6 +369,7 @@ class ExportPagePreview extends StatelessWidget {
     this.onDragEnd,
     this.maxWidth = 620,
     this.images,
+    this.content,
   });
 
   final ExportDesign design;
@@ -175,6 +384,7 @@ class ExportPagePreview extends StatelessWidget {
 
   /// Image bytes by URL (uploaded this session); the rest load from the network.
   final Map<String, Uint8List>? images;
+  final ExportContent? content;
 
   bool get interactive => onSelect != null;
 
@@ -183,7 +393,7 @@ class ExportPagePreview extends StatelessWidget {
     final c = context.colors;
     final d = design;
     final (pwMm, phMm) = d.page.mm;
-    final values = dataset.placeholderValues(d.lang);
+    final values = _previewValues(d, dataset, content);
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
@@ -194,59 +404,36 @@ class ExportPagePreview extends StatelessWidget {
             final ml = d.page.left * scale, mt = d.page.top * scale;
             final cw = (box.maxWidth - (d.page.left + d.page.right) * scale).clamp(10.0, box.maxWidth);
             final ch = (box.maxHeight - (d.page.top + d.page.bottom) * scale).clamp(10.0, box.maxHeight);
-            return GestureDetector(
-              onTap: onSelect == null ? null : () => onSelect!(null),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _paper,
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: [BoxShadow(color: c.textDark.withValues(alpha: .12), blurRadius: 18, offset: const Offset(0, 6))],
-                ),
-                child: Stack(clipBehavior: Clip.hardEdge, children: [
-                  Positioned(
-                    left: ml,
-                    top: mt,
-                    width: cw,
-                    height: ch,
-                    child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(border: Border.all(color: c.divider.withValues(alpha: .7), width: .6)))),
+            return Semantics(
+              label: t('معاينة الصفحة', 'Page preview'),
+              image: true,
+              child: GestureDetector(
+                onTap: onSelect == null ? null : () => onSelect!(null),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _paper,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: const Color(0x1A1E293B)),
+                    boxShadow: [BoxShadow(color: c.textDark.withValues(alpha: .10), blurRadius: 16, offset: const Offset(0, 6))],
                   ),
-                  if (d.headerText.trim().isNotEmpty || d.showDate)
-                    Positioned(
-                      left: ml,
-                      right: ml,
-                      top: (mt * .4).clamp(2, mt),
-                      child: IgnorePointer(child: _hf(fillPlaceholders(d.headerText, values).replaceAll('{{page}}', '1').replaceAll('{{pages}}', '1'), d.showDate ? values['date'] ?? '' : '', scale)),
-                    ),
-                  if (d.footerText.trim().isNotEmpty || d.showPageNumbers)
-                    Positioned(
-                      left: ml,
-                      right: ml,
-                      bottom: (d.page.bottom * scale * .35).clamp(2, mt),
-                      child: IgnorePointer(child: _hf(fillPlaceholders(d.footerText, values).replaceAll('{{page}}', '1').replaceAll('{{pages}}', '1'), d.showPageNumbers ? '1 / 1' : '', scale)),
-                    ),
-                  for (final b in d.blocks)
-                    Positioned(
-                      left: ml + b.x * cw,
-                      top: mt + b.y * ch,
-                      width: b.w * cw,
-                      height: b.h * ch,
-                      child: _PreviewBlock(preview: this, block: b, values: values, scale: scale, cw: cw, ch: ch),
-                    ),
-                ]),
+                  child: Stack(clipBehavior: Clip.hardEdge, children: [
+                    Positioned.fill(child: _PaperDecor(design: d, values: values, scale: scale, content: content)),
+                    for (final b in d.blocks)
+                      Positioned(
+                        left: ml + b.x * cw,
+                        top: mt + b.y * ch,
+                        width: b.w * cw,
+                        height: b.h * ch,
+                        child: _PreviewBlock(preview: this, block: b, values: values, scale: scale, cw: cw, ch: ch),
+                      ),
+                  ]),
+                ),
               ),
             );
           }),
         ),
       ),
     );
-  }
-
-  Widget _hf(String start, String end, double scale) {
-    final st = TextStyle(fontFamily: exportFlutterFont(design.fontFamily), fontSize: (design.fontSize * .78 * .3528 * scale).clamp(4, 40), color: exportColor(exportMuted));
-    return Row(children: [
-      Expanded(child: Text(start, maxLines: 1, overflow: TextOverflow.ellipsis, style: st)),
-      if (end.isNotEmpty) Text(end, maxLines: 1, style: st),
-    ]);
   }
 }
 
@@ -260,55 +447,25 @@ class _PreviewBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final d = preview.design;
     final b = block;
-    final rtl = d.rtl;
     final sel = b.id == preview.selectedId;
-    // 1 pt = 0.3528 mm on paper
-    double pt(double size) => (size * .3528 * scale).clamp(3.0, 80.0);
-    final family = exportFlutterFont(b.font.family.isEmpty ? d.fontFamily : b.font.family);
-    final ta = switch (b.align) { 'center' => TextAlign.center, 'end' => TextAlign.end, _ => TextAlign.start };
-    final al = switch (b.align) { 'center' => Alignment.topCenter, 'end' => AlignmentDirectional.topEnd, _ => AlignmentDirectional.topStart };
-    final ink = b.font.color.isEmpty ? d.fontColor : b.font.color;
-    TextStyle st({double? size, bool? bold, String? color}) => TextStyle(
-        fontFamily: family, fontSize: pt(size ?? b.font.size), color: exportColor(color ?? ink), height: d.lineSpacing, fontWeight: (bold ?? b.font.bold) ? FontWeight.w800 : FontWeight.w500);
-    Widget content;
-    switch (b.kind) {
-      case 'table':
-        content = _TablePreview(design: d, dataset: preview.dataset, fs: pt(d.table.fontSize), family: exportFlutterFont(d.fontFamily));
-      case 'items':
-        content = _ItemsPreview(design: d, dataset: preview.dataset, pt: pt, family: exportFlutterFont(d.fontFamily));
-      case 'logo':
-        content = _netImage(b.url, Icons.image_rounded, t('الشعار', 'Logo'), al);
-      case 'signature':
-        final name = fillPlaceholders(b.name, values).trim(), title = fillPlaceholders(b.title, values).trim();
-        content = Column(children: [
-          Expanded(child: _netImage(b.url, Icons.draw_rounded, t('التوقيع', 'Signature'), al)),
-          if (name.isNotEmpty) Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: ta, style: st(bold: true)),
-          if (title.isNotEmpty) Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: ta, style: st(size: b.font.size * .85, bold: false, color: exportMuted)),
-        ]);
-      case 'line':
-        content = Align(alignment: Alignment.topCenter, child: Container(height: (b.h * ch).clamp(.5, 6), color: exportColor(b.color.isEmpty ? exportLine : b.color)));
-      default:
-        content = Align(
-          alignment: al,
-          child: Text(fillPlaceholders(b.text, values), textAlign: ta, overflow: TextOverflow.fade, style: st()),
-        );
-    }
+    final content = _BlockContent(
+        design: preview.design, dataset: preview.dataset, block: b, values: values, scale: scale, images: preview.images, content: preview.content, placeholders: preview.interactive);
+    if (!preview.interactive) return IgnorePointer(child: content);
     final body = Container(
       decoration: BoxDecoration(
         border: Border.all(color: sel ? c.primary : Colors.transparent, width: sel ? 1.4 : 1),
         color: sel ? c.primary.withValues(alpha: .05) : null,
       ),
       child: Stack(clipBehavior: Clip.none, children: [
-        Positioned.fill(child: ClipRect(child: content)),
+        Positioned.fill(child: content),
         if (sel && preview.onResize != null)
           PositionedDirectional(
             end: -7,
             bottom: -7,
             child: GestureDetector(
               onPanStart: (_) => preview.onDragStart?.call(),
-              onPanUpdate: (e) => preview.onResize!(b, (rtl ? -e.delta.dx : e.delta.dx) / cw, e.delta.dy / ch),
+              onPanUpdate: (e) => preview.onResize!(b, e.delta.dx / cw, e.delta.dy / ch),
               onPanEnd: (_) => preview.onDragEnd?.call(),
               child: Container(
                 width: 16,
@@ -319,7 +476,6 @@ class _PreviewBlock extends StatelessWidget {
           ),
       ]),
     );
-    if (!preview.interactive) return IgnorePointer(child: body);
     return GestureDetector(
       onTap: () => preview.onSelect!(b.id),
       onPanStart: (_) {
@@ -331,70 +487,72 @@ class _PreviewBlock extends StatelessWidget {
       child: body,
     );
   }
-
-  Widget _netImage(String url, IconData icon, String label, AlignmentGeometry al) {
-    final cached = preview.images?[url] ?? cachedExportImage(url);
-    if (cached != null) return Align(alignment: al, child: Image.memory(cached, fit: BoxFit.contain));
-    if (url.isNotEmpty) return Align(alignment: al, child: Image.network(orgFileUrl(url), fit: BoxFit.contain, errorBuilder: (_, _, _) => _placeholder(icon, label)));
-    return _placeholder(icon, label);
-  }
-
-  Widget _placeholder(IconData icon, String label) {
-    final ink = exportColor(exportInk);
-    return DecoratedBox(
-      decoration: BoxDecoration(color: ink.withValues(alpha: .04), borderRadius: BorderRadius.circular(4)),
-      child: Center(
-        child: FittedBox(
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 14, color: ink.withValues(alpha: .4)),
-              const SizedBox(width: 4),
-              Text(label, style: TextStyle(fontSize: 10, color: ink.withValues(alpha: .5))),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _TablePreview extends StatelessWidget {
-  const _TablePreview({required this.design, required this.dataset, required this.fs, required this.family});
+  const _TablePreview({required this.design, required this.dataset, required this.fs, required this.family, this.content});
   final ExportDesign design;
   final ExportDataset dataset;
   final double fs;
   final String family;
+  final ExportContent? content;
 
   @override
   Widget build(BuildContext context) {
     final d = design;
-    final cols = dataset.columnsFor(d);
-    final rows = dataset.rows.take(6).toList();
+    final cc = content;
+    final cols = dataset.columnsFor(d, cc?.columns).where((col) => col.id != cc?.groupBy).toList();
+    final rules = cc?.rules ?? const <ExportRule>[];
+    final rows = exportVisibleRows(rules, dataset.rows).take(8).toList();
     final headColor = exportColor(d.table.headerColor), onHead = exportColor(d.table.headerTextColor);
     final minimal = d.table.style == 'minimal', grid = d.table.style == 'grid';
-    TextStyle st({bool head = false}) =>
-        TextStyle(fontFamily: family, fontSize: fs, color: head ? (minimal ? headColor : onHead) : exportColor(d.fontColor), fontWeight: head ? FontWeight.w800 : FontWeight.w500, height: 1.2);
+    TextStyle st({bool head = false, ExportRuleStyle? look}) => TextStyle(
+        fontFamily: family,
+        fontSize: fs,
+        color: head ? (minimal ? headColor : onHead) : (look?.color != null ? exportColor(look!.color!) : exportColor(d.fontColor)),
+        fontWeight: head || (look?.bold ?? false) ? FontWeight.w800 : FontWeight.w500,
+        height: 1.2);
     final line = exportColor(exportLine);
     if (cols.isEmpty) return const SizedBox();
     Widget row(List<Widget> cells, {Color? color, Border? border}) => Container(
           decoration: BoxDecoration(color: color, border: border),
-          padding: EdgeInsets.symmetric(vertical: fs * .35, horizontal: fs * .2),
+          padding: EdgeInsets.symmetric(vertical: fs * .35),
           child: Row(children: cells),
         );
-    int flex(ExportColumn col) => col.id == 'n' ? 1 : col.numeric ? 2 : (col.id == 'title' || col.id == 'subject' || col.id == 'body' ? 5 : 3);
+    int flex(ExportColumn col) => col.id == 'n' ? 1 : col.numeric ? 2 : (col.id == 'title' || col.id == 'subject' || col.id == 'body' || col.id == 'name' ? 5 : 3);
+    String label(ExportColumn col) => _digits(cc?.labels[col.id] ?? col.label(d.lang), cc);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       row(
-        [for (final col in cols) Expanded(flex: flex(col), child: Text(col.label(d.lang), maxLines: 1, overflow: TextOverflow.clip, style: st(head: true)))],
+        [
+          for (final col in cols)
+            Expanded(
+              flex: flex(col),
+              child: Padding(padding: EdgeInsets.symmetric(horizontal: fs * .25), child: Text(label(col), maxLines: 1, overflow: TextOverflow.clip, style: st(head: true))),
+            ),
+        ],
         color: minimal ? null : headColor,
         border: minimal ? Border(bottom: BorderSide(color: headColor, width: 1.2)) : null,
       ),
       for (var i = 0; i < rows.length; i++)
-        row(
-          [for (final col in cols) Expanded(flex: flex(col), child: Text(dataset.cell(col, rows[i][col.id]), maxLines: 1, overflow: TextOverflow.clip, style: st()))],
-          color: d.table.style == 'zebra' && i.isOdd ? exportColor('F6F8FA') : null,
-          border: grid ? Border.all(color: line, width: .5) : Border(bottom: BorderSide(color: line, width: .5)),
-        ),
+        () {
+          final look = exportRowLook(rules, rows[i]);
+          return row(
+            [
+              for (final col in cols)
+                Expanded(
+                  flex: flex(col),
+                  child: Container(
+                    color: look.of(col.id)?.background == null ? null : exportColor(look.of(col.id)!.background!),
+                    padding: EdgeInsets.symmetric(horizontal: fs * .25),
+                    child: Text(_digits(look.textOf(col.id, dataset.cell(col, rows[i][col.id])), cc),
+                        maxLines: 1, overflow: TextOverflow.clip, textAlign: col.numeric ? TextAlign.end : TextAlign.start, style: st(look: look.of(col.id))),
+                  ),
+                ),
+            ],
+            color: d.table.style == 'zebra' && i.isOdd ? exportColor('F6F8FA') : null,
+            border: grid ? Border.all(color: line, width: .5) : Border(bottom: BorderSide(color: line, width: .5)),
+          );
+        }(),
       if (rows.isEmpty) Padding(padding: EdgeInsets.all(fs), child: Text(ExportLabels(d.lang).noRows, textAlign: TextAlign.center, style: st().copyWith(color: exportColor(exportMuted)))),
     ]);
   }
@@ -454,6 +612,122 @@ class _ItemsPreview extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  Engine adapter
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The engine's view of an ExportDesign: blocks ↔ items in millimetres of the content box. [design] is read through
+/// a getter, so restoring a snapshot can swap the whole document.
+class ExportStudioAdapter implements StudioAdapter<ExportBlock> {
+  ExportStudioAdapter(this._get, this._set);
+
+  final ExportDesign Function() _get;
+  final void Function(ExportDesign d) _set;
+  final _issued = <String>{};
+
+  ExportDesign get design => _get();
+
+  /// The content box in mm.
+  (double, double) get box => design.page.contentMm;
+
+  static StudioResize resizeOf(ExportBlock b) => switch (b.kind) {
+        'logo' || 'signature' => StudioResize.aspect,
+        'line' => StudioResize.horizontal,
+        _ => StudioResize.free,
+      };
+
+  StudioItem<ExportBlock> itemOf(ExportBlock b) {
+    final (w, h) = box;
+    return StudioItem<ExportBlock>(
+      id: b.id,
+      rect: Rect.fromLTWH(b.x * w, b.y * h, b.w * w, b.h * h),
+      payload: b,
+      resize: resizeOf(b),
+      minSize: Size(.06 * w, (b.kind == 'line' ? .002 : .02) * h),
+    );
+  }
+
+  @override
+  List<StudioItem<ExportBlock>> readItems() => [for (final b in design.blocks) itemOf(b)];
+
+  void _place(ExportBlock b, Rect r) {
+    final (w, h) = box;
+    b
+      ..x = r.left / w
+      ..y = r.top / h
+      ..w = r.width / w
+      ..h = r.height / h
+      ..clamp();
+  }
+
+  @override
+  void writeRects(Map<String, Rect> rects) {
+    for (final b in design.blocks) {
+      final r = rects[b.id];
+      if (r != null) _place(b, r);
+    }
+  }
+
+  @override
+  void addItems(List<StudioItem<ExportBlock>> items) {
+    for (final it in items) {
+      final b = it.payload;
+      // one table / items block per page: copies of them are dropped
+      if (b.isFlow && design.blocks.any((x) => x.kind == b.kind)) continue;
+      _place(b, it.rect);
+      design.blocks.add(b);
+    }
+    _issued.clear();
+  }
+
+  @override
+  void removeItems(Set<String> ids) => design.blocks.removeWhere((b) => ids.contains(b.id));
+
+  @override
+  void reorder(List<String> ids) {
+    final byId = {for (final b in design.blocks) b.id: b};
+    final next = [for (final id in ids) ?byId[id]];
+    for (final b in design.blocks) {
+      if (!ids.contains(b.id)) next.add(b);
+    }
+    design.blocks
+      ..clear()
+      ..addAll(next);
+  }
+
+  String _newId() {
+    var n = design.blocks.length + 1;
+    while (design.blocks.any((b) => b.id == 'b$n') || _issued.contains('b$n')) {
+      n++;
+    }
+    _issued.add('b$n');
+    return 'b$n';
+  }
+
+  @override
+  StudioItem<ExportBlock> cloneItem(StudioItem<ExportBlock> item) {
+    final b = ExportBlock.fromJson({...item.payload.toJson(), 'id': _newId()}, baseSize: item.payload.font.size);
+    return item.copyWith(id: b.id, payload: b);
+  }
+
+  @override
+  Object snapshot() => design.toJson();
+
+  @override
+  void restore(Object snapshot) => _set(ExportDesign.fromJson((snapshot as Map).cast<String, dynamic>()));
+}
+
+/// The engine page of a design: the content box in mm at 96 dpi, and the 2 % grid.
+StudioPage exportStudioPage(ExportDesign d) {
+  final (w, h) = d.page.contentMm;
+  return StudioPage(w, h, unitPx: 96 / 25.4);
+}
+
+Size exportStudioGrid(ExportDesign d) {
+  final (w, h) = d.page.contentMm;
+  return Size(w * .02, h * .02);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  Designer page
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -467,6 +741,10 @@ class ExportDesignerPage extends StatefulWidget {
     required this.onSave,
     this.name = '',
     this.orgId,
+    this.content,
+    this.askName = true,
+    this.saveLabel,
+    this.title,
   });
 
   /// The starting design (copied; the page never mutates it).
@@ -482,6 +760,14 @@ class ExportDesignerPage extends StatefulWidget {
   /// Organization for logo / signature uploads (`POST …/orgs/{id}/uploads`); without it images are URLs only.
   final int? orgId;
 
+  /// The flow's table choices (columns, labels, rules, numerals) for the canvas and "Preview PDF".
+  final ExportContent? content;
+
+  /// false: no name field (the flow's "Use this design"); [saveLabel] replaces "Save".
+  final bool askName;
+  final String? saveLabel;
+  final String? title;
+
   /// Called with the design and the name; true pops the page.
   final Future<bool> Function(ExportDesign design, String name) onSave;
 
@@ -493,107 +779,84 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
   late ExportDesign _d = widget.design.copy();
   late final ExportDataset _data = widget.dataset ?? exportSampleDataset(widget.module, widget.lang);
   late final _name = TextEditingController(text: widget.name);
-  late final _header = TextEditingController(text: _d.headerText);
-  late final _footer = TextEditingController(text: _d.footerText);
-  final _text = TextEditingController(), _url = TextEditingController(), _signer = TextEditingController(), _title = TextEditingController();
-  final _history = <Map<String, dynamic>>[];
+  late final ExportStudioAdapter _adapter = ExportStudioAdapter(() => _d, (d) => _d = d);
+  late final StudioController<ExportBlock> _ctl = StudioController<ExportBlock>(
+    adapter: _adapter,
+    page: exportStudioPage(_d),
+    grid: exportStudioGrid(_d),
+    minSize: const Size(4, 2),
+    nudgeStep: 1,
+    nudgeBigStep: 5,
+  );
   final _images = <String, Uint8List>{};
-  String? _selected;
-  String _tab = 'block';
-  bool _busy = false, _dragging = false;
+  final _focus = FocusNode(debugLabel: 'export-studio');
+  String _tab = 'page';
+  bool _busy = false;
 
-  ExportBlock? get _block => _d.blocks.where((b) => b.id == _selected).firstOrNull;
+  ExportBlock? get _block {
+    final s = _ctl.single;
+    return s == null ? null : _d.blocks.where((b) => b.id == s.id).firstOrNull;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    AppAssistant.hide(); // full screen: the floating assistant tab would cover the side panels
+    _ctl.addListener(_onCtl);
+  }
+
+  String? _lastSel;
+  void _onCtl() {
+    final sel = _ctl.single?.id;
+    if (sel != _lastSel) {
+      _lastSel = sel;
+      if (sel != null && _tab != 'element') _tab = 'element';
+    }
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
-    for (final c in [_name, _header, _footer, _text, _url, _signer, _title]) {
-      c.dispose();
-    }
+    _ctl.removeListener(_onCtl);
+    _ctl.dispose();
+    _name.dispose();
+    _focus.dispose();
+    AppAssistant.release();
     super.dispose();
   }
 
-  // ── history
-  void _push() {
-    _history.add(_d.toJson());
-    if (_history.length > 40) _history.removeAt(0);
+  /// One undoable change of the design (coalesced for steppers / sliders / typing).
+  void _edit(String label, VoidCallback fn, {bool coalesce = false}) => _ctl.record(label, fn, coalesce: coalesce);
+
+  /// A page change that moves the content box: the engine's page and grid follow.
+  void _editPage(String label, VoidCallback fn, {bool coalesce = false}) {
+    _ctl.record(label, fn, coalesce: coalesce);
+    _ctl
+      ..page = exportStudioPage(_d)
+      ..grid = exportStudioGrid(_d)
+      ..refresh();
   }
 
-  void _undo() {
-    if (_history.isEmpty) return;
-    setState(() {
-      _d = ExportDesign.fromJson(_history.removeLast());
-      if (_block == null) _selected = null;
-      _syncControllers();
-    });
+  void _add(String kind) {
+    late ExportBlock b;
+    _edit('add', () => b = _d.add(kind));
+    _ctl.select(b.id);
+    _focus.requestFocus();
   }
-
-  /// A change of the design: snapshot first, then apply.
-  void _edit(void Function() fn) => setState(() {
-        _push();
-        fn();
-      });
-
-  void _select(String? id) => setState(() {
-        _selected = id;
-        if (id != null) _tab = 'block';
-        _syncControllers();
-      });
-
-  void _syncControllers() {
-    final b = _block;
-    void set(TextEditingController c, String v) {
-      if (c.text != v) c.text = v;
-    }
-
-    set(_text, b?.text ?? '');
-    set(_url, b?.url ?? '');
-    set(_signer, b?.name ?? '');
-    set(_title, b?.title ?? '');
-    set(_header, _d.headerText);
-    set(_footer, _d.footerText);
-  }
-
-  // ── canvas callbacks
-  void _dragStart() {
-    if (_dragging) return;
-    _dragging = true;
-    _push();
-  }
-
-  void _dragEnd() {
-    _dragging = false;
-    final b = _block;
-    if (b != null) setState(() => b.snap());
-  }
-
-  void _move(ExportBlock b, double dx, double dy) => setState(() {
-        b.x += dx;
-        b.y += dy;
-        b.clamp();
-      });
-
-  void _resize(ExportBlock b, double dw, double dh) => setState(() {
-        b.w += dw;
-        b.h += dh;
-        b.clamp();
-      });
 
   // ── images
-  Future<void> _upload() async {
-    final b = _block;
-    if (b == null || !b.isImage) return;
+  Future<void> _upload(ExportBlock b) async {
     final f = await FilePicker.pickFile(type: FileType.image);
     if (f == null || !mounted) return;
     final bytes = await f.readAsBytes();
-    if (widget.orgId == null) return toast(t('الرفع يحتاج مؤسسة مفتوحة', 'Uploading needs an open organization'), error: true);
+    if (widget.orgId == null) return toast(t('الرفع يحتاج مؤسسة مفتوحة — الصق رابط الصورة', 'Uploading needs an open organization — paste the image link'), error: true);
     try {
       final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: f.name, fileBytes: bytes);
       final url = r is Map ? '${r['url'] ?? ''}' : '';
       if (url.isEmpty || !mounted) return;
       rememberExportImage(url, bytes);
       _images[url] = bytes;
-      _edit(() => b.url = url);
-      _syncControllers();
+      _edit('image', () => b.url = url);
     } on ApiException catch (e) {
       toast(e.message, error: true);
     }
@@ -604,10 +867,10 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
     setState(() => _busy = true);
     try {
       final images = {..._images, ...await loadExportImages(_d)};
-      final bytes = await exportPdf(_d, _data, ExportContent(), fonts: await loadExportFonts(_d.fontFamilies), images: images);
-      final name = (_name.text.trim().isEmpty ? _data.title : _name.text.trim()).replaceAll(RegExp(r'[\\/:*?"<>|\r\n]+'), '_');
-      final path = await saver.dlSaveBytes(bytes, '$name.pdf', 'application/pdf');
-      if (path != null) toast(kIsWeb ? t('تم تنزيل الملف', 'File downloaded') : '${t('حُفظ في', 'Saved to')} $path');
+      final bytes = await exportPdf(_d, _data, widget.content ?? ExportContent(), fonts: await loadExportFonts(_d.fontFamilies), images: images);
+      final name = exportFileName(_name.text.trim().isEmpty ? _data.title : _name.text.trim(), 'pdf');
+      final path = await saver.dlSaveBytes(bytes, name, 'application/pdf');
+      if (path != null) toast(kIsWeb ? '${t('تم تنزيل', 'Downloaded')} ${exportLtr(name)} · ${exportLtr(exportSizeLabel(bytes.length))}' : '${t('حُفظ في', 'Saved to')} $path');
     } catch (e) {
       debugPrint('export preview failed: $e');
       toast(t('تعذّر إنشاء الملف', 'Could not create the file'), error: true);
@@ -617,7 +880,7 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
   }
 
   Future<void> _save() async {
-    if (_name.text.trim().isEmpty) return toast(t('اكتب اسم القالب', 'Give the template a name'), error: true);
+    if (widget.askName && _name.text.trim().isEmpty) return toast(t('اكتب اسم القالب', 'Give the template a name'), error: true);
     setState(() => _busy = true);
     final ok = await widget.onSave(_d.copy(), _name.text.trim());
     if (!mounted) return;
@@ -630,406 +893,560 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return BasePage(
-      appBar: ScreenAppBar(
-        title: t('مصمم التصدير', 'Export designer'),
-        actions: [
-          IconButton(tooltip: t('تراجع', 'Undo'), onPressed: _history.isEmpty ? null : _undo, icon: const Icon(Icons.undo_rounded)),
-          IconButton(tooltip: t('معاينة PDF', 'Preview PDF'), onPressed: _busy ? null : _previewPdf, icon: const Icon(Icons.picture_as_pdf_rounded)),
-        ],
-      ),
-      child: LayoutBuilder(builder: (context, box) {
-        final wide = box.maxWidth >= 920;
-        final canvas = _canvas(context);
-        if (wide) {
-          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 12, 8, 24), child: canvas)),
-            SizedBox(
-              width: 360,
-              child: Column(children: [
-                Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(8, 12, 16, 12), child: _panel(context))),
-                Padding(padding: const EdgeInsets.fromLTRB(8, 0, 16, 16), child: _saveRow(context)),
-              ]),
+      appBar: ScreenAppBar(title: widget.title ?? t('استوديو التصميم', 'Design studio')),
+      child: StudioSmallScreenGate(
+        onBack: () => Navigator.maybePop(context),
+        child: LayoutBuilder(builder: (context, box) {
+          final wide = box.maxWidth >= 900;
+          final toolbar = Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
+            child: StudioToolbar(
+              controller: _ctl,
+              leading: [_AddMenu(onAdd: _add, hasTable: _d.tableBlock != null, hasItems: _d.itemsBlock != null, showLabel: box.maxWidth >= 720)],
+              trailing: [
+                StudioToolButton(icon: Icons.picture_as_pdf_rounded, label: t('معاينة PDF', 'Preview PDF'), showLabel: box.maxWidth >= 1100, onPressed: _busy ? null : _previewPdf),
+              ],
+            ),
+          );
+          final canvas = StudioCanvas<ExportBlock>(
+            controller: _ctl,
+            focusNode: _focus,
+            autofocus: wide,
+            paperInsets: EdgeInsets.fromLTRB(_d.page.left, _d.page.top, _d.page.right, _d.page.bottom),
+            paperBuilder: (context, scale) => _PaperDecor(design: _d, values: _previewValues(_d, _data, widget.content), scale: scale, content: widget.content),
+            itemBuilder: (context, item, selected) => _BlockContent(
+              design: _d,
+              dataset: _data,
+              block: item.payload,
+              values: _previewValues(_d, _data, widget.content),
+              scale: StudioCanvas.scaleOf(context),
+              images: _images,
+              content: widget.content,
+            ),
+          );
+          if (wide) {
+            return Column(children: [
+              toolbar,
+              Expanded(
+                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Expanded(child: canvas),
+                  Container(
+                    width: 360,
+                    decoration: BoxDecoration(color: c.cardBg, border: BorderDirectional(start: BorderSide(color: c.divider))),
+                    child: Column(children: [
+                      Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md), child: _panel(context))),
+                      Container(
+                        decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider))),
+                        padding: const EdgeInsets.all(AppSpace.md),
+                        child: _saveRow(context),
+                      ),
+                    ]),
+                  ),
+                ]),
+              ),
+            ]);
+          }
+          return Column(children: [
+            toolbar,
+            Expanded(child: canvas),
+            Container(
+              decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
+              child: SafeArea(
+                top: false,
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                    AppPill(icon: Icons.tune_rounded, label: _block == null ? t('الصفحة', 'Page') : t('العنصر المحدد', 'Selected element'), onTap: () => _openPanelSheet(context)),
+                    AppPill(icon: Icons.table_chart_outlined, label: t('الجدول', 'Table'), onTap: () => _openPanelSheet(context, tab: 'table')),
+                  ]),
+                  const SizedBox(height: AppSpace.xs),
+                  _saveRow(context),
+                ]),
+              ),
             ),
           ]);
-        }
-        return Column(children: [
-          Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 12), child: canvas)),
-          Container(
-            decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                AppPill(icon: Icons.tune_rounded, label: _block == null ? t('الصفحة', 'Page') : t('العنصر', 'Block'), onTap: () => _openPanelSheet(context)),
-                AppPill(icon: Icons.table_chart_rounded, label: t('الجدول', 'Table'), onTap: () => _openPanelSheet(context, tab: 'table')),
-                AppPill(icon: Icons.how_to_vote_rounded, label: t('التصويت', 'Votes'), onTap: () => _openPanelSheet(context, tab: 'votes')),
-              ]),
-              const SizedBox(height: 10),
-              _saveRow(context),
-            ]),
-          ),
-        ]);
-      }),
+        }),
+      ),
     );
   }
 
-  Widget _saveRow(BuildContext context) => Row(children: [
-        Expanded(
-          child: TextField(
-            controller: _name,
-            style: appText(14, c: context.colors.textDark),
-            decoration: InputDecoration(isDense: true, hintText: t('اسم القالب', 'Template name'), prefixIcon: const Icon(Icons.bookmark_outline_rounded, size: 20)),
-          ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(width: 120, child: AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.save_rounded, busy: _busy, onPressed: _busy ? null : _save)),
-      ]);
-
-  Widget _canvas(BuildContext context) {
-    final c = context.colors;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final (kind, icon) in [
-          ('text', Icons.text_fields_rounded),
-          ('logo', Icons.image_rounded),
-          ('signature', Icons.draw_rounded),
-          ('line', Icons.horizontal_rule_rounded),
-          if (_d.tableBlock == null) ('table', Icons.table_chart_rounded),
-          if (_d.itemsBlock == null) ('items', Icons.view_agenda_rounded),
-        ])
-          AppPill(icon: icon, label: '+ ${exportBlockLabels()[kind]}', onTap: () => _edit(() => _selected = _d.add(kind).id)),
-      ]),
-      const SizedBox(height: 10),
-      ExportPagePreview(
-        design: _d,
-        dataset: _data,
-        selectedId: _selected,
-        images: _images,
-        onSelect: _select,
-        onMove: _move,
-        onResize: _resize,
-        onDragStart: _dragStart,
-        onDragEnd: _dragEnd,
-      ),
-      const SizedBox(height: 6),
-      Text(t('اسحب أي عنصر لتحريكه، واسحب الزاوية لتغيير حجمه، واضغط عليه لتعديله. تُثبَّت المواضع على شبكة 2٪.', 'Drag a block to move it, drag its corner to resize, tap it to edit. Positions snap to a 2% grid.'),
-          textAlign: TextAlign.center, style: appText(11.5, c: c.textLight)),
-    ]);
+  Widget _saveRow(BuildContext context) {
+    final button = AppPrimaryButton(
+      label: widget.saveLabel ?? t('حفظ', 'Save'),
+      icon: widget.askName ? Icons.save_rounded : Icons.check_rounded,
+      busy: _busy,
+      onPressed: _busy ? null : _save,
+    );
+    if (!widget.askName) return button;
+    return LayoutBuilder(builder: (context, box) {
+      final field = TextField(
+        controller: _name,
+        style: appText(14, c: context.colors.textDark),
+        decoration: InputDecoration(isDense: true, labelText: t('اسم القالب', 'Template name'), prefixIcon: const Icon(Icons.bookmark_outline_rounded, size: 20)),
+      );
+      if (box.maxWidth < 300) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [field, const SizedBox(height: AppSpace.xs), button]);
+      return Row(children: [Expanded(child: field), const SizedBox(width: AppSpace.sm), SizedBox(width: 128, child: button)]);
+    });
   }
 
   Future<void> _openPanelSheet(BuildContext context, {String? tab}) async {
-    setState(() => _tab = tab ?? (_block == null ? 'page' : 'block'));
+    setState(() => _tab = tab ?? (_block == null ? 'page' : 'element'));
     await showAppSheet<void>(
       context,
-      (ctx) => StatefulBuilder(builder: (ctx, set) {
-        return Column(mainAxisSize: MainAxisSize.min, children: [
-          SheetHeader(t('إعدادات التصميم', 'Design settings')),
-          Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-              child: _panel(ctx, refresh: () => set(() {})),
+      (ctx) => ListenableBuilder(
+        listenable: _ctl,
+        builder: (ctx, _) => StatefulBuilder(
+          builder: (ctx, set) => Column(mainAxisSize: MainAxisSize.min, children: [
+            SheetHeader(t('خصائص التصميم', 'Design properties')),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
+                child: _panel(ctx, refresh: () => set(() {})),
+              ),
             ),
-          ),
-        ]);
-      }),
+          ]),
+        ),
+      ),
     );
   }
 
   // ── panel
   Widget _panel(BuildContext context, {VoidCallback? refresh}) {
-    void change(void Function() fn) {
-      _edit(fn);
-      refresh?.call();
-    }
-
     final tabs = [
-      ('block', Icons.crop_square_rounded, t('العنصر', 'Block')),
+      ('element', Icons.crop_square_rounded, t('العنصر', 'Element')),
       ('page', Icons.description_outlined, t('الصفحة', 'Page')),
-      ('table', Icons.table_chart_outlined, t('الجدول', 'Table')),
-      ('votes', Icons.how_to_vote_outlined, t('التصويت', 'Votes')),
+      if (_d.tableBlock != null) ('table', Icons.table_chart_outlined, t('الجدول', 'Table')),
+      if (_d.itemsBlock != null) ('votes', Icons.how_to_vote_outlined, t('التصويت', 'Votes')),
     ];
+    final tab = tabs.any((x) => x.$1 == _tab) ? _tab : 'page';
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 6, runSpacing: 6, children: [
-        for (final (id, icon, label) in tabs)
-          AppChoiceChip(
-              label: label,
-              icon: icon,
-              selected: _tab == id,
-              onTap: () {
-                setState(() => _tab = id);
-                refresh?.call();
-              }),
-      ]),
-      const SizedBox(height: 12),
-      switch (_tab) {
-        'page' => _pagePanel(context, change),
-        'table' => _tablePanel(context, change),
-        'votes' => _votesPanel(context, change),
-        _ => _blockPanel(context, change),
+      StudioSegmented<String>(
+        segments: [for (final (id, icon, label) in tabs) StudioSegment(value: id, label: label, icon: tabs.length > 3 ? icon : null)],
+        value: tab,
+        onChanged: (v) {
+          setState(() => _tab = v);
+          refresh?.call();
+        },
+      ),
+      const SizedBox(height: AppSpace.xs),
+      switch (tab) {
+        'page' => _pagePanel(context),
+        'table' => _tablePanel(context),
+        'votes' => _votesPanel(context),
+        _ => _elementPanel(context),
       },
     ]);
   }
 
-  Widget _section(BuildContext context, String title) => Padding(
-        padding: const EdgeInsets.only(top: 10, bottom: 6),
-        child: Text(title, style: appText(12.5, w: FontWeight.w800, c: context.colors.textMedium)),
+  Widget _mmStepper(String label, double fraction, double size, ValueChanged<double> set) => StudioStepper(
+        label: label,
+        value: (fraction * size * 10).round() / 10,
+        max: size,
+        step: 1,
+        decimals: 1,
+        suffix: t('مم', 'mm'),
+        onChanged: (mm) => set(mm / size),
       );
 
-  Widget _chips<T>(Map<T, String> options, T value, ValueChanged<T> onPick) => Wrap(spacing: 6, runSpacing: 6, children: [
-        for (final e in options.entries) AppChoiceChip(label: e.value, selected: e.key == value, onTap: () => onPick(e.key)),
-      ]);
-
-  Widget _slider(BuildContext context, String label, double value, double min, double max, ValueChanged<double> onChanged, {String Function(double)? fmt}) {
-    final c = context.colors;
-    return Row(children: [
-      SizedBox(width: 92, child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium))),
-      Expanded(child: Slider(value: value.clamp(min, max).toDouble(), min: min, max: max, onChanged: onChanged)),
-      SizedBox(width: 40, child: Text(fmt?.call(value) ?? value.toStringAsFixed(0), textAlign: TextAlign.end, style: appText(12, w: FontWeight.w700, c: c.textDark))),
-    ]);
-  }
-
-  Widget _swatches(String value, ValueChanged<String> onPick, {bool allowDefault = false}) {
-    final c = context.colors;
-    return Wrap(spacing: 6, runSpacing: 6, children: [
-      if (allowDefault)
-        _Swatch(color: null, selected: value.isEmpty, onTap: () => onPick(''), label: t('افتراضي', 'Default')),
-      for (final hex in exportSwatches) _Swatch(color: exportColor(hex), selected: value.toUpperCase() == hex, onTap: () => onPick(hex), border: c.divider),
-    ]);
-  }
-
-  Widget _blockPanel(BuildContext context, void Function(void Function()) change) {
+  Widget _elementPanel(BuildContext context) {
     final c = context.colors;
     final b = _block;
     if (b == null) {
-      return AppBanner(icon: Icons.touch_app_rounded, text: t('اضغط على عنصر في الصفحة لتعديله، أو أضف عنصرًا من الأزرار أعلى الصفحة.', 'Tap a block on the page to edit it, or add one from the buttons above the page.'));
-    }
-    final fontOptions = {'': t('خط الصفحة', 'Page font'), ...exportFontLabels()};
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [
-        Expanded(child: Text(exportBlockLabels()[b.kind] ?? b.kind, style: appText(14, w: FontWeight.w800, c: c.textDark))),
-        if (!b.isFlow)
-          IconButton(
-              tooltip: t('نسخ', 'Duplicate'),
-              onPressed: () => change(() {
-                    final copy = ExportBlock.fromJson({...b.toJson(), 'id': _d.nextId(), 'y': b.y + .04});
-                    _d.blocks.add(copy);
-                    _selected = copy.id;
-                  }),
-              icon: const Icon(Icons.copy_rounded, size: 20)),
-        IconButton(
-            tooltip: t('حذف', 'Delete'),
-            onPressed: () => change(() {
-                  _d.remove(b.id);
-                  _selected = null;
-                }),
-            icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger)),
-      ]),
-      if (b.kind == 'text') ...[
-        AppField(controller: _text, label: t('النص', 'Text'), maxLines: 3, onChanged: (v) => change(() => b.text = v)),
-        Text(t('أدرج حقلًا:', 'Insert a field:'), style: appText(11.5, c: c.textMedium)),
-        const SizedBox(height: 4),
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final e in exportPlaceholderLabels().entries)
-            if (e.key != 'page' && e.key != 'pages')
-              AppChoiceChip(
-                  label: e.value,
-                  selected: false,
-                  onTap: () {
-                    final sel = _text.selection;
-                    final at = sel.isValid ? sel.start : _text.text.length;
-                    final nt = '${_text.text.substring(0, at)}{{${e.key}}}${_text.text.substring(at)}';
-                    _text.text = nt;
-                    change(() => b.text = nt);
-                  }),
-          for (final k in _data.meta.keys)
-            if (!const ['org', 'dept', 'title', 'period', 'date', 'count', 'signer', 'session', 'council', 'session_date'].contains(k))
-              AppChoiceChip(
-                  label: 'meta.$k',
-                  selected: false,
-                  onTap: () {
-                    final nt = '${_text.text}{{meta.$k}}';
-                    _text.text = nt;
-                    change(() => b.text = nt);
-                  }),
-        ]),
-      ],
-      if (b.isImage) ...[
-        AppField(controller: _url, label: t('رابط الصورة', 'Image URL'), hint: 'https://…', ltr: true, onChanged: (v) => change(() => b.url = v.trim())),
-        if (widget.orgId != null)
-          Align(alignment: AlignmentDirectional.centerStart, child: AppPill(icon: Icons.upload_rounded, label: t('رفع صورة', 'Upload image'), onTap: _upload)),
-      ],
-      if (b.kind == 'signature') ...[
-        const SizedBox(height: 8),
-        AppField(controller: _signer, label: t('الاسم', 'Name'), hint: '{{signer}}', onChanged: (v) => change(() => b.name = v)),
-        AppField(controller: _title, label: t('الصفة', 'Title'), onChanged: (v) => change(() => b.title = v)),
-      ],
-      if (b.kind == 'text' || b.kind == 'signature') ...[
-        _section(context, t('الخط', 'Font')),
-        AppDropdown<String>(
-          value: b.font.family,
-          items: [for (final e in fontOptions.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
-          onChanged: (v) => change(() => b.font.family = v ?? ''),
+      return Padding(
+        padding: const EdgeInsets.only(top: AppSpace.md),
+        child: AppBanner(
+          icon: Icons.touch_app_rounded,
+          text: _ctl.selection.length > 1
+              ? t('عدة عناصر محددة — استخدم المحاذاة والتوزيع من الشريط.', 'Several elements are selected — use Align and Distribute in the toolbar.')
+              : t('اضغط عنصرًا في الصفحة لتعديله، أو أضف عنصرًا من «إضافة».', 'Tap an element on the page to edit it, or add one with “Add”.'),
         ),
-        const SizedBox(height: 6),
-        _slider(context, t('الحجم', 'Size'), b.font.size, 6, 40, (v) => change(() => b.font.size = v.roundToDouble())),
-        _chips({'normal': t('عادي', 'Regular'), 'bold': t('عريض', 'Bold')}, b.font.weight, (v) => change(() => b.font.weight = v)),
-        const SizedBox(height: 8),
-        _swatches(b.font.color, (v) => change(() => b.font.color = v), allowDefault: true),
-      ],
-      if (b.kind == 'line') ...[
-        _section(context, t('اللون', 'Colour')),
-        _swatches(b.color, (v) => change(() => b.color = v), allowDefault: true),
-      ],
-      if (!b.isFlow && b.kind != 'line') ...[
-        _section(context, t('المحاذاة', 'Alignment')),
-        _chips({'start': t('بداية', 'Start'), 'center': t('وسط', 'Centre'), 'end': t('نهاية', 'End')}, b.align, (v) => change(() => b.align = v)),
-      ],
-      _section(context, t('الموضع والحجم', 'Position & size')),
-      _slider(context, t('أفقي', 'X'), b.x * 100, 0, 100, (v) => change(() => (b..x = v / 100).clamp()), fmt: (v) => '${v.round()}%'),
-      _slider(context, t('رأسي', 'Y'), b.y * 100, 0, 100, (v) => change(() => (b..y = v / 100).clamp()), fmt: (v) => '${v.round()}%'),
-      _slider(context, t('العرض', 'Width'), b.w * 100, 6, 100, (v) => change(() => (b..w = v / 100).clamp()), fmt: (v) => '${v.round()}%'),
-      if (b.kind != 'line') _slider(context, t('الارتفاع', 'Height'), b.h * 100, 2, 80, (v) => change(() => (b..h = v / 100).clamp()), fmt: (v) => '${v.round()}%'),
-    ]);
-  }
-
-  Widget _pagePanel(BuildContext context, void Function(void Function()) change) {
-    final d = _d;
+      );
+    }
+    final (cw, ch) = _d.page.contentMm;
+    final fonts = [
+      StudioFontOption(id: '', label: t('خط الصفحة', 'Page font')),
+      for (final e in exportFontLabels().entries) StudioFontOption(id: e.key, label: e.value, family: exportFlutterFont(e.key)),
+    ];
+    final textual = b.kind == 'text' || b.kind == 'signature';
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _section(context, t('الورقة', 'Paper')),
-      AppDropdown<String>(
-        value: d.page.size,
-        items: [for (final s in exportPageSizes) DropdownMenuItem(value: s, child: Text(s))],
-        onChanged: (v) => change(() => d.page.size = v ?? 'A4'),
+      StudioPropSection(
+        first: true,
+        title: exportBlockLabels()[b.kind] ?? b.kind,
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (!b.isFlow)
+            IconButton(tooltip: t('نسخ', 'Duplicate'), onPressed: _ctl.duplicate, icon: Icon(Icons.copy_rounded, size: 20, color: c.textMedium)),
+          IconButton(tooltip: t('حذف', 'Delete'), onPressed: _ctl.deleteSelection, icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger)),
+        ]),
+        children: [
+          if (b.kind == 'text') ...[
+            _TextProp(
+              key: ValueKey('text-${b.id}'),
+              label: t('النص', 'Text'),
+              value: b.text,
+              maxLines: 4,
+              onChanged: (v) => _edit('text', () => b.text = v, coalesce: true),
+            ),
+            _PlaceholderChips(
+              keys: const ['title', 'org', 'date', 'rows', 'period', 'exporter', 'dept', 'signer'],
+              extra: [for (final k in _data.meta.keys) if (!const ['org', 'dept', 'title', 'period', 'date', 'count', 'signer', 'exporter', 'session', 'council', 'session_date'].contains(k)) 'meta.$k'],
+              onInsert: (k) => _edit('text', () => b.text = '${b.text}{{$k}}'),
+            ),
+          ],
+          if (b.isImage) ...[
+            _TextProp(
+              key: ValueKey('url-${b.id}'),
+              label: t('رابط الصورة', 'Image link'),
+              hint: 'https://…',
+              ltr: true,
+              value: b.url,
+              onChanged: (v) => _edit('image', () => b.url = v.trim(), coalesce: true),
+            ),
+            if (widget.orgId != null)
+              Align(alignment: AlignmentDirectional.centerStart, child: AppPill(icon: Icons.upload_rounded, label: t('رفع صورة', 'Upload an image'), onTap: () => _upload(b))),
+          ],
+          if (b.kind == 'signature') ...[
+            _TextProp(key: ValueKey('sname-${b.id}'), label: t('الاسم', 'Name'), hint: '{{signer}}', value: b.name, onChanged: (v) => _edit('signature', () => b.name = v, coalesce: true)),
+            _TextProp(key: ValueKey('stitle-${b.id}'), label: t('الصفة', 'Title'), value: b.title, onChanged: (v) => _edit('signature', () => b.title = v, coalesce: true)),
+          ],
+        ],
       ),
-      const SizedBox(height: 8),
-      _chips({'portrait': t('رأسي', 'Portrait'), 'landscape': t('أفقي', 'Landscape')}, d.page.orientation, (v) => change(() => d.page.orientation = v)),
-      _section(context, t('الهوامش (مم)', 'Margins (mm)')),
-      _slider(context, t('أعلى', 'Top'), d.page.top, 0, 60, (v) => change(() => d.page.top = v.roundToDouble())),
-      _slider(context, t('أسفل', 'Bottom'), d.page.bottom, 0, 60, (v) => change(() => d.page.bottom = v.roundToDouble())),
-      _slider(context, t('يسار', 'Left'), d.page.left, 0, 60, (v) => change(() => d.page.left = v.roundToDouble())),
-      _slider(context, t('يمين', 'Right'), d.page.right, 0, 60, (v) => change(() => d.page.right = v.roundToDouble())),
-      AppSwitchTile(title: t('من اليمين إلى اليسار', 'Right to left'), value: d.rtl, dense: true, onChanged: (v) => change(() => d.rtl = v)),
-      _section(context, t('الخط الأساسي', 'Base font')),
-      AppDropdown<String>(
-        value: d.fontFamily,
-        items: [for (final e in exportFontLabels().entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
-        onChanged: (v) => change(() => d.fontFamily = v ?? 'tajawal'),
-      ),
-      const SizedBox(height: 6),
-      _slider(context, t('الحجم', 'Size'), d.fontSize, 6, 30, (v) => change(() => d.fontSize = v.roundToDouble())),
-      _slider(context, t('تباعد الأسطر', 'Line spacing'), d.lineSpacing, 1, 2.5, (v) => change(() => d.lineSpacing = (v * 10).round() / 10), fmt: (v) => v.toStringAsFixed(1)),
-      const SizedBox(height: 4),
-      _swatches(d.fontColor, (v) => change(() => d.fontColor = v)),
-      _section(context, t('رأس الصفحة', 'Header')),
-      AppField(controller: _header, label: t('نص الرأس', 'Header text'), hint: '{{org}} · {{title}}', onChanged: (v) => change(() => d.headerText = v)),
-      AppSwitchTile(title: t('إظهار التاريخ', 'Show the date'), value: d.showDate, dense: true, onChanged: (v) => change(() => d.showDate = v)),
-      _section(context, t('تذييل الصفحة', 'Footer')),
-      AppField(controller: _footer, label: t('نص التذييل', 'Footer text'), hint: '{{page}} / {{pages}}', onChanged: (v) => change(() => d.footerText = v)),
-      AppSwitchTile(title: t('أرقام الصفحات', 'Page numbers'), value: d.showPageNumbers, dense: true, onChanged: (v) => change(() => d.showPageNumbers = v)),
+      if (textual)
+        StudioPropSection(title: t('الخط', 'Font'), children: [
+          StudioFontPicker(options: fonts, value: b.font.family, onChanged: (v) => _edit('font', () => b.font.family = v)),
+          StudioStepper(label: t('الحجم', 'Size'), value: b.font.size, min: 5, max: 60, step: 1, suffix: 'pt', onChanged: (v) => _edit('size', () => b.font.size = v, coalesce: true)),
+          StudioWeightPicker(
+            value: b.font.bold ? FontWeight.w700 : FontWeight.w400,
+            options: const [FontWeight.w400, FontWeight.w700],
+            onChanged: (w) => _edit('weight', () => b.font.weight = w == FontWeight.w700 ? 'bold' : 'normal'),
+          ),
+          StudioColorField(
+            label: t('اللون', 'Colour'),
+            allowNone: true,
+            swatches: _studioSwatches,
+            value: b.font.color.isEmpty ? null : exportColor(b.font.color),
+            onChanged: (col) => _edit('colour', () => b.font.color = _hexOfColor(col) ?? '', coalesce: true),
+          ),
+        ]),
+      if (b.kind == 'line')
+        StudioPropSection(title: t('الخط الفاصل', 'Rule'), children: [
+          StudioColorField(
+            label: t('اللون', 'Colour'),
+            allowNone: true,
+            swatches: _studioSwatches,
+            value: b.color.isEmpty ? null : exportColor(b.color),
+            onChanged: (col) => _edit('colour', () => b.color = _hexOfColor(col) ?? '', coalesce: true),
+          ),
+        ]),
+      if (!b.isFlow && b.kind != 'line')
+        StudioPropSection(title: t('المحاذاة والخلفية', 'Alignment & background'), children: [
+          StudioTextAlignPicker(
+            options: const [TextAlign.start, TextAlign.center, TextAlign.end],
+            value: switch (b.align) { 'center' => TextAlign.center, 'end' => TextAlign.end, _ => TextAlign.start },
+            onChanged: (a) => _edit('align', () => b.align = switch (a) { TextAlign.center => 'center', TextAlign.end => 'end', _ => 'start' }),
+          ),
+          StudioColorField(
+            label: t('الخلفية', 'Background'),
+            allowNone: true,
+            swatches: [..._studioSwatches.take(9), const Color(0xFFF1F5F9), const Color(0xFFE0F2F1), const Color(0xFFFEF3C7)],
+            value: b.background.isEmpty ? null : exportColor(b.background),
+            onChanged: (col) => _edit('background', () => b.background = _hexOfColor(col) ?? '', coalesce: true),
+          ),
+        ]),
+      StudioPropSection(title: t('الموضع والحجم', 'Position & size'), children: [
+        Row(children: [
+          Expanded(child: _mmStepper(t('من اليسار', 'From left'), b.x, cw, (f) => _edit('move', () => (b..x = f).clamp(), coalesce: true))),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: _mmStepper(t('من الأعلى', 'From top'), b.y, ch, (f) => _edit('move', () => (b..y = f).clamp(), coalesce: true))),
+        ]),
+        Row(children: [
+          Expanded(child: _mmStepper(t('العرض', 'Width'), b.w, cw, (f) => _edit('resize', () => (b..w = f).clamp(), coalesce: true))),
+          const SizedBox(width: AppSpace.xs),
+          if (b.kind != 'line') Expanded(child: _mmStepper(t('الارتفاع', 'Height'), b.h, ch, (f) => _edit('resize', () => (b..h = f).clamp(), coalesce: true))) else const Spacer(),
+        ]),
+      ]),
     ]);
   }
 
-  Widget _tablePanel(BuildContext context, void Function(void Function()) change) {
+  Widget _pagePanel(BuildContext context) {
+    final d = _d;
+    final f = d.frame, wm = d.watermark;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      StudioPropSection(first: true, title: t('الورقة', 'Paper'), children: [
+        StudioSegmented<String>(
+          segments: [for (final s in exportPageSizes) StudioSegment(value: s, label: s)],
+          value: d.page.size,
+          onChanged: (v) => _editPage('paper', () => d.page.size = v),
+        ),
+        StudioSegmented<String>(
+          segments: [
+            StudioSegment(value: 'portrait', label: t('رأسي', 'Portrait'), icon: Icons.crop_portrait_rounded),
+            StudioSegment(value: 'landscape', label: t('أفقي', 'Landscape'), icon: Icons.crop_landscape_rounded),
+          ],
+          value: d.page.orientation,
+          onChanged: (v) => _editPage('orientation', () => d.page.orientation = v),
+        ),
+        Row(children: [
+          Expanded(child: StudioStepper(label: t('أعلى', 'Top'), value: d.page.top, max: 60, suffix: t('مم', 'mm'), onChanged: (v) => _editPage('margins', () => d.page.top = v, coalesce: true))),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: StudioStepper(label: t('أسفل', 'Bottom'), value: d.page.bottom, max: 60, suffix: t('مم', 'mm'), onChanged: (v) => _editPage('margins', () => d.page.bottom = v, coalesce: true))),
+        ]),
+        Row(children: [
+          Expanded(child: StudioStepper(label: t('يسار', 'Left'), value: d.page.left, max: 60, suffix: t('مم', 'mm'), onChanged: (v) => _editPage('margins', () => d.page.left = v, coalesce: true))),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: StudioStepper(label: t('يمين', 'Right'), value: d.page.right, max: 60, suffix: t('مم', 'mm'), onChanged: (v) => _editPage('margins', () => d.page.right = v, coalesce: true))),
+        ]),
+        AppSwitchTile(title: t('من اليمين إلى اليسار', 'Right to left'), value: d.rtl, dense: true, onChanged: (v) => _edit('direction', () => d.rtl = v)),
+      ]),
+      StudioPropSection(title: t('الخط الأساسي', 'Base font'), children: [
+        StudioFontPicker(
+          options: [for (final e in exportFontLabels().entries) StudioFontOption(id: e.key, label: e.value, family: exportFlutterFont(e.key))],
+          value: d.fontFamily,
+          onChanged: (v) => _edit('font', () => d.fontFamily = v),
+        ),
+        StudioStepper(label: t('الحجم', 'Size'), value: d.fontSize, min: 6, max: 30, suffix: 'pt', onChanged: (v) => _edit('size', () => d.fontSize = v, coalesce: true)),
+        StudioColorField(label: t('اللون', 'Colour'), swatches: _studioSwatches, value: exportColor(d.fontColor), onChanged: (col) => _edit('colour', () => d.fontColor = _hexOfColor(col) ?? exportInk, coalesce: true)),
+      ]),
+      StudioPropSection(title: t('رأس الصفحة وتذييلها', 'Header & footer'), children: [
+        _TextProp(key: const ValueKey('header'), label: t('نص الرأس', 'Header text'), hint: '{{org_name}}', value: d.headerText, onChanged: (v) => _edit('header', () => d.headerText = v, coalesce: true)),
+        _PlaceholderChips(keys: exportStudioVariables, onInsert: (k) => _edit('header', () => d.headerText = '${d.headerText}{{$k}}')),
+        AppSwitchTile(title: t('التاريخ في الرأس', 'Date in the header'), value: d.showDate, dense: true, onChanged: (v) => _edit('header', () => d.showDate = v)),
+        _TextProp(key: const ValueKey('footer'), label: t('نص التذييل', 'Footer text'), hint: '{{page}} / {{pages}}', value: d.footerText, onChanged: (v) => _edit('footer', () => d.footerText = v, coalesce: true)),
+        _PlaceholderChips(keys: exportStudioVariables, onInsert: (k) => _edit('footer', () => d.footerText = '${d.footerText}{{$k}}')),
+        AppSwitchTile(title: t('أرقام الصفحات', 'Page numbers'), value: d.showPageNumbers, dense: true, onChanged: (v) => _edit('footer', () => d.showPageNumbers = v)),
+      ]),
+      StudioPropSection(title: t('إطار الصفحة', 'Page frame'), children: [
+        StudioSegmented<String>(
+          segments: [
+            StudioSegment(value: 'none', label: t('بلا', 'None')),
+            StudioSegment(value: 'solid', label: t('متصل', 'Solid')),
+            StudioSegment(value: 'dashed', label: t('متقطع', 'Dashed')),
+            StudioSegment(value: 'double', label: t('مزدوج', 'Double')),
+          ],
+          value: f.style,
+          onChanged: (v) => _edit('frame', () => f.style = v),
+        ),
+        if (f.visible) ...[
+          Row(children: [
+            Expanded(child: StudioStepper(label: t('السُمك', 'Width'), value: f.width, min: .25, max: 12, step: .25, decimals: 2, suffix: 'pt', onChanged: (v) => _edit('frame', () => f.width = v, coalesce: true))),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: StudioStepper(label: t('الزوايا', 'Corners'), value: f.radius, max: 40, suffix: 'pt', onChanged: (v) => _edit('frame', () => f.radius = v, coalesce: true))),
+          ]),
+          StudioStepper(label: t('البعد عن المحتوى', 'Distance from the content'), value: f.inset, max: 30, suffix: t('مم', 'mm'), onChanged: (v) => _edit('frame', () => f.inset = v, coalesce: true)),
+          StudioColorField(label: t('اللون', 'Colour'), swatches: _studioSwatches, value: exportColor(f.color), onChanged: (col) => _edit('frame', () => f.color = _hexOfColor(col) ?? exportLine, coalesce: true)),
+        ],
+      ]),
+      StudioPropSection(title: t('العلامة المائية', 'Watermark'), children: [
+        _TextProp(key: const ValueKey('wm'), label: t('النص', 'Text'), hint: t('سري', 'Confidential'), value: wm.text, onChanged: (v) => _edit('watermark', () => wm.text = v, coalesce: true)),
+        if (wm.text.trim().isNotEmpty) ...[
+          StudioStepper(label: t('الحجم', 'Size'), value: wm.size, min: 12, max: 160, step: 4, suffix: 'pt', onChanged: (v) => _edit('watermark', () => wm.size = v, coalesce: true)),
+          StudioOpacitySlider(value: wm.opacity, onChanged: (v) => _edit('watermark', () => wm.opacity = v, coalesce: true)),
+          StudioColorField(label: t('اللون', 'Colour'), swatches: _studioSwatches, value: exportColor(wm.color), onChanged: (col) => _edit('watermark', () => wm.color = _hexOfColor(col) ?? '94A3B8', coalesce: true)),
+        ],
+      ]),
+    ]);
+  }
+
+  Widget _tablePanel(BuildContext context) {
     final d = _d;
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _section(context, t('النمط', 'Style')),
-      _chips(exportTableStyleLabels(), d.table.style, (v) => change(() => d.table.style = v)),
-      _section(context, t('لون الرأس', 'Header colour')),
-      _swatches(d.table.headerColor, (v) => change(() {
-            d.table.headerColor = v;
-            d.table.headerTextColor = ['FFFFFF', 'F6F8FA'].contains(v) ? exportInk : 'FFFFFF';
-          })),
-      _section(context, t('لون نص الرأس', 'Header text colour')),
-      _swatches(d.table.headerTextColor, (v) => change(() => d.table.headerTextColor = v)),
-      _slider(context, t('حجم الخط', 'Font size'), d.table.fontSize, 5, 24, (v) => change(() => d.table.fontSize = v.roundToDouble())),
-      _section(context, t('الأعمدة', 'Columns')),
-      if (_data.columns.isEmpty)
-        Text(t('لا أعمدة في هذه البيانات', 'This data has no columns'), style: appText(12, c: c.textMedium))
+      StudioPropSection(first: true, title: t('النمط', 'Style'), children: [
+        StudioSegmented<String>(
+          segments: [for (final e in exportTableStyleLabels().entries) StudioSegment(value: e.key, label: e.value)],
+          value: d.table.style,
+          onChanged: (v) => _edit('table', () => d.table.style = v),
+        ),
+        StudioStepper(label: t('حجم الخط', 'Font size'), value: d.table.fontSize, min: 5, max: 24, suffix: 'pt', onChanged: (v) => _edit('table', () => d.table.fontSize = v, coalesce: true)),
+        StudioColorField(
+          label: t('لون الرأس', 'Header colour'),
+          swatches: _studioSwatches,
+          value: exportColor(d.table.headerColor),
+          onChanged: (col) => _edit('table', () {
+            d.table.headerColor = _hexOfColor(col) ?? exportBrand;
+            d.table.headerTextColor = ['FFFFFF', 'F6F8FA'].contains(d.table.headerColor) ? exportInk : 'FFFFFF';
+          }, coalesce: true),
+        ),
+        StudioColorField(
+          label: t('لون نص الرأس', 'Header text colour'),
+          swatches: _studioSwatches,
+          value: exportColor(d.table.headerTextColor),
+          onChanged: (col) => _edit('table', () => d.table.headerTextColor = _hexOfColor(col) ?? 'FFFFFF', coalesce: true),
+        ),
+      ]),
+      if (widget.content == null)
+        StudioPropSection(title: t('الأعمدة', 'Columns'), children: [
+          if (_data.columns.isEmpty)
+            Text(t('لا أعمدة في هذه البيانات', 'This data has no columns'), style: appText(12, c: c.textMedium))
+          else
+            for (final col in _data.columns)
+              AppSwitchTile(
+                title: col.label(d.lang),
+                dense: true,
+                value: d.table.columns.isEmpty || d.table.columns.contains(col.id),
+                onChanged: (v) => _edit('columns', () {
+                  final cur = d.table.columns.isEmpty ? [for (final x in _data.columns) x.id] : [...d.table.columns];
+                  if (v) {
+                    if (!cur.contains(col.id)) cur.add(col.id);
+                  } else {
+                    cur.remove(col.id);
+                  }
+                  d.table.columns = [for (final x in _data.columns) if (cur.contains(x.id)) x.id];
+                }),
+              ),
+        ])
       else
-        for (final col in _data.columns)
-          AppSwitchTile(
-            title: col.label(d.lang),
-            dense: true,
-            value: d.table.columns.isEmpty || d.table.columns.contains(col.id),
-            onChanged: (v) => change(() {
-              final cur = d.table.columns.isEmpty ? [for (final x in _data.columns) x.id] : [...d.table.columns];
-              if (v) {
-                if (!cur.contains(col.id)) cur.add(col.id);
-              } else {
-                cur.remove(col.id);
-              }
-              // keep the dataset order
-              d.table.columns = [for (final x in _data.columns) if (cur.contains(x.id)) x.id];
-            }),
-          ),
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpace.sm),
+          child: AppBanner(icon: Icons.view_column_outlined, text: t('الأعمدة وأسماؤها تُختار في خطوة «الحقول».', 'Columns and their names are chosen in the “Fields” step.')),
+        ),
     ]);
   }
 
-  Widget _votesPanel(BuildContext context, void Function(void Function()) change) {
+  Widget _votesPanel(BuildContext context) {
     final v = _d.votes;
+    final sample = exportSampleItems(_d.lang).first;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (_d.itemsBlock == null)
-        AppBanner(icon: Icons.info_outline_rounded, text: t('أضف عنصر «البنود» إلى الصفحة لتظهر نتائج التصويت.', 'Add the "Items" block to the page to print vote results.')),
-      _section(context, t('موضع النتيجة', 'Result position')),
-      _chips(exportVotePositionLabels(), v.position, (x) => change(() => v.position = x)),
-      _section(context, t('الشكل', 'Style')),
-      _chips(exportVoteStyleLabels(), v.style, (x) => change(() => v.style = x)),
-      const SizedBox(height: 6),
-      AppSwitchTile(title: t('الأعداد', 'Counts'), value: v.showCounts, dense: true, onChanged: (x) => change(() => v.showCounts = x)),
-      AppSwitchTile(title: t('النسبة', 'Percent'), value: v.showPercent, dense: true, onChanged: (x) => change(() => v.showPercent = x)),
-      AppSwitchTile(title: t('النتيجة', 'Outcome'), value: v.showOutcome, dense: true, onChanged: (x) => change(() => v.showOutcome = x)),
-      AppSwitchTile(title: t('أسماء المصوّتين', 'Voters'), value: v.showVoters, dense: true, onChanged: (x) => change(() => v.showVoters = x)),
-      _section(context, t('عينة', 'Sample')),
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: _paper, borderRadius: BorderRadius.circular(8), border: Border.all(color: context.colors.divider)),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(exportSampleItems(_d.lang).first.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: exportFlutterFont(_d.fontFamily), fontSize: 12, fontWeight: FontWeight.w800, color: exportColor(_d.fontColor))),
-              if (v.below) ...[const SizedBox(height: 6), VoteResultPreview(votes: v, result: exportSampleItems(_d.lang).first.votes!, lang: _d.lang, fontSize: 11, family: _d.fontFamily)],
-            ]),
-          ),
-          if (v.beside) ...[
-            const SizedBox(width: 8),
-            ConstrainedBox(constraints: const BoxConstraints(maxWidth: 110), child: VoteResultPreview(votes: v, result: exportSampleItems(_d.lang).first.votes!, lang: _d.lang, fontSize: 11, beside: true, family: _d.fontFamily)),
-          ],
-        ]),
-      ),
+      StudioPropSection(first: true, title: t('موضع النتيجة', 'Result position'), children: [
+        StudioSegmented<String>(
+          segments: [for (final e in exportVotePositionLabels().entries) StudioSegment(value: e.key, label: e.value)],
+          value: v.position,
+          onChanged: (x) => _edit('votes', () => v.position = x),
+        ),
+        StudioSegmented<String>(
+          segments: [for (final e in exportVoteStyleLabels().entries) StudioSegment(value: e.key, label: e.value)],
+          value: v.style,
+          onChanged: (x) => _edit('votes', () => v.style = x),
+        ),
+        AppSwitchTile(title: t('الأعداد', 'Counts'), value: v.showCounts, dense: true, onChanged: (x) => _edit('votes', () => v.showCounts = x)),
+        AppSwitchTile(title: t('النسبة', 'Percent'), value: v.showPercent, dense: true, onChanged: (x) => _edit('votes', () => v.showPercent = x)),
+        AppSwitchTile(title: t('النتيجة', 'Outcome'), value: v.showOutcome, dense: true, onChanged: (x) => _edit('votes', () => v.showOutcome = x)),
+        AppSwitchTile(title: t('أسماء المصوّتين', 'Voters'), value: v.showVoters, dense: true, onChanged: (x) => _edit('votes', () => v.showVoters = x)),
+      ]),
+      StudioPropSection(title: t('عينة', 'Sample'), children: [
+        Container(
+          padding: const EdgeInsets.all(AppSpace.sm),
+          decoration: BoxDecoration(color: _paper, borderRadius: AppRadius.chipAll, border: Border.all(color: context.colors.divider)),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text(sample.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: exportFlutterFont(_d.fontFamily), fontSize: 12, fontWeight: FontWeight.w800, color: exportColor(_d.fontColor))),
+                if (v.below) ...[const SizedBox(height: 6), VoteResultPreview(votes: v, result: sample.votes!, lang: _d.lang, fontSize: 11, family: _d.fontFamily)],
+              ]),
+            ),
+            if (v.beside) ...[
+              const SizedBox(width: 8),
+              ConstrainedBox(constraints: const BoxConstraints(maxWidth: 110), child: VoteResultPreview(votes: v, result: sample.votes!, lang: _d.lang, fontSize: 11, beside: true, family: _d.fontFamily)),
+            ],
+          ]),
+        ),
+      ]),
     ]);
   }
 }
 
-class _Swatch extends StatelessWidget {
-  const _Swatch({required this.color, required this.selected, required this.onTap, this.label, this.border});
-  final Color? color;
-  final bool selected;
-  final VoidCallback onTap;
-  final String? label;
-  final Color? border;
+/// "Add" in the toolbar: text · logo · signature · line · (table) · (items).
+class _AddMenu extends StatelessWidget {
+  const _AddMenu({required this.onAdd, required this.hasTable, required this.hasItems, required this.showLabel});
+  final ValueChanged<String> onAdd;
+  final bool hasTable, hasItems, showLabel;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label ?? '#${(color?.toARGB32() ?? 0) & 0xFFFFFF}',
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 28,
-          padding: label == null ? null : const EdgeInsets.symmetric(horizontal: 8),
-          constraints: const BoxConstraints(minWidth: 28),
-          decoration: BoxDecoration(
-            color: color ?? c.cardBg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: selected ? c.primary : (border ?? c.divider), width: selected ? 2 : 1),
+    final kinds = [
+      ('text', Icons.text_fields_rounded),
+      ('logo', Icons.image_outlined),
+      ('signature', Icons.draw_outlined),
+      ('line', Icons.horizontal_rule_rounded),
+      if (!hasTable) ('table', Icons.table_chart_outlined),
+      if (!hasItems) ('items', Icons.view_agenda_outlined),
+    ];
+    return PopupMenuButton<String>(
+      tooltip: t('إضافة عنصر', 'Add an element'),
+      onSelected: onAdd,
+      itemBuilder: (context) => [
+        for (final (kind, icon) in kinds)
+          PopupMenuItem<String>(
+            value: kind,
+            child: Row(children: [
+              Icon(icon, size: 20, color: c.textMedium),
+              const SizedBox(width: AppSpace.sm),
+              Flexible(child: Text(exportBlockLabels()[kind] ?? kind, style: appText(14, c: c.textDark))),
+            ]),
           ),
-          child: label == null ? null : Center(child: Text(label!, style: appText(11, w: FontWeight.w700, c: c.textMedium))),
-        ),
-      ),
+      ],
+      child: StudioToolFace(icon: Icons.add_box_outlined, label: t('إضافة', 'Add'), showLabel: showLabel, trailingIcon: Icons.expand_more_rounded),
     );
+  }
+}
+
+/// A text property that keeps its own controller (typing is not reset by rebuilds).
+class _TextProp extends StatefulWidget {
+  const _TextProp({super.key, required this.label, required this.value, required this.onChanged, this.hint, this.maxLines = 1, this.ltr = false});
+  final String label, value;
+  final String? hint;
+  final int maxLines;
+  final bool ltr;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_TextProp> createState() => _TextPropState();
+}
+
+class _TextPropState extends State<_TextProp> {
+  late final _c = TextEditingController(text: widget.value);
+  final _f = FocusNode();
+
+  @override
+  void didUpdateWidget(covariant _TextProp old) {
+    super.didUpdateWidget(old);
+    if (!_f.hasFocus && _c.text != widget.value) _c.text = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    _f.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final field = TextField(
+      controller: _c,
+      focusNode: _f,
+      minLines: 1,
+      maxLines: widget.maxLines,
+      maxLength: 1000,
+      onChanged: widget.onChanged,
+      style: appText(14, c: context.colors.textDark),
+      decoration: InputDecoration(isDense: true, labelText: widget.label, hintText: widget.hint, counterText: ''),
+    );
+    return widget.ltr ? Directionality(textDirection: TextDirection.ltr, child: field) : field;
+  }
+}
+
+/// "Insert" chips for {{placeholders}}.
+class _PlaceholderChips extends StatelessWidget {
+  const _PlaceholderChips({required this.keys, required this.onInsert, this.extra = const []});
+  final List<String> keys, extra;
+  final ValueChanged<String> onInsert;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = exportPlaceholderLabels();
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(t('أدرج متغيرًا', 'Insert a variable'), style: appText(12, c: context.colors.textMedium)),
+      const SizedBox(height: AppSpace.xxs),
+      Wrap(spacing: AppSpace.xxs + 2, runSpacing: AppSpace.xxs + 2, children: [
+        for (final k in [...keys, ...extra])
+          ActionChip(
+            label: Text(labels[k] ?? k, style: appText(12.5, w: FontWeight.w500, c: context.colors.textDark)),
+            avatar: Icon(Icons.data_object_rounded, size: 16, color: context.colors.textMedium),
+            tooltip: '{{$k}}',
+            onPressed: () => onInsert(k),
+          ),
+      ]),
+    ]);
   }
 }

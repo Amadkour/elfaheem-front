@@ -16,7 +16,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppSettingsGroup, AppSettingsHeader, AppSettingsPage, AppSettingsTile, AppSwitch;
+    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppSwitch, appRoleLabel;
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
 import 'package:flutter_education_app/design/app_language_switch.dart' show AppLanguageTile;
@@ -28,7 +30,6 @@ import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
-import '../admin/admin_list.dart' show IconBadge, RowCard;
 import '../admin/admin_premium_widgets.dart' show AdminPalette;
 import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_common.dart';
@@ -37,7 +38,7 @@ import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
-import 'org_ui.dart' show orgPickAndUpload, statusColor, statusLabel;
+import 'org_ui.dart' show orgPickAndUpload;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/shared/display/display_settings_page.dart' show DisplaySettingsTile;
@@ -84,14 +85,14 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
       if (s.can('roles'))
         AppSettingsTile(
             icon: Icons.admin_panel_settings_rounded,
-            color: AdminPalette.indigo.last,
             label: t('الأدوار والصلاحيات', 'Roles & privileges'),
+            subtitle: t('من يستطيع رؤية وتعديل كل جزء', 'Who can see and change each part'),
             onTap: () => open(t('الأدوار والصلاحيات', 'Roles & privileges'), const OrgAccessPage())),
       if (s.can('audit'))
         AppSettingsTile(
             icon: Icons.history_rounded,
-            color: AdminPalette.slate.last,
             label: t('سجل النشاط', 'Activity log'),
+            subtitle: t('من فعل ماذا ومتى', 'Who did what, and when'),
             onTap: () => open(t('سجل النشاط', 'Activity log'), const OrgActivityPage())),
       if (s.can('terms'))
         AppSettingsTile(
@@ -105,32 +106,53 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             color: AdminPalette.orange.last,
             label: t('تصميمات الشهادات', 'Certificate designs'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CertificateDesignsScreen(orgId: s.currentId)))),
+      // Export Studio (D-130): scheduled exports and shared links; org admins also get the export log
+      AppSettingsTile(
+          icon: Icons.ios_share_rounded,
+          featureKey: 'export.studio',
+          label: t('التصدير', 'Exports'),
+          subtitle: t('التصدير المجدول والروابط المشتركة وسجل التصدير', 'Scheduled exports, shared links and the export log'),
+          onTap: () => Navigator.pushNamed(context, '/exports', arguments: s.isOrgAdmin)),
     ];
+    // D-103 page anatomy: a slim profile row (the big hero pushed the settings below the fold on phones), then the
+    // groups, the organization's own entries first — edit · join code · sub-organization (they left the Home) —
+    // each with one plain line saying what it does. No second search box: the header's search is right above.
     return AppSettingsPage(
-      header: AppSettingsHeader(name: p.name, role: p.role, email: p.email, username: p.username, imageUrl: p.imageUrl, heroTag: 'profile-user-${p.id}'),
+      gutter: AppSpace.md,
+      searchThreshold: 40,
+      header: _ProfileRow(name: p.name, role: p.role, email: p.email, imageUrl: p.imageUrl),
       groups: [
         if (widget.services.isNotEmpty)
           AppSettingsGroup(title: t('التواصل والخدمات', 'Communication & services'), icon: Icons.forum_rounded, children: [
             for (final x in widget.services) AppSettingsTile(icon: x.$3, label: x.$2, badge: badge(x.$1), onTap: () => open(x.$2, x.$4)),
           ]),
         AppSettingsGroup(title: t('المؤسسة', 'Organization'), icon: Icons.domain_rounded, children: [
-          AppSettingsTile(icon: Icons.swap_horiz_rounded, label: t('تبديل المؤسسة', 'Switch organization'), onTap: () => showOrgSwitcher(context)),
           if (s.isOrgAdmin) ...[
             AppSettingsTile(
                 icon: Icons.edit_rounded,
-                color: AdminPalette.indigo.last,
                 label: t('تعديل بيانات المؤسسة', 'Edit organization'),
+                subtitle: t('الاسم والشعار وبيانات التواصل', 'Name, logo and contact details'),
                 onTap: () => showOrgForm(context, edit: s.current)),
-            AppSettingsTile(icon: Icons.vpn_key_rounded, color: AdminPalette.violet.last, label: t('كود الانضمام', 'Join code'), onTap: () => showJoinCode(context)),
+            AppSettingsTile(
+                icon: Icons.vpn_key_rounded,
+                label: t('كود الانضمام', 'Join code'),
+                subtitle: t('شاركه ليطلب الناس الانضمام', 'Share it so people can ask to join'),
+                keywords: 'code qr invite دعوة رمز',
+                onTap: () => showJoinCode(context)),
           ],
           if (s.can('sub_orgs', 'insert') || s.isOrgAdmin)
             AppSettingsTile(
                 icon: Icons.account_tree_rounded,
-                color: AdminPalette.teal.last,
                 label: t('مؤسسة فرعية جديدة', 'New sub-organization'),
+                subtitle: t('كلية أو فرع أو معهد تابع', 'A faculty, branch or institute under this one'),
                 onTap: () => showOrgForm(context, parentId: s.currentId)),
+          AppSettingsTile(
+              icon: Icons.swap_horiz_rounded,
+              label: t('تبديل المؤسسة', 'Switch organization'),
+              subtitle: t('أو العودة إلى حسابك الشخصي', 'Or go back to your personal account'),
+              onTap: () => showOrgSwitcher(context)),
           if (s.canCreateRoot)
-            AppSettingsTile(icon: Icons.add_business_rounded, color: AdminPalette.green.last, label: t('مؤسسة جديدة', 'New organization'), onTap: () => showOrgForm(context)),
+            AppSettingsTile(icon: Icons.add_business_rounded, label: t('مؤسسة جديدة', 'New organization'), onTap: () => showOrgForm(context)),
         ]),
         if (governance.isNotEmpty) AppSettingsGroup(title: t('الحوكمة', 'Governance'), icon: Icons.shield_rounded, children: governance),
         AppSettingsGroup(title: t('التفضيلات', 'Preferences'), icon: Icons.settings_rounded, children: [
@@ -158,6 +180,41 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
                 if (ok == true && context.mounted) await context.read<ProfileProvider>().logout(context);
               }),
         ]),
+      ]),
+    );
+  }
+}
+
+/// The signed-in person in one slim card row: avatar · name · role and e-mail (D-102 language: card + hairline).
+class _ProfileRow extends StatelessWidget {
+  const _ProfileRow({required this.name, required this.role, required this.email, required this.imageUrl});
+  final String name, role, email, imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final meta = [if (role.isNotEmpty) appRoleLabel(role), if (email.isNotEmpty) email].join(' · ');
+    return Container(
+      padding: AppSpace.card,
+      decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
+      child: Row(children: [
+        CircleAvatar(
+          radius: 24,
+          backgroundColor: c.primary,
+          foregroundImage: imageUrl.isEmpty ? null : NetworkImage(imageUrl),
+          child: Text(name.isEmpty ? '?' : name.characters.first.toUpperCase(),
+              style: AppType.section(context).copyWith(color: c.onHero)),
+        ),
+        AppSpace.gapSm,
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+            if (meta.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ],
+          ]),
+        ),
       ]),
     );
   }
@@ -204,47 +261,11 @@ class OrgFirstOrganization extends StatelessWidget {
 //  Switcher · create/edit · join code
 // ═════════════════════════════════════════════════════════════════════════════
 
-Future<void> showOrgSwitcher(BuildContext context) async {
+/// The organization switcher of the dashboard = THE shared context sheet (context_switcher.dart): Personal, my
+/// organizations (switched in place), the ones where I study, join, and "New organization" when I may create one.
+Future<void> showOrgSwitcher(BuildContext context) {
   final s = context.read<OrgSession>();
-  await showAdminSheet<void>(context, (ctx) {
-    final c = ctx.colors;
-    return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
-      SheetHeader(t('مؤسساتي', 'My organizations')),
-      for (final o in s.items)
-        Padding(
-          padding: EdgeInsetsDirectional.only(start: 16.0 * (asInt(o['depth']).clamp(0, 5)), bottom: 8),
-          child: RowCard(
-            accent: o['id'] == s.currentId ? orgColor(ctx, o) : null,
-            onTap: () {
-              s.select(asInt(o['id']));
-              Navigator.pop(ctx);
-            },
-            child: Row(children: [
-              IconBadge(orgTypeIcons[o['type']] ?? Icons.domain_rounded, orgColor(ctx, o), size: 40),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(OrgSession.nameOf(o), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
-                  Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
-                ]),
-              ),
-              if ('${o['status'] ?? 'approved'}' != 'approved')
-                StatusChip(statusLabel('${o['status']}'), statusColor(ctx, '${o['status']}')),
-              if (o['id'] == s.currentId) Icon(Icons.check_circle_rounded, color: c.success),
-            ]),
-          ),
-        ),
-      if (s.canCreateRoot)
-        TextButton.icon(
-          onPressed: () {
-            Navigator.pop(ctx);
-            showOrgForm(context);
-          },
-          icon: const Icon(Icons.add_rounded),
-          label: Text(t('مؤسسة جديدة', 'New organization')),
-        ),
-    ]);
-  });
+  return showContextSwitcherSheet(context, session: s, onCreateOrg: s.canCreateRoot ? () => showOrgForm(context) : null);
 }
 
 Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynamic>? edit}) async {
