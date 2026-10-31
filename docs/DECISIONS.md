@@ -1587,7 +1587,7 @@ have the same problem (not changed here).
 same result; an overlay bar drawn over the pages (it would cover app bars and back buttons); a media notification and
 lock-screen controls (needs `audio_service`, a new package — follow-up); keeping the picture stream in listen mode.
 
-## D-108 — The Android device recording copies the room from Flutter's own surface at 30 fps · 2026-10-31 · accepted (measured on the S24)
+## D-108 — The Android device recording copies the room from Flutter's own surface at 30 fps · 2026-10-31 · proposed (measured on the S24)
 
 Amends D-103 (its "room frames at ~12 fps" part).
 **Context.** The owner (round 7): "the live camera is shown in the recorded video as slow motion (like 10 frames per
