@@ -70,3 +70,28 @@ set from measurement (unverified).
 ## Open questions (to answer on the dev stack)
 Camera fallback with `prefer_screen_share`; egress v1.14/1.15 ↔ livekit-server 1.13.7; real CPU at 1080p / 10 fps;
 students' cameras / voices in recordings (privacy + consent wording); mixed audio vs a separate host channel.
+
+## Device recording frame rate (Android, client mode — D-103, D-108)
+
+Pipeline before a share (no MediaProjection is held): the room → `RoomFrameGrabber` (PixelCopy of the
+`FlutterSurfaceView`, room rect from Dart, GPU-scaled to the encoder's long side, ≤ 30 copies/s, one in flight) →
+`ScreenPlaceholderRenderer.pushRoomBitmap` (texture upload, draw, `eglPresentationTimeANDROID` = copy time) →
+`SegmentedRecorder` (H.264 30 fps 2.5 Mbps + AAC, ~5 s MP4 chunks cut at key frames, `seamless=1`). Fallback when
+the copy fails: Dart frames (`toImage` → rawRgba → `setPlaceholderFrame`, ≤ 12 fps, `live_frame_pacing.dart`), drawn
+by the renderer's 15 Hz keep-alive clock. During a share: the VirtualDisplay → renderer → encoder at 30 fps, the
+share's own capture pass throttled to the share preset's fps.
+
+| | file fps | frames / span | camera region distinct / s | distinct gap p95 |
+|---|---|---|---|---|
+| before (session 75, S24, D-103 build) | 14.76 | 2057 / 139.4 s | 10.0 (median 12 / s, min 1) | 136 ms |
+| after (D-108) | not yet measured on a device (the S24 was not on adb 2026-10-31) | | | |
+
+How to measure (inside the dev API container, which has ffmpeg): copy the assembled `_high.mp4` out of MinIO
+(`minio.Minio(...).fget_object("edu-recordings", "session_<id>/<run>_high.mp4", …)` with the container's `MINIO_*`
+env), then `ffprobe -show_entries frame=pts_time` for the frame steps and
+`ffmpeg -vf crop=<camera box>,mpdecimate=hi=200:lo=64:frac=0.1,showinfo -f null -` for the distinct frames of the
+camera box (session 75: `crop=110:100:438:275`, the camera circle at the board's top right). Target: ≥ 24 distinct/s
+with the camera moving, frame steps ≈ 33 ms, no step > 100 ms. Device load: `adb shell dumpsys cpuinfo`,
+`dumpsys thermalservice` (status must stay ≤ 1 in a 60 s class) and the published camera layer's resolution in the
+room's network pill / LiveKit stats (must not drop when recording starts). Logcat tags: `RoomFrameGrabber` (probe ok,
+copied / failed every 10 s, the copy size), `SegmentedRecorder` (`started 576x1280@30 2500kbps`).
