@@ -677,6 +677,7 @@
   "POST /api/v1/complaints/{complaint_id:int}/replies",
   "POST /api/v1/course-profile/orgs/{org_id:int}/terms/{tid:int}/sync",
   "POST /api/v1/course-profile/{cid:int}/announcements",
+  "POST /api/v1/course-profile/{cid:int}/announcements/seen",
   "POST /api/v1/course-profile/{cid:int}/archive/request",
   "POST /api/v1/course-profile/{cid:int}/archive/requests/{aid:int}/{decision:approve|reject}",
   "POST /api/v1/course-profile/{cid:int}/archive/unlock",

@@ -104,8 +104,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   @override
   void dispose() {
+    _provider.removeListener(_seedHub);
     _hub.dispose();
     super.dispose();
+  }
+
+  /// The course payload's page state (closed · unread announcements, D-111) → the profile hub. The provider is
+  /// app-wide: a course page opened on top of this one must not seed this page's hub.
+  void _seedHub() {
+    if (_provider.course.id == '${_hub.courseId}') _hub.seed(_provider.pageState);
   }
 
   @override
@@ -114,6 +121,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     _provider = context.read<CourseDetailProvider>();
     _provider.course = widget.course;
     _provider.block = null; // a block from the previous course page must not flash here
+    _provider.pageState = null; // nor the previous course's unread count
+    _provider.addListener(_seedHub);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _provider.init(widget.course);
     });
@@ -205,6 +214,9 @@ class _CoursePageState extends State<_CoursePage> {
   String? _profileTab;
   CourseDetailTab? _seenProviderTab;
 
+  /// The opening tab was decided (CourseProfileHub.openingTab), or the person / a link chose one.
+  late bool _openingDone = widget.initialTab != null;
+
   CourseProfileHub get _hub => widget.hub;
 
   @override
@@ -234,6 +246,7 @@ class _CoursePageState extends State<_CoursePage> {
   }
 
   void _openTab(CourseDetailProvider p, String id) {
+    _openingDone = true;
     if (const {kCpTabAnnouncements, kCpTabProgress, kCpTabArchive, kCpTabTeam, kCpTabClass}.contains(id)) {
       setState(() => _profileTab = id);
     } else {
@@ -293,9 +306,20 @@ class _CoursePageState extends State<_CoursePage> {
   Widget build(BuildContext context) {
     final p = context.watch<CourseDetailProvider>();
     // a tab the provider switched to by itself (live card, continue …) takes over from a profile tab
-    if (_seenProviderTab != null && _seenProviderTab != p.activeTab) _profileTab = null;
+    if (_seenProviderTab != null && _seenProviderTab != p.activeTab) {
+      _profileTab = null;
+      _openingDone = true;
+    }
     _seenProviderTab = p.activeTab;
     final c = p.course;
+    // the smart opening tab, once, from the course payload (D-111): a closed course's archive, unread announcements
+    if (!_openingDone) {
+      final open = _hub.openingTab();
+      if (open != null) {
+        _openingDone = true;
+        if (open.isNotEmpty && (open != kCpTabAnnouncements || c.isEnrolled)) _profileTab = open;
+      }
+    }
     final profile = _hub.profile;
     final archived = profile != null && profile.closed && profile.isStudent;
     final col = context.colors;

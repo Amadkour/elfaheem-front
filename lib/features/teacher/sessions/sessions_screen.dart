@@ -140,14 +140,28 @@ class TeacherSessionsScreen extends StatefulWidget {
 class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
   late String _tab = widget.initialTab ?? (widget.expandDetails == true ? _tabDetails : _tabSessions);
 
+  /// The opening tab was decided (CourseProfileHub.openingTab), or the person / a link chose one.
+  late bool _openingDone = widget.initialTab != null || widget.expandDetails == true;
+
   /// The course profile's parts (announcements · class · team · archive), loaded when one of them opens.
   CourseProfileHub? _hubOrNull;
   CourseProfileHub get _hub => _hubOrNull ??= (widget.profileHub ?? CourseProfileHub(_provider.course.id))
     ..addListener(_onHub);
 
   void _onHub() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {
+      // the smart opening tab, once, from the course payload (D-111): unread announcements
+      if (_openingDone) return;
+      final open = _hubOrNull?.openingTab();
+      if (open == null) return;
+      _openingDone = true;
+      if (open.isNotEmpty) _tab = open;
+    });
   }
+
+  /// The course payload's page state (closed · unread announcements) → the profile hub.
+  void _seedHub() => _hub.seed(_provider.pageState);
 
   @override
   void dispose() {
@@ -158,6 +172,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
   Future<void> _refresh() async {
     await Future.wait([_provider.refresh(), _hub.refresh()]);
+    if (mounted) _seedHub();
   }
 
   /// First load finished (later refreshes keep the page on screen).
@@ -175,7 +190,9 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
       if (!mounted) return;
       final provider = _provider;
       provider.refresh().whenComplete(() {
-        if (mounted) setState(() => _loaded = true);
+        if (!mounted) return;
+        setState(() => _loaded = true);
+        _seedHub();
       });
       DataLabApi()
           .config(courseId: provider.course.id)
@@ -188,7 +205,10 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
-  void _setTab(String id) => setState(() => _tab = id);
+  void _setTab(String id) => setState(() {
+    _tab = id;
+    _openingDone = true;
+  });
 
   void _openAddSheet() {
     final provider = _provider;

@@ -11,6 +11,26 @@ List<Map<String, dynamic>> _l(dynamic v) => v is List ? v.whereType<Map>().map((
 double? _d(dynamic v) => v is num ? v.toDouble() : null;
 int _i(dynamic v) => v is num ? v.toInt() : 0;
 
+/// What GET /api/v1/courses/{id} says about the course page for the signed-in caller (D-111): [closed] (the
+/// organization archived the course's last run) and [unread] (course announcements newer than what this person last
+/// saw, counted by the server). Each is null when the server did not send it (an older server; [unread] also for a
+/// guest).
+class CoursePageState {
+  const CoursePageState({this.closed, this.unread});
+
+  factory CoursePageState.fromJson(Map<String, dynamic>? j) {
+    if (j == null) return const CoursePageState();
+    final c = j['closed'], u = j['announcements_unread'];
+    return CoursePageState(closed: c is bool ? c : null, unread: u is num ? u.toInt().clamp(0, 1 << 30) : null);
+  }
+
+  final bool? closed;
+  final int? unread;
+
+  /// The server sent at least one of the two fields.
+  bool get known => closed != null || unread != null;
+}
+
 /// What the signed-in user may do on this course (decided by the server).
 class CpCaps {
   const CpCaps(this.raw);

@@ -1765,9 +1765,16 @@ Sessions: each session is its own card on the timeline — a kind tile (live · 
 as the highlighted cards with their one primary action (the student's Start / Continue, Join, Enter room), a date chip,
 length and files, a progress ring on the student's node, a breathing live node (parked by Reduce motion), quieter done
 cards, and month headers when the dated sessions span months (`courseSessionGroups`).
-**Unread.** The server has no read state for announcements: "unread" is newer than the last one this person saw here,
-kept on the device; it shows once the profile is loaded. A server count (e.g. `announcements_unread` + `closed` on
-`GET /courses/{id}`) would let the badge and the archived state show on open with no extra request.
+**Unread.** The course payload `GET /courses/{id}` carries the page's state for the signed-in caller: `closed` (the
+organization archived the last run, the profile's own `closed`) and `announcements_unread` (announcements with an id
+above the person's `course_announcement_seen.last_id`, their own posts excluded — one indexed count, back migration
+0031). `CoursePageState` parses them, the page feeds them to the hub (`CourseProfileHub.seed`): the badge shows on open
+with no extra request, a closed course loads the profile at once (its archive state and read-only material are there),
+and the page opens ONCE on `openingTab()` when nobody asked for a tab — a student's closed course without a pass →
+Archive, unread → Announcements (a student only when enrolled) — until the person picks a tab. Showing the
+Announcements tab posts `POST /course-profile/{id}/announcements/seen {last_id}` (the newest id shown), not the list
+GET: the list may be prefetched without being shown. An older server sends neither field: "unread" is then newer than
+the last one seen on this device once the profile is loaded, the page keeps its first tab, nothing is posted.
 **Rejected.** Loading the profile on every open (one more request per course page for data most visits never read);
 keeping the profile as a page behind a quick action (the owner's complaint); a separate Team / Archive for students
 (the team is a block in About, the archive appears only for a closed course).
