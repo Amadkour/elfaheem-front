@@ -19,7 +19,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../export/export_studio_model.dart';
 import '../export/table_export_model.dart' show AppColType, AppExportColumn, AppTotal, aggregate, aggregateText, decimalsOf, tintHex;
-import '../export/table_export_pdf.dart' show exportPdfTextDir;
+import '../export/table_export_pdf.dart' show exportPdfText, exportPdfTextDir;
 import 'export_design.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -245,7 +245,7 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
   }
 
   pw.Widget text(String s, {BlockFont? f, double? size, bool? bold, String? color, String a = 'start', int? maxLines}) =>
-      pw.Text(p(s), textAlign: align(a), textDirection: exportPdfTextDir(s, rtl), maxLines: maxLines, style: style(f: f, size: size, bold: bold, color: color));
+      exportPdfText(p(s), rtl: rtl, textAlign: align(a), maxLines: maxLines, style: style(f: f, size: size, bold: bold, color: color));
 
   pw.Widget block(ExportBlock b) {
     final bw = b.w * cw, bh = b.h * ch;
@@ -307,8 +307,8 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
           padding: pad,
           alignment: col.numeric && !header ? (rtl ? pw.Alignment.centerLeft : pw.Alignment.centerRight) : (rtl ? pw.Alignment.centerRight : pw.Alignment.centerLeft),
           decoration: fill == null ? null : pw.BoxDecoration(color: _pc(fill)),
-          child: pw.Text(p(s),
-              textDirection: exportPdfTextDir(s, rtl),
+          child: exportPdfText(p(s),
+              rtl: rtl,
               textAlign: col.numeric && !header ? (rtl ? pw.TextAlign.left : pw.TextAlign.right) : (rtl ? pw.TextAlign.right : pw.TextAlign.left),
               style: style(size: fs, bold: header || bold, color: header ? (st == 'minimal' ? head : onHead) : color)),
         );

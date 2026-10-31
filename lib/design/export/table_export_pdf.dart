@@ -10,6 +10,7 @@ library;
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
+import 'package:bidi/bidi.dart' as bidi;
 import 'package:pdf/widgets.dart' as pw;
 
 import 'export_studio_model.dart';
@@ -22,6 +23,111 @@ final RegExp _arabicLetters = RegExp(r'[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\
 /// as "Student / Marketplace / Mark". The caller keeps its own alignment.
 pw.TextDirection exportPdfTextDir(String s, bool rtl) =>
     rtl && _arabicLetters.hasMatch(s) ? pw.TextDirection.rtl : pw.TextDirection.ltr;
+
+final RegExp _latinLetters = RegExp(r'[A-Za-z]');
+
+/// The pieces an RTL line is drawn as: one per word, except that a run of Latin words (with the neutral words between
+/// them: "Ahmed - Hamdy") stays one LTR piece so it reads left to right inside the Arabic line.
+List<String> exportPdfRtlRuns(String s) {
+  final words = s.split(' ').where((w) => w.isNotEmpty).toList();
+  // A = Arabic, L = Latin, N = neutral (digits, punctuation)
+  final kinds = [for (final w in words) _arabicLetters.hasMatch(w) ? 'A' : _latinLetters.hasMatch(w) ? 'L' : 'N'];
+  String? strongBefore(int i) {
+    for (var k = i - 1; k >= 0; k--) {
+      if (kinds[k] != 'N') return kinds[k];
+    }
+    return null;
+  }
+
+  String? strongAfter(int i) {
+    for (var k = i + 1; k < kinds.length; k++) {
+      if (kinds[k] != 'N') return kinds[k];
+    }
+    return null;
+  }
+
+  final latin = [for (var i = 0; i < words.length; i++) kinds[i] == 'L' || (kinds[i] == 'N' && strongBefore(i) == 'L' && strongAfter(i) == 'L')];
+  final out = <String>[];
+  for (var i = 0; i < words.length; i++) {
+    if (latin[i] && i > 0 && latin[i - 1]) {
+      out[out.length - 1] = '${out.last} ${words[i]}';
+    } else {
+      out.add(words[i]);
+    }
+  }
+  return out;
+}
+
+/// [s] shaped (Arabic presentation forms) and in visual order, as package:pdf's own RTL path would draw it.
+String exportPdfVisual(String s) {
+  final p = bidi.BidiString.fromLogical(s).paragraphs;
+  return p.isEmpty ? s : String.fromCharCodes(p.first.bidiText.where((c) => c != 10 && c != 13));
+}
+
+/// One text of a PDF. package:pdf 3.13 places the words of an RTL text by their INK width instead of their advance
+/// (`_Line.realign` in widgets/text.dart), so the space next to a word ending in a tailed letter (ر م خ ى) moves to
+/// its other side: "أكتوبر2026", "علومالحاسب", "31  أكتوبر". An RTL text is therefore drawn piece by piece — each piece
+/// of [exportPdfRtlRuns] shaped here ([exportPdfVisual]) and laid out LTR, which never goes through that code, the
+/// pieces wrapped right to left (one line: a row scaled down to fit). Every other text stays one pw.Text.
+/// [textAlign] null = the document's start.
+pw.Widget exportPdfText(String s, {required bool rtl, pw.TextStyle? style, pw.TextAlign? textAlign, int? maxLines}) {
+  final dir = exportPdfTextDir(s, rtl);
+  final align = textAlign ?? (rtl ? pw.TextAlign.right : null);
+  if (dir != pw.TextDirection.rtl || (maxLines != null && maxLines != 1)) {
+    return pw.Text(s, textDirection: dir, textAlign: align, maxLines: maxLines, style: style);
+  }
+  final lines = s.split('\n');
+  if (lines.length > 1) {
+    final cross = switch (align) {
+      pw.TextAlign.left => pw.CrossAxisAlignment.start,
+      pw.TextAlign.center => pw.CrossAxisAlignment.center,
+      _ => pw.CrossAxisAlignment.end,
+    };
+    final shown = maxLines == 1 ? lines.take(1) : lines;
+    return pw.Column(crossAxisAlignment: cross, mainAxisSize: pw.MainAxisSize.min, children: [
+      for (final l in shown) exportPdfText(l, rtl: rtl, style: style, textAlign: textAlign, maxLines: maxLines),
+    ]);
+  }
+  final gap = (style?.fontSize ?? 10) * .28;
+  pw.Widget piece(String r) => _arabicLetters.hasMatch(r)
+      ? pw.Text(exportPdfVisual(r), textDirection: pw.TextDirection.ltr, style: style)
+      : pw.Text(r, textDirection: pw.TextDirection.ltr, style: style);
+  final runs = exportPdfRtlRuns(s);
+  if (runs.length == 1) {
+    // one word: the shaped word in a box of the text's width, aligned like the text
+    return pw.Text(exportPdfVisual(runs.first), textDirection: pw.TextDirection.ltr, textAlign: align, maxLines: maxLines, style: style);
+  }
+  final pieces = [for (final r in runs) piece(r)];
+  // inside an RTL Directionality, start = right
+  final wrapAlign = switch (align) {
+    pw.TextAlign.left => pw.WrapAlignment.end,
+    pw.TextAlign.center => pw.WrapAlignment.center,
+    _ => pw.WrapAlignment.start,
+  };
+  if (maxLines == 1) {
+    final rowAlign = switch (align) {
+      pw.TextAlign.left => pw.Alignment.centerLeft,
+      pw.TextAlign.center => pw.Alignment.center,
+      _ => pw.Alignment.centerRight,
+    };
+    return pw.Directionality(
+      textDirection: pw.TextDirection.rtl,
+      child: pw.Align(
+        alignment: rowAlign,
+        child: pw.FittedBox(
+          fit: pw.BoxFit.scaleDown,
+          child: pw.Row(mainAxisSize: pw.MainAxisSize.min, children: [
+            for (var i = 0; i < pieces.length; i++) ...[if (i > 0) pw.SizedBox(width: gap), pieces[i]],
+          ]),
+        ),
+      ),
+    );
+  }
+  return pw.Directionality(
+    textDirection: pw.TextDirection.rtl,
+    child: pw.Wrap(alignment: wrapAlign, spacing: gap, runSpacing: (style?.fontSize ?? 10) * .22, children: pieces),
+  );
+}
 
 PdfColor _pc(String hex) => PdfColor.fromInt(0xFF000000 | int.parse(hex, radix: 16));
 
@@ -70,7 +176,7 @@ Future<Uint8List> appTablePdf(AppTableExport e,
         padding: pad,
         alignment: boxAlign(a),
         decoration: fill == null ? null : pw.BoxDecoration(color: _pc(fill)),
-        child: pw.Text(p(s), textAlign: align(a), textDirection: exportPdfTextDir(s, e.rtl), style: pw.TextStyle(fontSize: size ?? fs, fontWeight: bold ? pw.FontWeight.bold : null, color: color)),
+        child: exportPdfText(p(s), rtl: e.rtl, textAlign: align(a), style: pw.TextStyle(fontSize: size ?? fs, fontWeight: bold ? pw.FontWeight.bold : null, color: color)),
       );
 
   pw.TableRow headerRow() => pw.TableRow(
@@ -114,7 +220,7 @@ Future<Uint8List> appTablePdf(AppTableExport e,
         child: pw.Container(
           padding: pw.EdgeInsets.symmetric(horizontal: fs * .7, vertical: fs * .18),
           decoration: pw.BoxDecoration(color: _pc(fill), borderRadius: pw.BorderRadius.circular(fs)),
-          child: pw.Text(p(look.textOf(c.id, cellText(c, v))), style: pw.TextStyle(fontSize: fs * .92, fontWeight: pw.FontWeight.bold, color: _pc(ink))),
+          child: exportPdfText(p(look.textOf(c.id, cellText(c, v))), rtl: e.rtl, style: pw.TextStyle(fontSize: fs * .92, fontWeight: pw.FontWeight.bold, color: _pc(ink))),
         ),
       );
     }
@@ -147,7 +253,7 @@ Future<Uint8List> appTablePdf(AppTableExport e,
             border: e.rtl ? pw.Border(right: pw.BorderSide(color: _pc(brand), width: 3)) : pw.Border(left: pw.BorderSide(color: _pc(brand), width: 3)),
           ),
           child: pw.Row(children: [
-            pw.Expanded(child: pw.Text(p(g.label!), style: pw.TextStyle(fontSize: fs + 1.5, fontWeight: pw.FontWeight.bold, color: _pc(shadeHex(brand, .2))))),
+            pw.Expanded(child: exportPdfText(p(g.label!), rtl: e.rtl, style: pw.TextStyle(fontSize: fs + 1.5, fontWeight: pw.FontWeight.bold, color: _pc(shadeHex(brand, .2))))),
             pw.Text(p('${g.rows.length}'), style: pw.TextStyle(fontSize: fs + .5, color: muted)),
           ]),
         ));
@@ -189,12 +295,12 @@ Future<Uint8List> appTablePdf(AppTableExport e,
               padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 11),
               decoration: pw.BoxDecoration(color: _pc(brand), borderRadius: pw.BorderRadius.circular(7)),
               child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                pw.Text(p(e.title), style: pw.TextStyle(color: onBrand, fontSize: 17, fontWeight: pw.FontWeight.bold)),
+                exportPdfText(p(e.title), rtl: e.rtl, style: pw.TextStyle(color: onBrand, fontSize: 17, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 3),
-                pw.Text(p(brandLine), style: pw.TextStyle(color: onBrand, fontSize: 8.5)),
+                exportPdfText(p(brandLine), rtl: e.rtl, style: pw.TextStyle(color: onBrand, fontSize: 8.5)),
               ]),
             ),
-            for (final l in e.infoLines) pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: pw.Text(p(l), style: pw.TextStyle(color: muted, fontSize: 8.5))),
+            for (final l in e.infoLines) pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: exportPdfText(p(l), rtl: e.rtl, style: pw.TextStyle(color: muted, fontSize: 8.5))),
             pw.SizedBox(height: 10),
           ])
         : pw.Container(
@@ -202,8 +308,8 @@ Future<Uint8List> appTablePdf(AppTableExport e,
             padding: const pw.EdgeInsets.only(bottom: 4),
             decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: _pc(brand), width: 1.2))),
             child: pw.Row(children: [
-              pw.Expanded(child: pw.Text(p(e.title), maxLines: 1, style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _pc(shadeHex(brand, .2))))),
-              if ((e.brand ?? '').isNotEmpty) pw.Text(p(e.brand!), style: pw.TextStyle(fontSize: 8, color: muted)),
+              pw.Expanded(child: exportPdfText(p(e.title), rtl: e.rtl, maxLines: 1, style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _pc(shadeHex(brand, .2))))),
+              if ((e.brand ?? '').isNotEmpty) exportPdfText(p(e.brand!), rtl: e.rtl, style: pw.TextStyle(fontSize: 8, color: muted)),
             ]),
           ),
     footer: (c) => pw.Container(
@@ -211,8 +317,8 @@ Future<Uint8List> appTablePdf(AppTableExport e,
       padding: const pw.EdgeInsets.only(top: 4),
       decoration: pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: line, width: .5))),
       child: pw.Row(children: [
-        pw.Expanded(child: pw.Text(p(e.stamp), maxLines: 1, style: pw.TextStyle(color: muted, fontSize: 7.5))),
-        pw.Text(p(e.rtl ? 'صفحة ${c.pageNumber} من ${c.pagesCount}' : 'Page ${c.pageNumber} of ${c.pagesCount}'), style: pw.TextStyle(color: muted, fontSize: 7.5)),
+        pw.Expanded(child: exportPdfText(p(e.stamp), rtl: e.rtl, maxLines: 1, style: pw.TextStyle(color: muted, fontSize: 7.5))),
+        exportPdfText(p(e.rtl ? 'صفحة ${c.pageNumber} من ${c.pagesCount}' : 'Page ${c.pageNumber} of ${c.pagesCount}'), rtl: e.rtl, style: pw.TextStyle(color: muted, fontSize: 7.5)),
       ]),
     ),
     build: (_) => content,
