@@ -28,7 +28,8 @@ Widget _bar() => Container(
       decoration: BoxDecoration(color: const Color(0xFF1B2233), borderRadius: BorderRadius.circular(32)),
     );
 
-Widget _scene({required bool shown, bool hint = false, VoidCallback? onContent}) => Stack(fit: StackFit.expand, children: [
+Widget _scene({required bool shown, bool hint = false, VoidCallback? onContent, bool handle = false, VoidCallback? onHandle}) =>
+    Stack(fit: StackFit.expand, children: [
       GestureDetector(
         key: const ValueKey('test.content'),
         behavior: HitTestBehavior.opaque,
@@ -40,6 +41,8 @@ Widget _scene({required bool shown, bool hint = false, VoidCallback? onContent})
         hint: hint,
         top: const Padding(padding: EdgeInsets.fromLTRB(10, 4, 10, 4), child: _row),
         bottom: _bar(),
+        handle: handle,
+        onHandle: onHandle,
       ),
     ]);
 
@@ -99,5 +102,40 @@ void main() {
   test('a tap shows hidden bars and hides shown ones', () {
     expect(liveFocusBarsAfterTap(false), isTrue);
     expect(liveFocusBarsAfterTap(true), isFalse);
+  });
+
+  // Drawing on the board in full view (D-108, round 7): a tap on the page is ink, so the bars come with a chip.
+  testWidgets('drawing: the Controls chip at the top centre while hidden; its tap asks for the bars', (tester) async {
+    var asks = 0, taps = 0;
+    await expectNoLayoutErrors(tester, () => _scene(shown: false, hint: true, handle: true, onHandle: () => asks++, onContent: () => taps++),
+        act: (t) async {
+      final w = t.view.physicalSize.width;
+      final chip = find.byKey(const ValueKey('live_room.focus_handle')).hitTestable();
+      expect(chip, findsOneWidget);
+      final r = t.getRect(chip);
+      expect(r.top >= 0 && r.bottom <= 72, isTrue, reason: 'at the top: $r');
+      expect(r.center.dx, closeTo(w / 2, 1), reason: 'centred: $r');
+      expect(r.height >= 48 && r.width >= 48, isTrue, reason: 'a 48 px target: $r');
+      final hint = t.getRect(find.byKey(const ValueKey('live_room.focus_hint')));
+      expect(hint.top >= r.bottom, isTrue, reason: 'the hint is under the chip: $hint / $r');
+      await t.tap(chip);
+      // Elsewhere the content still gets its touch (the board draws there).
+      await t.tapAt(Offset(w / 2, t.view.physicalSize.height / 2));
+    });
+    expect(asks, 4, reason: 'one per size × language');
+    expect(taps, 4);
+  });
+
+  testWidgets('drawing, bars shown: the chip steps aside (Exit is on the row)', (tester) async {
+    await expectNoLayoutErrors(tester, () => _scene(shown: true, handle: true, onHandle: () {}), act: (t) async {
+      await t.pumpAndSettle();
+      expect(find.byKey(const ValueKey('live_room.focus_handle')).hitTestable(), findsNothing);
+      expect(find.byKey(const ValueKey('live_room.focus_exit')).hitTestable(), findsOneWidget);
+    });
+  });
+
+  testWidgets('not drawing: no chip', (tester) async {
+    await tester.pumpWidget(MaterialApp(home: _scene(shown: false)));
+    expect(find.byKey(const ValueKey('live_room.focus_handle')), findsNothing);
   });
 }

@@ -8,6 +8,11 @@
 // the content never moves. Another tap hides them; so does [onActivity]'s 4 s idle timer in room.dart. A short
 // hint says how to get them ([hint]) when full view opens.
 //
+// Drawing in full view (D-108, round 7): on a board this person may draw on, a tap on the page is a dot of ink, so it
+// cannot also mean "the controls". [handle] then draws a small glass "Controls" chip at the top centre while the bars
+// are hidden ([LiveFocusHandle]); its tap shows them ([onHandle]) — the board's tool dock comes with the bottom bar.
+// Everyone who is not drawing keeps the tap.
+//
 // Plain values (the two bars come in as widgets), so test/ui/live_focus_chrome_layout_test.dart pumps it with the
 // layout harness and test/visual/live_top_row_golden_test.dart renders it shown and hidden.
 library;
@@ -35,6 +40,8 @@ class LiveFocusChrome extends StatelessWidget {
     this.bottom,
     this.hint = false,
     this.onActivity,
+    this.handle = false,
+    this.onHandle,
   });
 
   /// The bars are on screen.
@@ -51,6 +58,12 @@ class LiveFocusChrome extends StatelessWidget {
 
   /// A touch on a bar (room.dart restarts the idle timer).
   final VoidCallback? onActivity;
+
+  /// The "Controls" chip while the bars are hidden: the person draws on the page, where a tap is ink.
+  final bool handle;
+
+  /// The chip's tap: show the bars.
+  final VoidCallback? onHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -99,10 +112,32 @@ class LiveFocusChrome extends StatelessWidget {
       if (top != null) Positioned(key: const ValueKey('live_room.focus_top'), top: 0, left: 0, right: 0, child: bar(top!, atTop: true)),
       if (bottom != null)
         Positioned(key: const ValueKey('live_room.focus_bottom'), bottom: 0, left: 0, right: 0, child: bar(bottom!, atTop: false)),
+      if (handle)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            bottom: false,
+            child: Center(
+              child: ExcludeSemantics(
+                excluding: shown,
+                child: IgnorePointer(
+                  ignoring: shown,
+                  child: AnimatedOpacity(
+                    opacity: shown ? 0 : 1,
+                    duration: dur,
+                    child: LiveFocusHandle(onTap: onHandle),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       Positioned(
         left: 16,
         right: 16,
-        top: 16, // clear of the presenter's camera box (bottom corner by default)
+        top: handle ? 16 + LiveFocusHandle.height : 16, // under the chip; clear of the camera box (bottom corner)
         child: SafeArea(
           bottom: false,
           child: IgnorePointer(
@@ -110,7 +145,7 @@ class LiveFocusChrome extends StatelessWidget {
               child: AnimatedOpacity(
                 opacity: hint && !shown ? 1 : 0,
                 duration: still ? Duration.zero : const Duration(milliseconds: 260),
-                child: LiveFocusHint(visible: hint && !shown),
+                child: LiveFocusHint(visible: hint && !shown, drawing: handle),
               ),
             ),
           ),
@@ -120,14 +155,17 @@ class LiveFocusChrome extends StatelessWidget {
   }
 }
 
-/// "Tap the screen to show the controls · Esc to exit".
+/// "Tap the screen to show the controls" — or, while drawing ([drawing]), where the controls are instead.
 class LiveFocusHint extends StatelessWidget {
-  const LiveFocusHint({super.key, this.visible = true});
+  const LiveFocusHint({super.key, this.visible = true, this.drawing = false});
   final bool visible;
+  final bool drawing;
 
   @override
   Widget build(BuildContext context) {
-    final text = t('اضغط على الشاشة لإظهار الأزرار', 'Tap the screen to show the controls');
+    final text = drawing
+        ? t('ارسم على السبورة · زر «الأزرار» في الأعلى يُظهرها', 'Draw on the board · Controls at the top shows them')
+        : t('اضغط على الشاشة لإظهار الأزرار', 'Tap the screen to show the controls');
     return Semantics(
       liveRegion: visible,
       label: visible ? text : null,
@@ -141,7 +179,7 @@ class LiveFocusHint extends StatelessWidget {
           border: Border.all(color: LivePalette.glassBorder),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.touch_app_rounded, size: 17, color: LivePalette.textHigh),
+          Icon(drawing ? Icons.draw_rounded : Icons.touch_app_rounded, size: 17, color: LivePalette.textHigh),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
@@ -152,6 +190,59 @@ class LiveFocusHint extends StatelessWidget {
             ),
           ),
         ]),
+      ),
+    );
+  }
+}
+
+/// Full view's "Controls" chip (D-108): a small glass pill at the top centre while this person draws on the board.
+/// Drawn 34 px tall, hit 48 px tall and at least 64 px wide.
+class LiveFocusHandle extends StatelessWidget {
+  const LiveFocusHandle({super.key, this.onTap});
+
+  final VoidCallback? onTap;
+
+  /// The chip's hit height (px).
+  static const double height = 48;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = t('الأزرار', 'Controls');
+    return Semantics(
+      button: true,
+      label: t('إظهار الأزرار', 'Show the controls'),
+      excludeSemantics: true,
+      child: GestureDetector(
+        key: const ValueKey('live_room.focus_handle'),
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: height, minWidth: 64),
+          child: Center(
+            widthFactor: 1,
+            child: Container(
+              height: 34,
+              padding: const EdgeInsetsDirectional.fromSTEB(10, 0, 14, 0),
+              decoration: BoxDecoration(
+                color: LivePalette.shade(0.55),
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(color: LivePalette.glassBorder),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: LivePalette.textHigh),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600, color: LivePalette.textHigh),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
       ),
     );
   }
