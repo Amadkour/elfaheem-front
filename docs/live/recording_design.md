@@ -84,7 +84,16 @@ share's own capture pass throttled to the share preset's fps.
 | | file fps | frames / span | camera region distinct / s | distinct gap p95 |
 |---|---|---|---|---|
 | before (session 75, S24, D-103 build) | 14.76 | 2057 / 139.4 s | 10.0 (median 12 / s, min 1) | 136 ms |
-| after (D-108) | not yet measured on a device (the S24 was not on adb 2026-10-31) | | | |
+| after (session 77, S24, D-108 build, 2026-10-31) | 30.01 | 3096 / 103.2 s | 29.1 (camera full stage, 17 s; min 26 / s) · camera box over the board: median 29 / s | 33 ms |
+
+Session 77 in detail: every frame step 33.3 ms (max 33.3, none > 100 ms); the whole picture changes 28.1 times a
+second (median 29); `RoomFrameGrabber` logged "probe ok", 590×1280 copies from the 1440×3120 surface, ~30.1 copies / s,
+0 failed, and kept running while the whiteboard was open (the board is part of the room picture). 16 seamless chunks,
+assembled file 0.70 Mbit/s (the encoder's 2.5 Mbit/s is a ceiling; a still room needs far less). Device load during
+the recording: the app 68–110 % of one core (of 800 %), surfaceflinger 20–30 %, cameraserver 3–9 %; thermal status 0
+(AP 48.7 °C, skin 37.4 °C, battery 33.5 °C). The published camera kept its three layers (320×180 / 640×360 /
+1280×720) while recording. Not measured: the same load numbers with the old build (no A/B on one day), a longer class
+for thermal drift, a weaker Android.
 
 How to measure (inside the dev API container, which has ffmpeg): copy the assembled `_high.mp4` out of MinIO
 (`minio.Minio(...).fget_object("edu-recordings", "session_<id>/<run>_high.mp4", …)` with the container's `MINIO_*`

@@ -1587,7 +1587,7 @@ have the same problem (not changed here).
 same result; an overlay bar drawn over the pages (it would cover app bars and back buttons); a media notification and
 lock-screen controls (needs `audio_service`, a new package — follow-up); keeping the picture stream in listen mode.
 
-## D-108 — The Android device recording copies the room from Flutter's own surface at 30 fps · 2026-10-31 · proposed
+## D-108 — The Android device recording copies the room from Flutter's own surface at 30 fps · 2026-10-31 · accepted (measured on the S24)
 
 Amends D-103 (its "room frames at ~12 fps" part).
 **Context.** The owner (round 7): "the live camera is shown in the recorded video as slow motion (like 10 frames per
@@ -1613,7 +1613,9 @@ during a share it draws the recording at 30 fps (the share's capture pass stays 
 so not doubled; a meeting's picked quality keeps its own bitrate). Chunks, the gapless cut and `seamless=1` are
 unchanged. The Dart frames (D-103) stay as the fallback when the copy does not work (an older native side, a Flutter
 surface `PixelCopy` cannot read); the PNG path stays behind them.
-**Measured.** See `docs/live/recording_design.md` ("Device recording frame rate").
+**Measured** (S24, session 77, 103 s): 30.01 fps, every frame step 33 ms; the camera changes 29.1 times a second
+(was 10.0, session 75); PixelCopy ~30 / s, 0 failures; thermal status 0, the app 68–110 % of one core; the published
+camera kept its 1280×720 layer. Details in `docs/live/recording_design.md` ("Device recording frame rate").
 **Trade-offs accepted.** The copy is the WHOLE composited room, so a sheet or dialog opened over the room and the
 app's toasts are in the recording too (the Dart capture only saw the room's body); the teacher's own view, as in a
 share. A GPU→CPU read and a CPU→GPU upload of ~2.9 MB per frame (~90 MB/s each way at 30 fps), on background threads.
