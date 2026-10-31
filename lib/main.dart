@@ -702,9 +702,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         return _fade(const _Guard(child: TeacherDashboardScreen()), settings);
       case '/admin_dashboard':
         return _fade(const _Guard(child: AdminDashboardScreen()), settings);
-      case '/org_member': // member dashboard (Organization mode as a page); arguments: org id (deep link)
+      case '/org_member': // the student's organization page (Organization mode as a page); arguments: org id (deep link)
         return _fade(_Guard(child: OrgsGate(child: OrgMemberDashboardScreen(orgId: settings.arguments is int ? settings.arguments as int : null))), settings);
-      case '/org_dashboard':
+      case '/org_dashboard': // ONE dashboard for every non-student org role (D-103); a student sees OrgStaffOnlyPage
         return _fade(const _Guard(child: OrgsGate(child: OrgDashboardScreen())), settings);
       case '/parent_dashboard':
         return _fade(const _Guard(child: ParentDashboardScreen()), settings);

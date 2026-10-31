@@ -183,6 +183,8 @@
  "notifications.yesterday",
  "org.governance",
  "org.governance.export_hub",
+ "org.insights",
+ "org.search",
  "payment_callback",
  "payment_callback.try_again",
  "payments",

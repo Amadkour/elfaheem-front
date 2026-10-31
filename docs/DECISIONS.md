@@ -1292,3 +1292,28 @@ is shown in the reader's language; Go live sends no name when the teacher typed 
 **Rejected.** A full-bleed coloured hero on every home (it fought the live state for attention); keeping the cover
 grid on phones for the lists (half the screen per course, titles cut to one line); a separate sessions widget per role
 (the two pages drifted apart before); Arabic-Indic digits everywhere (clocks, counts and server text are already 0-9).
+
+## D-103 — One organization dashboard for every non-student org role · 2026-10-31 · accepted
+
+**Context.** Org staff who "managed nothing" (an assistant, a teacher-member) were bounced from `/org_dashboard` to
+`/org_member`, so the same person met two different organization UIs depending on a cached flag, and members without
+any right had no dashboard at all. The owner wants ONE dashboard per role, simple enough for a first-time user.
+**Decision.** `OrgDashboardScreen` is refitted in place (no second dashboard, no v2 route): every person who is in an
+organization and not a student there — org admin, sub-admin, staff, member without rights — opens it.
+`GET /org/mine?members=1` lists those organizations with `access` (admin · staff · member) and `member_role`; an older
+server's items are read the same way (`orgAccessOf`). The "manages nothing → /org_member" hop is gone
+(`AppModeController.orgStaffHome` removed); `/org_member` stays the student's organization page. From a personal home,
+choosing an organization where I am not a student opens the dashboard on it. Every page has the same header
+(`OrgPageHeader`: title · one primary action · Refresh with "Updated …" · calendar · bell with the unread count · the
+shared context switcher, phones included); the shell's top bar is off for this shell so nothing appears twice. The
+switcher selects in place (`OrgSession.select`, remembered by `AppModeController`), and its "Personal" entry replaces
+the per-page exit button. **Students are blocked from the dashboard only** (403 `student_forbidden` on the dashboard /
+search APIs; grants they hold keep working elsewhere): they see "This dashboard is for staff" with one "Back to my
+home" button, never "Create organization". While the dashboard is open, `org_access_changed` and any 403
+`org_forbidden` / `student_forbidden` from an org call reload `/mine?members=1` (kept organization when still listed,
+else the next, else the staff-only page) and re-derive the sections.
+**Cost.** The org-admin home makes one more request on open (5): the bell's unread count, the same call every other
+role shell makes. The membership overview is loaded only when the switcher is used.
+**Rejected.** A separate "staff dashboard" route (two UIs to keep in step); keeping the hop for members without rights
+(the same person would land on different pages by a cached flag); hiding the dashboard's student block behind a client
+check only (the server is the authority, the app follows its 403).

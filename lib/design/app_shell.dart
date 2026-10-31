@@ -1,7 +1,7 @@
 // lib/design/app_shell.dart — ONE navigation shell for every role dashboard (student · teacher · parent · admin ·
 // organization), D-062.
 //
-//   AppShell(width: constraints.maxWidth, currentIndex:, onTap:, items:, unreadCount:)
+//   AppShell(width: constraints.maxWidth, currentIndex:, onTap:, items:, unreadCount:, showTopBar:)
 //       picks the shell with Breakpoints.shellFor (app_responsive.dart):
 //         WideShell    sidebar + top bar            (>= Breakpoints.desktop)
 //         RailShell    NavigationRail + top bar     (>= Breakpoints.mobile)
@@ -214,6 +214,7 @@ class AppShell extends StatefulWidget {
     required this.onTap,
     required this.items,
     this.unreadCount = 0,
+    this.showTopBar = true,
   });
 
   final double width;
@@ -223,6 +224,11 @@ class AppShell extends StatefulWidget {
 
   /// Unread notifications, for the top bar's bell (phones have none in the shell).
   final int unreadCount;
+
+  /// False: the wide / rail shells draw no top bar (title · refresh · calendar · assistant · bell) because every
+  /// page draws its own header with those actions — the organization dashboard (OrgPageHeader, D-103), so nothing
+  /// appears twice.
+  final bool showTopBar;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -298,9 +304,11 @@ class _AppShellState extends State<AppShell> {
         ? ColoredBox(color: context.colors.background, child: body)
         : switch (kind) {
             AppShellKind.wide => WideShell(
-                currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body),
+                currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body,
+                showTopBar: widget.showTopBar),
             AppShellKind.rail => RailShell(
-                currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body),
+                currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body,
+                showTopBar: widget.showTopBar),
             AppShellKind.mobile => MobileShell(currentIndex: _current, onTap: _onTap, dashboardItems: items, body: body),
           };
     final back = shellBackAction(tabCanPop: _tabs.activeCanPop, index: _current);
@@ -337,7 +345,11 @@ class WideShell extends StatelessWidget {
     required this.dashboardItems,
     required this.unreadCount,
     this.body,
+    this.showTopBar = true,
   });
+
+  /// False: no top bar — the pages draw their own header with these actions (the organization dashboard, D-103).
+  final bool showTopBar;
 
   @override
   Widget build(BuildContext context) {
@@ -440,16 +452,17 @@ class WideShell extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                _TopBar(
-                  title: dashboardItems[current].label.tr,
-                  unread: unreadCount,
-                  onRefresh: dashboardItems[current].onRefresh,
-                ),
+                if (showTopBar)
+                  _TopBar(
+                    title: dashboardItems[current].label.tr,
+                    unread: unreadCount,
+                    onRefresh: dashboardItems[current].onRefresh,
+                  ),
                 // the top bar already sits under the status bar: the pages below must not pad for it again
                 Expanded(
                   child: MediaQuery.removePadding(
                     context: context,
-                    removeTop: true,
+                    removeTop: showTopBar,
                     child: body ?? LazyTabStack(index: current, items: dashboardItems),
                   ),
                 ),
@@ -770,7 +783,11 @@ class RailShell extends StatelessWidget {
     required this.dashboardItems,
     required this.unreadCount,
     this.body,
+    this.showTopBar = true,
   });
+
+  /// False: no top bar — the pages draw their own header with these actions (the organization dashboard, D-103).
+  final bool showTopBar;
 
   @override
   Widget build(BuildContext context) {
@@ -817,16 +834,17 @@ class RailShell extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                _TopBar(
-                  title: dashboardItems[current].label.tr,
-                  unread: unreadCount,
-                  onRefresh: dashboardItems[current].onRefresh,
-                ),
+                if (showTopBar)
+                  _TopBar(
+                    title: dashboardItems[current].label.tr,
+                    unread: unreadCount,
+                    onRefresh: dashboardItems[current].onRefresh,
+                  ),
                 // the top bar already sits under the status bar: the pages below must not pad for it again
                 Expanded(
                   child: MediaQuery.removePadding(
                     context: context,
-                    removeTop: true,
+                    removeTop: showTopBar,
                     child: body ?? LazyTabStack(index: current, items: dashboardItems),
                   ),
                 ),

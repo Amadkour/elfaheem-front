@@ -9,25 +9,37 @@
 // stays on screen when a reload fails). Every block and action is gated by the server's `can` map (the viewer's
 // effective rights IN THIS department), so a head, an approver and the org admin each see what they may do.
 //
-// Layout: hero (identity · manager · stats; a stat the viewer may not see reads "—") → quick actions → trend tiles
-// the day the server sends `series` → tabs Requests · Users · Members (+ Overview on phones). On wide screens the
-// overview (governance, announcements, sub-departments, contact card) sits in a side column.
+// Layout: a calm header card (identity · head · four figures; a figure the viewer may not see reads "—") → a few
+// quick actions → trend tiles the day the server sends `series` → the tabs (+ Overview on phones). On wide screens
+// the overview (governance, announcements, sub-departments, contact card) sits in a side column.
+//
+// Tabs (D-103): the organization dashboard lists, per department, the modules I may VIEW there with their levels
+// (`departments[].tabs[]`, OrgDeptTab). When it does, the page shows ONLY those (plus Waiting: what I decide here)
+// — courses · enrollments · team · announcements · forms · complaints · materials · workflow · certificates, in the
+// server's order — and the levels hide what I may not do (no Add without `insert`, no manage / remove without
+// `update`); `councils` and `data_lab` have no embeddable page yet (the council is a quick action, the Data Lab opens
+// the department tools). An older server without `tabs` → the `can` caps decide, as before.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
-import '../admin/admin_list.dart' show AdminAvatar;
-import 'org_announcements.dart' show OrgAnnouncementFeed;
+import '../teacher/certificates/designer/certificate_designs_screen.dart' show CertificateDesignsScreen;
+import 'home/org_dept_courses.dart' show OrgDeptCoursesTab;
+import 'home/org_home_tasks.dart' show OrgPersonAvatar;
+import 'home/org_home_logic.dart' show OrgDeptTab, OrgTabLevels, orgTabLevelsOf;
+import 'org_announcements.dart' show OrgAnnouncementFeed, OrgAnnouncementsPage;
 import 'org_dashboard_home.dart' show OrgTrendRow;
 import 'org_dashboard_model.dart' show OrgUnitData;
+import 'org_page_header.dart' show OrgPageRefresh;
 import 'org_departments_page.dart' show DeptLogo, OrgDepartmentHub, showDepartmentWizard;
 import 'org_join_pages.dart' show OrgUnitJoinHub;
 import 'org_providers.dart';
@@ -37,23 +49,44 @@ import 'org_v3.dart' show orgCall, orgParseUtc;
 import 'governance/gov_dashboard.dart' show GovDashboardCard;
 import 'governance/gov_delegations_page.dart' show GovDelegationsPage;
 import 'governance/gov_wiring.dart' show govDeptItemsTab, govEnabled, govOpenCouncilOfDept;
-import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
-/// Opens the dashboard of one department, carrying the current organization session.
+/// Opens the dashboard of one department, carrying the current organization session. Its tabs come from the
+/// [seed] (a row of the organization dashboard), else from the dashboard on screen (OrgDashController), else the
+/// page keeps its `can` caps (an older server).
 Future<void> openDepartmentDashboard(BuildContext context,
     {required String unitType, required int unitId, Map<String, dynamic>? seed}) {
   final s = context.read<OrgSession>();
+  final tabs = departmentTabsOf(context, unitType, unitId, seed);
   return Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ChangeNotifierProvider.value(
-          value: s, child: OrgDepartmentDashboard(unitType: unitType, unitId: unitId, seed: seed))));
+          value: s, child: OrgDepartmentDashboard(unitType: unitType, unitId: unitId, seed: seed, tabs: tabs))));
+}
+
+/// The server's tabs for one department: from [seed], else from the organization dashboard on screen; null when
+/// neither knows them.
+List<OrgDeptTab>? departmentTabsOf(BuildContext context, String unitType, int unitId, Map<String, dynamic>? seed) {
+  final own = OrgDeptTab.listFrom(seed?['tabs']);
+  if (own != null) return own;
+  try {
+    final d = context.read<OrgDashController>().data;
+    for (final u in d?.units ?? const <Map<String, dynamic>>[]) {
+      if ('${u['unit_type']}' == unitType && asInt(u['id']) == unitId) return OrgDeptTab.listFrom(u['tabs']);
+    }
+  } catch (_) {
+    // no organization dashboard above this page (the member space, a deep link)
+  }
+  return null;
 }
 
 class OrgDepartmentDashboard extends StatefulWidget {
-  const OrgDepartmentDashboard({super.key, required this.unitType, required this.unitId, this.seed});
+  const OrgDepartmentDashboard({super.key, required this.unitType, required this.unitId, this.seed, this.tabs});
   final String unitType; // dept | program
   final int unitId;
   final Map<String, dynamic>? seed; // the list row: instant title / colour while the dashboard loads
+
+  /// The modules I may view here (D-103); null = an older server, the `can` caps decide.
+  final List<OrgDeptTab>? tabs;
 
   @override
   State<OrgDepartmentDashboard> createState() => _OrgDepartmentDashboardState();
@@ -68,11 +101,31 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
 
   bool get _isDept => widget.unitType == 'dept';
 
+  OrgPageRefresh? _refresh;
+
   @override
   void initState() {
     super.initState();
+    // the dashboard header's Refresh (when this page sits under one) reloads only this department's call; pushed on
+    // its own, the app bar's Refresh does
+    _refresh = OrgPageRefresh.register(context, _load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
+  }
+
+  /// The Waiting figure / tab: for someone who decides here.
+  bool get _showsWaiting => _byTabs
+      ? _cap('decide_requests') || _cap('decide_program_choices') || (_cap('review_forms') && _levels('forms') != null)
+      : true;
+
+  /// The levels of [key] when the server lists tabs; null = not a tab here, or an older server.
+  OrgTabLevels? _levels(String key) => orgTabLevelsOf(widget.tabs, key);
+  bool get _byTabs => widget.tabs != null;
 
   Future<void> _load() async {
     final s = context.read<OrgSession>();
@@ -85,6 +138,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
         if (d != null) _d = d;                   // a bad answer keeps the last payload on screen
         _state = _d == null ? _Load.failed : _Load.ready;
       });
+      if (_d != null) OrgPageRefresh.reportUpdated(context);
     } catch (e) {
       if (!mounted) return;
       final err = ApiException.from(e);
@@ -151,7 +205,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
             final wide = box.maxWidth >= 980;
             final tabs = _tabs(wide);
             final header = <Widget>[
-              _UnitHero(d: _d!, seed: widget.seed),
+              _UnitHero(d: _d!, seed: widget.seed, showWaiting: _showsWaiting),
               _QuickActions(actions: _actions()),
               if (_d!.trends.isNotEmpty) OrgTrendRow(trends: _d!.trends),
             ];
@@ -174,8 +228,8 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
                           indicatorColor: c.primary,
                           unselectedLabelColor: c.textMedium,
                           dividerColor: c.divider,
-                          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
-                          unselectedLabelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
+                          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
+                          unselectedLabelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w500),
                           tabs: [for (final tb in tabs) Tab(child: _TabLabel(icon: tb.$2, label: tb.$1, badge: tb.$3))],
                         ),
                         c.cardBg,
@@ -200,7 +254,39 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
   }
 
   // ── tabs: (label, icon, badge, body) ──
-  List<(String, IconData, int, Widget)> _tabs(bool wide) {
+  List<(String, IconData, int, Widget)> _tabs(bool wide) => _byTabs ? _serverTabs(wide) : _capTabs(wide);
+
+  /// D-103: Overview (phones) · Waiting (what I decide here) · then ONLY the server's tabs, in its order.
+  List<(String, IconData, int, Widget)> _serverTabs(bool wide) {
+    final waiting = _d?.waiting ?? 0;
+    final showRequests = _showsWaiting;
+    final oid = context.read<OrgSession>().currentId ?? 0;
+    final id = widget.unitId;
+    (String, IconData, int, Widget)? tab(OrgDeptTab x) => switch (x.key) {
+          'courses' when _isDept => (x.label, Icons.menu_book_rounded, 0, OrgDeptCoursesTab(deptId: id)),
+          'enrollments' => (x.label, Icons.people_alt_rounded, 0,
+              _UsersTab(d: _d!, unitType: widget.unitType, unitId: id, onChanged: _load, canRemove: _cap('remove_users') && x.levels.update)),
+          'team' => (x.label, Icons.badge_rounded, 0,
+              _TeamTab(d: _d!, isDept: _isDept, onManage: x.levels.insert || x.levels.update ? _openHub : null, onRefresh: _load)),
+          'announcements' when _isDept => (x.label, Icons.campaign_rounded, 0, OrgAnnouncementsPage(deptId: id)),
+          'forms' when _isDept => (x.label, Icons.assignment_rounded, 0, OrgFormsPage(deptId: id)),
+          'complaints' when _isDept => (x.label, Icons.support_agent_rounded, 0, OrgComplaintsPage(deptId: id)),
+          'materials' when _isDept => (x.label, Icons.folder_copy_rounded, 0, OrgMaterialsPage(deptId: id)),
+          'workflow' when _isDept && govEnabled() => (x.label, Icons.account_tree_rounded, 0, govDeptItemsTab(context, oid, id)),
+          'certificates' => (x.label, Icons.workspace_premium_rounded, 0, CertificateDesignsScreen(orgId: oid)),
+          _ => null, // councils · data_lab · a key this version does not know: no embeddable page (see the header)
+        };
+    return [
+      if (!wide) (t('نظرة عامة', 'Overview'), Icons.space_dashboard_rounded, 0, _TabList(onRefresh: _load, children: _overview(wide: false))),
+      if (showRequests)
+        (t('بانتظارك', 'Waiting'), Icons.inbox_rounded, waiting,
+            _RequestsTab(d: _d!, unitType: widget.unitType, unitId: id, onChanged: _load, onSeeAll: _seeAllRequests)),
+      for (final x in widget.tabs!) ?tab(x),
+    ];
+  }
+
+  /// An older server: the `can` caps decide.
+  List<(String, IconData, int, Widget)> _capTabs(bool wide) {
     final waiting = _d?.waiting ?? 0;
     final showRequests = _cap('decide_requests') || _cap('configure_join') || _cap('view_forms') || _cap('decide_program_choices');
     return [
@@ -218,9 +304,11 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     ];
   }
 
-  /// Items · council · delegations of this entity (D-057): staff with `workflow` rights, the team, or org admins.
+  /// Items · council · delegations of this entity (D-057): staff with `workflow` rights, the team, or org admins —
+  /// with the server's tabs (D-103): only when `workflow` is one of them.
   bool get _govOn {
     if (!govEnabled()) return false;
+    if (_byTabs) return _levels('workflow') != null;
     final s = context.read<OrgSession>();
     return s.isOrgAdmin || s.can('workflow', 'view', widget.unitId) || _cap('view_team') || _cap('manage_team');
   }
@@ -232,7 +320,31 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
   List<String> _asList(dynamic v) => v is List ? v.map((e) => '$e').toList() : const [];
 
   // ── quick actions, only those the viewer may use ──
-  List<(IconData, String, Color?, VoidCallback)> _actions() {
+  List<(IconData, String, Color?, VoidCallback)> _actions() => _byTabs ? _tabActions() : _capActions();
+
+  /// D-103: the tabs carry the modules, so only what is not a tab stays a pill (calendar · joining rules · council ·
+  /// delegations · add staff · the department tools when the Data Lab lives there).
+  List<(IconData, String, Color?, VoidCallback)> _tabActions() {
+    final c = context.colors;
+    final id = widget.unitId;
+    final team = _levels('team');
+    final workflow = _levels('workflow');
+    final councils = _levels('councils');
+    return [
+      if (_isDept) (Icons.event_rounded, t('التقويم', 'Calendar'), null, () => Navigator.of(context).pushNamed('/calendar', arguments: {'dept_id': id})),
+      if (_cap('configure_join')) (Icons.how_to_reg_rounded, t('إعداد الانضمام', 'Joining rules'), null, _seeAllRequests),
+      if (_isDept && govEnabled() && (councils != null || workflow != null) && _unit['council_id'] != null)
+        (Icons.gavel_rounded, t('مجلس القسم', 'Department council'), null,
+            () => govOpenCouncilOfDept(context, context.read<OrgSession>().currentId ?? 0, asInt(_unit['council_id']))),
+      if (_isDept && govEnabled() && (workflow?.update ?? false))
+        (Icons.assignment_ind_rounded, t('التفويضات', 'Delegations'), null,
+            () => _push(t('التفويضات', 'Delegations'), GovDelegationsPage(id, embedded: true, orgId: context.read<OrgSession>().currentId))),
+      if (team != null && team.insert) (Icons.person_add_alt_1_rounded, t('إضافة للفريق', 'Add staff'), c.primary, _openHub),
+      if (_isDept && _levels('data_lab') != null) (Icons.science_rounded, t('مختبر البيانات', 'Data Lab'), null, _openHub),
+    ];
+  }
+
+  List<(IconData, String, Color?, VoidCallback)> _capActions() {
     final c = context.colors;
     final id = widget.unitId;
     final f = (_d?.features ?? const <String>[]).toSet();
@@ -271,8 +383,9 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     final pad = wide ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16);
     final card = [u['location'], u['office_hours'], u['email'], u['phone']].any((x) => '${x ?? ''}'.trim().isNotEmpty);
     return [
-      // governance (D-057): pending · waiting for a decision · overdue · decided, for this entity
-      if (_isDept && s.currentId != null && _govOn) ...[
+      // governance (D-057): pending · waiting for a decision · overdue · decided, for this entity (with the server's
+      // tabs it is the Requests tab itself, so the overview does not repeat it)
+      if (_isDept && s.currentId != null && _govOn && !_byTabs) ...[
         _Title(t('المعاملات', 'Items')),
         Padding(padding: pad, child: GovDashboardCard(deptId: widget.unitId, orgId: s.currentId, compact: true)),
         const SizedBox(height: 16),
@@ -348,9 +461,12 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _UnitHero extends StatelessWidget {
-  const _UnitHero({required this.d, this.seed});
+  const _UnitHero({required this.d, this.seed, this.showWaiting = true});
   final OrgUnitData d;
   final Map<String, dynamic>? seed;
+
+  /// The "Waiting" figure (only for someone who decides here).
+  final bool showWaiting;
 
   @override
   Widget build(BuildContext context) {
@@ -360,112 +476,101 @@ class _UnitHero extends StatelessWidget {
     final isDept = d.isDept;
     final col = hexColor(u['color'] ?? seed?['color'], c.primary);
     final parent = asMap(u['parent']);
-    String n(String key) => d.hidden(key) ? '—' : '${d.stat(key)}';   // a stat I may not see is null on the server
-    final stats = <AppHeroStat>[
-      AppHeroStat(icon: Icons.people_alt_rounded, value: n('users'), label: isDept ? t('منضمّون', 'Users') : t('طلاب', 'Students')),
-      AppHeroStat(icon: Icons.badge_rounded, value: n('staff'), label: isDept ? t('الفريق', 'Team') : t('الهيئة', 'Faculty')),
-      AppHeroStat(icon: Icons.menu_book_rounded, value: n('courses'), label: t('مقررات', 'Courses')),
-      AppHeroStat(icon: Icons.inbox_rounded, value: '${d.waiting}', label: t('تنتظر', 'Waiting')),
+    // calm like the homes (D-102): the card surface with a hairline, the department's colour only in its logo tile;
+    // a figure the viewer may not see (null on the server) is left out rather than drawn as "—"
+    final figures = <(IconData, String, String)>[
+      if (!d.hidden('users')) (Icons.people_alt_rounded, '${d.stat('users')}', isDept ? t('منضمّون', 'Joined') : t('طلاب', 'Students')),
+      if (!d.hidden('staff')) (Icons.badge_rounded, '${d.stat('staff')}', isDept ? t('الفريق', 'Team') : t('الهيئة', 'Faculty')),
+      if (!d.hidden('courses')) (Icons.menu_book_rounded, '${d.stat('courses')}', t('مقررات', 'Courses')),
+      if (showWaiting) (Icons.inbox_rounded, '${d.waiting}', t('بانتظارك', 'Waiting')),
     ];
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
+      padding: AppSpace.card,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [col, c.heroEnd(col, 0.28)],
-        ),
-        boxShadow: [BoxShadow(color: col.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))],
+        borderRadius: AppRadius.cardAll,
+        color: c.cardBg,
+        border: Border.all(color: c.divider),
+        boxShadow: AppShadow.card(context),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(18)),
-            child: isDept
-                ? DeptLogo(d: {...u, 'color': u['color'] ?? seed?['color']}, size: 50)
-                : SizedBox(width: 50, height: 50, child: Icon(Icons.school_rounded, color: c.onHero, size: 28)),
-          ),
-          const SizedBox(width: 14),
+          isDept
+              ? DeptLogo(d: {...u, 'color': u['color'] ?? seed?['color']}, size: 48)
+              : Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
+                  child: Icon(Icons.school_rounded, color: appInk(context, col), size: 26),
+                ),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(orgNameOf(u), maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: appText(19, w: FontWeight.w800, c: c.onHero)),
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                _GlassTag(isDept ? Icons.apartment_rounded : Icons.school_rounded,
-                    isDept ? t('إدارة خدمية', 'Service department') : t('قسم علمي', 'Academic department')),
-                if ('${u['code'] ?? ''}'.isNotEmpty) _GlassTag(Icons.tag_rounded, '${u['code']}'),
-                if (parent.isNotEmpty) _GlassTag(DirIcons.subArrowLeft, t('تابعة لـ ${orgNameOf(parent)}', 'Part of ${orgNameOf(parent)}')),
-                if (u['is_active'] == false) _GlassTag(Icons.archive_rounded, t('مؤرشفة', 'Archived')),
+              Text(orgNameOf(u), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context).copyWith(fontSize: 18)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(
+                [
+                  isDept ? t('إدارة خدمية', 'Service department') : t('قسم علمي', 'Academic department'),
+                  if ('${u['code'] ?? ''}'.isNotEmpty) '${u['code']}',
+                  if (parent.isNotEmpty) t('تابعة لـ ${orgNameOf(parent)}', 'Part of ${orgNameOf(parent)}'),
+                  if (u['is_active'] == false) t('مؤرشفة', 'Archived'),
+                ].join(' · '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.meta(context),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              Row(children: [
+                if (mgr.isNotEmpty) ...[
+                  OrgPersonAvatar(name: '${mgr['name'] ?? ''}', url: mgr['image_url'] as String?, size: 24),
+                  const SizedBox(width: AppSpace.xs),
+                ] else ...[
+                  Icon(Icons.person_off_rounded, color: c.textLight, size: 18),
+                  const SizedBox(width: AppSpace.xxs),
+                ],
+                Expanded(
+                  child: Text(
+                    mgr.isEmpty
+                        ? t('لم يُعيَّن رئيس بعد', 'No head yet')
+                        : (isDept ? t('الرئيس: ${mgr['name']}', 'Head: ${mgr['name']}') : t('المدير: ${mgr['name']}', 'Manager: ${mgr['name']}')),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.row(context).copyWith(fontSize: 13),
+                  ),
+                ),
               ]),
             ]),
           ),
         ]),
-        const SizedBox(height: 12),
-        Row(children: [
-          if (mgr.isNotEmpty) ...[
-            AdminAvatar(name: '${mgr['name'] ?? ''}', url: mgr['image_url'] as String?, size: 28),
-            const SizedBox(width: 8),
-          ] else ...[
-            Icon(Icons.person_off_rounded, color: c.onHeroMuted, size: 18),
-            const SizedBox(width: 6),
-          ],
-          Expanded(
-            child: Text(
-              mgr.isEmpty
-                  ? t('لم يُعيَّن مدير بعد', 'No manager yet')
-                  : (isDept ? t('الرئيس: ${mgr['name']}', 'Head: ${mgr['name']}') : t('المدير: ${mgr['name']}', 'Manager: ${mgr['name']}')),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: appText(12.5, w: FontWeight.w600, c: c.onHero.withValues(alpha: 0.92)),
-            ),
-          ),
-        ]),
-        const SizedBox(height: 14),
-        LayoutBuilder(builder: (context, box) {
-          if (box.maxWidth >= 420) {
-            return Row(children: [
-              for (var i = 0; i < stats.length; i++) ...[if (i > 0) const SizedBox(width: 10), Expanded(child: stats[i])],
+        if (figures.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.md),
+          LayoutBuilder(builder: (context, box) {
+            // one row when they fit (up to three on a phone), else two by two — never an orphan on its own line
+            final cols = box.maxWidth >= 420 || figures.length <= 3 ? figures.length : 2;
+            const gap = AppSpace.xs;
+            final w = (box.maxWidth - gap * (cols - 1)) / cols;
+            return Wrap(spacing: gap, runSpacing: gap, children: [
+              for (final f in figures)
+                SizedBox(
+                  width: w,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                    decoration: BoxDecoration(color: c.background, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(f.$2, maxLines: 1, style: AppType.figure(context).copyWith(fontSize: 18)),
+                      Row(children: [
+                        Icon(f.$1, size: 13, color: c.textLight),
+                        const SizedBox(width: AppSpace.xxs),
+                        Expanded(child: Text(f.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
+                      ]),
+                    ]),
+                  ),
+                ),
             ]);
-          }
-          return Column(children: [
-            Row(children: [Expanded(child: stats[0]), const SizedBox(width: 10), Expanded(child: stats[1])]),
-            const SizedBox(height: 10),
-            Row(children: [Expanded(child: stats[2]), const SizedBox(width: 10), Expanded(child: stats[3])]),
-          ]);
-        }),
+          }),
+        ],
       ]),
     );
-  }
-}
-
-class _GlassTag extends StatelessWidget {
-  const _GlassTag(this.icon, this.label);
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
-          color: c.heroGlass,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: c.heroGlassBorder),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: c.onHero),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: appText(11, w: FontWeight.w700, c: c.onHero)),
-          ),
-        ]),
-      );
   }
 }
 
@@ -504,7 +609,7 @@ class _TabLabel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
           decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(10)),
           child: Text(badge > 99 ? '99+' : '$badge',
-              style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w800)),
+              style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w600)),
         ),
       ],
     ]);
@@ -755,11 +860,11 @@ class _RequestCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          AdminAvatar(name: avatarName, url: avatarUrl, size: 40),
+          OrgPersonAvatar(name: avatarName, url: avatarUrl),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 14, w: FontWeight.w800)),
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 14, w: FontWeight.w600)),
               if (subtitle.isNotEmpty)
                 Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textLight)),
             ]),
@@ -779,20 +884,29 @@ class _RequestCard extends StatelessWidget {
           if (busy)
             const Align(alignment: AlignmentDirectional.centerEnd, child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4)))
           else
-            Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 8, children: [
+            Wrap(alignment: WrapAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               if (onReject != null)
-                OutlinedButton.icon(
+                TextButton.icon(
                   onPressed: onReject,
-                  style: OutlinedButton.styleFrom(foregroundColor: c.danger, side: BorderSide(color: c.danger.withValues(alpha: 0.4))),
+                  style: TextButton.styleFrom(
+                      foregroundColor: c.textMedium,
+                      minimumSize: const Size(AppTouch.min, AppTouch.min),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                      shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll)),
                   icon: const Icon(Icons.close_rounded, size: 18),
-                  label: Text(t('رفض', 'Decline')),
+                  label: Text(t('رفض', 'Decline'), style: appText(13.5, w: FontWeight.w500, c: c.textMedium)),
                 ),
               if (onApprove != null)
-                FilledButton.icon(
+                TextButton.icon(
                   onPressed: onApprove,
-                  style: FilledButton.styleFrom(backgroundColor: c.success),
+                  style: TextButton.styleFrom(
+                      backgroundColor: c.primary.withValues(alpha: 0.12),
+                      foregroundColor: appInk(context, c.primary),
+                      minimumSize: const Size(AppTouch.min, AppTouch.min),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                      shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll)),
                   icon: const Icon(Icons.check_rounded, size: 18),
-                  label: Text(t('قبول', 'Accept')),
+                  label: Text(t('قبول', 'Approve'), style: appText(13.5, w: FontWeight.w600, c: appInk(context, c.primary))),
                 ),
             ]),
         ],
@@ -806,11 +920,14 @@ class _RequestCard extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _UsersTab extends StatelessWidget {
-  const _UsersTab({required this.d, required this.unitType, required this.unitId, required this.onChanged});
+  const _UsersTab({required this.d, required this.unitType, required this.unitId, required this.onChanged, this.canRemove});
   final OrgUnitData d;
   final String unitType;
   final int unitId;
   final Future<void> Function() onChanged;
+
+  /// D-103 levels (`enrollments.update`); null = the `can` cap.
+  final bool? canRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -818,7 +935,7 @@ class _UsersTab extends StatelessWidget {
     final s = context.read<OrgSession>();
     final rows = d.users;
     final total = d.stat('users');
-    final canRemove = d.cap('remove_users');
+    final canRemove = this.canRemove ?? d.cap('remove_users');
     final isDept = unitType == 'dept';
     if (rows.isEmpty) {
       return _TabList(onRefresh: onChanged, children: [
@@ -941,11 +1058,11 @@ class _PersonRow extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(children: [
-        AdminAvatar(name: '${user['name'] ?? '—'}', url: user['image_url'] as String?, size: 40),
+        OrgPersonAvatar(name: '${user['name'] ?? '—'}', url: user['image_url'] as String?),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${user['name'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
+            Text('${user['name'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w500)),
             Text(caption.isEmpty ? '${user['email'] ?? ''}' : caption, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: orgText(context, size: 11.5, color: c.textLight)),
           ]),

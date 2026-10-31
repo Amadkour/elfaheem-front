@@ -1,8 +1,11 @@
 // lib/features/org/org_providers.dart
 //
 // Organization state.
-//   OrgSession            global (register in core/providers.dart) — which organizations I manage, the selected one,
-//                         my role + admin-assistant permissions there  → drives the switcher and hides forbidden buttons
+//   OrgSession            global (register in core/providers.dart) — the organizations whose dashboard I open
+//                         (GET /org/mine?members=1: admin · staff · member without rights, never where I study,
+//                         D-103), the selected one, my access + permissions there → drives the switcher, the sections
+//                         and hides forbidden buttons; reloads on `org_access_changed` and on a 403
+//                         org_forbidden / student_forbidden from any org call while the dashboard watches it
 //   OrgMembersProvider    paged members (students | teachers | staff)     — created locally by the page
 //   OrgCoursesProvider    paged organization courses                      — created locally by the page
 //   OrgScheduleProvider   periods · rooms · availability · loads · schedules · slots — created locally by the schedule tab
@@ -12,16 +15,20 @@
 library;
 
 import 'dart:async';
+import 'dart:convert' show jsonEncode;
 
+import 'package:dio/dio.dart' show DioException, InterceptorsWrapper;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_providers.dart';
+import 'home/org_home_logic.dart' show OrgTask, OrgTaskAction, OrgTaskOutcome, OrgTaskQueue, orgTaskOutcome;
 import 'org_dashboard_model.dart';
 import 'org_platform_context.dart';
 import 'org_schedule_ladder.dart';
@@ -32,6 +39,74 @@ const orgBase = '/api/v1/org';
 // ═════════════════════════════════════════════════════════════════════════════
 //  Session (global)
 // ═════════════════════════════════════════════════════════════════════════════
+
+/// What I am in one organization of `/org/mine?members=1` (D-103): `admin` (org / platform admin), `staff` (any
+/// right, org-wide or in a department) or `member` (a live, non-student membership without any right). An older
+/// server sends no `access`: it is derived the same way from `my_role` / `is_admin` / the permission maps.
+String orgAccessOf(Map<String, dynamic>? item) {
+  if (item == null) return 'member';
+  final a = '${item['access'] ?? ''}';
+  if (a == 'admin' || a == 'staff' || a == 'member') return a;
+  if (item['is_admin'] == true || const ['org_admin', 'platform_admin'].contains(item['my_role'])) return 'admin';
+  bool anyRight(dynamic m) => m is Map && m.values.any((v) => v is List ? v.isNotEmpty : v is Map && anyRight(v));
+  if (anyRight(item['permissions']) || anyRight(item['dept_permissions'])) return 'staff';
+  return 'member';
+}
+
+/// The server's code on a 403 that means "my access here changed": `org_forbidden` / `student_forbidden` (in
+/// `detail.code`, a bare `detail` string or a top-level `code`); null for anything else.
+String? orgAccessDeniedCode(dynamic body) {
+  final m = ApiException.asMap(body);
+  if (m == null) return null;
+  final d = m['detail'];
+  final code = d is Map ? '${d['code'] ?? ''}' : (d is String ? d : '${m['code'] ?? ''}');
+  return code == 'org_forbidden' || code == 'student_forbidden' ? code : null;
+}
+
+/// The organization id of an org route (`/api/v1/org/orgs/12/…` → 12), null for the others.
+int? orgIdOfPath(String path) {
+  final m = RegExp(r'/org/orgs/(\d+)').firstMatch(path);
+  return m == null ? null : int.tryParse(m.group(1)!);
+}
+
+/// What `/org_dashboard` shows (D-103).
+enum OrgGate {
+  /// `/mine` (or, when nothing is listed, the membership overview) is still loading.
+  loading,
+
+  /// At least one organization to manage / work in: the dashboard.
+  dashboard,
+
+  /// I only study in my organizations (or the server answered 403 student_forbidden): "This dashboard is for staff".
+  staffOnly,
+
+  /// An older server that does not list members without rights in `/mine`: their member page ('/org_member').
+  memberPage,
+
+  /// No organization at all: create the first one (org admins / teachers, never students).
+  createFirst,
+}
+
+/// The routing decision of the organization dashboard, pure (unit-tested). [overview] = the live items of
+/// `GET /org/public/me/overview` (only read when `/mine` lists nothing).
+OrgGate orgDashboardGate({
+  required bool loaded,
+  required bool hasItems,
+  bool studentBlocked = false,
+  String? userRole,
+  bool overviewLoaded = false,
+  List<Map<String, dynamic>> overview = const [],
+}) {
+  if (!loaded) return OrgGate.loading;
+  if (hasItems) return OrgGate.dashboard;
+  if (studentBlocked) return OrgGate.staffOnly;
+  if (userRole == 'org-admin') return OrgGate.createFirst;
+  if (!overviewLoaded) return OrgGate.loading;
+  if (AppModeController.studentOnly(overview)) return OrgGate.staffOnly;
+  if (overview.any(AppModeController.opensDashboard)) return OrgGate.memberPage;
+  if (userRole == 'student') return OrgGate.staffOnly;
+  return OrgGate.createFirst;
+}
 
 class OrgSession extends AdminBase {
   List<Map<String, dynamic>> items = [];   // flat, path-sorted, each has depth / parent_id / my_role / permissions
@@ -59,6 +134,34 @@ class OrgSession extends AdminBase {
   }
 
   bool get isOrgAdmin => const ['org_admin', 'platform_admin'].contains(current?['my_role']);
+
+  /// `admin` | `staff` | `member` in the selected organization ([orgAccessOf]).
+  String get access => orgAccessOf(current);
+
+  /// My membership role there (teacher · teacher_assistant · admin_assistant …), null when my access is only
+  /// inherited / a grant without membership, or on an older server.
+  String? get memberRole {
+    final r = current?['member_role'];
+    return r == null || '$r'.isEmpty ? null : '$r';
+  }
+
+  /// Organizations whose org calls answered 403 student_forbidden (left out of [items] until my access changes).
+  final Set<int> _studentBlocked = {};
+
+  /// The server said I study where I tried to open the dashboard.
+  bool get studentBlocked => _studentBlocked.isNotEmpty;
+
+  int? _wanted;
+
+  /// Opens [id] as soon as it is listed: at once when loaded, else on the next [load] (the switcher of a personal
+  /// home pushes '/org_dashboard' on it).
+  void open(int id) {
+    _wanted = id;
+    if (loaded && items.any((o) => asInt(o['id']) == id)) {
+      _wanted = null;
+      select(id);
+    }
+  }
 
   /// v2: may I create a new ROOT organization (university …)? Sub-organizations need `sub_orgs.insert`.
   bool canCreateRoot = false;
@@ -101,14 +204,22 @@ class OrgSession extends AdminBase {
 
   String get base => '$orgBase/orgs/$currentId';
 
-  Future<void> load({bool keepSelection = true}) async {
-    final r = await run(() => api.get('$orgBase/mine'));
+  /// `members=1` (D-103): also the organizations where I am a member without any right, each item with `access`
+  /// and `member_role`; never one where I study. An older server ignores the parameter.
+  /// The selection: the organization asked for by [open], else the current one ([keepSelection]), else [prefer]
+  /// (the last one chosen, AppModeController.storedOrgId), else the first.
+  Future<void> load({bool keepSelection = true, int? prefer}) async {
+    final r = await run(() => api.get('$orgBase/mine', queryParams: const {'members': '1'}));
     if (r is Map) {
-      items = asMapList(r['items']);
+      items = [
+        for (final o in asMapList(r['items']))
+          if (!_studentBlocked.contains(asInt(o['id']))) o,
+      ];
       canCreateRoot = r['can_create_root'] == true;
-      if (!keepSelection || !items.any((o) => o['id'] == currentId)) {
-        currentId = items.isEmpty ? null : asInt(items.first['id']);
-      }
+      bool listed(int? id) => id != null && items.any((o) => asInt(o['id']) == id);
+      final pick = [_wanted, if (keepSelection) currentId, prefer].where(listed).firstOrNull;
+      currentId = pick ?? (items.isEmpty ? null : asInt(items.first['id']));
+      if (listed(_wanted)) _wanted = null;
     }
     loaded = true;
     OrgPlatformContext.open(approved ? currentId : null);   // org timezone / 12h-24h + org feature offs
@@ -122,6 +233,79 @@ class OrgSession extends AdminBase {
     epoch.value++;
     notifyListeners();
   }
+
+  // ── access changes while the dashboard is open (D-103, spec §6) ──────────
+
+  static OrgSession? _watching;
+  static bool _interceptorOn = false;
+  StreamSubscription<LiveEvent>? _accessSub;
+  Future<void>? _accessReload;
+  DateTime? _lastAccessReload;
+
+  /// A 403 org_forbidden reloads `/mine` at most this often (a button I may not use must not hammer it).
+  static const accessReloadGap = Duration(seconds: 10);
+
+  /// The dashboard is on screen: follow `org_access_changed` and the 403s of every org call (one Dio interceptor,
+  /// installed once, that only acts while a session watches).
+  void watchAccess() {
+    _watching = this;
+    _accessSub ??= LiveEvents.instance.listen({LiveEvents.orgAccessChanged}, (e) {
+      final id = e.orgId;
+      if (id != null) _studentBlocked.remove(id);
+      if (id == null) _studentBlocked.clear();
+      reloadAccess(force: true, always: true); // team / department changes live in the dashboard payload
+    });
+    if (_interceptorOn) return;
+    _interceptorOn = true;
+    api.dio.interceptors.add(InterceptorsWrapper(onError: (e, handler) {
+      _onApiError(e);
+      handler.next(e);
+    }));
+  }
+
+  void unwatchAccess() {
+    if (identical(_watching, this)) _watching = null;
+    _accessSub?.cancel();
+    _accessSub = null;
+  }
+
+  static void _onApiError(DioException e) {
+    final s = _watching;
+    if (s == null || e.response?.statusCode != 403) return;
+    final path = e.requestOptions.path;
+    if (!path.contains('$orgBase/')) return;
+    final code = orgAccessDeniedCode(e.response?.data);
+    if (code != null) s.accessDenied(code, orgId: orgIdOfPath(path));
+  }
+
+  /// An org call answered 403 [code]: a student is blocked from that organization's dashboard; either way my
+  /// access is reloaded (the current organization kept when still listed, else the next, else the gate's page).
+  void accessDenied(String code, {int? orgId}) {
+    final student = code == 'student_forbidden';
+    if (student) {
+      final id = orgId ?? currentId;
+      if (id != null) _studentBlocked.add(id);
+    }
+    reloadAccess(force: student);
+  }
+
+  /// Reloads `/mine?members=1`; when my organization or my rights there changed, every section reloads (epoch).
+  Future<void> reloadAccess({bool force = false, bool always = false}) {
+    final running = _accessReload;
+    if (running != null) return running;
+    final last = _lastAccessReload;
+    if (!force && last != null && DateTime.now().difference(last) < accessReloadGap) return Future.value();
+    _lastAccessReload = DateTime.now();
+    final before = currentId;
+    final sig = _accessSig(current);
+    return _accessReload = load().then((_) {
+      if (always || currentId != before || _accessSig(current) != sig) epoch.value++;
+    }).whenComplete(() => _accessReload = null);
+  }
+
+  static String _accessSig(Map<String, dynamic>? o) => o == null
+      ? ''
+      : jsonEncode([o['access'], o['my_role'], o['member_role'], o['permissions'], o['dept_permissions']]);
 
   Future<bool> createOrg(Map<String, dynamic> body) async {
     final r = await call(() => api.post('$orgBase/orgs', body: body), ok: t('تم إنشاء المؤسسة', 'Organization created'));
@@ -1036,6 +1220,13 @@ class OrgDashController extends ChangeNotifier with WidgetsBindingObserver {
   String? error;
   int attentionEpoch = 0;
 
+  /// When the payload on screen arrived (the header's "Updated …").
+  DateTime? loadedAt;
+
+  /// "Needs your attention" (D-103 `tasks`): Home's rows and the one-tap decisions' optimistic state, shared with
+  /// the full list (OrgTasksPage) so a row decided there is gone here too.
+  final OrgTaskQueue tasks = OrgTaskQueue();
+
   /// How long a resume / live event may be after the last load before it counts (the in-flight load is shared).
   static const minGap = Duration(seconds: 10);
 
@@ -1075,6 +1266,7 @@ class OrgDashController extends ChangeNotifier with WidgetsBindingObserver {
     if (k == _key || s.currentId == null) return;
     _key = k;
     data = _cache[s.currentId];
+    _applyTasks();
     failed = false;
     error = null;
     _fingerprint = _feedFingerprint(s.currentId!);
@@ -1105,6 +1297,8 @@ class OrgDashController extends ChangeNotifier with WidgetsBindingObserver {
       if (d != null) {
         data = d;
         _cache[id] = d;
+        loadedAt = DateTime.now();
+        _applyTasks();
       }
       failed = data == null;
       error = null;
@@ -1115,6 +1309,42 @@ class OrgDashController extends ChangeNotifier with WidgetsBindingObserver {
     }
     notifyListeners();
   }
+
+  void _applyTasks() {
+    final d = data;
+    tasks.apply(d?.tasks ?? const [], d?.tasksTotal ?? 0);
+  }
+
+  /// A one-tap decision: POST …/tasks/{task_id}/{action} {reason?, version?}. The row leaves at once
+  /// ([OrgTaskQueue.begin]); a failure brings it back with a message, 409 `already_decided` / 404 `task_not_found`
+  /// keep it gone. Returns the outcome and the text for the notice (the caller shows it).
+  Future<(OrgTaskOutcome, String)> decide(OrgSession s, OrgTask task, OrgTaskAction action, {String? reason}) async {
+    if (!tasks.begin(task.id)) return (OrgTaskOutcome.done, '');
+    try {
+      await ApiClient().post('${s.base}/tasks/${Uri.encodeComponent(task.id)}/${action.id}', body: {
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+        if (task.version != null) 'version': task.version,
+      });
+      tasks.settle(task.id, OrgTaskOutcome.done);
+      _afterDecision();
+      return (OrgTaskOutcome.done, action.doneText);
+    } catch (e) {
+      final err = ApiException.from(e);
+      final outcome = orgTaskOutcome(err.statusCode, err.code);
+      if (outcome == OrgTaskOutcome.handled) {
+        tasks.settle(task.id, outcome);
+        _afterDecision();
+        return (outcome, t('شخص آخر تولّى هذا الطلب بالفعل', 'Someone already handled this'));
+      }
+      final msg = err.code != null ? orgErrorText(err) : err.message;
+      tasks.settle(task.id, outcome, message: msg);
+      return (outcome, msg);
+    }
+  }
+
+  /// The server emits `attention_changed` after a decision; this only makes sure the counts follow even without
+  /// the live stream (a quiet reload, skipped when one ran a moment ago).
+  void _afterDecision() => Future<void>.delayed(const Duration(seconds: 2), refreshQuiet);
 
   void _onLiveEvent(LiveEvent e) {
     final id = _session?.currentId;
@@ -1168,6 +1398,7 @@ class OrgDashController extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void dispose() {
     detach();
+    tasks.dispose();
     super.dispose();
   }
 }

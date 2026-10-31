@@ -15,19 +15,28 @@
 // home shortcuts and the attention cards still reach a Services page in ONE tap (orgJump pushes it).
 // Everything loads from ONE call (GET …/dashboard, OrgDashController in org_providers.dart): the home and the
 // Settings counts share it; the navigation badges come from GET /me/attention at the leaf of the shell.
-// The organization switcher sits in the hero; changing it bumps OrgSession.epoch so every section reloads.
+//
+// ONE dashboard for every non-student organization role (D-103): admin, sub-admin, staff and members without any
+// right (OrgSession.load → GET /org/mine?members=1). Every page carries the same OrgPageHeader (org_page_header.dart:
+// title · Refresh with "Updated …" · calendar · bell · the context switcher) on every width — the shell's top bar
+// is off — and its own OrgPageRefresh scope (the Home draws the header itself and registers its refresher).
+// Switching organization (the header's pill, the shared context sheet) selects in place and bumps
+// OrgSession.epoch so every section reloads. What the route shows when /mine lists nothing is orgDashboardGate:
+// a student gets "This dashboard is for staff" (never "Create organization"). While open, `org_access_changed` and
+// any 403 org_forbidden / student_forbidden from an org call reload my access and re-derive the sections.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
-import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip, AppListSkeleton;
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip, AppListSkeleton, AppPrimaryButton;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_shell.dart' show AppShell, DashboardItem;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import 'org_registrar_staff.dart' show OrgRegistrarPage;
@@ -39,6 +48,7 @@ import 'org_courses_page.dart';
 import 'org_dashboard_home.dart' show OrgHomePage, orgPushPage;
 import 'org_dashboard_settings.dart' show OrgFirstOrganization, OrgSettingsPage;
 import 'org_departments_page.dart';
+import 'org_page_header.dart';
 import 'org_services_pages.dart';
 import 'org_status_screen.dart';
 import 'org_ui.dart';
@@ -111,19 +121,45 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
   final _tabs = OrgTabs();
   final _dash = OrgDashController();
   bool _movedToMember = false;
+  bool _askedOverview = false;
+  late final OrgSession _session;
+
+  int? get _uid {
+    try {
+      return context.read<MyAuthProvider>().currentUser?.id;
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _session = context.read<OrgSession>();
+    _session.watchAccess();
     _dash.attach();
     AttentionService.instance.orgTabRequest.addListener(_onOrgTab);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<OrgSession>().load().then((_) => _onOrgTab());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      _loadUnread();
+      // the organization chosen last (this dashboard or Organization mode) opens again
+      final prefer = await AppModeController.storedOrgId(_uid);
+      if (!mounted) return;
+      await _session.load(prefer: prefer);
+      _onOrgTab();
     });
+  }
+
+  /// The header's bell: the same one request every role shell makes for its unread count.
+  void _loadUnread() {
+    try {
+      context.read<NotificationsProvider>().fetchNotifications();
+    } catch (_) {}
   }
 
   @override
   void dispose() {
+    _session.unwatchAccess();
     AttentionService.instance.orgTabRequest.removeListener(_onOrgTab);
     AttentionService.instance.focusOrg(null);
     _tabs.dispose();
@@ -159,8 +195,9 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
     final oid = s.currentId;
     _tabs.sections = {'people': people, 'academics': academics, 'services': services};
     return [
+      // the Home draws OrgPageHeader itself (at the top of its scroll) and registers its own refresher
       ('home', DashboardItem(Icons.dashboard_outlined, Icons.dashboard_rounded, t('الرئيسية', 'Home'), null,
-          const _OrgTab(title: 'org', child: OrgHomePage()))),
+          _OrgTab(title: t('الرئيسية', 'Home'), header: false, child: const OrgHomePage()))),
       if (people.isNotEmpty)
         ('people', DashboardItem(Icons.groups_outlined, Icons.groups_rounded, t('الأعضاء', 'People'), null,
             _OrgTab(title: t('الأعضاء والإدارات', 'People & departments'), child: _SectionHub(id: 'people', subs: people)),
@@ -192,21 +229,9 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
     if (!session.loaded) {
       return const BasePage(child: AppListSkeleton(items: 5));
     }
-    if (session.loaded && session.items.isEmpty) {
-      final auth = context.read<MyAuthProvider>();
-      if (auth.currentUser?.role == 'org-staff') {
-        // staff who manage nothing belong on the member dashboard (cold start before the overview was cached).
-        // One-way: '/org_member' never sends back here, so there is no redirect loop.
-        if (!_movedToMember) {
-          _movedToMember = true;
-          AppModeController.rememberManagesNothing(auth.currentUser?.id, true);
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) Navigator.of(context).pushReplacementNamed('/org_member');
-          });
-        }
-        return const BasePage(child: AppListSkeleton(items: 5));
-      }
-      return const BasePage(child: OrgFirstOrganization());
+    if (session.items.isEmpty) {
+      // nothing listed: the membership overview decides (only read in this case) — D-103
+      return ListenableBuilder(listenable: AppModeController.instance, builder: (context, _) => _gatePage(session));
     }
     if (session.currentId != null && !session.approved) {
       // pending / rejected / suspended → a calm status page instead of 423 errors on every tab
@@ -234,12 +259,135 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
               tabs.keys = [for (final e in entries) e.$1];
               final items = [for (final e in entries) e.$2];
               final current = tabs.currentTab.clamp(0, items.length - 1);
-              return AppShell(width: w, currentIndex: current, onTap: tabs.onChangeTab, items: items);
+              // no shell top bar: every page's OrgPageHeader carries refresh · calendar · bell · switcher
+              return AppShell(
+                width: w,
+                currentIndex: current,
+                onTap: tabs.onChangeTab,
+                items: items,
+                unreadCount: _unread(context),
+                showTopBar: false,
+              );
             }),
           ),
         );
       },
     );
+  }
+
+  static int _unread(BuildContext context) {
+    try {
+      return context.select<NotificationsProvider, int>((p) => p.unreadCount);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// `/org/mine` listed nothing (orgDashboardGate).
+  Widget _gatePage(OrgSession session) {
+    final ctl = AppModeController.instance;
+    String? role;
+    try {
+      role = context.read<MyAuthProvider>().currentUser?.role;
+    } catch (_) {}
+    final gate = orgDashboardGate(
+      loaded: session.loaded,
+      hasItems: session.items.isNotEmpty,
+      studentBlocked: session.studentBlocked,
+      userRole: role,
+      overviewLoaded: ctl.loaded,
+      overview: ctl.liveEntries,
+    );
+    switch (gate) {
+      case OrgGate.loading:
+        if (!ctl.loaded && !_askedOverview) {
+          _askedOverview = true;
+          final uid = _uid;
+          WidgetsBinding.instance.addPostFrameCallback((_) => ctl.bindUser(uid));
+        }
+        return const BasePage(child: AppListSkeleton(items: 5));
+      case OrgGate.staffOnly:
+        return const BasePage(child: OrgStaffOnlyPage());
+      case OrgGate.memberPage:
+        // an older server lists no member without rights in /mine: their organization page, as before.
+        // One-way: '/org_member' never sends back here, so there is no redirect loop.
+        if (!_movedToMember) {
+          _movedToMember = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context).pushReplacementNamed('/org_member');
+          });
+        }
+        return const BasePage(child: AppListSkeleton(items: 5));
+      case OrgGate.createFirst:
+      case OrgGate.dashboard:
+        return const BasePage(child: OrgFirstOrganization());
+    }
+  }
+}
+
+/// A student reached the organization dashboard (D-103): a calm page with the one way back.
+class OrgStaffOnlyPage extends StatelessWidget {
+  const OrgStaffOnlyPage({super.key});
+
+  /// Back to the person's own home: every organization page above it closes; when the dashboard itself is the
+  /// root, the personal dashboard replaces it (the mode is left as it was).
+  static void goHome(BuildContext context) {
+    final nav = Navigator.of(context, rootNavigator: true);
+    String? root;
+    nav.popUntil((r) {
+      if (r.isFirst) root = r.settings.name;
+      return r.isFirst;
+    });
+    if (AppModeController.isOrgRoute(root)) nav.pushNamedAndRemoveUntil(AppModeController.personalRoute, (_) => false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return LayoutBuilder(builder: (context, box) {
+      return SingleChildScrollView(
+        padding: EdgeInsets.all(AppSpace.gutter(box.maxWidth)),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: box.maxHeight - 2 * AppSpace.gutter(box.maxWidth)),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(color: c.primaryTint, shape: BoxShape.circle),
+                  child: Icon(Icons.badge_outlined, size: 34, color: c.primary),
+                ),
+                AppSpace.gapLg,
+                Semantics(
+                  header: true,
+                  child: Text(
+                    t('هذه اللوحة لفريق العمل', 'This dashboard is for staff'),
+                    textAlign: TextAlign.center,
+                    style: AppType.pageTitle(context),
+                  ),
+                ),
+                AppSpace.gapXs,
+                Text(
+                  t('أنت طالب في هذه المؤسسة. مقرراتك وجدولك وأخبارها في صفحتك الرئيسية.',
+                      'You study in this organization. Your courses, timetable and its news are on your home.'),
+                  textAlign: TextAlign.center,
+                  style: AppType.meta(context).copyWith(fontSize: 14, height: 1.5),
+                ),
+                AppSpace.gapLg,
+                AppPrimaryButton(
+                  key: const ValueKey('org.staff_only.home'),
+                  icon: Icons.home_rounded,
+                  label: t('العودة إلى صفحتي الرئيسية', 'Back to my home'),
+                  onPressed: () => goHome(context),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }
 
@@ -281,25 +429,45 @@ List<OrgSub> _serviceSubs(OrgSession s) => [
       ...govServiceSubs(s),
     ];
 
-/// Page frame + live reload when the organization changes.
-class _OrgTab extends StatelessWidget {
-  const _OrgTab({required this.title, required this.child});
+/// Page frame: THE page header (OrgPageHeader) + the page's own refresh scope + live reload when the organization
+/// changes. [header] false = the page draws OrgPageHeader itself (the Home, at the top of its scroll).
+class _OrgTab extends StatefulWidget {
+  const _OrgTab({required this.title, required this.child, this.header = true});
   final String title;
   final Widget child;
+  final bool header;
+
+  @override
+  State<_OrgTab> createState() => _OrgTabState();
+}
+
+class _OrgTabState extends State<_OrgTab> {
+  final _refresh = OrgPageRefresh();
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<OrgSession>();
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1200,
-      appBar: title == 'org' ? null : ScreenAppBar(title: title, showBack: false, actions: const [ContextExitButton()]),
-      child: s.currentId == null
-          ? OrgEmpty(icon: Icons.domain_rounded, title: t('اختر مؤسسة', 'Choose an organization'))
-          : ValueListenableBuilder<int>(
-              valueListenable: s.epoch,
-              builder: (_, e, _) => KeyedSubtree(key: ValueKey('${s.currentId}-$e'), child: child),
-            ),
+    final Widget body = s.currentId == null
+        ? OrgEmpty(icon: Icons.domain_rounded, title: t('اختر مؤسسة', 'Choose an organization'))
+        : ValueListenableBuilder<int>(
+            valueListenable: s.epoch,
+            builder: (_, e, _) => OrgPageRefreshBody(controller: _refresh, pageKey: '${s.currentId}-$e', child: widget.child),
+          );
+    return OrgPageRefreshScope(
+      controller: _refresh,
+      child: BasePage(
+        useWebCard: true,
+        maxWith: 1200,
+        child: widget.header
+            ? Column(children: [OrgPageHeader(title: widget.title), Expanded(child: body)])
+            : body,
+      ),
     );
   }
 }
@@ -334,12 +502,12 @@ class _SectionHubState extends State<_SectionHub> {
     if (widget.subs.length == 1) return widget.subs.first.$4;
     return Column(children: [
       SizedBox(
-        height: 16 + MediaQuery.textScalerOf(context).scale(40), // the chips grow with the text size
+        height: AppSpace.sm + MediaQuery.textScalerOf(context).scale(40), // the chips grow with the text size
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs),
           itemCount: widget.subs.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xs),
           itemBuilder: (_, k) => AppChoiceChip(
             label: widget.subs[k].$2,
             icon: widget.subs[k].$3,

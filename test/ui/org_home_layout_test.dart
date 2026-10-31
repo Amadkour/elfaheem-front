@@ -1,10 +1,11 @@
-// The org-admin home (org_dashboard_home.dart) at 320x640 and 1400x900, Arabic + English, textScaler 1.3:
-// the full payload (members, trends, queue, shortcuts, units, activity), an older server's payload (no members /
-// series → the tiles hide), an empty organization, the loading skeleton and the failed state's hero.
+// The organization home body (org_dashboard_home.dart) on an OLDER server's payload — no `tasks` / `layout` /
+// `tabs` (D-103 adds them; test/ui/org_home_v3_layout_test.dart covers those) — at 320x640 and 1400x900, Arabic +
+// English, textScaler 1.3: every attention item as a row (the unknown key skipped), the departments, an empty
+// organization, and the trend row the department page still draws. test/ui/a11y_guidelines_test.dart reuses
+// [payload] and [body].
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppTrendTile;
-import 'package:flutter_education_app/design/home_kit.dart' show HomeShortcut;
+import 'package:flutter_education_app/features/org/home/org_home_departments.dart';
+import 'package:flutter_education_app/features/org/home/org_home_tasks.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_home.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,49 +43,14 @@ Map<String, dynamic> payload({bool members = true, bool series = true}) => {
       ],
       'recent_activity': [
         {'summary': '$longAr $longEn', 'created_at': DateTime.now().toUtc().toIso8601String()},
-        {'summary': 'Approved a join request', 'created_at': '2026-10-28T08:00:00'},
       ],
     };
 
-OrgHeroSpec hero({bool full = true}) => OrgHeroSpec(
-      name: AppConfig.lang == 'ar' ? longAr : longEn,
-      typeLabel: AppConfig.lang == 'ar' ? 'جامعة' : 'University',
-      typeIcon: Icons.account_balance_rounded,
-      statusLabel: AppConfig.lang == 'ar' ? 'مفعّلة' : 'Active',
-      roleLabel: AppConfig.lang == 'ar' ? 'مدير المؤسسة' : 'Organization admin',
-      color: const Color(0xFF1F6F5C),
-      onCalendar: () {},
-      onJoinCode: full ? () {} : null,
-      onSwitch: full ? () {} : null,
-      onEdit: full ? () {} : null,
-      onSubOrg: full ? () {} : null,
-      onPersonal: () {},
-    );
-
-List<HomeShortcut> shortcuts() => [
-      for (final (icon, ar, en) in [
-        (Icons.groups_rounded, 'الأعضاء', 'Members'),
-        (Icons.how_to_reg_rounded, 'طلبات الانضمام', 'Join requests'),
-        (Icons.apartment_rounded, 'الإدارات', 'Departments'),
-        (Icons.menu_book_rounded, 'المقررات', 'Courses'),
-        (Icons.calendar_month_rounded, 'الجدول', 'Timetable'),
-        (Icons.campaign_rounded, 'الإعلانات', 'News'),
-        (Icons.support_agent_rounded, 'الشكاوى', 'Complaints'),
-        (Icons.assignment_rounded, 'النماذج', 'Forms'),
-        (Icons.tune_rounded, 'الإعدادات', 'Settings'),
-      ])
-        HomeShortcut(icon: icon, label: AppConfig.lang == 'ar' ? ar : en, badge: icon == Icons.how_to_reg_rounded ? 17 : 0, onTap: () {}),
-    ];
-
-OrgHomeBody body(OrgHomeData d, {bool full = true}) => OrgHomeBody(
+OrgHomeBody body(OrgHomeData d) => OrgHomeBody(
       data: d,
-      hero: hero(full: full),
-      cards: [for (final a in d.attention) ?OrgAttentionSpec.of(a, () {})],
-      shortcuts: full ? shortcuts() : const [],
-      unitsTitle: AppConfig.lang == 'ar' ? 'الإدارات والأقسام' : 'Departments',
+      alerts: [for (final a in d.alerts) ?OrgAttentionSpec.of(a, () {})],
       onOpenUnit: (_) {},
       onSeeAllUnits: () {},
-      onActivityLog: () {},
     );
 
 /// Pumps [w] once at the default test size (the harness ends on an empty tree) so finders see it.
@@ -94,42 +60,29 @@ Future<void> showOnce(WidgetTester tester, Widget w) async {
 }
 
 void main() {
-  testWidgets('full payload: hero figures, queue with pending_total, trends, shortcuts, units, activity', (tester) async {
+  testWidgets('older payload: every known attention item is a row (the unknown key skipped), departments as cards', (tester) async {
     await expectNoLayoutErrors(tester, () => body(OrgHomeData.fromJson(payload())!));
-    // the harness clears the tree when it ends: pump once more to look at what was drawn
     await showOnce(tester, body(OrgHomeData.fromJson(payload())!));
-    // drawn once: the three trend tiles and the five known cards (the unknown key is skipped)
-    expect(find.byType(AppTrendTile), findsNWidgets(3));
-    expect(find.byType(OrgAttentionCard), findsNWidgets(5));
-    expect(find.text('31'), findsOneWidget);
+    expect(find.byType(OrgAlertRow), findsNWidgets(5));
+    expect(find.byType(OrgTaskRow), findsNothing);
+    expect(find.byType(OrgDeptCard), findsNWidgets(3));
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('older payload (no members / series): the tiles hide, the hero shows the kpis', (tester) async {
+  testWidgets('no members / series: the body is unchanged (the figures and trends live in Insights now)', (tester) async {
     await expectNoLayoutErrors(tester, () => body(OrgHomeData.fromJson(payload(members: false, series: false))!));
-    await showOnce(tester, body(OrgHomeData.fromJson(payload(members: false, series: false))!));
-    expect(find.byType(OrgHomeBody), findsOneWidget);
-    expect(find.byType(AppTrendTile), findsNothing);
-    expect(find.byType(OrgTrendRow), findsNothing);
+  });
+
+  testWidgets('empty organization: all caught up, departments folded to one line', (tester) async {
+    await expectNoLayoutErrors(tester, () => body(OrgHomeData.empty));
+    await showOnce(tester, body(OrgHomeData.empty));
+    expect(find.byType(OrgAllCaughtUp), findsOneWidget);
+    expect(find.byType(OrgAlertRow), findsNothing);
+    expect(find.byType(OrgDeptCard), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('empty organization: all good, no units, no activity; the overflow opens', (tester) async {
-    await expectNoLayoutErrors(tester, () => body(OrgHomeData.empty, full: false));
-    await showOnce(tester, body(OrgHomeData.empty, full: false));
-    expect(find.byType(OrgAllGood), findsOneWidget);
-    expect(find.byType(OrgAttentionCard), findsNothing);
-    await tester.pumpWidget(const SizedBox());
-    await expectNoLayoutErrors(tester, () => body(OrgHomeData.empty),
-        act: (t) => t.tap(find.byIcon(Icons.more_horiz_rounded)));
-  });
-
-  testWidgets('skeleton and the hero alone (failed state) lay out', (tester) async {
-    await expectNoLayoutErrors(tester, () => OrgHomeSkeleton(hero: hero()));
-    await expectNoLayoutErrors(tester, () => ListView(children: [OrgHero(spec: hero(), figures: const (12840, 380, 125, null))]));
-  });
-
-  testWidgets('a trend row alone at every width', (tester) async {
+  testWidgets('the trend row (the department page draws it) at every width', (tester) async {
     final d = OrgHomeData.fromJson(payload())!;
     await expectNoLayoutErrors(tester, () => ListView(children: [OrgTrendRow(trends: d.trends)]));
   });

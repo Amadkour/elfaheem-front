@@ -17,6 +17,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppSettingsGroup, AppSettingsHeader, AppSettingsPage, AppSettingsTile, AppSwitch;
+import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
 import 'package:flutter_education_app/design/app_language_switch.dart' show AppLanguageTile;
@@ -28,7 +29,6 @@ import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
-import '../admin/admin_list.dart' show IconBadge, RowCard;
 import '../admin/admin_premium_widgets.dart' show AdminPalette;
 import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_common.dart';
@@ -37,7 +37,7 @@ import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
-import 'org_ui.dart' show orgPickAndUpload, statusColor, statusLabel;
+import 'org_ui.dart' show orgPickAndUpload;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/shared/display/display_settings_page.dart' show DisplaySettingsTile;
@@ -204,47 +204,11 @@ class OrgFirstOrganization extends StatelessWidget {
 //  Switcher · create/edit · join code
 // ═════════════════════════════════════════════════════════════════════════════
 
-Future<void> showOrgSwitcher(BuildContext context) async {
+/// The organization switcher of the dashboard = THE shared context sheet (context_switcher.dart): Personal, my
+/// organizations (switched in place), the ones where I study, join, and "New organization" when I may create one.
+Future<void> showOrgSwitcher(BuildContext context) {
   final s = context.read<OrgSession>();
-  await showAdminSheet<void>(context, (ctx) {
-    final c = ctx.colors;
-    return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
-      SheetHeader(t('مؤسساتي', 'My organizations')),
-      for (final o in s.items)
-        Padding(
-          padding: EdgeInsetsDirectional.only(start: 16.0 * (asInt(o['depth']).clamp(0, 5)), bottom: 8),
-          child: RowCard(
-            accent: o['id'] == s.currentId ? orgColor(ctx, o) : null,
-            onTap: () {
-              s.select(asInt(o['id']));
-              Navigator.pop(ctx);
-            },
-            child: Row(children: [
-              IconBadge(orgTypeIcons[o['type']] ?? Icons.domain_rounded, orgColor(ctx, o), size: 40),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(OrgSession.nameOf(o), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
-                  Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
-                ]),
-              ),
-              if ('${o['status'] ?? 'approved'}' != 'approved')
-                StatusChip(statusLabel('${o['status']}'), statusColor(ctx, '${o['status']}')),
-              if (o['id'] == s.currentId) Icon(Icons.check_circle_rounded, color: c.success),
-            ]),
-          ),
-        ),
-      if (s.canCreateRoot)
-        TextButton.icon(
-          onPressed: () {
-            Navigator.pop(ctx);
-            showOrgForm(context);
-          },
-          icon: const Icon(Icons.add_rounded),
-          label: Text(t('مؤسسة جديدة', 'New organization')),
-        ),
-    ]);
-  });
+  return showContextSwitcherSheet(context, session: s, onCreateOrg: s.canCreateRoot ? () => showOrgForm(context) : null);
 }
 
 Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynamic>? edit}) async {

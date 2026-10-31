@@ -102,6 +102,10 @@ class LiveEvents {
   /// (services/attendance_service.py — not emitted yet, the roster falls back to a 30 s poll until it is).
   static const attendanceRosterUpdated = 'attendance_roster_updated';
 
+  /// My rights in an organization changed (role / grant assigned or revoked, team membership, membership role):
+  /// `{org_id}`. The organization dashboard reloads `/org/mine?members=1` and re-derives its sections (D-103).
+  static const orgAccessChanged = 'org_access_changed';
+
   /// Local (not from the server): fired by TopRouteObserver when the app goes online/offline.
   static const connectivity = 'connectivity_changed';
 
@@ -120,6 +124,7 @@ class LiveEvents {
     calendarUpdated,
     quizStarted,
     attendanceRosterUpdated,
+    orgAccessChanged,
   };
 
   /// The VISIBLE notifications of the same features (data["type"]) also nudge

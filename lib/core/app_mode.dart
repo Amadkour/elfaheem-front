@@ -79,25 +79,53 @@ class AppModeController extends ChangeNotifier {
   /// Total of what waits in every organization (badge on the switcher while in Individual mode).
   int get pendingTotal => _id(_overview['pending_total']) ?? 0;
 
-  /// Loaded, and no organization gives this person any management right (routing of org-staff → '/org_member').
+  /// Loaded, and no organization gives this person any management right. No longer a routing input (D-103: every
+  /// non-student organization role opens '/org_dashboard'); kept as a plain fact about the overview.
   bool get managesNothing => loaded && entries.isNotEmpty && entries.every((e) => e['manage'] == null);
 
-  /// Storage key of the last [managesNothing] answer (read synchronously by the cold-start routing).
-  static String managesNothingKey(int userId) => 'org_manages_nothing.$userId';
+  /// Is [entry] (an overview item) an organization where I am NOT a student? Choosing it in the switcher opens the
+  /// organization dashboard (D-103); an organization where I study opens the member view, as before.
+  static bool opensDashboard(Map<String, dynamic> entry) {
+    final roles = entry['roles'];
+    return !(roles is List && roles.any((r) => '$r' == 'student'));
+  }
 
-  /// Remembers the answer for the next cold start (the overview is not loaded yet when the first route is picked).
-  static Future<void> rememberManagesNothing(int? userId, bool value) async {
-    if (userId == null) return;
+  /// Is every live organization of [entries] one where I study (and manage nothing)? Then the organization
+  /// dashboard has nothing for me: it shows "This dashboard is for staff" (D-103).
+  static bool studentOnly(List<Map<String, dynamic>> entries) =>
+      entries.isNotEmpty && entries.every((e) => !opensDashboard(e) && e['manage'] == null);
+
+  /// The organization the person chose last (Organization mode or the dashboard), read before the overview is
+  /// loaded: the dashboard opens it again on a cold start.
+  static Future<int?> storedOrgId(int? userId) async {
+    if (userId == null) return null;
     try {
       final p = await SharedPreferences.getInstance();
-      await p.setBool(managesNothingKey(userId), value);
+      return p.getInt(orgKeyFor(userId));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The organization dashboard switched to [orgId]: remembered as "the last organization" (the same key as
+  /// [setMode]) and the next cold start of an org-admin / org-staff opens the dashboard again. The mode is left
+  /// alone (in Organization mode the member view follows the same organization).
+  Future<void> rememberDashboardOrg(int orgId, {int? userId}) async {
+    final uid = userId ?? _userId;
+    if (_userId != null && uid == _userId && _orgId != orgId) {
+      _orgId = orgId;
+      if (isOrg) notifyListeners();
+    }
+    if (uid == null) return;
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setInt(orgKeyFor(uid), orgId);
+      await p.setBool(personalHomeKey(uid), false);
     } catch (_) {}
   }
 
-  /// Home route of an org-staff login: the live overview when loaded, else the answer cached by the last run.
-  /// Unknown → the management dashboard, which itself moves to '/org_member' once it knows nothing is managed.
-  static String orgStaffHome({required bool loaded, required bool managesNothing, bool? cached}) =>
-      (loaded ? managesNothing : cached == true) ? '/org_member' : '/org_dashboard';
+  /// Storage key of the last organization chosen (per user).
+  static String orgKeyFor(int userId) => 'app_mode_org.$userId';
 
   /// Storage key of "this person last chose their personal space" (read synchronously by the cold-start routing).
   static String personalHomeKey(int userId) => 'app_mode_personal.$userId';
@@ -119,7 +147,7 @@ class AppModeController extends ChangeNotifier {
   // ── lifecycle ─────────────────────────────────────────────────────────────
 
   String get _modeKey => 'app_mode.${_userId ?? 0}';
-  String get _orgKey => 'app_mode_org.${_userId ?? 0}';
+  String get _orgKey => orgKeyFor(_userId ?? 0);
 
   /// Call with the signed-in user's id (or null on logout). Restores the remembered mode, then refreshes.
   Future<void> bindUser(int? userId) async {
@@ -157,7 +185,6 @@ class AppModeController extends ChangeNotifier {
           // first launch on this device → the smart default from the server
           _mode = _overview['suggested_mode'] == 'organization' ? AppMode.organization : AppMode.individual;
         }
-        rememberManagesNothing(_userId, entries.isNotEmpty && entries.every((e) => e['manage'] == null));
       }
     } catch (_) {
       // offline / old server (404) / paywall: keep the last answer; with nothing loaded the switch stays hidden

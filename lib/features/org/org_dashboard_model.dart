@@ -10,11 +10,14 @@
 //                                                          `series`
 //   orgAttentionText(item)                                  attention key → icon, title, subtitle, action label
 // An older server without `members` / `series` → `members == null` and `trends` empty: the tiles simply hide.
+// D-103 adds access · member_role · layout · can_insights · tasks (+ tasks_total) · departments[].tabs; without them
+// `tasks == null` (Home draws the attention cards) and `layout` is empty (orgHomeOrder decides from the role).
 library;
 
 import 'package:flutter/material.dart' show IconData, Icons;
 
 import '../admin/admin_common.dart' show t;
+import 'home/org_home_logic.dart' show OrgTask;
 import 'org_schedule_autopilot.dart' show TermNeed;
 
 int _int(dynamic v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0);
@@ -139,9 +142,30 @@ class OrgHomeData {
     required this.programs,
     required this.recentActivity,
     required this.generatedAt,
+    this.access = '',
+    this.memberRole,
+    this.layout = '',
+    this.canInsights = false,
+    this.tasks,
+    this.tasksTotal = 0,
   });
 
   static const trendKeys = ['joins', 'attendance', 'complaints'];
+
+  /// D-103 (an older server: empty / null / false): admin · staff · member.
+  final String access;
+  final String? memberRole;
+
+  /// insights_first · actions_first (empty = the app decides from the role, orgHomeOrder).
+  final String layout;
+  final bool canInsights;
+
+  /// "Needs your attention" (the first 8, urgency first); null on an older server → the attention cards.
+  final List<OrgTask>? tasks;
+  final int tasksTotal;
+
+  /// An organization admin (the server's `access`, else `my_role`).
+  bool get isAdmin => access.isNotEmpty ? access == 'admin' : const ['org_admin', 'platform_admin'].contains(myRole);
 
   final Map<String, dynamic> raw;
   final Map<String, dynamic> organization;
@@ -178,6 +202,12 @@ class OrgHomeData {
       programs: _list(m['programs']),
       recentActivity: _list(m['recent_activity']),
       generatedAt: _utc(m['generated_at']),
+      access: '${m['access'] ?? ''}',
+      memberRole: m['member_role'] == null ? null : '${m['member_role']}',
+      layout: '${m['layout'] ?? ''}',
+      canInsights: m['can_insights'] == true,
+      tasks: OrgTask.listFrom(m['tasks']),
+      tasksTotal: m['tasks_total'] != null ? _int(m['tasks_total']) : (m['tasks'] is List ? (m['tasks'] as List).length : 0),
     );
   }
 
@@ -193,6 +223,11 @@ class OrgHomeData {
   }
 
   int count(String key) => attentionOf(key)?.count ?? 0;
+
+  /// The attention cards Home still draws: all of them on an older server; beside `tasks`, only the
+  /// organization-wide alerts the tasks do not carry (a term without a timetable, memberships ending …).
+  List<OrgAttentionItem> get alerts =>
+      tasks == null ? attention : [for (final a in attention) if (!orgAttentionCoveredByTasks.contains(a.key)) a];
 
   bool get hasTrends => series != null && series!.length >= 2;
 
@@ -218,6 +253,9 @@ class OrgHomeData {
 // ─────────────────────────────────────────────────────────────────────────────
 //  Attention texts
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Attention keys whose items arrive one by one as `tasks` on a D-103 server (drawn there, never twice).
+const orgAttentionCoveredByTasks = {'org_join_requests', 'unit_join_requests', 'program_choices', 'pending_forms', 'open_complaints'};
 
 class OrgAttentionText {
   const OrgAttentionText(this.icon, this.title, this.subtitle, this.action);

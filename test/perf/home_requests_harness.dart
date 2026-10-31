@@ -33,12 +33,16 @@ typedef HomeBudget = ({int open, int duplicates, int depth, int refresh, int ref
 // built on its first visit, so the other tabs load nothing on open): student 17 → 11, teacher 15 → 11, super admin
 // 10 → 7, org admin 15 → 4 on open; refresh unchanged. The super admin's refresh is 4 since the home's RAG card
 // (monitoring alerts + summary, 4f69dfe) joined the overview and the payouts count.
+// 2026-10-31, D-103: org admin open 4 → 5 — the organization dashboard's pages now carry a header with the
+// notifications bell on every width (the shell top bar is off), and its unread count is the same ONE
+// GET /notifications every other role shell makes (no server field carries it); `/org/mine` gained `?members=1`
+// (same call). The membership overview is NOT loaded on open — only when the header's switcher is used.
 const homeBudgets = <String, HomeBudget>{
   'student': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'teacher': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'super-admin': (open: 7, duplicates: 0, depth: 1, refresh: 4, refreshDepth: 1),
   'parent': (open: 3, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
-  'org-admin': (open: 4, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
+  'org-admin': (open: 5, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
   'org-member': (open: 3, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
 };
 
