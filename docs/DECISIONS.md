@@ -1586,3 +1586,29 @@ have the same problem (not changed here).
 **Rejected.** Making the player a non-route host like the live room (D-059) — a larger change to every caller for the
 same result; an overlay bar drawn over the pages (it would cover app bars and back buttons); a media notification and
 lock-screen controls (needs `audio_service`, a new package — follow-up); keeping the picture stream in listen mode.
+
+## D-108 — Whiteboard: the continuous page's rails are scrollbars (long press grabs the thumb) · 2026-10-31 · proposed
+
+Amends D-093 / D-107 (the rails were indicators only).
+**Context.** The owner (round 7): "I need the vertical scroller to move up and down and the horizontal one right and
+left when I long-press the scroller indicator."
+**Decision.** (1) Both rails' thumbs are draggable. A finger or a pen grabs a thumb with a long press
+(`kLongPressTimeout`, haptic tick); the mouse grabs it on press, no wait. Grabbed, the thumb grows from 6 to 12 px,
+takes the accent with a soft glow, and the drag moves the view along that axis in proportion to the page: the thumb's
+free travel maps onto the view's free travel (`BoardRailMetrics`, pure, `board_scrollbar.dart`; thumb ≥ 18 px, the
+same mapping both ways, clamped). A tap on the track beside the thumb moves 90 % of a screen that way. Hit targets: the
+thumb ≥ 44 × 44 px however thin it is drawn, the track 24 px across. (2) The rails stay drawn as before (thin, inside
+the page's edge on a phone), so they must not eat strokes: a pointer that lands on a rail is HELD BACK from the pen and
+from the view pan (a translucent listener on top of the stage claims it; `_down` / `_zoomDown` keep the down event)
+until it grabs (then nothing draws), taps the track, or — a finger or pen that moves past the touch slop first, or a
+tap on the thumb — is handed to the board as if it had just come down there (the stroke starts at the original point,
+no gap). So writing at the very edge of a phone still works; only a finger held still on a thumb for 0.5 s scrolls. A
+rail press is ignored while a stroke, a pan or a pinch runs, and a grabbed thumb blocks new strokes and pinches. (3)
+The rest reuses the existing paths: a viewer who drags a thumb leaves Follow exactly like a hand drag (`_leaveFollow`),
+the presenter's view goes out with the next build's `reportViewport` like any scroll, edge auto-scroll belongs to a
+drawing pointer only and so never runs at the same time. The presenter's mark on the rails is unchanged.
+**Rejected.** Making the whole 44 px strip along the edge opaque (it would block writing at a phone's edge); a
+`GestureDetector` long press in the arena (the board reads raw pointers, a stroke would start before the arena
+decides); moving the rails outside the page on phones (there is no room: the column fills the width).
+Tests: `test/org/board_scrollbar_test.dart`, `test/ui/whiteboard_scrollbar_layout_test.dart`; renders
+`test/visual/whiteboard_grow_golden_test.dart` (`rails`, `vgrab`, `hgrab`).
