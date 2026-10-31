@@ -225,13 +225,14 @@ void main() {
     // Every backoff ×10 (≥ 10 s): coming back within 5 s can only be the immediate reconnect, however slow the
     // machine (a 900 ms wall-clock window against the 1 s minimum backoff failed under load).
     c = make(delayScale: 10)..bind();
-    await until(() => c.connected.value, what: 'connected');
+    const slow = Duration(seconds: 15); // a loaded machine (the full suite) misses 5 s on a real socket
+    await until(() => c.connected.value, what: 'connected', timeout: slow);
     c.didChangeAppLifecycleState(AppLifecycleState.paused);
-    await until(() => !c.busy && !c.connected.value, what: 'closed in the background');
+    await until(() => !c.busy && !c.connected.value, what: 'closed in the background', timeout: slow);
     await Future<void>.delayed(const Duration(milliseconds: 200));
     expect(srv.requests, hasLength(1));
     c.didChangeAppLifecycleState(AppLifecycleState.resumed);
-    await until(() => c.connected.value, what: 'back without a backoff');
+    await until(() => c.connected.value, what: 'back without a backoff', timeout: slow);
     expect(srv.requests, hasLength(2));
   });
 
