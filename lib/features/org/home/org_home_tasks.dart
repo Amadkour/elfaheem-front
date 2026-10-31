@@ -16,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show AutoDirText;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, appInk, appText;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -250,7 +251,8 @@ class OrgTaskRow extends StatelessWidget {
             child: Icon(orgTaskKindIcon(x.kind), size: 20, color: appInk(context, c.primary)),
           );
     final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-      Text(x.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+      // people write titles in either language: an English one keeps its own direction in Arabic (app_bidi.dart)
+      AutoDirText(x.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
       if (sub.isNotEmpty || when.isNotEmpty || x.urgent) ...[
         const SizedBox(height: AppSpace.xxs / 2),
         // "Urgent · 2 h ago · subtitle …": the time before the subtitle, so a long subtitle is what gets cut

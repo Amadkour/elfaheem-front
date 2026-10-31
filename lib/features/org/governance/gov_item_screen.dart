@@ -22,6 +22,7 @@ import 'package:provider/provider.dart';
 import '../../admin/admin_common.dart' show SheetHeader, asMap, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../org_common.dart' show openFileUrl;
+import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgCall, orgErrorText, orgUtc;
 import 'gov_api.dart';
@@ -578,13 +579,23 @@ class _GovItemScreenState extends State<GovItemScreen> {
     }
   }
 
+  /// The dashboard header's Refresh reloads the item (staff in this organization); "Updated" is when it answered.
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!widget.member) _api = GovApi(_orgId ?? 0);
       _load();
     });
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -600,6 +611,7 @@ class _GovItemScreenState extends State<GovItemScreen> {
         if (_item != null) appToast(orgErrorText(r.error!), error: true);
       }
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   /// Runs a mutation, shows the error unless handled, reloads on success.
@@ -872,6 +884,17 @@ class _GovItemScreenState extends State<GovItemScreen> {
         ),
         if (it.can['comment'] && it.status != 'withdrawn') GovCommentComposer(onSend: _comment, allowInternal: !widget.member, busy: _busy),
       ]);
+    }
+    // staff of this organization: the dashboard's header (Back · ref · type, status and owner · Refresh · switcher);
+    // a member (submitter / recipient), a deep link before the organization loaded: the screen's own app bar
+    if (orgUsesDashboardHeader(context, _orgId)) {
+      return OrgPushedPage(
+        title: title,
+        subtitle: it == null ? null : [itemTypeLabel(it.type), itemStatusLabel(it.status), if (it.ownerDept != null) it.ownerDept!.name].join(' · '),
+        refresh: _refresh,
+        maxWidth: 900,
+        child: child,
+      );
     }
     return BasePage(
       useWebCard: true,

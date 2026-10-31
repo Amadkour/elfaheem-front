@@ -7,8 +7,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -16,6 +14,7 @@ import 'org_academic_pages.dart' show OrgAcademicPage;
 import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
 import 'org_departments_page.dart' show DeptLogo;
+import 'org_page_header.dart' show OrgPushedPage;
 import 'org_platform_settings_page.dart' show OrgPlatformSettingsPage;
 import 'org_sharing_pages.dart' show OrgSharingPage;
 import 'org_providers.dart';
@@ -24,7 +23,6 @@ import 'org_terms_pages.dart' show OrgTermsAdminPage;
 import 'org_ui.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart' show DataCenterPage;
 import 'org_sections_page.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 class OrgWorkspace extends StatefulWidget {
   const OrgWorkspace({super.key});
@@ -54,7 +52,8 @@ class _OrgWorkspaceState extends State<OrgWorkspace> {
     }
     void open(String title, Widget child) => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider.value(
-            value: s, child: BasePage(useWebCard: true, maxWith: 1000, appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]), child: child))));
+            // the dashboard's own header (Back · title · Refresh · calendar · bell · switcher)
+            value: s, child: OrgPushedPage(title: title, maxWidth: 1000, child: child))));
     // every area this person may manage or view (role + personal grants, org-wide or in a department)
     final areas = <(String, IconData, Color, String, Widget)>[
       if (s.canAny('announcements')) ('announcements', Icons.campaign_rounded, c.primary, t('الإعلانات والأخبار', 'News & announcements'), const OrgAnnouncementsPage()),

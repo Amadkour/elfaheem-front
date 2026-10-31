@@ -11,14 +11,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, asInt, asMap, asMapList, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../org_member_form.dart' show OrgMemberPickField;
+import '../org_page_header.dart' show OrgPushedPage;
 import '../org_providers.dart' show OrgApi, OrgSession, orgBase;
 import '../org_ui.dart' show orgNameOf;
 import '../org_v3.dart' show orgCall, orgErrorText;
@@ -378,12 +376,8 @@ class _GovEntitiesPageState extends State<GovEntitiesPage> {
       );
     }
     if (widget.embedded) return body;
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: t('الجهات', 'Entities'), actions: const [ContextExitButton()]),
-      child: body,
-    );
+    // staff only (the dashboard's Services section embeds it): the dashboard's header, Back first
+    return OrgPushedPage(title: t('الجهات', 'Entities'), child: body);
   }
 
   String _groupTitle(String k) => switch (k) {
@@ -408,12 +402,12 @@ class GovEntityDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // pushed from the staff Entities list only: the dashboard's header (Back · name · kind line), the tabs head the body
     return DefaultTabController(
       length: 3,
-      child: BasePage(
-        useWebCard: true,
-        maxWith: 1100,
-        appBar: ScreenAppBar(title: entity.name, actions: const [ContextExitButton()]),
+      child: OrgPushedPage(
+        title: entity.name,
+        subtitle: [entityKindLabel(entity.kind), if (entity.code.isNotEmpty) entity.code].join(' · '),
         child: Column(children: [
           Material(
             color: c.cardBg,

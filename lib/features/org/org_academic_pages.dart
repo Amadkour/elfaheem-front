@@ -24,6 +24,7 @@ import 'org_levels_pages.dart' show MyLevelCard, OrgLevelsTab, showEnrollBlock;
 import 'org_program_form.dart' show orgAllCourses, showProgramForm;
 import 'org_v3.dart';
 import 'org_page_kit.dart' show OrgPartPicker;
+import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'org_suggestions.dart' show OrgTermSuggestions;
 import '../shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
@@ -657,16 +658,27 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
   bool _failed = false; // the archive could not be loaded (getMap already toasted why)
   String get _a => '$orgBase/orgs/${widget.orgId}/academic';
 
+  /// The dashboard header's Refresh reloads the archive in place (D-103).
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
     if (_failed) setState(() => _failed = false);
     final r = await OrgApi.i.getMap('$_a/courses/${widget.courseId}/archive');
     if (mounted) setState(() { _failed = r == null && _d == null; _d = r ?? _d; });
+    if (mounted && r != null) _refresh.markUpdated();
   }
 
   Future<void> _openRun() async {
@@ -732,14 +744,30 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final d = _d;
     final course = asMap(d?['course']);
+    final title = d == null ? t('أرشيف المقرر', 'Course archive') : _cname(course);
+    // staff of this organization: the dashboard's header; a course profile opened elsewhere keeps the older bar
+    if (orgUsesDashboardHeader(context, widget.orgId)) {
+      return OrgPushedPage(
+        title: title,
+        subtitle: d == null ? null : t('أرشيف المقرر', 'Course archive'),
+        refresh: _refresh,
+        maxWidth: 820,
+        child: _content(context, d),
+      );
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 820,
-      appBar: ScreenAppBar(title: d == null ? t('أرشيف المقرر', 'Course archive') : _cname(course), actions: const [ContextExitButton()]),
-      child: d == null
+      appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]),
+      child: _content(context, d),
+    );
+  }
+
+  Widget _content(BuildContext context, Map<String, dynamic>? d) {
+    final c = context.colors;
+    return d == null
           ? (_failed ? ErrorRetry(message: t('تعذّر تحميل الأرشيف', 'Could not load the archive'), onRetry: _load) : const AppListSkeleton())
           : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
               if (d['current'] != null)
@@ -771,8 +799,7 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
                     ],
                   ),
                 ),
-            ]),
-    );
+            ]);
   }
 }
 

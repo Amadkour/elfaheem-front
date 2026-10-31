@@ -11,12 +11,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show Field, SheetHeader, asInt, asMap, askText, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
+import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;
 import '../org_ui.dart' show orgText;
 import '../org_v3.dart' show orgCall;
 import 'gov_api.dart';
@@ -421,15 +419,10 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
         ]),
       );
     }
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1000,
-      appBar: ScreenAppBar(title: t('المجالس', 'Councils'), actions: [
-        const ContextExitButton(),
-        if (rows != null) IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-      ]),
-      child: body,
-    );
+    // a sub-page of the dashboard's Services section: the section's header (title · Refresh · switcher) is above it
+    if (OrgPageRefresh.maybeOf(context, listen: false) != null) return body;
+    // opened on its own (staff only): the dashboard's header, Back first
+    return OrgPushedPage(title: t('المجالس', 'Councils'), maxWidth: 1000, child: body);
   }
 }
 
@@ -460,10 +453,20 @@ class _GovCouncilPageState extends State<GovCouncilPage> {
   GovApi? get _api => _orgId == null ? null : GovApi(_orgId!);
   bool get _manager => (_k?.can['manage'] ?? false) || govIsOrgAdmin(context);
 
+  /// The header's Refresh reloads the council; "Updated" is when it answered.
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -492,6 +495,7 @@ class _GovCouncilPageState extends State<GovCouncilPage> {
           ? ((sr.data as List).cast<CouncilSession>()..sort((a, b) => (b.scheduledAt ?? DateTime(2000)).compareTo(a.scheduledAt ?? DateTime(2000))))
           : (_sessions ?? const []);
     });
+    _refresh.markUpdated();
   }
 
   Future<void> _openSession(int id) async {
@@ -629,13 +633,12 @@ class _GovCouncilPageState extends State<GovCouncilPage> {
         ]),
       );
     }
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: k?.name ?? t('المجلس', 'Council'), actions: [
-        const ContextExitButton(),
-        if (k != null) IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-      ]),
+    // staff only (the councils list, a department's quick action): the dashboard's header — Back · the council ·
+    // its level line · Refresh (reloads the council in place) · calendar · bell · switcher
+    return OrgPushedPage(
+      title: k?.name ?? t('المجلس', 'Council'),
+      subtitle: k == null ? null : [councilLevelLabel(k.level), if (k.parentDept != null) k.parentDept!.name].join(' · '),
+      refresh: _refresh,
       child: body,
     );
   }

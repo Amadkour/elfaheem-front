@@ -26,12 +26,12 @@ import '../admin/admin_list.dart' show AdminAvatar;
 import 'org_access_page.dart' show OrgAccessPage;
 import 'org_join_pages.dart' show JoinRequestCard, OrgUnitJoinScreen, unitKindLabel;
 import 'org_join_scan.dart' show joinScannerAvailable, openJoinScanner;
+import 'org_page_header.dart' show OrgPushedPage;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'org_page_kit.dart' show OrgFilterButton, OrgPartPicker;
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -274,8 +274,8 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => ChangeNotifierProvider.value(
                         value: s,
-                        child: BasePage(useWebCard: true, maxWith: 1100,
-                            appBar: ScreenAppBar(title: t('الأدوار والصلاحيات', 'Roles & privileges'), actions: const [ContextExitButton()]), child: const OrgAccessPage())))),
+                        // staff only (the org admin's tip): the dashboard's own header
+                        child: OrgPushedPage(title: t('الأدوار والصلاحيات', 'Roles & privileges'), child: const OrgAccessPage())))),
                 child: Text(t('منح الصلاحية', 'Give permission')),
               ),
               IconButton(

@@ -15,6 +15,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
+import 'org_page_header.dart' show OrgPageRefresh;
 import 'org_ui.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 
@@ -32,12 +33,22 @@ class _OrgTermsAdminPageState extends State<OrgTermsAdminPage> {
   List<Map<String, dynamic>>? _items;
   bool _failed = false;
 
+  /// Under the dashboard's header (orgPush → OrgPushedPage) Refresh reloads the list in place.
+  OrgPageRefresh? _refresh;
+
   String get _base => '${context.read<OrgSession>().base}/terms';
 
   @override
   void initState() {
     super.initState();
+    _refresh = OrgPageRefresh.register(context, _load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -47,6 +58,7 @@ class _OrgTermsAdminPageState extends State<OrgTermsAdminPage> {
       _items = r == null ? _items : asMapList(r['items']);
       _failed = r == null && _items == null;
     });
+    if (r != null) _refresh?.markUpdated();
   }
 
   Future<void> _edit([Map<String, dynamic>? item]) async {

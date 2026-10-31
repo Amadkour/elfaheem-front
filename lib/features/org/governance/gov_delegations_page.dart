@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, asInt, asMapList, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
+import '../org_page_header.dart' show OrgPushedPage, orgUsesDashboardHeader;
 import '../org_providers.dart' show OrgApi, OrgSession, orgBase;
 import '../org_v3.dart' show orgCall, orgErrorText;
 import 'gov_api.dart';
@@ -518,6 +519,12 @@ class _GovDelegationsPageState extends State<GovDelegationsPage> {
       );
     }
     if (widget.embedded) return body;
+    // staff of this organization (the delegation notification): the dashboard's header, Back first; otherwise the
+    // screen's own app bar
+    if (orgUsesDashboardHeader(context, _orgId)) {
+      final name = widget.entity?.name ?? '';
+      return OrgPushedPage(title: t('التفويض', 'Delegation'), subtitle: name.isEmpty ? null : name, maxWidth: 900, child: body);
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 900,

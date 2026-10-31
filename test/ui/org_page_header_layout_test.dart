@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextPill;
 import 'package:flutter_education_app/features/org/org_dashboard_screen.dart' show OrgStaffOnlyPage;
 import 'package:flutter_education_app/features/org/org_page_header.dart';
@@ -130,6 +131,52 @@ void main() {
         expect(find.byKey(const ValueKey('org.header.switcher')), findsOneWidget);
       },
     );
+  });
+
+  testWidgets('narrow wide row (760–980 px): Back + primary action + Search + Refresh + pill fit, "Updated" under the title',
+      (tester) async {
+    final refresh = OrgPageRefresh();
+    addTearDown(refresh.dispose);
+    final session = _session();
+    final prevLang = AppConfig.lang;
+    addTearDown(() {
+      AppConfig.lang = prevLang;
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    // the harness only pumps 320 and 1400 px: this row's width band is set here, at the harness's 1.3 text scale
+    for (final w in [760.0, 820.0, 900.0, 979.0]) {
+      for (final lang in layoutLangs) {
+        AppConfig.lang = lang;
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = Size(w, 700);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(layoutHost(_wrap(
+          AppCommandPaletteScope(
+            onOpen: () {},
+            child: Column(children: [
+              OrgPageHeader(
+                title: 'Computer Science Department Council — undergraduate and postgraduate programmes',
+                subtitle: 'Service department · CSDC',
+                back: true,
+                primaryAction: OrgHeaderButton(icon: Icons.add_rounded, label: 'New request', onTap: () {}),
+              ),
+              const Expanded(child: SizedBox()),
+            ]),
+          ),
+          session: session,
+          refresh: refresh,
+        )));
+        for (var i = 0; i < 3; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(tester.takeException(), isNull, reason: 'layout error at $w / $lang');
+        expect(find.byKey(const ValueKey('org.header.search')), findsOneWidget);
+        expect(find.byKey(const ValueKey('org.header.updated')), findsOneWidget);
+      }
+    }
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('pill: one line, two lines, then the mark alone — never an overflow', (tester) async {

@@ -14,12 +14,23 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin/admin_common.dart';
+import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import 'org_providers.dart';
 import 'org_registrar.dart';
 import 'org_ui.dart' show orgText;
 import 'org_v3.dart';
 
 String _pub(int orgId) => '$orgBase/public/$orgId/registrar';
+
+/// A staff screen (grade entry, advising, consents, a student's record seen by staff): the dashboard's own header
+/// (D-103, OrgPushedPage: Back · title · Refresh · calendar · bell · switcher) when I work in [orgId]; else — opened
+/// from the member dashboard before the session lists it — the older bar, exactly as before. The students' own
+/// screens (registration, my record, my week) keep their bar.
+Widget _staffPage(BuildContext context,
+        {required int orgId, required String title, String? subtitle, required OrgPageRefresh refresh, required Widget child}) =>
+    orgUsesDashboardHeader(context, orgId)
+        ? OrgPushedPage(title: title, subtitle: subtitle, refresh: refresh, maxWidth: 1000, child: child)
+        : BasePage(useWebCard: true, maxWith: 1000, appBar: ScreenAppBar(title: title), child: child);
 
 String _courseTitle(Map<String, dynamic> c) {
   final name = t('${c['name_ar'] ?? c['name_en'] ?? ''}', '${c['name_en'] ?? c['name_ar'] ?? ''}');
@@ -566,11 +577,19 @@ class OrgRecordScreen extends StatefulWidget {
 class _OrgRecordScreenState extends State<OrgRecordScreen> {
   Map<String, dynamic>? _data;
   bool _failed = false;
+  final _refresh = OrgPageRefresh();
 
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -583,20 +602,26 @@ class _OrgRecordScreenState extends State<OrgRecordScreen> {
       if (r.ok) _data = r.map;
       _failed = !r.ok;
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   @override
   Widget build(BuildContext context) {
+    final body = AppAsync(
+      loading: _data == null && !_failed,
+      failed: _failed,
+      onRetry: _load,
+      child: _data == null ? const SizedBox() : RecordView(data: _data!),
+    );
+    // staff looking at a student's record: the dashboard's header; the student's own record keeps its bar
+    if (widget.studentId != null) {
+      return _staffPage(context, orgId: widget.orgId, title: t('السجل الأكاديمي', 'Academic record'), refresh: _refresh, child: body);
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 1000,
       appBar: ScreenAppBar(title: t('السجل الأكاديمي', 'Academic record')),
-      child: AppAsync(
-        loading: _data == null && !_failed,
-        failed: _failed,
-        onRetry: _load,
-        child: _data == null ? const SizedBox() : RecordView(data: _data!),
-      ),
+      child: body,
     );
   }
 }
@@ -710,11 +735,19 @@ class OrgTeachScreen extends StatefulWidget {
 class _OrgTeachScreenState extends State<OrgTeachScreen> {
   List<Map<String, dynamic>>? _items;
   bool _failed = false;
+  final _refresh = OrgPageRefresh();
 
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -724,15 +757,17 @@ class _OrgTeachScreenState extends State<OrgTeachScreen> {
       if (r.ok) _items = asMapList(r.map['items']);
       _failed = !r.ok;
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1000,
-      appBar: ScreenAppBar(title: t('رصد الدرجات', 'Grade entry')),
+    return _staffPage(
+      context,
+      orgId: widget.orgId,
+      title: t('رصد الدرجات', 'Grade entry'),
+      refresh: _refresh,
       child: AppAsync(
         loading: _items == null && !_failed,
         failed: _failed,
@@ -752,6 +787,7 @@ class _OrgTeachScreenState extends State<OrgTeachScreen> {
                       color: asInt(asMap(x['grade_states'])['none']) > 0 ? c.warning : c.primary,
                       onTap: () => Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => _GradesScreen(
+                                orgId: widget.orgId,
                                 path: '${_pub(widget.orgId)}/teach/terms/${asMap(x['term'])['id']}/courses/${asMap(x['course'])['id']}',
                                 canSubmit: true,
                               )))
@@ -767,7 +803,8 @@ class _OrgTeachScreenState extends State<OrgTeachScreen> {
 /// The roster with a score field per student. [path] = the roster route (instructor or staff); staff screens
 /// pass [onApprove] instead of submitting.
 class _GradesScreen extends StatefulWidget {
-  const _GradesScreen({required this.path, this.canSubmit = false, this.onApprove});
+  const _GradesScreen({required this.orgId, required this.path, this.canSubmit = false, this.onApprove});
+  final int orgId;
   final String path;
   final bool canSubmit;
   final Future<void> Function()? onApprove;
@@ -781,18 +818,37 @@ class _GradesScreenState extends State<_GradesScreen> {
   bool _failed = false, _busy = false;
   final Map<int, TextEditingController> _ctrl = {};
 
+  /// The header's Refresh reloads the roster, but never over scores typed and not saved yet.
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_refreshNow);
     _load();
   }
 
   @override
   void dispose() {
+    _refresh.dispose();
     for (final c in _ctrl.values) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// A score field differs from what the server last sent.
+  bool get _dirty => asMapList(_data?['items']).any((i) {
+        final shown = _ctrl[asInt(asMap(i['student'])['id'])]?.text.trim() ?? '';
+        return shown != (i['percent'] == null ? '' : '${i['percent']}');
+      });
+
+  Future<void> _refreshNow() async {
+    if (_busy || _dirty) {
+      toast(t('احفظ الدرجات أولاً — التحديث يعيد ما على الخادم.', 'Save the grades first — Refresh reloads what the server has.'));
+      return;
+    }
+    await _load();
   }
 
   Future<void> _load() async {
@@ -808,6 +864,7 @@ class _GradesScreenState extends State<_GradesScreen> {
       }
       _failed = !r.ok;
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   Future<void> _save() async {
@@ -846,10 +903,12 @@ class _GradesScreenState extends State<_GradesScreen> {
     final c = context.colors;
     final items = asMapList(_data?['items']);
     final deny = '${_data?['deny_letter'] ?? 'DN'}';
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1000,
-      appBar: ScreenAppBar(title: _data == null ? t('الدرجات', 'Grades') : _courseTitle(asMap(_data!['course']))),
+    return _staffPage(
+      context,
+      orgId: widget.orgId,
+      title: _data == null ? t('الدرجات', 'Grades') : _courseTitle(asMap(_data!['course'])),
+      subtitle: _data == null ? null : t('رصد الدرجات', 'Grade entry'),
+      refresh: _refresh,
       child: AppAsync(
         loading: _data == null && !_failed,
         failed: _failed,
@@ -928,6 +987,7 @@ class _GradesScreenState extends State<_GradesScreen> {
 Widget staffGradesScreen(int orgId, int termId, int courseId) {
   final base = '$orgBase/orgs/$orgId/registrar/terms/$termId/grades/$courseId';
   return _GradesScreen(
+    orgId: orgId,
     path: base,
     onApprove: () async {
       final r = await orgCall(() => OrgApi.i.api.post('$base/approve'));
@@ -962,11 +1022,19 @@ class _OrgAdvisingScreenState extends State<OrgAdvisingScreen> {
   bool _failed = false;
 
   String get _b => '${_pub(widget.orgId)}/advising';
+  final _refresh = OrgPageRefresh();
 
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -976,6 +1044,7 @@ class _OrgAdvisingScreenState extends State<OrgAdvisingScreen> {
       if (r.ok) _data = r.map;
       _failed = !r.ok;
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   Future<void> _decide(Map<String, dynamic> d, String verdict) async {
@@ -989,10 +1058,11 @@ class _OrgAdvisingScreenState extends State<OrgAdvisingScreen> {
     final students = asMapList(_data?['students']);
     final cases = asMapList(_data?['cases']);
     final names = {for (final s in students) asInt(s['student_id']): '${asMap(s['student'])['name'] ?? ''}'};
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1000,
-      appBar: ScreenAppBar(title: t('الإرشاد الأكاديمي', 'Academic advising')),
+    return _staffPage(
+      context,
+      orgId: widget.orgId,
+      title: t('الإرشاد الأكاديمي', 'Academic advising'),
+      refresh: _refresh,
       child: AppAsync(
         loading: _data == null && !_failed,
         failed: _failed,
@@ -1055,11 +1125,19 @@ class _AdviseeRecord extends StatefulWidget {
 class _AdviseeRecordState extends State<_AdviseeRecord> {
   Map<String, dynamic>? _data;
   bool _failed = false;
+  final _refresh = OrgPageRefresh();
 
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -1069,13 +1147,16 @@ class _AdviseeRecordState extends State<_AdviseeRecord> {
       if (r.ok) _data = r.map;
       _failed = !r.ok;
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   @override
-  Widget build(BuildContext context) => BasePage(
-        useWebCard: true,
-        maxWith: 1000,
-        appBar: ScreenAppBar(title: t('السجل الأكاديمي', 'Academic record')),
+  Widget build(BuildContext context) => _staffPage(
+        context,
+        orgId: widget.orgId,
+        title: t('السجل الأكاديمي', 'Academic record'),
+        subtitle: t('الإرشاد الأكاديمي', 'Academic advising'),
+        refresh: _refresh,
         child: AppAsync(
             loading: _data == null && !_failed,
             failed: _failed,
@@ -1095,11 +1176,19 @@ class OrgConsentsScreen extends StatefulWidget {
 class _OrgConsentsScreenState extends State<OrgConsentsScreen> {
   Map<String, dynamic>? _data;
   bool _failed = false;
+  final _refresh = OrgPageRefresh();
 
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -1109,6 +1198,7 @@ class _OrgConsentsScreenState extends State<OrgConsentsScreen> {
       if (r.ok) _data = r.map;
       _failed = !r.ok;
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   Future<void> _answer(Map<String, dynamic> d, bool agree) async {
@@ -1128,10 +1218,11 @@ class _OrgConsentsScreenState extends State<OrgConsentsScreen> {
       return '${dayText('${x['day']}')}$time';
     }
 
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1000,
-      appBar: ScreenAppBar(title: t('طلبات الموافقة على الجدول', 'Timetable consent requests')),
+    return _staffPage(
+      context,
+      orgId: widget.orgId,
+      title: t('طلبات الموافقة على الجدول', 'Timetable consent requests'),
+      refresh: _refresh,
       child: AppAsync(
         loading: _data == null && !_failed,
         failed: _failed,

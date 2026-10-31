@@ -27,6 +27,7 @@ import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 
 const bool kOrgSchedulingMocks = !kReleaseMode && bool.fromEnvironment('ORG_SCHEDULING_MOCKS');
 
@@ -342,22 +343,50 @@ CoursePlanApi coursePlanApi(OrgScheduleProvider p) => kOrgSchedulingMocks ? _moc
 //  UI
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// A page pushed from the timetable studio (D-103): the dashboard's own header (OrgPushedPage: Back · title ·
+/// subtitle · [primaryAction] · Refresh · calendar · bell · switcher) when I work in the organization; else (the member
+/// dashboard's managed pages before the session lists it) the older bar with its exit button, exactly as before.
+/// The page under it registers its loader with OrgPageRefresh.register so Refresh reloads it in place.
+Widget orgStudioPage(BuildContext context,
+    {required String title, String? subtitle, Widget? primaryAction, double? maxWidth = 1000, bool webCard = true, required Widget child}) {
+  if (!orgUsesDashboardHeader(context, null)) {
+    return BasePage(
+      useWebCard: webCard,
+      maxWith: maxWidth,
+      appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]),
+      child: child,
+    );
+  }
+  return OrgPushedPage(title: title, subtitle: subtitle, primaryAction: primaryAction, maxWidth: maxWidth ?? 1100, child: child);
+}
+
+/// The open timetable's name, for a pushed page's subtitle (null when it has none).
+String? studioSubtitle(OrgScheduleProvider p) {
+  final name = '${p.schedule?['name'] ?? ''}'.trim();
+  return name.isEmpty ? null : name;
+}
+
 Future<void> openCoursePlans(BuildContext context, OrgScheduleProvider p, {bool canEdit = false}) => Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => BasePage(
-          useWebCard: true,
-          maxWith: 900,
-          appBar: ScreenAppBar(title: t('الطلاب والمجموعات', 'Enrollment & groups'), actions: const [ContextExitButton()]),
-          child: TimetableCoursesView(p: p, canEdit: canEdit),
+    builder: (ctx) => orgStudioPage(
+          ctx,
+          title: t('الطلاب والمجموعات', 'Enrollment & groups'),
+          subtitle: studioSubtitle(p),
+          maxWidth: 900,
+          child: TimetableCoursesView(p: p, canEdit: canEdit, ownsRefresh: true),
         )));
 
 /// The courses that enter the timetable (its scope; group sizes = min(course max group, room capacity), overflow goes
 /// to another group, never dropped): enrolment, lecture / lab groups, lab type, issues, and edit links (the plan of
 /// this timetable · the course requirements). Embedded in the studio's "Courses" view and in openCoursePlans.
 class TimetableCoursesView extends StatefulWidget {
-  const TimetableCoursesView({super.key, required this.p, required this.canEdit, this.api});
+  const TimetableCoursesView({super.key, required this.p, required this.canEdit, this.api, this.ownsRefresh = false});
   final OrgScheduleProvider p;
   final CoursePlanApi? api;
   final bool canEdit;
+
+  /// A page of its own (openCoursePlans): the header's Refresh reloads it. Embedded in the studio it leaves the
+  /// studio's Refresh alone.
+  final bool ownsRefresh;
 
   @override
   State<TimetableCoursesView> createState() => _CoursePlansPageState();
@@ -377,10 +406,19 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
     return [for (final l in widget.p.loads) if (only == null || only.contains(asInt(l['course_id']))) l];
   }
 
+  OrgPageRefresh? _refresh;
+
   @override
   void initState() {
     super.initState();
+    if (widget.ownsRefresh) _refresh = OrgPageRefresh.register(context, _load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -388,6 +426,7 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
     try {
       final r = await api.list(sid);
       if (mounted) setState(() => data = r);
+      if (mounted) _refresh?.markUpdated();
     } catch (e) {
       if (mounted) setState(() => error = orgErrorText(ApiException.from(e)));
     }

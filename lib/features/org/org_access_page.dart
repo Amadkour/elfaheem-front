@@ -17,6 +17,8 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
+import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
+import 'org_page_kit.dart' show OrgMenuItem, OrgMoreMenu;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
@@ -28,6 +30,13 @@ Map<String, dynamic>? _catalogCache;
 
 Future<Map<String, dynamic>?> orgCatalog(OrgSession s) async =>
     _catalogCache ??= await OrgApi.i.getMap('${s.base}/access/catalog');
+
+/// A pushed page's readable column: the dashboard header keeps the page's full width (its one row needs the room),
+/// the content stays as narrow as the older page was.
+Widget _readable(double maxWidth, Widget child) => Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: SizedBox.expand(child: child)),
+    );
 
 class OrgAccessPage extends StatelessWidget {
   const OrgAccessPage({super.key});
@@ -166,6 +175,15 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
 
   bool get _editable => widget.role == null || widget.role?['editable'] == true;
 
+  /// The dashboard header's Refresh must never rebuild the form (it would lose the typed name and rights).
+  final _refresh = OrgPageRefresh()..attach(() async {});
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -202,22 +220,47 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
     final c = context.colors;
     final s = context.watch<OrgSession>();
     final system = widget.role?['is_system'] == true;
+    final title = widget.role == null ? t('دور جديد', 'New role') : t('الدور وصلاحياته', 'Role & rights');
+    final canDelete = widget.role != null && !system && s.can('roles', 'delete') && _editable;
+    Future<void> delete() async {
+      if (!await confirm(context, message: t('حذف الدور؟ يفقده كل من يحمله.', 'Delete the role? Everyone holding it loses it.'), danger: true)) return;
+      if (await OrgApi.i.del('${s.base}/access/roles/${widget.role!['id']}', t('تم الحذف', 'Deleted')) != null && context.mounted) {
+        Navigator.pop(context);
+      }
+    }
+
+    final body = _body(context);
+    if (orgUsesDashboardHeader(context, null)) {
+      final name = widget.role == null ? '' : t('${widget.role!['name_ar'] ?? widget.role!['name_en'] ?? ''}', '${widget.role!['name_en'] ?? widget.role!['name_ar'] ?? ''}');
+      return OrgPushedPage(
+        title: title,
+        subtitle: name.isEmpty ? null : name,
+        refresh: _refresh,
+        primaryAction: canDelete
+            ? OrgMoreMenu(items: [
+                OrgMenuItem(icon: Icons.delete_outline_rounded, label: t('حذف الدور', 'Delete role'), danger: true, onTap: delete),
+              ])
+            : null,
+        child: _readable(820, body),
+      );
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 820,
-      appBar: ScreenAppBar(title: widget.role == null ? t('دور جديد', 'New role') : t('الدور وصلاحياته', 'Role & rights'), actions: [
-        if (widget.role != null && !system && s.can('roles', 'delete') && _editable)
+      appBar: ScreenAppBar(title: title, actions: [
+        if (canDelete)
           IconButton(tooltip: t('حذف', 'Delete'), 
             icon: Icon(Icons.delete_outline_rounded, color: c.danger),
-            onPressed: () async {
-              if (!await confirm(context, message: t('حذف الدور؟ يفقده كل من يحمله.', 'Delete the role? Everyone holding it loses it.'), danger: true)) return;
-              if (await OrgApi.i.del('${s.base}/access/roles/${widget.role!['id']}', t('تم الحذف', 'Deleted')) != null && context.mounted) {
-                Navigator.pop(context);
-              }
-            },
+            onPressed: delete,
           ),
        const ContextExitButton()]),
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+      child: body,
+    );
+  }
+
+  Widget _body(BuildContext context) {
+    final c = context.colors;
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
         if (!_editable)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -262,8 +305,7 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
         ),
         if (_editable)
           PrimaryButton(isLoading: _busy, label: t('حفظ', 'Save'), icon: Icons.check_rounded, iconBefore: true, onPressed: _save),
-      ]),
-    );
+      ]);
   }
 }
 
@@ -335,10 +377,20 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
 
   String get _base => context.read<OrgSession>().base;
 
+  /// The dashboard header's Refresh reloads this person in place; "Updated" is when it answered.
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -356,6 +408,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
       _depts = asMapList(results[2]?['items']);
       _failed = _d == null;
     });
+    if (results[0] != null) _refresh.markUpdated();
   }
 
   String _deptName(dynamic id) {
@@ -471,11 +524,8 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
     final s = context.watch<OrgSession>();
     final d = _d;
     final canEdit = s.can('roles', 'update');
-    return BasePage(
-      useWebCard: true,
-      maxWith: 860,
-      appBar: ScreenAppBar(title: d == null ? t('الصلاحيات', 'Access') : '${asMap(d['user'])['name']}', actions: const [ContextExitButton()]),
-      child: OrgAsync(
+    final title = d == null ? t('الصلاحيات', 'Access') : '${asMap(d['user'])['name']}';
+    final body = OrgAsync(
         loading: d == null && !_failed,
         failed: _failed,
         onRetry: _load,
@@ -553,7 +603,20 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                   ),
                 ]),
               ),
-      ),
+    );
+    if (orgUsesDashboardHeader(context, null)) {
+      return OrgPushedPage(
+        title: title,
+        subtitle: d == null ? null : t('الأدوار والصلاحيات', 'Roles & rights'),
+        refresh: _refresh,
+        child: _readable(860, body),
+      );
+    }
+    return BasePage(
+      useWebCard: true,
+      maxWith: 860,
+      appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]),
+      child: body,
     );
   }
 }
