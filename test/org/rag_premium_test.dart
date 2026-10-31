@@ -183,6 +183,9 @@ void main() {
       expect(ragRate(1, 0), isNull);
       expect(ragRate(1, 3), 33);
       expect(RagOverview.fromJson({}).foundRate, isNull);
+      // the closest-match answers (D-121); an older server sends none
+      expect(RagOverview.fromJson({'hedged': [{'question': 'q', 'count': 2, 'context': 'app', 'query_id': 7}]}).hedged.single['count'], 2);
+      expect(RagOverview.fromJson({}).hedged, isEmpty);
     });
 
     test('trace parses and its rows read', () {
@@ -267,6 +270,7 @@ void main() {
         'contexts': {'app': {'asked': 30, 'found': 25}, 'org': {'asked': 5, 'found': 3}, 'docs': {'asked': 3, 'found': 2}},
         'generators': {'llm': 30, 'extractive': 8, 'none': 1},
         'not_found': [{'question': 'Where is the moon? ' * 6, 'count': 3, 'context': 'docs', 'org_id': 4}],
+        'hedged': [{'question': 'كيفيه الاشتراك ' * 8, 'count': 5, 'context': 'app', 'query_id': 9}],
         'unhelpful': [{'id': 1, 'question': 'q ' * 30, 'answer': 'a ' * 80, 'comment': 'wrong'}],
         'documents': [{'scope': 'app', 'status': 'ready', 'count': 3}],
         'queue': {'waiting': 12},

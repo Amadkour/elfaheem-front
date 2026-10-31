@@ -200,12 +200,15 @@ class RagOverview {
   const RagOverview({
     this.days = 30, this.asked = 0, this.answered = 0, this.found = 0, this.failed = 0, this.pending = 0, this.rated = 0, this.helpful = 0,
     this.askers = 0, this.p50, this.p90, this.byDay = const [], this.contexts = const {}, this.generators = const {}, this.notFound = const [],
-    this.unhelpful = const [], this.documents = const [], this.queueWaiting = 0, this.drafts = 0, this.draftQuestions = 0, this.draftsLlm = 0,
-    this.qaPairs = 0, this.qaEnabled = 0, this.qaDirect = 0, this.qaExample = 0, this.monitoring,
+    this.hedged = const [], this.unhelpful = const [], this.documents = const [], this.queueWaiting = 0, this.drafts = 0, this.draftQuestions = 0,
+    this.draftsLlm = 0, this.qaPairs = 0, this.qaEnabled = 0, this.qaDirect = 0, this.qaExample = 0, this.monitoring,
   });
   final int days, asked, answered, found, failed, pending, rated, helpful, askers;
   final int? p50, p90;
   final List<Map<String, dynamic>> byDay, notFound, unhelpful, documents;
+
+  /// The questions most often answered with the closest match only (the server's hedge, D-121; empty on an older server).
+  final List<Map<String, dynamic>> hedged;
   final Map<String, Map<String, int>> contexts;
   final Map<String, int> generators;
   final int queueWaiting, drafts, draftQuestions, draftsLlm;
@@ -230,7 +233,8 @@ class RagOverview {
       asked: asInt(tot['asked']), answered: asInt(tot['answered']), found: asInt(tot['found']), failed: asInt(tot['failed']),
       pending: asInt(tot['pending']), rated: asInt(tot['rated']), helpful: asInt(tot['helpful']), askers: asInt(tot['askers']),
       p50: lat['p50'] == null ? null : asInt(lat['p50']), p90: lat['p90'] == null ? null : asInt(lat['p90']),
-      byDay: asMapList(j['by_day']), notFound: asMapList(j['not_found']), unhelpful: asMapList(j['unhelpful']), documents: asMapList(j['documents']),
+      byDay: asMapList(j['by_day']), notFound: asMapList(j['not_found']), hedged: asMapList(j['hedged']), unhelpful: asMapList(j['unhelpful']),
+      documents: asMapList(j['documents']),
       contexts: {for (final e in ctx.entries) e.key: {for (final x in asMap(e.value).entries) x.key: asInt(x.value)}},
       generators: {for (final e in gens.entries) e.key: asInt(e.value)},
       queueWaiting: asInt(q['waiting']),
@@ -694,24 +698,13 @@ class RagOverviewView extends StatelessWidget {
       if (o.notFound.isEmpty)
         AppEmpty(icon: Icons.task_alt_rounded, title: t('كل الأسئلة وُجدت لها إجابة', 'Every question found its answer'))
       else
-        AppCard(
-          child: Column(children: [
-            for (final nf in o.notFound.take(10))
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(radius: 14, backgroundColor: c.warning.withValues(alpha: .15), child: Text('${asInt(nf['count'])}', style: appText(12, w: FontWeight.w800, c: c.warning))),
-                title: Text(asStr(nf['question']), maxLines: 2, overflow: TextOverflow.ellipsis),
-                subtitle: Text(asStr(nf['context']) == 'docs' ? t('مؤسسة ${nf['org_id'] ?? ''}', 'Organization ${nf['org_id'] ?? ''}') : t('مساعد التطبيق', 'App assistant')),
-                trailing: onPromote == null || asInt(nf['query_id']) <= 0
-                    ? null
-                    : IconButton(
-                        tooltip: t('اعتمد إجابة لهذا السؤال', 'Promote to Q&A'),
-                        icon: Icon(Icons.playlist_add_check_circle_outlined, color: appInk(context, c.primary)),
-                        onPressed: () => onPromote!(asInt(nf['query_id']))),
-              ),
-          ]),
-        ),
+        RagAskedList(rows: o.notFound, tone: c.warning, onPromote: onPromote),
+      if (o.hedged.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        AppSectionTitle(t('أُجيبت بأقرب ما وُجد', 'Answered with the closest match'),
+            subtitle: t('المستندات تجيب عنها جزئياً: أكمل القسم أو اعتمد إجابة', 'The documents half-answer them: complete the section or promote an answer')),
+        RagAskedList(rows: o.hedged, tone: c.primary, onPromote: onPromote),
+      ],
       const SizedBox(height: 12),
       AppSectionTitle(t('إجابات لم تُفد', 'Unhelpful answers')),
       if (o.unhelpful.isEmpty)
@@ -741,6 +734,37 @@ class RagOverviewView extends StatelessWidget {
 
 /// The overview's "Health" block (Track E.7): four trend tiles (questions, no-answer rate, cache hits, direct Q&A),
 /// questions per day, and the answer time p50 / p95 per path. Plain values: the layout harness pumps it.
+/// The overview's grouped questions (`not_found`, `hedged`): count · question · context, and "Promote to Q&A".
+class RagAskedList extends StatelessWidget {
+  const RagAskedList({super.key, required this.rows, required this.tone, this.onPromote});
+  final List<Map<String, dynamic>> rows;
+  final Color tone;
+  final ValueChanged<int>? onPromote;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppCard(
+      child: Column(children: [
+        for (final r in rows.take(10))
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(radius: 14, backgroundColor: tone.withValues(alpha: .15), child: Text('${asInt(r['count'])}', style: appText(12, w: FontWeight.w800, c: tone))),
+            title: Text(asStr(r['question']), maxLines: 2, overflow: TextOverflow.ellipsis),
+            subtitle: Text(asStr(r['context']) == 'docs' ? t('مؤسسة ${r['org_id'] ?? ''}', 'Organization ${r['org_id'] ?? ''}') : t('مساعد التطبيق', 'App assistant')),
+            trailing: onPromote == null || asInt(r['query_id']) <= 0
+                ? null
+                : IconButton(
+                    tooltip: t('اعتمد إجابة لهذا السؤال', 'Promote to Q&A'),
+                    icon: Icon(Icons.playlist_add_check_circle_outlined, color: appInk(context, c.primary)),
+                    onPressed: () => onPromote!(asInt(r['query_id']))),
+          ),
+      ]),
+    );
+  }
+}
+
 class RagHealthBlock extends StatelessWidget {
   const RagHealthBlock({super.key, required this.monitoring});
   final RagMonitoring monitoring;
