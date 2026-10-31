@@ -1053,11 +1053,16 @@ class _AuthButtonState extends State<AuthButton> {
     // a busy button keeps its colour (it is working, not disabled)
     final lit = active || widget.loading;
     final tone = widget.tone;
-    // the brand primary only (M22: the hero's primary → accent blend, D-088, read olive → green on a button); each
-    // stop deep enough for the label at 4.5:1. The hero keeps its blend.
+    // no tone: THE brand gradient (D-136, every stop AA under the label) with its glass sheen, like every primary
+    // button; a tone keeps a flat-ish two-stop fill. The hero keeps its own blend (M22).
     final base = tone ?? authDeepen(c.primary, (bg) => authContrast(c.onHero, bg) >= 4.7);
-    final colors = [base, c.heroEnd(base, 0.22)];
-    const List<double>? stops = null;
+    final LinearGradient fill = tone == null
+        ? (_pressed ? c.primaryGradientPressed : c.primaryGradient)
+        : LinearGradient(
+            begin: AlignmentDirectional.centerStart,
+            end: AlignmentDirectional.centerEnd,
+            colors: [base, c.heroEnd(base, 0.22)],
+          );
     final fg = lit ? c.onHero : c.textLight;
     const radius = 16.0;
 
@@ -1117,7 +1122,7 @@ class _AuthButtonState extends State<AuthButton> {
               boxShadow: lit
                   ? [
                       BoxShadow(
-                        color: colors.first.withValues(alpha: c.isDark ? 0.38 : 0.32),
+                        color: fill.colors[fill.colors.length ~/ 2].withValues(alpha: c.isDark ? 0.38 : 0.32),
                         blurRadius: _pressed ? 12 : 22,
                         spreadRadius: -6,
                         offset: Offset(0, _pressed ? 6 : 12),
@@ -1146,18 +1151,14 @@ class _AuthButtonState extends State<AuthButton> {
               ),
               child: Ink(
                 decoration: BoxDecoration(
-                  gradient: lit
-                      ? LinearGradient(
-                          begin: AlignmentDirectional.centerStart,
-                          end: AlignmentDirectional.centerEnd,
-                          stops: stops,
-                          colors: colors,
-                        )
-                      : null,
+                  gradient: lit ? fill : null,
                   color: lit ? null : (c.isDark ? c.inputBg : c.divider.withValues(alpha: 0.7)),
                   borderRadius: BorderRadius.circular(radius),
                 ),
                 child: Container(
+                  foregroundDecoration: lit && tone == null
+                      ? BoxDecoration(gradient: c.primaryGloss, borderRadius: BorderRadius.circular(radius))
+                      : null,
                   constraints: const BoxConstraints(minHeight: 54),
                   alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

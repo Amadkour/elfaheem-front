@@ -78,6 +78,7 @@ class _PrimaryButtonState extends State<PrimaryButton> {
               border: off ? Border.all(color: c.divider) : null,
               boxShadow: shadows,
             ),
+            foregroundDecoration: off || !brand ? null : BoxDecoration(gradient: c.primaryGloss, borderRadius: r),
             child: Material(
               type: MaterialType.transparency,
               child: InkWell(

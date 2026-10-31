@@ -388,10 +388,12 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     Color safe(Color c) => ensureContrast(c, [ink], min: _kBrandInk);
     final mid = safe(primary);
     // light: up to 55 % of the way to primary_light; dark: a shorter lift (a bright edge glares on a dark page)
+    // a lift of the SAME hue barely shows (the contrast guard keeps it within a shade of primary), so the derived
+    // ends also turn the hue: a fresher light end, a cooler, deeper end — a visible sweep at the same contrast
     final lift = _model?.primaryGradientStart != null
         ? safe(_model!.primaryGradientStart!)
-        : _liftToward(mid, primaryLight, dark ? 0.35 : 0.55, ink);
-    final deepBase = _model?.primaryGradientEnd ?? primaryDark;
+        : safe(_turn(_liftToward(mid, primaryLight, dark ? 0.35 : 0.55, ink), -7, 1.08, 1));
+    final deepBase = _model?.primaryGradientEnd ?? _turn(primaryDark, 16, 1, dark ? 1 : 0.86);
     // dark: stop short of primary_dark so the fill still separates from the dark page around it
     final deep = safe(dark ? Color.lerp(mid, deepBase, 0.7)! : deepBase);
     if (_stopCache.length > 8) _stopCache.clear();
@@ -410,11 +412,29 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     return from;
   }
 
+  /// [c] with its hue turned by [deg], its saturation and lightness scaled.
+  static Color _turn(Color c, double deg, double sat, double light) {
+    final h = HSLColor.fromColor(c);
+    return h
+        .withHue((h.hue + deg) % 360)
+        .withSaturation((h.saturation * sat).clamp(0.0, 1.0))
+        .withLightness((h.lightness * light).clamp(0.0, 1.0))
+        .toColor();
+  }
+
   LinearGradient _brand(List<Color> stops) => LinearGradient(
     begin: AlignmentDirectional.topStart,
     end: AlignmentDirectional.bottomEnd,
     colors: stops,
-    stops: const [0, 0.5, 1],
+    stops: const [0, 0.45, 1],
+  );
+
+  /// A glass sheen over a brand fill: a soft top light that fades out above a centred label (it never sits under
+  /// the text, so the label keeps the fill's contrast). Paint it ABOVE the fill (a foreground decoration).
+  LinearGradient get primaryGloss => LinearGradient(
+    begin: Alignment.topCenter,
+    end: const Alignment(0, -0.38),
+    colors: [onHero.withValues(alpha: isDark ? 0.12 : 0.2), onHero.withValues(alpha: 0)],
   );
 
   /// The brand fill for a primary button / selected pill / active tab, in the open mode.
@@ -694,6 +714,11 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     // ripple, hover and focus overlays still draw on top of it.
     final brand = _brand(brandStops(dark: dark));
     final brandPressed = primaryGradientPressedFor(dark: dark);
+    final gloss = LinearGradient(
+      begin: Alignment.topCenter,
+      end: const Alignment(0, -0.38),
+      colors: [Colors.white.withValues(alpha: dark ? 0.12 : 0.2), Colors.white.withValues(alpha: 0)],
+    );
     Widget brandFill(BuildContext context, Set<WidgetState> states, Widget? child) {
       if (states.contains(WidgetState.disabled)) return child ?? const SizedBox.shrink();
       return Builder(builder: (context) {
@@ -707,7 +732,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
             shape: shape is OutlinedBorder ? shape.copyWith(side: BorderSide.none) : (shape ?? const RoundedRectangleBorder()),
             gradient: states.contains(WidgetState.pressed) ? brandPressed : brand,
           ),
-          child: child,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              shape: shape is OutlinedBorder ? shape.copyWith(side: BorderSide.none) : (shape ?? const RoundedRectangleBorder()),
+              gradient: gloss,
+            ),
+            child: child,
+          ),
         );
       });
     }
