@@ -229,6 +229,35 @@ const double kOverContentMinSide = 52;
   );
 }
 
+/// The gap between a floating box and a scrollbar's hit strip beside it (px).
+const double kClearOfRailGap = 4;
+
+/// D-109: a whiteboard's vertical scrollbar [rail] (its hit strip, stage coordinates) runs down beside the column a
+/// box of [width] rests in — the page's end edge, where the box sits on the page's corner (D-105): the keep-out grows
+/// on that side so the box rests beside the strip, never on it (the thumb stays whole and a drag there scrolls). A
+/// rail that the box's column does not reach, or a stage with no room left beside it, keeps [keepOut].
+SelfViewKeepOut selfViewClearOfRail({
+  required SelfViewKeepOut keepOut,
+  required Size stage,
+  required double width,
+  required Rect? rail,
+}) {
+  if (rail == null || rail.isEmpty || width <= 0 || stage.isEmpty) return keepOut;
+  final b = keepOut.base;
+  var left = b.left, right = b.right;
+  // The right-hand column: [stage.width - right - width, stage.width - right].
+  if (rail.left < stage.width - b.right && rail.right > stage.width - b.right - width) {
+    right = math.max(right, stage.width - rail.left + kClearOfRailGap);
+  }
+  // The left-hand column (Arabic: the rail is on the page's left edge).
+  if (rail.right > b.left && rail.left < b.left + width) {
+    left = math.max(left, rail.right + kClearOfRailGap);
+  }
+  if (left == b.left && right == b.right) return keepOut;
+  if (stage.width - left - right < width) return keepOut;
+  return SelfViewKeepOut(base: b.copyWith(left: left, right: right), topRight: keepOut.topRight, topLeft: keepOut.topLeft);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Preferences (device-local)
 // ─────────────────────────────────────────────────────────────────────────────

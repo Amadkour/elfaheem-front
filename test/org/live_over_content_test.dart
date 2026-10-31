@@ -3,6 +3,7 @@
 // shareContentRect, selfViewOverContent).
 import 'package:flutter/painting.dart';
 import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
+import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_scrollbar.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -97,6 +98,38 @@ void main() {
       expect(selfViewOverContent(stage: stage, box: box, keepOut: keep, content: const Rect.fromLTWH(100, 300, 90, 60)),
           isNull);
       expect(selfViewOverContent(stage: stage, box: box, keepOut: keep, content: Rect.zero), isNull);
+    });
+  });
+
+  // D-109: the board's vertical scrollbar (its hit strip) beside the page's end edge — the boxes rest beside it.
+  group('selfViewClearOfRail', () {
+    const stage = Size(1280, 660);
+    test('the hit strip is the thumb\'s 44 px across the drawn rail, down its length', () {
+      final r = boardRailHitStrip(const Rect.fromLTWH(1256, 16, 10, 600));
+      expect(r, const Rect.fromLTRB(1261 - kBoardThumbHit / 2, 16, 1261 + kBoardThumbHit / 2, 616));
+    });
+
+    test('a rail in the right-hand column: the keep-out grows on the right, the box rests beside it', () {
+      final rail = boardRailHitStrip(const Rect.fromLTWH(1256, 16, 10, 600));
+      final out = selfViewClearOfRail(keepOut: keep, stage: stage, width: 200, rail: rail);
+      expect(out.base.right, stage.width - rail.left + kClearOfRailGap);
+      expect(out.base.left, keep.base.left);
+      expect((out.base.top, out.base.bottom), (keep.base.top, keep.base.bottom));
+    });
+
+    test('mirrored: a rail on the left (Arabic) grows the left keep-out', () {
+      final rail = boardRailHitStrip(const Rect.fromLTWH(14, 16, 10, 600));
+      final out = selfViewClearOfRail(keepOut: keep, stage: stage, width: 200, rail: rail);
+      expect(out.base.left, rail.right + kClearOfRailGap);
+      expect(out.base.right, keep.base.right);
+    });
+
+    test('a rail the box\'s column does not reach, no rail, or no room beside it: unchanged', () {
+      final mid = boardRailHitStrip(const Rect.fromLTWH(900, 16, 10, 600));
+      expect(selfViewClearOfRail(keepOut: keep, stage: stage, width: 200, rail: mid), keep);
+      expect(selfViewClearOfRail(keepOut: keep, stage: stage, width: 200, rail: null), keep);
+      final edge = boardRailHitStrip(const Rect.fromLTWH(1256, 16, 10, 600));
+      expect(selfViewClearOfRail(keepOut: keep, stage: const Size(220, 660), width: 200, rail: edge), keep);
     });
   });
 }

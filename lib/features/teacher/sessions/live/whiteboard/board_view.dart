@@ -3,7 +3,8 @@
 // The whiteboard as the room's stage (D-087): WhiteboardRoomView = the bar over the page (WhiteboardTopBar), the
 // page (WhiteboardStage) and, for whoever may draw, the tool dock (WhiteboardToolbar) — bound to a BoardController.
 // In the live room the bar is off (`showTopBar: false`): the room's top row carries it on the recording's line
-// (D-108); in full view (`viewOnly`) the page is alone and takes no input.
+// (D-108). In full view (`fullView`) the page is alone and fills the room; whoever may draw keeps drawing on it, and
+// the room slides the tool dock ([WhiteboardDock]) in with its own bars (D-108, round 7).
 // RoomPage puts it where the shared screen would go while a board is presented, for the presenter and every viewer;
 // the room's recorder captures the room UI, so the board is in the recording as everyone sees it.
 //
@@ -44,7 +45,8 @@ class WhiteboardRoomView extends StatefulWidget {
     this.pageKey,
     this.keyboard,
     this.showTopBar = true,
-    this.viewOnly = false,
+    this.fullView = false,
+    this.railKey,
   });
 
   final BoardController controller;
@@ -53,8 +55,12 @@ class WhiteboardRoomView extends StatefulWidget {
   /// page and the presenter's controls on the same line as the recording (D-108).
   final bool showTopBar;
 
-  /// Full view (D-108): the page alone — no bar, no tool dock, no input (a tap toggles the room's bars).
-  final bool viewOnly;
+  /// Full view (D-108): the page alone, with no room kept for a bar or the dock. The dock is not drawn here (the
+  /// room shows a [WhiteboardDock] with its own bars); the page still takes the pen of whoever may draw.
+  final bool fullView;
+
+  /// On the continuous page's vertical rail (the room keeps its floating cameras clear of it, D-109).
+  final GlobalKey? railKey;
 
   /// The viewers' title ("`name`'s whiteboard").
   final String presenterName;
@@ -77,8 +83,6 @@ class WhiteboardRoomView extends StatefulWidget {
 }
 
 class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
-  BoardPanel _panel = BoardPanel.none;
-  BoardTool _lastShape = BoardTool.rect;
   BoardBackground? _bg;
   bool _keys = false;
 
@@ -119,7 +123,7 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
     super.dispose();
   }
 
-  bool _onKey(KeyEvent e) => mounted && !widget.viewOnly && boardHandleKey(e, _c);
+  bool _onKey(KeyEvent e) => mounted && boardHandleKey(e, _c);
 
   void _onBoard() {
     if (_c.background != _bg) {
@@ -134,13 +138,6 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
     if (!colors.any((c) => c.toARGB32() == _c.colorArgb)) _c.setColor(colors.first.toARGB32());
   }
 
-  void _tool(BoardTool tl) {
-    if (tl.isShape) _lastShape = tl;
-    _c.setTool(tl);
-    _c.setDrawMode(true);
-    setState(() => _panel = tl.isShape ? BoardPanel.none : (_panel == BoardPanel.shapes ? BoardPanel.none : _panel));
-  }
-
   @override
   Widget build(BuildContext context) {
     LivePalette.sync(context);
@@ -148,16 +145,15 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
       listenable: Listenable.merge([_c, _c.scene]),
       builder: (context, _) {
         final presenting = _c.isLocalPresenting;
-        final canDraw = _c.canDrawLocal && !widget.viewOnly;
-        final bar = widget.showTopBar && !widget.viewOnly;
-        final colors = boardInkColors(_c.background);
-        final textStyle = _c.tool == BoardTool.text || _c.selectedItem is BoardText;
+        final full = widget.fullView;
+        final canDraw = _c.canDrawLocal && !full; // the dock under the page (full view: the room's, with its bars)
+        final bar = widget.showTopBar && !full;
         return LayoutBuilder(builder: (context, box) {
           // The dock's own height (one row on wide screens, two otherwise); its shapes / style panel opens over the
           // page. The bar, the page and the dock stay together in the middle when the page is shorter than the room.
           final wideDock = box.maxWidth - 16 >= kBoardDockWideWidth;
-          final dockH = canDraw ? (wideDock ? 70.0 : 121.0) : (widget.viewOnly ? 0.0 : 10.0);
-          final topH = bar ? 64.0 : (widget.viewOnly ? 0.0 : 6.0);
+          final dockH = canDraw ? (wideDock ? 70.0 : 121.0) : (full ? 0.0 : 10.0);
+          final topH = bar ? 64.0 : (full ? 0.0 : 6.0);
           final side = box.maxWidth < 600 ? 4.0 : 12.0; // a phone gives the page every pixel of its width
           // A continuous page takes all the height there is (it scrolls); a fixed one what its shape needs.
           final idealStage = _c.isContinuous ? double.infinity : (box.maxWidth - side * 2) / _c.aspect + 4;
@@ -191,14 +187,12 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
               height: stageH,
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: side),
-                child: IgnorePointer(
-                  ignoring: widget.viewOnly,
-                  child: WhiteboardStage(
-                    controller: _c,
-                    pageKey: widget.pageKey,
-                    fallbackRtl: widget.fallbackRtl,
-                    presenterName: widget.presenterName,
-                  ),
+                child: WhiteboardStage(
+                  controller: _c,
+                  pageKey: widget.pageKey,
+                  railKey: widget.railKey,
+                  fallbackRtl: widget.fallbackRtl,
+                  presenterName: widget.presenterName,
                 ),
               ),
             ),
@@ -213,27 +207,7 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
               bottom: free / 2,
               child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-              child: WhiteboardToolbar(
-                key: const ValueKey('board.toolbar'),
-                tool: _c.tool,
-                color: Color(_c.colorArgb),
-                colors: colors,
-                colorLabels: boardColorLabels(_c.background),
-                thickness: _c.thickness,
-                fontStep: _c.fontStep,
-                textStyle: textStyle,
-                canUndo: _c.canUndo,
-                canRedo: _c.canRedo,
-                panel: _panel,
-                lastShape: _lastShape,
-                onTool: _tool,
-                onColor: (col) => _c.setColor(col.toARGB32()),
-                onThickness: _c.setThickness,
-                onFontStep: _c.setFontStep,
-                onUndo: _c.undo,
-                onRedo: _c.redo,
-                onPanel: (p) => setState(() => _panel = p),
-              ),
+              child: WhiteboardDock(controller: _c),
             ),
             ),
           ]);
@@ -241,6 +215,65 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
       },
     );
   }
+}
+
+/// The board's tool dock, bound to [controller]: under the page in the room, and in full view inside the room's bars
+/// (D-108), so the tools come back with the controls. The tool, colour and size live in the controller, so the pen
+/// keeps what was chosen before wherever the dock is drawn.
+class WhiteboardDock extends StatefulWidget {
+  const WhiteboardDock({super.key, required this.controller, this.wide});
+
+  final BoardController controller;
+
+  /// Null: by the available width ([kBoardDockWideWidth]).
+  final bool? wide;
+
+  @override
+  State<WhiteboardDock> createState() => _WhiteboardDockState();
+}
+
+class _WhiteboardDockState extends State<WhiteboardDock> {
+  BoardPanel _panel = BoardPanel.none;
+  late BoardTool _lastShape = widget.controller.tool.isShape ? widget.controller.tool : BoardTool.rect;
+
+  BoardController get _c => widget.controller;
+
+  void _tool(BoardTool tl) {
+    if (tl.isShape) _lastShape = tl;
+    _c.setTool(tl);
+    _c.setDrawMode(true);
+    setState(() => _panel = tl.isShape ? BoardPanel.none : (_panel == BoardPanel.shapes ? BoardPanel.none : _panel));
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: Listenable.merge([_c, _c.scene]),
+        builder: (context, _) {
+          final colors = boardInkColors(_c.background);
+          return WhiteboardToolbar(
+            key: const ValueKey('board.toolbar'),
+            tool: _c.tool,
+            color: Color(_c.colorArgb),
+            colors: colors,
+            colorLabels: boardColorLabels(_c.background),
+            thickness: _c.thickness,
+            fontStep: _c.fontStep,
+            textStyle: _c.tool == BoardTool.text || _c.selectedItem is BoardText,
+            canUndo: _c.canUndo,
+            canRedo: _c.canRedo,
+            wide: widget.wide,
+            panel: _panel,
+            lastShape: _lastShape,
+            onTool: _tool,
+            onColor: (col) => _c.setColor(col.toARGB32()),
+            onThickness: _c.setThickness,
+            onFontStep: _c.setFontStep,
+            onUndo: _c.undo,
+            onRedo: _c.redo,
+            onPanel: (p) => setState(() => _panel = p),
+          );
+        },
+      );
 }
 
 /// The presenter's Board sheet. [allowStudents] / [onAllowStudents]: the room's annotation permission (host only);

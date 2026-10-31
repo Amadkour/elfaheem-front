@@ -97,6 +97,7 @@ class WhiteboardStage extends StatefulWidget {
     super.key,
     required this.controller,
     this.pageKey,
+    this.railKey,
     this.fallbackRtl = false,
     this.laserColor,
     this.showEmptyHint = true,
@@ -110,6 +111,9 @@ class WhiteboardStage extends StatefulWidget {
 
   /// The page's RepaintBoundary (export).
   final GlobalKey? pageKey;
+
+  /// On the vertical rail's drawn strip while it is shown (the room keeps its floating cameras clear of it, D-109).
+  final GlobalKey? railKey;
 
   /// The writer's interface is right to left (Arabic): a text box opens to the left of the tap, an empty box is RTL.
   final bool fallbackRtl;
@@ -1133,6 +1137,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
             _railView(
               vRail,
               key: const ValueKey('board.rail'),
+              outer: widget.railKey,
               presenter: pvShown == null ? null : (pvShown.top, pvShown.height),
               grabbed: grab != null && grab.grabbed && grab.vertical,
             ),
@@ -1224,7 +1229,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   bool get _railGrabbed => _rail?.grabbed ?? false;
 
   /// The drawn rail and, over its thumb, the grab cursor (translucent: it takes nothing from the board).
-  Widget _railView(BoardRailBox r, {required Key key, (double, double)? presenter, bool grabbed = false}) {
+  Widget _railView(BoardRailBox r, {required Key key, GlobalKey? outer, (double, double)? presenter, bool grabbed = false}) {
     const box = BoardScrollRail.thickness;
     final c = r.rect.center;
     final at = r.vertical
@@ -1235,6 +1240,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       child: Stack(clipBehavior: Clip.none, children: [
         Positioned.fill(
           child: IgnorePointer(
+            key: outer,
             child: BoardScrollRail(
               key: key,
               vertical: r.vertical,

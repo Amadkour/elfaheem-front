@@ -321,6 +321,7 @@ class SelfViewLayer extends StatefulWidget {
     this.onTap,
     this.onLongPress,
     this.content,
+    this.rail,
   });
 
   final SelfViewPrefs prefs;
@@ -328,6 +329,9 @@ class SelfViewLayer extends StatefulWidget {
 
   /// D-105: the shared picture on this stage (my own share): the box then floats over it (selfViewOverContent).
   final Rect? Function(Size stage)? content;
+
+  /// D-109: the whiteboard's vertical scrollbar (its hit strip) on this stage: the box rests beside it, not on it.
+  final Rect? Function(Size stage)? rail;
 
   /// The box's content (a SelfViewTile, or the stage's content while swapped).
   final Widget tile;
@@ -369,6 +373,7 @@ class _SelfViewLayerState extends State<SelfViewLayer> {
         var keepOut = widget.keepOut;
         final over = selfViewOverContent(stage: stage, box: box, keepOut: keepOut, content: widget.content?.call(stage));
         if (over != null) (box, keepOut) = (over.box, over.keepOut);
+        keepOut = selfViewClearOfRail(keepOut: keepOut, stage: stage, width: box.width, rail: widget.rail?.call(stage));
         final rest = selfViewOffset(stage: stage, box: box, keepOut: keepOut, side: side, y: y);
         final at = _drag ?? rest;
         return Stack(children: [

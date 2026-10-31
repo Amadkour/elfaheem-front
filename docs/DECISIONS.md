@@ -1472,6 +1472,7 @@ the page's render box, `_boardPageKey`; the room's 1 Hz clock re-places it only 
 lays itself out without rebuilding the room); the presenter's own self-view on their board keeps the stage edges (they
 draw on that page). A viewer's own self-view keeps the stage edges (it is not the presenter's content). Tests:
 `test/org/live_over_content_test.dart`, `test/ui/presenter_cam_layout_test.dart` (over the shared picture).
+On a continuous board the box rests beside the page's vertical scrollbar, still on the corner (D-109 (5)).
 **Android (not runnable here; the owner checks on the S24).** A presenter who shares the whole screen and leaves the
 app keeps the camera on (D8 never turns it off while `screenShareActive`, which is true from the tap through the
 system dialog) and `ScreenCaptureService` carries the camera foreground-service type (D-094); nothing in the share
@@ -1638,6 +1639,23 @@ entry. To draw, leave full view (one tap → Exit, or Esc / F).
 reported); a scrolling start group (hides the page or the REC time off-screen with no hint); drawing in full view with
 a long-press or a dedicated handle to show the bars (an invisible gesture, and the dock would cover the content); the
 floating exit button of D-095 (the owner wants only the content).
+**Amended (round 7, drawing in full view).** The owner wants the presenter, and anyone allowed to draw, to keep
+drawing in full view, so (4) is replaced: the page keeps its input there (`WhiteboardRoomView(fullView: true)`: no room
+kept for a bar or a dock, the board's keys stay on except Esc, which leaves full view once no box is selected). A tap
+on the page of someone in draw mode is a dot of ink (the board's own tap claim, as outside full view), so for them a
+small glass **Controls** chip (`LiveFocusHandle`, 34 px drawn / 48 px hit, top centre) shows while the bars are hidden;
+its tap slides the top row and the bar in, and the board's tool dock comes WITH the bar (`WhiteboardDock`, the dock
+taken out of `WhiteboardRoomView`, drawn above the bar in `LiveFocusChrome`'s bottom), so the content still never moves.
+Tool, colour and size live in the board controller, so the pen keeps what was picked before or in the dock after the
+bars slide out (the next chip tap, or 4 s without a touch on the bars, as before; a stroke on the page does not count
+as a touch on them; the bars sliding out never cuts a stroke, the page is not inside their layer). The hint reads "Draw
+on the board · Controls at the top shows them" for them. Viewers, and a drawer outside draw mode (hand tool), keep
+"a tap shows / hides the bars"; a tap off the page still toggles for everyone. The chip takes the top-centre 48 px of
+the page from the pen while it is shown. A pen on a shared SCREEN is still put down on entry (its toolbar is chrome).
+Rejected again: "a tap toggles only when not drawing" with no chip (a drawer would have no way back to the tools
+except Exit); a long press (invisible, and it fights the pen's own hold). Tests: `test/ui/live_focus_chrome_layout_test.dart`
+(the chip), `test/ui/whiteboard_full_view_layout_test.dart` (a tap is a dot and never reaches the room, a stroke stays
+whole, a viewer's tap reaches the room, the dock with the bars keeps the tool).
 
 ## D-109 — Whiteboard: the continuous page's rails are scrollbars (long press grabs the thumb) · 2026-10-31 · proposed
 
@@ -1668,6 +1686,17 @@ still draws.
 decides); moving the rails outside the page on phones (there is no room: the column fills the width).
 Tests: `test/org/board_scrollbar_test.dart`, `test/ui/whiteboard_scrollbar_layout_test.dart`; renders
 `test/visual/whiteboard_grow_golden_test.dart` (`rails`, `vgrab`, `hgrab`).
+(5) **The floating cameras rest beside the vertical rail** (web QA, 1280 × 800): the presenter's camera box sits on
+the page's bottom-end corner (D-105), which is exactly where the continuous page's vertical rail runs (8 px outside the
+end edge, or inside it with no room; the left edge in Arabic), so the thumb was half hidden and a press there dragged
+the box. The board marks the rail's drawn strip (`WhiteboardStage.railKey`); the room reads it in the stage's frame,
+widens it to the thumb's hit width (`boardRailHitStrip`, `kBoardThumbHit` 44 px) and hands it to both floating layers
+(`PresenterCamLayer.rail`, `SelfViewLayer.rail`). `selfViewClearOfRail` (pure, `live_self_view.dart`) grows the
+keep-out on the side whose column the strip reaches, by the strip + 4 px, so the box stays on the page's corner, just
+beside the rail (11–30 px further in); mirrored in Arabic. No rail (a fixed page, a page that fits, a screen share):
+nothing changes — D-105 is untouched for shares. The room's 1 Hz clock re-places the boxes when the rail comes, goes or
+moves (the page grew, a zoom). Tests: `test/org/live_over_content_test.dart` (`selfViewClearOfRail`),
+`test/ui/presenter_cam_layout_test.dart` (beside the board's scrollbar, both directions; a share keeps its corner).
 
 ## D-110 — The Android device recording copies the room from Flutter's own surface at 30 fps · 2026-10-31 · proposed (measured on the S24)
 

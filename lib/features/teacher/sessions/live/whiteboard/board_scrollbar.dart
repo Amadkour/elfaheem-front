@@ -156,3 +156,12 @@ enum BoardRailPart { thumb, track }
   }
   return best;
 }
+
+/// The vertical rail drawn in [drawn] (any frame): the strip across it that takes the pointer — the thumb's
+/// [kBoardThumbHit], the widest of its hit targets — down the rail's length. The room's floating cameras rest beside
+/// it (D-109), so the thumb is never half hidden and a press on it never moves a camera box.
+Rect boardRailHitStrip(Rect drawn) {
+  final c = drawn.center.dx;
+  const h = kBoardThumbHit / 2;
+  return Rect.fromLTRB(c - h, drawn.top, c + h, drawn.bottom);
+}

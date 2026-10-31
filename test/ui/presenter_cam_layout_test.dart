@@ -3,9 +3,11 @@
 // overflow); then the behaviour — a tap beside the box reaches the stage (the bars toggle), the box takes its own tap,
 // a bubble pins, "–" minimizes, the pill brings it back, a drop never rests on my self-view.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/live/live_presenter_cam.dart';
 import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_scrollbar.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/presenter_cam_box.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -36,6 +38,8 @@ Widget _stage({
   ValueChanged<String>? onPin,
   void Function(SelfViewSide, double)? onMoved,
   double? shareAspect,
+  Rect? page,
+  Rect? rail,
 }) =>
     Builder(builder: (context) {
       LivePalette.sync(context);
@@ -69,7 +73,8 @@ Widget _stage({
               onPin: onPin,
               onMore: () {},
               onMoved: onMoved ?? (_, _) {},
-              content: shareAspect == null ? null : (stage) => shareContentRect(stage, shareAspect),
+              content: page != null ? (_) => page : (shareAspect == null ? null : (stage) => shareContentRect(stage, shareAspect)),
+              rail: rail == null ? null : (_) => rail,
             ),
           ),
         ]),
@@ -122,6 +127,51 @@ void main() {
       final box = tester.getRect(find.byKey(const ValueKey('presenter_cam.box')));
       final content = shareContentRect(const Size(1280, 660), 540 / 1170)!;
       expect(content.contains(box.topLeft) && content.contains(box.bottomRight), isTrue, reason: '$box in $content');
+    });
+  });
+
+  // D-109: on a wide stage the board's continuous page fills the width, its vertical scrollbar runs inside the page's
+  // end edge (the left one in Arabic) — the box stays on the page's corner but beside the rail's hit strip.
+  group('beside the board\'s scrollbar', () {
+    const stage = Size(1280, 660);
+    const page = Rect.fromLTRB(12, 6, 1268, 646);
+    for (final rtl in [false, true]) {
+      testWidgets(rtl ? 'Arabic: the rail on the left, the box beside it' : 'the rail on the right, the box beside it',
+          (tester) async {
+        tester.view.physicalSize = stage;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        // The rail as the board draws it with no room outside the page: 4–10 px inside its end edge.
+        final drawn = rtl ? Rect.fromLTWH(page.left + 4, 16, 6, 600) : Rect.fromLTWH(page.right - 10, 16, 6, 600);
+        final strip = boardRailHitStrip(drawn);
+        final side = rtl ? SelfViewSide.left : SelfViewSide.right;
+        final lang = AppConfig.lang;
+        AppConfig.lang = rtl ? 'ar' : 'en';
+        addTearDown(() => AppConfig.lang = lang);
+        await tester.pumpWidget(layoutHost(_stage(prefs: PresenterCamPrefs(side: side), selfView: false, page: page, rail: strip)));
+        await tester.pumpAndSettle();
+        final box = tester.getRect(find.byKey(const ValueKey('presenter_cam.box')));
+        expect(page.contains(box.topLeft) && page.contains(box.bottomRight), isTrue, reason: 'on the page: $box');
+        if (rtl) {
+          expect(box.left, greaterThanOrEqualTo(strip.right), reason: 'clear of the rail $strip: $box');
+          expect(box.left - strip.right, lessThan(16), reason: 'still on the page corner: $box');
+        } else {
+          expect(box.right, lessThanOrEqualTo(strip.left), reason: 'clear of the rail $strip: $box');
+          expect(strip.left - box.right, lessThan(16), reason: 'still on the page corner: $box');
+        }
+        // A press on the thumb's strip is not the box's.
+        expect(box.overlaps(strip), isFalse);
+      });
+    }
+
+    testWidgets('a share has no rail: the box keeps the picture\'s corner (D-105 as is)', (tester) async {
+      tester.view.physicalSize = stage;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(layoutHost(_stage(prefs: const PresenterCamPrefs(side: SelfViewSide.right), selfView: false, page: page)));
+      await tester.pumpAndSettle();
+      final box = tester.getRect(find.byKey(const ValueKey('presenter_cam.box')));
+      expect(box.right, closeTo(page.right - kOverContentInset, 0.5));
     });
   });
 

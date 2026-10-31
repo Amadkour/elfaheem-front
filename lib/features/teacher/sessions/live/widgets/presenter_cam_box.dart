@@ -71,6 +71,7 @@ class PresenterCamLayer extends StatefulWidget {
     this.onPin,
     this.onMore,
     this.content,
+    this.rail,
   });
 
   final PresenterCamPrefs prefs;
@@ -79,6 +80,10 @@ class PresenterCamLayer extends StatefulWidget {
   /// D-105: the shared picture on this stage (null: a board or unknown): the box floats over it
   /// (selfViewOverContent), so the camera is in front of the content, not in the bars beside it.
   final Rect? Function(Size stage)? content;
+
+  /// D-109: the whiteboard's vertical scrollbar (its hit strip) on this stage: the box rests beside it, on the page's
+  /// corner still, never on the thumb.
+  final Rect? Function(Size stage)? rail;
 
   /// The side my self-view is on: an unmoved box sits on the other one.
   final SelfViewSide selfSide;
@@ -140,6 +145,8 @@ class _PresenterCamLayerState extends State<PresenterCamLayer> {
         }
         final d = presenterBubbleSize(stage.width);
         final unit = presenterDockSize(box: box, bubbles: _bubbleCount, bubble: d);
+        keepOut = selfViewClearOfRail(
+            keepOut: keepOut, stage: stage, width: widget.collapsed ? 180 : unit.width, rail: widget.rail?.call(stage));
         final avoid = widget.avoid?.call(stage);
         final spot = _settle ??
             presenterCamSpot(
