@@ -9,7 +9,7 @@
   };
 </script>
   <base href="$FLUTTER_BASE_HREF">
-  <!-- after <base>: a relative src before it 404s on deep links such as /verify/<token> -->
+  <!-- after <base>: a relative src before it resolved against the page (e.g. /c/11 → /c/video_protection.js) -->
   <script src="video_protection.js"></script>
 
   <meta charset="UTF-8">

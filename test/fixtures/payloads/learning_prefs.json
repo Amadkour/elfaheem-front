@@ -1,0 +1,55 @@
+{
+ "_source": {
+  "route": "GET /api/v1/me/learning-prefs",
+  "uid": 3
+ },
+ "payload": {
+  "hide_recommendations": false,
+  "chosen": false,
+  "interests": [
+   {
+    "id": 3,
+    "name_ar": "بايثون",
+    "name_en": "Python"
+   },
+   {
+    "id": 2,
+    "name_ar": "تصميم",
+    "name_en": "Design"
+   }
+  ],
+  "inferred": [
+   {
+    "id": 3,
+    "name_ar": "بايثون",
+    "name_en": "Python"
+   },
+   {
+    "id": 2,
+    "name_ar": "تصميم",
+    "name_en": "Design"
+   }
+  ],
+  "dismissed": 0,
+  "choices": [
+   {
+    "id": 1,
+    "name_ar": "برمجة",
+    "name_en": "Programming",
+    "parent_id": null
+   },
+   {
+    "id": 2,
+    "name_ar": "تصميم",
+    "name_en": "Design",
+    "parent_id": null
+   },
+   {
+    "id": 3,
+    "name_ar": "بايثون",
+    "name_en": "Python",
+    "parent_id": 1
+   }
+  ]
+ }
+}

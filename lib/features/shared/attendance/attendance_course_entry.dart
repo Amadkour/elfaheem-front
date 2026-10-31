@@ -28,6 +28,8 @@ import 'attendance_widgets.dart';
 import 'teacher_attendance_controller.dart';
 import 'teacher_attendance_launcher.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_shine.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Shared premium surface (gradient + shimmer + optional pulse)
@@ -55,9 +57,15 @@ class _PremiumSurface extends StatefulWidget {
 }
 
 class _PremiumSurfaceState extends State<_PremiumSurface> with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..repeat();
+  // the live glow's pulse (the light sweep is the shared AppShineBand, same 2.6 s)
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
   bool _pressed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _c, rest: 0); // Reduce motion: no pulse
+  }
 
   @override
   void dispose() {
@@ -67,10 +75,7 @@ class _PremiumSurfaceState extends State<_PremiumSurface> with SingleTickerProvi
 
   @override
   Widget build(BuildContext context) {
-    final still = MediaQuery.of(context).disableAnimations; // respect "reduce motion"
-    if (still && _c.isAnimating) _c.stop();
-    if (!still && !_c.isAnimating) _c.repeat();
-
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapCancel: () => setState(() => _pressed = false),
@@ -108,16 +113,7 @@ class _PremiumSurfaceState extends State<_PremiumSurface> with SingleTickerProvi
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: Stack(children: [
-                  if (!still)
-                    Positioned.fill(
-                      child: Align(
-                        alignment: Alignment(-1.8 + 3.6 * _c.value, 0),
-                        child: Transform.rotate(
-                          angle: 0.35,
-                          child: Container(width: 22, height: widget.height * 2, color: context.colors.onHero.withValues(alpha: 0.18)),
-                        ),
-                      ),
-                    ),
+                  const Positioned.fill(child: AppShineBand()),
                   child!,
                 ]),
               ),

@@ -2,9 +2,9 @@
 //
 // The teacher's course studio, drawn by the shared course page (CourseSpace, the same component as the student's
 // course details): hero · spotlight (archived · live now · attendance · setup checklist) · quick actions · tabs Sessions ·
-// Announcements · Class · Team · Archive · About (the course profile's parts are tabs of THIS page, D-111,
-// course_profile_hub.dart, loaded when first opened) · desktop side card (status, price, Add session) ·
-// recommendations. The server's caps decide Edit (course_settings) once the profile is known; a TA opening the
+// Announcements · Class · Team · Archive · Path · About (the course profile's parts are tabs of THIS page, D-111,
+// course_profile_hub.dart, loaded when first opened; Path = the roadmap editor of a personal course, D-120,
+// shared/roadmap/roadmap_tab.dart) · desktop side card (status, price, Add session). The server's caps decide Edit (course_settings) once the profile is known; a TA opening the
 // page from an old profile entry point has it loaded.
 //
 // REBUILD SCOPING
@@ -34,7 +34,8 @@ import '../../shared/attendance/teacher_attendance_controller.dart';
 import '../../shared/attendance/teacher_attendance_launcher.dart';
 import '../../shared/course/course_space/course_space.dart';
 import '../../shared/course/course_price_tag.dart' show coursePriceLabel;
-import '../../shared/course/teacher_course_roadmap_section.dart';
+import '../../shared/roadmap/roadmap_api.dart' show RmCourse;
+import '../../shared/roadmap/roadmap_tab.dart';
 import '../../teacher/courses/course_form_screen.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
 import '../courses/component/certificate_manager_sheet.dart';
@@ -43,8 +44,6 @@ import '../data_lab/data_lab_models.dart';
 import '../data_lab/data_lab_screen.dart';
 import '../home/teacher_models.dart';
 import '../schedules/schedules_screen.dart';
-import '../../student/models.dart' show CourseModel, CourseSummary;
-import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/courses/details/components/share_link.dart';
 import '../../shared/course_profile/course_profile_hub.dart';
 import 'components/course_reel_player.dart';
@@ -58,21 +57,19 @@ String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 const _tabSessions = 'sessions';
 const _tabDetails = 'details';
 
-/// Opens one of the teacher's OWN courses (next course / manually
-/// recommended — both are guaranteed by the backend to belong to this
-/// teacher) in the normal course-management screen. Deliberately does NOT
-/// reuse the student-facing CourseDetailScreen, which shows an "Enroll"
-/// CTA that makes no sense for a teacher looking at their own course.
-void _openOwnCoursePreview(BuildContext context, CourseSummary summary) {
+/// Opens one of the teacher's OWN courses (a course on this course's path — the backend guarantees it is
+/// this teacher's) in the normal course-management screen. Deliberately does NOT reuse the student-facing
+/// CourseDetailScreen, which shows an "Enroll" CTA that makes no sense for a teacher looking at their own course.
+void _openOwnCoursePreview(BuildContext context, RmCourse course) {
   final stub = TeacherCourse(
-    id: summary.id,
-    titleAr: summary.name,
-    titleEn: summary.name,
-    imageUrl: summary.imageUrl,
+    id: course.id,
+    titleAr: course.nameAr ?? course.name,
+    titleEn: course.nameEn ?? course.name,
+    imageUrl: course.imageUrl ?? '',
     totalHours: 0,
     type: 'recorded',
-    price: summary.price,
-    currency: summary.currency,
+    price: course.finalPrice,
+    currency: course.currency,
     expectedHours: 0,
     progress: 0,
   );
@@ -86,18 +83,6 @@ void _openOwnCoursePreview(BuildContext context, CourseSummary summary) {
   );
 }
 
-/// Opens a SYSTEM-SUGGESTED "similar course" (same category, top-rated —
-/// belongs to another teacher, never this one) as a read-only preview.
-/// Deliberately does NOT reuse the course-management screen, which would
-/// show edit/session controls this teacher has no permission to use.
-void _openForeignCoursePreview(BuildContext context, CourseSummary summary) {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) =>
-          CourseDetailScreen(course: CourseModel.fromSummary(summary)),
-    ),
-  );
-}
 
 /// What the page (everything but the Sessions tab body) depends on.
 typedef _PageData = ({
@@ -469,6 +454,9 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           forced: _tab,
           onOpenTab: (id) => _setTab(id == 'sessions' ? _tabSessions : id),
         ),
+        // the course roadmap of a personal course of a personal account (D-120): next courses, prerequisites, level
+        if (course.org == null && roadmapAllowedHere(context))
+          ?courseRoadmapTab(courseId: course.id, staff: true, onOpenCourse: (rc) => _openOwnCoursePreview(context, rc)),
         CourseSpaceTab(
           id: _tabDetails,
           label: _t('عن الكورس', 'About'),
@@ -489,19 +477,6 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
       activeTab: _tab,
       onTab: _setTab,
       aside: TeacherCourseStatusCard(course: course, onAddSession: _openAddSheet, onEdit: _openEditCourse),
-      // Recommendations — last on the page, e-commerce "you might also like" placement. Teacher-side only ever
-      // shows the teacher's own courses (next course + manually recommended) as manageable; the auto-suggested
-      // `similarCourses` of other teachers open read-only.
-      footer: Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: CourseRecommendationsSection(
-          nextCourses: course.nextCourses,
-          recommendedCourses: course.recommendedCourseSummaries,
-          similarCourses: course.similarCourses,
-          onTapOwnCourse: (s) => _openOwnCoursePreview(context, s),
-          onTapSuggestedCourse: (s) => _openForeignCoursePreview(context, s),
-        ),
-      ),
     );
   }
 }

@@ -33,7 +33,9 @@ import 'vod_media_controls.dart';
 import 'vod_player_parts.dart';
 
 /// Opens and initializes a player for [v] at [at] (clamped into the stream), with [speed] (and [volume] off phones).
-/// Throws when the stream does not open; the half-opened controller is disposed then.
+/// Throws when the stream does not open, or when opening, seeking and the speed together take longer than [timeout]
+/// (a web seek into an unbuffered stream can hang: the player sat on "Switching quality..." paused); the half-opened
+/// controller is disposed then.
 Future<VideoPlayerController> openVodController(
   MaterialVariant v, {
   Duration at = Duration.zero,
@@ -50,13 +52,19 @@ Future<VideoPlayerController> openVodController(
     httpHeaders: kIsWeb ? const <String, String>{} : await DeviceIdService.instance.headers(),
     videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: true),
   );
+  final deadline = DateTime.now().add(timeout);
+  Duration left() {
+    final d = deadline.difference(DateTime.now());
+    return d > Duration.zero ? d : Duration.zero;
+  }
+
   try {
-    await c.initialize().timeout(timeout);
+    await c.initialize().timeout(left());
     if (c.value.hasError) throw StateError(c.value.errorDescription ?? 'stream error');
     final pos = VodCarry(position: at, playing: false).seekIn(c.value.duration);
-    if (pos > Duration.zero) await c.seekTo(pos);
-    await c.setPlaybackSpeed(speed);
-    if (volume != null) await c.setVolume(volume);
+    if (pos > Duration.zero) await c.seekTo(pos).timeout(left());
+    await c.setPlaybackSpeed(speed).timeout(left());
+    if (volume != null) await c.setVolume(volume).timeout(left());
     return c;
   } catch (_) {
     unawaited(c.dispose().catchError((Object _) {}));

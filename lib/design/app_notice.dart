@@ -32,24 +32,39 @@ OverlayState? _noticeOverlay() {
 }
 
 /// Returns false when there is no overlay yet (very early start-up) — callers may fall back to a SnackBar.
-/// [icon] replaces the default check / error mark.
+/// [icon] replaces the default check / error mark. [actionLabel] + [onAction] add one text button (e.g. "Undo") that
+/// closes the notice and runs the action; such a notice stays a little longer (6 s) unless [duration] is given.
 bool showAppNotice(String message,
-    {bool error = false, IconData? icon, Duration duration = const Duration(milliseconds: 3200)}) {
+    {bool error = false, IconData? icon, Duration? duration, String? actionLabel, VoidCallback? onAction}) {
   final overlay = _noticeOverlay();
   if (overlay == null || message.trim().isEmpty) return false;
   _timer?.cancel();
   _current?.remove();
   late OverlayEntry entry;
-  entry = OverlayEntry(builder: (ctx) => _Notice(message: message, error: error, icon: icon, onClose: () {
-        if (_current == entry) {
-          _current = null;
-          entry.remove();
-        }
-      }));
+  void close() {
+    if (_current == entry) {
+      _current = null;
+      entry.remove();
+    }
+  }
+
+  entry = OverlayEntry(builder: (ctx) => _Notice(
+        message: message,
+        error: error,
+        icon: icon,
+        onClose: close,
+        actionLabel: onAction == null ? null : actionLabel,
+        onAction: onAction == null
+            ? null
+            : () {
+                close();
+                onAction();
+              },
+      ));
   _current = entry;
   _currentMessage = message;
   overlay.insert(entry);                         // last child of the root overlay = above every route
-  _timer = Timer(duration, () {
+  _timer = Timer(duration ?? Duration(milliseconds: onAction != null ? 6000 : 3200), () {
     if (_current == entry) {
       _current = null;
       entry.remove();
@@ -68,11 +83,13 @@ void hideAppNotice({String? message}) {
 }
 
 class _Notice extends StatefulWidget {
-  const _Notice({required this.message, required this.error, required this.onClose, this.icon});
+  const _Notice({required this.message, required this.error, required this.onClose, this.icon, this.actionLabel, this.onAction});
   final String message;
   final bool error;
   final IconData? icon;
   final VoidCallback onClose;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   State<_Notice> createState() => _NoticeState();
@@ -128,6 +145,12 @@ class _NoticeState extends State<_Notice> with SingleTickerProviderStateMixin {
                             child: Text(widget.message, maxLines: 4, overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w600, color: c.textDark, height: 1.35)),
                           ),
+                          if (widget.actionLabel != null && widget.onAction != null)
+                            TextButton(
+                              onPressed: widget.onAction,
+                              style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
+                              child: Text(widget.actionLabel!),
+                            ),
                           const SizedBox(width: 6),
                           Icon(Icons.close_rounded, size: 18, color: c.textLight),
                         ]),

@@ -329,6 +329,10 @@ class TeacherCourse with DiscountInfo {
 
   // ── Next courses (ORDERED roadmap) / recommended courses ────────────────
   final List<int> nextCourseIds;
+
+  /// beginner | intermediate | advanced | null, and the topic words (D-120).
+  final String? level;
+  final List<String> tags;
   final List<int> recommendedCourseIds;
 
   // ── Rich recommendation cards (for the course-profile page) ────────────────
@@ -389,6 +393,8 @@ class TeacherCourse with DiscountInfo {
     this.currency = AppCurrency.egp,
     this.status = CourseStatus.inProgress,
     this.nextCourseIds = const [],
+    this.level,
+    this.tags = const [],
     this.recommendedCourseIds = const [],
     this.nextCourses = const [],
     this.recommendedCourseSummaries = const [],
@@ -459,6 +465,8 @@ class TeacherCourse with DiscountInfo {
     rateSummary: j.containsKey('rate') && j['rate'] != null
         ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
         : null,
+    level: j['level'] as String?,
+    tags: [for (final x in (j['tags'] as List? ?? const [])) '$x'],
     nextCourseIds: (j['next_course_ids'] as List? ?? [])
         .map((e) => e as int)
         .toList(),
@@ -561,6 +569,8 @@ class TeacherCourse with DiscountInfo {
     tools: tools ?? this.tools,
     prerequisites: prerequisites ?? this.prerequisites,
     nextCourseIds: nextCourseIds ?? this.nextCourseIds,
+    level: level,
+    tags: tags,
     recommendedCourseIds: recommendedCourseIds ?? this.recommendedCourseIds,
     finalPrice: finalPrice ?? this.finalPrice,
     discountEndsAt: discountEndsAt ?? this.discountEndsAt,
