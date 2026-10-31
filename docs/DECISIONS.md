@@ -1586,3 +1586,37 @@ have the same problem (not changed here).
 **Rejected.** Making the player a non-route host like the live room (D-059) — a larger change to every caller for the
 same result; an overlay bar drawn over the pages (it would cover app bars and back buttons); a media notification and
 lock-screen controls (needs `audio_service`, a new package — follow-up); keeping the picture stream in listen mode.
+
+## D-108 — The live room has ONE top line (the whiteboard's header joins it, the rest folds into ⋮); full view shows only the content and slides the bars in on a tap · 2026-10-31 · proposed
+
+Amends D-095 (the top row and full view) and D-087 (the board's own bar in the room).
+**Context.** The owner (round 7): "sometimes when I open the board, some of the header icons stack (for example the page
+number and the record info). I need all icons in one row, never more than one row and never stacked. Also when I
+click full screen, I need ONLY the shared content in full screen; when I click on the screen, show the items with an
+animation, and when I click again hide them again." With a board on the stage the room drew two bars: its top row
+(LIVE, REC …) and, under it, the board's own `WhiteboardTopBar` (title, ‹ 2 / 3 ›, Board options, Stop). Full view
+kept the self-view box, the side column, the board's bar and dock, and a floating exit button.
+**Decision.** (1) In the room the board draws no bar (`WhiteboardRoomView(showTopBar: false)`; other callers keep it):
+`LiveTopRow.board` (`LiveTopBoard`, plain values) puts the title, "You can draw", the page (‹ 2 / 3 › + Page for the
+presenter, "2 / 3" for everyone else), Board options and Stop presenting on the same line as the recording — start ·
+centre · end groups. (2) The line never wraps or scrolls any more (the start group's sideways scroll is gone): a
+custom render object (`_FoldRow`) lays every piece out at its natural width and folds by priority until it fits — a
+labelled chip first becomes its icon, then the least important pieces move into a ⋮ menu (board title, "You can
+draw", network, lock, Board options, Minimize, Full view, the presenter's page arrows → "2 / 3", Stop, the free-time
+countdown). The LIVE time, the recording control and the page number never leave the line (nor Exit in full view);
+if even those do not fit (320 px at text scale 1.3 with everything on) the line is drawn slightly smaller. Folded
+pieces stay built (they are measured) but are not painted, hit-tested or in semantics — tests find the drawn one
+with `.hitTestable()`. (3) Full view: only the shared content — the share, the board page or the camera on the stage,
+plus the presenter's camera box over a share / board (part of what is presented; its other cameras' bubbles go) — no
+top row, bar, thumbnails, side column, participant badge, chat toast or self-view box. A tap on the content slides
+the top row down and the bar up OVER the content (`widgets/live_focus_chrome.dart`, `LiveFocusChrome`: slide + fade
+200 ms, at once under Reduce motion; the content never moves); the next tap, or 4 s without a touch on them, slides
+them out. On entry a hint says "Tap the screen to show the controls" for ~2.6 s. The Full view chip reads Exit while
+in full view; Esc, F and the back button still leave it; opening a wide side panel leaves it. (4) **The board is
+view-only in full view, for the presenter too** (`viewOnly`: no dock, no input, board keys off): in full view a tap
+must always mean "the controls", and a stroke cannot be told from that tap; the pen on a shared screen is put down on
+entry. To draw, leave full view (one tap → Exit, or Esc / F).
+**Rejected.** Keeping the board's bar and only making each bar one line (still two stacked lines — what the owner
+reported); a scrolling start group (hides the page or the REC time off-screen with no hint); drawing in full view with
+a long-press or a dedicated handle to show the bars (an invisible gesture, and the dock would cover the content); the
+floating exit button of D-095 (the owner wants only the content).

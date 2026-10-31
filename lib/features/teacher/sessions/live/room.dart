@@ -22,13 +22,14 @@ import 'widgets/live_palette.dart';
 import 'annotation/annotation_controller.dart';
 // The whiteboard (D-087): the "Whiteboard" region below
 import 'whiteboard/board_controller.dart';
-import 'whiteboard/board_protocol.dart' show BoardBackground, BoardFormat;
+import 'whiteboard/board_protocol.dart' show BoardBackground, BoardFormat, kBoardMaxPages;
 import 'whiteboard/board_toolbar.dart' show boardShortcutTool;
 import 'whiteboard/board_view.dart';
 import 'annotation/annotation_layer.dart';
 import 'annotation/annotation_toolbar.dart'
     show AnnotationControllerToolbar, annotPresetColors, annotShortcutThickness, annotShortcutTool;
 import 'widgets/live_call_service.dart';
+import 'widgets/live_focus_chrome.dart';
 import 'widgets/live_top_row.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../admin/admin_common.dart';
@@ -626,6 +627,8 @@ class _RoomPageState extends State<RoomPage>
 
   void _togglePanel(_SidePanel which) {
     if (_wideForSidePanel) {
+      if (_focusOn) _setFocus(false); // full view has no side column (D-108): the panel brings the room back
+      if (!mounted) return;
       setState(() => _side = _side == which ? null : which);
       _syncWatching();
       return;
@@ -1186,6 +1189,7 @@ class _RoomPageState extends State<RoomPage>
     }
     // The whiteboard's keys (V / P / H / I / A / R / O / T / E / L, 1-3, Delete, PageUp / PageDown) while drawing on it.
     if (_isBoardMain &&
+        !_focusOn && // full view: the board is view-only (D-108), Esc leaves full view
         _board.canDrawLocal &&
         (boardShortcutTool(k) != null ||
             annotShortcutThickness(k) != null ||
@@ -1613,6 +1617,8 @@ class _RoomPageState extends State<RoomPage>
     _panelAnim.dispose();
     _quizAnim.dispose();
     _controlsHideTimer?.cancel();
+    _focusBarsTimer?.cancel();
+    _focusHintTimer?.cancel();
     _shortcutsFocus.dispose();
     _quizPollTimer?.cancel();
     _quizTimer?.cancel();
@@ -2835,17 +2841,12 @@ class _RoomPageState extends State<RoomPage>
                               // Annotation toolbar (while drawing on the shared screen)
                               if (_annotOpen && _isScreenShareMain) _buildAnnotToolbar(),
 
-                              // Participant count badge — in full view, the way back to the bars (D-095)
+                              // Participant count badge (not in full view: only the content there, D-108)
+                              if (!_focusOn)
                               Positioned(
                                 bottom: 14 + _boardDockClearance,
                                 right: 14, // the self-view keeps clear of the bottom row (D-092)
-                                child: _focusOn
-                                    ? LiveFocusExitButton(
-                                        onTap: () => _setFocus(false),
-                                        recording: _recordsHere && _recorder?.state == RecState.recording,
-                                        compact: MediaQuery.sizeOf(context).width < kLiveTopRowCompactWidth,
-                                      )
-                                    : GestureDetector(
+                                child: GestureDetector(
                                   onTap: _toggleParticipantPanel,
                                   child: _GlassBadge(
                                     icon: Icons.people_rounded,
@@ -2861,8 +2862,9 @@ class _RoomPageState extends State<RoomPage>
                               _buildPresenterCam(),
 
                               // My own camera (D-092): a box / circle over everything on the stage — the board, a
-                              // shared screen, the annotation layer — that takes only its own touches.
-                              _buildSelfView(),
+                              // shared screen, the annotation layer — that takes only its own touches. Not in full
+                              // view: only the shared content there (D-108).
+                              if (!_focusOn) _buildSelfView(),
 
                               // Live reactions (bubbles + picker)
                               LiveReactionsOverlay(
@@ -2870,7 +2872,8 @@ class _RoomPageState extends State<RoomPage>
                                 senderName: _myReactionName,
                               ),
 
-                              // A new chat message while the chat is closed (tap → the chat)
+                              // A new chat message while the chat is closed (tap → the chat); not in full view
+                              if (!_focusOn)
                               PositionedDirectional(
                                 start: 12,
                                 end: 12,
@@ -2916,7 +2919,7 @@ class _RoomPageState extends State<RoomPage>
                   ),
                 ),
                     ),
-                    if (_side != null && _wideForSidePanel)
+                    if (_side != null && _wideForSidePanel && !_focusOn)
                       Container(
                         key: const ValueKey('live_room.side_panel'),
                         width: _sidePanelWidth,
@@ -2928,6 +2931,19 @@ class _RoomPageState extends State<RoomPage>
                   ],
                 ),
               ),
+
+              // Full view's bars (D-108): the top row and the bar slide in OVER the content on a tap, and out again.
+              if (_focusOn)
+                Positioned.fill(
+                  child: LiveFocusChrome(
+                    key: const ValueKey('live_room.focus_chrome'),
+                    shown: _focusBars,
+                    hint: _focusHint,
+                    top: _buildTopRow(),
+                    bottom: widget.room.localParticipant != null ? _buildControlsBar() : null,
+                    onActivity: _armFocusBars,
+                  ),
+                ),
 
               // Participant panel
               if (_showParticipants) _buildParticipantPanel(),
@@ -3125,17 +3141,16 @@ class _RoomPageState extends State<RoomPage>
     var top = 12.0;
     if (strip) top = 132;
     if (_annotOpen && _isScreenShareMain) top = math.max(top, 76);
-    if (_isBoardMain) top = math.max(top, 64);
+    // The board's own bar is gone (its title and page are on the top row, D-108).
     var bottom = 58.0 + _boardDockClearance;
     if (_isScreenShareMain) bottom = math.max(bottom, 84);
-    if (_focusOn) bottom = math.max(bottom, 72); // full view: clear of the exit button (D-095)
     return SelfViewKeepOut(base: EdgeInsets.fromLTRB(12, top, 12, bottom));
   }
 
   void _onStageTap(Offset at, Size stage) {
-    // Full view (D-095): a tap on the stage brings the bars back.
+    // Full view (D-108): a tap on the content shows the bars over it, the next one hides them.
     if (_focusOn) {
-      _setFocus(false);
+      _toggleFocusBars();
       return;
     }
     _toggleControlsVisibility();
@@ -3452,12 +3467,13 @@ class _RoomPageState extends State<RoomPage>
         content: _presenterContent, // D-105: on the shared picture's / page's corner, not in the bars beside it
         selfSide: selfPrefs.side,
         main: plan.main == null ? null : item(plan.main!),
-        bubbles: [for (final id in plan.bubbles) ?item(id)],
-        more: plan.more,
-        avoid: avoid,
+        // Full view: the presenter's camera only (it is part of what is presented), no other cameras (D-108).
+        bubbles: _focusOn ? const [] : [for (final id in plan.bubbles) ?item(id)],
+        more: _focusOn ? 0 : plan.more,
+        avoid: _focusOn ? null : avoid, // my own box is not drawn in full view
         collapsed: _camCollapsed,
-        showChrome: _controlsVisible,
-        onTap: _toggleControlsVisibility,
+        showChrome: _focusOn ? _focusBars : _controlsVisible,
+        onTap: _focusOn ? _toggleFocusBars : _toggleControlsVisibility,
         onMenu: () => unawaited(_openPresenterCamOptions()),
         onCollapse: () => setState(() => _camCollapsed = true),
         onExpand: () {
@@ -3644,7 +3660,8 @@ class _RoomPageState extends State<RoomPage>
   Widget _buildTopRow() => Padding(
         padding: const EdgeInsets.fromLTRB(10, 4, 10, 4),
         child: ListenableBuilder(
-          listenable: Listenable.merge([_clockTick, ?_recorder]),
+          // The board's page / presenter / permission join the row while a board fills the stage (D-108).
+          listenable: Listenable.merge([_clockTick, ?_recorder, _board]),
           builder: (_, _) => _topRow(),
         ),
       );
@@ -3709,18 +3726,77 @@ class _RoomPageState extends State<RoomPage>
             : null,
         onStop: meetingRec && !_endingSession && !_meetingRecordBusy ? () => unawaited(_stopMeetingRecording()) : null,
       ),
-      onFocus: _canFocus && !_endingSession ? () => _setFocus(true) : null,
+      board: _isBoardMain ? _topBoard() : null,
+      onFocus: _endingSession ? null : (_focusOn ? () => _setFocus(false) : (_canFocus ? () => _setFocus(true) : null)),
+      focused: _focusOn,
       onMinimize: scope == null || _endingSession ? null : scope.minimize,
       pulse: _recDotOpacity,
     );
   }
 
-  // ── Full view (D-095) ─────────────────────────────────────────────────────
-  // The top row, the bottom bar and the thumbnail strip step aside so what fills the stage (a shared screen, the
-  // whiteboard, a camera) uses the whole screen. The way back: the floating exit button (where the participant
-  // count sits), a tap on the stage, Esc, the back button. The annotation / board toolbars live on the stage and
-  // stay; so does the self-view box.
+  /// The whiteboard's header on the top row (D-108): the board draws no bar of its own in the room.
+  LiveTopBoard _topBoard() {
+    final presenter = _board.presenter ?? '';
+    final mine = _board.isLocalPresenting;
+    return LiveTopBoard(
+      presenting: mine,
+      pageIndex: _board.pageIndex,
+      pageCount: _board.pageCount,
+      presenterName: _nameOf(presenter),
+      canDraw: _board.canDrawLocal,
+      onPrevious: _board.previousPage,
+      onNext: _board.nextPage,
+      onAddPage: _board.pageCount >= kBoardMaxPages ? null : _board.addPage,
+      onOptions: mine ? () => unawaited(_openBoardOptions()) : null,
+      onStop: _boardStop(presenter, mine),
+    );
+  }
+
+  /// The presenter stops the board; a host stops a participant's board (one share at a time).
+  VoidCallback? _boardStop(String presenter, bool mine) => mine
+      ? _stopBoard
+      : (_isShareHost && presenter.isNotEmpty && !_identityIsHost(presenter)
+          ? () => unawaited(_stopPresenter(presenter, notify: true))
+          : null);
+
+  // ── Full view (D-095, D-108) ──────────────────────────────────────────────
+  // Only the shared content fills the screen (a shared screen, the whiteboard page, a camera when nothing is
+  // shared; the presenter's camera box stays over a share / board): the top row, the bar, the thumbnails, the side
+  // column, the participant badge, the chat toast and my own camera box step aside. A tap on the content slides the
+  // top row and the bar in OVER it (LiveFocusChrome), the next tap — or 4 s without a touch on them — slides them
+  // out. The board is view-only in full view, for the presenter too: a tap always means "the controls", never a
+  // stroke (D-108). The way out: Exit on the top row, Esc, F, the back button.
   bool _focus = false;
+
+  /// Full view's bars are on screen.
+  bool _focusBars = false;
+  Timer? _focusBarsTimer;
+
+  /// "Tap the screen to show the controls" — the first seconds of full view.
+  bool _focusHint = false;
+  Timer? _focusHintTimer;
+
+  void _toggleFocusBars() {
+    if (!mounted) return;
+    final next = liveFocusBarsAfterTap(_focusBars);
+    setState(() {
+      _focusBars = next;
+      _focusHint = false;
+    });
+    if (next) {
+      _armFocusBars();
+    } else {
+      _focusBarsTimer?.cancel();
+    }
+  }
+
+  /// (Re)starts the bars' idle timer.
+  void _armFocusBars() {
+    _focusBarsTimer?.cancel();
+    _focusBarsTimer = Timer(kLiveFocusChromeIdle, () {
+      if (mounted && _focusBars && _focusOn) setState(() => _focusBars = false);
+    });
+  }
 
   /// Something fills the stage (not the waiting card, not a parked minimized page).
   bool get _canFocus =>
@@ -3732,8 +3808,22 @@ class _RoomPageState extends State<RoomPage>
 
   void _setFocus(bool on) {
     if (on == _focus || !mounted) return;
-    setState(() => _focus = on);
-    if (!on) _pokeControls();
+    _focusBarsTimer?.cancel();
+    _focusHintTimer?.cancel();
+    // Full view is for watching: the pen on a shared screen is put down (the board ignores input there).
+    if (on && _annotOpen) _closeAnnot();
+    setState(() {
+      _focus = on;
+      _focusBars = false;
+      _focusHint = on;
+    });
+    if (on) {
+      _focusHintTimer = Timer(const Duration(milliseconds: 2600), () {
+        if (mounted && _focusHint) setState(() => _focusHint = false);
+      });
+    } else {
+      _pokeControls();
+    }
   }
 
   // ── Controls bar ──────────────────────────────────────────────────────────
@@ -4055,7 +4145,7 @@ class _RoomPageState extends State<RoomPage>
 
   /// Room for the tool dock under the page (the PiP and the participant badge sit above it).
   double get _boardDockClearance {
-    if (!_isBoardMain || !_board.canDrawLocal) return 0;
+    if (!_isBoardMain || !_board.canDrawLocal || _focusOn) return 0;
     return MediaQuery.sizeOf(context).width >= 980 ? 70 : 118;
   }
 
@@ -4148,12 +4238,11 @@ class _RoomPageState extends State<RoomPage>
       fallbackRtl: AppConfig.lang == 'ar',
       pageKey: _boardPageKey,
       onOptions: mine ? () => unawaited(_openBoardOptions()) : null,
-      // The presenter stops it; a host stops a participant's board (one share at a time).
-      onStop: mine
-          ? _stopBoard
-          : (_isShareHost && presenter.isNotEmpty && !_identityIsHost(presenter)
-              ? () => unawaited(_stopPresenter(presenter, notify: true))
-              : null),
+      onStop: _boardStop(presenter, mine),
+      // The title, the page and Stop are on the room's top row, on the recording's line (D-108); full view shows
+      // the page alone and takes no input.
+      showTopBar: false,
+      viewOnly: _focusOn,
     );
   }
 
