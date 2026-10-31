@@ -171,7 +171,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   Offset? _lastStage;
   double _lastSeconds = 0;
   double _lastPressure = 0.5;
-  final Stopwatch _sinceMove = Stopwatch();
+  /// Frame-clock seconds since the pointer last moved: the held point's time. (A wall-clock Stopwatch drifted from
+  /// the scroll, which runs on the frame clock: under load the ink filter merged points and the stroke stepped.)
+  double _sinceMove = 0;
 
   // Space held (desktop): any tool pans until it is let go.
   bool _space = false;
@@ -584,9 +586,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     _lastStage = stage;
     _lastSeconds = _seconds(e);
     _lastPressure = _pressure(e);
-    _sinceMove
-      ..reset()
-      ..start();
+    _sinceMove = 0;
     _edgeOn = edge;
     if (edge) _edge.begin(stage, _box);
   }
@@ -597,9 +597,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     _lastStage = stage;
     _lastSeconds = _seconds(e);
     _lastPressure = _pressure(e);
-    _sinceMove
-      ..reset()
-      ..start();
+    _sinceMove = 0;
     _moveAt(stage, _lastSeconds, _lastPressure, e.kind);
     if (_edgeOn && _pointer != null && _edge.track(stage, _box)) _kick();
   }
@@ -658,7 +656,8 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     if (dt <= 0) return true;
     _scrollViewBy(v * dt);
     // The pointer is held where it is: it is over another point of the page now.
-    _moveAt(at, _lastSeconds + _sinceMove.elapsedMicroseconds / 1e6, _lastPressure, _pointerKind ?? PointerDeviceKind.touch);
+    _sinceMove += dt;
+    _moveAt(at, _lastSeconds + _sinceMove, _lastPressure, _pointerKind ?? PointerDeviceKind.touch);
     return true;
   }
 
