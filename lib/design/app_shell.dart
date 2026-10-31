@@ -35,6 +35,7 @@ import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
 import '../core/app_identity.dart';
 import '../core/attention/attention_service.dart';
+import '../core/inbox_badge.dart';
 import '../features/auth/auth_provider.dart';
 import '../features/shared/guest/guest_state.dart';
 import '../features/shared/profile/update_account_widget.dart';
@@ -762,18 +763,25 @@ class CalendarIcon extends StatelessWidget {
   Widget build(BuildContext context) => const CalendarEntryIcon();
 }
 
-/// The bell with the unread count — opens '/notifications'.
+/// The bell — opens the inbox page on its Notifications tab ('/notifications'). Its count is the ACTIONABLE one:
+/// [unreadCount] unread notifications plus the inbox's to-dos ([InboxBadge], fed by the answers the app already has;
+/// announcements and offers never count). [withTodos] false: the unread count alone (0 = a plain bell, where the
+/// screen draws the counts itself).
 class NotificationIcon extends StatelessWidget {
-  const NotificationIcon({super.key, required this.unreadCount});
+  const NotificationIcon({super.key, required this.unreadCount, this.withTodos = true});
 
   final int unreadCount;
+  final bool withTodos;
 
   @override
-  Widget build(BuildContext context) => ChromeIconButton(
-        icon: Icons.notifications_rounded,
-        label: 'notifications'.tr,
-        badge: unreadCount,
-        onTap: () => AppShellNav.navigatorFor(context).pushNamed('/notifications'),
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: InboxBadge.instance,
+        builder: (context, _) => ChromeIconButton(
+          icon: Icons.notifications_rounded,
+          label: 'notifications'.tr,
+          badge: withTodos ? inboxActionableCount(todo: InboxBadge.instance.todo, unread: unreadCount) : unreadCount,
+          onTap: () => AppShellNav.navigatorFor(context).pushNamed('/notifications'),
+        ),
       );
 }
 

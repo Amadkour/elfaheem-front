@@ -18,7 +18,7 @@ const kWebDashboardRoutes = {
 
 /// Pages that need no arguments and may be opened by URL by a signed-in person (each stays behind the router's
 /// own guard): they open on top of the person's home, so Back leads there.
-const kWebUrlPages = {'/notifications', '/change-password', '/subscription', '/calendar', '/downloads', '/edit-account'};
+const kWebUrlPages = {'/notifications', '/inbox', '/change-password', '/subscription', '/calendar', '/downloads', '/edit-account'};
 
 /// URLs that name a tab of the person's home (N10): the app starts on the home and switches to that tab
 /// (`/profile` is the account tab, not the edit-account form, which is `/edit-account`).

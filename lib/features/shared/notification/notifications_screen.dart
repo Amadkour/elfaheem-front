@@ -1,69 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, appText;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, appInk, appText;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
-import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_navigator.dart';
-import '../../../utils/widget/base_page.dart';
+import '../inbox/inbox_page.dart' show InboxPage, InboxTab;
 import 'notifications_provider.dart';
 
-class NotificationsScreen extends StatefulWidget {
+/// The notifications list is the Notifications tab of the inbox page (InboxPage): this opens that page on it
+/// ('/notifications' and every caller that still names this screen).
+class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
+  Widget build(BuildContext context) => const InboxPage(initial: InboxTab.notifications);
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+/// The Notifications tab of the inbox page: the list grouped Today / Yesterday, the page's one "Mark all read"
+/// (N12), pull to refresh and the next page near the end. It asks for the list when it is first built (the tab's
+/// first visit) — the same one GET /notifications the old screen made on open; marking read is unchanged.
+class NotificationsTab extends StatefulWidget {
+  const NotificationsTab({super.key});
+
+  @override
+  State<NotificationsTab> createState() => _NotificationsTabState();
+}
+
+class _NotificationsTabState extends State<NotificationsTab> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       await context.read<NotificationsProvider>().fetchNotifications();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    NotificationsProvider provider = context.watch<NotificationsProvider>();
-    return BasePage(
-      key: ValueKey('notifications'),
-      useWebCard: true,
-      child: SafeArea(
-        child: Column(
-          children: [
-            ScreenAppBar(title: 'notifications'.tr, actions: [AppRefreshAction(onRefresh: provider.fetchNotifications)]),
-            Expanded(
-              child: NotificationsStateBody(
-                loading: provider.isLoading,
-                empty: provider.allNotifs.isEmpty,
-                error: provider.hasError ? (provider.errorMessage ?? '') : null,
-                onRefresh: provider.fetchNotifications,
-                onLoadMore: provider.hasMore ? () => provider.loadMore() : null,
-                children: [
-                  if (provider.unreadCount > 0)
-                    ParentComponent(featureKey: 'notifications.mark_all_read', child: NotificationsMarkAllBar(
-                      // ONE action for the whole page (N12), not one per day group; one PUT /read-all.
-                      onPressed: () => context.read<NotificationsProvider>().markAllAsRead(),
-                    )),
-                  ParentComponent(featureKey: 'notifications.today', child: _NotifGroup(
-                    group: NotifGroup.today,
-                    groupTitle: 'today'.tr,
-                  )),
-                  ParentComponent(featureKey: 'notifications.yesterday', child: _NotifGroup(
-                    group: NotifGroup.yesterday,
-                    groupTitle: 'yesterday'.tr,
-                  )),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    final provider = context.watch<NotificationsProvider>();
+    return NotificationsStateBody(
+      loading: provider.isLoading,
+      empty: provider.allNotifs.isEmpty,
+      error: provider.hasError ? (provider.errorMessage ?? '') : null,
+      onRefresh: provider.fetchNotifications,
+      onLoadMore: provider.hasMore ? () => provider.loadMore() : null,
+      children: [
+        if (provider.unreadCount > 0)
+          ParentComponent(featureKey: 'notifications.mark_all_read', child: NotificationsMarkAllBar(
+            // ONE action for the whole page (N12), not one per day group; one PUT /read-all.
+            onPressed: () => context.read<NotificationsProvider>().markAllAsRead(),
+          )),
+        ParentComponent(featureKey: 'notifications.today', child: _NotifGroup(
+          group: NotifGroup.today,
+          groupTitle: 'today'.tr,
+        )),
+        ParentComponent(featureKey: 'notifications.yesterday', child: _NotifGroup(
+          group: NotifGroup.yesterday,
+          groupTitle: 'yesterday'.tr,
+        )),
+      ],
     );
   }
 }
@@ -117,10 +117,10 @@ class NotificationsStateBody extends StatelessWidget {
       child: AppRefresh(
         onRefresh: onRefresh,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
           physics: const BouncingScrollPhysics(),
           children: [
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.sm),
             for (final w in children) ...[w, const SizedBox(height: 20)],
             if (loading) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
             const SizedBox(height: 4),
@@ -178,8 +178,8 @@ class NotificationsMarkAllBar extends StatelessWidget {
       child: TextButton.icon(
         style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
         onPressed: onPressed,
-        icon: Icon(Icons.done_all_rounded, size: 18, color: context.colors.primary),
-        label: Text('mark_all_read'.tr, style: context.colors.label.copyWith(color: context.colors.primary)),
+        icon: Icon(Icons.done_all_rounded, size: 18, color: appInk(context, context.colors.primary)),
+        label: Text('mark_all_read'.tr, style: context.colors.label.copyWith(color: appInk(context, context.colors.primary))),
       ),
     );
   }
@@ -238,7 +238,7 @@ class NotificationTile extends StatelessWidget {
     if (kind != NotifKind.general) {
       final c = context.colors;
       final tone = kind == NotifKind.certificate ? c.accent : c.primary;
-      return _IconBadge(icon: notificationIcon(kind), bg: tone.withValues(alpha: 0.12), iconColor: tone);
+      return _IconBadge(icon: notificationIcon(kind), bg: tone.withValues(alpha: 0.12), iconColor: appInk(context, tone));
     }
     switch (asset) {
       case 'payment':

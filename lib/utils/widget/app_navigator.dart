@@ -18,6 +18,7 @@ import '../../core/attention/attention_service.dart' show AttentionService, OrgT
 import '../../features/org/org_my_exams.dart' show MyExamsScreen;
 import '../../features/org/org_reports/report_page.dart' show OrgReceivedReportsPage;
 import '../../features/shared/course_profile/course_profile_hub.dart' show CoursePageLoader;
+import '../../features/shared/inbox/inbox_page.dart' show inboxTabFromName, InboxTab;
 import '../../features/shared/profile/compalints/complaint_provider.dart' show ComplaintProvider;
 import '../../features/shared/profile/compalints/complaints_screen.dart' show ComplaintDetailScreen, ComplaintsScreen;
 import '../../features/shared/profile/compalints/complaints_hub_page.dart' show openComplaintsHub;
@@ -66,7 +67,9 @@ class AppNavigator {
     ));
   }
 
-  /// module: profile | course | course_profile | notifications | support (the help center) | my_courses | subscription | org_exams | calendar |
+  /// module: profile | course | course_profile | notifications (the inbox page on its Notifications tab) | inbox ([kind]
+  /// names the tab: todo · notifications · announcements / news / offers · done; To do by default) | support (the help
+  /// center) | my_courses | subscription | org_exams | calendar |
   /// org_reports | org_timetable (needs [orgId]: the organization's Timetable section, on that draft) |
   /// live_lobby ([kind] `session` | `meeting` + [targetId]: that room's admission lobby, live-rooms-spec §4) |
   /// points (top-up approved / rejected → the wallet) | live_plan (plan bought / free time over → the wallet with
@@ -122,6 +125,9 @@ class AppNavigator {
         return;
       case 'notifications':
         await nav.pushNamed('/notifications');
+        return;
+      case 'inbox': // a to-do / an announcement / an offer → the inbox page on that tab
+        await nav.pushNamed('/inbox', arguments: inboxTabFromName(kind) ?? InboxTab.todo);
         return;
       case 'subscription':
         await nav.pushNamed('/subscription');
@@ -270,7 +276,10 @@ class AppNavigator {
     final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}');
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
-    if (module != null) return openModule(module, targetId: target, orgId: orgId);
+    if (module != null) {
+      return openModule(module,
+          targetId: target, orgId: orgId, kind: module == 'inbox' ? '${data['tab'] ?? data['segment'] ?? data['kind'] ?? ''}' : null);
+    }
     if (target != null) return openCourse(target);
     await _nav?.pushNamed('/notifications');
   }

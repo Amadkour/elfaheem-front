@@ -39,7 +39,7 @@ import 'package:flutter_education_app/features/org/org_member_dashboard.dart' sh
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart' show CourseScope;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
-    show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryHasAny;
+    show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart' show HomeLiveNow;
@@ -509,7 +509,11 @@ class TeacherHomeBody extends StatelessWidget {
 
     // ── inbox: ONE slim entry into the inbox page over the /me/home counts, only while the inbox holds something;
     //    an older server gets the self-fetching entry (at the end)
-    final inbox = extra != null && inboxEntryHasAny(inboxCounts) ? enter(InboxEntry(counts: inboxCounts, onTap: onOpenInbox)) : null;
+    //    its count is the actionable one: to-dos + unread notifications (they share the inbox page)
+    final unread = extra?.notificationsUnread ?? 0;
+    final inbox = extra != null && inboxEntryShown(inboxCounts, unread: unread)
+        ? enter(InboxEntry(counts: inboxCounts, unread: unread, onTap: onOpenInbox))
+        : null;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (staleError != null)

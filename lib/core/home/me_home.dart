@@ -49,6 +49,7 @@ import '../api_client.dart';
 import '../app_mode.dart';
 import '../app_time.dart';
 import '../attention/decision_refresh.dart';
+import '../inbox_badge.dart';
 import '../offline/app_connectivity.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -559,6 +560,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     final key = query != null ? _keyOf(query) : _scopeKey;
     if (key != _scopeKey) return false;
     home = MeHome.fromJson(json);
+    InboxBadge.instance.setTodo(home!.inboxTodo); // the bell's to-dos (the whole inbox, whatever the side)
     _homeKey = key;
     outcome = MeHomeOutcome.ok;
     error = null;
@@ -591,6 +593,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
       if (r is Map) {
         _homeKey = key;
         home = MeHome.fromJson(Map<String, dynamic>.from(r));
+        InboxBadge.instance.setTodo(home!.inboxTodo);
         outcome = MeHomeOutcome.ok;
         error = null;
         loadedAt = _clock();
@@ -601,6 +604,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
       if (o == MeHomeOutcome.legacy) {
         outcome = o;
         home = await _legacyLoad();
+        InboxBadge.instance.setTodo(home!.inboxTodo);
         _homeKey = key;
         error = null;
         loadedAt = _clock();
@@ -667,6 +671,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
   /// Logout.
   void clear() {
     home = null;
+    InboxBadge.instance.clear();
     _homeKey = null;
     error = null;
     loadedAt = null;
