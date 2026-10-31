@@ -97,10 +97,24 @@ class MainActivity : FlutterFragmentActivity() {
     /** D-090: the reused direct buffer of the whiteboard's recording frames ("pushBoardFrame"). */
     private var boardFrameBuffer: java.nio.ByteBuffer? = null
 
+    /** D-108: the room's frames for the device recording, copied from Flutter's surface ("startRoomCapture"). */
+    private var roomGrabber: RoomFrameGrabber? = null
+
+    private fun roomRect(call: io.flutter.plugin.common.MethodCall): android.graphics.Rect? {
+        val l = call.argument<Int>("left") ?: return null
+        val t = call.argument<Int>("top") ?: return null
+        val w = call.argument<Int>("width") ?: return null
+        val h = call.argument<Int>("height") ?: return null
+        if (w <= 0 || h <= 0) return null
+        return android.graphics.Rect(l, t, l + w, t + h)
+    }
+
     // L6: the audio-focus listener is static in ElFaheemBridge and its lambda holds the watcher; the
     // EventChannel's onCancel does not run when the Activity is destroyed with its engine. The room
     // goes with the engine, so the live-call service stops too.
     override fun onDestroy() {
+        roomGrabber?.release()
+        roomGrabber = null
         audioInterruptions?.stop()
         audioInterruptions = null
         LiveCallService.release(this)
@@ -386,6 +400,42 @@ class MainActivity : FlutterFragmentActivity() {
                         }
 
                         "getChunkIndex" -> result.success(ScreenCaptureService.currentChunkIndex)
+
+                        // D-108: the room's frames copied natively from Flutter's surface at 30 fps (RoomFrameGrabber).
+                        // Answers whether a first copy worked; false → Dart keeps sending its own frames.
+                        "startRoomCapture" -> {
+                            val rect = roomRect(call)
+                            if (rect == null) {
+                                result.error("BAD_ARGS", "left / top / width / height missing", null)
+                                return@setMethodCallHandler
+                            }
+                            val renderer = ScreenCaptureService.placeholderRenderer
+                            if (renderer == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                                result.success(false)
+                                return@setMethodCallHandler
+                            }
+                            val grabber = roomGrabber ?: RoomFrameGrabber(this).also { roomGrabber = it }
+                            val answered = java.util.concurrent.atomic.AtomicBoolean(false)
+                            val main = android.os.Handler(mainLooper)
+                            val answer = { ok: Boolean ->
+                                if (answered.compareAndSet(false, true)) main.post { result.success(ok) }
+                            }
+                            grabber.start(rect, renderer.encoderLongSide, answer)
+                            // A copy that never answers (no frame on the surface yet) must not hold Dart.
+                            main.postDelayed({
+                                if (!answered.get()) { grabber.stop(); answer(false) }
+                            }, 2_500)
+                        }
+
+                        "updateRoomCapture" -> {
+                            roomGrabber?.update(roomRect(call), call.argument<Boolean>("active") ?: true)
+                            result.success(null)
+                        }
+
+                        "stopRoomCapture" -> {
+                            roomGrabber?.stop()
+                            result.success(null)
+                        }
 
                         // D-103: a raw RGBA frame of the room (~12 fps) — the recording's camera moves in real time.
                         "setPlaceholderFrame" -> {

@@ -112,11 +112,12 @@ class ScreenCaptureService : Service() {
         const val EXTRA_SHARE_AUDIO    = "shareAudio"
 
         private const val TAG       = "ScreenCaptureService"
-        // A13: the course recording is 720p (longer side 1280) at ~2 Mbps unless the
+        // A13 / D-108: the course recording is 720p (longer side 1280) at 30 fps, ~2.5 Mbps (was 15 fps / 2 Mbps;
+        // a mostly still room compresses well, so not doubled) unless the
         // meeting-recording quality says otherwise — it uploads on top of the live uplink.
-        private const val VIDEO_BPS = 2_000_000
+        private const val VIDEO_BPS = 2_500_000
         private const val DEFAULT_MAX_LONG = 1280
-        private const val VIDEO_FPS = 15
+        private const val VIDEO_FPS = ScreenPlaceholderRenderer.RECORD_FPS
         private const val AUDIO_BPS = 192_000   // raised from 128k for cleaner chunk boundaries
 
         @Volatile var isRunning:               Boolean                 = false   // a recording runs

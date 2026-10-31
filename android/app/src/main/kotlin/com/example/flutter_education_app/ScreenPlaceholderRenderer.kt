@@ -55,6 +55,11 @@ class ScreenPlaceholderRenderer(
     companion object {
         private const val TAG = "ScreenPlaceholderRenderer"
         private const val FPS_PLACEHOLDER = 15
+        /** D-108: the recording's frame rate (SegmentedRecorder encodes at it; a share is drawn into it at it). */
+        const val RECORD_FPS = 30
+        private const val DEFAULT_ROOM_LONG = 1280
+        /** Placeholder mode: the clock repeats the picture only when no frame was drawn for this long. */
+        private const val KEEPALIVE_GAP_NS = 45_000_000L
         // Placeholder color: dark slate, distinguishable from a real black
         // screen so it's obviously "not yet sharing" on playback.
         private const val PLACEHOLDER_R = 0.10f
@@ -88,7 +93,7 @@ class ScreenPlaceholderRenderer(
     @Volatile private var running = false
 
     // No encoder surface (share-only, audio-only, paused): only the capture pass runs.
-    private var offscreen = false
+    @Volatile private var offscreen = false
 
     // Size of the VirtualDisplay's frames (= the SurfaceTexture's buffer size).
     private var inputWidth = 0
@@ -577,10 +582,29 @@ class ScreenPlaceholderRenderer(
         scheduleNextTickInner(myGeneration)
     }
 
+    /**
+     * The clock's period. Live (a share): the recording's [RECORD_FPS] while an encoder is attached (the share's own
+     * capture pass is throttled separately to [captureFps]), else the share's rate. Placeholder: [FPS_PLACEHOLDER] —
+     * only a keep-alive while room frames are pushed ([pushRoomBitmap] draws each one itself, D-108).
+     */
+    private fun tickPeriodMs(): Long {
+        val fps = if (liveMode) {
+            if (offscreen) maxOf(FPS_PLACEHOLDER, captureFps) else maxOf(RECORD_FPS, captureFps)
+        } else FPS_PLACEHOLDER
+        return 1000L / fps
+    }
+
+    private var nextTickAt = 0L
+
     private fun scheduleNextTickInner(myGeneration: Int) {
-        glHandler.postDelayed({
-            if (!running || outputSurface == EGL14.EGL_NO_SURFACE) return@postDelayed
-            if (myGeneration != drawGeneration) return@postDelayed // a newer chain took over
+        // Deadline based (D-108): the draw's own time no longer stretches the period (a 33 ms clock that drew for
+        // 8 ms used to tick every 41 ms).
+        val now = android.os.SystemClock.uptimeMillis()
+        val period = tickPeriodMs()
+        nextTickAt = if (nextTickAt + period <= now || nextTickAt > now + period) now + period else nextTickAt + period
+        glHandler.postAtTime({
+            if (!running || outputSurface == EGL14.EGL_NO_SURFACE) return@postAtTime
+            if (myGeneration != drawGeneration) return@postAtTime // a newer chain took over
             // try/catch is load-bearing, not defensive decoration: this
             // runnable reschedules itself on the line AFTER the draw call,
             // so an uncaught exception from drawLiveFrame()/
@@ -591,21 +615,86 @@ class ScreenPlaceholderRenderer(
             // (onLiveFrameForCapturer runs on this same chain). One bad
             // frame must never be able to do that.
             try {
-                if (liveMode) drawLiveFrame() else drawPlaceholderFrame()
+                if (liveMode) {
+                    drawLiveFrame()
+                } else if (System.nanoTime() - lastSwapNs >= KEEPALIVE_GAP_NS) {
+                    // Pushed room frames draw themselves; the clock only repeats the picture when they stop
+                    // (app in the background, Dart frames at their own pace).
+                    drawPlaceholderFrame()
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "draw tick failed, continuing: ${e.message}", e)
             }
             scheduleNextTickInner(myGeneration)
-        }, 1000L / (if (liveMode) maxOf(FPS_PLACEHOLDER, captureFps) else FPS_PLACEHOLDER))
+        }, nextTickAt)
     }
 
+    // Under the GL thread only.
+    private var lastStampNs = 0L
+    @Volatile private var lastSwapNs = 0L
+
     /**
-     * Hands the drawn frame to the encoder stamped with the monotonic clock NOW (D-103): the frame's time in the
-     * recording is the moment it was drawn, on the same clock as the recorder's audio — real-time motion, A/V in sync.
+     * Hands the drawn frame to the encoder stamped with the monotonic clock (D-103): the frame's time in the
+     * recording is the moment it was captured ([stampNs], default: now), on the same clock as the recorder's audio —
+     * real-time motion, A/V in sync. Stamps never go backwards (an encoder input must only move forward).
      */
-    private fun swapToEncoder() {
-        EGLExt.eglPresentationTimeANDROID(eglDisplay, outputSurface, System.nanoTime())
+    private fun swapToEncoder(stampNs: Long = System.nanoTime()) {
+        val stamp = if (stampNs <= lastStampNs) lastStampNs + 1_000_000L else stampNs
+        lastStampNs = stamp
+        EGLExt.eglPresentationTimeANDROID(eglDisplay, outputSurface, stamp)
         EGL14.eglSwapBuffers(eglDisplay, outputSurface)
+        lastSwapNs = System.nanoTime()
+    }
+
+    /** True while a room frame would reach an encoder (recording, not paused, no share): [RoomFrameGrabber]. */
+    val wantsRoomFrames: Boolean get() = running && !liveMode && !offscreen
+
+    /** The encoder's longer side (0 before one is attached): the room frames are copied at most this large. */
+    val encoderLongSide: Int get() = if (offscreen) DEFAULT_ROOM_LONG else maxOf(outputWidth, outputHeight)
+
+    /**
+     * D-108: a room frame copied natively ([RoomFrameGrabber], PixelCopy of Flutter's surface): uploaded and drawn
+     * into the encoder at once, stamped with its capture time. [done] runs on the GL thread when the bitmap may be
+     * reused. A share or a pause in the meantime: nothing is drawn.
+     */
+    fun pushRoomBitmap(bitmap: Bitmap, captureNs: Long, done: () -> Unit) {
+        glHandler.post {
+            try {
+                if (wantsRoomFrames && !bitmap.isRecycled && makeCurrentOutput()) {
+                    uploadRoomBitmap(bitmap)
+                    drawPlaceholderContents()
+                    swapToEncoder(captureNs)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "room frame dropped: ${e.message}")
+            } finally {
+                done()
+            }
+        }
+    }
+
+    private fun uploadRoomBitmap(bitmap: Bitmap) {
+        if (placeholderTextureId == 0) {
+            val tex = IntArray(1)
+            GLES20.glGenTextures(1, tex, 0)
+            placeholderTextureId = tex[0]
+            texW = -1
+        }
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, placeholderTextureId)
+        if (bitmap.width != texW || bitmap.height != texH) {
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
+            texW = bitmap.width
+            texH = bitmap.height
+        } else {
+            GLUtils.texSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, bitmap)
+        }
+        synchronized(frameLock) { frameDirty = false } // a Dart frame queued before is older than this one
+        placeholderAspect = bitmap.width.toFloat() / bitmap.height.toFloat()
+        hasPlaceholderImage = true
     }
 
     // ── Live room frames (D-103) ────────────────────────────────────────────
@@ -676,6 +765,12 @@ class ScreenPlaceholderRenderer(
         if (offscreen) return // nothing consumes it
         if (!makeCurrentOutput()) return
         uploadPendingFrame()
+        drawPlaceholderContents()
+        swapToEncoder()
+    }
+
+    private fun drawPlaceholderContents() {
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
         GLES20.glViewport(0, 0, outputWidth, outputHeight)
         GLES20.glClearColor(PLACEHOLDER_R, PLACEHOLDER_G, PLACEHOLDER_B, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
@@ -683,8 +778,6 @@ class ScreenPlaceholderRenderer(
         if (hasPlaceholderImage && placeholderTextureId != 0) {
             drawPlaceholderBitmapAspectFit()
         }
-
-        swapToEncoder()
     }
 
     /**
