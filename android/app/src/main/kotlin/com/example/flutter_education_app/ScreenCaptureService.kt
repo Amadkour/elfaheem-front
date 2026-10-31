@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * Two independent jobs share it:
  * - RECORDING (ACTION_START_MIC_ONLY … ACTION_STOP): one continuous encode
- *   (SegmentedRecorder, D-103) cut into ~5 s MP4 chunks at key frames, fed by
+ *   (SegmentedRecorder, D-135) cut into ~5 s MP4 chunks at key frames, fed by
  *   ScreenPlaceholderRenderer (the room's frames until a share starts, the
  *   live screen while it runs), uploaded one by one with `seamless=1`; the
  *   old ping-pong MediaRecorder chunks remain only as the fallback.
@@ -704,7 +704,7 @@ class ScreenCaptureService : Service() {
     private fun recordLoop() {
         Log.d(TAG, "recordLoop started (placeholder) — ${screenWidth}x${screenHeight} chunkSecs=$chunkSecs")
         val sessionDir = File(cacheDir, "session_$sessionId").also { it.mkdirs() }
-        // D-103: one continuous encode cut into chunks (gapless). MediaRecorder ping-pong only where the device's
+        // D-135: one continuous encode cut into chunks (gapless). MediaRecorder ping-pong only where the device's
         // encoders / mic cannot be driven directly.
         if (recordLoopSegmented(sessionDir)) return
         Log.w(TAG, "continuous recorder unavailable — falling back to MediaRecorder chunks")
@@ -712,7 +712,7 @@ class ScreenCaptureService : Service() {
     }
 
     /**
-     * D-103: [SegmentedRecorder] runs ONE H.264 + ONE AAC encoder for the whole recording (until a pause) and only
+     * D-135: [SegmentedRecorder] runs ONE H.264 + ONE AAC encoder for the whole recording (until a pause) and only
      * switches the MP4 file at a key frame every ~[chunkSecs]: no frame or sample is lost or doubled at a chunk
      * boundary, and each chunk is uploaded with `seamless=1` so the server joins them with a stream copy on the audio
      * clock. Returns false (nothing recorded yet) when the recorder cannot start — the caller falls back.
@@ -818,7 +818,7 @@ class ScreenCaptureService : Service() {
         return true
     }
 
-    /** The pre-D-103 MediaRecorder ping-pong (one recorder per chunk): the fallback only. */
+    /** The pre-D-135 MediaRecorder ping-pong (one recorder per chunk): the fallback only. */
     private fun recordLoopLegacy(sessionDir: File) {
         val chunkDurationMs = chunkSecs * 1_000L
 
@@ -1371,7 +1371,7 @@ class ScreenCaptureService : Service() {
             field("chunk_index", index.toString())
             field("is_final",    if (isFinal) "1" else "0")
             if (epoch.isNotEmpty()) field("epoch", epoch)
-            // D-103: one slice of a continuous encode — the server joins these with a stream copy (older servers
+            // D-135: one slice of a continuous encode — the server joins these with a stream copy (older servers
             // ignore the field and re-encode as before).
             if (seamless) field("seamless", "1")
             out.write(("--$boundary\r\nContent-Disposition: form-data; name=\"chunk\";" +

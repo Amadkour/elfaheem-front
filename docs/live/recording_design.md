@@ -71,7 +71,7 @@ set from measurement (unverified).
 Camera fallback with `prefer_screen_share`; egress v1.14/1.15 ↔ livekit-server 1.13.7; real CPU at 1080p / 10 fps;
 students' cameras / voices in recordings (privacy + consent wording); mixed audio vs a separate host channel.
 
-## Device recording frame rate (Android, client mode — D-103, D-110)
+## Device recording frame rate (Android, client mode — D-135, D-110)
 
 Pipeline before a share (no MediaProjection is held): the room → `RoomFrameGrabber` (PixelCopy of the
 `FlutterSurfaceView`, room rect from Dart, GPU-scaled to the encoder's long side, ≤ 30 copies/s, one in flight) →
@@ -83,7 +83,7 @@ share's own capture pass throttled to the share preset's fps.
 
 | | file fps | frames / span | camera region distinct / s | distinct gap p95 |
 |---|---|---|---|---|
-| before (session 75, S24, D-103 build) | 14.76 | 2057 / 139.4 s | 10.0 (median 12 / s, min 1) | 136 ms |
+| before (session 75, S24, D-135 build) | 14.76 | 2057 / 139.4 s | 10.0 (median 12 / s, min 1) | 136 ms |
 | after (session 77, S24, D-110 build, 2026-10-31) | 30.01 | 3096 / 103.2 s | 29.1 (camera full stage, 17 s; min 26 / s) · camera box over the board: median 29 / s | 33 ms |
 
 Session 77 in detail: every frame step 33.3 ms (max 33.3, none > 100 ms); the whole picture changes 28.1 times a

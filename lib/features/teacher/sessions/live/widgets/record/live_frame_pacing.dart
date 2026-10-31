@@ -1,4 +1,4 @@
-// D-103: how often the Android recorder gets a frame of the room before a share.
+// D-135: how often the Android recorder gets a frame of the room before a share.
 //
 // The device recording draws the room from frames Dart sends (RepaintBoundary.toImage → raw RGBA → the native
 // renderer, which encodes 15 fps). They used to be PNGs every 500 ms: the camera moved in ~2 fps jumps in the

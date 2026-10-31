@@ -17,7 +17,7 @@ import java.lang.ref.WeakReference
  * D-110: the room's picture for the device recording, copied natively from Flutter's own surface at 30 fps.
  *
  * Before a share the Android recording draws the room as the teacher sees it. Until now Dart sent it
- * (RepaintBoundary.toImage → rawRgba → platform channel → GL upload, D-103): ~55 ms per frame on the S24, so the
+ * (RepaintBoundary.toImage → rawRgba → platform channel → GL upload, D-135): ~55 ms per frame on the S24, so the
  * room reached the encoder ~9 times a second and the camera moved in visible jumps ("slow motion"). Here the
  * already-composited frame (camera texture included) is read from the FlutterSurfaceView with PixelCopy — scaled
  * to the recording's size by the GPU on the way, no Dart work, no channel copy — straight into one reused Bitmap

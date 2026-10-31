@@ -2025,7 +2025,7 @@ class _RoomPageState extends State<RoomPage>
   // freezes the main isolate. This was the actual bug behind camera+share
   // freezing the app.
   bool _liveScreenCaptureInFlight = false;
-  // D-103: raw RGBA frames (~12 fps, live_frame_pacing.dart) instead of a PNG every 500 ms — the camera in the
+  // D-135: raw RGBA frames (~12 fps, live_frame_pacing.dart) instead of a PNG every 500 ms — the camera in the
   // recording moved in 2 fps jumps. An older native side without 'setPlaceholderFrame' gets the PNGs again.
   bool _rawLiveFramesUnsupported = false;
   int _liveCaptureGen = 0;
@@ -2392,7 +2392,7 @@ class _RoomPageState extends State<RoomPage>
     });
 
 
-  /// D-103: the same screenshot as raw RGBA (rows top-down) + its size — no PNG encode on this isolate and no
+  /// D-135: the same screenshot as raw RGBA (rows top-down) + its size — no PNG encode on this isolate and no
   /// decode on the native side, so the Android recorder can get ~12 frames a second.
   Future<(Uint8List, int, int)?> _captureLiveScreenRaw() async {
     if (LiveRoomHost.isMinimized) return null; // offstage in the box: nothing is painted to capture

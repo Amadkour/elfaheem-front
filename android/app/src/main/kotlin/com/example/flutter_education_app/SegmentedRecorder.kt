@@ -17,7 +17,7 @@ import java.io.File
 import java.nio.ByteBuffer
 
 /**
- * D-103: the course recording as ONE continuous encode, cut into ~5 s MP4 chunks without ever stopping an encoder.
+ * D-135: the course recording as ONE continuous encode, cut into ~5 s MP4 chunks without ever stopping an encoder.
  *
  * The old recorder stopped one MediaRecorder and started the next every chunk ("ping-pong"). Every boundary then
  * lost time: the renderer moved to the next recorder's surface before the old one stopped (its video ended early),

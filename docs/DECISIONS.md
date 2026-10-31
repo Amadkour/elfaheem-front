@@ -1404,7 +1404,9 @@ is shown in the reader's language; Go live sends no name when the teacher typed 
 grid on phones for the lists (half the screen per course, titles cut to one line); a separate sessions widget per role
 (the two pages drifted apart before); Arabic-Indic digits everywhere (clocks, counts and server text are already 0-9).
 
-## D-103 — The device recording is ONE continuous encode cut into chunks; the server joins it with a stream copy; the room frames reach the Android recorder at ~12 fps · 2026-10-30 · accepted
+## D-135 — The device recording is ONE continuous encode cut into chunks; the server joins it with a stream copy; the room frames reach the Android recorder at ~12 fps · 2026-10-30 · accepted
+
+*Numbered D-103 until 2026-10-31 (its branches and commits still say D-103); renumbered because D-103 is the organization dashboard.*
 
 **Context.** The owner, on the S24 recordings (D-098, client mode): "a leak every 5 seconds — make the video one block
 without any leak", and "the camera is shown in slow motion — make the movement normal". Evidence from the dev stack's
@@ -1700,9 +1702,9 @@ moves (the page grew, a zoom). Tests: `test/org/live_over_content_test.dart` (`s
 
 ## D-110 — The Android device recording copies the room from Flutter's own surface at 30 fps · 2026-10-31 · proposed (measured on the S24)
 
-Amends D-103 (its "room frames at ~12 fps" part).
+Amends D-135 (its "room frames at ~12 fps" part).
 **Context.** The owner (round 7): "the live camera is shown in the recorded video as slow motion (like 10 frames per
-second or less). I need it at a normal frame rate like real videos." Session 75 on the S24 (D-103 build): the file is
+second or less). I need it at a normal frame rate like real videos." Session 75 on the S24 (D-135 build): the file is
 576×1280 at 14.76 fps (2057 frames / 139.4 s), and the camera circle changes only 10.0 times a second (median 12, gap
 p95 136 ms). Three caps stacked: (1) Dart drew the room (`RepaintBoundary.toImage` → `rawRgba` → platform channel →
 `glTexSubImage2D`), ~55 ms a frame on the S24, paced to ≤ 12 fps / ≤ 50 % duty (`live_frame_pacing.dart`); (2) the
@@ -1722,7 +1724,7 @@ it on a share / pause / end (`stopRoomCapture`). The renderer's own clock become
 during a share it draws the recording at 30 fps (the share's capture pass stays throttled to the share's own fps).
 `SegmentedRecorder` encodes 30 fps at 2.5 Mbps by default (was 15 fps / 2 Mbps; a mostly still room compresses well,
 so not doubled; a meeting's picked quality keeps its own bitrate). Chunks, the gapless cut and `seamless=1` are
-unchanged. The Dart frames (D-103) stay as the fallback when the copy does not work (an older native side, a Flutter
+unchanged. The Dart frames (D-135) stay as the fallback when the copy does not work (an older native side, a Flutter
 surface `PixelCopy` cannot read); the PNG path stays behind them.
 **Measured** (S24, session 77, 103 s): 30.01 fps, every frame step 33 ms; the camera changes 29.1 times a second
 (was 10.0, session 75); PixelCopy ~30 / s, 0 failures; thermal status 0, the app 68–110 % of one core; the published

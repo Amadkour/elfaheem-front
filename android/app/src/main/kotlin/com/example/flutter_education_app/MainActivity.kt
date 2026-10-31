@@ -439,7 +439,7 @@ class MainActivity : FlutterFragmentActivity() {
                             result.success(null)
                         }
 
-                        // D-103: a raw RGBA frame of the room (~12 fps) — the recording's camera moves in real time.
+                        // D-135: a raw RGBA frame of the room (~12 fps) — the recording's camera moves in real time.
                         "setPlaceholderFrame" -> {
                             val bytes = call.argument<ByteArray>("rgba")
                             val w = call.argument<Int>("width") ?: 0

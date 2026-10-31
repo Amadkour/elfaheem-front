@@ -1,7 +1,7 @@
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/record/live_frame_pacing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// D-103: the Android recorder's room frames — fast enough for real-time motion, never more than half the time spent
+// D-135: the Android recorder's room frames — fast enough for real-time motion, never more than half the time spent
 // capturing.
 void main() {
   test('a fast capture runs at the target rate (~12 fps, not the old 2 fps)', () {

@@ -634,7 +634,7 @@ class ScreenPlaceholderRenderer(
     @Volatile private var lastSwapNs = 0L
 
     /**
-     * Hands the drawn frame to the encoder stamped with the monotonic clock (D-103): the frame's time in the
+     * Hands the drawn frame to the encoder stamped with the monotonic clock (D-135): the frame's time in the
      * recording is the moment it was captured ([stampNs], default: now), on the same clock as the recorder's audio —
      * real-time motion, A/V in sync. Stamps never go backwards (an encoder input must only move forward).
      */
@@ -697,7 +697,7 @@ class ScreenPlaceholderRenderer(
         hasPlaceholderImage = true
     }
 
-    // ── Live room frames (D-103) ────────────────────────────────────────────
+    // ── Live room frames (D-135) ────────────────────────────────────────────
     //
     // Before a share, the recording shows the room as Dart sees it. It used to arrive as a PNG twice a second
     // (setPlaceholderBitmap): the camera in the recording moved in ~2 fps jumps — what the owner saw as "slow

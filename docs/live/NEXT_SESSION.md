@@ -26,7 +26,7 @@ audio, so server mode must not be switched on in production before §1.6).
 only if present — production has no GPU), and `FFMPEG_THREADS` defaults to `os.cpu_count()` — i.e. every core of the
 server, while other classes may be live. Tasks, in order:
 
-**Done 2026-10-30 (D-103, branches `fix/rec-gapless` / `fix/rec-gapless-back`, not merged):** the Android recorder is
+**Done 2026-10-30 (D-135, branches `fix/rec-gapless` / `fix/rec-gapless-back`, not merged):** the Android recorder is
 one continuous encode cut into `seamless=1` chunks (no gap / click every 5 s), the room frames reach it at ~12 fps
 (the camera no longer moves in 2 fps jumps), the server joins seamless runs with `-c copy` on the audio clock, and
 item 2 below (2 threads, `nice` / `ionice`, one assembly at a time) is in. Check on the S24 (§3 style): a 2-min class
