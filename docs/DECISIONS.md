@@ -1646,3 +1646,43 @@ drawing pointer only and so never runs at the same time. The presenter's mark on
 decides); moving the rails outside the page on phones (there is no room: the column fills the width).
 Tests: `test/org/board_scrollbar_test.dart`, `test/ui/whiteboard_scrollbar_layout_test.dart`; renders
 `test/visual/whiteboard_grow_golden_test.dart` (`rails`, `vgrab`, `hgrab`).
+
+## D-110 — The Android device recording copies the room from Flutter's own surface at 30 fps · 2026-10-31 · proposed (measured on the S24)
+
+Amends D-103 (its "room frames at ~12 fps" part).
+**Context.** The owner (round 7): "the live camera is shown in the recorded video as slow motion (like 10 frames per
+second or less). I need it at a normal frame rate like real videos." Session 75 on the S24 (D-103 build): the file is
+576×1280 at 14.76 fps (2057 frames / 139.4 s), and the camera circle changes only 10.0 times a second (median 12, gap
+p95 136 ms). Three caps stacked: (1) Dart drew the room (`RepaintBoundary.toImage` → `rawRgba` → platform channel →
+`glTexSubImage2D`), ~55 ms a frame on the S24, paced to ≤ 12 fps / ≤ 50 % duty (`live_frame_pacing.dart`); (2) the
+renderer's clock drew at 15 fps, and `postDelayed` after the draw stretched even that; (3) the encoder was set to 15
+fps. Before a share the recorder never holds a MediaProjection (the teacher grants one only for a share), so the
+picture has to come from inside the app.
+**Decision.** `RoomFrameGrabber.kt`: while the device recorder records video and nothing is shared, the native side
+reads the already-composited frame of Flutter's own `FlutterSurfaceView` with `PixelCopy` (camera texture, board and
+controls included — what the teacher sees), cropped to the room's rectangle and scaled by the GPU to the encoder's
+long side (1280) into one reused bitmap, uploaded with `GLUtils.texSubImage2D` and drawn into the encoder AT ONCE,
+stamped with the copy's time (`eglPresentationTimeANDROID`, stamps forced monotonic). One copy in flight, the next at
+most every 33 ms after the previous one started (deadline based) → 30 fps; no Dart work, no channel copy. Dart
+(`room.dart`) starts it with the room's rectangle in physical pixels (`startRoomCapture`, answers whether a first copy
+worked within 2.5 s), re-sends the rectangle and "visible" (not minimized) every 500 ms (`updateRoomCapture`), stops
+it on a share / pause / end (`stopRoomCapture`). The renderer's own clock becomes a keep-alive in placeholder mode
+(draws only when no frame was pushed for 45 ms: the app in the background, the Dart fallback) and is deadline based;
+during a share it draws the recording at 30 fps (the share's capture pass stays throttled to the share's own fps).
+`SegmentedRecorder` encodes 30 fps at 2.5 Mbps by default (was 15 fps / 2 Mbps; a mostly still room compresses well,
+so not doubled; a meeting's picked quality keeps its own bitrate). Chunks, the gapless cut and `seamless=1` are
+unchanged. The Dart frames (D-103) stay as the fallback when the copy does not work (an older native side, a Flutter
+surface `PixelCopy` cannot read); the PNG path stays behind them.
+**Measured** (S24, session 77, 103 s): 30.01 fps, every frame step 33 ms; the camera changes 29.1 times a second
+(was 10.0, session 75); PixelCopy ~30 / s, 0 failures; thermal status 0, the app 68–110 % of one core; the published
+camera kept its 1280×720 layer. Details in `docs/live/recording_design.md` ("Device recording frame rate").
+**Trade-offs accepted.** The copy is the WHOLE composited room, so a sheet or dialog opened over the room and the
+app's toasts are in the recording too (the Dart capture only saw the room's body); the teacher's own view, as in a
+share. A GPU→CPU read and a CPU→GPU upload of ~2.9 MB per frame (~90 MB/s each way at 30 fps), on background threads.
+iOS is untouched: it records the app with ReplayKit (`RPScreenRecorder`), which delivers the screen at its own rate
+and has no 12 / 15 fps cap in our code; web composes in the browser.
+**Rejected.** MediaProjection of the app's own screen for the whole class (a system consent dialog at every
+recording start, the privacy chip all class long, and on Android 14+ the one projection could no longer serve a later
+share); compositing the WebRTC camera texture natively (needs a change in the flutter_webrtc fork and drops what the
+room shows around the camera — the board, the controls); simply raising the Dart pacing (each Dart frame already
+cost ~55 ms on the S24: 30 fps would not fit in the UI / raster threads).

@@ -5,8 +5,12 @@
 // recording ("slow motion"). Now the next capture is scheduled as soon as the previous one is done, at most
 // [kLiveFrameMaxFps] a second, and never spending more than half the time capturing (a slow device simply
 // gets fewer frames instead of a busy UI thread).
+//
+// D-110: this is now the FALLBACK. The native side copies the room from Flutter's own surface at 30 fps
+// (RoomFrameGrabber.kt, the recorder encodes 30 fps); Dart's frames (~55 ms each on the S24, ~9 a second) are sent
+// only when that copy does not work on the device.
 
-/// The frame rate the room capture aims for (the recorder encodes 15 fps).
+/// The frame rate the Dart room capture aims for (the fallback, D-110).
 const int kLiveFrameMaxFps = 12;
 
 /// The shortest gap between two capture starts.

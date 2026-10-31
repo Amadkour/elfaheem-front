@@ -2026,6 +2026,12 @@ class _RoomPageState extends State<RoomPage>
   // recording moved in 2 fps jumps. An older native side without 'setPlaceholderFrame' gets the PNGs again.
   bool _rawLiveFramesUnsupported = false;
   int _liveCaptureGen = 0;
+  // D-110: the native side copies the room from Flutter's own surface at 30 fps (RoomFrameGrabber.kt) — Dart's
+  // frames (~55 ms each on the S24) reached the recording ~9 times a second. Dart only tells it where the room is and
+  // whether it is visible; its own frames below stay the fallback when the native copy does not work.
+  bool _nativeRoomCapture = false;
+  bool _nativeRoomCaptureUnsupported = false;
+  static const _recorderChannel = MethodChannel('com.example.flutter_education_app/native_recorder');
 
   void _startLiveScreenCapture() {
     if (!widget.isTeacher || !Platform.isAndroid) return;
@@ -2040,13 +2046,70 @@ class _RoomPageState extends State<RoomPage>
       });
     }
 
-    next(Duration.zero);
+    if (_nativeRoomCaptureUnsupported) {
+      next(Duration.zero);
+      return;
+    }
+    // Non-null while the native start is pending, so _maybeSyncLiveScreenCapture does not start a second loop.
+    _liveScreenCaptureTimer = Timer(Duration.zero, () async {
+      final ok = await _startNativeRoomCapture();
+      if (gen != _liveCaptureGen || _liveScreenCaptureTimer == null) {
+        if (ok) unawaited(_recorderChannel.invokeMethod('stopRoomCapture').catchError((_) => null));
+        return; // stopped meanwhile
+      }
+      if (!ok) {
+        next(Duration.zero);
+        return;
+      }
+      _nativeRoomCapture = true;
+      // Where the room is (rotation, zoom) and whether it is painted at all (minimized: no).
+      _liveScreenCaptureTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+        if (gen != _liveCaptureGen) return;
+        final rect = _roomCaptureRect();
+        unawaited(_recorderChannel.invokeMethod('updateRoomCapture', {
+          ...?rect,
+          'active': rect != null && !LiveRoomHost.isMinimized,
+        }).catchError((_) => null));
+      });
+    });
+  }
+
+  /// The native room capture (D-110): true once its first copy worked.
+  Future<bool> _startNativeRoomCapture() async {
+    final rect = _roomCaptureRect();
+    if (rect == null || LiveRoomHost.isMinimized) return false;
+    try {
+      return await _recorderChannel.invokeMethod<bool>('startRoomCapture', rect) ?? false;
+    } on MissingPluginException {
+      _nativeRoomCaptureUnsupported = true; // an older native side
+      return false;
+    } catch (e) {
+      log('[REC] native room capture could not start: $e');
+      return false;
+    }
+  }
+
+  /// The captured room's rectangle on the Flutter view in physical pixels (transforms such as the display zoom
+  /// included), or null while it is not laid out.
+  Map<String, int>? _roomCaptureRect() {
+    final ctx = _liveScreenCaptureKey.currentContext;
+    final box = ctx?.findRenderObject();
+    if (ctx == null || box is! RenderBox || !box.attached || !box.hasSize) return null;
+    final r = MatrixUtils.transformRect(box.getTransformTo(null), Offset.zero & box.size);
+    final dpr = View.maybeOf(ctx)?.devicePixelRatio ?? 1.0;
+    final w = (r.width * dpr).round(), h = (r.height * dpr).round();
+    if (w < 16 || h < 16) return null;
+    return {'left': (r.left * dpr).round(), 'top': (r.top * dpr).round(), 'width': w, 'height': h};
   }
 
   void _stopLiveScreenCapture() {
     _liveCaptureGen++;
     _liveScreenCaptureTimer?.cancel();
     _liveScreenCaptureTimer = null;
+    if (_nativeRoomCapture) {
+      _nativeRoomCapture = false;
+      unawaited(_recorderChannel.invokeMethod('stopRoomCapture').catchError((_) => null));
+    }
   }
 
   /// Called from the ParticipantEvent listener so sharing starts/stops
