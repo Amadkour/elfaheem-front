@@ -1658,7 +1658,11 @@ no gap). So writing at the very edge of a phone still works; only a finger held 
 rail press is ignored while a stroke, a pan or a pinch runs, and a grabbed thumb blocks new strokes and pinches. (3)
 The rest reuses the existing paths: a viewer who drags a thumb leaves Follow exactly like a hand drag (`_leaveFollow`),
 the presenter's view goes out with the next build's `reportViewport` like any scroll, edge auto-scroll belongs to a
-drawing pointer only and so never runs at the same time. The presenter's mark on the rails is unchanged.
+drawing pointer only and so never runs at the same time. The presenter's mark on the rails is unchanged. (4) Web QA
+of round 7: a long press just off the thumb drew a stroke (the thumb shrinks as the page grows, so a press aimed at it
+from a moment ago lands on the track, which had no long press). A finger or pen held still on the TRACK now grabs as
+well: the thumb first jumps under it (centred, clamped), then drags; a tap on the track still pages, a move first
+still draws.
 **Rejected.** Making the whole 44 px strip along the edge opaque (it would block writing at a phone's edge); a
 `GestureDetector` long press in the arena (the board reads raw pointers, a stroke would start before the arena
 decides); moving the rails outside the page on phones (there is no room: the column fills the width).

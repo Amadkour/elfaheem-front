@@ -1,7 +1,7 @@
 // The continuous whiteboard's rails as scrollbars (D-109): the rails (idle and grabbed, down and across) and a grown
 // board whose thumb is held, at 320×640 and 1400×900, Arabic and English, text 1.3× (layout_harness.dart); and what
 // the pointer does: a long press grabs the vertical thumb and a drag moves the view (no stroke, the presenter's view
-// goes out), a finger that moves at once still draws, the mouse drags without waiting, a tap on the track moves a
+// goes out), a long press on the track beside it grabs it too, a finger that moves at once still draws, the mouse drags without waiting, a tap on the track moves a
 // page, and a viewer who drags the sideways thumb stops following.
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -141,6 +141,36 @@ void main() {
     expect(teacher.scene.itemCount, items, reason: 'the grab drew nothing');
     teacher.flushViewport();
     expect(viewer.presenterViewport.value!.top, closeTo(after.top, 1e-4), reason: 'the presenter\'s view went out');
+    await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('long press on the track beside the thumb: the thumb jumps under the finger and drags; nothing is drawn',
+      (t) async {
+    final (teacher, _) = _pair();
+    addTearDown(teacher.dispose);
+    _lesson(teacher);
+    teacher.setTool(BoardTool.pen);
+    await _pump(t, teacher);
+    final items = teacher.scene.itemCount;
+    final idle = t.getRect(_vThumb);
+    final at = Offset(idle.center.dx, idle.bottom + 80); // on the track, well off the thumb's hit target
+    final g = await t.startGesture(at, pointer: 94);
+    await t.pump(const Duration(milliseconds: 600)); // past the long press
+    await _frames(t, 12);
+    final held = t.getRect(_vThumb);
+    expect(held.center.dy, closeTo(at.dy, 6), reason: 'the thumb jumped under the finger');
+    expect(held.width, greaterThan(idle.width + 3), reason: 'and is grabbed');
+    final jumped = teacher.localViewport!.top;
+    for (var i = 0; i < 4; i++) {
+      await g.moveBy(const Offset(0, -15));
+      await t.pump(const Duration(milliseconds: 16));
+    }
+    await t.pump();
+    expect(teacher.localViewport!.top, lessThan(jumped - 1e-4), reason: 'the drag moves the view back up');
+    expect(t.getRect(_vThumb).center.dy, closeTo(at.dy - 60, 6), reason: 'the thumb stays under the finger');
+    await g.up();
+    await _frames(t, 12);
+    expect(teacher.scene.itemCount, items, reason: 'the grab drew nothing');
     await t.pumpWidget(const SizedBox());
   });
 

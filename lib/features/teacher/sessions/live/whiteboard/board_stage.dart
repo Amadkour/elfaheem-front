@@ -1260,8 +1260,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   }
 
   /// A pointer came down on the stage: on a rail, the rail holds it — a mouse grabs the thumb (or moves a page from
-  /// the track) at once; a finger or a pen grabs the thumb after a long press, moves a page with a tap on the track,
-  /// and is handed back to the board when it moves first.
+  /// the track) at once; a finger or a pen grabs the thumb after a long press (on the track beside it, the thumb
+  /// first jumps under the finger: the thumb shrinks as the page grows, so a press just off it still takes it),
+  /// moves a page with a tap on the track, and is handed back to the board when it moves first.
   void _railDown(PointerDownEvent e) {
     if (_rail != null || _pointer != null || _viewPan != null || _pinch != null || !mounted) return;
     final mouse = e.kind == PointerDeviceKind.mouse;
@@ -1279,17 +1280,24 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       }
       return;
     }
-    if (hit.part == BoardRailPart.thumb) {
-      _railTimer = Timer(kLongPressTimeout, () {
-        if (!mounted || !identical(_rail, g) || g.grabbed) return;
-        unawaited(HapticFeedback.mediumImpact());
+    _railTimer = Timer(kLongPressTimeout, () {
+      if (!mounted || !identical(_rail, g) || g.grabbed) return;
+      unawaited(HapticFeedback.mediumImpact());
+      if (g.part == BoardRailPart.track) {
+        final r = g.vertical ? _vRail : _hRail;
+        if (r == null) return;
+        final m = r.metrics;
+        final thumb = (r.along(g.down) - m.thumbLength / 2).clamp(0.0, m.travel).toDouble();
+        _railApply(g.vertical, m.startForThumb(thumb));
+        _railGrab(thumb0: thumb);
+      } else {
         _railGrab();
-      });
-    }
+      }
+    });
   }
 
   /// The pointer on the rail takes the thumb: from now on its moves move the view.
-  void _railGrab() {
+  void _railGrab({double? thumb0}) {
     final g = _rail;
     if (g == null) return;
     final r = g.vertical ? _vRail : _hRail;
@@ -1304,7 +1312,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     _railDeferredView = null;
     setState(() {
       g.grabbed = true;
-      g.thumb0 = r.metrics.thumbStart;
+      g.thumb0 = thumb0 ?? r.metrics.thumbStart;
     });
   }
 

@@ -707,31 +707,36 @@ class CourseSpaceTabBar extends StatelessWidget {
   /// narrower still, the row scrolls.
   static const double _rowW = 110, _stackedW = 64;
 
+  static double _textW(BuildContext context, String text, double size, FontWeight weight) {
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: _ts(size, weight, const Color(0xFF000000), h: 1.4)),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final width = tp.width;
+    tp.dispose();
+    return width;
+  }
+
   /// The width one tab needs laid out as a row: pill padding 14 + 14, hairline, icon 18 + 8, label, count 6 + n.
   static double _rowNeed(BuildContext context, CourseSpaceTab t) {
-    final scaler = MediaQuery.textScalerOf(context);
-    double w(String text, double size, FontWeight weight) {
-      final tp = TextPainter(
-        text: TextSpan(text: text, style: _ts(size, weight, const Color(0xFF000000), h: 1.4)),
-        textDirection: TextDirection.ltr,
-        textScaler: scaler,
-        maxLines: 1,
-      )..layout();
-      final width = tp.width;
-      tp.dispose();
-      return width;
-    }
-
-    var need = 28 + 2 + 18 + 8 + w(t.label, 13, FontWeight.w600) + 2;
+    var need = 28 + 2 + 18 + 8 + _textW(context, t.label, 13, FontWeight.w600) + 2;
     if (t.live) need += 14;
-    if (t.count != null && t.count! > 0) need += 6 + w('${t.count}', 11.5, FontWeight.w600);
+    if (t.count != null && t.count! > 0) need += 6 + _textW(context, '${t.count}', 11.5, FontWeight.w600);
     return need;
   }
+
+  /// The width one tab needs stacked: pill padding 4 + 4, hairline, the label whole ("Announc…" at 390 px with five
+  /// teacher tabs).
+  static double _stackedNeed(BuildContext context, CourseSpaceTab t) =>
+      8 + 2 + _textW(context, t.label, 11.5, FontWeight.w600) + 1;
 
   static bool _stacked(BuildContext context, double inner, List<CourseSpaceTab> visible) {
     if (visible.isEmpty) return false;
     final per = inner / visible.length;
     if (per < _stackedW) return false;
+    if (visible.any((t) => _stackedNeed(context, t) > per)) return false; // the row scrolls instead
     if (per < _rowW) return true;
     return visible.any((t) => _rowNeed(context, t) > per);
   }
@@ -767,7 +772,10 @@ class CourseSpaceTabBar extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, box) {
             final stacked = _stacked(context, box.maxWidth, visible);
-            final fits = visible.isEmpty || stacked || box.maxWidth / visible.length >= _rowW;
+            final fits = visible.isEmpty ||
+                stacked ||
+                (box.maxWidth / visible.length >= _rowW &&
+                    !visible.any((t) => _rowNeed(context, t) > box.maxWidth / visible.length));
             Widget item(CourseSpaceTab t) =>
                 _TabPill(tab: t, active: t.id == active, stacked: stacked, onTap: () => onTab(t.id));
             if (fits) {
@@ -848,14 +856,15 @@ class _ScrollingTabsState extends State<_ScrollingTabs> {
         ],
       ),
     );
-    if (_atEnd) return row;
+    // Always the mask (opaque at the end): dropping it re-created the row's scroll position at 0, so revealing a last
+    // tab (Progress, About) scrolled it back out of sight.
     return ShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (r) => LinearGradient(
         begin: rtl ? Alignment.centerRight : Alignment.centerLeft,
         end: rtl ? Alignment.centerLeft : Alignment.centerRight,
         stops: const [0, 0.86, 1],
-        colors: const [Color(0xFF000000), Color(0xFF000000), Color(0x00000000)],
+        colors: [const Color(0xFF000000), const Color(0xFF000000), Color(_atEnd ? 0xFF000000 : 0x00000000)],
       ).createShader(r),
       child: row,
     );

@@ -2690,6 +2690,7 @@ class _VariantTile extends StatelessWidget {
                 if (variant.sizeLabel.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(variant.sizeLabel,
+                      textDirection: TextDirection.ltr, // "9.4 MB", not "MB 9.4", in Arabic
                       style:
                       c.caption.copyWith(color: c.textLight, fontSize: 11)),
                 ],

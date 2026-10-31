@@ -406,6 +406,50 @@ void main() {
     }
   });
 
+  List<CourseSpaceTab> teacherTabs() => [
+        for (final (id, label, icon) in [
+          ('s', 'Sessions', Icons.play_lesson_rounded),
+          ('n', 'Announcements', Icons.campaign_rounded),
+          ('t', 'Attendance', Icons.fact_check_rounded),
+          ('m', 'Team', Icons.group_rounded),
+          ('a', 'About', Icons.info_outline_rounded),
+        ])
+          CourseSpaceTab(id: id, label: label, icon: icon, builder: (_) => const SizedBox()),
+      ];
+
+  // Web QA round 7: five teacher tabs at 390 px drew "Announc…" / "Attenda…" under their icons
+  testWidgets('tab bar: a label that does not fit under its icon scrolls the row instead of being cut', (t) async {
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    AppConfig.lang = 'en';
+    await t.binding.setSurfaceSize(const Size(390, 700));
+    await t.pumpWidget(layoutHost(scale: 1.0, CourseSpaceTabBar(tabs: teacherTabs(), active: 's', onTab: (_) {})));
+    for (final l in ['Announcements', 'Attendance']) {
+      expect(t.renderObject<RenderParagraph>(find.text(l)).didExceedMaxLines, isFalse, reason: l);
+    }
+  });
+
+  // Web QA round 7: picking the last tab scrolled the row to its end, the edge fade went away and took the row's
+  // scroll position with it, so the picked tab was drawn off-screen
+  testWidgets('tab bar: the last tab, once picked, stays in view', (t) async {
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    AppConfig.lang = 'en';
+    await t.binding.setSurfaceSize(const Size(390, 700));
+    final student = [
+      for (final (id, label) in [('l', 'Live'), ('s', 'Sessions'), ('e', 'Exams'), ('n', 'Announcements'), ('p', 'Progress'), ('a', 'About')])
+        CourseSpaceTab(id: id, label: label, icon: Icons.info_outline_rounded, builder: (_) => const SizedBox()),
+    ];
+    Widget bar(String active) => layoutHost(scale: 1.0, CourseSpaceTabBar(tabs: student, active: active, onTab: (_) {}));
+    await t.pumpWidget(bar('s'));
+    await t.pumpAndSettle();
+    await t.pumpWidget(bar('a'));
+    await t.pumpAndSettle();
+    await t.pumpWidget(bar('a')); // the pinned header rebuilds
+    await t.pumpAndSettle();
+    final about = t.getRect(find.text('About'));
+    expect(about.left, greaterThanOrEqualTo(0));
+    expect(about.right, lessThanOrEqualTo(390));
+  });
+
   test('session length', () {
     AppConfig.lang = 'en';
     expect(courseSessionLength(0), '');
