@@ -2,7 +2,10 @@
 //
 // ONE way to show requests, forms, announcements and ads to every role (point 14) — the "Inbox" pattern:
 //
-//   segments      To do · Announcements · Offers · Done       (counts on each, horizontally scrollable)
+//   segments      To do · Announcements · Offers · Done       (the server's `segment` of each row)
+//   the page      InboxPage (inbox_page.dart): ONE page with the tabs To do · Notifications · Announcements & offers
+//                 · Done — the segments mapped onto them (news + offers share one tab) and the notifications list as
+//                 a tab of the same page; the bell, the home entry and the old routes open it on the right tab
 //   order         overdue → due soon → new → rest  (mandatory first, nearest deadline, newest)   [sortInbox]
 //   cards         dense but calm: kind icon, title, where it comes from, status / urgency chips, a live countdown
 //                 rendered with AppTime ("Due in 2 d · 14 Oct, 3:00 PM"), overdue highlighted
@@ -15,8 +18,9 @@
 //   InboxEntry         a home's door to the inbox: ONE slim tappable row (icon · "Inbox" · "3 to do · 1 overdue" ·
 //                      count · chevron) over counts the home already has (/me/home) → opens InboxScreen
 //   InboxEntryCard     the same entry loading its own counts (GET /me/inbox): the parent's Children tab, an older server
-//   InboxScreen        the full page
-//   UnifiedInbox       the embeddable list (segments + cards)
+//   InboxScreen        the full page (InboxPage, on a tab)
+//   InboxSegmentList   one tab's list (one or more segments, cards)
+//   UnifiedInbox       the embeddable list (segment chips + cards)
 library;
 
 import 'package:flutter/material.dart';
@@ -24,6 +28,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/core/inbox_badge.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -46,6 +51,8 @@ import '../../org/org_my_exams.dart' show MyExamsScreen;
 import '../../org/org_terms_pages.dart' show TermCard;
 import '../../org/org_v3.dart' show orgParseUtc;
 import '../../parent/parent_dashboard_screen.dart' show ParentTabProvider;
+import '../notification/notifications_provider.dart' show NotificationsProvider;
+import 'inbox_page.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Model + pure logic (unit-tested)
@@ -187,6 +194,8 @@ class InboxController extends ChangeNotifier {
         _cache[_cacheKey] = m;
         _apply(m);
         failed = false;
+        // the whole inbox (never an organization's slice) is the bell's To do count
+        if (orgId == null) InboxBadge.instance.setTodo(countOf(InboxSegment.todo));
       }
     } catch (_) {
       failed = items.isEmpty;
@@ -392,7 +401,7 @@ class InboxCard extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(13)),
-                  child: Icon(_kindIcon(x), color: tone, size: 22),
+                  child: Icon(_kindIcon(x), color: appInk(context, tone), size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -585,37 +594,9 @@ class _UnifiedInboxState extends State<UnifiedInbox> {
     }
   }
 
-  Widget _empty(InboxSegment s) {
-    final (icon, title, msg) = switch (s) {
-      InboxSegment.todo => (Icons.celebration_rounded, 'inbox_empty_todo_title'.tr, 'inbox_empty_todo_msg'.tr),
-      InboxSegment.news => (Icons.campaign_rounded, 'inbox_empty_news_title'.tr, 'inbox_empty_news_msg'.tr),
-      InboxSegment.offers => (Icons.local_offer_rounded, 'inbox_empty_offers_title'.tr, 'inbox_empty_offers_msg'.tr),
-      InboxSegment.done => (Icons.inventory_2_rounded, 'inbox_empty_done_title'.tr, 'inbox_empty_done_msg'.tr),
-    };
-    return AppEmpty(icon: icon, title: title, message: msg);
-  }
+  Widget _empty(InboxSegment s) => _segmentEmpty(s);
 
-  Widget _row(InboxItem x) {
-    if (x.kind == 'ad') {
-      final ad = {...x.data, 'id': x.action['id'], 'title': x.title, 'body': x.subtitle};
-      return Dismissible(
-        key: ValueKey(x.key),
-        onDismissed: (_) => _c.hide(x),
-        background: _swipeBg(context),
-        child: LayoutBuilder(builder: (context, box) {
-          return AspectRatio(
-            aspectRatio: box.maxWidth > 600 ? 16 / 5.6 : 16 / 8.5,
-            child: AdCard(ad: ad, onTap: () => _open(x)),
-          );
-        }),
-      );
-    }
-    final card = InboxCard(item: x, onTap: () => _open(x));
-    if (x.segment == InboxSegment.news) {
-      return Dismissible(key: ValueKey(x.key), onDismissed: (_) => _c.hide(x), background: _swipeBg(context), child: card);
-    }
-    return card;
-  }
+  Widget _row(InboxItem x) => _inboxRow(context, _c, x, () => _open(x));
 
   @override
   Widget build(BuildContext context) {
@@ -675,6 +656,112 @@ class _UnifiedInboxState extends State<UnifiedInbox> {
   }
 }
 
+/// One row: an offer as its ad card, everything else as an [InboxCard]; an announcement / offer swipes away (hidden
+/// on this device).
+Widget _inboxRow(BuildContext context, InboxController c, InboxItem x, VoidCallback onOpen) {
+  if (x.kind == 'ad') {
+    final ad = {...x.data, 'id': x.action['id'], 'title': x.title, 'body': x.subtitle};
+    return Dismissible(
+      key: ValueKey(x.key),
+      onDismissed: (_) => c.hide(x),
+      background: _swipeBg(context),
+      child: LayoutBuilder(builder: (context, box) {
+        return AspectRatio(
+          aspectRatio: box.maxWidth > 600 ? 16 / 5.6 : 16 / 8.5,
+          child: AdCard(ad: ad, onTap: onOpen),
+        );
+      }),
+    );
+  }
+  final card = InboxCard(item: x, onTap: onOpen);
+  if (x.segment == InboxSegment.news) {
+    return Dismissible(key: ValueKey(x.key), onDismissed: (_) => c.hide(x), background: _swipeBg(context), child: card);
+  }
+  return card;
+}
+
+/// The empty state of a segment.
+Widget _segmentEmpty(InboxSegment s) {
+  final (icon, title, msg) = switch (s) {
+    InboxSegment.todo => (Icons.celebration_rounded, 'inbox_empty_todo_title'.tr, 'inbox_empty_todo_msg'.tr),
+    InboxSegment.news => (Icons.campaign_rounded, 'inbox_empty_news_title'.tr, 'inbox_empty_news_msg'.tr),
+    InboxSegment.offers => (Icons.local_offer_rounded, 'inbox_empty_offers_title'.tr, 'inbox_empty_offers_msg'.tr),
+    InboxSegment.done => (Icons.inventory_2_rounded, 'inbox_empty_done_title'.tr, 'inbox_empty_done_msg'.tr),
+  };
+  return AppEmpty(icon: icon, title: title, message: msg);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  One tab's list
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The rows of one tab of [InboxPage] over a shared [controller]: [segments] in that order (announcements, then
+/// offers), each under a small heading when more than one of them has rows. Skeleton while the first answer is on
+/// its way, a retry on failure, [empty] (else the first segment's) when there is nothing; pull to refresh.
+class InboxSegmentList extends StatelessWidget {
+  const InboxSegmentList({super.key, required this.controller, required this.segments, this.empty, this.onChanged});
+
+  final InboxController controller;
+  final List<InboxSegment> segments;
+  final Widget? empty;
+
+  /// Something was answered / decided through a row (the page reloads, the home's counts follow).
+  final VoidCallback? onChanged;
+
+  Future<void> _open(BuildContext context, InboxItem x) async {
+    final changed = await openInboxItem(context, x);
+    if (!changed) return;
+    await controller.load();
+    AppModeController.instance.refresh();
+    onChanged?.call();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final c = controller;
+        final groups = [for (final s in segments) (s, c.of(s))];
+        final filled = groups.where((g) => g.$2.isNotEmpty).toList();
+        final Widget body;
+        if (c.loading && c.items.isEmpty) {
+          body = const AppListSkeleton(items: 3, padding: EdgeInsets.symmetric(horizontal: AppSpace.md));
+        } else if (c.failed) {
+          body = AppEmpty(icon: Icons.wifi_off_rounded, title: 'inbox_failed'.tr, actionLabel: 'inbox_retry'.tr, onAction: c.load);
+        } else if (filled.isEmpty) {
+          body = empty ?? _segmentEmpty(segments.first);
+        } else {
+          body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final (s, rows) in filled) ...[
+              if (filled.length > 1)
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, AppSpace.xs, AppSpace.md, AppSpace.xs),
+                  child: Semantics(
+                    header: true,
+                    child: Text(inboxSegmentLabel(s), style: AppType.section(context).copyWith(fontSize: 14)),
+                  ),
+                ),
+              for (final x in rows)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm - 2),
+                  child: _inboxRow(context, c, x, () => _open(context, x)),
+                ),
+            ],
+          ]);
+        }
+        return AppRefresh(
+          onRefresh: c.load,
+          child: ListView(
+            padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xxl),
+            children: [body],
+          ),
+        );
+      },
+    );
+  }
+}
+
 Widget _swipeBg(BuildContext context) {
   final c = context.colors;
   return Container(
@@ -693,19 +780,17 @@ Widget _swipeBg(BuildContext context) {
 //  Full page
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// The inbox page ([InboxPage]) — on the tab of [initial] (To do by default), or on [tab] when given (the
+/// Notifications tab, for instance). [orgId] = that organization's inbox only (titled [title]).
 class InboxScreen extends StatelessWidget {
-  const InboxScreen({super.key, this.orgId, this.initial = InboxSegment.todo, this.title});
+  const InboxScreen({super.key, this.orgId, this.initial = InboxSegment.todo, this.title, this.tab});
   final int? orgId;
   final InboxSegment initial;
   final String? title;
+  final InboxTab? tab;
 
   @override
-  Widget build(BuildContext context) => BasePage(
-        useWebCard: true,
-        maxWith: 820,
-        appBar: ScreenAppBar(title: title ?? 'inbox_title'.tr),
-        child: UnifiedInbox(orgId: orgId, initial: initial),
-      );
+  Widget build(BuildContext context) => InboxPage(orgId: orgId, initial: tab ?? inboxTabOfSegment(initial), title: title);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -735,16 +820,23 @@ InboxEntryCounts inboxEntryCounts(List<InboxItem> rows, {Map<String, int> counts
   );
 }
 
-/// Something in the inbox to look at (a to-do, an announcement, an offer). The homes draw the entry only then, as
-/// they drew the preview before it: no empty door on a fresh account, the greeting already says "all caught up".
-bool inboxEntryHasAny(InboxEntryCounts c) => c.todo + c.news + c.offers > 0;
+/// Something in the inbox to look at (a to-do, an unread notification, an announcement, an offer). The homes draw
+/// the entry only then, as they drew the preview before it: no empty door on a fresh account, the greeting already
+/// says "all caught up".
+bool inboxEntryHasAny(InboxEntryCounts c, {int unread = 0}) => c.todo + unread + c.news + c.offers > 0;
 
-/// The entry's one line: "3 to do · 1 overdue · 2 due soon"; with nothing to do, "You're all caught up" and what
-/// else is new ("· 2 announcements · 1 offer").
-String inboxEntrySummary(InboxEntryCounts c) {
-  if (c.todo > 0) {
+/// Whether a home draws its inbox entry: something to look at ([inboxEntryHasAny]) and the inbox not switched off
+/// (kill switch `student_home.inbox`, [kInboxFeatureKey]).
+bool inboxEntryShown(InboxEntryCounts c, {int unread = 0}) =>
+    !AppConfig.disableList.contains(kInboxFeatureKey) && inboxEntryHasAny(c, unread: unread);
+
+/// The entry's one line: "3 to do · 2 unread · 1 overdue · 2 due soon"; with nothing to do, "You're all caught up"
+/// and what else is new ("· 2 announcements · 1 offer").
+String inboxEntrySummary(InboxEntryCounts c, {int unread = 0}) {
+  if (c.todo > 0 || unread > 0) {
     return [
-      'inbox_preview_todo'.tr.replaceAll('{n}', '${c.todo}'),
+      if (c.todo > 0) 'inbox_preview_todo'.tr.replaceAll('{n}', '${c.todo}'),
+      if (unread > 0) 'inbox_preview_unread'.tr.replaceAll('{n}', '$unread'),
       if (c.overdue > 0) 'inbox_preview_overdue'.tr.replaceAll('{n}', '${c.overdue}'),
       if (c.dueSoon > 0) 'inbox_preview_soon'.tr.replaceAll('{n}', '${c.dueSoon}'),
     ].join(' · ');
@@ -760,13 +852,17 @@ String inboxEntrySummary(InboxEntryCounts c) {
 
 /// A home's door to the inbox, in place of the block that listed its rows (the rows live on InboxScreen): ONE slim
 /// card row — the inbox icon (on the brand gradient while something is to do, a quiet tint otherwise), "Inbox", the
-/// one line that matters ([inboxEntrySummary]; the danger ink when something is overdue), the to-do count in its
-/// tone (danger overdue · warning due soon · primary) and a chevron that follows the reading direction. Plain values
-/// in; [onTap] opens the inbox. The caller decides whether to draw it ([inboxEntryHasAny]).
+/// one line that matters ([inboxEntrySummary]; the danger ink when something is overdue), the ACTIONABLE count —
+/// to-dos plus [unread] notifications ([inboxActionableCount]; announcements and offers never count) — in its tone
+/// (danger overdue · warning due soon · primary) and a chevron that follows the reading direction. Plain values in;
+/// [onTap] opens the inbox on its To do tab. The caller decides whether to draw it ([inboxEntryShown]).
 class InboxEntry extends StatelessWidget {
-  const InboxEntry({super.key, required this.counts, this.onTap, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+  const InboxEntry({super.key, required this.counts, this.unread = 0, this.onTap, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
 
   final InboxEntryCounts counts;
+
+  /// Unread notifications (they live on the same page, its Notifications tab).
+  final int unread;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry padding;
 
@@ -774,10 +870,11 @@ class InboxEntry extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final k = counts;
-    final busy = k.todo > 0;
+    final actionable = inboxActionableCount(todo: k.todo, unread: unread);
+    final busy = actionable > 0;
     final tone = k.overdue > 0 ? c.danger : (k.dueSoon > 0 ? c.warning : c.primary);
     final ink = appInk(context, tone);
-    final summary = inboxEntrySummary(k);
+    final summary = inboxEntrySummary(k, unread: unread);
     final radius = AppRadius.cardAll;
     return Padding(
       padding: padding,
@@ -838,7 +935,7 @@ class InboxEntry extends StatelessWidget {
                           constraints: const BoxConstraints(minWidth: 28),
                           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 3),
                           decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
-                          child: Text(k.todo > 99 ? '99+' : '${k.todo}',
+                          child: Text(actionable > 99 ? '99+' : '$actionable',
                               textAlign: TextAlign.center,
                               style: appText(13, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
                         ),
@@ -889,6 +986,17 @@ class _InboxEntryCardState extends State<InboxEntryCard> {
     AppModeController.instance.refresh();
   }
 
+  /// The unread notifications the shell already counts (its one GET /notifications); an organization's own inbox has
+  /// no Notifications tab, so none there.
+  int _unread(BuildContext context) {
+    if (widget.orgId != null) return 0;
+    try {
+      return context.select<NotificationsProvider, int>((p) => p.unreadCount);
+    } catch (_) {
+      return 0; // no provider above (a test)
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: _c,
@@ -901,8 +1009,9 @@ class _InboxEntryCardState extends State<InboxEntryCard> {
             news: _c.countOf(InboxSegment.news),
             offers: _c.countOf(InboxSegment.offers),
           );
-          if (_c.failed || !inboxEntryHasAny(counts)) return const SizedBox.shrink();
-          return InboxEntry(counts: counts, onTap: _open, padding: widget.padding);
+          final unread = _unread(context);
+          if (_c.failed || !inboxEntryShown(counts, unread: unread)) return const SizedBox.shrink();
+          return InboxEntry(counts: counts, unread: unread, onTap: _open, padding: widget.padding);
         },
       );
 }

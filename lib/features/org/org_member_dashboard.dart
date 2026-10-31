@@ -572,7 +572,7 @@ class OrgMemberHomeBody extends StatelessWidget {
     final needsFallback = inboxRows == null && inboxFallback != null;
     final Widget? needsBlock = needsFallback
         ? inboxFallback!
-        : (inboxRows != null && inboxEntryHasAny(inboxCounts))
+        : (inboxRows != null && inboxEntryShown(inboxCounts))
             ? InboxEntry(counts: inboxCounts, onTap: openInbox, padding: const EdgeInsets.symmetric(horizontal: 16))
             : null;
 

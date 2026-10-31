@@ -79,6 +79,18 @@
     "en": "Done",
     "ar": "تم"
   },
+  "inbox_tab_news_offers": {
+    "en": "Announcements & offers",
+    "ar": "الإعلانات والعروض"
+  },
+  "inbox_empty_announcements_title": {
+    "en": "No announcements or offers",
+    "ar": "لا توجد إعلانات أو عروض"
+  },
+  "inbox_empty_announcements_msg": {
+    "en": "News from your organizations and offers for you will appear here",
+    "ar": "ستظهر هنا أخبار مؤسساتك والعروض المناسبة لك"
+  },
   "inbox_empty_todo_title": {
     "en": "You're all caught up",
     "ar": "لا شيء ينتظرك الآن"
@@ -270,6 +282,10 @@
   "inbox_preview_overdue": {
     "en": "{n} overdue",
     "ar": "{n} متأخر"
+  },
+  "inbox_preview_unread": {
+    "en": "{n} unread",
+    "ar": "{n} غير مقروء"
   },
   "inbox_preview_soon": {
     "en": "{n} due soon",
@@ -4474,7 +4490,7 @@
     "ar": "تم حفظ الملف"
   },
   "mark_all_read": {
-    "en": "Make all Read",
+    "en": "Mark all read",
     "ar": "اجعل الكل مقروءاً"
   },
   "request_accept": {
@@ -16916,6 +16932,10 @@
   "rag_time_days": {
     "en": "{n} days ago",
     "ar": "منذ {n} أيام"
+  },
+  "rag_chat_moved_to_chats": {
+    "en": "Your previous chat is saved under Chats",
+    "ar": "محادثتك السابقة محفوظة في «المحادثات»"
   },
   "rag_chat_current": {
     "en": "Current",

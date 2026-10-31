@@ -63,7 +63,7 @@ import 'features/shared/session/video/vod_listen_layer.dart' show VodListenLayer
 import 'design/app_keyboard.dart' show AppKeyboardSupport;
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
-import 'features/shared/notification/notifications_screen.dart';
+import 'features/shared/inbox/inbox_page.dart' show InboxPage, inboxRouteTab;
 import 'features/shared/course_profile/course_profile_hub.dart' show CoursePageLoader;
 import 'features/shared/calendar/calendar_screen.dart';
 import 'features/shared/profile/change_password_widget.dart';
@@ -696,6 +696,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       }
       return _fade(_Guard(child: PublicProfileScreen(username: profile.username)), settings);
     }
+    // the inbox page — the inbox and the notifications on one page with tabs: '/inbox' (?tab= / an InboxTab
+    // argument) on its tab, the old '/notifications' on the Notifications tab
+    final inboxTab = inboxRouteTab(settings.name, settings.arguments);
+    if (inboxTab != null) return _fade(_Guard(child: InboxPage(initial: inboxTab)), settings);
     switch (settings.name) {
       case '/login':
         return _fade(const LoginScreen(), settings);
@@ -760,8 +764,6 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           _Guard(guestOk: true, child: CourseDetailScreen(course: course)),
           settings,
         );
-      case '/notifications':
-        return _fade(const _Guard(child: NotificationsScreen()), settings);
       case '/course-profile': // arguments: course id (int) — one profile page for every role
         final cid = settings.arguments;
         if (cid is! int) return _fade(const _Guard(child: _RedirectHome()), settings);

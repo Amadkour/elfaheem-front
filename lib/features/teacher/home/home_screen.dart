@@ -38,8 +38,9 @@ import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeT
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show OrgMemberHome;
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart' show CourseScope;
+import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart' show kInboxFeatureKey;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
-    show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryHasAny;
+    show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart' show HomeLiveNow;
@@ -207,8 +208,15 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                             // "Meet now" moved into the Go live sheet; the icon comes back when Go live is switched off
                             if (!quickLive) const QuickMeetingIcon(),
                           ],
-                          // the top bar carries these on desktop / tablet: drawn here on phones only (M7)
-                          shellActions: [const CalendarEntryIcon(), NotificationIcon(unreadCount: unread)],
+                          // the top bar carries these on desktop / tablet: drawn here on phones only (M7); while the
+                          // inbox entry is on the page it carries the count (to-dos + unread), so the bell stays plain
+                          shellActions: [
+                            const CalendarEntryIcon(),
+                            if (provider.extra != null && !AppModeController.instance.isOrg && !AppConfig.disableList.contains(kInboxFeatureKey))
+                              const NotificationIcon(unreadCount: 0, withTodos: false)
+                            else
+                              NotificationIcon(unreadCount: unread),
+                          ],
                           contextSwitcher: quickLive
                               // the switcher at the start, "Go live" at the end; each may take half the line
                               ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -509,7 +517,11 @@ class TeacherHomeBody extends StatelessWidget {
 
     // ── inbox: ONE slim entry into the inbox page over the /me/home counts, only while the inbox holds something;
     //    an older server gets the self-fetching entry (at the end)
-    final inbox = extra != null && inboxEntryHasAny(inboxCounts) ? enter(InboxEntry(counts: inboxCounts, onTap: onOpenInbox)) : null;
+    //    its count is the actionable one: to-dos + unread notifications (they share the inbox page)
+    final unread = extra?.notificationsUnread ?? 0;
+    final inbox = extra != null && inboxEntryShown(inboxCounts, unread: unread)
+        ? enter(InboxEntry(counts: inboxCounts, unread: unread, onTap: onOpenInbox))
+        : null;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (staleError != null)

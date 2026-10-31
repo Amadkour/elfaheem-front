@@ -5,8 +5,9 @@
 //     live now    HomeLiveNow: a course session / meeting on air that I may join (one tap), only while it runs — the
 //                 page's one strong accent (no "next up" hero card: it repeated Today's first row, which now says
 //                 "Ends in … · room" / "Starts in …")
-//     needs you   ONE slim row of pills (HomeStatStrip), only the counts above zero: to do (attention) · inbox
-//                 to-dos · unread notifications · organizations waiting — every count drawn ONCE on this screen
+//     needs you   ONE slim row of pills (HomeStatStrip), only the counts above zero: to do (attention) ·
+//                 unread notifications (only while the inbox entry is not drawn: it carries them) · organizations
+//                 waiting — every count drawn ONCE on this screen
 //     today       today's events, one line each (sessions · timetable slots · exams · meetings, exam pauses
 //                 applied); the running one tinted with "Ends in 50 min · Lab 3"; a free day folds by itself
 //                 ("No classes today · Next: … · Thu 30") — the empty courses section too. "This week" left the
@@ -14,7 +15,8 @@
 //     my courses  courses_progress[] in one card (StudentCourseSummary): the 3 that matter now, slim lines
 //     journey     ONE small card under the courses, only with a clear field: "Continue your journey in <field>" ·
 //                 the next step · a light bar, a slow light sweep (HomeJourneyCard, D-120) → the whole path
-//     inbox       the 3 most urgent inbox rows (no second count); beside Today on a wide window
+//     inbox       ONE slim entry (InboxEntry: "3 to do · 2 unread · 1 overdue", the actionable count = to-dos +
+//                 unread notifications) → the inbox page on To do; beside Today on a wide window
 //     feeds       ads · organizations · other courses · categories · best teachers (HomeProvider's marketing call,
 //                 never awaited for the first paint; each leaf listens on its own)
 //   Organization: OrgMemberHome of the selected organization (from the same payload's org_overview).
@@ -40,7 +42,7 @@ import 'package:flutter_education_app/features/org/org_member_dashboard.dart' sh
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryHasAny;
+import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
 import 'package:flutter_education_app/features/student/home/home_journey.dart';
@@ -171,10 +173,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           contextSwitchVisible(AppModeController.instance) ? AppModeController.instance.pendingTotal : 0),
               wideTrailing: search(padding: EdgeInsets.zero),
               leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-              // the unread count is drawn once, in the "Needs you" grid — the bell stays plain here
+              // the counts are drawn once, by the inbox entry / the "Needs you" strip — the bell stays plain here
               actions: [if (!guest) const QuickMeetingIcon()],
               // the top bar carries these on desktop / tablet: drawn here on phones only (M7)
-              shellActions: [if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
+              shellActions: [if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0, withTodos: false)],
               contextSwitcher: guest ? null : const ContextSwitcher(),
             ),
           ),
@@ -407,34 +409,31 @@ class _Sections extends StatelessWidget {
     final wallNow = AppTime.toZone(now);
     final nowMin = wallNow.hour * 60 + wallNow.minute;
     final todo = home.attentionCount(AttentionTabs.home);
-    final inboxTodo = home.inboxTodo;
     final inboxCounts = inboxEntryCounts(home.inboxPreview.map(InboxItem.new).toList(), counts: home.inboxCounts, now: now);
+    // the inbox entry carries the actionable count (to-dos + unread notifications): drawn, the strip leaves the
+    // unread notifications to it (every count once)
+    final entryShown = inboxEntryShown(inboxCounts, unread: home.notificationsUnread);
+    final unread = entryShown ? 0 : home.notificationsUnread;
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
     final live = data.liveNow;
-    final anyCount = todo > 0 || inboxTodo > 0 || home.notificationsUnread > 0 || data.orgWaiting > 0;
+    final anyCount = todo > 0 || unread > 0 || data.orgWaiting > 0;
 
-    // ── what waits for me: one slim row of the counts above zero (the greeting says "all caught up" otherwise)
+    // ── what waits for me: one slim row of the counts above zero (the greeting says "all caught up" otherwise);
+    //    the inbox is not one of them: its own entry below carries its count
     final needs = !anyCount
         ? null
         : enter(HomeSection(
             id: 'student.needs_you',
             title: 'home_needs_you'.tr,
             // folded, the title still says how much waits (L8)
-            foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '${todo + inboxTodo + home.notificationsUnread + data.orgWaiting}'),
+            foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '${todo + unread + data.orgWaiting}'),
             child: HomeStatStrip(items: [
               HomeStat(icon: Icons.task_alt_rounded, label: 'home_todo'.tr, count: todo, tone: c.danger, onTap: body.onOpenTodo),
               HomeStat(
-                icon: Icons.inbox_outlined,
-                label: 'inbox_title'.tr,
-                count: inboxTodo,
-                tone: home.inboxOverdue > 0 ? c.danger : (home.inboxDueSoon > 0 ? c.warning : c.primary),
-                onTap: body.onOpenInbox,
-              ),
-              HomeStat(
                 icon: Icons.notifications_none_rounded,
                 label: 'notifications'.tr,
-                count: home.notificationsUnread,
+                count: unread,
                 tone: c.primary,
                 onTap: body.onOpenNotifications,
               ),
@@ -504,8 +503,11 @@ class _Sections extends StatelessWidget {
             )),
           ]);
 
-    // ── inbox: ONE slim entry into the inbox page (its rows live there), only while the inbox holds something
-    final inbox = !inboxEntryHasAny(inboxCounts) ? null : enter(InboxEntry(counts: inboxCounts, onTap: body.onOpenInbox));
+    // ── inbox: ONE slim entry into the inbox page (its rows and the notifications live there), only while it holds
+    //    something; its count is the actionable one (to-dos + unread notifications)
+    final inbox = !entryShown
+        ? null
+        : enter(InboxEntry(counts: inboxCounts, unread: home.notificationsUnread, onTap: body.onOpenInbox));
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── live now: a room I'm invited to is on air → one tap into it (appears / leaves by itself); the only strong

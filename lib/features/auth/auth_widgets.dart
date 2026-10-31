@@ -448,6 +448,32 @@ class _SidebarFeature extends StatelessWidget {
   }
 }
 
+/// A login stat as one style, whatever the admin typed: Eastern Arabic / Persian digits become the app's Western
+/// digits, and a plain number of five digits or more gets thousands separators ("٦٠٠٠٠" → "60,000", "٥٠+" → "50+").
+String loginStatValue(String raw) {
+  final b = StringBuffer();
+  for (final r in raw.trim().runes) {
+    if (r >= 0x0660 && r <= 0x0669) {
+      b.writeCharCode(0x30 + r - 0x0660);
+    } else if (r >= 0x06F0 && r <= 0x06F9) {
+      b.writeCharCode(0x30 + r - 0x06F0);
+    } else if (r == 0x066C) {
+      b.write(',');
+    } else {
+      b.writeCharCode(r);
+    }
+  }
+  return b.toString().replaceAllMapped(RegExp(r'(?<![\d.,])\d{5,}(?![\d.,])'), (m) {
+    final d = m[0]!;
+    final out = StringBuffer();
+    for (var i = 0; i < d.length; i++) {
+      if (i > 0 && (d.length - i) % 3 == 0) out.write(',');
+      out.write(d[i]);
+    }
+    return out.toString();
+  });
+}
+
 class _SidebarStat extends StatelessWidget {
   final String value;
   final String label;
@@ -470,7 +496,7 @@ class _SidebarStat extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            value,
+            loginStatValue(value),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textDirection: TextDirection.ltr,
