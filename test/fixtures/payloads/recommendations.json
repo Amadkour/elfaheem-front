@@ -1,0 +1,137 @@
+{
+ "_source": {
+  "route": "GET /api/v1/me/recommendations?limit=30",
+  "uid": 3
+ },
+ "payload": {
+  "items": [
+   {
+    "course": {
+     "id": 7,
+     "name_ar": "PeersPick",
+     "name_en": "PeersPick",
+     "image_url": null,
+     "type": "recorded",
+     "level": null,
+     "tags": [],
+     "category": {
+      "id": 2,
+      "name_ar": "تصميم",
+      "name_en": "Design"
+     },
+     "teacher": {
+      "id": 2,
+      "name": "TeacherTwo",
+      "image_url": null
+     },
+     "is_published": true,
+     "is_private": false,
+     "is_free": true,
+     "final_price": 0.0,
+     "price": 0.0,
+     "currency": "EGP"
+    },
+    "reason": "similar_students",
+    "reason_ar": "طلاب مثلك درسوه",
+    "reason_en": "Students like you took this",
+    "score": 0.3601
+   },
+   {
+    "course": {
+     "id": 5,
+     "name_ar": "PyOther",
+     "name_en": "PyOther",
+     "image_url": null,
+     "type": "recorded",
+     "level": "intermediate",
+     "tags": [],
+     "category": {
+      "id": 3,
+      "name_ar": "بايثون",
+      "name_en": "Python"
+     },
+     "teacher": {
+      "id": 2,
+      "name": "TeacherTwo",
+      "image_url": null
+     },
+     "is_published": true,
+     "is_private": false,
+     "is_free": true,
+     "final_price": 0.0,
+     "price": 0.0,
+     "currency": "EGP"
+    },
+    "reason": "because_completed",
+    "reason_ar": "لأنك أكملت «Py1»",
+    "reason_en": "Because you completed “Py1”",
+    "score": 0.3
+   },
+   {
+    "course": {
+     "id": 6,
+     "name_ar": "PopularDesign",
+     "name_en": "PopularDesign",
+     "image_url": null,
+     "type": "recorded",
+     "level": null,
+     "tags": [],
+     "category": {
+      "id": 2,
+      "name_ar": "تصميم",
+      "name_en": "Design"
+     },
+     "teacher": {
+      "id": 2,
+      "name": "TeacherTwo",
+      "image_url": null
+     },
+     "is_published": true,
+     "is_private": false,
+     "is_free": true,
+     "final_price": 0.0,
+     "price": 0.0,
+     "currency": "EGP"
+    },
+    "reason": "popular",
+    "reason_ar": "رائج على المنصة",
+    "reason_en": "Popular on the platform",
+    "score": 0.08
+   },
+   {
+    "course": {
+     "id": 4,
+     "name_ar": "Logo",
+     "name_en": "Logo",
+     "image_url": null,
+     "type": "recorded",
+     "level": null,
+     "tags": [],
+     "category": {
+      "id": 2,
+      "name_ar": "تصميم",
+      "name_en": "Design"
+     },
+     "teacher": {
+      "id": 1,
+      "name": "TeacherOne",
+      "image_url": null
+     },
+     "is_published": true,
+     "is_private": false,
+     "is_free": true,
+     "final_price": 0.0,
+     "price": 0.0,
+     "currency": "EGP"
+    },
+    "reason": "popular",
+    "reason_ar": "رائج على المنصة",
+    "reason_en": "Popular on the platform",
+    "score": 0.0
+   }
+  ],
+  "total": 4,
+  "hidden": false,
+  "computed_at": "2026-10-31T08:11:57.008291"
+ }
+}

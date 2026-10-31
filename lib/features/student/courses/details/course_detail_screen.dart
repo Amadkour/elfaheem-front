@@ -5,8 +5,9 @@
 ///              students / lessons / hours (+ the progress ring once enrolled)
 ///  spotlight   live now · attendance check-in (while open) · start / continue / completed
 ///  actions     my analytics (Data Lab) · support
-///  tabs        Live (live courses) · Sessions · Exams · Announcements · Progress · (Archive) · About — the course
-///              profile's parts are tabs of THIS page (D-111, course_profile_hub.dart), loaded when first opened
+///  tabs        Live (live courses) · Sessions · Exams · Announcements · Progress · (Archive) · Path · About — the
+///              course profile's parts are tabs of THIS page (D-111, course_profile_hub.dart), loaded when first
+///              opened; Path is the course roadmap of a personal course (D-120, shared/roadmap/roadmap_tab.dart)
 ///  buy         phones: sticky price + enroll bar · desktop: the side card (enrolled: the access card)
 ///
 /// Every fact is shown ONCE: numbers in the hero, price in the buy card / bar, the rest in About.
@@ -22,7 +23,9 @@ import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/parent_component.dart';
 import '../../../shared/attendance/attendance_course_entry.dart';
 import '../../../shared/course/course_space/course_space.dart';
-import '../../../shared/course/studend_course_roadmap_section.dart';
+import '../../../shared/roadmap/roadmap_api.dart' show kRoadmapTab;
+import '../../../shared/roadmap/roadmap_tab.dart';
+import '../../../../utils/widget/app_navigator.dart' show AppNavigator;
 import '../../../shared/guest/guest_state.dart';
 import '../../../shared/profile/compalints/complaint_provider.dart';
 import '../../../shared/profile/compalints/new_complaint_screen.dart';
@@ -247,7 +250,7 @@ class _CoursePageState extends State<_CoursePage> {
 
   void _openTab(CourseDetailProvider p, String id) {
     _openingDone = true;
-    if (const {kCpTabAnnouncements, kCpTabProgress, kCpTabArchive, kCpTabTeam, kCpTabClass}.contains(id)) {
+    if (const {kCpTabAnnouncements, kCpTabProgress, kCpTabArchive, kCpTabTeam, kCpTabClass, kRoadmapTab}.contains(id)) {
       setState(() => _profileTab = id);
     } else {
       setState(() => _profileTab = null);
@@ -483,6 +486,22 @@ class _CoursePageState extends State<_CoursePage> {
           forced: _profileTab,
           onOpenTab: (id) => _openTab(p, id),
         ),
+      // the course roadmap (D-120): personal courses of personal accounts that have one (the server empties the
+      // lists for an organization account)
+      if (courseId != null &&
+          c.org == null &&
+          (c.nextCourses.isNotEmpty || c.recentCompletedCourses.isNotEmpty || c.recommendedCourses.isNotEmpty) &&
+          roadmapAllowedHere(context))
+        ?courseRoadmapTab(
+          courseId: courseId,
+          staff: false,
+          onOpenCourse: (rc) => AppNavigator.openCourse(rc.id),
+          onEnrollAll: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => RoadmapEnrollmentScreen(courseId: courseId, courseName: title)),
+          ),
+          teacherPicks: c.recommendedCourses,
+          onOpenPick: (s) => _openRecommendedCourse(context, s),
+        ),
       CourseSpaceTab(
         id: 'about',
         label: gt('عن الكورس', 'About'),
@@ -544,19 +563,6 @@ class _CoursePageState extends State<_CoursePage> {
         bottomBar: c.isEnrolled || archived
             ? null
             : CourseBuyBar(course: c, status: status, onEnroll: () => _openEnrollment(context, c)),
-        footer: CourseRoadmapSection(
-          currentCourseName: title,
-          recentCompletedCourses: c.recentCompletedCourses,
-          nextCourses: c.nextCourses,
-          recommendedCourses: c.recommendedCourses,
-          similarCourses: c.similarCourses,
-          onTapCourse: (s) => _openRecommendedCourse(context, s),
-          onEnrollRoadmap: courseId == null
-              ? null
-              : () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => RoadmapEnrollmentScreen(courseId: courseId, courseName: title)),
-                ),
-        ),
       ),
     );
   }

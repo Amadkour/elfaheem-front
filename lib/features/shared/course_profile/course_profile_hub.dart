@@ -226,7 +226,7 @@ String? cpMergedTab(String? old, {required bool staff}) => switch (old) {
   null || 'overview' => null,
   'lecture' || 'section' => 'sessions',
   'attendance' || 'certificates' => staff ? kCpTabClass : kCpTabProgress,
-  'announcements' || 'team' || 'archive' || 'progress' || 'class' => old,
+  'announcements' || 'team' || 'archive' || 'progress' || 'class' || 'path' => old,   // path: the roadmap (D-120)
   _ => null,
 };
 

@@ -1778,3 +1778,89 @@ the last one seen on this device once the profile is loaded, the page keeps its 
 **Rejected.** Loading the profile on every open (one more request per course page for data most visits never read);
 keeping the profile as a page behind a quick action (the owner's complaint); a separate Team / Archive for students
 (the team is a block in About, the archive appears only for a closed course).
+
+## D-120 — Course roadmap + "Recommended for you": personal accounts only; the teacher's path first, the engine's list apart; ONE calm journey card on the home · 2026-10-31 · proposed
+
+**Context.** The owner's brief: a teacher-defined roadmap per course (previous · "You are here" · next with
+prerequisite status) on the course page for both roles, a backend hybrid recommendation engine with a reason per pick,
+a "Recommended for you" list with "Edit my interests" on the student's profile, and exactly ONE small shimmering card
+on the student home — for individual accounts only. A forward roadmap already existed (`course_next_steps`, edited as
+`next_course_ids` in the course form, a dark "journey" footer with "Enroll in the whole roadmap" and an auto "similar
+courses" strip on the student page, a read-only footer on the studio); personal courses had no linked prerequisites,
+no level / tags, no interests.
+**Decision.**
+- *Who.* An account that belongs to an organization (role org-admin / org-staff, or a live membership of an approved
+  organization while organizations are on) gets neither feature, in any mode and on any course; an organization course
+  has no roadmap (owner's answer: "any org membership"). The server enforces it (`services/learning/access.py`: 403
+  `individual_only` / `org_course` / `feature_off`, and `GET /courses/{id}` empties `next_courses`,
+  `recommended_courses`, `similar_courses`, `recent_completed_courses` for them); the app hides the parts
+  (`roadmapOrgAccount`, `roadmapHiddenError`). With organizations switched off memberships do not count. The roadmap
+  bundle checkout stays as it was (organization programmes use it with their own prerequisite checks).
+- *Roadmap.* Extends the existing data: next courses stay `course_next_steps`; prerequisites are new course links
+  (`course_prereq_links`, the owner's own personal courses, never also a next step: 422 `roadmap_cycle`), advisory only
+  (owner's answer: show status, never block enrolment); `courses.level` / `courses.tags` are new (migration 0031). Read
+  and edited through `GET/PUT /api/v1/roadmap/courses/{id}` (+ `/candidates`). On the course page it is a "Path" tab
+  (`lib/features/shared/roadmap/roadmap_tab.dart`) for both roles: ONE vertical path (`roadmap_path.dart`): previous →
+  the course tinted "You are here" → the next courses numbered, each with its prerequisites as ✓ / ○ chips; the student
+  sees states and live % (done = enrolment completed or every material done, the app's rule) and "Enroll in the whole
+  path"; the teacher sees drafts and edits in one sheet (`roadmap_editor.dart`: add · drag to reorder · remove next
+  courses, prerequisites, level, topic words). The tab replaces both old footers; the teacher's own picks stay a
+  separate "Picked by your instructor" list under the path.
+- *Recommendations.* `services/learning/scoring.py` (pure, `tests/org_v2/recs_unit.py`): item-item collaborative
+  filtering (cosine over students who took both, ≥ 2 shared students, else its weight is shared out) 0.35 · content
+  (same / related category, tags, the next level up) 0.30 · same teacher in a matching field (a teacher of several
+  fields lends weight only to the matching courses) 0.25 · popularity (recent enrolments + a little rating) 0.10, the
+  cold-start fallback; ≤ 3 picks per teacher; ONE reason per pick (the strongest signal) with its Arabic and English
+  sentence. Never an enrolled / dismissed / private / draft / organization course, nor a next step of a course the
+  student took (the teacher's path has priority and the two lists never mix). Cached per student in `course_recs`,
+  rebuilt only when older than 6 h or when the student's enrolments / interests change, refreshed hourly for students
+  who asked lately (`learning_recs_tick`); only counts of other students are used.
+- *Profile.* "Recommended for you" (3 + "See all", the reason under each, "Not interested") and "My interests"
+  (fields picked or inferred from the courses taken; "Show recommendations" switch) — `recommendations.dart`.
+- *Home.* ONE card under "My courses" (`home_journey.dart`), from `/me/home`'s `journey` (no request of its own):
+  "Continue your journey in <field>", the next step only, a light bar of the path done; card surface + hairline like
+  the calm home (D-102). Its light sweep is the attendance entry's exact band, now the shared `AppShineBand`
+  (`lib/design/app_shine.dart`), crossing in ~1.8 s every 6 s; Reduce motion parks it (and the attendance entry now
+  goes through `syncMotionLoop` too). No clear field (no roadmap, no completed course or chosen interest with a cached
+  pick) → no card. Tap → `JourneyPage` (`GET /me/journey`).
+- *Switches.* `roadmap` (all), `roadmap.path` (the tab), `roadmap.recommendations`, `roadmap.journey`,
+  `course.enroll_roadmap`, `roadmap.teacher_picks` — a key off on every platform turns the route off too.
+**Rejected.** A second roadmap table beside `course_next_steps` (two truths for one path); blocking enrolment on
+prerequisites (changes checkout and the roadmap bundle — the owner chose status only); computing recommendations on
+each request or inside `/me/home` (the home reads only a cached pick); a gradient hero card on the home (it would
+compete with the live card, the page's one strong accent); mixing the teacher's next steps into the engine's list.
+**Round 2 (same day, the review's points).** Next courses reorder from each row's ⋮ menu and the screen reader's
+actions too (keyboard / one hand); `GET /courses/{id}` hides drafts from everyone but the owner; "Not interested" has
+Undo (`showAppNotice` gained an optional action) and the interests sheet "Show hidden courses again"; the old footers
+are deleted. Speed: the hourly tick stores the collaborative counts in `course_pairs` / `course_stats`, so a request
+reads only its own rows; "last asked" is written at most hourly; the home's journey is cached on the prefs row with a
+signature of everything it depends on; `AppShineBand` rests on a timer (no ticker between passes); a course reaching
+100 % marks the lists stale. Product: the course form shows level / topic words and, for a personal course in edit
+mode, links to the Path editor instead of its own next-courses field (and stops sending `next_course_ids`, which
+would undo the Path tab); interests group sub-fields under their field (a picked parent covers its sub-fields at
+0.9; a course taken outside the picks now counts half even in its own field); the super admin's Recommendations
+page (`admin_recs_page.dart`) shows shown / opened / dismissed / enrolled per reason and edits the four weights.
+**Real app (2026-10-31, profile web build on a copy of the dev database, the worktree's API in its own container).**
+Verified: the home card from `/me/home`, the journey page, the student's Path tab (89 % "You are here", the next
+steps with a prerequisite not done, "Enroll in the whole path"), "Recommended for you" with reasons, the interests
+sheet, the teacher's editor, an org member without card, the admin page counting the browser's own `shown` events.
+Fixed from it: interests without sub-fields share one wrapped row (each had a row of its own); the owner opening
+the public page (a share link) gets the owner's path (`can_edit` wins over the student page); old deep links may
+name the `path` tab (`cpMergedTab`).
+**Accessibility (2026-10-31).** `test/ui/roadmap_a11y_test.dart` runs `meetsGuideline` (tap targets, labels, WCAG
+contrast; ar / en, light / dark, phone / wide) over every D-120 widget. It caught `AppSwitchTile` exposing only its
+46x28 switch to screen readers and the tap-target check although the whole row toggles: the tile is now ONE merged
+node (title + subtitle read once, toggled state) with a 48 px minimum height. That is a kit change, so every
+settings row that uses the tile gains it. Migration 0031 was also run through Alembic on PostgreSQL (0001 → 0031,
+down to 0030 and up again).
+**Round 3 (2026-10-31, the owner's "do all").** *"Your next step is ready":* when a personal course reaches 100 %,
+the first course its roadmap places next that the student can see and has not enrolled in is announced once (in-app +
+push, no e-mail fallback; the tap opens that course through the existing `related_type: course` target). Never for
+an organization account or course; kill switch `roadmap.next_notice`; once per student and next course (the
+notification row is the record, so no new column). Sent from a thread after the progress commit
+(`services/learning/notices.py`), so marking a lesson done never waits on FCM. *Exploration:* ranks 5 and 15 of
+"Recommended for you" show the most popular course (≥ 2 recent students) from a field the student never touched,
+neither chosen nor taken, nor a sub-field of one, with the reason `explore_field` ("Popular in Design, a field new
+to you"). One field per slot; skipped on a cold start (everything is new then) and when the top 5 already reaches
+outside. Rejected: a random pick (the list would change on every visit and the reason could not be told); a
+separate "Explore" row (a second list beside the roadmap and the recommendations).
