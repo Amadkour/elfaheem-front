@@ -37,9 +37,9 @@ import 'org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart' show orgParseUtc, orgUtc;
+import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import 'org_page_kit.dart' show OrgPageBody, OrgPrimaryAction, orgListInset;
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _pub = '$orgBase/public';
@@ -481,6 +481,13 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
   }
 }
 
+/// A pushed page's readable column: the dashboard header keeps the page's full width (its one row needs the room),
+/// the content stays as narrow as the older page was.
+Widget _readable(double maxWidth, Widget child) => Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: SizedBox.expand(child: child)),
+    );
+
 /// "See all" page for the compact feed.
 class OrgAnnouncementsFeedScreen extends StatelessWidget {
   const OrgAnnouncementsFeedScreen({super.key, required this.orgId, this.deptId});
@@ -488,12 +495,18 @@ class OrgAnnouncementsFeedScreen extends StatelessWidget {
   final int? deptId;
 
   @override
-  Widget build(BuildContext context) => BasePage(
-        useWebCard: true,
-        maxWith: 820,
-        appBar: ScreenAppBar(title: t('الأخبار والإعلانات', 'News & announcements')),
-        child: OrgAnnouncementFeed(orgId: orgId, deptId: deptId),
-      );
+  Widget build(BuildContext context) {
+    final title = t('الأخبار والإعلانات', 'News & announcements');
+    final feed = OrgAnnouncementFeed(orgId: orgId, deptId: deptId);
+    // staff of this organization: the dashboard's header (Refresh rebuilds the feed); members keep the app bar
+    if (orgUsesDashboardHeader(context, orgId)) return OrgPushedPage(title: title, child: _readable(820, feed));
+    return BasePage(
+      useWebCard: true,
+      maxWith: 820,
+      appBar: ScreenAppBar(title: title),
+      child: feed,
+    );
+  }
 }
 
 class _CountBadge extends StatelessWidget {
@@ -1481,10 +1494,20 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
 
   String get _url => '$orgBase/orgs/${widget.orgId}/announcements/${widget.announcementId}/analytics';
 
+  /// The dashboard header's Refresh (it replaces the old refresh icon) reloads the insights in place.
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -1494,18 +1517,18 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
       _d = r ?? _d;
       _failed = r == null && _d == null;
     });
+    if (r != null) _refresh.markUpdated();
   }
 
   @override
   Widget build(BuildContext context) {
     final title = '${asMap(_d?['announcement'])['title'] ?? widget.initial?['title'] ?? t('الإعلان', 'Announcement')}';
-    return BasePage(
-      useWebCard: true,
-      maxWith: 980,
-      appBar: ScreenAppBar(title: t('تفاعل الإعلان', 'Announcement insights'), actions: [
-        IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-       const ContextExitButton()]),
-      child: _d == null
+    // staff only (opened from the announcements page): the dashboard's own header
+    return OrgPushedPage(
+      title: t('تفاعل الإعلان', 'Announcement insights'),
+      subtitle: title,
+      refresh: _refresh,
+      child: _readable(980, _d == null
           ? (_failed
               ? AppEmpty(
                   icon: Icons.insights_rounded,
@@ -1513,7 +1536,7 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
                   actionLabel: t('إعادة المحاولة', 'Try again'),
                   onAction: _load)
               : const AppListSkeleton(items: 5, withAvatar: false))
-          : AppRefresh(onRefresh: _load, child: _body(context, title, _d!)),
+          : AppRefresh(onRefresh: _load, child: _body(context, title, _d!))),
     );
   }
 

@@ -23,6 +23,7 @@ import '../../admin/admin_common.dart';
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../teacher/data_lab/data_lab_saver_web.dart' as saver;
 import '../org_common.dart' show openFileUrl;
+import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import '../org_providers.dart';
 import '../org_ui.dart';
 import '../org_v3.dart';
@@ -84,9 +85,19 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
 
   ReportPeriod get _period => ReportPeriod.of(_kind, from: _custom?.start, to: _custom?.end);
 
+  /// The dashboard header's Refresh reloads the items and the templates in place: the design, the chosen
+  /// output and the items taken out stay.
+  final _refresh = OrgPageRefresh();
+
+  Future<void> _reload() async {
+    await Future.wait([_load(), _loadTemplates()]);
+    if (mounted && _error == null) _refresh.markUpdated();
+  }
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_reload);
     _title.text = t('تقرير الشكاوى والطلبات', 'Complaints and requests report');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
@@ -98,6 +109,7 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
   void dispose() {
     _title.dispose();
     _signer.dispose();
+    _refresh.dispose();
     super.dispose();
   }
 
@@ -161,15 +173,19 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final steps = [t('العناصر', 'Items'), t('التصميم', 'Design'), t('الإخراج', 'Output')];
-    return BasePage(
-      appBar: ScreenAppBar(title: t('تقرير الشكاوى والطلبات', 'Complaints & requests report'), actions: const [ContextExitButton()]),
-      child: Column(children: [
+    final title = t('تقرير الشكاوى والطلبات', 'Complaints & requests report');
+    final body = Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          child: Row(children: [
+          // a narrow phone names only the current step (the others keep their number); nothing overflows
+          child: LayoutBuilder(builder: (context, box) {
+            final narrow = box.maxWidth < 480;
+            return Row(children: [
             for (var i = 0; i < steps.length; i++) ...[
               if (i > 0) Expanded(child: Container(height: 2, color: i <= _step ? c.primary : c.divider)),
-              InkWell(
+              Flexible(
+                flex: i == _step ? 6 : 2,
+                child: InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => setState(() => _step = i),
                 child: Padding(
@@ -180,13 +196,20 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
                       backgroundColor: i <= _step ? c.primary : c.divider,
                       child: Text('${i + 1}', style: orgText(context, size: 12, w: FontWeight.w800, color: i <= _step ? c.cardBg : c.textMedium)),
                     ),
-                    const SizedBox(width: 6),
-                    Text(steps[i], style: orgText(context, size: 12.5, w: i == _step ? FontWeight.w800 : FontWeight.w500, color: i == _step ? c.textDark : c.textMedium)),
+                    if (!narrow || i == _step) ...[
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(steps[i], maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: orgText(context, size: 12.5, w: i == _step ? FontWeight.w800 : FontWeight.w500, color: i == _step ? c.textDark : c.textMedium)),
+                      ),
+                    ],
                   ]),
                 ),
               ),
+              ),
             ],
-          ]),
+          ]);
+          }),
         ),
         Expanded(
           child: AnimatedSwitcher(
@@ -216,7 +239,18 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
             ]),
           ),
         ),
-      ]),
+      ]);
+    if (orgUsesDashboardHeader(context, null)) {
+      return OrgPushedPage(
+        title: title,
+        subtitle: [_dept, _org].firstWhere((x) => x.isNotEmpty, orElse: () => ''),
+        refresh: _refresh,
+        child: body,
+      );
+    }
+    return BasePage(
+      appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]),
+      child: body,
     );
   }
 

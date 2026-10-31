@@ -12,13 +12,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, asInt, asMap, asMapList, t;
 import '../../admin/admin_list.dart' show IconBadge;
+import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;
+import '../org_page_kit.dart' show OrgPrimaryAction, OrgPrimaryButton;
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgCall, orgUtc;
 import 'gov_api.dart';
@@ -291,9 +290,15 @@ class _GovItemsPageState extends State<GovItemsPage> {
 
   int get _orgId => widget.orgId ?? context.read<OrgSession>().currentId ?? 0;
 
+  /// On its own page the header's Refresh reloads the list in place (the filter stays); "Updated" is when it answered.
+  final _refresh = OrgPageRefresh();
+
+  Future<void> _reload() => _load(reset: true);
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_reload);
     _filter = (widget.initial ?? const ItemFilter()).copyWith(deptId: widget.deptId ?? widget.initial?.deptId);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _api = GovApi(_orgId);
@@ -345,6 +350,13 @@ class _GovItemsPageState extends State<GovItemsPage> {
       _facets = page.facets;
       _selected.removeWhere((id) => !_items.any((i) => i.id == id));
     });
+    if (r.ok) _refresh.markUpdated();
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   void _loadMore() {
@@ -423,6 +435,8 @@ class _GovItemsPageState extends State<GovItemsPage> {
     final s = context.watch<OrgSession>();
     final canInsert = widget.deptId == null ? s.canAny('workflow', 'insert') : s.can('workflow', 'insert', widget.deptId);
     final canExport = widget.onExport != null && (widget.deptId == null ? s.canAny('workflow', 'export') : s.can('workflow', 'export', widget.deptId));
+    // on its own page "New item" is the header's primary action; inside a section / tab it stays in the row below
+    final newInRow = canInsert && widget.embedded;
     final body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       GovActingBanner(orgId: _orgId),
       Padding(
@@ -450,7 +464,7 @@ class _GovItemsPageState extends State<GovItemsPage> {
             if (asInt(asMap(_facets['status'])[st]) > 0)
               AppBadgePill('${itemStatusLabel(st)} ${asInt(asMap(_facets['status'])[st])}', color: govStatusColor(context, st)),
           const SizedBox(width: 4),
-          if (canInsert) AppPill(icon: Icons.add_rounded, label: t('معاملة جديدة', 'New item'), onTap: _entities.isEmpty ? null : _newItem),
+          if (newInRow) AppPill(icon: Icons.add_rounded, label: t('معاملة جديدة', 'New item'), onTap: _entities.isEmpty ? null : _newItem),
           if (canExport) AppPill(icon: Icons.file_download_rounded, label: t('تصدير', 'Export'), color: c.textMedium, onTap: () => widget.onExport!(_filter)),
           if (_items.isNotEmpty)
             AppPill(
@@ -468,10 +482,16 @@ class _GovItemsPageState extends State<GovItemsPage> {
       if (_selectMode && _selected.isNotEmpty) _BulkBar(count: _selected.length, onRoute: () => _bulk('route'), onClose: () => _bulk('close'), onAssign: () => _bulk('assign')),
     ]);
     if (widget.embedded) return body;
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: widget.title ?? (widget.deptId == null ? t('الطلبات والمعاملات', 'Requests & workflow') : _deptName(widget.deptId!)), actions: const [ContextExitButton()]),
+    // staff only (a governance dashboard tile): the dashboard's header — Back · title · the entity · New item
+    final dept = widget.deptId;
+    return OrgPushedPage(
+      title: widget.title ?? (dept == null ? t('الطلبات والمعاملات', 'Requests & workflow') : _deptName(dept)),
+      subtitle: widget.title != null && dept != null && _entities.isNotEmpty ? _deptName(dept) : null,
+      refresh: _refresh,
+      // like the row's pill: only once the entities are known (the sheet needs them)
+      primaryAction: canInsert && _entities.isNotEmpty
+          ? OrgPrimaryButton(action: OrgPrimaryAction(id: 'gov.new_item', icon: Icons.add_rounded, label: t('معاملة جديدة', 'New item'), onTap: _newItem))
+          : null,
       child: body,
     );
   }

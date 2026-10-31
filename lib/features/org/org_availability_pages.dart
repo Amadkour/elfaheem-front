@@ -19,6 +19,8 @@ import 'org_ui.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'org_timetable_time.dart';
 import 'org_v3.dart' show orgParseUtc;
+import 'org_page_header.dart' show OrgPageRefresh;
+import 'org_schedule_planning.dart' show orgStudioPage;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -26,6 +28,24 @@ Map<String, String> _days() => {
       'saturday': t('السبت', 'Sat'), 'sunday': t('الأحد', 'Sun'), 'monday': t('الاثنين', 'Mon'), 'tuesday': t('الثلاثاء', 'Tue'),
       'wednesday': t('الأربعاء', 'Wed'), 'thursday': t('الخميس', 'Thu'), 'friday': t('الجمعة', 'Fri'),
     };
+
+/// Opens [OrgAvailabilityRequestsPage] over the studio / the wizard: the dashboard's header (D-103) when I work in
+/// the organization, else the older bar with its exit button.
+Future<void> openAvailabilityRequests(BuildContext context) {
+  final s = context.read<OrgSession>();
+  return Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ChangeNotifierProvider.value(
+            value: s,
+            child: Builder(
+              builder: (ctx) => orgStudioPage(
+                ctx,
+                title: t('طلبات المواعيد المتاحة', 'Availability requests'),
+                maxWidth: 900,
+                child: const OrgAvailabilityRequestsPage(),
+              ),
+            ),
+          )));
+}
 
 class OrgAvailabilityRequestsPage extends StatefulWidget {
   const OrgAvailabilityRequestsPage({super.key});
@@ -36,18 +56,28 @@ class OrgAvailabilityRequestsPage extends StatefulWidget {
 
 class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPage> {
   List<Map<String, dynamic>>? _items;
+  OrgPageRefresh? _refresh;
 
   String get _base => '${context.read<OrgSession>().base}/availability-requests';
 
   @override
   void initState() {
     super.initState();
+    _refresh = OrgPageRefresh.register(context, _load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
     final r = await OrgApi.i.getMap(_base);
-    if (mounted) setState(() => _items = asMapList(r?['items']));
+    if (!mounted) return;
+    setState(() => _items = asMapList(r?['items']));
+    if (r != null) _refresh?.markUpdated();
   }
 
   Future<void> _edit([Map<String, dynamic>? item]) async {

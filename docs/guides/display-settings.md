@@ -1,0 +1,5 @@
+# Display & reading settings
+
+Moved verbatim from the root `CLAUDE.md` (which keeps a short summary and the rules a session must never miss). Keep this file in step with the code.
+
+- **Display & reading (D-072):** `DisplaySettings.instance` (`lib/core/display/display_settings.dart`, device-local: fonts, text size × the system's, whole-interface zoom, bold, high contrast, reduce motion, larger targets, reading spacing, presets) is applied by `AppDisplayScope` (`lib/design/app_display.dart`) in `MaterialApp.builder`. Zoom lays the app out at size / zoom, so breakpoints see the smaller width. The page is `DisplaySettingsPage`, entered with `DisplaySettingsTile` next to "Language" (feature key `profile.display`). A new decorative loop (shimmer, pulse, shine) calls `syncMotionLoop(context, controller)` from `didChangeDependencies` so Reduce motion parks it; a loop that tells something (spinner, recording dot) does not. Tests: `test/ui/display_settings_layout_test.dart`; renders: `test/visual/display_golden_test.dart`.

@@ -15,8 +15,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin/admin_common.dart';
 import '../shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
@@ -26,12 +24,12 @@ import 'org_my_exams.dart' show examPauseText;
 import 'org_providers.dart';
 import 'org_schedule_copies.dart' show timetableNamesOf;
 import 'org_schedule_export.dart' show showExamExport;
-import 'org_schedule_planning.dart' show kOrgSchedulingMocks;
+import 'org_page_header.dart' show OrgPageRefresh;
+import 'org_schedule_planning.dart' show kOrgSchedulingMocks, orgStudioPage;
 import 'org_schedule_versions.dart';
 import 'org_timetable_time.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Pure
@@ -225,10 +223,10 @@ String _err(Object e) {
 
 Future<void> openExamTimetables(BuildContext context, OrgScheduleProvider p, {bool canEdit = false, bool canApprove = false, bool canExport = false}) =>
     Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => BasePage(
-              useWebCard: true,
-              maxWith: 1000,
-              appBar: ScreenAppBar(title: t('جداول الامتحانات', 'Exam timetables'), actions: const [ContextExitButton()]),
+        builder: (ctx) => orgStudioPage(
+              ctx,
+              title: t('جداول الامتحانات', 'Exam timetables'),
+              subtitle: t('منتصف الفصل والنهائية', 'Midterm & final'),
               child: _ExamListPage(p: p, api: examApi(p), canEdit: canEdit, canApprove: canApprove, canExport: canExport),
             )));
 
@@ -245,11 +243,19 @@ class _ExamListPage extends StatefulWidget {
 class _ExamListPageState extends State<_ExamListPage> {
   List<Map<String, dynamic>>? items;
   String? error;
+  OrgPageRefresh? _refresh;
 
   @override
   void initState() {
     super.initState();
+    _refresh = OrgPageRefresh.register(context, _load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -260,6 +266,7 @@ class _ExamListPageState extends State<_ExamListPage> {
           items = r;
           error = null;
         });
+        _refresh?.markUpdated();
       }
     } catch (e) {
       if (mounted) setState(() => error = _err(e));
@@ -268,10 +275,10 @@ class _ExamListPageState extends State<_ExamListPage> {
 
   Future<void> _open(int id) async {
     await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => BasePage(
-              useWebCard: true,
-              maxWith: 1100,
-              appBar: ScreenAppBar(title: t('جدول الامتحانات', 'Exam timetable'), actions: const [ContextExitButton()]),
+        builder: (ctx) => orgStudioPage(
+              ctx,
+              title: t('جدول الامتحانات', 'Exam timetable'),
+              maxWidth: 1100,
               child: _ExamPage(p: widget.p, api: widget.api, id: id, canEdit: widget.canEdit, canApprove: widget.canApprove, canExport: widget.canExport),
             )));
     await _load();
@@ -525,11 +532,19 @@ class _ExamPageState extends State<_ExamPage> {
   Map<String, dynamic>? e;
   String? error;
   bool busy = false;
+  OrgPageRefresh? _refresh;
 
   @override
   void initState() {
     super.initState();
+    _refresh = OrgPageRefresh.register(context, _load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -540,6 +555,7 @@ class _ExamPageState extends State<_ExamPage> {
           e = r;
           error = null;
         });
+        _refresh?.markUpdated();
       }
       if (_made.isEmpty) _loadMade();
     } catch (x) {
