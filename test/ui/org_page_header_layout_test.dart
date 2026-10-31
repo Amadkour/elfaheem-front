@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextPill;
 import 'package:flutter_education_app/features/org/org_dashboard_screen.dart' show OrgStaffOnlyPage;
 import 'package:flutter_education_app/features/org/org_page_header.dart';
 import 'package:flutter_education_app/features/org/org_providers.dart';
@@ -106,6 +107,50 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('org.header.switcher')));
       },
     );
+  });
+
+  testWidgets('pushed page: Back + long name + subtitle + Edit, its own refresh, the pill on a phone', (tester) async {
+    final refresh = OrgPageRefresh();
+    addTearDown(refresh.dispose);
+    final session = _session();
+    await expectNoLayoutErrors(
+      tester,
+      () => _wrap(
+        OrgPushedPage(
+          title: 'Computer Science Department Council — undergraduate and postgraduate programmes',
+          subtitle: 'Service department · CSDC · Part of the Faculty of Engineering, Technology and Computer Science',
+          refresh: refresh,
+          primaryAction: OrgHeaderButton(icon: Icons.edit_rounded, label: 'Edit', onTap: () {}),
+          child: ListView(children: const [SizedBox(height: 900)]),
+        ),
+        session: session,
+      ),
+      act: (tester) async {
+        expect(find.byKey(const ValueKey('org.header.back')), findsOneWidget);
+        expect(find.byKey(const ValueKey('org.header.switcher')), findsOneWidget);
+      },
+    );
+  });
+
+  testWidgets('pill: one line, two lines, then the mark alone — never an overflow', (tester) async {
+    const name = 'Faculty of Engineering, Technology and Computer Science — Nile National University';
+    for (final w in [100.0, 180.0, 280.0]) {
+      await expectNoLayoutErrors(
+        tester,
+        () => Align(
+          alignment: AlignmentDirectional.topStart,
+          child: SizedBox(
+            width: w,
+            child: ContextPill(icon: Icons.account_balance_rounded, tone: Colors.teal, label: name, onTap: () {}),
+          ),
+        ),
+        act: (tester) async {
+          // below the threshold the name is in the tooltip / screen-reader label only
+          expect(find.text(name), w < ContextPill.markOnlyBelow ? findsNothing : findsOneWidget);
+          expect(find.byTooltip(name), findsOneWidget);
+        },
+      );
+    }
   });
 
   testWidgets('staff-only page', (tester) async {

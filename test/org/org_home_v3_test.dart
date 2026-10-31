@@ -280,7 +280,7 @@ void main() {
   test('department meta line: what waits first, else its size, in plain words', () {
     expect(orgDeptMeta({'unit_type': 'dept', 'waiting': 3, 'team': 4}), '3 waiting for you');
     expect(orgDeptMeta({'unit_type': 'dept', 'waiting': 1}), '1 waiting for you');
-    expect(orgDeptMeta({'unit_type': 'dept', 'team': 4}), '4 on the team');
+    expect(orgDeptMeta({'unit_type': 'dept', 'team': 4}), '4 people on the team');
     expect(orgDeptMeta({'unit_type': 'dept', 'team': 0}), 'No one on the team yet');
     expect(orgDeptMeta({'unit_type': 'program', 'students': 3000}), '3000 students');
     AppConfig.lang = 'ar';

@@ -154,7 +154,14 @@ class OrgTask {
   final OrgTaskLink link;
 
   String get title => _pick(titleAr, titleEn);
-  String get subtitle => _pick(subtitleAr, subtitleEn);
+  /// The one line under the title; a bare server key (`program_plan`) is never shown as words.
+  String get subtitle {
+    final v = _pick(subtitleAr, subtitleEn);
+    return _rawKey.hasMatch(v.trim()) ? '' : v;
+  }
+
+  static final _rawKey = RegExp(r'^[a-z]+(_[a-z0-9]+)+$');
+
   bool get urgent => urgency == 'high';
   bool get oneTap => actions.isNotEmpty;
 
@@ -444,5 +451,5 @@ String orgDeptMeta(Map<String, dynamic> u) {
   }
   final team = _int(u['team']);
   if (team == 0) return t('لا أحد في الفريق بعد', 'No one on the team yet');
-  return team == 1 ? t('شخص واحد في الفريق', '1 person on the team') : t('$team في الفريق', '$team on the team');
+  return team == 1 ? t('شخص واحد في الفريق', '1 person on the team') : t('$team في الفريق', '$team people on the team');
 }

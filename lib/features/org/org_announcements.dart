@@ -270,8 +270,11 @@ class _SeenProbeState extends State<_SeenProbe> {
 /// Embeddable announcement feed of one organization for the signed-in member.
 /// [limit] caps the items shown (null = all, with paging); [compact] is the dashboard-card variant.
 class OrgAnnouncementFeed extends StatefulWidget {
-  const OrgAnnouncementFeed({super.key, required this.orgId, this.limit, this.compact = false, this.deptId});
+  const OrgAnnouncementFeed({super.key, required this.orgId, this.limit, this.compact = false, this.deptId, this.title});
   final int orgId;
+
+  /// The compact card's heading (default "Latest news"); a page passes its own instead of drawing a second one.
+  final String? title;
   final int? deptId;
   final int? limit;
   final bool compact;
@@ -348,8 +351,11 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
         Icon(Icons.campaign_rounded, color: c.primary, size: 20),
         const SizedBox(width: 6),
         Flexible(
-          child: Text(t('آخر الأخبار', 'Latest news'),
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 15, w: FontWeight.w800)),
+          child: Semantics(
+            header: true,
+            child: Text(widget.title ?? t('آخر الأخبار', 'Latest news'),
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+          ),
         ),
         if (_unread > 0) ...[const SizedBox(width: 6), _CountBadge(_unread)],
         const Spacer(),
@@ -902,9 +908,10 @@ class _AnnList extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<OrgSession>();
     final p = context.read<OrgPaged>();
+    final canPost = s.can('announcements', 'insert', deptId);
     // the page anatomy (D-103, org_page_kit.dart): ONE primary action "New announcement" · the cards
     return OrgPageBody(
-      primary: s.can('announcements', 'insert', deptId)
+      primary: canPost
           ? OrgPrimaryAction(
               id: 'new_announcement',
               icon: Icons.add_rounded,
@@ -913,7 +920,10 @@ class _AnnList extends StatelessWidget {
             )
           : null,
       child: PagedList<OrgPaged>(
-        emptyText: t('لا إعلانات بعد — شارك أول خبر مع مجتمعك', 'No announcements yet — share the first news'),
+        // only who may post is invited to post
+        emptyText: canPost
+            ? t('لا إعلانات بعد — شارك أول خبر مع مجتمعك', 'No announcements yet — share the first news')
+            : t('لا إعلانات بعد', 'No announcements yet'),
         itemBuilder: (context, row) => _AnnCard(row: row),
       ),
     );

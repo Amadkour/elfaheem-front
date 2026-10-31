@@ -3,7 +3,10 @@
 // THE page header of every page of the organization dashboard (D-103) — phones included (they have no shell top
 // bar), and the shell's own top bar is off (AppShell(showTopBar: false)), so nothing is drawn twice.
 //
-//   OrgPageHeader({required String title, String? subtitle, Widget? primaryAction})
+//   OrgPageHeader({required String title, String? subtitle, Widget? primaryAction, bool back = false})
+//       back: a Back button leads the header (pages pushed on top — use OrgPushedPage, below).
+//       The switcher pill degrades on narrow rows (ContextPill): one line → two lines → the mark alone (the full
+//       name stays in its tooltip, its screen-reader label and the sheet).
 //       title (+ one-line subtitle) · at most ONE primary action · Search (the command palette, when the shell's
 //       AppCommandPaletteScope is on: a chip on wide, a full-width bar under the title on phones) · Refresh with
 //       "Updated 2 min ago" · calendar ·
@@ -28,6 +31,11 @@
 //     organization changes).
 //   orgUpdatedText(at, now) — the pure "Updated 2 min ago" text; OrgClock.minute ticks once a minute while shown.
 //
+//   OrgPushedPage(title:, subtitle:, primaryAction:, refresh:, child:) — a page pushed ON TOP of the dashboard (a
+//     department, a page opened from More / a shortcut): the same header with a Back button first, its own refresh
+//     scope (pass [refresh] to drive it yourself, else Refresh re-keys the page), re-keyed when my access changes and
+//     closed when another organization is chosen in the switcher (it belonged to the previous one).
+//
 // Layout test: test/ui/org_page_header_layout_test.dart; renders: test/visual/org_shell_golden_test.dart.
 library;
 
@@ -44,6 +52,7 @@ import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarE
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIconButton;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextPill;
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart' show t;
@@ -223,13 +232,108 @@ class _OrgPageRefreshBodyState extends State<OrgPageRefreshBody> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  A page pushed on top of the dashboard
+// ═════════════════════════════════════════════════════════════════════════════
+
+class OrgPushedPage extends StatefulWidget {
+  const OrgPushedPage({
+    super.key,
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.primaryAction,
+    this.refresh,
+    this.maxWidth = 1100,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget? primaryAction;
+  final Widget child;
+
+  /// The page's own refresh state (it attaches its loader and reports "Updated"); null = one is made here and a
+  /// Refresh re-keys [child].
+  final OrgPageRefresh? refresh;
+  final double maxWidth;
+
+  @override
+  State<OrgPushedPage> createState() => _OrgPushedPageState();
+}
+
+class _OrgPushedPageState extends State<OrgPushedPage> {
+  OrgPageRefresh? _own;
+  OrgSession? _session;
+  int? _orgId;
+  bool _closing = false;
+
+  OrgPageRefresh get _refresh => widget.refresh ?? (_own ??= OrgPageRefresh());
+
+  @override
+  void initState() {
+    super.initState();
+    _session = OrgPageHeader._maybe<OrgSession>(context, listen: false);
+    _orgId = _session?.currentId;
+    _session?.addListener(_onSession);
+  }
+
+  /// Another organization was chosen in the switcher: this page belonged to the previous one.
+  void _onSession() {
+    final s = _session;
+    if (s == null || _closing || !mounted || s.currentId == _orgId) return;
+    _closing = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // exactly this page (the switcher sheet, or a page above it, may still be on top)
+      final route = ModalRoute.of(context);
+      if (route == null || !route.isActive) return;
+      final nav = Navigator.of(context);
+      route.isCurrent ? nav.pop() : nav.removeRoute(route);
+    });
+  }
+
+  @override
+  void dispose() {
+    _session?.removeListener(_onSession);
+    _own?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _session;
+    final Widget body = s == null
+        ? widget.child
+        : ValueListenableBuilder<int>(
+            valueListenable: s.epoch,
+            builder: (_, e, _) => OrgPageRefreshBody(controller: _refresh, pageKey: '$_orgId-$e', child: widget.child),
+          );
+    return OrgPageRefreshScope(
+      controller: _refresh,
+      child: BasePage(
+        useWebCard: true,
+        maxWith: widget.maxWidth,
+        child: Column(children: [
+          OrgPageHeader(title: widget.title, subtitle: widget.subtitle, primaryAction: widget.primaryAction, back: true),
+          Expanded(child: body),
+        ]),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  The header
 // ═════════════════════════════════════════════════════════════════════════════
 
 class OrgPageHeader extends StatelessWidget {
-  const OrgPageHeader({super.key, required this.title, this.subtitle, this.primaryAction, this.searchBar = false});
+  const OrgPageHeader(
+      {super.key, required this.title, this.subtitle, this.primaryAction, this.searchBar = false, this.back = false});
 
   final String title;
+
+  /// A page pushed on top of the dashboard (a department, a page opened from More): a Back button leads the header
+  /// (the arrow mirrors in Arabic by itself).
+  final bool back;
 
   /// Phones: draw the full-width "Search pages, departments, people" bar under the title. Only Home asks for it:
   /// the other pages have their own search box, and two look-alike search fields stacked confuse. (Wide screens
@@ -267,9 +371,11 @@ class OrgPageHeader extends StatelessWidget {
         subtitle: subtitle,
         updated: refresh != null && !wide ? refresh : null,
       );
+      final backBtn = back ? const _BackButton() : null;
       final Widget body;
       if (wide) {
         body = Row(children: [
+          if (backBtn != null) ...[backBtn, AppSpace.gapXs],
           Expanded(flex: 3, child: titleBlock),
           if (primaryAction != null) ...[AppSpace.gapSm, primaryAction!],
           if (search != null) ...[AppSpace.gapSm, _ChipButton(icon: Icons.search_rounded, label: _searchLabel, onTap: search)],
@@ -289,6 +395,7 @@ class OrgPageHeader extends StatelessWidget {
       } else {
         body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
+            if (backBtn != null) ...[backBtn, AppSpace.gapXs],
             Expanded(
               child: Align(alignment: AlignmentDirectional.centerStart, child: pill ?? const SizedBox.shrink()),
             ),
@@ -312,9 +419,9 @@ class OrgPageHeader extends StatelessWidget {
     });
   }
 
-  static T? _maybe<T>(BuildContext context) {
+  static T? _maybe<T>(BuildContext context, {bool listen = true}) {
     try {
-      return Provider.of<T>(context);
+      return Provider.of<T>(context, listen: listen);
     } on ProviderNotFoundException {
       return null;
     }
@@ -464,6 +571,64 @@ class _ChipButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A quiet header action with its text (e.g. a department's "Edit"): the same bordered chip as Search / Refresh.
+/// For a page's ONE filled primary action use OrgPrimaryButton (org_page_kit.dart).
+class OrgHeaderButton extends StatelessWidget {
+  const OrgHeaderButton({super.key, required this.icon, required this.label, required this.onTap, this.tooltip});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: tooltip ?? label,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: tooltip ?? label,
+        excludeFromSemantics: true,
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll, side: BorderSide(color: c.divider)),
+          child: InkWell(
+            borderRadius: AppRadius.chipAll,
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(icon, size: 20, color: c.textMedium),
+                  const SizedBox(width: AppSpace.xs),
+                  Text(label, style: AppType.row(context).copyWith(color: c.textDark)),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Back to the page underneath: the same 48 px square as the calendar and the bell; the arrow mirrors in Arabic.
+class _BackButton extends StatelessWidget {
+  const _BackButton();
+
+  @override
+  Widget build(BuildContext context) => KeyedSubtree(
+        key: const ValueKey('org.header.back'),
+        child: ChromeIconButton(
+          icon: Icons.arrow_back_rounded,
+          label: t('رجوع', 'Back'),
+          onTap: () => Navigator.of(context).maybePop(),
+        ),
+      );
 }
 
 /// Phones: the icon only (tooltip + screen-reader label), the same 48 px square as the calendar and the bell.

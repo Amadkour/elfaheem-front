@@ -1,6 +1,6 @@
 # Organization Dashboard — one dashboard for every non-student org role (D-103)
 
-Status: in progress (2026-10-31). Branch `feature/live-hardening` in both repos.
+Status: done (2026-10-31). Branch `feature/live-hardening` in both repos.
 
 ## What and why
 
@@ -137,4 +137,6 @@ parsers, summaries, suggestion texts, task sorting / optimistic state), `test/ui
 | 3 | Needs your attention: tasks + one-tap + audit (server §3) | done (same commits) |
 | 4 | Insights (server §4, kill switch) | done (back a0b31ed; app: lazy, fetched in parallel with the dashboard, org-admin open budget 5 → 6) |
 | 5 | Command palette (server §5) + remaining screens on the shared page anatomy (`org_page_kit.dart`) | done |
-| 6 | UX review + QA in the real web app | |
+| 6 | UX review + QA in the real web app | done: every role walked in a real web build (390 / 1440, ar / en, light / dark); the department page and pages pushed from More on the shared header (`OrgPushedPage`), switcher pill degrades, sidebar chip contrast, copy; QA of the 7 criteria on the live API, server hardening (int4-safe ids, `date_out_of_range`, audit `meta`, English registrar task titles) |
+
+Still on the old app bar: about 60 detail / editor screens under `lib/features/org` (complaint detail, form editor, governance item and session screens, registrar member pages): move them to `OrgPushedPage` as they are touched.

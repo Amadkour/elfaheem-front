@@ -34,11 +34,8 @@ import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppCard, AppListSkeleton, AppPill, AppRefresh, AppTime, AppTrendTile, appChartPalette, appCompactNumber;
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/design/home_kit.dart' show HomeEntrance, HomeSection, homeIsWide;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -54,7 +51,7 @@ import 'org_dashboard_screen.dart' show OrgTabs;
 import 'org_dashboard_settings.dart' show showOrgSwitcher;
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
-import 'org_page_header.dart' show OrgPageHeader, OrgPageRefresh;
+import 'org_page_header.dart' show OrgPageHeader, OrgPageRefresh, OrgPushedPage;
 import 'org_providers.dart';
 import 'org_schedule_autopilot.dart' show TermNeed, TermTimetableCard;
 import 'org_ui.dart';
@@ -300,11 +297,8 @@ Future<void> orgPushPage(BuildContext context,
             ChangeNotifierProvider<OrgDashController>.value(value: dash),
             if (tabs != null) ChangeNotifierProvider<OrgTabs>.value(value: tabs),
           ],
-          child: BasePage(
-              useWebCard: true,
-              maxWith: maxWidth,
-              appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]),
-              child: page))));
+          // the dashboard's own header (Back · title · Refresh · calendar · bell · switcher), never an older app bar
+          child: OrgPushedPage(title: title, maxWidth: maxWidth, child: page))));
   dash.afterReturn(epoch);
 }
 
@@ -380,9 +374,18 @@ class _OrgHomePageState extends State<OrgHomePage> {
   static String _roleLabel(OrgSession s, OrgHomeData? d) {
     final role = '${s.current?['my_role'] ?? ''}';
     if (d?.isAdmin ?? s.isOrgAdmin) return t('مدير المؤسسة', 'Organization admin');
-    if (d?.access == 'member') return memberRoleLabels()[d?.memberRole ?? ''] ?? t('عضو', 'Member');
-    return memberRoleLabels()[d?.memberRole ?? role] ?? t('فريق العمل', 'Staff');
+    if (d?.access == 'member') return _myRole(d?.memberRole) ?? t('عضو', 'Member');
+    return _myRole(d?.memberRole ?? role) ?? t('فريق العمل', 'Staff');
   }
+
+  /// MY role, in the singular ("Teaching assistant", not the group name "Teaching assistants").
+  static String? _myRole(String? role) => switch (role) {
+        'teacher' => t('عضو هيئة التدريس', 'Teacher'),
+        'teacher_assistant' => t('عضو الهيئة المعاونة', 'Teaching assistant'),
+        'admin_assistant' => t('إداري', 'Administrative staff'),
+        'student' => t('طالب', 'Student'),
+        _ => null,
+      };
 
   /// "Home" (the organization's name is already on the switcher pill beside it) · my role there.
   Widget _header(OrgSession s, OrgHomeData? d) => OrgPageHeader(title: t('الرئيسية', 'Home'), subtitle: _roleLabel(s, d), searchBar: true);
@@ -538,7 +541,9 @@ class _LiveAttention extends StatelessWidget {
             cards.add(OrgAttentionSpec(
                 icon: Icons.auto_fix_high_rounded,
                 severity: 'info',
-                title: t('$drafts اقتراح جاهز للاعتماد', '$drafts drafts ready for approval'),
+                title: drafts == 1
+                    ? t('اقتراح واحد جاهز للاعتماد', '1 draft ready for approval')
+                    : t('$drafts اقتراحات جاهزة للاعتماد', '$drafts drafts ready for approval'),
                 subtitle: t('أنشأها النظام تلقائياً — اعتمد أو عدّل أو ارفض', 'Made automatically — approve, edit or reject'),
                 action: t('مراجعة', 'Review'),
                 onTap: () => orgJump(context, 'academics', sub: 'structure', fallback: (t('الهيكل الأكاديمي', 'Academic structure'), const OrgAcademicPage()))));
@@ -547,7 +552,9 @@ class _LiveAttention extends StatelessWidget {
             cards.add(OrgAttentionSpec(
                 icon: Icons.gavel_rounded,
                 severity: 'warning',
-                title: t('$decisions قرار ينتظرك', '$decisions decisions waiting'),
+                title: decisions == 1
+                    ? t('قرار واحد ينتظرك', '1 decision waiting')
+                    : t('$decisions قرارات تنتظرك', '$decisions decisions waiting'),
                 subtitle: t('حالات لم يحسمها النظام وحده', 'Cases the system did not settle alone'),
                 action: t('فتح', 'Open'),
                 onTap: () => orgJump(context, 'academics', sub: 'registrar')));

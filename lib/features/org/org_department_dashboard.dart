@@ -9,8 +9,9 @@
 // stays on screen when a reload fails). Every block and action is gated by the server's `can` map (the viewer's
 // effective rights IN THIS department), so a head, an approver and the org admin each see what they may do.
 //
-// Layout: a calm header card (identity · head · four figures; a figure the viewer may not see reads "—") → a few
-// quick actions → trend tiles the day the server sends `series` → the tabs (+ Overview on phones). On wide screens
+// Layout: the dashboard's own header (OrgPushedPage: Back · the department's name · its kind line · Edit when
+// allowed · Refresh with "Updated …" · calendar · bell · switcher) → a calm card (logo · head · the figures I may see)
+// → a few quick actions → trend tiles the day the server sends `series` → the tabs (+ Overview on phones). On wide screens
 // the overview (governance, announcements, sub-departments, contact card) sits in a side column.
 //
 // Tabs (D-103): the organization dashboard lists, per department, the modules I may VIEW there with their levels
@@ -26,9 +27,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -39,7 +37,7 @@ import 'home/org_home_logic.dart' show OrgDeptTab, OrgTabLevels, orgTabLevelsOf;
 import 'org_announcements.dart' show OrgAnnouncementFeed, OrgAnnouncementsPage;
 import 'org_dashboard_home.dart' show OrgTrendRow;
 import 'org_dashboard_model.dart' show OrgUnitData;
-import 'org_page_header.dart' show OrgPageRefresh;
+import 'org_page_header.dart' show OrgHeaderButton, OrgPageRefresh, OrgPushedPage;
 import 'org_departments_page.dart' show DeptLogo, OrgDepartmentHub, showDepartmentWizard;
 import 'org_join_pages.dart' show OrgUnitJoinHub;
 import 'org_providers.dart';
@@ -101,20 +99,19 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
 
   bool get _isDept => widget.unitType == 'dept';
 
-  OrgPageRefresh? _refresh;
+  /// The header's Refresh reloads only this department's call; "Updated" is when it answered.
+  final _refresh = OrgPageRefresh();
 
   @override
   void initState() {
     super.initState();
-    // the dashboard header's Refresh (when this page sits under one) reloads only this department's call; pushed on
-    // its own, the app bar's Refresh does
-    _refresh = OrgPageRefresh.register(context, _load);
+    _refresh.attach(_load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
   void dispose() {
-    _refresh?.unregister(_load);
+    _refresh.dispose();
     super.dispose();
   }
 
@@ -138,7 +135,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
         if (d != null) _d = d;                   // a bad answer keeps the last payload on screen
         _state = _d == null ? _Load.failed : _Load.ready;
       });
-      if (_d != null) OrgPageRefresh.reportUpdated(context);
+      if (_d != null) _refresh.markUpdated();
     } catch (e) {
       if (!mounted) return;
       final err = ApiException.from(e);
@@ -156,8 +153,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
   Future<void> _push(String title, Widget child) async {
     final s = context.read<OrgSession>();
     await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider.value(
-            value: s, child: BasePage(useWebCard: true, maxWith: 1100, appBar: ScreenAppBar(title: title), child: child))));
+        builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgPushedPage(title: title, child: child))));
     if (mounted) _load();
   }
 
@@ -173,25 +169,27 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     final c = context.colors;
     final name = orgNameOf(_unit);
     final editable = _isDept && (_cap('edit_unit') || _cap('edit_card'));
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1240,
-      appBar: ScreenAppBar(title: name.isEmpty ? t('القسم', 'Department') : name, actions: [
-        const ContextExitButton(), // one tap back to the personal space from inside a department
-        if (_state == _Load.ready)
-          IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-        if (_state == _Load.ready && editable)
-          IconButton(
-            tooltip: t('تعديل الإدارة', 'Edit department'),
-            icon: const Icon(Icons.edit_rounded),
-            onPressed: () async {
-              final s = context.read<OrgSession>();
-              final full = await OrgApi.i.getMap('${s.base}/departments/${widget.unitId}');
-              if (full == null || !context.mounted) return;
-              if (await showDepartmentWizard(context, edit: full)) _load();
-            },
-          ),
-      ]),
+    // the shared header (Back · name · kind line · Edit · Refresh · calendar · bell · switcher) — the "Personal" way
+    // out is in the switcher, so no separate exit icon
+    return OrgPushedPage(
+      title: name.isEmpty ? t('القسم', 'Department') : name,
+      subtitle: departmentKindLine(_unit, isDept: _isDept),
+      refresh: _refresh,
+      maxWidth: 1240,
+      primaryAction: _state == _Load.ready && editable
+          ? OrgHeaderButton(
+              key: const ValueKey('org.dept.edit'),
+              icon: Icons.edit_rounded,
+              label: t('تعديل', 'Edit'),
+              tooltip: t('تعديل الإدارة', 'Edit department'),
+              onTap: () async {
+                final s = context.read<OrgSession>();
+                final full = await OrgApi.i.getMap('${s.base}/departments/${widget.unitId}');
+                if (full == null || !context.mounted) return;
+                if (await showDepartmentWizard(context, edit: full)) _load();
+              },
+            )
+          : null,
       child: switch (_state) {
         _Load.loading => const AppListSkeleton(items: 5),
         _Load.forbidden => AppEmpty(
@@ -245,7 +243,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
               Expanded(child: main),
               SizedBox(
                 width: 360,
-                child: ListView(padding: const EdgeInsets.fromLTRB(0, 8, 8, 40), children: _overview(wide: true)),
+                child: ListView(padding: const EdgeInsetsDirectional.fromSTEB(0, AppSpace.xs, AppSpace.md, AppSpace.xxl), children: _overview(wide: true)),
               ),
             ]);
           }),
@@ -391,11 +389,13 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
         const SizedBox(height: 16),
       ],
       if (_isDept && s.currentId != null) ...[
-        _Title(t('إعلانات القسم', 'Department news')),
+        // ONE heading: the feed's own ("Department news" · unread count · See all)
         Padding(
           padding: pad,
-          child: OrgAnnouncementFeed(orgId: s.currentId!, deptId: widget.unitId, limit: 3, compact: true),
+          child: OrgAnnouncementFeed(
+              orgId: s.currentId!, deptId: widget.unitId, limit: 3, compact: true, title: t('أخبار القسم', 'Department news')),
         ),
+        AppSpace.gapMd,
       ],
       if (subs.isNotEmpty) ...[
         _Title(t('الإدارات الفرعية', 'Sub-departments'), subtitle: t('${subs.length} تابعة لهذه الإدارة', '${subs.length} under this department')),
@@ -430,8 +430,15 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
                     AppInfoRow(Icons.alternate_email_rounded, '${u['email'] ?? ''}', ltr: true),
                     AppInfoRow(Icons.phone_rounded, '${u['phone'] ?? ''}', ltr: true),
                   ])
-                : Text(t('أضف المكان ومواعيد العمل ليعرف الطلاب كيف يصلون إليكم.', 'Add the place and office hours so students know how to reach you.'),
-                    style: orgText(context, size: 12.5, color: c.warning)),
+                : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Icon(Icons.info_outline_rounded, size: 18, color: c.textMedium),
+                    const SizedBox(width: AppSpace.xs),
+                    Expanded(
+                      child: Text(
+                          t('أضف المكان ومواعيد العمل ليعرف الطلاب كيف يصلون إليكم.', 'Add the place and office hours so students know how to reach you.'),
+                          style: AppType.meta(context).copyWith(fontSize: 13)),
+                    ),
+                  ]),
           ),
         ),
       ] else ...[
@@ -460,6 +467,17 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
 //  Hero
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// The department's kind line under its name in the header: kind · code · parent · archived.
+String departmentKindLine(Map<String, dynamic> u, {required bool isDept}) {
+  final parent = asMap(u['parent']);
+  return [
+    isDept ? t('إدارة خدمية', 'Service department') : t('قسم علمي', 'Academic department'),
+    if ('${u['code'] ?? ''}'.isNotEmpty) '${u['code']}',
+    if (parent.isNotEmpty) t('تابعة لـ ${orgNameOf(parent)}', 'Part of ${orgNameOf(parent)}'),
+    if (u['is_active'] == false) t('مؤرشفة', 'Archived'),
+  ].join(' · ');
+}
+
 class _UnitHero extends StatelessWidget {
   const _UnitHero({required this.d, this.seed, this.showWaiting = true});
   final OrgUnitData d;
@@ -475,7 +493,6 @@ class _UnitHero extends StatelessWidget {
     final mgr = d.manager;
     final isDept = d.isDept;
     final col = hexColor(u['color'] ?? seed?['color'], c.primary);
-    final parent = asMap(u['parent']);
     // calm like the homes (D-102): the card surface with a hairline, the department's colour only in its logo tile;
     // a figure the viewer may not see (null on the server) is left out rather than drawn as "—"
     final figures = <(IconData, String, String)>[
@@ -506,20 +523,8 @@ class _UnitHero extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(orgNameOf(u), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context).copyWith(fontSize: 18)),
-              const SizedBox(height: AppSpace.xxs),
-              Text(
-                [
-                  isDept ? t('إدارة خدمية', 'Service department') : t('قسم علمي', 'Academic department'),
-                  if ('${u['code'] ?? ''}'.isNotEmpty) '${u['code']}',
-                  if (parent.isNotEmpty) t('تابعة لـ ${orgNameOf(parent)}', 'Part of ${orgNameOf(parent)}'),
-                  if (u['is_active'] == false) t('مؤرشفة', 'Archived'),
-                ].join(' · '),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppType.meta(context),
-              ),
-              const SizedBox(height: AppSpace.xs),
+              // the name and the kind line are the page header's title / subtitle; the card says who leads it
+              const SizedBox(height: AppSpace.sm),
               Row(children: [
                 if (mgr.isNotEmpty) ...[
                   OrgPersonAvatar(name: '${mgr['name'] ?? ''}', url: mgr['image_url'] as String?, size: 24),
@@ -756,8 +761,7 @@ class _RequestsTabState extends State<_RequestsTab> {
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => ChangeNotifierProvider.value(
                       value: s,
-                      child: BasePage(useWebCard: true, maxWith: 1100, appBar: ScreenAppBar(title: t('النماذج', 'Forms')),
-                          child: OrgFormsPage(deptId: widget.unitId))))),
+                      child: OrgPushedPage(title: t('النماذج', 'Forms'), child: OrgFormsPage(deptId: widget.unitId))))),
               child: Text(t('كل النماذج', 'All forms')))));
       for (final r in forms) {
         final user = asMap(r['user']);

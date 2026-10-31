@@ -29,7 +29,10 @@ import 'package:flutter_education_app/features/auth/login_screen.dart';
 import 'package:flutter_education_app/features/auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/auth/register_screen.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
+import 'package:flutter_education_app/features/org/home/org_home_logic.dart' show OrgDeptTab;
 import 'package:flutter_education_app/features/org/org_dashboard_model.dart';
+import 'package:flutter_education_app/features/org/org_department_dashboard.dart';
+import 'package:flutter_education_app/features/org/org_providers.dart';
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart';
 import 'package:flutter_education_app/features/parent/parent_overview_page.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
@@ -46,6 +49,7 @@ import 'admin_home_layout_test.dart' as admin;
 import 'layout_harness.dart';
 import 'member_home_layout_test.dart' as member;
 import 'org_home_layout_test.dart' as org;
+import 'org_home_v3_layout_test.dart' as orgv3;
 import 'parent_home_layout_test.dart' as parent;
 import 'student_home_layout_test.dart' as student;
 import 'teacher_home_layout_test.dart' as teacher;
@@ -239,6 +243,46 @@ void main() {
                   onOpenInboxItem: (_) {},
                 ),
               ));
+    });
+  });
+
+  // The organization dashboard of D-103 (docs/backend/org-dashboard-spec.md): the admin layout (tasks with one-tap
+  // Approve / Reject, alerts, departments with tabs), the member layout (tasks that open a link, one department) and
+  // the department page with the server's limited tabs — the payloads of org_home_v3_layout_test.dart.
+  group('organization dashboard (D-103)', () {
+    late FakeApi fake;
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      mockRequestPlugins();
+      AppConfig.setOrgsEnabled(true);
+      fake = FakeApi({
+        'GET /api/v1/org/orgs/4/units/dept/3/dashboard': (_) => orgv3.deptPayload(),
+        'GET /api/v1/org/orgs/4/courses': (_) => {'items': const [], 'total': 0},
+      }, latency: const Duration(milliseconds: 10))
+        ..install();
+    });
+    tearDown(() => fake.uninstall());
+
+    testWidgets('org home, admin layout', (tester) async {
+      await expectA11y(tester, 'org home admin', () => orgv3.home(OrgHomeData.fromJson(orgv3.adminPayload())!));
+    });
+
+    testWidgets('org home, member layout', (tester) async {
+      await expectA11y(
+          tester, 'org home member', () => orgv3.home(OrgHomeData.fromJson(orgv3.memberPayload())!, admin: false));
+    });
+
+    testWidgets('department page with the server tabs', (tester) async {
+      final seed = (orgv3.memberPayload()['departments'] as List).first as Map<String, dynamic>;
+      await expectA11y(
+        tester,
+        'org department',
+        () => ChangeNotifierProvider<OrgSession>.value(
+          value: orgv3.session(admin: false),
+          child: OrgDepartmentDashboard(unitType: 'dept', unitId: 3, seed: seed, tabs: OrgDeptTab.listFrom(seed['tabs'])),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 5)); // the tabs' own loads and notices settle
     });
   });
 

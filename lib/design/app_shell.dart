@@ -513,7 +513,12 @@ class UserChipButton extends StatelessWidget {
         onTap: () => AppShellNav.navigatorFor(context).push(MaterialPageRoute(builder: (_) => EditAccountScreen())),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(14)),
+          // light mode: a solid primary chip — the server's sidebar gradient may fade to near-white at the bottom,
+          // where on-hero ink over the glass fell below 4.5:1 (name and role unreadable)
+          decoration: BoxDecoration(
+            color: c.isDark ? c.heroGlass : c.primary.withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(14),
+          ),
           child: Row(
             mainAxisSize: showLabel ? MainAxisSize.max : MainAxisSize.min,
             children: [

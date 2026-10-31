@@ -11,8 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/features/teacher/data_lab/data_lab_screen.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
@@ -29,7 +27,7 @@ import 'org_ui.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppRefresh;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'org_page_header.dart' show OrgHeaderButton, OrgPushedPage;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -611,19 +609,19 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
 
     return DefaultTabController(
       length: tabs.length,
-      child: BasePage(
-        useWebCard: true,
-        maxWith: 1100,
-        appBar: ScreenAppBar(title: orgNameOf(_d), actions: [
-          if (s.can('departments', 'update') || can('team', 'update'))
-            IconButton(
-              tooltip: t('تعديل', 'Edit'),
-              onPressed: () async {
-                if (await showDepartmentWizard(context, edit: _d)) _reload();
-              },
-              icon: const Icon(Icons.edit_rounded),
-            ),
-         const ContextExitButton()]),
+      // the dashboard's shared header (Back · name · Edit · Refresh · calendar · bell · switcher)
+      child: OrgPushedPage(
+        title: orgNameOf(_d),
+        primaryAction: s.can('departments', 'update') || can('team', 'update')
+            ? OrgHeaderButton(
+                icon: Icons.edit_rounded,
+                label: t('تعديل', 'Edit'),
+                tooltip: t('تعديل الإدارة', 'Edit department'),
+                onTap: () async {
+                  if (await showDepartmentWizard(context, edit: _d)) _reload();
+                },
+              )
+            : null,
         child: Column(children: [
           Container(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),

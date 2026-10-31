@@ -124,60 +124,75 @@ class ContextPill extends StatelessWidget {
   /// Key of the tappable surface (tests find it).
   final Key? inkKey;
 
+  /// Below this width the pill keeps only its mark and the chevron (the name stays in the tooltip, the screen
+  /// reader label and the sheet).
+  static const double markOnlyBelow = 132;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Semantics(
-      button: true,
-      label: '${'ctx_current'.tr}: $label',
-      excludeSemantics: true,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 48),
-        child: Material(
-          color: c.cardBg,
-          shape: StadiumBorder(side: BorderSide(color: tone.withValues(alpha: 0.35))),
-          child: InkWell(
-            key: inkKey,
-            customBorder: const StadiumBorder(),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(6, 6, 12, 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ContextMark(icon: icon, tone: tone),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (caption != null)
-                          Text(
-                            caption!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: appText(10.5, w: FontWeight.w500, c: c.textMedium),
+    return LayoutBuilder(builder: (context, box) {
+      // a long name degrades in steps: one line → two lines (no caption) → the mark alone on a very narrow row
+      final markOnly = box.maxWidth.isFinite && box.maxWidth < markOnlyBelow;
+      final twoLines = caption == null;
+      return Semantics(
+        button: true,
+        label: '${'ctx_current'.tr}: $label',
+        excludeSemantics: true,
+        child: Tooltip(
+          message: label,
+          excludeFromSemantics: true,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+            child: Material(
+              color: c.cardBg,
+              shape: StadiumBorder(side: BorderSide(color: tone.withValues(alpha: 0.35))),
+              child: InkWell(
+                key: inkKey,
+                customBorder: const StadiumBorder(),
+                onTap: onTap,
+                child: Padding(
+                  padding: EdgeInsetsDirectional.fromSTEB(6, 6, markOnly ? 6 : 12, 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _ContextMark(icon: icon, tone: tone),
+                      if (!markOnly) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (caption != null)
+                                Text(
+                                  caption!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: appText(10.5, w: FontWeight.w500, c: c.textMedium),
+                                ),
+                              Text(
+                                label,
+                                maxLines: twoLines ? 2 : 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: appText(twoLines ? 13 : 13.5, w: FontWeight.w600, c: c.textDark, h: twoLines ? 1.2 : null),
+                              ),
+                            ],
                           ),
-                        Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: appText(13.5, w: FontWeight.w600, c: c.textDark),
                         ),
                       ],
-                    ),
+                      if (badge > 0) ...[const SizedBox(width: 6), _Count(badge, color: c.danger)],
+                      const SizedBox(width: 2),
+                      Icon(Icons.unfold_more_rounded, size: 18, color: c.textMedium),
+                    ],
                   ),
-                  if (badge > 0) ...[const SizedBox(width: 6), _Count(badge, color: c.danger)],
-                  const SizedBox(width: 2),
-                  Icon(Icons.unfold_more_rounded, size: 18, color: c.textMedium),
-                ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 

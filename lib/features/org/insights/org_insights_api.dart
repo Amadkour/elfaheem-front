@@ -34,7 +34,7 @@ class OrgInsightsLoad {
   /// The text to show (already user-safe, bilingual).
   final String? error;
 
-  /// The server's code (bad_range · range_too_long · term_not_found · org_forbidden · student_forbidden …).
+  /// The server's code (bad_range · range_too_long · date_out_of_range · term_not_found · org_forbidden · student_forbidden …).
   final String? code;
 
   /// The server has no insights route yet.
@@ -46,7 +46,8 @@ class OrgInsightsLoad {
   bool get ok => data != null;
 
   /// The period was refused (a stale saved term, a bad custom range): ask again with the server's default.
-  bool get badPeriod => code == 'term_not_found' || code == 'bad_range' || code == 'range_too_long';
+  bool get badPeriod =>
+      code == 'term_not_found' || code == 'bad_range' || code == 'range_too_long' || code == 'date_out_of_range';
 }
 
 /// The real call; a test or a render hands its own [OrgInsightsSource] to the section instead.
