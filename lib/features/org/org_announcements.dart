@@ -37,6 +37,8 @@ import 'org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart' show orgParseUtc, orgUtc;
+import 'org_page_kit.dart' show OrgPageBody, OrgPrimaryAction, orgListInset;
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -900,20 +902,17 @@ class _AnnList extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<OrgSession>();
     final p = context.read<OrgPaged>();
-    final c = context.colors;
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: s.can('announcements', 'insert', deptId)
-          ? FloatingActionButton.extended(
-              heroTag: 'ann_new',
-              backgroundColor: c.primary,
-              onPressed: () => showAnnouncementEditor(context, deptId: deptId, onSaved: p.refresh),
-              icon: Icon(Icons.add_rounded, color: c.onHero),
-              label: Text(t('إعلان جديد', 'New announcement'),
-                  style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontWeight: FontWeight.w700)),
+    // the page anatomy (D-103, org_page_kit.dart): ONE primary action "New announcement" · the cards
+    return OrgPageBody(
+      primary: s.can('announcements', 'insert', deptId)
+          ? OrgPrimaryAction(
+              id: 'new_announcement',
+              icon: Icons.add_rounded,
+              label: t('إعلان جديد', 'New announcement'),
+              onTap: () => showAnnouncementEditor(context, deptId: deptId, onSaved: p.refresh),
             )
           : null,
-      body: PagedList<OrgPaged>(
+      child: PagedList<OrgPaged>(
         emptyText: t('لا إعلانات بعد — شارك أول خبر مع مجتمعك', 'No announcements yet — share the first news'),
         itemBuilder: (context, row) => _AnnCard(row: row),
       ),
@@ -945,7 +944,7 @@ class _AnnCard extends StatelessWidget {
         builder: (_) => OrgAnnouncementAnalyticsScreen(orgId: s.currentId ?? 0, announcementId: asInt(row['id']), initial: row)));
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+      padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
         accent: row['is_pinned'] == true ? c.warning : null,
         onTap: analytics
@@ -962,7 +961,7 @@ class _AnnCard extends StatelessWidget {
                 if (row['is_pinned'] == true) Icon(Icons.push_pin_rounded, size: 15, color: c.warning),
                 Expanded(
                     child: Text('${row['title']}',
-                        maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800))),
+                        maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600))),
               ]),
               if ('${row['body'] ?? ''}'.isNotEmpty)
                 Text('${row['body']}',

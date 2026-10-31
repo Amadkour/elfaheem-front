@@ -42,7 +42,8 @@ const homeBudgets = <String, HomeBudget>{
   'teacher': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'super-admin': (open: 7, duplicates: 0, depth: 1, refresh: 4, refreshDepth: 1),
   'parent': (open: 3, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
-  'org-admin': (open: 5, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
+  // +1 = the lazy Insights section (D-103): GET …/insights, started in parallel with the dashboard (no waterfall)
+  'org-admin': (open: 6, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
   'org-member': (open: 3, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
 };
 
@@ -73,7 +74,9 @@ Map<String, FakeHandler> homeRoutes({bool memberOfOrg = false}) => {
       'GET /api/v1/me/home': (_) => payload(memberOfOrg ? 'me_home_student.json' : 'me_home_student_no_org.json'),
       'GET /api/v1/admin/overview': (_) => payload('admin_overview.json'),
       'GET /api/v1/parent/overview': (_) => payload('parent_overview.json'),
-      'GET /api/v1/org/orgs/1/dashboard': (_) => payload('org_dashboard.json'),
+      // an org admin sees Insights (D-103), so its call is really measured
+      'GET /api/v1/org/orgs/1/dashboard': (_) => {...(payload('org_dashboard.json') as Map), 'can_insights': true},
+      'GET /api/v1/org/orgs/1/insights': (_) => payload('org_insights.json'),
       'GET /api/v1/org/mine': (_) => {
             'items': [
               {..._org, 'my_role': 'org_admin', 'is_admin': true},

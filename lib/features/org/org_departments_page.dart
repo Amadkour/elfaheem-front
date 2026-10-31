@@ -20,6 +20,8 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
 import 'org_providers.dart';
+import 'org_page_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'org_services_pages.dart';
 import 'org_join_pages.dart' show OrgUnitJoinHub, canConfigureUnit;
 import 'org_member_form.dart' show OrgMemberPickField;
@@ -68,6 +70,7 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
   List<Map<String, dynamic>>? _items;
   List<Map<String, dynamic>> _programs = const [];
   bool _failed = false, _canCreate = false;
+  String _query = '';
 
   @override
   void initState() {
@@ -119,83 +122,100 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final s = context.watch<OrgSession>();
     final items = _items;
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: _canCreate
-          ? FloatingActionButton.extended(
-              heroTag: 'dept_new',
-              backgroundColor: c.primary,
-              onPressed: () async {
-                if (await showDepartmentWizard(context)) _load();
-              },
-              icon: Icon(Icons.add_business_rounded, color: c.onHero),
-              label: Text(t('إدارة جديدة', 'New department'),
-                  style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontWeight: FontWeight.w700)),
-            )
-          : null,
-      body: OrgAsync(
-        loading: items == null && !_failed,
-        failed: _failed,
-        onRetry: _load,
-        child: items == null
-            ? const SizedBox.shrink()
-            : items.isEmpty
-                ? OrgEmpty(
-                    icon: Icons.apartment_rounded,
-                    title: t('نظّم مؤسستك في إدارات', 'Organize your institution into departments'),
-                    message: t('شؤون الطلاب، الموارد البشرية، الكنترول، الإرشاد الأكاديمي… لكل إدارة فريقها وخدماتها.',
-                        'Student affairs, HR, controls, academic advising… each with its own team and services.'),
-                    actionLabel: _canCreate ? t('إضافة أول إدارة', 'Add the first department') : null,
-                    onAction: () async {
-                      if (await showDepartmentWizard(context)) _load();
+    Future<void> create() async {
+      if (await showDepartmentWizard(context)) _load();
+    }
+
+    final q = _query.trim().toLowerCase();
+    bool hit(Map<String, dynamic> d) =>
+        q.isEmpty || '${d['name_ar'] ?? ''} ${d['name_en'] ?? ''} ${d['code'] ?? ''}'.toLowerCase().contains(q);
+    final shown = items == null ? const <(Map<String, dynamic>, int)>[] : [for (final x in _ordered(items)) if (hit(x.$1)) x];
+    final programs = [for (final p in _programs) if (hit(p)) p];
+    final any = (items?.length ?? 0) + _programs.length > 0;
+    final Widget body;
+    if (items == null) {
+      body = OrgAsync(loading: !_failed, failed: _failed, onRetry: _load, child: const SizedBox.shrink());
+    } else if (!any) {
+      body = OrgEmpty(
+        icon: Icons.apartment_rounded,
+        title: t('نظّم مؤسستك في إدارات', 'Organize your institution into departments'),
+        message: t('شؤون الطلاب، الموارد البشرية، الكنترول، الإرشاد الأكاديمي… لكل إدارة فريقها وخدماتها.',
+            'Student affairs, HR, controls, academic advising… each with its own team and services.'),
+        actionLabel: _canCreate ? t('إضافة أول إدارة', 'Add the first department') : null,
+        onAction: create,
+      );
+    } else if (shown.isEmpty && programs.isEmpty) {
+      body = OrgEmpty(
+        icon: Icons.search_off_rounded,
+        title: t('لا نتائج لـ "$_query"', 'Nothing matches "$_query"'),
+        message: t('جرّب اسماً آخر أو امسح البحث.', 'Try another name or clear the search.'),
+      );
+    } else {
+      body = AppRefresh(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xxl + AppTouch.primary),
+          children: [
+            if (shown.isNotEmpty) ...[
+              OrgSectionHeading(
+                t('الإدارات الخدمية', 'Service departments'),
+                subtitle: t('${items.length} في ${s.name} — اضغط إدارة لفتح لوحتها', '${items.length} in ${s.name} — tap one to open it'),
+              ),
+              OrgGrid(minTile: 320, padding: const EdgeInsets.symmetric(horizontal: AppSpace.md), children: [
+                for (final (d, depth) in shown)
+                  _DeptCard(
+                    d: d,
+                    parentName: depth == 0
+                        ? null
+                        : orgNameOf(items.firstWhere((x) => asInt(x['id']) == asInt(d['parent_id']),
+                            orElse: () => const <String, dynamic>{})),
+                    subCount: items.where((x) => x['parent_id'] != null && asInt(x['parent_id']) == asInt(d['id'])).length,
+                    onTap: () async {
+                      await openDepartmentDashboard(context, unitType: 'dept', unitId: asInt(d['id']), seed: d);
+                      _load();
                     },
-                  )
-                : AppRefresh(
-                    onRefresh: _load,
-                    child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 100), children: [
-                      OrgSectionTitle(t('الإدارات الخدمية', 'Service departments'),
-                          subtitle: t('${items.length} إدارة في ${s.name} — اضغط أي إدارة لفتح لوحتها',
-                              '${items.length} in ${s.name} — tap one to open its dashboard')),
-                      OrgGrid(minTile: 300, children: [
-                        for (final (d, depth) in _ordered(items))
-                          _DeptCard(
-                            d: d,
-                            parentName: depth == 0
-                                ? null
-                                : orgNameOf(items.firstWhere((x) => asInt(x['id']) == asInt(d['parent_id']),
-                                    orElse: () => const <String, dynamic>{})),
-                            subCount: items.where((x) => x['parent_id'] != null && asInt(x['parent_id']) == asInt(d['id'])).length,
-                            onTap: () async {
-                              await openDepartmentDashboard(context, unitType: 'dept', unitId: asInt(d['id']), seed: d);
-                              _load();
-                            },
-                          ),
-                      ]),
-                      if (_programs.isNotEmpty) ...[
-                        OrgSectionTitle(t('الأقسام العلمية', 'Academic departments'),
-                            subtitle: t('${_programs.length} قسم — الهيكل والمقررات في "الهيكل الأكاديمي"',
-                                '${_programs.length} — structure and courses live in "Academic structure"')),
-                        OrgGrid(minTile: 300, children: [
-                          for (final p in _programs)
-                            _ProgramCard(
-                              p: p,
-                              onTap: () async {
-                                await openDepartmentDashboard(context, unitType: 'program', unitId: asInt(p['id']), seed: p);
-                                _load();
-                              },
-                            ),
-                        ]),
-                      ],
-                    ]),
                   ),
-      ),
+              ]),
+            ],
+            if (programs.isNotEmpty) ...[
+              OrgSectionHeading(
+                t('الأقسام العلمية', 'Academic departments'),
+                subtitle: t('${_programs.length} قسم — الهيكل والمقررات في "الهيكل الأكاديمي"',
+                    '${_programs.length} — structure and courses live in "Academic structure"'),
+              ),
+              OrgGrid(minTile: 320, padding: const EdgeInsets.symmetric(horizontal: AppSpace.md), children: [
+                for (final p in programs)
+                  _ProgramCard(
+                    p: p,
+                    onTap: () async {
+                      await openDepartmentDashboard(context, unitType: 'program', unitId: asInt(p['id']), seed: p);
+                      _load();
+                    },
+                  ),
+              ]),
+            ],
+          ],
+        ),
+      );
+    }
+    return OrgPageBody(
+      primary: _canCreate
+          ? OrgPrimaryAction(id: 'new_department', icon: Icons.add_business_rounded, label: t('إدارة جديدة', 'New department'), onTap: create)
+          : null,
+      // a search only once there is something to look through
+      search: any && (items!.length + _programs.length) > 3
+          ? OrgSearchField(hint: t('ابحث عن إدارة أو قسم', 'Find a department'), onChanged: (v) => setState(() => _query = v))
+          : null,
+      child: body,
     );
   }
 }
 
+/// The calm card of a department (D-102 language): card surface + hairline, its logo, name (w600), head, and one
+/// line of facts; the waiting count is the card's one accent.
 class _DeptCard extends StatelessWidget {
   const _DeptCard({required this.d, required this.onTap, this.parentName, this.subCount = 0});
   final Map<String, dynamic> d;
@@ -210,49 +230,18 @@ class _DeptCard extends StatelessWidget {
     final counts = asMap(d['counts']);
     final head = asMap(d['head']);
     final attention = asInt(counts['open_complaints']) + asInt(counts['pending_forms']);
-    return Material(
-      color: c.cardBg,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: col.withValues(alpha: 0.25)),
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [col.withValues(alpha: 0.12), c.cardBg, c.cardBg],
-            ),
-          ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              DeptLogo(d: d, size: 48),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(orgNameOf(d), maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: orgText(context, size: 15.5, w: FontWeight.w800)),
-                  Text(head.isEmpty ? t('لم يُعيَّن رئيس بعد', 'No head yet') : '${t('الرئيس', 'Head')}: ${head['name']}',
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
-                ]),
-              ),
-              if (attention > 0) OrgPill(t('$attention تنتظر', '$attention waiting'), color: c.warning),
-            ]),
-            const SizedBox(height: 12),
-            Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              if ((parentName ?? '').isNotEmpty)
-                OrgPill(t('تابعة لـ $parentName', 'Part of $parentName'), icon: DirIcons.subArrowLeft, color: c.textMedium),
-              if (subCount > 0) OrgPill(t('$subCount فرعية', '$subCount sub'), icon: Icons.account_tree_rounded, color: col),
-              OrgPill(t('${asInt(counts['team'])} في الفريق', '${asInt(counts['team'])} team'), icon: Icons.groups_rounded, color: col),
-              for (final f in (d['features'] as List? ?? const []))
-                Icon(_featureIcons['$f'] ?? Icons.circle, size: 18, color: c.textLight),
-            ]),
-          ]),
-        ),
-      ),
+    return _UnitCard(
+      onTap: onTap,
+      leading: DeptLogo(d: d, size: 44),
+      title: orgNameOf(d),
+      meta: head.isEmpty ? t('لم يُعيَّن رئيس بعد', 'No head yet') : '${t('الرئيس', 'Head')}: ${head['name']}',
+      badge: attention > 0 ? OrgPill(t('$attention تنتظر', '$attention waiting'), color: c.warning) : null,
+      facts: [
+        if ((parentName ?? '').isNotEmpty)
+          OrgPill(t('تابعة لـ $parentName', 'Part of $parentName'), icon: DirIcons.subArrowLeft, color: c.textMedium),
+        if (subCount > 0) OrgPill(t('$subCount فرعية', '$subCount sub'), icon: Icons.account_tree_rounded, color: col),
+        OrgPill(t('${asInt(counts['team'])} في الفريق', '${asInt(counts['team'])} team'), icon: Icons.groups_rounded, color: col),
+      ],
     );
   }
 }
@@ -267,37 +256,56 @@ class _ProgramCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final mgr = asMap(p['manager']);
+    return _UnitCard(
+      onTap: onTap,
+      leading: IconBadge(Icons.school_rounded, c.purple, size: 44),
+      title: orgNameOf(p),
+      meta: mgr.isEmpty ? t('لم يُعيَّن مدير بعد', 'No manager yet') : '${t('المدير', 'Manager')}: ${mgr['name']}',
+      facts: [
+        if ('${p['code'] ?? ''}'.isNotEmpty) OrgPill('${p['code']}', icon: Icons.tag_rounded, color: c.purple),
+        OrgPill(t('${asInt(p['students'])} طالب', '${asInt(p['students'])} students'), icon: Icons.people_alt_rounded, color: c.primary),
+      ],
+    );
+  }
+}
+
+/// One unit card: [leading] · title + meta (+ [badge]) · a row of [facts] · chevron.
+class _UnitCard extends StatelessWidget {
+  const _UnitCard({required this.onTap, required this.leading, required this.title, required this.meta, this.facts = const [], this.badge});
+  final VoidCallback onTap;
+  final Widget leading;
+  final String title, meta;
+  final List<Widget> facts;
+  final Widget? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
     return Material(
       color: c.cardBg,
-      borderRadius: BorderRadius.circular(24),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider)),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: c.purple.withValues(alpha: 0.25)),
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [c.purple.withValues(alpha: 0.10), c.cardBg, c.cardBg],
-            ),
-          ),
-          child: Row(children: [
-            IconBadge(Icons.school_rounded, c.purple, size: 48),
-            const SizedBox(width: 12),
+        child: Padding(
+          padding: AppSpace.card,
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            leading,
+            AppSpace.gapSm,
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(orgNameOf(p), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 15.5, w: FontWeight.w800)),
-                Text(mgr.isEmpty ? t('لم يُعيَّن مدير بعد', 'No manager yet') : '${t('المدير', 'Manager')}: ${mgr['name']}',
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
-                const SizedBox(height: 8),
-                Wrap(spacing: 6, runSpacing: 6, children: [
-                  if ('${p['code'] ?? ''}'.isNotEmpty) OrgPill('${p['code']}', icon: Icons.tag_rounded, color: c.purple),
-                  OrgPill(t('${asInt(p['students'])} طالب', '${asInt(p['students'])} students'), icon: Icons.people_alt_rounded, color: c.primary),
-                ]),
+                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, fontSize: 15)),
+                const SizedBox(height: AppSpace.xxs),
+                Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                if (badge != null || facts.isNotEmpty) ...[
+                  AppSpace.gapXs,
+                  Wrap(spacing: AppSpace.xs - 2, runSpacing: AppSpace.xs - 2, children: [?badge, ...facts]),
+                ],
               ]),
+            ),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, top: AppSpace.sm),
+              child: Icon(Icons.chevron_right_rounded, size: 20, color: c.textLight),
             ),
           ]),
         ),

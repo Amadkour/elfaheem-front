@@ -31,6 +31,7 @@ import 'org_providers.dart';
 import 'org_services_pages.dart' show fieldTypes, fieldIcons;
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/design/app_icons.dart';
@@ -839,13 +840,18 @@ class JoinRequestCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${u['name'] ?? '#${row['user_id']}'}', style: orgText(context, w: FontWeight.w800)),
+                Text('${u['name'] ?? '#${row['user_id']}'}', maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
                 if (showUnit && unit.isNotEmpty)
                   Text('${unitKindLabel('${unit['unit_type']}')} · ${orgNameOf(unit)}', style: orgText(context, size: 12, color: c.textMedium)),
                 Text(relTime(row['created_at']), style: orgText(context, size: 11.5, color: c.textLight)),
+                // the status under the name: beside it, a narrow phone had no room left for the name
+                if (!pending) ...[
+                  const SizedBox(height: AppSpace.xxs),
+                  StatusChip(requestStatusLabels()[status] ?? status, statusColor(context, status)),
+                ],
               ]),
             ),
-            StatusChip(requestStatusLabels()[status] ?? status, statusColor(context, status)),
           ]),
           if (row['code_verified'] == true)
             Padding(

@@ -33,9 +33,10 @@ import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip, AppListSkeleton, AppPrimaryButton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppPrimaryButton;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_shell.dart' show AppShell, DashboardItem;
+import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -44,11 +45,13 @@ import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart'
 
 import '../admin/admin_common.dart';
 import '../admin/admin_premium_widgets.dart' show AdminPalette;
+import 'org_command_palette.dart' show orgPaletteEnabled, orgPaletteEntries, showOrgCommandPalette;
 import 'org_courses_page.dart';
-import 'org_dashboard_home.dart' show OrgHomePage, orgPushPage;
+import 'org_dashboard_home.dart' show OrgHomePage, orgJump, orgPushPage;
 import 'org_dashboard_settings.dart' show OrgFirstOrganization, OrgSettingsPage;
 import 'org_departments_page.dart';
 import 'org_page_header.dart';
+import 'org_page_kit.dart' show OrgSectionChips;
 import 'org_services_pages.dart';
 import 'org_status_screen.dart';
 import 'org_ui.dart';
@@ -259,19 +262,40 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
               tabs.keys = [for (final e in entries) e.$1];
               final items = [for (final e in entries) e.$2];
               final current = tabs.currentTab.clamp(0, items.length - 1);
-              // no shell top bar: every page's OrgPageHeader carries refresh · calendar · bell · switcher
-              return AppShell(
-                width: w,
-                currentIndex: current,
-                onTap: tabs.onChangeTab,
-                items: items,
-                unreadCount: _unread(context),
-                showTopBar: false,
+              // no shell top bar: every page's OrgPageHeader carries search · refresh · calendar · bell · switcher;
+              // Ctrl+K / ⌘K and the header's Search open the command palette (off with `org.search`)
+              return AppCommandPaletteScope(
+                enabled: orgPaletteEnabled,
+                onOpen: () => _openPalette(context, session, entries),
+                child: AppShell(
+                  width: w,
+                  currentIndex: current,
+                  onTap: tabs.onChangeTab,
+                  items: items,
+                  unreadCount: _unread(context),
+                  showTopBar: false,
+                ),
               );
             }),
           ),
         );
       },
+    );
+  }
+
+  /// The command palette (D-103): the sections and sub-pages I can open (no call), departments and people from
+  /// GET …/search; a page opens through orgJump (the tab, else pushed), a person opens the Members page.
+  void _openPalette(BuildContext context, OrgSession s, List<(String, DashboardItem)> entries) {
+    final id = s.currentId;
+    if (id == null) return;
+    showOrgCommandPalette(
+      context,
+      orgId: id,
+      pages: orgPaletteEntries(
+        sections: [for (final e in entries) (e.$1, e.$2.label, e.$2.selectedIcon)],
+        subs: _tabs.sections,
+        open: (section, sub) => orgJump(context, section, sub: sub),
+      ),
     );
   }
 
@@ -501,22 +525,16 @@ class _SectionHubState extends State<_SectionHub> {
     final i = _i.clamp(0, widget.subs.length - 1);
     if (widget.subs.length == 1) return widget.subs.first.$4;
     return Column(children: [
-      SizedBox(
-        height: AppSpace.sm + MediaQuery.textScalerOf(context).scale(40), // the chips grow with the text size
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs),
-          itemCount: widget.subs.length,
-          separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xs),
-          itemBuilder: (_, k) => AppChoiceChip(
-            label: widget.subs[k].$2,
-            icon: widget.subs[k].$3,
-            selected: k == i,
-            onTap: () => setState(() {
-              _i = k;
-              _seen.add(k);
-            }),
-          ),
+      // one row; on a phone it scrolls with a fade on the hidden edge and keeps the chosen chip in view
+      Padding(
+        padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xs),
+        child: OrgSectionChips(
+          items: [for (final x in widget.subs) (x.$2, x.$3)],
+          index: i,
+          onChanged: (k) => setState(() {
+            _i = k;
+            _seen.add(k);
+          }),
         ),
       ),
       Expanded(

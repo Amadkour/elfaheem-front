@@ -1,0 +1,220 @@
+{
+ "period": {
+  "term_id": 1,
+  "label_ar": "الفصل الأول 2026/2027",
+  "label_en": "Term 1 2026/2027",
+  "from": "2026-11-05",
+  "to": "2027-02-25",
+  "previous_from": "2026-07-15",
+  "previous_to": "2026-11-04",
+  "granularity": "week"
+ },
+ "scope": {
+  "org_wide": true,
+  "dept_ids": null
+ },
+ "terms": [
+  {
+   "id": 2,
+   "label_ar": "الفصل الثاني 2026/2027",
+   "label_en": "Term 2 2026/2027",
+   "status": "upcoming"
+  },
+  {
+   "id": 1,
+   "label_ar": "الفصل الأول 2026/2027",
+   "label_en": "Term 1 2026/2027",
+   "status": "upcoming"
+  }
+ ],
+ "metrics": [
+  {
+   "key": "attendance",
+   "available": false,
+   "value": null,
+   "unit": "percent",
+   "previous": 25.0,
+   "series": [
+    {
+     "date": "2026-11-05",
+     "value": null
+    },
+    {
+     "date": "2026-11-12",
+     "value": null
+    },
+    {
+     "date": "2026-11-19",
+     "value": null
+    },
+    {
+     "date": "2026-11-26",
+     "value": null
+    },
+    {
+     "date": "2026-12-03",
+     "value": null
+    },
+    {
+     "date": "2026-12-10",
+     "value": null
+    },
+    {
+     "date": "2026-12-17",
+     "value": null
+    },
+    {
+     "date": "2026-12-24",
+     "value": null
+    },
+    {
+     "date": "2026-12-31",
+     "value": null
+    },
+    {
+     "date": "2027-01-07",
+     "value": null
+    },
+    {
+     "date": "2027-01-14",
+     "value": null
+    },
+    {
+     "date": "2027-01-21",
+     "value": null
+    },
+    {
+     "date": "2027-01-28",
+     "value": null
+    },
+    {
+     "date": "2027-02-04",
+     "value": null
+    },
+    {
+     "date": "2027-02-11",
+     "value": null
+    },
+    {
+     "date": "2027-02-18",
+     "value": null
+    },
+    {
+     "date": "2027-02-25",
+     "value": null
+    }
+   ],
+   "sessions": 0
+  },
+  {
+   "key": "enrollment",
+   "available": true,
+   "value": 0,
+   "unit": "count",
+   "previous": 20,
+   "series": [
+    {
+     "date": "2026-11-05",
+     "value": 0
+    },
+    {
+     "date": "2026-11-12",
+     "value": 0
+    },
+    {
+     "date": "2026-11-19",
+     "value": 0
+    },
+    {
+     "date": "2026-11-26",
+     "value": 0
+    },
+    {
+     "date": "2026-12-03",
+     "value": 0
+    },
+    {
+     "date": "2026-12-10",
+     "value": 0
+    },
+    {
+     "date": "2026-12-17",
+     "value": 0
+    },
+    {
+     "date": "2026-12-24",
+     "value": 0
+    },
+    {
+     "date": "2026-12-31",
+     "value": 0
+    },
+    {
+     "date": "2027-01-07",
+     "value": 0
+    },
+    {
+     "date": "2027-01-14",
+     "value": 0
+    },
+    {
+     "date": "2027-01-21",
+     "value": 0
+    },
+    {
+     "date": "2027-01-28",
+     "value": 0
+    },
+    {
+     "date": "2027-02-04",
+     "value": 0
+    },
+    {
+     "date": "2027-02-11",
+     "value": 0
+    },
+    {
+     "date": "2027-02-18",
+     "value": 0
+    },
+    {
+     "date": "2027-02-25",
+     "value": 0
+    }
+   ],
+   "total": 20
+  },
+  {
+   "key": "completion",
+   "available": false,
+   "value": null,
+   "unit": "percent",
+   "previous": null,
+   "series": [],
+   "runs": 0
+  },
+  {
+   "key": "grades",
+   "available": true,
+   "value": null,
+   "unit": "score",
+   "previous": null,
+   "series": [],
+   "coverage": 0.0
+  },
+  {
+   "key": "pending",
+   "available": true,
+   "value": 1,
+   "unit": "count",
+   "previous": null,
+   "series": [],
+   "parts": {
+    "work_pending": 1
+   },
+   "oldest_days": null
+  }
+ ],
+ "suggestions": [],
+ "generated_at": "2026-10-31T06:25:16.069489"
+}

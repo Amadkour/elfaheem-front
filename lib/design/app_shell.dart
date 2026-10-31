@@ -46,6 +46,7 @@ import 'app_shell_nav.dart';
 import 'calendar_entry.dart';
 import '../features/shared/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
 import 'chrome_button.dart';
+import 'app_settings.dart' show appRoleLabel;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -552,17 +553,21 @@ class UserChipButton extends StatelessWidget {
                     children: [
                       Text(
                         name,
+                        // the sidebar is the hero surface in both themes: on-hero ink (primaryLight w100 was
+                        // low-contrast blue on it)
                         style: TextStyle(
-                          color: c.primaryLight,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w100,
-                          fontFamily: AppFonts.display,
+                          color: c.onHero,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: AppFonts.family,
                         ),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        user.role.tr,
-                        style: TextStyle(color: c.accent2, fontSize: 10, fontFamily: AppFonts.display),
+                        appRoleLabel(user.role),
+                        maxLines: 1,
+                        style: TextStyle(color: c.onHeroMuted, fontSize: 11, fontFamily: AppFonts.family),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],

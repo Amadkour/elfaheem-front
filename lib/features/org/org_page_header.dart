@@ -4,7 +4,9 @@
 // bar), and the shell's own top bar is off (AppShell(showTopBar: false)), so nothing is drawn twice.
 //
 //   OrgPageHeader({required String title, String? subtitle, Widget? primaryAction})
-//       title (+ one-line subtitle) · at most ONE primary action · Refresh with "Updated 2 min ago" · calendar ·
+//       title (+ one-line subtitle) · at most ONE primary action · Search (the command palette, when the shell's
+//       AppCommandPaletteScope is on: a chip on wide, a full-width bar under the title on phones) · Refresh with
+//       "Updated 2 min ago" · calendar ·
 //       notifications with the unread badge · the context switcher pill (all my organizations + Personal; an
 //       organization switches in place, Personal leaves). Wide (≥ 760 px): one row. Narrow: row 1 = the pill + the
 //       Refresh / calendar / bell buttons, row 2 = the title block with "Updated …", the primary action under it.
@@ -35,6 +37,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 import 'package:flutter_education_app/design/app_shell.dart' show NotificationIcon;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon;
@@ -224,9 +227,14 @@ class _OrgPageRefreshBodyState extends State<OrgPageRefreshBody> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class OrgPageHeader extends StatelessWidget {
-  const OrgPageHeader({super.key, required this.title, this.subtitle, this.primaryAction});
+  const OrgPageHeader({super.key, required this.title, this.subtitle, this.primaryAction, this.searchBar = false});
 
   final String title;
+
+  /// Phones: draw the full-width "Search pages, departments, people" bar under the title. Only Home asks for it:
+  /// the other pages have their own search box, and two look-alike search fields stacked confuse. (Wide screens
+  /// always keep the Search chip; Ctrl+K works everywhere.)
+  final bool searchBar;
 
   /// One line under the title (e.g. what the page is for); null = none.
   final String? subtitle;
@@ -242,6 +250,8 @@ class OrgPageHeader extends StatelessWidget {
     final refresh = OrgPageRefresh.maybeOf(context);
     final session = _maybe<OrgSession>(context);
     final unread = _unread(context);
+    // the command palette (D-103): only under the shell's AppCommandPaletteScope, which is off with `org.search`
+    final search = AppCommandPaletteScope.openerOf(context);
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= wideFrom;
       // the pages under the header (section chips, lists, settings) all start 16 px in: the header lines up with them
@@ -262,6 +272,7 @@ class OrgPageHeader extends StatelessWidget {
         body = Row(children: [
           Expanded(flex: 3, child: titleBlock),
           if (primaryAction != null) ...[AppSpace.gapSm, primaryAction!],
+          if (search != null) ...[AppSpace.gapSm, _ChipButton(icon: Icons.search_rounded, label: _searchLabel, onTap: search)],
           if (refresh != null) ...[
             AppSpace.gapMd,
             Flexible(child: _UpdatedText(refresh: refresh, align: TextAlign.end)),
@@ -286,6 +297,8 @@ class OrgPageHeader extends StatelessWidget {
           ]),
           AppSpace.gapSm,
           titleBlock,
+          // phones: ONE calm full-width search bar under the title (the icon row keeps its room for the pill)
+          if (search != null && searchBar) ...[AppSpace.gapSm, _SearchBar(onTap: search)],
           if (primaryAction != null) ...[
             AppSpace.gapSm,
             Align(alignment: AlignmentDirectional.centerStart, child: primaryAction!),
@@ -367,6 +380,91 @@ class _UpdatedText extends StatelessWidget {
 }
 
 String get _refreshLabel => t('تحديث', 'Refresh');
+String get _searchLabel => t('بحث', 'Search');
+
+/// Phones: a full-width bar that looks like a search field and opens the command palette (it is a button, not a
+/// field: the palette has the real one).
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final hint = t('ابحث في الصفحات والأقسام والأشخاص', 'Search pages, departments, people');
+    return Semantics(
+      button: true,
+      label: hint,
+      excludeSemantics: true,
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider)),
+        child: InkWell(
+          key: const ValueKey('org.header.search'),
+          borderRadius: AppRadius.cardAll,
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+              child: Row(children: [
+                Icon(Icons.search_rounded, size: 20, color: c.textMedium),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: Text(hint, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w400)),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Wide: icon + label in the header's quiet chip style (the search button; Ctrl+K / ⌘K opens the same palette).
+class _ChipButton extends StatelessWidget {
+  const _ChipButton({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: '$label (Ctrl+K)',
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Material(
+            color: c.cardBg,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll, side: BorderSide(color: c.divider)),
+            child: InkWell(
+              key: const ValueKey('org.header.search'),
+              borderRadius: AppRadius.chipAll,
+              onTap: onTap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(icon, size: 20, color: c.textMedium),
+                    const SizedBox(width: AppSpace.xs),
+                    Text(label, style: AppType.row(context).copyWith(color: c.textDark)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// Phones: the icon only (tooltip + screen-reader label), the same 48 px square as the calendar and the bell.
 class _RefreshIcon extends StatelessWidget {

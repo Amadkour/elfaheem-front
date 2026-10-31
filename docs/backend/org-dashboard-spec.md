@@ -132,9 +132,9 @@ parsers, summaries, suggestion texts, task sorting / optimistic state), `test/ui
 | # | Stage | Status |
 |---|---|---|
 | 0 | Tokens | done |
-| 1 | Shell, header, switcher, routing, student block (server §1, §2 access/student, §6) | |
-| 2 | Departments with tabs + levels (server §2 tabs) | |
-| 3 | Needs your attention: tasks + one-tap + audit (server §3) | |
-| 4 | Insights (server §4, kill switch) | |
-| 5 | Command palette (server §5) + remaining screens on the shared page anatomy | |
+| 1 | Shell, header, switcher, routing, student block (server §1, §2 access/student, §6) | done (back a0b31ed, front 8e7b943) |
+| 2 | Departments with tabs + levels (server §2 tabs) | done (same commits) |
+| 3 | Needs your attention: tasks + one-tap + audit (server §3) | done (same commits) |
+| 4 | Insights (server §4, kill switch) | done (back a0b31ed; app: lazy, fetched in parallel with the dashboard, org-admin open budget 5 → 6) |
+| 5 | Command palette (server §5) + remaining screens on the shared page anatomy (`org_page_kit.dart`) | done |
 | 6 | UX review + QA in the real web app | |

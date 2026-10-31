@@ -29,6 +29,8 @@ import 'org_join_scan.dart' show joinScannerAvailable, openJoinScanner;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'org_page_kit.dart' show OrgFilterButton, OrgPartPicker;
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -66,6 +68,8 @@ class OrgAccessJoiningPage extends StatefulWidget {
 class _OrgAccessJoiningPageState extends State<OrgAccessJoiningPage> {
   Map<String, dynamic>? _settings;
   String? _error; // why the join settings could not be loaded (the settings tab shows it with a retry)
+  late int _part = widget.initialTab;
+  final Set<int> _seen = {};
 
   @override
   void initState() {
@@ -83,9 +87,10 @@ class _OrgAccessJoiningPageState extends State<OrgAccessJoiningPage> {
     });
   }
 
+  /// The page anatomy (D-103, org_page_kit.dart): the parts (Requests · Join codes · How people join) as ONE part
+  /// picker — chips that fit, else one "part ▾" button — and each part kept alive once opened.
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final s = context.read<OrgSession>();
     final admin = s.can('organization', 'update');
     final counts = asMap(_settings?['counts']);
@@ -96,20 +101,24 @@ class _OrgAccessJoiningPageState extends State<OrgAccessJoiningPage> {
       if (admin) (t('أكواد الانضمام', 'Join codes'), Icons.qr_code_2_rounded, _OrgCodesTab(settings: _settings, onChanged: _load)),
       if (admin) (t('طريقة الانضمام', 'How people join'), Icons.tune_rounded, _JoinSettingsTab(settings: _settings, onSaved: _load, error: _error)),
     ];
-    return DefaultTabController(
-      length: tabs.length,
-      initialIndex: widget.initialTab.clamp(0, tabs.length - 1),
-      child: Column(children: [
-        TabBar(
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          labelColor: c.primary,
-          indicatorColor: c.primary,
-          tabs: [for (final x in tabs) Tab(icon: Icon(x.$2, size: 20), text: x.$1)],
+    final i = _part.clamp(0, tabs.length - 1);
+    _seen.add(i);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (tabs.length > 1)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 0),
+          child: OrgPartPicker(
+            parts: [for (final x in tabs) (x.$1, x.$2)],
+            index: i,
+            onChanged: (k) => setState(() => _part = k),
+          ),
         ),
-        Expanded(child: TabBarView(children: [for (final x in tabs) x.$3])),
-      ]),
-    );
+      Expanded(
+        child: IndexedStack(index: i, children: [
+          for (var k = 0; k < tabs.length; k++) _seen.contains(k) ? tabs[k].$3 : const SizedBox.shrink(),
+        ]),
+      ),
+    ]);
   }
 }
 
@@ -278,20 +287,11 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
             ]),
           ),
         ),
+      // ONE row: "select all" at the start, ONE filter (All · Organization · Departments) at the end
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-        child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          AppChoiceChip(label: t('الكل', 'All'), selected: _filter == 'all', onTap: () => setState(() => _filter = 'all')),
-          AppChoiceChip(label: t('المؤسسة · ${_org!.length}', 'Organization · ${_org!.length}'), icon: Icons.domain_rounded,
-              selected: _filter == 'org', onTap: () => setState(() => _filter = 'org')),
-          AppChoiceChip(label: t('الأقسام · ${_units!.length}', 'Departments · ${_units!.length}'), icon: Icons.account_tree_rounded,
-              selected: _filter == 'units', onTap: () => setState(() => _filter = 'units')),
-        ]),
-      ),
-      if (rows.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(children: [
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.sm, AppSpace.md, AppSpace.xxs),
+        child: Row(children: [
+          if (rows.isNotEmpty) ...[
             Checkbox(
               tristate: true,
               value: _sel.isEmpty ? false : (_sel.length == rows.length ? true : null),
@@ -299,10 +299,27 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
             ),
             Expanded(
               child: Text(selecting ? t('محدد ${_sel.length}', '${_sel.length} selected') : t('تحديد الكل', 'Select all'),
-                  style: orgText(context, size: 12.5, w: FontWeight.w700, color: c.textMedium)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textMedium)),
             ),
-          ]),
-        ),
+          ] else
+            const Spacer(),
+          AppSpace.gapXs,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 240),
+            child: OrgFilterButton<String>(
+              value: _filter,
+              defaultValue: 'all',
+              label: t('الطلبات', 'Requests'),
+              options: {
+                'all': t('الكل · ${_org!.length + _units!.length}', 'All · ${_org!.length + _units!.length}'),
+                'org': t('المؤسسة · ${_org!.length}', 'Organization · ${_org!.length}'),
+                'units': t('الأقسام · ${_units!.length}', 'Departments · ${_units!.length}'),
+              },
+              onChanged: (v) => setState(() => _filter = v),
+            ),
+          ),
+        ]),
+      ),
       Expanded(
         child: AppRefresh(
           onRefresh: _load,

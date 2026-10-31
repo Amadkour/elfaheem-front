@@ -9,7 +9,8 @@
 //                             with Retry when the call fails, stays gone on 409 already_decided), the organization-wide
 //                             alerts the tasks do not carry, "See all (n)" → OrgTasksPage; an older server without
 //                             `tasks` → its attention cards as rows
-//   C  Insights               a slot (OrgInsightsSection), only with `can_insights`
+//   C  Insights               OrgInsightsSection (insights/), only with `can_insights`: its own GET …/insights after
+//                             the first frame; an older server → the 30-day OrgTrendRow
 // ordered by `layout` (insights_first for admins, actions_first for staff / members; orgHomeOrder). Phones stack them,
 // a desktop (≥ kHomeWideMin) splits them into two balanced columns (orgHomeColumns).
 //   OrgHomePage       the live page: OrgSession + OrgDashController (ONE GET …/dashboard) + OrgTabs; pull / resume /
@@ -46,6 +47,7 @@ import 'home/org_home_departments.dart';
 import 'home/org_home_logic.dart';
 import 'home/org_home_tasks.dart';
 import 'home/org_insights_section.dart';
+import 'insights/org_insights_api.dart' show OrgInsightsPrefetch, orgInsightsAllowedBy, orgInsightsToday;
 import 'org_academic_pages.dart' show OrgAcademicPage;
 import 'org_dashboard_model.dart';
 import 'org_dashboard_screen.dart' show OrgTabs;
@@ -109,8 +111,8 @@ class OrgHomeBody extends StatelessWidget {
     this.live,
     this.onOpenUnit,
     this.onSeeAllUnits,
-    this.insights = const OrgInsightsSection(),
-    this.insightsWeight = kOrgInsightsWeight,
+    this.insights = const SizedBox.shrink(),
+    this.insightsWeight = 0,
   });
 
   final OrgHomeData data;
@@ -355,6 +357,19 @@ class _OrgHomePageState extends State<OrgHomePage> {
 
   Future<void> _reload() => context.read<OrgDashController>().load(context.read<OrgSession>());
 
+  int? _insightsAskedFor;
+
+  /// Insights IN PARALLEL with the dashboard call (no waterfall) when the session already says this person sees
+  /// them first — an admin (insights_first). Staff / members keep the section's own below-the-fold wait; the
+  /// dashboard's `can_insights` still decides whether the section is drawn (an unused answer just expires).
+  void _prefetchInsights(OrgSession s) {
+    final id = s.currentId;
+    if (id == null || id == _insightsAskedFor || !orgInsightsEnabled) return;
+    _insightsAskedFor = id;
+    if (s.access != 'admin' || !orgInsightsAllowedBy(access: s.access, canAnyView: (m) => s.canAny(m))) return;
+    OrgInsightsPrefetch.start(id, orgInsightsToday());
+  }
+
   /// "Updated …" = when the payload on screen arrived (reported once per payload).
   void _reportUpdated(DateTime? at) {
     if (at == null || at == _reported) return;
@@ -370,7 +385,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
   }
 
   /// "Home" (the organization's name is already on the switcher pill beside it) · my role there.
-  Widget _header(OrgSession s, OrgHomeData? d) => OrgPageHeader(title: t('الرئيسية', 'Home'), subtitle: _roleLabel(s, d));
+  Widget _header(OrgSession s, OrgHomeData? d) => OrgPageHeader(title: t('الرئيسية', 'Home'), subtitle: _roleLabel(s, d), searchBar: true);
 
   List<OrgAttentionSpec> _alerts(BuildContext context, OrgHomeData d) => [
         for (final a in d.alerts)
@@ -439,6 +454,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
     final dash = context.watch<OrgDashController>();
     final tabs = context.read<OrgTabs>();
     final d = dash.data;
+    _prefetchInsights(s);
     final header = _header(s, d);
     Future<void> refresh() => dash.load(s);
     if (d == null) {
@@ -480,6 +496,9 @@ class _OrgHomePageState extends State<OrgHomePage> {
           ),
           onOpenUnit: (u) => _openUnit(context, u),
           onSeeAllUnits: tabs.has('people', 'departments') ? () => orgJump(context, 'people', sub: 'departments') : null,
+          // its own call after the first frame (never part of the dashboard's); an older server → the 30-day trends
+          insights: OrgInsightsSection(orgId: s.currentId, fallback: d.trends.isEmpty ? null : OrgTrendRow(trends: d.trends)),
+          insightsWeight: kOrgInsightsWeight,
         ),
       ),
     );

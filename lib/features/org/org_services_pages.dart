@@ -27,6 +27,8 @@ import 'org_common.dart';
 import 'org_reports/report_page.dart' show OrgComplaintReportPage;
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'org_page_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'governance/gov_api.dart' show GovApi;
 import 'governance/gov_forms_assign.dart' show GovFormAssignmentsView, showGovFormAssignSheet;
 import 'governance/gov_wiring.dart' show govEnabled;
@@ -34,18 +36,6 @@ import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
-
-/// Shared FAB style.
-Widget _fab(BuildContext context, String tag, String label, IconData icon, VoidCallback onTap) {
-  final c = context.colors;
-  return FloatingActionButton.extended(
-    heroTag: tag,
-    backgroundColor: c.primary,
-    onPressed: onTap,
-    icon: Icon(icon, color: c.onHero),
-    label: Text(label, style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontWeight: FontWeight.w700)),
-  );
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Forms
@@ -94,16 +84,20 @@ class OrgFormsPage extends StatelessWidget {
       create: (_) => OrgPaged('${s.base}/forms', {'dept_id': deptId})..refresh(),
       child: Builder(builder: (context) {
         final p = context.read<OrgPaged>();
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          floatingActionButton: s.can('forms', 'insert', deptId)
-              ? _fab(context, 'form_new', t('نموذج جديد', 'New form'), Icons.add_rounded, () async {
-                  await Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgFormBuilderScreen(deptId: deptId))));
-                  p.refresh();
-                })
+        return OrgPageBody(
+          primary: s.can('forms', 'insert', deptId)
+              ? OrgPrimaryAction(
+                  id: 'new_form',
+                  icon: Icons.add_rounded,
+                  label: t('نموذج جديد', 'New form'),
+                  onTap: () async {
+                    await Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgFormBuilderScreen(deptId: deptId))));
+                    p.refresh();
+                  },
+                )
               : null,
-          body: PagedList<OrgPaged>(
+          child: PagedList<OrgPaged>(
             emptyText: t('لا نماذج بعد — حوّل الطلبات الورقية لنماذج إلكترونية', 'No forms yet — turn paper requests into online forms'),
             itemBuilder: (context, row) => _FormCard(row: row),
           ),
@@ -127,7 +121,7 @@ class _FormCard extends StatelessWidget {
     final waiting = asInt(counts['submitted']) + asInt(counts['in_review']);
     final url = '${s.base}/forms/${row['id']}';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+      padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
         accent: waiting > 0 ? c.warning : null,
         onTap: () => Navigator.of(context).push(MaterialPageRoute(
@@ -137,7 +131,7 @@ class _FormCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${row['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
+              Text('${row['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 5),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 StatusChip(statusLabel('${row['status']}'), statusColor(context, '${row['status']}')),
@@ -560,28 +554,30 @@ class OrgMaterialsPage extends StatelessWidget {
       child: Builder(builder: (context) {
         final p = context.watch<OrgPaged>();
         final folders = [for (final f in (p.extra['folders'] as List?) ?? const []) '$f'];
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          floatingActionButton: s.can('materials', 'insert', deptId)
-              ? _fab(context, 'mat_new', t('رفع ملف', 'Upload'), Icons.upload_file_rounded,
-                  () => _addMaterial(context, deptId, folders, p.refresh))
+        return OrgPageBody(
+          primary: s.can('materials', 'insert', deptId)
+              ? OrgPrimaryAction(
+                  id: 'upload_material',
+                  icon: Icons.upload_file_rounded,
+                  label: t('رفع ملف', 'Upload'),
+                  onTap: () => _addMaterial(context, deptId, folders, p.refresh),
+                )
               : null,
-          body: Column(children: [
-            if (folders.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              FilterChips<String>(
-                options: {'': t('كل المجلدات', 'All folders'), for (final f in folders) f: f},
-                value: '${p.filters['folder'] ?? ''}',
-                onChanged: (v) => p.setFilter('folder', v),
-              ),
-            ],
-            Expanded(
-              child: PagedList<OrgPaged>(
-                emptyText: t('المكتبة فارغة — ارفع اللوائح والأدلة والنماذج', 'The library is empty — upload regulations, guides and templates'),
-                itemBuilder: (context, row) => _MaterialTile(row: row),
-              ),
-            ),
-          ]),
+          // ONE filter: the folder (only once there are folders)
+          filter: folders.isEmpty
+              ? null
+              : OrgFilterButton<String>(
+                  icon: Icons.folder_open_rounded,
+                  label: t('المجلد', 'Folder'),
+                  options: {'': t('كل المجلدات', 'All folders'), for (final f in folders) f: f},
+                  value: '${p.filters['folder'] ?? ''}',
+                  defaultValue: '',
+                  onChanged: (v) => p.setFilter('folder', v),
+                ),
+          child: PagedList<OrgPaged>(
+            emptyText: t('المكتبة فارغة — ارفع اللوائح والأدلة والنماذج', 'The library is empty — upload regulations, guides and templates'),
+            itemBuilder: (context, row) => _MaterialTile(row: row),
+          ),
         );
       }),
     );
@@ -612,7 +608,7 @@ class _MaterialTile extends StatelessWidget {
     final dept = row['dept_id'] == null ? null : asInt(row['dept_id']);
     final members = row['visibility'] == 'members';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+      padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
         onTap: () => openFileUrl('${row['file_url'] ?? row['link_url'] ?? ''}'),
         child: Row(children: [
@@ -620,7 +616,7 @@ class _MaterialTile extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${row['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
+              Text('${row['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
               Wrap(spacing: 6, children: [
                 OrgPill(members ? t('للأعضاء', 'Members') : t('للفريق فقط', 'Team only'),
@@ -764,9 +760,12 @@ class OrgComplaintsPage extends StatelessWidget {
             : p.filters['mine'] == true
                 ? 'mine'
                 : '${p.filters['status'] ?? ''}';
-        return Column(children: [
-          const SizedBox(height: 8),
-          FilterChips<String>(
+        // the page anatomy (D-103): ONE status filter · More (⋯: the designed report, a quick export) · the cards.
+        // No primary action: complaints come from members; the staff answer them.
+        return OrgPageBody(
+          filter: OrgFilterButton<String>(
+            label: t('الحالة', 'Status'),
+            defaultValue: 'active',
             options: {
               'active': t('المفتوحة', 'Open'),
               'overdue': t('متأخرة', 'Overdue'),
@@ -787,29 +786,25 @@ class OrgComplaintsPage extends StatelessWidget {
               }
             },
           ),
-          if (s.can('complaints', 'export', deptId))
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: Wrap(spacing: 4, children: [
-                TextButton.icon(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrgComplaintReportPage(deptId: deptId))),
-                  icon: const Icon(Icons.design_services_rounded, size: 18),
-                  label: Text(t('تقرير مصمَّم وإرسال', 'Designed report & send'), style: TextStyle(fontFamily: AppFonts.family)),
-                ),
-                TextButton.icon(
-                  onPressed: () => exportData(context, 'complaints/export', {if (deptId != null) 'dept_id': deptId}),
-                  icon: const Icon(Icons.file_download_rounded, size: 18),
-                  label: Text(t('تصدير سريع', 'Quick export'), style: TextStyle(fontFamily: AppFonts.family)),
-                ),
-              ]),
-            ),
-          Expanded(
-            child: PagedList<OrgPaged>(
-              emptyText: t('لا شكاوى هنا — هذا خبر جيد 🌿', 'Nothing here — good news 🌿'),
-              itemBuilder: (context, row) => _ComplaintCard(row: row),
-            ),
+          more: [
+            if (s.can('complaints', 'export', deptId)) ...[
+              OrgMenuItem(
+                icon: Icons.design_services_rounded,
+                label: t('تقرير مصمَّم وإرسال', 'Designed report & send'),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrgComplaintReportPage(deptId: deptId))),
+              ),
+              OrgMenuItem(
+                icon: Icons.file_download_rounded,
+                label: t('تصدير سريع (Excel)', 'Quick export (Excel)'),
+                onTap: () => exportData(context, 'complaints/export', {if (deptId != null) 'dept_id': deptId}),
+              ),
+            ],
+          ],
+          child: PagedList<OrgPaged>(
+            emptyText: t('لا شكاوى هنا — هذا خبر جيد 🌿', 'Nothing here — good news 🌿'),
+            itemBuilder: (context, row) => _ComplaintCard(row: row),
           ),
-        ]);
+        );
       }),
     );
   }
@@ -827,7 +822,7 @@ class _ComplaintCard extends StatelessWidget {
     final st = '${row['status']}';
     final overdue = row['overdue'] == true;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+      padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
         accent: overdue ? c.danger : (row['unread'] == true ? c.primary : null),
         onTap: () async {
@@ -845,7 +840,7 @@ class _ComplaintCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${row['subject']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
+              Text('${row['subject']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               Text('${row['ref']} · ${asMap(row['user'])['name'] ?? ''} · ${relTime(row['created_at'])}',
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
               const SizedBox(height: 6),

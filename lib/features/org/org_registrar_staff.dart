@@ -22,6 +22,8 @@ import 'org_providers.dart';
 import 'org_registrar.dart';
 import 'org_registrar_member.dart' show OrgRecordScreen, staffGradesScreen;
 import 'org_v3.dart';
+import 'org_page_kit.dart' show OrgPartPicker;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 String _courseTitle(Map<String, dynamic>? c) {
   if (c == null) return '';
@@ -50,17 +52,12 @@ class _OrgRegistrarPageState extends State<OrgRegistrarPage> {
       (t('اللائحة', 'Rules'), Icons.rule_rounded, const _RulesTab()),
       (t('التخرج والمتعثرون', 'Graduation & at risk'), Icons.school_rounded, const _GraduationTab()),
     ];
-    return Column(children: [
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-        child: Row(children: [
-          for (var i = 0; i < tabs.length; i++)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
-              child: AppChoiceChip(label: tabs[i].$1, icon: tabs[i].$2, selected: _tab == i, onTap: () => setState(() => _tab = i)),
-            ),
-        ]),
+    // the page anatomy (D-103, org_page_kit.dart): the parts as ONE part picker — chips that fit, else one
+    // "part ▾" button; a part is built when chosen (as before)
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs),
+        child: OrgPartPicker(parts: [for (final x in tabs) (x.$1, x.$2)], index: _tab, onChanged: (i) => setState(() => _tab = i)),
       ),
       Expanded(child: KeyedSubtree(key: ValueKey(_tab), child: tabs[_tab].$3)),
     ]);
@@ -166,10 +163,10 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
             AppCard(
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Row(children: [
-                  Expanded(child: Text(decisionKindText('${d['kind']}'), style: appText(12, c: c.textMedium))),
+                // wraps on a phone (the risk text is long): a Row ran off a 320 px screen
+                Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  Text(decisionKindText('${d['kind']}'), style: appText(12, c: c.textMedium)),
                   if (d['auto_applied'] == true) AppBadgePill(t('طُبّق تلقائياً', 'Applied automatically'), color: c.primary),
-                  const SizedBox(width: 6),
                   AppBadgePill(riskText('${d['risk']}'), color: d['risk'] == 'false_positive' ? c.danger : d['risk'] == 'false_negative' ? c.warning : c.success),
                 ]),
                 const SizedBox(height: 6),

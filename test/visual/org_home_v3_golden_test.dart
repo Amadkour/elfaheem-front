@@ -30,6 +30,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_api.dart';
+import '../ui/org_insights_samples.dart' show sampleInsightsJson;
 import '../ui/org_home_v3_layout_test.dart' show adminPayload, deptPayload, emptyMemberPayload, memberPayload, session;
 import 'home_screens_golden_test.dart' show pubspecFonts;
 
@@ -189,6 +190,7 @@ void main() {
     AppModeController.applyContext = (_) {};
     fake = FakeApi({
       'GET /api/v1/org/orgs/4/dashboard': (_) => homePayload,
+      'GET /api/v1/org/orgs/4/insights': (_) => sampleInsightsJson(),
       'GET /api/v1/org/orgs/4/units/dept/1/dashboard': (_) => _adminDept(),
       'GET /api/v1/org/orgs/4/units/dept/3/dashboard': (_) => deptPayload(),
     }, latency: Duration.zero, fallback: (_) => {'items': const [], 'total': 0});
