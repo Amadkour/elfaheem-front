@@ -926,8 +926,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     await old.pause().catchError((Object _) {});
     VideoPlayerController next;
     try {
+      // 10 s, not the cold start's 25: the old stream is still here to go back to (a switch that hung left the
+      // video paused on "Switching quality...").
       next = await openVodController(v,
-          at: carry.position, speed: carry.speed, volume: _touchDevice ? null : _volume);
+          at: carry.position,
+          speed: carry.speed,
+          volume: _touchDevice ? null : _volume,
+          timeout: const Duration(seconds: 10));
     } catch (_) {
       if (!mounted || token != _initToken) return;
       setState(() {
