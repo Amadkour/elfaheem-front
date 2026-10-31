@@ -350,4 +350,28 @@ void main() {
       expect(empty.length, greaterThan(1000));
     });
   });
+
+  group('RTL PDF text (package:pdf places RTL words by ink width)', () {
+    test('an RTL line is cut into words; a run of Latin words stays one piece', () {
+      expect(exportPdfRtlRuns('31 أكتوبر 2026'), ['31', 'أكتوبر', '2026']);
+      expect(exportPdfRtlRuns('حضر  10 من 12'), ['حضر', '10', 'من', '12']); // a double space adds no empty piece
+      expect(exportPdfRtlRuns('مع المعلم Mark Smith اليوم'), ['مع', 'المعلم', 'Mark Smith', 'اليوم']);
+      expect(exportPdfRtlRuns('Ahmed - Hamdy · علي'), ['Ahmed - Hamdy', '·', 'علي']); // a neutral word between Latin ones joins them
+      expect(exportPdfRtlRuns('علوم الحاسب'), ['علوم', 'الحاسب']);
+    });
+
+    test('a word is shaped and put in visual order, the way package:pdf draws RTL text', () {
+      final v = exportPdfVisual('علوم');
+      expect(v.runes.length, 4);
+      expect(v.runes.every((r) => r >= 0xFE70 && r <= 0xFEFF), isTrue); // presentation forms
+      expect(exportPdfVisual('2026'), '2026');
+    });
+
+    test('Latin text and the LTR document keep one pw.Text', () {
+      expect(exportPdfText('Ahmed Hamdy', rtl: true), isA<pw.Text>());
+      expect(exportPdfText('علوم الحاسب', rtl: false), isA<pw.Text>());
+      expect(exportPdfText('علوم الحاسب', rtl: true), isA<pw.Directionality>());
+      expect(exportPdfText('القاهرة', rtl: true), isA<pw.Text>()); // one word: the shaped word itself
+    });
+  });
 }

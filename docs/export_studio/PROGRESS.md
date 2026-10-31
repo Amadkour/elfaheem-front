@@ -75,9 +75,12 @@ files print English headers, titles and status texts; `exportPagedList` no longe
 (Schedule / Share link on org members); the schedule form picks roles (chips), status / language (dropdowns) and
 yes / no options (switches) instead of raw text; `video_protection.js` loads after `<base>`.
 
-Known gaps (not blocking): `package:pdf` drops the space at some Arabic / number and Arabic / Arabic word boundaries
-(reproduced: "أكتوبر2026", "علومالحاسب"; NBSP does not help, LRM / RLM fix the order but neither Tajawal nor
-IBM Plex Sans Arabic has a glyph for them, so a box is drawn) — needs a package upgrade or the server renderer;
-row values a table maps itself (role names, …) stay in the app language; members export has no courses count (the
+PDF spacing fixed (2026-10-31): `package:pdf` 3.13 places the words of an RTL line by their ink width
+(`_Line.realign`), which moved the space next to a tailed letter ("أكتوبر2026", "علومالحاسب"). `exportPdfText`
+draws an RTL text piece by piece — each word shaped by `bidi` (`exportPdfVisual`) and laid out LTR, Latin runs kept
+together, the pieces wrapped right to left; both PDF writers use it. Other PDF producers (exam papers, certificates
+designer exports, org reports) still use plain `pw.Text`.
+
+Known gaps (not blocking): row values a table maps itself (role names, …) stay in the app language; members export has no courses count (the
 people API lacks it); dark mode not checked in the real app; the certificate renderer logs (does not show) a QR
 skipped for a missing `segno` — the dev api image needs a rebuild.
