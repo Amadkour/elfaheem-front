@@ -1993,3 +1993,39 @@ dark sidebar's selected item (a brand pill). Not changed: the raw `FloatingActio
 (Material cannot take a gradient there), chart colours (D-063), progress bars (they carry score colours). Checked by
 `test/ui/brand_gradient_test.dart` (contrast of every stop for four palettes, the button rule) and by eye in
 `test/visual/brand_gradient_golden_test.dart`.
+
+## D-137 — Direct app downloads from our own site, one releases manifest, the web app on iPhone · 2026-11-01 · accepted
+
+**Context.** No Google Play or App Store account, zero budget. Students must still get the app from the platform: the
+web build offers the right build per device, the native apps learn about new versions, and publishing a version must
+not need a web build.
+
+**Decision.** One static manifest, `https://nextbrain.site/releases/releases.json` (schema in
+`lib/core/get_app/releases_manifest.dart`), and the files beside it in `/root/nextbrain/releases/` on the server
+(outside `build/web`, which `flutter clean` wipes), served by nginx at `/releases/` (immutable cache for versioned
+names, `no-cache` for the manifest and the `-latest` links, range requests, rate limits, an access log without IP or
+user agent). `scripts/release/publish_release.py` builds, checks and uploads; `release_manifest.py` on the server writes
+the manifest from the files it serves. Readers: the web banner and the "Get the app" row / sheet (replace the earlier
+`web/app_links.json` store links), and the native update prompt (replaces the placeholder store URLs of
+`VersionCheckService` and its `GET /app/version-check` call; the build number decides, `min_build` forces).
+- Android: three APKs signed with the release key (arm64-v8a is the banner's button, armeabi-v7a for 32-bit phones,
+  universal), native libraries stored compressed (`useLegacyPackaging`, ~49 MB instead of ~84 MB per ABI). R8 stays
+  off (D-026: it needs a device pass of live sessions first). All variants keep pubspec's versionCode
+  (`--target-platform`, not `--split-per-abi`, whose versionCode offsets would make a later universal APK a
+  "downgrade" and break the build-number comparison).
+- iPhone / iPad: the installable web app (Share → Add to Home Screen), because every native route without the App
+  Store needs a paid Apple account (TestFlight, Ad Hoc, Custom Apps, EU Web Distribution) or breaks Apple's terms
+  (enterprise certificates, free 7-day signing as distribution). The installed web app asks for notifications only
+  from a tap (iOS rule), through the banner's "Turn on notifications" strip.
+- Windows / Mac: the installable web app (Chrome / Edge prompt, Safari's Add to Dock). A native Windows build would
+  need Visual Studio and has no `video_player` implementation; macOS needs a Mac.
+- Linux: a native preview (.deb + .tar.gz) built on the server (`scripts/release/build_linux.sh`); `video_player` and
+  Firebase have no Linux implementation, so recorded lessons do not play there and the banner offers the web app
+  first (`"primary": "pwa"`), the packages listed under it.
+- Kill switches `get_app.banner`, `get_app.entry`, `app.update_prompt`. Analytics: `GET /releases/ping/<os>/<event>`
+  beacons answered 204 by nginx and counted from its log (no personal data, no backend route).
+
+**Not done / owed.** A signed Windows / macOS build (code-signing certificates remove SmartScreen / Gatekeeper
+warnings); iOS native through TestFlight once an Apple Developer account (or the nonprofit / education fee waiver)
+exists; the `applicationId` is still `com.example.flutter_education_app` (Play rejects `com.example`; changing it
+means a new Firebase Android app and a reinstall for everyone).

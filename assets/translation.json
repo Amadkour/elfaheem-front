@@ -21373,21 +21373,61 @@
     "en": "Get the Linux app",
     "ar": "حمّل تطبيق لينكس"
   },
-  "get_app_banner_body": {
-    "en": "Smoother lessons and offline downloads.",
-    "ar": "دروس أسلس وتنزيلات تعمل دون إنترنت."
+  "get_app_install_title_ios": {
+    "en": "Install NextBrain on your iPhone",
+    "ar": "ثبّت NextBrain على الآيفون"
   },
-  "get_app_google_play": {
-    "en": "Google Play",
-    "ar": "Google Play"
+  "get_app_install_title_ipados": {
+    "en": "Install NextBrain on your iPad",
+    "ar": "ثبّت NextBrain على الآيباد"
   },
-  "get_app_app_store": {
-    "en": "App Store",
-    "ar": "App Store"
+  "get_app_install_title_web": {
+    "en": "Install NextBrain on this computer",
+    "ar": "ثبّت NextBrain على هذا الكمبيوتر"
+  },
+  "get_app_open_safari_title": {
+    "en": "Open in Safari to install the app",
+    "ar": "افتح الصفحة في Safari لتثبيت التطبيق"
+  },
+  "get_app_meta_version": {
+    "en": "Version {v}",
+    "ar": "الإصدار {v}"
+  },
+  "get_app_meta_ios": {
+    "en": "Free, straight from the website",
+    "ar": "مجاني ومباشرة من الموقع"
+  },
+  "get_app_meta_safari": {
+    "en": "This browser can't add apps to the Home Screen",
+    "ar": "هذا المتصفح لا يضيف التطبيقات إلى الشاشة الرئيسية"
+  },
+  "get_app_meta_web": {
+    "en": "Opens in its own window, nothing to download",
+    "ar": "يفتح في نافذة مستقلة دون تنزيل"
   },
   "get_app_download": {
     "en": "Download",
     "ar": "تنزيل"
+  },
+  "get_app_how_to_install": {
+    "en": "How to install",
+    "ar": "طريقة التثبيت"
+  },
+  "get_app_copy_link": {
+    "en": "Copy link",
+    "ar": "نسخ الرابط"
+  },
+  "get_app_link_copied": {
+    "en": "Link copied. Paste it in Safari.",
+    "ar": "تم نسخ الرابط. الصقه في Safari."
+  },
+  "get_app_install": {
+    "en": "Install",
+    "ar": "تثبيت"
+  },
+  "get_app_all_platforms": {
+    "en": "All platforms",
+    "ar": "كل الأنظمة"
   },
   "get_app_dismiss": {
     "en": "Dismiss",
@@ -21404,6 +21444,194 @@
   "get_app_open_failed": {
     "en": "Couldn't open the link. Try again.",
     "ar": "تعذّر فتح الرابط. حاول مرة أخرى."
+  },
+  "get_app_sheet_sub": {
+    "en": "Always the latest version, straight from NextBrain.",
+    "ar": "أحدث إصدار دائمًا، مباشرة من NextBrain."
+  },
+  "get_app_this_device": {
+    "en": "This device",
+    "ar": "هذا الجهاز"
+  },
+  "get_app_other_platforms": {
+    "en": "Other platforms",
+    "ar": "أنظمة أخرى"
+  },
+  "get_app_platform_android": {
+    "en": "Android",
+    "ar": "أندرويد"
+  },
+  "get_app_platform_ios": {
+    "en": "iPhone and iPad",
+    "ar": "آيفون وآيباد"
+  },
+  "get_app_platform_windows": {
+    "en": "Windows",
+    "ar": "ويندوز"
+  },
+  "get_app_platform_macos": {
+    "en": "Mac",
+    "ar": "ماك"
+  },
+  "get_app_platform_linux": {
+    "en": "Linux",
+    "ar": "لينكس"
+  },
+  "get_app_android_step1": {
+    "en": "Tap Download and wait for the file to finish.",
+    "ar": "اضغط تنزيل وانتظر حتى يكتمل الملف."
+  },
+  "get_app_android_step2": {
+    "en": "Open the file from your notifications or the Downloads folder.",
+    "ar": "افتح الملف من الإشعارات أو من مجلد التنزيلات."
+  },
+  "get_app_android_step3": {
+    "en": "If asked, allow your browser to install unknown apps, then tap Install.",
+    "ar": "إذا طُلب منك، اسمح للمتصفح بتثبيت التطبيقات غير المعروفة ثم اضغط تثبيت."
+  },
+  "get_app_android_fail": {
+    "en": "Seeing \"App not installed\"? Try the file for older phones.",
+    "ar": "ظهرت رسالة «لم يتم تثبيت التطبيق»؟ جرّب ملف الهواتف الأقدم."
+  },
+  "get_app_ios_step1": {
+    "en": "Tap the Share button in Safari's toolbar.",
+    "ar": "اضغط زر المشاركة في شريط Safari."
+  },
+  "get_app_ios_step2": {
+    "en": "Choose \"Add to Home Screen\".",
+    "ar": "اختر «إضافة إلى الشاشة الرئيسية»."
+  },
+  "get_app_ios_step3": {
+    "en": "Tap Add, then open NextBrain from your Home Screen.",
+    "ar": "اضغط إضافة، ثم افتح NextBrain من الشاشة الرئيسية."
+  },
+  "get_app_ios_note": {
+    "en": "It works like an app: full screen, its own icon, and notifications on iOS 16.4 or later.",
+    "ar": "يعمل كالتطبيق: شاشة كاملة وأيقونة خاصة وإشعارات على iOS 16.4 أو أحدث."
+  },
+  "get_app_safari_step": {
+    "en": "Copy the link, open Safari and paste it, then tap Share → Add to Home Screen.",
+    "ar": "انسخ الرابط وافتح Safari والصقه، ثم اضغط مشاركة ← إضافة إلى الشاشة الرئيسية."
+  },
+  "get_app_web_chromium": {
+    "en": "Click Install, or use the install icon in the address bar of Chrome or Edge.",
+    "ar": "اضغط تثبيت، أو استخدم أيقونة التثبيت في شريط العنوان في Chrome أو Edge."
+  },
+  "get_app_web_safari_mac": {
+    "en": "In Safari, choose File → Add to Dock.",
+    "ar": "في Safari اختر ملف ← إضافة إلى Dock."
+  },
+  "get_app_web_other": {
+    "en": "Open this site in Chrome or Edge, then choose Install.",
+    "ar": "افتح هذا الموقع في Chrome أو Edge ثم اختر تثبيت."
+  },
+  "get_app_ios_other": {
+    "en": "On your iPhone or iPad, open this site in Safari, then Share → Add to Home Screen.",
+    "ar": "على الآيفون أو الآيباد افتح هذا الموقع في Safari ثم مشاركة ← إضافة إلى الشاشة الرئيسية."
+  },
+  "get_app_warn_windows": {
+    "en": "Windows may show \"Windows protected your PC\": choose More info → Run anyway. The app is not code-signed yet.",
+    "ar": "قد يظهر ويندوز رسالة «Windows protected your PC»: اختر More info ثم Run anyway. التطبيق غير موقّع رقميًا بعد."
+  },
+  "get_app_warn_macos": {
+    "en": "macOS may say the app can't be opened: Control-click it and choose Open, or allow it in System Settings → Privacy & Security.",
+    "ar": "قد يرفض macOS فتح التطبيق: اضغط عليه مع Control واختر Open، أو اسمح به من System Settings ← Privacy & Security."
+  },
+  "get_app_warn_linux": {
+    "en": "Debian / Ubuntu: sudo apt install ./{file}. The .tar.gz runs from any folder.",
+    "ar": "دبيان / أوبونتو: sudo apt install ./{file}. ويعمل ملف ‎.tar.gz من أي مجلد."
+  },
+  "get_app_checksum": {
+    "en": "SHA-256 fingerprint",
+    "ar": "بصمة الملف SHA-256"
+  },
+  "get_app_min_os": {
+    "en": "Needs {os} or later",
+    "ar": "يتطلب {os} أو أحدث"
+  },
+  "get_app_arch_arm64-v8a": {
+    "en": "Most phones (64-bit)",
+    "ar": "معظم الهواتف (64-بت)"
+  },
+  "get_app_arch_armeabi-v7a": {
+    "en": "Older phones (32-bit)",
+    "ar": "الهواتف الأقدم (32-بت)"
+  },
+  "get_app_arch_universal": {
+    "en": "All devices (larger file)",
+    "ar": "كل الأجهزة (ملف أكبر)"
+  },
+  "get_app_arch_x64": {
+    "en": "Intel / AMD (64-bit)",
+    "ar": "إنتل / AMD (64-بت)"
+  },
+  "get_app_arch_arm64": {
+    "en": "ARM (64-bit)",
+    "ar": "ARM (64-بت)"
+  },
+  "get_app_whats_new": {
+    "en": "What's new",
+    "ar": "الجديد"
+  },
+  "get_app_install_unavailable": {
+    "en": "Use your browser's menu to install the app.",
+    "ar": "استخدم قائمة المتصفح لتثبيت التطبيق."
+  },
+  "get_app_installed": {
+    "en": "Installed. Open NextBrain from your apps.",
+    "ar": "تم التثبيت. افتح NextBrain من تطبيقاتك."
+  },
+  "get_app_web_app": {
+    "en": "Web app",
+    "ar": "تطبيق الويب"
+  },
+  "get_app_preview": {
+    "en": "Preview",
+    "ar": "تجريبي"
+  },
+  "get_app_push_title": {
+    "en": "Turn on notifications",
+    "ar": "فعّل الإشعارات"
+  },
+  "get_app_push_body": {
+    "en": "Get class reminders and messages on this device.",
+    "ar": "استقبل تذكيرات الحصص والرسائل على هذا الجهاز."
+  },
+  "get_app_push_button": {
+    "en": "Turn on",
+    "ar": "تفعيل"
+  },
+  "get_app_push_denied": {
+    "en": "Notifications are off. Turn them on in Settings → Notifications.",
+    "ar": "الإشعارات متوقفة. فعّلها من الإعدادات ← الإشعارات."
+  },
+  "get_app_update_title": {
+    "en": "A new version is ready",
+    "ar": "إصدار جديد متاح"
+  },
+  "get_app_update_title_force": {
+    "en": "Please update to continue",
+    "ar": "حدّث التطبيق للمتابعة"
+  },
+  "get_app_update_body": {
+    "en": "Version {v} is available.",
+    "ar": "الإصدار {v} متاح."
+  },
+  "get_app_update_body_force": {
+    "en": "This version is no longer supported. Download version {v} to keep using NextBrain.",
+    "ar": "هذا الإصدار لم يعد مدعومًا. نزّل الإصدار {v} لمتابعة استخدام NextBrain."
+  },
+  "get_app_update_now": {
+    "en": "Download update",
+    "ar": "تنزيل التحديث"
+  },
+  "get_app_update_later": {
+    "en": "Later",
+    "ar": "لاحقًا"
+  },
+  "get_app_update_hint": {
+    "en": "After the download, open the file to install it over the current app. Your data stays.",
+    "ar": "بعد التنزيل افتح الملف لتثبيته فوق التطبيق الحالي، وتبقى بياناتك كما هي."
   },
   "instructor_courses_more": {
     "en": "Show more courses",

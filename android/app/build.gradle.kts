@@ -39,6 +39,26 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // One-ABI APKs for direct downloads (D-137, scripts/release/publish_release.py): `--target-platform
+        // android-arm64` limits Flutter's own libraries only, and the Flutter plugin resets abiFilters to every ABI,
+        // so the plugins' native libraries (WebRTC, ML Kit) came along for all three. With
+        // `-P disable-abi-filtering=true` the Flutter plugin leaves abiFilters alone and they follow --target-platform.
+        // Every other build (flutter run, appbundle, a plain apk) is unchanged.
+        if (project.findProperty("disable-abi-filtering")?.toString() == "true") {
+            val abiOf = mapOf("android-arm" to "armeabi-v7a", "android-arm64" to "arm64-v8a", "android-x64" to "x86_64")
+            val abis = (project.findProperty("target-platform") as String?)?.split(",")?.mapNotNull { abiOf[it.trim()] }
+            ndk { abiFilters += (if (abis.isNullOrEmpty()) abiOf.values.toList() else abis) }
+        }
+    }
+
+    // Native libraries are stored COMPRESSED in the APK (direct downloads, D-137): the APKs are fetched from our own
+    // site, often on mobile data, and the .so files (Flutter, the app, WebRTC, ML Kit) shrink by more than half. The
+    // cost is that Android extracts them once at install (a little more storage). A Play App Bundle is unaffected:
+    // Play builds its own splits.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     signingConfigs {

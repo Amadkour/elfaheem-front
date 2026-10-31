@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# Builds the Linux desktop app on an Ubuntu / Debian x64 machine (the production server: Flutter in $HOME/flutter/bin)
+# and publishes it into the releases folder (D-137): NextBrain-<version>-<build>-x64.deb and .tar.gz, the
+# NextBrain-latest-x64.* links, and the `linux` entry of releases.json (through release_manifest.py).
+#
+#   bash build_linux.sh            (publish_release.py --linux pipes it over SSH; it is idempotent)
+#
+# Environment (all optional):
+#   NB_SRC=/root/nextbrain/linux-build   a separate clone, so the web build in /root/nextbrain/front is never touched
+#   NB_BRANCH=organizations              the branch built
+#   NB_RELEASES=/root/nextbrain/releases NB_RELEASES_URL=https://nextbrain.site/releases
+#   NB_SKIP_APT=1                        do not install the build packages (they are listed below)
+#   NB_NOTES_EN / NB_NOTES_AR            release notes; NB_PRIMARY=pwa (default: the banner offers the web app first
+#                                        on Linux, the packages are listed under it) or x64 (the .deb first)
+#
+# The Linux app is a PREVIEW: Firebase (push, Crashlytics) and the video_player plugin have no Linux implementation,
+# so recorded lessons do not play in it; the web app does everything. See docs/DECISIONS.md D-137.
+set -euo pipefail
+export PATH="$PATH:$HOME/flutter/bin"
+SRC="${NB_SRC:-/root/nextbrain/linux-build}"
+BRANCH="${NB_BRANCH:-organizations}"
+ROOT="${NB_RELEASES:-/root/nextbrain/releases}"
+URL="${NB_RELEASES_URL:-https://nextbrain.site/releases}"
+FRONT="${NB_FRONT:-/root/nextbrain/front}"
+PRIMARY="${NB_PRIMARY:-pwa}"
+NOTES_EN="${NB_NOTES_EN:-Preview of the desktop app. Recorded lessons play in the web version for now.}"
+NOTES_AR="${NB_NOTES_AR:-نسخة تجريبية من تطبيق سطح المكتب. الدروس المسجلة تعمل في نسخة الويب حاليًا.}"
+
+say() { printf '\n==> %s\n' "$*"; }
+
+[ "$(uname -m)" = "x86_64" ] || { echo "this script builds x64 only (uname -m = $(uname -m))"; exit 2; }
+command -v flutter >/dev/null || { echo "flutter not on PATH ($HOME/flutter/bin)"; exit 2; }
+
+if [ -z "${NB_SKIP_APT:-}" ]; then
+  say "build packages"
+  pkgs=(clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev
+        dpkg-dev xvfb xauth)
+  missing=()
+  for p in "${pkgs[@]}"; do dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed" || missing+=("$p"); done
+  if [ ${#missing[@]} -gt 0 ]; then
+    echo "installing: ${missing[*]}"
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "${missing[@]}"
+  else
+    echo "all present"
+  fi
+fi
+
+say "source ($BRANCH) in $SRC"
+if [ ! -d "$SRC/.git" ]; then
+  git clone --quiet "$(git -C "$FRONT" remote get-url origin)" "$SRC"
+fi
+git -C "$SRC" fetch --quiet origin "$BRANCH"
+git -C "$SRC" checkout --quiet -B "$BRANCH" "origin/$BRANCH"
+git -C "$SRC" reset --quiet --hard "origin/$BRANCH"
+git -C "$SRC" log --oneline -1
+[ -d "$SRC/linux" ] || { echo "no linux/ folder on $BRANCH (merge feature/app-downloads first)"; exit 2; }
+
+cd "$SRC"
+full="$(grep -E '^version:' pubspec.yaml | awk '{print $2}')"
+VERSION="${full%%+*}"
+BUILD="${full##*+}"
+NAME="NextBrain-${VERSION}-${BUILD}-x64"
+say "flutter build linux $VERSION+$BUILD"
+flutter config --enable-linux-desktop >/dev/null
+flutter pub get >/dev/null
+flutter build linux --release --obfuscate --split-debug-info="build/debug-info/${full}/linux"
+BUNDLE="$SRC/build/linux/x64/release/bundle"
+[ -x "$BUNDLE/nextbrain" ] || { echo "no binary at $BUNDLE/nextbrain"; exit 1; }
+
+say "smoke test (25 s under a virtual display)"
+set +e
+timeout 25 xvfb-run -a "$BUNDLE/nextbrain" >/tmp/nb-linux-smoke.log 2>&1
+code=$?
+set -e
+tail -n 25 /tmp/nb-linux-smoke.log || true
+if [ "$code" = "124" ]; then echo "smoke: still running after 25 s (ok)"; else echo "smoke: exited with $code (look at the log above)"; fi
+
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+ICON="$SRC/assets/images/app_icon.png"
+[ -f "$ICON" ] || ICON="$SRC/web/icons/Icon-512.png"
+DESKTOP="[Desktop Entry]
+Type=Application
+Name=NextBrain
+Comment=NextBrain learning platform
+Exec=/opt/nextbrain/nextbrain %U
+Icon=nextbrain
+Terminal=false
+Categories=Education;
+StartupWMClass=site.nextbrain.app"
+
+say "package .tar.gz"
+mkdir -p "$STAGE/tar/nextbrain"
+cp -a "$BUNDLE/." "$STAGE/tar/nextbrain/"
+cp "$ICON" "$STAGE/tar/nextbrain/nextbrain.png"
+printf '%s\n' "${DESKTOP//\/opt\/nextbrain\/nextbrain/nextbrain}" > "$STAGE/tar/nextbrain/nextbrain.desktop"
+mkdir -p "$ROOT/linux"
+tar -C "$STAGE/tar" -czf "$ROOT/linux/.${NAME}.tar.gz.part" nextbrain
+mv -f "$ROOT/linux/.${NAME}.tar.gz.part" "$ROOT/linux/${NAME}.tar.gz"
+
+say "package .deb"
+D="$STAGE/deb"
+mkdir -p "$D/DEBIAN" "$D/opt/nextbrain" "$D/usr/bin" "$D/usr/share/applications" "$D/usr/share/icons/hicolor/512x512/apps"
+cp -a "$BUNDLE/." "$D/opt/nextbrain/"
+ln -s /opt/nextbrain/nextbrain "$D/usr/bin/nextbrain"
+printf '%s\n' "$DESKTOP" > "$D/usr/share/applications/nextbrain.desktop"
+cp "$ICON" "$D/usr/share/icons/hicolor/512x512/apps/nextbrain.png"
+# Depends: the packages that own the system libraries the binary and the bundled .so files load
+libs="$( { ldd "$BUNDLE/nextbrain"; find "$BUNDLE/lib" -name '*.so*' -exec ldd {} \; ; } 2>/dev/null   | awk '/=> \//{print $3}' | { grep -v "^$BUNDLE" || true; } | sort -u)"
+deps="libc6, libstdc++6"
+for lib in $libs; do
+  owner="$(dpkg -S "$(readlink -f "$lib")" 2>/dev/null || dpkg -S "$lib" 2>/dev/null || true)"
+  pkg="${owner%%:*}"
+  case "$pkg" in ""|libc6|libgcc-s1|"libstdc++6") ;; *) case ", $deps," in *", $pkg,"*) ;; *) deps="$deps, $pkg" ;; esac ;; esac
+done
+size_kb="$(du -sk "$D/opt" | cut -f1)"
+cat > "$D/DEBIAN/control" <<EOF
+Package: nextbrain
+Version: ${VERSION}+${BUILD}
+Section: education
+Priority: optional
+Architecture: amd64
+Maintainer: NextBrain <noreply@nextbrain.site>
+Installed-Size: ${size_kb}
+Depends: ${deps}
+Homepage: https://nextbrain.site
+Description: NextBrain learning platform (desktop preview)
+ Courses, live classes and exams. Recorded lessons play in the web version for now.
+EOF
+echo "Depends: ${deps}"
+dpkg-deb --root-owner-group --build "$D" "$ROOT/linux/.${NAME}.deb.part" >/dev/null
+mv -f "$ROOT/linux/.${NAME}.deb.part" "$ROOT/linux/${NAME}.deb"
+dpkg-deb --info "$ROOT/linux/${NAME}.deb" | sed -n '1,4p'
+
+say "manifest"
+TOOL="$SRC/scripts/release/release_manifest.py"
+python3 "$TOOL" init --root "$ROOT"
+python3 "$TOOL" set --root "$ROOT" --base-url "$URL" --platform linux --version "$VERSION" --build "$BUILD" \
+  --min-os "Ubuntu $(. /etc/os-release && echo "$VERSION_ID") (x64)" --primary "$PRIMARY" --pwa \
+  --notes-en "$NOTES_EN" --notes-ar "$NOTES_AR" \
+  --file "x64:deb:linux/${NAME}.deb" --file "x64:tar.gz:linux/${NAME}.tar.gz" \
+  --latest "linux/NextBrain-latest-x64.deb=linux/${NAME}.deb" \
+  --latest "linux/NextBrain-latest-x64.tar.gz=linux/${NAME}.tar.gz"
+chmod -R o+rX "$ROOT"
+ls -la "$ROOT/linux"
+say "done: $URL/linux/${NAME}.deb"

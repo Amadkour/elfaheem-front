@@ -1,8 +1,0 @@
-{
-  "_about": "Store / installer links for the web build's 'Get the app' banner (lib/core/get_app/). One https URL per platform; leave a value empty to show nothing on that platform. iPad uses 'ios'. Edit this file on the hosting to change them without a new build.",
-  "android": "",
-  "ios": "",
-  "windows": "",
-  "macos": "",
-  "linux": ""
-}

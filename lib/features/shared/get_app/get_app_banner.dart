@@ -1,13 +1,17 @@
 // lib/features/shared/get_app/get_app_banner.dart — "Get the app", on the WEB build only:
 //
-//   GetAppBanner(child:)   in MaterialApp.builder (main.dart): a calm strip above the role homes with ONE button to
-//                          the right store / installer and a close button (hidden for 21 days on this browser).
-//                          Never on sign-in, a pushed page (player, exam, course), a dialog, the live room, guest or
-//                          view-as mode; nothing at all in the native app, an installed PWA or an in-app browser.
+//   GetAppBanner(child:)   in MaterialApp.builder (main.dart): a calm strip above the role homes with ONE button for
+//                          this device (download the APK / desktop package, "How to install" on iPhone, "Copy link"
+//                          in an app's own browser, "Install" the web app on a computer), "All platforms" opening the
+//                          sheet, and a close button (hidden for 14 days on this browser). Never on sign-in, a pushed
+//                          page (player, exam, course), a dialog, the live room, guest or view-as mode; nothing in
+//                          the native app, an installed web app or a wrapper. In the installed iPhone web app it
+//                          offers "Turn on notifications" instead (iOS asks only after a tap).
 //   GetAppBannerView       the strip over plain values (what test/ui/get_app_test.dart lays out).
-//   GetAppTile             the settings row that stays after a dismissal (hidden when this device has no link).
+//   GetAppTile             the settings row that stays after a dismissal (opens the sheet, every platform).
 //
-// State, links and rules: lib/core/get_app/ (links in web/app_links.json).
+// Everything comes from the releases manifest (lib/core/get_app/); the sheet is get_app_sheet.dart. Kill switches:
+// get_app.banner, get_app.entry.
 library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -15,37 +19,44 @@ import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../core/api_client.dart';
 import '../../../core/display/app_fonts.dart';
 import '../../../core/get_app/get_app_service.dart';
 import '../../../design/app_notice.dart';
 import '../../../design/app_settings.dart';
 import '../../../design/app_tokens.dart';
+import '../../../main.dart' show navigatorKey;
 import '../../../utils/top_route_observer.dart';
 import '../../../utils/widget/view_as_state.dart';
 import '../guest/guest_state.dart';
 import '../live/live_room_host.dart' show LiveRoomHost;
+import '../notification/notification_service.dart';
+import 'get_app_sheet.dart';
 
-/// "Get the Android app", "Get the iPad app", …
-String getAppTitle(GetAppOs os) => 'get_app_title_${os.name}'.tr;
+export 'get_app_sheet.dart' show showGetAppSheet, getAppIcon;
 
-/// The button: the store's name on phones and tablets, "Download" for a desktop installer.
-String getAppButtonLabel(GetAppOs os) => switch (os) {
-      GetAppOs.android => 'get_app_google_play'.tr,
-      GetAppOs.ios || GetAppOs.ipados => 'get_app_app_store'.tr,
-      _ => 'get_app_download'.tr,
-    };
+void _openSheet(GetAppService s) {
+  final ctx = navigatorKey.currentContext;
+  if (ctx != null) showGetAppSheet(ctx, service: s);
+}
 
-IconData getAppIcon(GetAppOs os) => switch (os) {
-      GetAppOs.android => Icons.phone_android_rounded,
-      GetAppOs.ios => Icons.phone_iphone_rounded,
-      GetAppOs.ipados => Icons.tablet_mac_rounded,
-      GetAppOs.windows => Icons.desktop_windows_rounded,
-      GetAppOs.macos => Icons.laptop_mac_rounded,
-      _ => Icons.computer_rounded,
-    };
-
-Future<void> _openStore(GetAppService s) async {
-  if (!await s.open()) showAppNotice('get_app_open_failed'.tr, error: true);
+/// The banner's button for [offer].
+Future<void> runGetAppOffer(GetAppService s, GetAppOffer offer) async {
+  switch (offer.kind) {
+    case GetAppOfferKind.download:
+      if (!await s.download(offer.os, offer.file!)) showAppNotice('get_app_open_failed'.tr, error: true);
+    case GetAppOfferKind.openInSafari:
+      await copyGetAppLink(s);
+    case GetAppOfferKind.installWeb when s.env.pwaInstallable:
+      final r = await s.installWebApp(offer.os);
+      if (r == 'accepted') {
+        showAppNotice('get_app_installed'.tr);
+      } else if (r == 'unavailable') {
+        _openSheet(s);
+      }
+    case GetAppOfferKind.installIos || GetAppOfferKind.installWeb:
+      _openSheet(s);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,6 +87,7 @@ class _GetAppBannerState extends State<GetAppBanner> {
     LiveRoomHost.listenable,
     GuestState.instance,
     ViewAsState.instance,
+    AppConfig.disableListVersion,
   ]);
 
   @override
@@ -107,13 +119,56 @@ class _GetAppBannerState extends State<GetAppBanner> {
     setState(_readRoute);
   }
 
-  bool get _visible =>
-      _routeOk && _s.bannerEligible && !LiveRoomHost.isOpen && !GuestState.active && !ViewAsState.active;
+  bool get _pageOk => _routeOk && !LiveRoomHost.isOpen && !GuestState.active && !ViewAsState.active;
+
+  /// Straight from the tap: iOS shows its permission prompt only inside the gesture, so nothing is awaited first.
+  void _turnOnPush() {
+    final asked = _s.requestNotifications();
+    asked.then((r) async {
+      if (r == 'granted') {
+        await NotificationService.instance.registerWithBackend(ApiClient.instance);
+        await _s.dismissPush();
+      } else if (r == 'denied') {
+        showAppNotice('get_app_push_denied'.tr);
+        await _s.dismissPush();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     if (!kIsWeb) return widget.child;
-    final visible = _visible;
+    final pageOk = _pageOk;
+    final offer = pageOk && _s.bannerEligible ? _s.offer : null;
+    final push = pageOk && offer == null && _s.pushPromptEligible;
+    final Widget strip;
+    if (offer != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _s.trackView(offer.os));
+      strip = GetAppBannerView(
+        key: ValueKey('get_app_${offer.kind.name}'),
+        icon: getAppIcon(offer.os),
+        title: getAppOfferTitle(offer),
+        meta: getAppOfferMeta(offer),
+        actionLabel: getAppOfferAction(offer, canPrompt: _s.env.pwaInstallable),
+        onAction: () => runGetAppOffer(_s, offer),
+        detailsLabel: 'get_app_all_platforms'.tr,
+        onDetails: () => _openSheet(_s),
+        onDismiss: _s.dismiss,
+      );
+    } else if (push) {
+      strip = GetAppBannerView(
+        key: const ValueKey('get_app_push'),
+        icon: Icons.notifications_active_outlined,
+        title: 'get_app_push_title'.tr,
+        meta: 'get_app_push_body'.tr,
+        actionLabel: 'get_app_push_button'.tr,
+        onAction: _turnOnPush,
+        onDismiss: _s.dismissPush,
+      );
+    } else {
+      strip = const SizedBox(width: double.infinity);
+    }
+    final visible = offer != null || push;
     final motion = AppMotion.of(context);
     return Column(
       children: [
@@ -121,13 +176,7 @@ class _GetAppBannerState extends State<GetAppBanner> {
           duration: motion.base,
           curve: AppMotion.curve,
           alignment: AlignmentDirectional.topCenter,
-          child: visible
-              ? GetAppBannerView(
-                  os: _s.env.os,
-                  onOpen: () => _openStore(_s),
-                  onDismiss: _s.dismiss,
-                )
-              : const SizedBox(width: double.infinity),
+          child: strip,
         ),
         // Keyed so the Navigator keeps its state when the strip comes and goes.
         Expanded(
@@ -144,11 +193,30 @@ class _GetAppBannerState extends State<GetAppBanner> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class GetAppBannerView extends StatelessWidget {
-  const GetAppBannerView({super.key, required this.os, required this.onOpen, required this.onDismiss});
+  const GetAppBannerView({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.meta,
+    required this.actionLabel,
+    required this.onAction,
+    required this.onDismiss,
+    this.detailsLabel,
+    this.onDetails,
+  });
 
-  final GetAppOs os;
-  final VoidCallback onOpen;
+  final IconData icon;
+  final String title;
+
+  /// "Version 1.0.0 · 48.7 MB", or a one-line promise.
+  final String meta;
+  final String actionLabel;
+  final VoidCallback onAction;
   final VoidCallback onDismiss;
+
+  /// "All platforms" (wide windows show it as a link; on a phone the text block opens the same sheet).
+  final String? detailsLabel;
+  final VoidCallback? onDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -164,10 +232,29 @@ class GetAppBannerView extends StatelessWidget {
           child: SafeArea(
             bottom: false,
             child: LayoutBuilder(builder: (context, box) {
-              // a phone keeps the title only (icon well from ~380 px); a wide window adds the line below it and keeps
-              // the button next to the text, the close button at the far end
+              // a phone keeps icon (from ~380 px), title + meta, the button and close; a wide window adds the
+              // "All platforms" link next to the button
               final tight = box.maxWidth < 380;
               final wide = box.maxWidth >= 600;
+              final text = Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontSize: 13.5),
+                  ),
+                  if (meta.isNotEmpty)
+                    Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(fontFamily: AppFonts.family, fontSize: 12),
+                    ),
+                ],
+              );
               return Padding(
                 padding: EdgeInsetsDirectional.only(
                   start: tight ? AppSpace.sm : AppSpace.md,
@@ -177,7 +264,6 @@ class GetAppBannerView extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    // icon, text and the store button stay together; the close button sits at the far end
                     Expanded(
                       child: Row(
                         children: [
@@ -187,39 +273,28 @@ class GetAppBannerView extends StatelessWidget {
                                 width: 36,
                                 height: 36,
                                 decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll),
-                                child: Icon(getAppIcon(os), size: 20, color: c.primary),
+                                child: Icon(icon, size: 20, color: c.primary),
                               ),
                             ),
                             const SizedBox(width: AppSpace.sm),
                           ],
                           Flexible(
                             fit: wide ? FlexFit.loose : FlexFit.tight,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  getAppTitle(os),
-                                  maxLines: tight ? 2 : 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontSize: 13.5),
-                                ),
-                                if (wide)
-                                  Text(
-                                    'get_app_banner_body'.tr,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppType.meta(context).copyWith(fontFamily: AppFonts.family, fontSize: 12),
-                                  ),
-                              ],
-                            ),
+                            // on a phone the text opens the sheet too (no room for a second link)
+                            child: onDetails != null && !wide
+                                ? Semantics(
+                                    button: true,
+                                    hint: detailsLabel,
+                                    child: InkWell(onTap: onDetails, borderRadius: AppRadius.chipAll, child: text),
+                                  )
+                                : text,
                           ),
                           SizedBox(width: wide ? AppSpace.md : AppSpace.xs),
                           // a long label (large text, a translation) shortens instead of pushing the title out
                           ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: box.maxWidth * 0.42),
+                            constraints: BoxConstraints(maxWidth: box.maxWidth * 0.36),
                             child: FilledButton(
-                              onPressed: onOpen,
+                              onPressed: onAction,
                               style: FilledButton.styleFrom(
                                 backgroundColor: c.primary,
                                 foregroundColor: c.onHero,
@@ -229,13 +304,30 @@ class GetAppBannerView extends StatelessWidget {
                                 shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll),
                               ),
                               child: Text(
-                                getAppButtonLabel(os),
+                                actionLabel,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 13),
                               ),
                             ),
                           ),
+                          if (wide && onDetails != null && detailsLabel != null) ...[
+                            const SizedBox(width: AppSpace.xxs),
+                            TextButton(
+                              onPressed: onDetails,
+                              style: TextButton.styleFrom(
+                                foregroundColor: c.primary,
+                                minimumSize: const Size(48, 48),
+                                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                              ),
+                              child: Text(
+                                detailsLabel!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -269,18 +361,18 @@ class GetAppBannerView extends StatelessWidget {
 // Settings row
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// "Get the app" in a More / profile list. Add it as `if (GetAppTile.available) const GetAppTile()` so a device
-/// without a link leaves no empty row (and no extra divider) in the group.
+/// "Get the app" in a More / profile list: opens the sheet with every platform. Add it as
+/// `if (GetAppTile.available) const GetAppTile()` so a browser with nothing to offer leaves no empty row.
 class GetAppTile extends StatelessWidget implements AppSettingsSearchable {
   const GetAppTile({super.key, this.color});
 
   final Color? color;
 
-  /// Web, a real browser tab, and a link for this device (the links load at start-up, with the banner).
+  /// Web, a real browser tab, something published (the manifest loads at start-up, with the banner).
   static bool get available => kIsWeb && GetAppService.instance.entryAvailable;
 
   @override
-  String get searchText => '${'get_app_entry'.tr} app download install store تطبيق تنزيل تثبيت متجر';
+  String get searchText => '${'get_app_entry'.tr} app download install apk تطبيق تنزيل تثبيت';
 
   @override
   Widget build(BuildContext context) {
@@ -289,13 +381,14 @@ class GetAppTile extends StatelessWidget implements AppSettingsSearchable {
       listenable: s,
       builder: (context, _) {
         if (!kIsWeb || !s.entryAvailable) return const SizedBox.shrink();
+        final offer = s.offer;
         return AppSettingsTile(
-          icon: getAppIcon(s.env.os),
+          icon: offer == null ? Icons.install_mobile_rounded : getAppIcon(offer.os),
           color: color ?? context.colors.primary,
           label: 'get_app_entry'.tr,
-          subtitle: getAppTitle(s.env.os),
-          keywords: 'app download install store play تطبيق تنزيل تثبيت متجر',
-          onTap: () => _openStore(s),
+          subtitle: offer == null ? 'get_app_sheet_sub'.tr : getAppOfferTitle(offer),
+          keywords: 'app download install apk تطبيق تنزيل تثبيت',
+          onTap: () => showGetAppSheet(context, service: s),
         );
       },
     );

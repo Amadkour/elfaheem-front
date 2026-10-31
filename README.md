@@ -82,6 +82,35 @@ dart run flutter_native_splash:create                     # regenerate splash sc
 Release signing reads the keystore from the environment / `android/key.properties` (never committed). Do not run
 `dart format` on the existing code (it rewrites whole files; see CLAUDE.md).
 
+### Direct app downloads (no stores, D-137)
+
+The apps are downloaded from our own site. `https://nextbrain.site/releases/releases.json` (the releases manifest)
+says what exists per platform; the web banner, the "Get the app" row and the apps' update prompt read only that file,
+so publishing never needs a web build.
+
+```bash
+# Android (3 signed APKs: arm64-v8a, armeabi-v7a, universal) and/or the Linux app (built on the server):
+D:/platform/nextbrain/back/.venv312/Scripts/python.exe scripts/release/publish_release.py --android --linux \
+    --notes-en "What changed" --notes-ar "ما الجديد"
+#   --dry-run       build and check only          --no-build   upload what build/releases/<version>-<build>/ holds
+#   --min-build N   installed builds below N must update ("Please update to continue")
+```
+
+1. Raise `version:` in `pubspec.yaml` (`1.0.1+2`: the `+N` build is Android's versionCode and what the update check
+   compares; it must grow every release).
+2. Run the command. It builds, refuses a debug-signed APK or a wrong versionCode, uploads under temporary names,
+   and lets the server write the manifest from the files it serves (size + SHA-256; the previous manifest is kept as
+   `releases.json.bak-*`). iPhone / iPad, Windows and Mac offer the installable web app (`"pwa": true`).
+3. Check: `curl -s https://nextbrain.site/releases/releases.json`.
+
+**The Android release key** is `C:\Users\ahmed\.nextbrain-keys\` (`nextbrain-release.jks` + `key.properties`),
+outside every repo (`NEXTBRAIN_KEY_PROPERTIES` points elsewhere). Back it up offline: without it no installed copy can
+ever be updated. Its certificate SHA-256 is in `web/.well-known/assetlinks.json` (Android App Links).
+
+Hand-editing is possible (`scripts/release/release_manifest.py set …` on the server, `--help`); the schema is in
+`lib/core/get_app/releases_manifest.dart`. Counts of banner views, downloads and install guides:
+`docs/DEPLOY.md` in the backend, "App downloads".
+
 ## Troubleshooting
 
 | Symptom | Fix |
