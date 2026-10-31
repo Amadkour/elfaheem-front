@@ -231,6 +231,20 @@ void main() {
       expect(find.text('picked 720p'), findsOneWidget);
       expect(find.text('1080p'), findsNothing, reason: 'the sheet is closed');
     });
+
+    testWidgets('a tap while the sheet is still sliding in picks nothing', (tester) async {
+      await pumpShell(tester);
+      await tester.tap(find.text('new picker'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.tap(find.text('720p'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('picked 720p'), findsNothing, reason: 'the second tap on the chip landed on a row');
+      expect(find.text('720p'), findsOneWidget, reason: 'the sheet is still open');
+      await tester.tap(find.text('720p'));
+      await tester.pumpAndSettle();
+      expect(find.text('picked 720p'), findsOneWidget, reason: 'once settled it answers');
+    });
   });
 
   group('session', () {

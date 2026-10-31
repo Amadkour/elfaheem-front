@@ -477,14 +477,56 @@ String vodSpeedLabel(double s) => '${s == s.roundToDouble() ? s.toStringAsFixed(
 /// The sheet is closed with ITS OWN context. Inside a role shell (D-081) a bottom sheet goes to the ROOT navigator
 /// while the player is a page of the tab's navigator, so `Navigator.pop(playerContext)` closed the player instead of
 /// the sheet: that was "switching the quality closes the video".
+///
+/// The sheet takes no tap until it has finished sliding in ([VodSheetSettle]): its last row ("Audio only", which
+/// closes the player into the bar) rises right under the chip that opened it, so a second tap on the chip, or a
+/// tap while the sheet is still moving, picked that row (seen on the S24, round 7).
 Future<T?> showVodPicker<T>(BuildContext context, Widget Function(BuildContext sheetContext, void Function(T value) pick) builder) =>
     showModalBottomSheet<T>(
       useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (sheetContext) => builder(sheetContext, (v) => Navigator.of(sheetContext).pop(v)),
+      builder: (sheetContext) => VodSheetSettle(child: builder(sheetContext, (v) => Navigator.of(sheetContext).pop(v))),
     );
+
+/// Ignores pointers until the enclosing route's entrance animation has completed (a sheet still sliding in).
+class VodSheetSettle extends StatefulWidget {
+  const VodSheetSettle({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<VodSheetSettle> createState() => _VodSheetSettleState();
+}
+
+class _VodSheetSettleState extends State<VodSheetSettle> {
+  Animation<double>? _animation;
+
+  bool get _settled => _animation == null || _animation!.status == AnimationStatus.completed;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final a = ModalRoute.of(context)?.animation;
+    if (identical(a, _animation)) return;
+    _animation?.removeStatusListener(_onStatus);
+    _animation = a?..addStatusListener(_onStatus);
+  }
+
+  void _onStatus(AnimationStatus _) {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _animation?.removeStatusListener(_onStatus);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(ignoring: !_settled, child: widget.child);
+}
 
 /// "Listen only" in the player's top bar: a glass pill over the video — the headphones and a short label (from
 /// 400 px), the icon alone below. The tooltip says what happens.
