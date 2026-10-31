@@ -23,6 +23,7 @@ library;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -225,6 +226,9 @@ class CourseCover extends StatelessWidget {
   }
 }
 
+/// The hero's top bar: back (a frosted disc at the start) · the inline actions in ONE frosted capsule at the end,
+/// ending with ⋮ when some actions are rarer (D-112). Every target is 48 px; the glass is the darkened hero shade so
+/// it reads on a light cover in both themes; the icons mirror themselves in Arabic.
 class _TopBar extends StatelessWidget {
   const _TopBar({this.onBack, required this.actions});
 
@@ -233,40 +237,195 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (onBack != null)
-          CourseCoverButton(
-            icon: Icons.arrow_back_ios_new_rounded,
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onTap: onBack!,
+    final shown = [
+      for (final a in actions)
+        if (a.featureKey == null || !AppConfig.disableList.contains(a.featureKey)) a,
+    ];
+    final inline = [for (final a in shown) if (!a.overflow) a];
+    final menu = [for (final a in shown) if (a.overflow) a];
+    return LayoutBuilder(
+      builder: (context, box) {
+        final wide = box.maxWidth >= 560;
+        final hasGroup = inline.isNotEmpty || menu.isNotEmpty;
+        return Row(
+          children: [
+            if (onBack != null)
+              CourseCoverButton(
+                icon: Icons.arrow_back_rounded,
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                onTap: onBack!,
+              ),
+            Expanded(
+              child: !hasGroup
+                  ? const SizedBox.shrink()
+                  : Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  reverse: true,
+                  child: _GlassCapsule(
+                    children: [
+                      for (final a in inline)
+                        a.primary && wide
+                            ? _CapsuleLabelButton(action: a)
+                            : _CapsuleIconButton(action: a),
+                      if (menu.isNotEmpty) _CapsuleMenu(actions: menu),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Frosted glass over the cover: blur + the darkened hero shade + a hairline in the on-hero ink.
+class _Glass extends StatelessWidget {
+  const _Glass({required this.child, required this.radius});
+
+  final Widget child;
+  final BorderRadius radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            color: c.heroShade.withValues(alpha: 0.34),
+            border: Border.all(color: c.heroGlassBorder),
           ),
-        Expanded(
-          child: Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              reverse: true,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassCapsule extends StatelessWidget {
+  const _GlassCapsule({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => _Glass(
+    radius: BorderRadius.circular(24),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
+    ),
+  );
+}
+
+class _CapsuleIconButton extends StatelessWidget {
+  const _CapsuleIconButton({required this.action});
+
+  final CourseSpaceTopAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      toggled: action.selected,
+      label: action.tooltip,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: action.tooltip,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: action.onTap,
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(action.icon, size: 20, color: action.color ?? c.onHero),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The primary action with its word (wide screens): "✎ Edit course".
+class _CapsuleLabelButton extends StatelessWidget {
+  const _CapsuleLabelButton({required this.action});
+
+  final CourseSpaceTopAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+      child: Material(
+        color: c.onHero.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: action.onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 40, minWidth: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (final a in actions)
-                    _keyed(
-                      a.featureKey,
-                      CourseCoverButton(icon: a.icon, tooltip: a.tooltip, color: a.color, onTap: a.onTap),
-                    ),
+                  Icon(action.icon, size: 18, color: action.color ?? c.onHero),
+                  const SizedBox(width: 8),
+                  Text(action.tooltip, maxLines: 1, style: _ts(13, FontWeight.w600, c.onHero)),
                 ],
               ),
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
 
-/// A round frosted button over the cover (back · share · favourite · edit …): a 40 px disc in a 48 px target,
-/// darkened glass so it reads on a light image too.
+class _CapsuleMenu extends StatelessWidget {
+  const _CapsuleMenu({required this.actions});
+
+  final List<CourseSpaceTopAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return PopupMenuButton<int>(
+      tooltip: _t('المزيد', 'More'),
+      position: PopupMenuPosition.under,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      onSelected: (i) => actions[i].onTap(),
+      itemBuilder: (_) => [
+        for (final (i, a) in actions.indexed)
+          PopupMenuItem<int>(
+            value: i,
+            child: Row(
+              children: [
+                Icon(a.icon, size: 20, color: a.color ?? c.textMedium),
+                const SizedBox(width: 12),
+                Flexible(child: Text(a.tooltip, style: _ts(14, FontWeight.w500, c.textDark))),
+              ],
+            ),
+          ),
+      ],
+      child: SizedBox(width: 48, height: 48, child: Icon(Icons.more_vert_rounded, size: 20, color: c.onHero)),
+    );
+  }
+}
+
+/// A round frosted button over the cover (back …): a 40 px disc in a 48 px target, darkened glass so it reads on a
+/// light image too.
 class CourseCoverButton extends StatelessWidget {
   const CourseCoverButton({super.key, required this.icon, required this.onTap, this.tooltip, this.color});
 
@@ -280,28 +439,24 @@ class CourseCoverButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: Center(
-        child: Tooltip(
-          message: tooltip ?? '',
-          child: ClipOval(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Material(
-                color: c.heroShade.withValues(alpha: 0.3),
-                child: InkWell(
-                  onTap: onTap,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: c.heroGlassBorder),
-                    ),
-                    child: Icon(icon, size: 19, color: color ?? c.onHero),
-                  ),
+    return Semantics(
+      button: true,
+      label: tooltip,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: tooltip ?? '',
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Center(
+                child: _Glass(
+                  radius: BorderRadius.circular(22),
+                  child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 20, color: color ?? c.onHero)),
                 ),
               ),
             ),
@@ -618,13 +773,91 @@ class CourseSpaceTabBar extends StatelessWidget {
             if (fits) {
               return Row(children: [for (final t in visible) Expanded(child: item(t))]);
             }
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: [for (final t in visible) item(t)]),
-            );
+            return _ScrollingTabs(active: active, children: {for (final t in visible) t.id: item(t)});
           },
         ),
       ),
+    );
+  }
+}
+
+/// More tabs than fit: the row scrolls, its far edge fades (there is more), and the active tab is brought into view.
+class _ScrollingTabs extends StatefulWidget {
+  const _ScrollingTabs({required this.active, required this.children});
+
+  final String active;
+  final Map<String, Widget> children;
+
+  @override
+  State<_ScrollingTabs> createState() => _ScrollingTabsState();
+}
+
+class _ScrollingTabsState extends State<_ScrollingTabs> {
+  final _keys = <String, GlobalKey>{};
+  final _ctl = ScrollController();
+  bool _atEnd = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reveal(animate: false));
+  }
+
+  @override
+  void didUpdateWidget(_ScrollingTabs old) {
+    super.didUpdateWidget(old);
+    if (old.active != widget.active) WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final end = _ctl.hasClients && _ctl.position.pixels >= _ctl.position.maxScrollExtent - 4;
+    if (end != _atEnd) setState(() => _atEnd = end);
+  }
+
+  void _reveal({bool animate = true}) {
+    final ctx = _keys[widget.active]?.currentContext;
+    if (!mounted || ctx == null || !_ctl.hasClients) return;
+    // only this row scrolls (Scrollable.ensureVisible would also move the page)
+    final box = ctx.findRenderObject();
+    if (box is! RenderBox) return;
+    final to = RenderAbstractViewport.of(box).getOffsetToReveal(box, 0.5).offset.clamp(0.0, _ctl.position.maxScrollExtent);
+    if (animate) {
+      _ctl.animateTo(to, duration: const Duration(milliseconds: 250), curve: Curves.easeOutCubic);
+    } else {
+      _ctl.jumpTo(to);
+    }
+    _onScroll();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final row = SingleChildScrollView(
+      controller: _ctl,
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final e in widget.children.entries) KeyedSubtree(key: _keys.putIfAbsent(e.key, GlobalKey.new), child: e.value),
+        ],
+      ),
+    );
+    if (_atEnd) return row;
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (r) => LinearGradient(
+        begin: rtl ? Alignment.centerRight : Alignment.centerLeft,
+        end: rtl ? Alignment.centerLeft : Alignment.centerRight,
+        stops: const [0, 0.86, 1],
+        colors: const [Color(0xFF000000), Color(0xFF000000), Color(0x00000000)],
+      ).createShader(r),
+      child: row,
     );
   }
 }

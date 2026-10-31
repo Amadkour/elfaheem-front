@@ -68,6 +68,7 @@ class TeacherSessionsBody extends StatelessWidget {
                   ]);
                   // re-ordering changes the course's real order → only in the "All" view
                   final reorder = provider.trackFilter == 'all';
+                  final groups = courseSessionGroups([for (final s in shown) sessionUtc(s.scheduledAt)]);
                   return ReorderableListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -92,6 +93,7 @@ class TeacherSessionsBody extends StatelessWidget {
                         isTeacher: true,
                         state: states[i],
                         rail: courseSessionRail(states, i),
+                        group: groups[i],
                         liveType: provider.course.type == 'live',
                         dragIndex: reorder ? i : null,
                       ),

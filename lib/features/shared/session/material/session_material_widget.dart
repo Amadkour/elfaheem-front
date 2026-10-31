@@ -68,6 +68,9 @@ class SessionMaterialCard extends StatefulWidget {
   /// Under the row's actions (the student's exam-gate notice).
   final Widget? footer;
 
+  /// A month header above the row (courseSessionGroups).
+  final String? group;
+
   const SessionMaterialCard({
     super.key,
     required this.session,
@@ -81,6 +84,7 @@ class SessionMaterialCard extends StatefulWidget {
     this.liveType,
     this.footer,
     this.focusTick,
+    this.group,
   });
 
   @override
@@ -409,6 +413,15 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           loading: prov.startSessionId == _session.id,
           onTap: prov.startSessionId != -1 ? null : _toggleLive,
         ),
+      // the student's "Up next" card carries its one primary action: open the lesson's materials
+      if (!widget.isTeacher && !live && !_isLocked && !_expanded && widget.state == CourseSessionState.next &&
+          _session.totalMaterial > 0)
+        CourseSessionAction(
+          icon: Icons.play_arrow_rounded,
+          label: _session.completeMaterial > 0 ? _tt('تابع', 'Continue') : _tt('ابدأ', 'Start'),
+          filled: true,
+          onTap: _toggleExpanded,
+        ),
       if (_hasStudentExam())
         SessionExamButton(
           courseId: _session.courseId,
@@ -562,6 +575,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     Widget tile = CourseSessionTile(
       data: data,
       rail: widget.rail,
+      group: widget.group,
       wide: wide,
       onTap: _isLocked ? _showLockedMessage : (expandable ? _toggleExpanded : null),
       trailing: trailing,

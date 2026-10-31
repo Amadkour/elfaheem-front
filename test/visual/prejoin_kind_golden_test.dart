@@ -19,7 +19,6 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
-import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/prejoin_layout.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -55,7 +55,7 @@ import 'design/app_keyboard.dart' show AppKeyboardSupport;
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
-import 'features/shared/course_profile/course_profile_screen.dart';
+import 'features/shared/course_profile/course_profile_hub.dart' show CoursePageLoader;
 import 'features/shared/calendar/calendar_screen.dart';
 import 'features/shared/profile/change_password_widget.dart';
 import 'features/shared/profile/update_account_widget.dart';
@@ -740,7 +740,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       case '/course-profile': // arguments: course id (int) — one profile page for every role
         final cid = settings.arguments;
         if (cid is! int) return _fade(const _Guard(child: _RedirectHome()), settings);
-        return _fade(_Guard(child: CourseProfileScreen(courseId: cid)), settings);
+        return _fade(_Guard(child: CoursePageLoader(courseId: cid)), settings); // the one course page (D-112)
       case '/calendar': // arguments: a meeting id (int, notification tap) or {org_id?, dept_id?, meeting_id?}
         final a = settings.arguments;
         final m = a is Map ? a : const {};

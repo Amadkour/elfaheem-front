@@ -56,10 +56,15 @@ Future<void> openCourseStudio(BuildContext context, int courseId) async {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class CpOverviewTab extends StatelessWidget {
-  const CpOverviewTab({super.key, required this.profile, required this.onOpenTab, required this.onChanged, this.withRail = false});
+  const CpOverviewTab({super.key, required this.profile, required this.onOpenTab, required this.onChanged, this.withRail = false,
+      this.merged = false});
   final CourseProfile profile;
   final ValueChanged<String> onOpenTab;
   final Future<void> Function() onChanged;
+
+  /// Inside the one course page (D-112): its hero, About tab and spotlight already show the description, the
+  /// check-in, the next session and the announcements; the studio is the page itself.
+  final bool merged;
 
   /// The side rail (wide screens) already shows the next session and the announcements.
   final bool withRail;
@@ -74,7 +79,7 @@ class CpOverviewTab extends StatelessWidget {
     final desc = '${(ar ? p.course['description_ar'] : p.course['description_en']) ?? p.course['description_ar'] ?? ''}'.trim();
     final children = <Widget>[];
 
-    if (p.isStudent && !p.closed) {
+    if (p.isStudent && !p.closed && !merged) {
       // shown only while the teacher has attendance open (online, or offline through a nearby classmate)
       children.add(AttendanceCourseEntry(courseId: p.id, title: p.name(ar)));
     }
@@ -139,7 +144,7 @@ class CpOverviewTab extends StatelessWidget {
     }
 
     if (p.isStaff) {
-      if (!p.readOnly) children.add(CpStaffActions(profile: p, onOpenTab: onOpenTab, onChanged: onChanged));
+      if (!p.readOnly) children.add(CpStaffActions(profile: p, onOpenTab: onOpenTab, onChanged: onChanged, merged: merged));
       children.add(AppGrid(minTile: 150, children: [
         AppStatTile(icon: Icons.people_alt_rounded, label: t('الطلاب', 'Students'), value: a['students'] ?? 0),
         AppStatTile(icon: Icons.trending_up_rounded, label: t('متوسط التقدم', 'Avg progress'), value: _pct(a['avg_progress'])),
@@ -164,13 +169,13 @@ class CpOverviewTab extends StatelessWidget {
       ]));
     }
 
-    if (!withRail && !p.pastVersion) {
+    if (!withRail && !p.pastVersion && !merged) {
       if (next.isNotEmpty) children.add(_NextSessionCard(next: next));
       if (p.announcements.isNotEmpty) children.add(_AnnouncementsPreview(profile: p, onOpenTab: onOpenTab));
     }
 
     final term = _map(p.course['term']);
-    children.add(AppCard(
+    if (!merged) children.add(AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         AppSectionTitle(t('عن المقرر', 'About the course')),
         if (desc.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(desc, style: appText(13.5, c: c.textMedium, h: 1.5))),

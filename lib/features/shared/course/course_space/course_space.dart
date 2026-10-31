@@ -62,7 +62,9 @@ class CourseSpaceBadge {
   final String? featureKey;
 }
 
-/// A round glass button in the hero's top bar.
+/// One action of the hero's top bar. The inline ones sit in ONE frosted capsule at the bar's end (share · favourite
+/// · edit …); [overflow] ones go into its ⋮ menu (refresh on web / desktop, ask the documents …); a [primary] one
+/// (the teacher's Edit) shows its [tooltip] as a label on wide screens.
 class CourseSpaceTopAction {
   const CourseSpaceTopAction({
     required this.icon,
@@ -70,6 +72,9 @@ class CourseSpaceTopAction {
     required this.onTap,
     this.color,
     this.featureKey,
+    this.overflow = false,
+    this.primary = false,
+    this.selected,
   });
 
   final IconData icon;
@@ -77,6 +82,11 @@ class CourseSpaceTopAction {
   final VoidCallback onTap;
   final Color? color;
   final String? featureKey;
+  final bool overflow;
+  final bool primary;
+
+  /// A toggle (favourite): its on / off state for screen readers.
+  final bool? selected;
 }
 
 /// Everything the hero shows.

@@ -92,6 +92,7 @@ class SessionsTab extends StatelessWidget {
         ),
     ]);
     final fold = live ? 0 : courseSessionFoldCount(states);
+    final groups = live ? List<String?>.filled(shown.length, null) : courseSessionGroups([for (final s in shown) sessionUtc(s.scheduledAt)]);
     final header = CourseSectionHeader(title: title ?? gt('الجلسات', 'Sessions'), count: count);
     if (presented.isEmpty) {
       return Column(
@@ -144,6 +145,8 @@ class SessionsTab extends StatelessWidget {
                   locked: !provider.isSessionUnlockedById(session.id),
                   state: states[i],
                   rail: rail,
+                  // the first row after a fold keeps its header only if it opens a new month
+                  group: groups[i],
                   liveType: session.isLive,
                   focusTick: provider.focusSessionId == session.id ? provider.focusTick : null,
                   // The exam the teacher attached to this session: passing it is what unlocks the sessions after it.

@@ -1,8 +1,11 @@
 // teacher_sessions_screen.dart
 //
 // The teacher's course studio, drawn by the shared course page (CourseSpace, the same component as the student's
-// course details): hero · spotlight (live now · attendance · setup checklist) · quick actions · tabs Sessions /
-// Details · desktop side card (status, price, Add session) · recommendations.
+// course details): hero · spotlight (archived · live now · attendance · setup checklist) · quick actions · tabs Sessions ·
+// Announcements · Class · Team · Archive · About (the course profile's parts are tabs of THIS page, D-112,
+// course_profile_hub.dart, loaded when first opened) · desktop side card (status, price, Add session) ·
+// recommendations. The server's caps decide Edit (course_settings) once the profile is known; a TA opening the
+// page from an old profile entry point has it loaded.
 //
 // REBUILD SCOPING
 // ─────────────────────────────────────────────────────────────────────────
@@ -43,7 +46,7 @@ import '../schedules/schedules_screen.dart';
 import '../../student/models.dart' show CourseModel, CourseSummary;
 import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/courses/details/components/share_link.dart';
-import '../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
+import '../../shared/course_profile/course_profile_hub.dart';
 import 'components/course_reel_player.dart';
 import 'components/sessions_section.dart';
 import 'components/teacher_course_parts.dart';
@@ -119,17 +122,43 @@ _PageData _select(TeacherCourseScreenProvider p) {
 }
 
 class TeacherSessionsScreen extends StatefulWidget {
-  const TeacherSessionsScreen({super.key, this.expandDetails});
+  const TeacherSessionsScreen({super.key, this.expandDetails, this.profileHub, this.initialTab});
 
   /// Open on the Details tab.
   final bool? expandDetails;
+
+  /// The course profile already loaded (an old profile entry point); null → loaded on demand.
+  final CourseProfileHub? profileHub;
+
+  /// Open on this tab (sessions · details · announcements · class · team · archive).
+  final String? initialTab;
 
   @override
   State<TeacherSessionsScreen> createState() => _TeacherSessionsScreenState();
 }
 
 class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
-  late String _tab = widget.expandDetails == true ? _tabDetails : _tabSessions;
+  late String _tab = widget.initialTab ?? (widget.expandDetails == true ? _tabDetails : _tabSessions);
+
+  /// The course profile's parts (announcements · class · team · archive), loaded when one of them opens.
+  CourseProfileHub? _hubOrNull;
+  CourseProfileHub get _hub => _hubOrNull ??= (widget.profileHub ?? CourseProfileHub(_provider.course.id))
+    ..addListener(_onHub);
+
+  void _onHub() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _hubOrNull?.removeListener(_onHub);
+    if (widget.profileHub == null) _hubOrNull?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    await Future.wait([_provider.refresh(), _hub.refresh()]);
+  }
 
   /// First load finished (later refreshes keep the page on screen).
   bool _loaded = false;
@@ -282,7 +311,9 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     );
 
     final showRefresh = kIsWeb || MediaQuery.sizeOf(context).width >= Breakpoints.desktop;
-    final provider = _provider;
+    final hub = _hub;
+    // Edit: the server's course_settings once the profile is known; the course's own teacher before that
+    final canEdit = hub.profile?.caps.courseSettings ?? true;
 
     return CourseSpace(
       hero: hero,
@@ -294,18 +325,27 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             )
           : null,
       onBack: Navigator.of(context).canPop() ? () => Navigator.maybePop(context) : null,
-      onRefresh: provider.refresh,
+      onRefresh: _refresh,
       topActions: [
-        if (showRefresh)
-          CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, onTap: provider.refresh),
         CourseSpaceTopAction(
           icon: Icons.ios_share_rounded,
           tooltip: 'course_hero_share'.tr,
           onTap: () => shareCourseLink(context, course.toCourseModel),
         ),
-        CourseSpaceTopAction(icon: Icons.edit_rounded, tooltip: _t('تعديل الكورس', 'Edit course'), onTap: _openEditCourse),
+        if (canEdit)
+          CourseSpaceTopAction(
+            icon: Icons.edit_rounded,
+            tooltip: _t('تعديل الكورس', 'Edit course'),
+            primary: true,
+            onTap: _openEditCourse,
+          ),
+        // rarer: the ⋮ menu (refresh is pull-to-refresh on phones)
+        courseAskDocsAction(context, course.id, title),
+        if (showRefresh)
+          CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, overflow: true, onTap: _refresh),
       ],
       spotlight: [
+        CourseArchiveSpot(hub: hub, onOpenTab: _setTab),
         if (d.liveId != -1)
           CourseSpotlightCard(
             icon: Icons.sensors_rounded,
@@ -372,13 +412,6 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           color: c.primaryLight,
           onTap: _openStudents,
         ),
-        CourseSpaceAction(
-          icon: Icons.dashboard_customize_rounded,
-          label: _t('ملف المقرر', 'Course profile'),
-          caption: _t('الحضور، الفريق، الشهادات، الأرشيف', 'Attendance, team, certificates, archive'),
-          color: c.purple,
-          onTap: () => openCourseProfile(context, course.id),
-        ),
         if (_dataLab)
           CourseSpaceAction(
             featureKey: 'data_lab.entry',
@@ -411,12 +444,13 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
                 ? _openCertificate(course.certificates.first)
                 : _setTab(_tabDetails),
           ),
-        CourseSpaceAction(
-          icon: Icons.edit_rounded,
-          label: _t('تعديل الكورس', 'Edit course'),
-          caption: _t('السعر، الوصف، النشر', 'Price, description, publishing'),
-          onTap: _openEditCourse,
-        ),
+        if (canEdit)
+          CourseSpaceAction(
+            icon: Icons.edit_rounded,
+            label: _t('تعديل الكورس', 'Edit course'),
+            caption: _t('السعر، الوصف، النشر', 'Price, description, publishing'),
+            onTap: _openEditCourse,
+          ),
       ],
       tabs: [
         CourseSpaceTab(
@@ -426,6 +460,14 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           count: d.sessionCount,
           live: d.liveId != -1,
           builder: (_) => TeacherSessionsBody(onAdd: _openAddSheet),
+        ),
+        ...courseProfileTabs(
+          hub: hub,
+          staff: true,
+          org: course.org != null,
+          enrolled: false,
+          forced: _tab,
+          onOpenTab: (id) => _setTab(id == 'sessions' ? _tabSessions : id),
         ),
         CourseSpaceTab(
           id: _tabDetails,

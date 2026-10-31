@@ -131,10 +131,10 @@ Widget _space({String active = 'lessons', double? progress}) => StatefulBuilder(
     hero: _hero(progress: progress),
     onBack: () {},
     topActions: [
-      CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh', onTap: () {}),
       CourseSpaceTopAction(icon: Icons.ios_share_rounded, tooltip: 'share', onTap: () {}),
-      CourseSpaceTopAction(icon: Icons.favorite_border_rounded, tooltip: 'like', onTap: () {}),
-      CourseSpaceTopAction(icon: Icons.edit_rounded, tooltip: 'edit', onTap: () {}),
+      CourseSpaceTopAction(icon: Icons.favorite_border_rounded, tooltip: 'like', selected: false, onTap: () {}),
+      CourseSpaceTopAction(icon: Icons.edit_rounded, tooltip: 'تعديل الكورس Edit course', primary: true, onTap: () {}),
+      CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh', overflow: true, onTap: () {}),
     ],
     onRefresh: () async {},
     spotlight: _spotlight(),
@@ -211,7 +211,7 @@ void main() {
             subtitle: _long,
             kind: CourseSessionKind.values[i % 3],
             state: states[i],
-            when: i == 7 ? DateTime.utc(2026, 11, 2, 15) : null,
+            when: i == 7 ? DateTime.utc(2026, 11, 2, 15) : (i == 8 ? DateTime.utc(2026, 12, 2, 15) : null),
             durationMinutes: 95,
             materials: 12,
             materialsDone: i == 5 ? 4 : 0,
@@ -219,6 +219,7 @@ void main() {
             hint: teacher && i == 9 ? 'لا مواد بعد No materials yet' : null,
           ),
           rail: courseSessionRail(states, i),
+          group: i == 7 ? 'نوفمبر 2026 November' : (i == 8 ? 'ديسمبر 2026 December' : null),
           wide: true,
           onTap: () {},
           trailing: teacher
@@ -239,6 +240,25 @@ void main() {
       ),
     );
   }
+
+  testWidgets('hero top bar: inline actions in one capsule, the rest behind ⋮, every target 48 px', (t) async {
+    await t.pumpWidget(layoutHost(SizedBox(height: 900, child: _space())));
+    await t.pump();
+    expect(find.byTooltip('refresh'), findsNothing); // overflow → the menu
+    expect(find.byIcon(Icons.more_vert_rounded), findsWidgets);
+    for (final tip in ['share', 'like']) {
+      final size = t.getSize(find.descendant(of: find.byTooltip(tip), matching: find.byType(InkWell)).first);
+      expect(size.width >= 48 && size.height >= 48, isTrue, reason: tip);
+    }
+  });
+
+  test('month headers only when the dated sessions span two months', () {
+    final a = DateTime.utc(2026, 10, 5, 12), b = DateTime.utc(2026, 10, 20, 12), c = DateTime.utc(2026, 11, 3, 12);
+    String label(DateTime d) => '${d.month}';
+    expect(courseSessionGroups([a, b, null], label: label), [null, null, null]);
+    expect(courseSessionGroups([a, null, b, c, null], label: label), ['10', null, null, '11', null]);
+    expect(courseSessionGroups([null, null], label: label), [null, null]);
+  });
 
   testWidgets('session timeline: student (folded) and teacher rows', (t) async {
     await expectNoLayoutErrors(t, () => timeline());
