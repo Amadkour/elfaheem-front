@@ -18,6 +18,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asMap, t;
 import '../org_member_space.dart' show OrgFormFillScreen;
+import '../org_page_header.dart' show OrgHeaderButton, OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import '../org_providers.dart' show orgBase;
 import '../org_ui.dart' show orgPickAndUpload;
 import '../org_v3.dart' show orgCall, orgErrorText;
@@ -205,9 +206,14 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
   final _attachments = <GovAttachment>[];
   String? _error;
 
+  /// Staff in this organization see the dashboard's header: its Refresh reloads the entities in place (what was
+  /// typed stays; a re-key would lose it).
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_reloadKeepingPick);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -215,7 +221,22 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
   void dispose() {
     _title.dispose();
     _body.dispose();
+    _refresh.dispose();
     super.dispose();
+  }
+
+  /// The header's Refresh: the entities again, keeping the entity and category already picked when still there.
+  Future<void> _reloadKeepingPick() async {
+    final keep = _entity?.id, category = _category;
+    await _load();
+    if (!mounted || keep == null) return;
+    final e = _entities?.where((x) => x.id == keep).firstOrNull;
+    if (e != null) {
+      setState(() {
+        _entity = e;
+        _category = category;
+      });
+    }
   }
 
   Future<void> _load() async {
@@ -231,6 +252,7 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
         _missing = r.endpointMissing;
       }
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   Future<void> _addAttachment() async {
@@ -338,6 +360,11 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
         ),
       );
     }
+    // staff of this organization: the dashboard's header (Back first; Send stays at the end of the form); a student /
+    // member keeps the screen's own app bar
+    if (orgUsesDashboardHeader(context, widget.orgId)) {
+      return OrgPushedPage(title: t('معاملة جديدة', 'New request'), refresh: _refresh, maxWidth: 760, child: child);
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 760,
@@ -369,10 +396,22 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
   int _page = 1, _pages = 1, _req = 0;
   bool _loading = true, _more = false, _failed = false, _missing = false;
 
+  /// On its own page under the dashboard's header, Refresh reloads the list in place (the status filter stays).
+  final _refresh = OrgPageRefresh();
+
+  Future<void> _reload() => _load(reset: true);
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_reload);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load(reset: true));
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load({bool reset = false}) async {
@@ -401,6 +440,7 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
       _items.addAll(page.items);
       _pages = page.pages;
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   Future<void> _open(WorkItem it) async {
@@ -418,6 +458,8 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
       'rejected': t('مرفوضة', 'Rejected'),
       'closed,withdrawn': t('منتهية', 'Finished'),
     };
+    // staff of this organization on the page of its own: the dashboard's header, "New request" its primary action
+    final pushed = !widget.embedded && orgUsesDashboardHeader(context, widget.orgId);
     final body = Column(children: [
       const SizedBox(height: 8),
       SizedBox(
@@ -436,7 +478,7 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
           ],
         ]),
       ),
-      if (widget.onSubmit != null)
+      if (widget.onSubmit != null && !pushed)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Align(alignment: AlignmentDirectional.centerEnd, child: AppPill(icon: Icons.add_rounded, label: t('معاملة جديدة', 'New request'), onTap: widget.onSubmit)),
@@ -444,6 +486,16 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
       Expanded(child: _list()),
     ]);
     if (widget.embedded) return body;
+    if (pushed) {
+      final submit = widget.onSubmit;
+      return OrgPushedPage(
+        title: t('معاملاتي', 'My requests'),
+        refresh: _refresh,
+        maxWidth: 900,
+        primaryAction: submit == null ? null : OrgHeaderButton(icon: Icons.add_rounded, label: t('معاملة جديدة', 'New request'), onTap: submit),
+        child: body,
+      );
+    }
     return BasePage(useWebCard: true, maxWith: 900, appBar: ScreenAppBar(title: t('معاملاتي', 'My requests')), child: body);
   }
 
@@ -567,6 +619,10 @@ class _GovMyAssignmentsPageState extends State<GovMyAssignmentsPage> {
       );
     }
     if (widget.embedded) return body;
+    // staff with an organization open: the dashboard's header, Back first; a student keeps the screen's own app bar
+    if (orgUsesDashboardHeader(context, null)) {
+      return OrgPushedPage(title: t('نماذج مطلوبة مني', 'Forms to answer'), maxWidth: 900, child: body);
+    }
     return BasePage(useWebCard: true, maxWith: 900, appBar: ScreenAppBar(title: t('نماذج مطلوبة مني', 'Forms to answer')), child: body);
   }
 }

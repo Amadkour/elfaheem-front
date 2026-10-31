@@ -7,11 +7,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import '../org_page_header.dart' show OrgPushedPage;
 import '../org_v3.dart' show orgCall;
 import 'gov_api.dart';
 import 'gov_models.dart' show entityKindLabel, entityKinds, priorities, priorityLabelOf, slaHours;
@@ -244,11 +242,7 @@ class _GovSettingsPageState extends State<GovSettingsPage> {
             : const AppListSkeleton(items: 3))
         : GovSettingsForm(settings: _s!, busy: _busy, onChanged: () => setState(() {}), onSave: _save);
     if (widget.embedded) return body;
-    return BasePage(
-      useWebCard: true,
-      maxWith: 900,
-      appBar: ScreenAppBar(title: t('إعدادات الطلبات والإحالات', 'Requests & routing settings'), actions: const [ContextExitButton()]),
-      child: body,
-    );
+    // org admin only: the dashboard's header, Back first (Save stays at the end of the form)
+    return OrgPushedPage(title: t('إعدادات الطلبات والإحالات', 'Requests & routing settings'), maxWidth: 900, child: body);
   }
 }

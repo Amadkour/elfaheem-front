@@ -21,7 +21,8 @@ import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
-import 'org_availability_pages.dart' show OrgAvailabilityRequestsPage;
+import 'org_availability_pages.dart' show openAvailabilityRequests;
+import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import 'org_common.dart' show dayLabels;
 import 'org_courses_page.dart' show showOrgCourseForm;
 import 'org_schedule_generate.dart' show GenerationLivePanel, showGenerationResult;
@@ -83,10 +84,33 @@ class _TimetableWizardState extends State<TimetableWizard> {
         (t('الحفظ والنشر', 'Save & publish'), Icons.publish_rounded),
       ];
 
+  /// The dashboard header's Refresh (D-103): reloads a saved, unchanged timetable in place; it never throws away
+  /// unsaved edits, a step in flight or a timetable created in this visit (it only says so).
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_refreshNow);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshNow() async {
+    final d = _d;
+    if (d == null) return _load();
+    if (_busy || (_dirty && !_locked)) {
+      toast(t('احفظ تغييراتك أولاً — التحديث يعيد ما على الخادم.', 'Save your changes first — Refresh reloads what the server has.'));
+      return;
+    }
+    if (widget.scheduleId == null || d.id != widget.scheduleId) return;
+    await _load();
+    if (mounted) _refresh.markUpdated();
   }
 
   Future<void> _load() async {
@@ -256,11 +280,10 @@ class _TimetableWizardState extends State<TimetableWizard> {
         if (didPop) return;
         if (await _confirmLeave() && context.mounted) Navigator.of(context).pop(_d?.id);
       },
-      child: BasePage(
-        useWebCard: true,
-        maxWith: 1000,
-        appBar: ScreenAppBar(title: d?.id == null ? t('جدول جديد', 'New timetable') : (d!.name.isEmpty ? t('الجدول', 'Timetable') : d.name), actions: const [ContextExitButton()]),
-        child: d == null
+      child: _frame(
+        context,
+        d,
+        d == null
             ? OrgAsync(loading: !_failed, failed: _failed, onRetry: _load, child: const SizedBox.shrink())
             : Column(children: [
                 SizedBox(
@@ -317,6 +340,27 @@ class _TimetableWizardState extends State<TimetableWizard> {
                 ),
               ]),
       ),
+    );
+  }
+
+  /// The dashboard's header (D-103: Back · title · the step · Refresh · calendar · bell · switcher) when I work in
+  /// the organization; else the older bar with its exit button. The step chips and Back / Next stay in the body.
+  Widget _frame(BuildContext context, ScheduleDraft? d, Widget body) {
+    final title = d?.id == null ? t('جدول جديد', 'New timetable') : (d!.name.isEmpty ? t('الجدول', 'Timetable') : d.name);
+    if (!orgUsesDashboardHeader(context, _p.session.currentId)) {
+      return BasePage(
+        useWebCard: true,
+        maxWith: 1000,
+        appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]),
+        child: body,
+      );
+    }
+    return OrgPushedPage(
+      title: title,
+      subtitle: d == null ? null : '${t('الخطوة', 'Step')} ${_step + 1}/${_steps.length} · ${_steps[_step].$1}',
+      refresh: _refresh,
+      maxWidth: 1000,
+      child: body,
     );
   }
 
@@ -752,14 +796,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       icon: Icons.tune_rounded,
       trailing: s.can('schedule', 'update')
           ? TextButton.icon(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ChangeNotifierProvider.value(
-                      value: s,
-                      child: BasePage(
-                          useWebCard: true,
-                          maxWith: 900,
-                          appBar: ScreenAppBar(title: t('طلبات المواعيد المتاحة', 'Availability requests'), actions: const [ContextExitButton()]),
-                          child: const OrgAvailabilityRequestsPage())))),
+              onPressed: () => openAvailabilityRequests(context),
               icon: const Icon(Icons.send_rounded, size: 18),
               label: Text(t('اطلبها منهم', 'Ask them')),
             )

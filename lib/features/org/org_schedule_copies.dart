@@ -12,8 +12,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 
 import '../admin/admin_common.dart';
@@ -28,7 +26,8 @@ import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppListSkeleton, AppRefresh;
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'org_page_header.dart' show OrgPageRefresh;
+import 'org_schedule_planning.dart' show orgStudioPage, studioSubtitle;
 
 TimetableNames timetableNamesOf(OrgScheduleProvider p) => TimetableNames(
       courses: {for (final l in p.loads) asInt(l['course_id']): courseName(l)},
@@ -44,10 +43,10 @@ String memberLabel(TimetableMember m, TimetableNames n) => switch (m.kind) {
     };
 
 Future<void> openTimetableCopies(BuildContext context, OrgScheduleProvider p, {required bool canEdit}) => Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => BasePage(
-          useWebCard: true,
-          maxWith: 1000,
-          appBar: ScreenAppBar(title: t('نسخ الجدول', 'Timetable copies'), actions: const [ContextExitButton()]),
+    builder: (ctx) => orgStudioPage(
+          ctx,
+          title: t('نسخ الجدول', 'Timetable copies'),
+          subtitle: studioSubtitle(p),
           child: _CopiesPage(p: p, canEdit: canEdit),
         )));
 
@@ -69,10 +68,19 @@ class _CopiesPageState extends State<_CopiesPage> {
   int get sid => asInt(p.schedule?['id']);
   int? get version => p.schedule?['version'] == null ? null : asInt(p.schedule!['version']);
 
+  OrgPageRefresh? _refresh;
+
   @override
   void initState() {
     super.initState();
+    _refresh = OrgPageRefresh.register(context, _load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -86,6 +94,7 @@ class _CopiesPageState extends State<_CopiesPage> {
         error = orgErrorText(r.error!);
       }
     });
+    if (r.ok) _refresh?.markUpdated();
   }
 
   Future<void> _save() async {
@@ -193,10 +202,10 @@ class _CopiesPageState extends State<_CopiesPage> {
   }
 
   Future<void> _openCopy(TimetableCopy cp, {bool live = false}) => Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => BasePage(
-            useWebCard: true,
-            maxWith: 1000,
-            appBar: ScreenAppBar(title: cp.label.isEmpty ? '${t('نسخة', 'Copy')} #${cp.id}' : cp.label, actions: const [ContextExitButton()]),
+      builder: (ctx) => orgStudioPage(
+            ctx,
+            title: cp.label.isEmpty ? '${t('نسخة', 'Copy')} #${cp.id}' : cp.label,
+            subtitle: studioSubtitle(p),
             child: _CopyDetail(p: p, copy: cp, live: live, canEdit: widget.canEdit, onSaveNew: _save),
           )));
 }
@@ -240,19 +249,30 @@ class _CopyDetailState extends State<_CopyDetail> {
 
   OrgScheduleProvider get p => widget.p;
 
+  OrgPageRefresh? _refresh;
+
   @override
   void initState() {
     super.initState();
     if (widget.live) {
       loaded = true;
     } else {
+      // a stored copy reloads in place on Refresh (the live one is rebuilt from the open timetable)
+      _refresh = OrgPageRefresh.register(context, _load);
       _load();
     }
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
     final r = await orgCall(() => p.api.get('${p.base}/schedules/${p.schedule!['id']}/revisions/${copy.id}'), quiet: true);
     if (!mounted) return;
+    if (r.ok) _refresh?.markUpdated();
     setState(() {
       if (r.ok) {
         copy = copy.withDetail(r.map);

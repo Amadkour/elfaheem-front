@@ -17,6 +17,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import '../org_ui.dart' show orgText;
 import '../org_v3.dart' show orgCall, orgParseUtc;
 import 'gov_api.dart';
@@ -227,10 +228,20 @@ class _GovMyVotesPageState extends State<GovMyVotesPage> {
 
   int? get _orgId => widget.member ? widget.orgId : govOrgId(context, widget.orgId);
 
+  /// The pushed page's Refresh (dashboard header) reloads the list; "Updated" is when it answered.
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _refresh.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -257,6 +268,7 @@ class _GovMyVotesPageState extends State<GovMyVotesPage> {
         _missing = r.endpointMissing;
       }
     });
+    if (r.ok) _refresh.markUpdated();
   }
 
   Future<void> _vote(MyVoteEntry e, String vote, String? note) async {
@@ -338,6 +350,11 @@ class _GovMyVotesPageState extends State<GovMyVotesPage> {
       );
     }
     if (widget.embedded) return body;
+    // staff of this organization: the dashboard's header (Back · title · Refresh · switcher); a student / a member
+    // page elsewhere keeps the screen's own app bar
+    if (orgUsesDashboardHeader(context, _orgId)) {
+      return OrgPushedPage(title: t('تصويتاتي', 'My votes'), refresh: _refresh, maxWidth: 1000, child: body);
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 1000,

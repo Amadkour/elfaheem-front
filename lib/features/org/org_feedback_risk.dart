@@ -6,17 +6,19 @@
 //   GET     /api/v1/exam/orgs/{id}/risk                {items:[{exam_id, title, risky_attempts, max_risk, needs_review}]}
 //
 // Risk signals are for human review only — the screen says so and never names a student.
+//
+// Both pages are sub-pages of the dashboard's Services section (org_dashboard_screen.dart), so they draw no header
+// of their own: the section's OrgPageHeader (or OrgPushedPage when Services is pushed on phones) is above them and
+// its Refresh rebuilds them. The two routes below wrap them in OrgPushedPage.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/context_switcher.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin/admin_common.dart' show asDouble, asInt, asMapList, asStr, t;
 import '../admin/admin_feedback_settings.dart';
+import 'org_page_header.dart' show OrgPushedPage;
 
 class ExamRiskItem {
   const ExamRiskItem(this.examId, this.title, this.riskyAttempts, this.maxRisk, this.needsReview);
@@ -51,9 +53,17 @@ String riskCodeText(String? code, String fallback) => switch (code) {
       _ => feedbackCodeText(code, fallback),
     };
 
-/// Entry points: the org admin tiles call these.
-Route<void> orgFeedbackSettingsRoute(int orgId) => MaterialPageRoute(builder: (_) => OrgFeedbackSettingsPage(orgId: orgId));
-Route<void> orgExamRiskRoute(int orgId) => MaterialPageRoute(builder: (_) => OrgExamRiskPage(orgId: orgId));
+/// Entry points: the org admin tiles call these (the page under the dashboard's own header).
+Route<void> orgFeedbackSettingsRoute(int orgId) => MaterialPageRoute(
+    builder: (_) => OrgPushedPage(title: t('ملاحظات الامتحانات', 'Exam feedback'), child: OrgFeedbackSettingsPage(orgId: orgId)));
+Route<void> orgExamRiskRoute(int orgId) => MaterialPageRoute(
+    builder: (_) => OrgPushedPage(title: t('مخاطر الامتحانات', 'Exam risk'), child: OrgExamRiskPage(orgId: orgId)));
+
+/// A sub-page's readable column (the header above it spans the page).
+Widget _column(double maxWidth, Widget child) => Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: SizedBox.expand(child: child)),
+    );
 
 class OrgFeedbackSettingsPage extends StatefulWidget {
   const OrgFeedbackSettingsPage({super.key, required this.orgId, this.api});
@@ -109,20 +119,20 @@ class _OrgFeedbackSettingsPageState extends State<OrgFeedbackSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
+    return KeyedSubtree(
       key: const ValueKey('org.feedback_settings'),
-      useWebCard: true,
-      maxWith: 800,
-      appBar: ScreenAppBar(title: t('ملاحظات الامتحانات', 'Exam feedback'), actions: const [ContextExitButton()]),
-      child: _loading
-          ? const AppListSkeleton(items: 3, withAvatar: false)
-          : _s == null
-              ? AppEmpty(icon: Icons.error_outline_rounded, title: _error ?? '', actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
-              : ListView(padding: const EdgeInsets.all(16), children: [
-                  AppCard(child: FeedbackSettingsForm(settings: _s!, busy: _busy, onSave: _save)),
-                  AppSectionTitle(t('تصدير', 'Export')),
-                  AppCard(child: FeedbackExportBar(onExport: _export, busy: _exporting)),
-                ]),
+      child: _column(
+        800,
+        _loading
+            ? const AppListSkeleton(items: 3, withAvatar: false)
+            : _s == null
+                ? AppEmpty(icon: Icons.error_outline_rounded, title: _error ?? '', actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
+                : ListView(padding: const EdgeInsets.all(16), children: [
+                    AppCard(child: FeedbackSettingsForm(settings: _s!, busy: _busy, onSave: _save)),
+                    AppSectionTitle(t('تصدير', 'Export')),
+                    AppCard(child: FeedbackExportBar(onExport: _export, busy: _exporting)),
+                  ]),
+      ),
     );
   }
 }
@@ -161,19 +171,17 @@ class _OrgExamRiskPageState extends State<OrgExamRiskPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
+    // the header's Refresh rebuilds this page (it reloads); pull-to-refresh reloads it in place
+    return KeyedSubtree(
       key: const ValueKey('org.exam_risk'),
-      useWebCard: true,
-      maxWith: 900,
-      appBar: ScreenAppBar(title: t('مخاطر الامتحانات', 'Exam risk'), actions: [
-        IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-        const ContextExitButton(),
-      ]),
-      child: _loading
-          ? const AppListSkeleton()
-          : _items == null
-              ? AppEmpty(icon: Icons.error_outline_rounded, title: _error ?? '', actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
-              : AppRefresh(onRefresh: _load, child: RiskList(items: _items!)),
+      child: _column(
+        900,
+        _loading
+            ? const AppListSkeleton()
+            : _items == null
+                ? AppEmpty(icon: Icons.error_outline_rounded, title: _error ?? '', actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
+                : AppRefresh(onRefresh: _load, child: RiskList(items: _items!)),
+      ),
     );
   }
 }

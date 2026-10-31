@@ -43,9 +43,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppHero, AppHero
 import 'org_schedule_versions.dart' show calendarDate, clockOf, periodRange, stampOf;
 import 'package:flutter_education_app/core/app_time.dart';
 import 'org_v3.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'org_page_header.dart' show OrgPageRefresh;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class OrgSchedulePage extends StatelessWidget {
@@ -55,8 +53,45 @@ class OrgSchedulePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.read<OrgSession>();
     if (!s.can('schedule')) return OrgEmpty(icon: Icons.lock_rounded, title: t('لا تملك صلاحية عرض الجدول', 'You cannot view the timetable'));
-    return ChangeNotifierProvider(create: (_) => OrgScheduleProvider(s)..loadSetup(), child: const _ScheduleView());
+    return ChangeNotifierProvider(create: (_) => OrgScheduleProvider(s)..loadSetup(), child: const _ScheduleRefresh(child: _ScheduleView()));
   }
+}
+
+/// The page header's Refresh reloads the timetable data in place (the open timetable stays open, a running
+/// generation keeps being followed) instead of re-keying the page, which would drop both.
+class _ScheduleRefresh extends StatefulWidget {
+  const _ScheduleRefresh({required this.child});
+  final Widget child;
+
+  @override
+  State<_ScheduleRefresh> createState() => _ScheduleRefreshState();
+}
+
+class _ScheduleRefreshState extends State<_ScheduleRefresh> {
+  OrgPageRefresh? _refresh;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh = OrgPageRefresh.register(context, _reload);
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_reload);
+    super.dispose();
+  }
+
+  Future<void> _reload() async {
+    final p = context.read<OrgScheduleProvider>();
+    await p.loadSetup();
+    final id = p.schedule?['id'];
+    if (id != null) await p.open(asInt(id));
+    if (mounted) _refresh?.markUpdated();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _ScheduleView extends StatelessWidget {
@@ -339,19 +374,7 @@ class _PlanningTab extends StatelessWidget {
         Section(
           title: t('أوقات التواجد والتفضيلات', 'Staff availability & preferences'),
           trailing: TextButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => ChangeNotifierProvider.value(
-                  value: context.read<OrgSession>(),
-                  child: BasePage(
-                    useWebCard: true,
-                    maxWith: 900,
-                    appBar: ScreenAppBar(title: t('طلبات المواعيد المتاحة', 'Availability requests'), actions: const [ContextExitButton()]),
-                    child: const OrgAvailabilityRequestsPage(),
-                  ),
-                ),
-              ),
-            ),
+            onPressed: () => openAvailabilityRequests(context),
             icon: const Icon(Icons.send_rounded, size: 18),
             label: Text(t('اطلبها منهم', 'Ask them')),
           ),

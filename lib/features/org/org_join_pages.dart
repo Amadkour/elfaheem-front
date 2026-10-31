@@ -27,13 +27,13 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_access_joining.dart' show OrgAccessJoiningPage;
 import 'org_dynamic_form.dart';
+import 'org_page_header.dart' show OrgPushedPage;
 import 'org_providers.dart';
 import 'org_services_pages.dart' show fieldTypes, fieldIcons;
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart';
@@ -76,6 +76,13 @@ Widget _banner(BuildContext context, IconData icon, Color color, String text) =>
 //  Staff hub
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// A pushed page's readable column: the dashboard header keeps the page's full width (its one row needs the room),
+/// the content stays as narrow as the older page was.
+Widget _readable(double maxWidth, Widget child) => Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: SizedBox.expand(child: child)),
+    );
+
 class OrgUnitJoinHub extends StatelessWidget {
   const OrgUnitJoinHub({super.key, required this.unitType, required this.unitId, required this.title, this.features, this.embedded = false});
   final String unitType;      // dept | program
@@ -113,7 +120,8 @@ class OrgUnitJoinHub extends StatelessWidget {
       ]),
     );
     if (embedded) return body;
-    return BasePage(useWebCard: true, maxWith: 900, appBar: ScreenAppBar(title: '$title · ${t('الانضمام', 'Joining')}', actions: const [ContextExitButton()]), child: body);
+    // staff only (a program's Joining from the academic pages): the dashboard's own header
+    return OrgPushedPage(title: title, subtitle: t('الانضمام', 'Joining'), child: _readable(900, body));
   }
 }
 

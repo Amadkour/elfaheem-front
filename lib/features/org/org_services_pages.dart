@@ -27,6 +27,7 @@ import 'org_common.dart';
 import 'org_reports/report_page.dart' show OrgComplaintReportPage;
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'governance/gov_api.dart' show GovApi;
@@ -72,6 +73,13 @@ const fieldIcons = {
   'email': Icons.alternate_email_rounded,
   'phone': Icons.phone_rounded,
 };
+
+/// A pushed page's readable column: the dashboard header keeps the page's full width (its one row needs the room),
+/// the content stays as narrow as the older page was.
+Widget _readable(double maxWidth, Widget child) => Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: SizedBox.expand(child: child)),
+    );
 
 class OrgFormsPage extends StatelessWidget {
   const OrgFormsPage({super.key, this.deptId});
@@ -195,10 +203,14 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
   late final List<Map<String, dynamic>> _fields = asMapList(widget.edit?['fields']);
   bool _busy = false;
 
+  /// The dashboard header's Refresh must never rebuild the editor (it would lose the questions typed so far).
+  final _refresh = OrgPageRefresh()..attach(() async {});
+
   @override
   void dispose() {
     _title.dispose();
     _desc.dispose();
+    _refresh.dispose();
     super.dispose();
   }
 
@@ -295,12 +307,28 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final title = widget.edit == null ? t('نموذج جديد', 'New form') : t('تعديل النموذج', 'Edit form');
+    final body = _body(context);
+    if (orgUsesDashboardHeader(context, null)) {
+      final name = '${widget.edit?['title'] ?? ''}';
+      return OrgPushedPage(
+        title: title,
+        subtitle: name.isEmpty ? null : name,
+        refresh: _refresh,
+        child: _readable(800, body),
+      );
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 800,
-      appBar: ScreenAppBar(title: widget.edit == null ? t('نموذج جديد', 'New form') : t('تعديل النموذج', 'Edit form'), actions: const [ContextExitButton()]),
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+      appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]),
+      child: body,
+    );
+  }
+
+  Widget _body(BuildContext context) {
+    final c = context.colors;
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
         Section(
           title: t('عن النموذج', 'About the form'),
           icon: Icons.assignment_rounded,
@@ -343,10 +371,13 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
                   }),
                   children: [
                     for (var i = 0; i < _fields.length; i++)
-                      Container(
+                      // a Material (not a coloured box) under the ListTile, so its ink shows
+                      Padding(
                         key: ValueKey('f$i${_fields[i]['label']}'),
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Material(
+                        color: c.inputBg,
+                        borderRadius: BorderRadius.circular(14),
                         child: ListTile(
                           leading: ReorderableDragStartListener(index: i, child: Icon(Icons.drag_indicator_rounded, color: c.textLight)),
                           title: Text('${_fields[i]['label']}', style: orgText(context, w: FontWeight.w700)),
@@ -357,6 +388,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
                           trailing: IconButton(tooltip: t('حذف', 'Delete'), 
                               onPressed: () => setState(() => _fields.removeAt(i)),
                               icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
+                        ),
                         ),
                       ),
                   ],
@@ -371,8 +403,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
           child: Text(t('حفظ كمسودة', 'Save as draft'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
         ),
-      ]),
-    );
+      ]);
   }
 }
 
@@ -383,6 +414,7 @@ class OrgFormResponsesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.read<OrgSession>();
+    if (orgUsesDashboardHeader(context, null)) return _dashboardPage(context, s);
     return ChangeNotifierProvider(
       create: (_) => OrgPaged('${s.base}/forms/${form['id']}/responses')..refresh(),
       child: Builder(builder: (context) {
@@ -414,28 +446,70 @@ class OrgFormResponsesScreen extends StatelessWidget {
                           child: GovFormAssignmentsView(asInt(form['id']), orgId: s.currentId)))),
                   icon: const Icon(Icons.checklist_rounded)),
            const ContextExitButton()]),
-          child: Column(children: [
-            const SizedBox(height: 8),
-            FilterChips<String>(
-              options: {
-                '': t('الكل', 'All'),
-                'submitted': statusLabel('submitted'),
-                'in_review': statusLabel('in_review'),
-                'approved': t('موافق عليه', 'Approved'),
-                'rejected': t('مرفوض', 'Rejected'),
-              },
-              value: '${p.filters['status'] ?? ''}',
-              onChanged: (v) => p.setFilter('status', v),
-            ),
-            Expanded(
-              child: PagedList<OrgPaged>(
-                emptyText: t('لم تصل ردود بعد', 'No answers yet'),
-                itemBuilder: (context, row) => _ResponseTile(row: row, form: form, dept: dept),
-              ),
-            ),
-          ]),
+          child: _list(p, dept),
         );
       }),
+    );
+  }
+
+  Widget _list(OrgPaged p, int? dept) => Column(children: [
+        const SizedBox(height: 8),
+        FilterChips<String>(
+          options: {
+            '': t('الكل', 'All'),
+            'submitted': statusLabel('submitted'),
+            'in_review': statusLabel('in_review'),
+            'approved': t('موافق عليه', 'Approved'),
+            'rejected': t('مرفوض', 'Rejected'),
+          },
+          value: '${p.filters['status'] ?? ''}',
+          onChanged: (v) => p.setFilter('status', v),
+        ),
+        Expanded(
+          child: PagedList<OrgPaged>(
+            emptyText: t('لم تصل ردود بعد', 'No answers yet'),
+            itemBuilder: (context, row) => _ResponseTile(row: row, form: form, dept: dept),
+          ),
+        ),
+      ]);
+
+  /// Staff in the organization's dashboard: its header (Back · the form · its answers); the export and
+  /// governance actions in More. The list lives under the page's refresh scope, so Refresh reloads it.
+  Widget _dashboardPage(BuildContext context, OrgSession s) {
+    final dept = form['dept_id'] == null ? null : asInt(form['dept_id']);
+    final more = <OrgMenuItem>[
+      if (s.can('forms', 'export', dept))
+        OrgMenuItem(
+            icon: Icons.file_download_rounded,
+            label: t('تصدير الردود', 'Export answers'),
+            onTap: () => exportData(context, 'forms/${form['id']}/export')),
+      // governance (D-057): who MUST answer, who did, reminders
+      if (govEnabled() && s.currentId != null && s.can('forms', 'update', dept))
+        OrgMenuItem(
+            icon: Icons.person_add_alt_1_rounded,
+            label: t('إسناد النموذج لأشخاص', 'Assign the form'),
+            onTap: () => showGovFormAssignSheet(context, GovApi(s.currentId!), asInt(form['id']))),
+      if (govEnabled() && s.currentId != null)
+        OrgMenuItem(
+            icon: Icons.checklist_rounded,
+            label: t('من أجاب ومن لم يجب', 'Assignments'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => OrgPushedPage(
+                    title: t('المكلّفون بالنموذج', 'Form assignments'),
+                    subtitle: '${form['title']}',
+                    child: _readable(900, GovFormAssignmentsView(asInt(form['id']), orgId: s.currentId)))))),
+    ];
+    return OrgPushedPage(
+      title: '${form['title']}',
+      subtitle: t('الردود', 'Answers'),
+      primaryAction: more.isEmpty ? null : OrgMoreMenu(items: more),
+      child: _readable(
+        900,
+        ChangeNotifierProvider(
+          create: (_) => OrgPaged('${s.base}/forms/${form['id']}/responses')..refresh(),
+          child: Builder(builder: (context) => _list(context.watch<OrgPaged>(), dept)),
+        ),
+      ),
     );
   }
 }
@@ -879,15 +953,20 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
   String get _base => widget.orgId != null ? '$orgBase/orgs/${widget.orgId}' : context.read<OrgSession>().base;
   String get _url => '$_base/complaints/${widget.id}';
 
+  /// The dashboard header's Refresh reloads the thread in place (a reply being typed stays).
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
   void dispose() {
     _msg.dispose();
+    _refresh.dispose();
     super.dispose();
   }
 
@@ -898,6 +977,14 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
       _d = r ?? _d;
       _failed = r == null && _d == null;
     });
+    if (r != null) _refresh.markUpdated();
+  }
+
+  Future<void> _menu(String v) async {
+    if (v.startsWith('st:')) return _patch({'status': v.substring(3)}, t('تم إبلاغ صاحب الشكوى', 'The person was notified'));
+    if (v.startsWith('pr:')) return _patch({'priority': v.substring(3)}, t('تم', 'Done'));
+    if (v == 'transfer') return _transfer();
+    if (v == 'unassign') return _patch({'unassign': true}, t('تم', 'Done'));
   }
 
   Future<void> _patch(Map<String, dynamic> body, String ok) async {
@@ -937,24 +1024,49 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final s = context.watch<OrgSession>();
     final d = _d;
     final dept = d?['dept_id'] == null ? null : asInt(d?['dept_id']);
     final canAct = d != null && (widget.canAct ?? s.can('complaints', 'update', dept));
+    final title = d == null ? t('الشكوى', 'Complaint') : '${d['ref']}';
+    if (orgUsesDashboardHeader(context, widget.orgId)) {
+      return OrgPushedPage(
+        title: title,
+        subtitle: d == null ? null : '${d['subject'] ?? ''}',
+        refresh: _refresh,
+        primaryAction: canAct
+            ? OrgMoreMenu(items: [
+                for (final st in ['in_progress', 'waiting', 'resolved', 'closed'])
+                  if (d['status'] != st)
+                    OrgMenuItem(
+                        icon: Icons.flag_rounded,
+                        label: '${t('الحالة', 'Status')}: ${statusLabel(st)}',
+                        onTap: () => _menu('st:$st')),
+                for (final pr in ['low', 'medium', 'high', 'urgent'])
+                  if (d['priority'] != pr)
+                    OrgMenuItem(
+                        icon: Icons.low_priority_rounded,
+                        label: '${t('الأولوية', 'Priority')}: ${priorityLabel(pr)}',
+                        onTap: () => _menu('pr:$pr')),
+                OrgMenuItem(
+                    icon: Icons.swap_horiz_rounded,
+                    label: t('تحويل لإدارة أخرى', 'Transfer to another department'),
+                    onTap: () => _menu('transfer')),
+                if (d['assigned_to'] != null)
+                  OrgMenuItem(icon: Icons.person_off_rounded, label: t('إلغاء الإسناد', 'Unassign'), onTap: () => _menu('unassign')),
+              ])
+            : null,
+        child: _readable(820, _body(context, s, d, canAct)),
+      );
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 820,
-      appBar: ScreenAppBar(title: d == null ? t('الشكوى', 'Complaint') : '${d['ref']}', actions: [
+      appBar: ScreenAppBar(title: title, actions: [
         if (canAct)
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
-            onSelected: (v) async {
-              if (v.startsWith('st:')) return _patch({'status': v.substring(3)}, t('تم إبلاغ صاحب الشكوى', 'The person was notified'));
-              if (v.startsWith('pr:')) return _patch({'priority': v.substring(3)}, t('تم', 'Done'));
-              if (v == 'transfer') return _transfer();
-              if (v == 'unassign') return _patch({'unassign': true}, t('تم', 'Done'));
-            },
+            onSelected: _menu,
             itemBuilder: (_) => [
               for (final st in ['in_progress', 'waiting', 'resolved', 'closed'])
                 if (d['status'] != st) PopupMenuItem(value: 'st:$st', child: Text('${t('الحالة', 'Status')}: ${statusLabel(st)}')),
@@ -967,7 +1079,13 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
             ],
           ),
        const ContextExitButton()]),
-      child: OrgAsync(
+      child: _body(context, s, d, canAct),
+    );
+  }
+
+  Widget _body(BuildContext context, OrgSession s, Map<String, dynamic>? d, bool canAct) {
+    final c = context.colors;
+    return OrgAsync(
         loading: d == null && !_failed,
         failed: _failed,
         onRetry: _load,
@@ -1023,13 +1141,15 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                     decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
                     child: Column(children: [
-                      Row(children: [
+                      // a Wrap: on a narrow phone the second chip goes under the first instead of overflowing
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Wrap(spacing: 8, runSpacing: 4, children: [
                         ChoiceChip(
                           label: Text(t('رد على صاحب الشكوى', 'Reply'), style: TextStyle(fontFamily: AppFonts.family)),
                           selected: !_internal,
                           onSelected: (_) => setState(() => _internal = false),
                         ),
-                        const SizedBox(width: 8),
                         ChoiceChip(
                           avatar: const Icon(Icons.lock_rounded, size: 15),
                           label: Text(t('ملاحظة داخلية', 'Internal note'), style: TextStyle(fontFamily: AppFonts.family)),
@@ -1037,6 +1157,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                           onSelected: (_) => setState(() => _internal = true),
                         ),
                       ]),
+                      ),
                       const SizedBox(height: 6),
                       Row(children: [
                         Expanded(
@@ -1065,7 +1186,6 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                     ]),
                   ),
               ]),
-      ),
     );
   }
 }

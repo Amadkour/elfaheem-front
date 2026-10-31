@@ -35,6 +35,9 @@
 //     department, a page opened from More / a shortcut): the same header with a Back button first, its own refresh
 //     scope (pass [refresh] to drive it yourself, else Refresh re-keys the page), re-keyed when my access changes and
 //     closed when another organization is chosen in the switcher (it belonged to the previous one).
+//   orgUsesDashboardHeader(context, orgId) — a detail / editor screen that a student, a member page or a deep link
+//     may open too wears OrgPushedPage only when I work in that organization (OrgSession lists it; students never
+//     are there), else it keeps its own older app bar.
 //
 // Layout test: test/ui/org_page_header_layout_test.dart; renders: test/visual/org_shell_golden_test.dart.
 library;
@@ -235,6 +238,15 @@ class _OrgPageRefreshBodyState extends State<OrgPageRefreshBody> {
 //  A page pushed on top of the dashboard
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// Whether a detail / editor screen of organization [orgId] wears the dashboard's header ([OrgPushedPage]): the
+/// signed-in person works in that organization (the session lists it, and it never lists one where I study). A
+/// student, a member page or a deep link opened before the session loaded keep the screen's own app bar.
+bool orgUsesDashboardHeader(BuildContext context, int? orgId) {
+  final s = OrgPageHeader._maybe<OrgSession>(context, listen: false);
+  if (s == null || s.current == null) return false;
+  return orgId == null || s.currentId == orgId;
+}
+
 class OrgPushedPage extends StatefulWidget {
   const OrgPushedPage({
     super.key,
@@ -358,6 +370,11 @@ class OrgPageHeader extends StatelessWidget {
     final search = AppCommandPaletteScope.openerOf(context);
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= wideFrom;
+      // a narrow wide row (a pushed page around 800 px with a primary action): Search keeps only its icon, the
+      // switcher pill gets less room (it degrades by itself, ContextPill) and "Updated …" moves under the title as
+      // on phones, so nothing overflows or is cut
+      final tight = box.maxWidth < 980;
+      final veryTight = box.maxWidth < 860; // + Refresh keeps only its icon (its label stays in the tooltip)
       // the pages under the header (section chips, lists, settings) all start 16 px in: the header lines up with them
       const gutter = AppSpace.md;
       final pill = session == null || session.currentId == null ? null : _OrgPill(session: session);
@@ -369,7 +386,7 @@ class OrgPageHeader extends StatelessWidget {
       final titleBlock = _TitleBlock(
         title: title,
         subtitle: subtitle,
-        updated: refresh != null && !wide ? refresh : null,
+        updated: refresh != null && (!wide || tight) ? refresh : null,
       );
       final backBtn = back ? const _BackButton() : null;
       final Widget body;
@@ -378,18 +395,27 @@ class OrgPageHeader extends StatelessWidget {
           if (backBtn != null) ...[backBtn, AppSpace.gapXs],
           Expanded(flex: 3, child: titleBlock),
           if (primaryAction != null) ...[AppSpace.gapSm, primaryAction!],
-          if (search != null) ...[AppSpace.gapSm, _ChipButton(icon: Icons.search_rounded, label: _searchLabel, onTap: search)],
+          if (search != null) ...[
+            AppSpace.gapSm,
+            _ChipButton(icon: Icons.search_rounded, label: _searchLabel, onTap: search, compact: tight),
+          ],
           if (refresh != null) ...[
-            AppSpace.gapMd,
-            Flexible(child: _UpdatedText(refresh: refresh, align: TextAlign.end)),
-            AppSpace.gapXs,
-            _RefreshButton(refresh: refresh),
+            if (tight) AppSpace.gapSm else ...[
+              AppSpace.gapMd,
+              Flexible(child: _UpdatedText(refresh: refresh, align: TextAlign.end)),
+              AppSpace.gapXs,
+            ],
+            _RefreshButton(refresh: refresh, compact: veryTight),
           ],
           const SizedBox(width: AppSpace.xxs),
           ...tools,
           if (pill != null) ...[
             AppSpace.gapXs,
-            ConstrainedBox(constraints: const BoxConstraints(maxWidth: 280), child: pill),
+            if (tight)
+              // the title and the pill share what is left; the pill falls back to its mark (ContextPill)
+              Flexible(flex: 2, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 200), child: pill))
+            else
+              ConstrainedBox(constraints: const BoxConstraints(maxWidth: 280), child: pill),
           ],
         ]);
       } else {
@@ -531,10 +557,13 @@ class _SearchBar extends StatelessWidget {
 
 /// Wide: icon + label in the header's quiet chip style (the search button; Ctrl+K / ⌘K opens the same palette).
 class _ChipButton extends StatelessWidget {
-  const _ChipButton({required this.icon, required this.label, required this.onTap});
+  const _ChipButton({required this.icon, required this.label, required this.onTap, this.compact = false});
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+
+  /// The icon alone (the label stays in the tooltip and the screen-reader label).
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -555,13 +584,15 @@ class _ChipButton extends StatelessWidget {
               borderRadius: AppRadius.chipAll,
               onTap: onTap,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
+                constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(icon, size: 20, color: c.textMedium),
-                    const SizedBox(width: AppSpace.xs),
-                    Text(label, style: AppType.row(context).copyWith(color: c.textDark)),
+                    if (!compact) ...[
+                      const SizedBox(width: AppSpace.xs),
+                      Text(label, style: AppType.row(context).copyWith(color: c.textDark)),
+                    ],
                   ]),
                 ),
               ),
@@ -650,18 +681,17 @@ class _RefreshIcon extends StatelessWidget {
 
 /// Wide: icon + "Refresh".
 class _RefreshButton extends StatelessWidget {
-  const _RefreshButton({required this.refresh});
+  const _RefreshButton({required this.refresh, this.compact = false});
   final OrgPageRefresh refresh;
+
+  /// The icon alone (a narrow wide row); the label stays in the tooltip and the screen-reader label.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final busy = refresh.busy;
-    return Semantics(
-      button: true,
-      label: _refreshLabel,
-      excludeSemantics: true,
-      child: Padding(
+    final Widget button = Padding(
         padding: const EdgeInsets.all(2),
         child: Material(
           color: c.cardBg,
@@ -671,7 +701,7 @@ class _RefreshButton extends StatelessWidget {
             borderRadius: AppRadius.chipAll,
             onTap: busy ? null : refresh.refresh,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 44),
+              constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -684,14 +714,21 @@ class _RefreshButton extends StatelessWidget {
                           )
                         : Icon(Icons.refresh_rounded, size: 20, color: c.textMedium),
                   ),
-                  const SizedBox(width: AppSpace.xs),
-                  Text(_refreshLabel, style: AppType.row(context).copyWith(color: c.textDark)),
+                  if (!compact) ...[
+                    const SizedBox(width: AppSpace.xs),
+                    Text(_refreshLabel, style: AppType.row(context).copyWith(color: c.textDark)),
+                  ],
                 ]),
               ),
             ),
           ),
         ),
-      ),
+      );
+    return Semantics(
+      button: true,
+      label: _refreshLabel,
+      excludeSemantics: true,
+      child: compact ? Tooltip(message: _refreshLabel, excludeFromSemantics: true, child: button) : button,
     );
   }
 }

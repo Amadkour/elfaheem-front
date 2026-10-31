@@ -16,6 +16,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t;
+import '../org_page_header.dart' show OrgPushedPage, orgUsesDashboardHeader;
 import '../org_ui.dart' show orgText;
 import '../org_v3.dart' show orgCall, orgDay;
 import 'gov_api.dart';
@@ -617,6 +618,16 @@ class _GovCouncilSettingsPageState extends State<GovCouncilSettingsPage> {
       );
     }
     if (widget.embedded) return body;
+    // staff of this organization: the dashboard's header (Back · council · "Council settings"); Save stays in the
+    // form. Without the organization loaded: the screen's own app bar
+    if (orgUsesDashboardHeader(context, _orgId)) {
+      return OrgPushedPage(
+        title: council?.name ?? t('إعدادات المجلس', 'Council settings'),
+        subtitle: council == null ? null : t('إعدادات المجلس', 'Council settings'),
+        maxWidth: 900,
+        child: body,
+      );
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 900,

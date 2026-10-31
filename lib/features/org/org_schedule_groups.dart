@@ -10,8 +10,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -20,7 +18,8 @@ import 'org_providers.dart';
 import 'org_timetable_parts.dart' show courseName;
 import 'org_ui.dart';
 import 'org_v3.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'org_page_header.dart' show OrgPageRefresh;
+import 'org_schedule_planning.dart' show orgStudioPage, studioSubtitle;
 
 String groupLabel(Map<String, dynamic> g) =>
     '${g['kind'] == 'lab' ? t('معمل', 'Lab') : t('نظري', 'Theory')} ${g['group_no']}';
@@ -39,8 +38,12 @@ Future<void> openStudentGroups(BuildContext context, OrgScheduleProvider p) {
     return Future.value();
   }
   return Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => BasePage(
-            appBar: ScreenAppBar(title: t('مجموعات الطلاب', 'Student groups'), actions: const [ContextExitButton()]),
+      builder: (ctx) => orgStudioPage(
+            ctx,
+            title: t('مجموعات الطلاب', 'Student groups'),
+            subtitle: studioSubtitle(p),
+            maxWidth: null,
+            webCard: false,
             child: _GroupsPage(p: p, termId: asInt(term)),
           )));
 }
@@ -60,6 +63,21 @@ class _GroupsPageState extends State<_GroupsPage> {
   bool loading = false;
   String mode = 'alphabetical';
 
+  // the header's Refresh reloads the chosen course in place (a re-key would drop the choice)
+  OrgPageRefresh? _refresh;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh = OrgPageRefresh.register(context, _load);
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
+  }
+
   String get base => '${widget.p.base.replaceFirst(RegExp(r'/$'), '')}/registrar';
 
   List<Map<String, dynamic>> get courses {
@@ -76,6 +94,7 @@ class _GroupsPageState extends State<_GroupsPage> {
         loading = false;
         if (r.ok) data = r.map;
       });
+      if (r.ok) _refresh?.markUpdated();
     }
   }
 

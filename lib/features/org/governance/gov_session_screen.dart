@@ -19,6 +19,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, asDouble, asInt, asMap, asMapList, askText, t;
+import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import '../org_ui.dart' show orgText;
 import '../org_v3.dart' show orgCall, orgParseUtc, orgUtc;
 import 'gov_api.dart';
@@ -785,15 +786,20 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
   int? get _orgId => govOrgId(context, widget.orgId);
   GovApi? get _api => _orgId == null ? null : GovApi(_orgId!);
 
+  /// The dashboard header's Refresh reloads the session (staff in this organization); "Updated" is when it answered.
+  final _refresh = OrgPageRefresh();
+
   @override
   void initState() {
     super.initState();
+    _refresh.attach(_load);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
   void dispose() {
     _tick?.cancel();
+    _refresh.dispose();
     super.dispose();
   }
 
@@ -838,6 +844,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
       }
     });
     if (!r.ok && _s != null) appToast(r.error!.message, error: true);
+    if (r.ok) _refresh.markUpdated();
     _syncTimer();
   }
 
@@ -1156,10 +1163,22 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
         ]),
       );
     }
+    final title = s == null ? t('الجلسة', 'Session') : (s.council?.name ?? sessionKindLabel(s.kind));
+    // staff of this organization: the dashboard's header (Back · council · kind and status · Refresh · switcher);
+    // a member, a deep link before the organization loaded: the screen's own app bar
+    if (orgUsesDashboardHeader(context, _orgId)) {
+      return OrgPushedPage(
+        title: title,
+        subtitle: s == null ? null : [if (s.council != null) sessionKindLabel(s.kind), sessionStatusLabel(s.status)].join(' · '),
+        refresh: _refresh,
+        maxWidth: 1000,
+        child: body,
+      );
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 1000,
-      appBar: ScreenAppBar(title: s == null ? t('الجلسة', 'Session') : (s.council?.name ?? sessionKindLabel(s.kind)), actions: [
+      appBar: ScreenAppBar(title: title, actions: [
         const ContextExitButton(),
         if (s != null) IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
       ]),
