@@ -112,8 +112,10 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            SizedBox(
-              height: 320,
+            // at least 320 px, taller when a long message at a large text size needs it (it overflowed on a phone)
+            Container(
+              constraints: const BoxConstraints(minHeight: 320),
+              alignment: Alignment.center,
               child: EmptyState(widget.emptyText ?? 'admin_nothing_here_yet'.tr),
             ),
           ],
@@ -208,7 +210,11 @@ class AdminSimpleList extends StatelessWidget {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            SizedBox(height: 320, child: EmptyState(emptyText, icon: emptyIcon)),
+            Container(
+              constraints: const BoxConstraints(minHeight: 320),
+              alignment: Alignment.center,
+              child: EmptyState(emptyText, icon: emptyIcon),
+            ),
           ],
         ),
       );

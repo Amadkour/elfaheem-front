@@ -13,7 +13,9 @@
 //     · a field whose textInputAction is done / go / send submits right away.
 //   Enter in a multi-line field inserts a newline, as before; Ctrl+Enter / ⌘+Enter submits it the same way.
 //   Esc in a field on a page takes the focus out of it; in a dialog or sheet Flutter's DismissIntent closes it.
-//   Ctrl+K / ⌘+K, or "/" while not typing, focuses the first search box of the screen and selects its text.
+//   Ctrl+K / ⌘+K, or "/" while not typing, focuses the first search box of the screen and selects its text — except
+//   under an `AppCommandPaletteScope` on the top route (the organization dashboard, D-103), where Ctrl+K / ⌘+K opens
+//   that screen's command palette instead ("/" still focuses the search box).
 //
 // A screen decides for itself with `EnterSubmits(onSubmit: …, child: …)` around its fields (`EnterSubmits.none`
 // makes Enter do nothing there, e.g. inside an exam). Pure parts are unit-tested in test/ui/app_keyboard_test.dart.
@@ -39,6 +41,47 @@ class EnterSubmits extends InheritedWidget {
 
   @override
   bool updateShouldNotify(EnterSubmits oldWidget) => false;
+}
+
+/// While mounted on the top route, Ctrl+K / ⌘+K calls [onOpen] (a command palette) instead of focusing the screen's
+/// search box. The latest scope that is on the top route wins; a page pushed over it (or a dialog) gets the old
+/// behaviour back. Tested in test/org/org_command_palette_test.dart.
+class AppCommandPaletteScope extends StatefulWidget {
+  const AppCommandPaletteScope({super.key, required this.onOpen, required this.child, this.enabled = true});
+
+  final VoidCallback onOpen;
+  final Widget child;
+
+  /// false (e.g. the palette's kill switch is on): Ctrl+K keeps focusing the search box here.
+  final bool enabled;
+
+  /// The palette of the nearest enabled scope above [context] (a header's search button), or null.
+  static VoidCallback? openerOf(BuildContext context) {
+    final s = context.findAncestorWidgetOfExactType<AppCommandPaletteScope>();
+    return s == null || !s.enabled ? null : s.onOpen;
+  }
+
+  @override
+  State<AppCommandPaletteScope> createState() => _AppCommandPaletteScopeState();
+}
+
+class _AppCommandPaletteScopeState extends State<AppCommandPaletteScope> {
+  @override
+  void initState() {
+    super.initState();
+    AppKeyboard._palettes.add(this);
+  }
+
+  @override
+  void dispose() {
+    AppKeyboard._palettes.remove(this);
+    super.dispose();
+  }
+
+  bool get _onTop => mounted && widget.enabled && (ModalRoute.of(context)?.isCurrent ?? true);
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Mount once around the app (MaterialApp.builder). See the file header.
@@ -106,6 +149,8 @@ abstract final class AppKeyboard {
   /// every key goes to it first, and what it handles (Enter picks, Esc closes) never reaches the rules below.
   static bool Function(KeyDownEvent e)? keyClaim;
 
+  static final List<_AppCommandPaletteScopeState> _palettes = [];
+
   static bool handleKeyDown(KeyDownEvent e) {
     final claim = keyClaim;
     if (claim != null && claim(e)) return true;
@@ -115,7 +160,7 @@ abstract final class AppKeyboard {
     final key = e.logicalKey;
     if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) return _onEnter(ctrl);
     if (key == LogicalKeyboardKey.escape) return _onEscape();
-    if (ctrl && key == LogicalKeyboardKey.keyK) return focusSearch();
+    if (ctrl && key == LogicalKeyboardKey.keyK) return openPalette() || focusSearch();
     if (!ctrl && (key == LogicalKeyboardKey.slash || e.character == '/') && _FocusedField.current() == null) {
       return focusSearch();
     }
@@ -202,6 +247,17 @@ abstract final class AppKeyboard {
     if (route is PopupRoute) return false; // DismissIntent closes the dialog / sheet
     f.editable.focusNode.unfocus();
     return true;
+  }
+
+  /// Ctrl+K: the command palette of the latest [AppCommandPaletteScope] on the top route; false when there is none.
+  static bool openPalette() {
+    for (final p in _palettes.reversed) {
+      if (p._onTop) {
+        p.widget.onOpen();
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Ctrl+K / "/": focus the first search box of the screen (its text selected, ready to be replaced).

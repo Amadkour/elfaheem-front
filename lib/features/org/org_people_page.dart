@@ -14,46 +14,49 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_member_form.dart';
 import 'org_v3.dart';
+import 'org_page_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import '../admin/admin_table_export.dart' show exportPagedList, orgMembersExport;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart';
 
-class OrgPeoplePage extends StatelessWidget {
+/// Members of the organization (D-103 page anatomy, org_page_kit.dart): the kind as ONE segmented control
+/// (Students · Teachers · Staff, only the kinds I may view) · search · ONE status filter ("Active ▾") · More (⋯:
+/// import from Excel, the Excel template, export) · ONE primary action "Add …" (FAB on phones, button when wide).
+class OrgPeoplePage extends StatefulWidget {
   const OrgPeoplePage({super.key});
+
+  @override
+  State<OrgPeoplePage> createState() => _OrgPeoplePageState();
+}
+
+class _OrgPeoplePageState extends State<OrgPeoplePage> {
+  int _kind = 0;
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<OrgSession>();
-    final c = context.colors;
     final tabs = <(String, String, String, String)>[
       if (s.can('students')) ('student', t('الطلاب', 'Students'), 'students', 'students'),
       if (s.can('teachers')) ('teacher', t('المدرسون', 'Teachers'), 'teachers', 'teachers'),
-      if (s.can('staff')) ('teacher_assistant,admin_assistant,org_admin', t('الهيئة المعاونة والإدارة', 'Staff & admins'), 'staff', 'staff'),
+      if (s.can('staff')) ('teacher_assistant,admin_assistant,org_admin', t('فريق العمل', 'Staff'), 'staff', 'staff'),
     ];
     if (tabs.isEmpty) return OrgEmpty(icon: Icons.lock_rounded, title: t('لا تملك صلاحية عرض الأعضاء', 'You cannot view members'));
-    return DefaultTabController(
-      length: tabs.length,
-      child: Column(children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16)),
-          child: TabBar(
-            dividerColor: Colors.transparent,
-            indicatorSize: TabBarIndicatorSize.tab,
-            indicator: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(14)),
-            labelColor: c.onHero,
-            unselectedLabelColor: c.textMedium,
-            labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
-            tabs: [for (final x in tabs) Tab(text: x.$2, height: 40)],
+    final i = _kind.clamp(0, tabs.length - 1);
+    final x = tabs[i];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (tabs.length > 1)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 0),
+          child: OrgSegmented<int>(
+            value: i,
+            options: [for (var k = 0; k < tabs.length; k++) (k, tabs[k].$2)],
+            onChanged: (k) => setState(() => _kind = k),
           ),
         ),
-        Expanded(
-          child: TabBarView(children: [
-            for (final x in tabs) _MembersTab(key: ValueKey(x.$1), roles: x.$1, module: x.$3, kind: x.$4),
-          ]),
-        ),
-      ]),
-    );
+      // a new kind = a fresh list (the old TabBarView rebuilt an off-screen tab the same way)
+      Expanded(child: _MembersTab(key: ValueKey(x.$1), roles: x.$1, module: x.$3, kind: x.$4)),
+    ]);
   }
 }
 
@@ -79,80 +82,72 @@ class _MembersView extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<OrgMembersProvider>();
     final s = context.watch<OrgSession>();
-    final c = context.colors;
-
-    final header = Column(children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-        child: SearchBox(hint: t('بحث بالاسم أو البريد أو الهاتف أو @اسم المستخدم', 'Name, e-mail, phone or @username'), onChanged: p.setSearch),
+    final status = {
+      'active': t('نشط', 'Active'),
+      if (kind != 'staff') 'pending': t('طلبات الانضمام', 'Join requests'),
+      'scheduled': membershipStatusLabels()['scheduled']!,
+      'expired': membershipStatusLabels()['expired']!,
+      'suspended': membershipStatusLabels()['suspended']!,
+      if (kind != 'staff') 'rejected': t('مرفوض', 'Rejected'),
+    };
+    final addLabel = switch (kind) {
+      'students' => t('إضافة طالب', 'Add student'),
+      'teachers' => t('إضافة مدرس', 'Add teacher'),
+      _ => t('إضافة عضو', 'Add member'),
+    };
+    return OrgPageBody(
+      primary: s.can(module, 'insert')
+          ? OrgPrimaryAction(
+              id: 'add_member',
+              icon: Icons.person_add_alt_1_rounded,
+              label: addLabel,
+              onTap: () async {
+                final r = await showOrgMemberForm(context,
+                    roles: kind == 'students' ? const ['student'] : kind == 'teachers' ? const ['teacher'] : const ['teacher_assistant', 'admin_assistant', 'org_admin']);
+                if (r != null) p.refresh();
+              },
+            )
+          : null,
+      search: OrgSearchField(hint: t('بحث بالاسم أو البريد أو الهاتف أو @اسم المستخدم', 'Name, e-mail, phone or @username'), onChanged: p.setSearch),
+      filter: OrgFilterButton<String>(
+        value: p.status,
+        options: status,
+        defaultValue: 'active',
+        label: t('الحالة', 'Status'),
+        onChanged: p.setStatusFilter,
       ),
-      FilterChips<String>(
-          value: p.status,
-          options: {
-            'active': t('نشط', 'Active'),
-            if (kind != 'staff') 'pending': t('طلبات الانضمام', 'Join requests'),
-            'scheduled': membershipStatusLabels()['scheduled']!,
-            'expired': membershipStatusLabels()['expired']!,
-            'suspended': membershipStatusLabels()['suspended']!,
-            if (kind != 'staff') 'rejected': t('مرفوض', 'Rejected'),
-          },
-          onChanged: p.setStatusFilter,
-        ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-        child: Wrap(spacing: 8, runSpacing: 6, children: [
-          if (s.can(module, 'insert')) ...[
-            _Act(Icons.upload_file_rounded, t('استيراد Excel', 'Import Excel'), c.primary, () async {
+      more: [
+        if (s.can(module, 'insert')) ...[
+          OrgMenuItem(
+            icon: Icons.upload_file_rounded,
+            label: t('استيراد من Excel', 'Import from Excel'),
+            onTap: () async {
               if (await importExcelFlow(context, kind) && context.mounted) p.refresh();
-            }),
-            _Act(Icons.description_outlined, t('نموذج الملف', 'Template'), c.textMedium, () => downloadExcel(context, 'template/$kind')),
-          ],
-          if (s.can(module, 'export')) _Act(Icons.ios_share_rounded, t('تصدير Excel · Word · PDF', 'Export Excel · Word · PDF'), c.success, () => exportPagedList(context, p, (rows) => orgMembersExport(kind, rows, orgName: s.name))),
-        ]),
-      ),
-    ]);
-
-    return Stack(children: [
-      PagedList<OrgMembersProvider>(
-        header: header,
-        emptyText: p.status == 'pending' ? t('لا توجد طلبات', 'No requests') : t('لا يوجد أعضاء بعد', 'No members yet'),
+            },
+          ),
+          OrgMenuItem(
+            icon: Icons.description_outlined,
+            label: t('تنزيل نموذج Excel', 'Download the Excel template'),
+            onTap: () => downloadExcel(context, 'template/$kind'),
+          ),
+        ],
+        if (s.can(module, 'export'))
+          OrgMenuItem(
+            icon: Icons.ios_share_rounded,
+            label: t('تصدير (Excel · Word · PDF)', 'Export (Excel · Word · PDF)'),
+            onTap: () => exportPagedList(context, p, (rows) => orgMembersExport(kind, rows, orgName: s.name, orgId: s.currentId, roles: roles, status: p.status)),
+          ),
+      ],
+      child: PagedList<OrgMembersProvider>(
+        emptyText: p.status == 'pending'
+            ? t('لا توجد طلبات انضمام الآن', 'No join requests right now')
+            : p.status == 'active'
+                ? t('لا يوجد أعضاء بعد — أضف أول عضو أو استورد قائمة من Excel', 'No members yet — add the first one or import a list from Excel')
+                : t('لا أحد بهذه الحالة', 'Nobody with this status'),
         itemBuilder: (ctx, row) => _MemberTile(row: row, module: module),
       ),
-      if (s.can(module, 'insert'))
-        PositionedDirectional(
-          bottom: 16,
-          end: 16,
-          child: FloatingActionButton.extended(
-            heroTag: 'org_add_$kind',
-            backgroundColor: c.primary,
-            onPressed: () async {
-              final r = await showOrgMemberForm(context,
-                  roles: kind == 'students' ? const ['student'] : kind == 'teachers' ? const ['teacher'] : const ['teacher_assistant', 'admin_assistant', 'org_admin']);
-              if (r != null) p.refresh();
-            },
-            icon: Icon(Icons.person_add_alt_1_rounded, color: c.onHero),
-            label: Text(t('إضافة', 'Add'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
-          ),
-        ),
-    ]);
+    );
   }
-}
-
-class _Act extends StatelessWidget {
-  const _Act(this.icon, this.label, this.color, this.onTap);
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => ActionChip(
-        avatar: Icon(icon, size: 18, color: color),
-        label: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: color, fontWeight: FontWeight.w700)),
-        onPressed: onTap,
-        side: BorderSide(color: color.withValues(alpha: 0.35)),
-        backgroundColor: color.withValues(alpha: 0.08),
-      );
 }
 
 String _roleLabel(String r) => {
@@ -189,7 +184,8 @@ class _MemberTile extends StatelessWidget {
       period: pending ? null : membershipPeriodText(row),
       periodEnded: ended,
       chips: [
-                StatusChip(_roleLabel(role), c.primary),
+                // the role only where it differs between rows (the Staff list); Students / Teachers say it once, in the switcher
+                if (module == 'staff') StatusChip(_roleLabel(role), c.primary),
                 if (eff != 'active') StatusChip(membershipStatusLabels()[eff] ?? eff, statusColor(context, eff == 'scheduled' ? 'pending' : eff)),
                 if ((row['student_code'] ?? '').toString().isNotEmpty) InfoChip(Icons.tag_rounded, '${row['student_code']}', c.textMedium),
                 if (row['academic_level'] != null) InfoChip(Icons.stairs_rounded, '${row['academic_level']}', c.textMedium),
@@ -277,7 +273,7 @@ class OrgMemberRowView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
         accent: accent,
         child: Row(children: [
@@ -285,7 +281,7 @@ class OrgMemberRowView extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               if (username != null) AppUsernameLine(username),
               Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
               if (chips.isNotEmpty) ...[
@@ -345,7 +341,7 @@ Future<void> _permissions(BuildContext context, OrgMembersProvider p, Map<String
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(modLabel[m]!, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+                  Text(modLabel[m]!, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Wrap(spacing: 8, children: [
                     for (final a in _actions)

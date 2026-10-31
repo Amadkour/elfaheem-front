@@ -108,7 +108,8 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: col.withValues(alpha: 0.12)),
             ),
-            child: Icon(icon, size: 19, color: col),
+            // dark: the icon lifted toward white — a primary-coloured glyph on a dark card failed WCAG contrast
+            child: Icon(icon, size: 19, color: c.isDark ? Color.lerp(col, Colors.white, 0.55) : col),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -198,7 +199,7 @@ class AppSettingsGroup extends StatelessWidget {
                   color: (danger ? c.danger : c.primary).withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 15, color: danger ? c.danger : c.primary),
+                child: Icon(icon, size: 15, color: danger ? c.danger : (c.isDark ? Color.lerp(c.primary, Colors.white, 0.55) : c.primary)),
               ),
               const SizedBox(width: 8),
             ],

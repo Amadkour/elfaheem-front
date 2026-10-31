@@ -23,6 +23,8 @@ import 'org_join_pages.dart' show OrgUnitJoinHub;
 import 'org_levels_pages.dart' show MyLevelCard, OrgLevelsTab, showEnrollBlock;
 import 'org_program_form.dart' show orgAllCourses, showProgramForm;
 import 'org_v3.dart';
+import 'org_page_kit.dart' show OrgPartPicker;
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'org_suggestions.dart' show OrgTermSuggestions;
 import '../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
@@ -75,9 +77,13 @@ class _OrgAcademicPageState extends State<OrgAcademicPage> {
     });
   }
 
+  int _part = 0;
+  final Set<int> _seen = {};
+
+  /// The page anatomy (D-103, org_page_kit.dart): the parts as ONE part picker (chips that fit, else one
+  /// "part ▾" button), each part kept alive once opened. The parts themselves are unchanged.
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     if (_settings == null) return const AppListSkeleton();
     final hasDepts = _settings!['has_departments'] == true;
     final tabs = <(String, IconData, Widget)>[
@@ -91,14 +97,23 @@ class _OrgAcademicPageState extends State<OrgAcademicPage> {
       (t('طلبات الأرشيف', 'Archive requests'), Icons.inventory_2_rounded,
           _ArchiveRequests(base: _a, orgId: context.read<OrgSession>().currentId)),
     ];
-    return DefaultTabController(
-      length: tabs.length,
-      child: Column(children: [
-        TabBar(isScrollable: true, tabAlignment: TabAlignment.start, labelColor: c.primary, indicatorColor: c.primary,
-            tabs: [for (final x in tabs) Tab(icon: Icon(x.$2, size: 20), text: x.$1)]),
-        Expanded(child: TabBarView(children: [for (final x in tabs) x.$3])),
-      ]),
-    );
+    final i = _part.clamp(0, tabs.length - 1);
+    _seen.add(i);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs),
+        child: OrgPartPicker(
+          parts: [for (final x in tabs) (x.$1, x.$2)],
+          index: i,
+          onChanged: (k) => setState(() => _part = k),
+        ),
+      ),
+      Expanded(
+        child: IndexedStack(index: i, children: [
+          for (var k = 0; k < tabs.length; k++) _seen.contains(k) ? tabs[k].$3 : const SizedBox.shrink(),
+        ]),
+      ),
+    ]);
   }
 }
 

@@ -4,15 +4,18 @@
 // CLAUDE.md). Sheet 1 holds the design's text lines on top and the rows table (header fill from the design,
 // borders per table style, number / date formats by column type, frozen header row, column widths, RTL view when
 // the design is RTL). A council dataset gets a second sheet "Votes" (item · approve · reject · abstain · eligible ·
-// % · outcome) when vote results are included.
+// % · outcome) when vote results are included. Export Studio: the content's rules (cell styles, hidden rows),
+// group headings with subtotals, a totals row, header overrides ([HubTablePlan]) and Arabic-Indic digits in the
+// text cells (numbers and dates stay numbers). The page frame and the watermark are Word / PDF only.
 library;
 
 import 'dart:typed_data';
 
-import '../export/table_export_model.dart' show dateValue, numValue, xmlEsc, zipFiles;
+import '../export/export_studio_model.dart' show ExportRuleStyle, exportDigits;
+import '../export/table_export_model.dart' show AppColType, AppTotal, dateValue, numValue, tintHex, xmlEsc, zipFiles;
 import '../export/table_export_xlsx.dart' show xlsxCol, xlsxSerial, xlsxSheetName;
 import 'export_design.dart';
-import 'export_pdf.dart' show ExportLabels, voteOutcomeColors;
+import 'export_pdf.dart' show ExportLabels, HubTablePlan, voteOutcomeColors;
 
 class _St {
   const _St({this.fill, this.color = exportInk, this.bold = false, this.size = 10, this.h = 'general', this.wrap = false, this.border = 'thin', this.fmt});
@@ -79,11 +82,13 @@ String _num(num v) => v == v.roundToDouble() && v.abs() < 1e15 ? v.toInt().toStr
 Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
   final lang = c.langFor(d);
   final lb = ExportLabels(lang);
-  final values = data.placeholderValues(lang);
+  final plan = HubTablePlan.of(d, data, c);
+  final values = data.placeholderValues(lang)..['rows'] = '${plan.rows.length}';
   final rtl = d.rtl;
   final fontName = switch (d.fontFamily) { 'bahij' => 'Bahij TheSansArabic', 'plex' => 'IBM Plex Sans Arabic', _ => 'Tajawal' };
   final st = _Styles(rtl, fontName);
-  final cols = data.columnsFor(d, c.columns);
+  final cols = plan.cols;
+  final rows = plan.rows;
   final n = cols.isEmpty ? 1 : cols.length;
   final head = d.table.headerColor, onHead = d.table.headerTextColor;
   final tableStyle = d.table.style;
@@ -92,7 +97,7 @@ Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
 
   String ref(int col, int row) => '${xlsxCol(col)}${row + 1}';
   String str(int col, int row, String v, int s) =>
-      v.isEmpty ? '<c r="${ref(col, row)}" s="$s"/>' : '<c r="${ref(col, row)}" s="$s" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>';
+      v.isEmpty ? '<c r="${ref(col, row)}" s="$s"/>' : '<c r="${ref(col, row)}" s="$s" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(exportDigits(v, c.numerals))}</t></is></c>';
   String number(int col, int row, num v, int s) => '<c r="${ref(col, row)}" s="$s"><v>${_num(v)}</v></c>';
 
   // ── sheet 1: text lines + the rows table
@@ -122,18 +127,23 @@ Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
   final headerRow = r;
   heights[r] = 22;
   final sHead = st.style(_St(fill: head, color: onHead, bold: true, size: d.table.fontSize, h: 'center', wrap: true, border: cellBorder));
-  row(r, [for (var k = 0; k < cols.length; k++) str(k, r, cols[k].label(lang), sHead)]);
+  row(r, [for (var k = 0; k < cols.length; k++) str(k, r, plan.headers[k], sHead)]);
   r++;
-  int body(ExportColumn col, {bool zebra = false}) => st.style(_St(
-      fill: zebra ? 'F6F8FA' : null,
+  final firstData = r;
+  int body(ExportColumn col, {bool zebra = false, ExportRuleStyle? rule}) => st.style(_St(
+      fill: rule?.background ?? (zebra ? 'F6F8FA' : null),
+      color: rule?.color ?? exportInk,
+      bold: rule?.bold ?? false,
       size: d.table.fontSize,
       h: col.numeric ? endH : (col.type == 'date' || col.type == 'datetime' || col.type == 'status' ? 'center' : startH),
       wrap: col.type == 'text',
       border: cellBorder,
       fmt: exportXlsxFormat(col.type)));
-  String cell(int k, int ri, Object? v, bool zebra) {
+  String cell(int k, int ri, Object? v, bool zebra, ExportRuleStyle? rule) {
     final col = cols[k];
-    final s = body(col, zebra: zebra);
+    final s = body(col, zebra: zebra, rule: rule);
+    final label = rule?.label;
+    if (label != null && label.isNotEmpty) return str(k, ri, label, s);
     if (v == null || (v is String && v.trim().isEmpty)) return '<c r="${ref(k, ri)}" s="$s"/>';
     switch (col.type) {
       case 'number':
@@ -156,21 +166,58 @@ Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
     }
   }
 
-  for (var i = 0; i < data.rows.length; i++) {
-    row(r, [for (var k = 0; k < cols.length; k++) cell(k, r, data.rows[i][cols[k].id], tableStyle == 'zebra' && i.isOdd)]);
+  // subtotal / totals rows hold the computed values (numbers with the column's format)
+  void totalRow(String label, List<Map<String, Object?>> group, {required bool grand}) {
+    final fill = tintHex(head, grand ? .2 : .08);
+    final sLabel = st.style(_St(fill: fill, bold: true, size: d.table.fontSize, h: startH, border: cellBorder));
+    heights[r] = grand ? 20 : 18;
+    row(r, [
+      for (var k = 0; k < cols.length; k++)
+        () {
+          if (!plan.aggregates(k)) return k == plan.labelAt ? str(k, r, label, sLabel) : '<c r="${ref(k, r)}" s="$sLabel"/>';
+          final a = plan.app[k];
+          var v = plan.aggregateOf(k, group);
+          final count = a.total == AppTotal.count;
+          final fmt = count ? '#,##0' : (a.total == AppTotal.average && a.type == AppColType.integer ? '#,##0.0' : exportXlsxFormat(cols[k].type));
+          final s = st.style(_St(fill: fill, bold: true, size: d.table.fontSize, h: endH, border: cellBorder, fmt: fmt));
+          if (v == null) return '<c r="${ref(k, r)}" s="$s"/>';
+          if (!count && a.type == AppColType.percent) v = v / 100;
+          if (!count && !cols[k].numeric) return str(k, r, plan.aggregateTextOf(k, group), s);
+          return number(k, r, v, s);
+        }(),
+    ]);
     r++;
   }
-  if (data.rows.isEmpty) {
+
+  final sGroup = st.style(_St(fill: tintHex(head, .14), bold: true, size: d.table.fontSize + .5, h: startH, border: cellBorder));
+  for (final (label, group) in plan.groups) {
+    if (label != null) {
+      heights[r] = 20;
+      row(r, [str(0, r, '$label  (${group.length})', sGroup), for (var k = 1; k < n; k++) '<c r="${ref(k, r)}" s="$sGroup"/>']);
+      if (n > 1) merges.add('A${r + 1}:${xlsxCol(n - 1)}${r + 1}');
+      r++;
+    }
+    for (var i = 0; i < group.length; i++) {
+      final look = plan.look(group[i]);
+      row(r, [for (var k = 0; k < cols.length; k++) cell(k, r, group[i][cols[k].id], tableStyle == 'zebra' && i.isOdd, look.of(cols[k].id))]);
+      r++;
+    }
+    if (label != null && plan.totals) totalRow('${lb.subtotal} · $label', group, grand: false);
+  }
+  final lastData = r - 1;
+  if (plan.totals && rows.isNotEmpty) totalRow(lb.total, rows, grand: true);
+  if (rows.isEmpty) {
     final s = st.style(_St(color: exportMuted, border: 'none', h: startH));
     row(r, [str(0, r, lb.noRows, s)]);
     r++;
   }
   final lastRow = r - 1;
   final widths = [
-    for (final col in cols)
+    for (var k = 0; k < cols.length; k++)
       () {
-        var w = col.label(lang).length * 1.2;
-        for (final x in data.rows.take(200)) {
+        final col = cols[k];
+        var w = plan.headers[k].length * 1.2;
+        for (final x in rows.take(200)) {
           final l = data.cell(col, x[col.id]).length;
           if (l > w) w = l.toDouble();
         }
@@ -186,11 +233,11 @@ Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
       '</sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/>'
       '<cols>${[for (var k = 0; k < n; k++) '<col min="${k + 1}" max="${k + 1}" width="${(k < widths.length ? widths[k] : 20).toStringAsFixed(1)}" customWidth="1"/>'].join()}</cols>'
       '<sheetData>$b</sheetData>'
-      '${cols.isEmpty || data.rows.isEmpty ? '' : '<autoFilter ref="${ref(0, headerRow)}:${ref(n - 1, lastRow)}"/>'}'
+      '${cols.isEmpty || rows.isEmpty ? '' : '<autoFilter ref="${ref(0, headerRow)}:${ref(n - 1, lastData < firstData ? firstData : lastData)}"/>'}'
       '${merges.isEmpty ? '' : '<mergeCells count="${merges.length}">${merges.map((m) => '<mergeCell ref="$m"/>').join()}</mergeCells>'}'
       '<pageMargins left="${d.page.left / 25.4}" right="${d.page.right / 25.4}" top="${d.page.top / 25.4}" bottom="${d.page.bottom / 25.4}" header="0.3" footer="0.3"/>'
       '<pageSetup orientation="${d.page.orientation}" paperSize="${d.page.size == 'Letter' ? 1 : d.page.size == 'A3' ? 8 : 9}" fitToWidth="1" fitToHeight="0"/>'
-      '<headerFooter><oddFooter>${xmlEsc(rtl ? '&L&8${lb.page} &P ${lb.of} &N&R&8${data.title}' : '&L&8${data.title}&R&8${lb.page} &P ${lb.of} &N')}</oddFooter></headerFooter>'
+      '<headerFooter><oddFooter>${xmlEsc(rtl ? '&L&8${lb.page} &P ${lb.of} &N&R&8${exportDigits(data.title, c.numerals)}' : '&L&8${exportDigits(data.title, c.numerals)}&R&8${lb.page} &P ${lb.of} &N')}</oddFooter></headerFooter>'
       '</worksheet>';
 
   // ── sheet 2: votes
@@ -263,7 +310,7 @@ Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
         '</cp:coreProperties>',
     'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-        '<bookViews><workbookView${rtl ? ' rightToLeft="1"' : ''}/></bookViews>'
+        '<bookViews><workbookView/></bookViews>' // RTL lives on each sheetView (CT_BookView has no rightToLeft)
         '<sheets><sheet name="${xmlEsc(name1)}" sheetId="1" r:id="rId1"/>${sheet2 == null ? '' : '<sheet name="${xmlEsc(name2 == name1 ? '$name2 2' : name2)}" sheetId="2" r:id="rId3"/>'}</sheets>'
         '<definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">${xmlEsc("'${name1.replaceAll("'", "''")}'!\$${headerRow + 1}:\$${headerRow + 1}")}</definedName></definedNames>'
         '</workbook>',

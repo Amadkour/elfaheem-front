@@ -281,46 +281,13 @@ Map<String, dynamic> _orgPayload() => {
       ],
     };
 
-OrgHeroSpec _orgHero() => OrgHeroSpec(
-      name: tr('جامعة النيل الأهلية', 'Nile National University'),
-      typeLabel: tr('جامعة', 'University'),
-      typeIcon: Icons.account_balance_rounded,
-      statusLabel: tr('مفعّلة', 'Active'),
-      roleLabel: tr('مدير المؤسسة', 'Organization admin'),
-      color: const Color(0xFF1F6F5C),
-      onCalendar: () {},
-      onJoinCode: () {},
-      onSwitch: () {},
-      onEdit: () {},
-      onSubOrg: () {},
-      onPersonal: () {},
-    );
-
-List<HomeShortcut> _orgShortcuts() => [
-      for (final (icon, ar, en) in [
-        (Icons.groups_rounded, 'الأعضاء', 'Members'),
-        (Icons.how_to_reg_rounded, 'طلبات الانضمام', 'Join requests'),
-        (Icons.apartment_rounded, 'الإدارات', 'Departments'),
-        (Icons.menu_book_rounded, 'المقررات', 'Courses'),
-        (Icons.calendar_month_rounded, 'الجدول', 'Timetable'),
-        (Icons.campaign_rounded, 'الإعلانات', 'News'),
-        (Icons.support_agent_rounded, 'الشكاوى', 'Complaints'),
-        (Icons.assignment_rounded, 'النماذج', 'Forms'),
-      ])
-        HomeShortcut(icon: icon, label: tr(ar, en), badge: icon == Icons.how_to_reg_rounded ? 17 : 0, onTap: () {}),
-    ];
-
 Widget _orgHome() {
   final d = OrgHomeData.fromJson(_orgPayload())!;
   return OrgHomeBody(
     data: d,
-    hero: _orgHero(),
-    cards: [for (final a in d.attention) ?OrgAttentionSpec.of(a, () {})],
-    shortcuts: _orgShortcuts(),
-    unitsTitle: tr('الإدارات والأقسام', 'Departments'),
+    alerts: [for (final a in d.alerts) ?OrgAttentionSpec.of(a, () {})],
     onOpenUnit: (_) {},
     onSeeAllUnits: () {},
-    onActivityLog: () {},
   );
 }
 

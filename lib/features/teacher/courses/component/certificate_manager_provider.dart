@@ -41,18 +41,24 @@ class EnrolledStudentInfo {
 
 class CertificateIssuanceInfo {
   final int studentId;
+  /// The English image, or the Arabic one when the design issues Arabic only (the server's fallback).
   final String? certificateUrl;
+
+  /// The Arabic image (null when the certificate has no Arabic version).
+  final String? certificateUrlAr;
   final DateTime? emailSentAt;
 
   const CertificateIssuanceInfo({
     required this.studentId,
     this.certificateUrl,
+    this.certificateUrlAr,
     this.emailSentAt,
   });
 
   factory CertificateIssuanceInfo.fromJson(Map<String, dynamic> j) => CertificateIssuanceInfo(
         studentId: j['student_id'] as int,
         certificateUrl: j['certificate_url'] as String?,
+        certificateUrlAr: (j['certificate_url_ar'] as String?)?.isNotEmpty == true ? j['certificate_url_ar'] as String : null,
         emailSentAt: j['email_sent_at'] != null
             ? DateTime.tryParse(j['email_sent_at'] as String)
             : null,

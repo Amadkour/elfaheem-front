@@ -1,5 +1,5 @@
 // Organization mode applies the open organization's context (timezone / 12h-24h + feature offs) and clears it when
-// leaving; org-staff cold-start routing uses the cached "manages nothing" answer.
+// leaving; org-admin / org-staff land on the one organization dashboard (D-103).
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,12 +38,11 @@ void main() {
     expect(applied.last, 9);
   });
 
-  test('org-staff home: live answer when loaded, else the cached one, else the management dashboard', () {
-    expect(AppModeController.orgStaffHome(loaded: true, managesNothing: true), '/org_member');
-    expect(AppModeController.orgStaffHome(loaded: true, managesNothing: false, cached: true), '/org_dashboard');
-    expect(AppModeController.orgStaffHome(loaded: false, managesNothing: false, cached: true), '/org_member');
-    expect(AppModeController.orgStaffHome(loaded: false, managesNothing: false, cached: false), '/org_dashboard');
-    expect(AppModeController.orgStaffHome(loaded: false, managesNothing: false), '/org_dashboard');
-    expect(AppModeController.managesNothingKey(12), 'org_manages_nothing.12');
+  test('org-admin / org-staff home: the organization dashboard, unless they left for their personal space (D-103)', () {
+    // the old "manages nothing → /org_member" hop is gone: every non-student org role opens /org_dashboard
+    expect(AppModeController.orgRoleHome('/org_dashboard'), '/org_dashboard');
+    expect(AppModeController.orgRoleHome('/org_dashboard', personal: false), '/org_dashboard');
+    expect(AppModeController.orgRoleHome('/org_dashboard', personal: true), '/dashboard');
+    expect(AppModeController.orgKeyFor(12), 'app_mode_org.12');
   });
 }

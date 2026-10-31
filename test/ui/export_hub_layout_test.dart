@@ -20,9 +20,15 @@ void main() {
         },
         scaffold: false,
         act: (tester) async {
+          // a phone first says the studio works best on a larger screen: continue anyway
+          for (final label in const ['المتابعة على أي حال', 'Continue anyway']) {
+            final go = find.text(label);
+            if (go.evaluate().isNotEmpty) await tester.tap(go.first, warnIfMissed: false);
+          }
+          await tester.pump(const Duration(milliseconds: 100));
           // select the title block, then open the settings sheet on a phone / use the side panel on a wide window
-          final title = find.textContaining(module == 'council' ? 'جلسة' : 'تقرير').first;
-          if (title.evaluate().isNotEmpty) await tester.tap(title, warnIfMissed: false);
+          final title = find.textContaining(module == 'council' ? 'جلسة' : 'تقرير');
+          if (title.evaluate().isNotEmpty) await tester.tap(title.first, warnIfMissed: false);
           await tester.pump(const Duration(milliseconds: 100));
           final page = find.text('الصفحة');
           if (page.evaluate().isNotEmpty) await tester.tap(page.first, warnIfMissed: false);
