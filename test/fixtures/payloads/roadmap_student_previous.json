@@ -1,0 +1,75 @@
+{
+ "_source": {
+  "route": "GET /api/v1/roadmap/courses/2",
+  "uid": 3
+ },
+ "payload": {
+  "course": {
+   "id": 2,
+   "name_ar": "Py2",
+   "name_en": "Py2",
+   "image_url": null,
+   "type": "recorded",
+   "level": "intermediate",
+   "tags": [],
+   "category": {
+    "id": 3,
+    "name_ar": "بايثون",
+    "name_en": "Python"
+   },
+   "teacher": {
+    "id": 1,
+    "name": "TeacherOne",
+    "image_url": null
+   },
+   "is_published": true,
+   "is_private": false,
+   "is_free": true,
+   "final_price": 0.0,
+   "price": 0.0,
+   "currency": "EGP",
+   "state": "in_progress",
+   "progress": 50.0
+  },
+  "previous": [
+   {
+    "id": 1,
+    "name_ar": "Py1",
+    "name_en": "Py1",
+    "image_url": null,
+    "type": "recorded",
+    "level": "beginner",
+    "tags": [
+     "Python",
+     "basics"
+    ],
+    "category": {
+     "id": 3,
+     "name_ar": "بايثون",
+     "name_en": "Python"
+    },
+    "teacher": {
+     "id": 1,
+     "name": "TeacherOne",
+     "image_url": null
+    },
+    "is_published": true,
+    "is_private": false,
+    "is_free": true,
+    "final_price": 0.0,
+    "price": 0.0,
+    "currency": "EGP",
+    "state": "completed",
+    "progress": 100.0
+   }
+  ],
+  "next": [],
+  "prerequisites": [],
+  "can_edit": false,
+  "levels": [
+   "beginner",
+   "intermediate",
+   "advanced"
+  ]
+ }
+}

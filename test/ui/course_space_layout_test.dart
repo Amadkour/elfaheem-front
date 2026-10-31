@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
-import 'package:flutter_education_app/features/shared/course/studend_course_roadmap_section.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
 import 'package:flutter_education_app/features/student/models.dart' show sessionInstantUtc;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show CourseSchedule;
@@ -427,21 +426,6 @@ void main() {
     await t.pumpWidget(layoutHost(ListView(children: [CourseActionStrip(actions: [..._actions(), ..._actions()])])));
     expect(find.byIcon(Icons.more_horiz_rounded), findsOneWidget);
     await t.binding.setSurfaceSize(null);
-  });
-
-  testWidgets('roadmap: a course name keeps whole words (wide stops)', (t) async {
-    await expectNoLayoutErrors(
-      t,
-      () => ListView(children: [
-        CourseRoadmapSection(
-          currentCourseName: 'أساسيات الخط العربي للمبتدئين Arabic calligraphy basics',
-          nextCourses: const [],
-          recommendedCourses: const [],
-          similarCourses: const [],
-          onTapCourse: (_) {},
-        ),
-      ]),
-    );
   });
 
   testWidgets('session track tabs: labels and counts stay whole', (t) async {

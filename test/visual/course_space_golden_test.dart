@@ -18,12 +18,11 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
 import 'package:flutter_education_app/features/student/courses/details/components/about.dart' show CourseAboutView;
 import 'package:flutter_education_app/features/student/courses/details/components/course_detail_parts.dart';
-import 'package:flutter_education_app/features/shared/course/studend_course_roadmap_section.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
 import 'package:flutter_education_app/features/shared/session/material/components/session_material_grid.dart';
 import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel, CourseSummary, SessionModel;
+import 'package:flutter_education_app/features/student/models.dart' show CourseModel, SessionModel;
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
@@ -384,7 +383,7 @@ Widget _student() => Builder(
   },
 );
 
-/// The quick-action row with more than fit ("More"), the lecture / section filter and the roadmap card.
+/// The quick-action row with more than fit ("More") and the lecture / section filter (the roadmap is the Path tab now, roadmap_golden_test.dart).
 Widget _parts() => Builder(
   builder: (context) => ListView(
     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -404,15 +403,6 @@ Widget _parts() => Builder(
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: SessionTrackTabs(value: 'all', lectures: 16, sections: 16, onChanged: (_) {}),
-      ),
-      const SizedBox(height: 16),
-      CourseRoadmapSection(
-        currentCourseName: tr('أساسيات الخط العربي', 'Arabic calligraphy basics'),
-        recentCompletedCourses: [CourseSummary(id: 1, name: tr('مدخل إلى الفنون الإسلامية', 'Intro to Islamic art'), finalPrice: 0)],
-        nextCourses: [CourseSummary(id: 2, name: tr('خط الثلث المتقدم', 'Advanced Thuluth script'), finalPrice: 0)],
-        recommendedCourses: const [],
-        similarCourses: const [],
-        onTapCourse: (_) {},
       ),
     ],
   ),

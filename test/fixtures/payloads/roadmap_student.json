@@ -1,0 +1,115 @@
+{
+ "_source": {
+  "route": "GET /api/v1/roadmap/courses/1",
+  "uid": 3
+ },
+ "payload": {
+  "course": {
+   "id": 1,
+   "name_ar": "Py1",
+   "name_en": "Py1",
+   "image_url": null,
+   "type": "recorded",
+   "level": "beginner",
+   "tags": [
+    "Python",
+    "basics"
+   ],
+   "category": {
+    "id": 3,
+    "name_ar": "بايثون",
+    "name_en": "Python"
+   },
+   "teacher": {
+    "id": 1,
+    "name": "TeacherOne",
+    "image_url": null
+   },
+   "is_published": true,
+   "is_private": false,
+   "is_free": true,
+   "final_price": 0.0,
+   "price": 0.0,
+   "currency": "EGP",
+   "state": "completed",
+   "progress": 100.0
+  },
+  "previous": [],
+  "next": [
+   {
+    "id": 2,
+    "name_ar": "Py2",
+    "name_en": "Py2",
+    "image_url": null,
+    "type": "recorded",
+    "level": "intermediate",
+    "tags": [],
+    "category": {
+     "id": 3,
+     "name_ar": "بايثون",
+     "name_en": "Python"
+    },
+    "teacher": {
+     "id": 1,
+     "name": "TeacherOne",
+     "image_url": null
+    },
+    "is_published": true,
+    "is_private": false,
+    "is_free": true,
+    "final_price": 0.0,
+    "price": 0.0,
+    "currency": "EGP",
+    "state": "in_progress",
+    "progress": 50.0,
+    "order": 1,
+    "prerequisites": [],
+    "prereqs_met": true
+   },
+   {
+    "id": 3,
+    "name_ar": "Py3",
+    "name_en": "Py3",
+    "image_url": null,
+    "type": "recorded",
+    "level": "advanced",
+    "tags": [],
+    "category": {
+     "id": 3,
+     "name_ar": "بايثون",
+     "name_en": "Python"
+    },
+    "teacher": {
+     "id": 1,
+     "name": "TeacherOne",
+     "image_url": null
+    },
+    "is_published": true,
+    "is_private": false,
+    "is_free": true,
+    "final_price": 0.0,
+    "price": 0.0,
+    "currency": "EGP",
+    "state": "not_started",
+    "progress": 0.0,
+    "order": 2,
+    "prerequisites": [
+     {
+      "id": 2,
+      "name_ar": "Py2",
+      "name_en": "Py2",
+      "done": false
+     }
+    ],
+    "prereqs_met": false
+   }
+  ],
+  "prerequisites": [],
+  "can_edit": false,
+  "levels": [
+   "beginner",
+   "intermediate",
+   "advanced"
+  ]
+ }
+}

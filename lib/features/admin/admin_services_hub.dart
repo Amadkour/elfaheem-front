@@ -45,6 +45,8 @@ import 'admin_required_documents_page.dart';
 import 'admin_send_message_page.dart';
 import 'admin_subscriptions_page.dart';
 import 'admin_points_page.dart';
+import 'admin_recs_page.dart';
+import '../shared/roadmap/roadmap_api.dart' show kRecsAdminKey;
 import '../shared/points/points_api.dart' show kAdminPointsFeatureKey;
 import 'admin_theme_page.dart';
 import 'admin_users_page.dart';
@@ -399,6 +401,17 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           visible: isSuper,
           featureKey: kLiveSettingsFeatureKey,
           onTap: () => push(const LiveSettingsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_recommendations',
+          descKey: 'admin_recommendations_d',
+          label: t('التوصيات', 'Recommendations'),
+          desc: t('ما يُقترح على الطلاب: الأرقام حسب السبب، وأوزان المحرّك', 'What students are suggested: numbers per reason and the engine’s weights'),
+          icon: Icons.auto_awesome_rounded,
+          colors: AdminPalette.violet,
+          visible: isSuper,
+          featureKey: kRecsAdminKey,
+          onTap: () => push(const AdminRecommendationsPage()),
         ),
         AdminService(
           labelKey: 'features',

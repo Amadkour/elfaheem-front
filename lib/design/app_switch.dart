@@ -147,12 +147,16 @@ class AppSwitchTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final accent = iconColor ?? activeColor ?? c.primary;
-    return Material(
+    // One node for the whole row (title + subtitle read once, the row is the 48 px target), not a 46x28 switch.
+    return MergeSemantics(
+      child: Material(
       type: MaterialType.transparency,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onChanged == null ? null : () => onChanged!(!value),
-        child: Padding(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
           padding: padding,
           child: Row(children: [
             if (icon != null) ...[
@@ -186,10 +190,11 @@ class AppSwitchTile extends StatelessWidget {
               onChanged: onChanged,
               activeColor: activeColor,
               inactiveColor: inactiveColor,
-              semanticLabel: title,
             ),
           ]),
         ),
+        ),
+      ),
       ),
     );
   }
