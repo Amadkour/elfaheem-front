@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
 import 'package:flutter_education_app/features/shared/course_profile/course_profile_hub.dart';
+import 'package:flutter_education_app/features/shared/course_profile/course_profile_models.dart' show CoursePageState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -57,6 +58,74 @@ void main() {
     expect(hub.unread, 0);
     expect(hub.smartTab(), isNull);
     expect(CourseProfileHub(7, initial: payload('student', closed: true)).smartTab(), 'archive');
+  });
+
+  test('course payload state: closed + announcements_unread parsed, absent on an older server', () {
+    final s = CoursePageState.fromJson({'id': 7, 'closed': true, 'announcements_unread': 3});
+    expect((s.closed, s.unread, s.known), (true, 3, true));
+    final old = CoursePageState.fromJson({'id': 7, 'name_en': 'x'});
+    expect((old.closed, old.unread, old.known), (null, null, false));
+    expect(CoursePageState.fromJson(null).known, isFalse);
+    // a guest gets `closed` only; wrong types are ignored, a negative count is 0
+    expect(CoursePageState.fromJson({'closed': false}).unread, isNull);
+    final odd = CoursePageState.fromJson({'closed': 'yes', 'announcements_unread': '2'});
+    expect((odd.closed, odd.unread), (null, null));
+    expect(CoursePageState.fromJson({'announcements_unread': -4}).unread, 0);
+    expect(CoursePageState.fromJson({'announcements_unread': 2.0}).unread, 2);
+  });
+
+  test("the server's count: badge and opening tab on open with no profile, seen told to the server", () {
+    final posted = <(int, int)>[];
+    final hub = CourseProfileHub(7, postSeen: (c, id) async => posted.add((c, id)));
+    expect(hub.openingTab(), isNull); // no payload yet
+    final s = const CoursePageState(closed: false, unread: 4);
+    hub.seed(s);
+    expect(hub.profile, isNull); // nothing else was loaded
+    expect(hub.unread, 4);
+    expect(hub.closed, isFalse);
+    expect(hub.openingTab(), 'announcements');
+    expect(_tabs(hub, staff: false).first.count, 4);
+    // the tab shows the profile's announcements (ids 1, 2): the server hears the newest, the badge clears
+    final withProfile = CourseProfileHub(7, initial: payload('student'), postSeen: (c, id) async => posted.add((c, id)))
+      ..seed(s);
+    expect(withProfile.unread, 4); // the server's count wins over the device's
+    withProfile.markSeen(withProfile.profile!.announcements);
+    expect(posted, [(7, 2)]);
+    expect(withProfile.unread, 0);
+    expect(withProfile.openingTab(), '');
+    withProfile.seed(s); // the same payload again changes nothing
+    expect(withProfile.unread, 0);
+    withProfile.markSeen(withProfile.profile!.announcements); // nothing new: no second request
+    expect(posted, [(7, 2)]);
+    withProfile.seed(const CoursePageState(closed: false, unread: 1)); // a refresh reads the server again
+    expect(withProfile.unread, 1);
+    // nothing to read: the page keeps its first tab
+    expect((CourseProfileHub(7)..seed(const CoursePageState(closed: false, unread: 0))).openingTab(), '');
+  });
+
+  test('a closed course from the payload opens on Archive once the profile tells the archive state', () {
+    final hub = CourseProfileHub(7, initial: payload('student', closed: true))
+      ..seed(const CoursePageState(closed: true, unread: 0));
+    expect(hub.closed, isTrue);
+    expect(hub.openingTab(), 'archive');
+    final staff = CourseProfileHub(7, initial: payload('instructor'))..seed(const CoursePageState(closed: false, unread: 2));
+    expect(staff.openingTab(), 'announcements');
+  });
+
+  test('older server: no state → the page keeps its tab, unread counted on the device, nothing posted', () {
+    final posted = <(int, int)>[];
+    final bare = CourseProfileHub(7, postSeen: (c, id) async => posted.add((c, id)))..seed(CoursePageState.fromJson({}));
+    expect(bare.openingTab(), isNull);
+    expect(bare.unread, 0);
+    expect(bare.closed, isFalse);
+    final hub = CourseProfileHub(7, initial: payload('student'), postSeen: (c, id) async => posted.add((c, id)))
+      ..seed(CoursePageState.fromJson({'id': 7}));
+    expect(hub.serverUnread, isFalse);
+    expect(hub.unread, 2);
+    expect(hub.smartTab(), 'announcements'); // an old entry point (CoursePageLoader) still lands there
+    hub.markSeen(hub.profile!.announcements);
+    expect(hub.unread, 0);
+    expect(posted, isEmpty);
   });
 
   for (final role in ['student', 'instructor', 'ta']) {

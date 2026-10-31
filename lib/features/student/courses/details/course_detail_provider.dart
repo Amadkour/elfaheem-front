@@ -10,6 +10,7 @@ import '../../../../core/live/event_wait.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/live_events.dart';
 import '../../../shared/course/course_space/course_sessions.dart' show courseStudentSessionDone;
+import '../../../shared/course_profile/course_profile_models.dart' show CoursePageState;
 import '../../../shared/guest/guest_state.dart';
 import '../../models.dart';
 import 'components/issued_certificate.dart';
@@ -47,6 +48,9 @@ class CourseDetailProvider extends BaseProvider {
   /// course image when the teacher added one. Read straight from the
   /// `reel_url` key of GET /courses/{id}.
   String? reelUrl;
+
+  /// `closed` + `announcements_unread` of the last course payload (D-111); null until it is read.
+  CoursePageState? pageState;
 
   CourseDetailTab get activeTab => _activeTab;
 
@@ -102,6 +106,7 @@ class CourseDetailProvider extends BaseProvider {
       course = CourseModel.fromJson(r);
       final reel = (r['reel_url'] as String?)?.trim();
       reelUrl = (reel == null || reel.isEmpty) ? null : reel;
+      pageState = CoursePageState.fromJson(r);
     }
     if (block == CourseBlock.unavailable) {
       sessions = [];

@@ -30,6 +30,7 @@ import '../../student/models.dart';
 import '../home/teacher_models.dart';
 import 'live/prejoin.dart';
 import 'model/live_response_model.dart';
+import '../../shared/course_profile/course_profile_models.dart' show CoursePageState;
 import '../../shared/live/live_config.dart' show LiveConfig;
 import '../../shared/live/live_room.dart' show JoinOutcome;
 import '../../shared/live/live_time_limit.dart' show parseNaiveUtc;
@@ -75,10 +76,14 @@ class TeacherCourseScreenProvider extends BaseProvider {
     notifyListeners();
   }
 
+  /// `closed` + `announcements_unread` of the last course payload (D-111); null until it is read.
+  CoursePageState? pageState;
+
   Future<TeacherCourse?> refreshCourse() async {
     final result = await run(() => _api.get('/api/v1/courses/${_course.id}'));
     if (result is Map<String, dynamic>) {
       _course = TeacherCourse.fromJson(result);
+      pageState = CoursePageState.fromJson(result);
       final reel = (result['reel_url'] as String?)?.trim();
       _reelUrl = (reel == null || reel.isEmpty) ? null : reel;
       notifyListeners();

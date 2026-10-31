@@ -15,6 +15,12 @@
 // [CoursePageLoader], which needs it to know the person's role. The server decides every capability (CpCaps) and
 // enforces it on each write; an archived course is read-only. An earlier run (Archive → Versions) still opens the
 // read-only CourseProfileScreen.
+//
+// The course payload (GET /api/v1/courses/{id}) carries the page's own state for the signed-in caller: `closed` and
+// `announcements_unread` ([CoursePageState], fed in with [CourseProfileHub.seed]). With them the Announcements badge
+// and the opening tab are known on open with no extra request, and showing the Announcements tab tells the server
+// (POST …/course-profile/{id}/announcements/seen). An older server sends neither: "unread" is then counted against
+// the last announcement seen on this device, once the profile is loaded.
 library;
 
 import 'dart:convert';
@@ -46,14 +52,23 @@ const kCpTabClass = 'class';
 const kCpTabTeam = 'team';
 const kCpTabArchive = 'archive';
 
+/// Tells the server the Announcements tab showed everything up to [lastId].
+typedef AnnouncementsSeenPoster = Future<void> Function(int courseId, int lastId);
+
+Future<void> _postSeen(int courseId, int lastId) async {
+  await ApiClient().post('/api/v1/course-profile/$courseId/announcements/seen', body: {'last_id': lastId});
+}
+
 /// The page's own copy of the course profile: loaded once on demand, reloaded after a write / pull-to-refresh.
 class CourseProfileHub extends ChangeNotifier {
-  CourseProfileHub(this.courseId, {Map<String, dynamic>? initial}) {
+  CourseProfileHub(this.courseId, {Map<String, dynamic>? initial, AnnouncementsSeenPoster? postSeen})
+      : _poster = postSeen ?? _postSeen {
     if (initial != null) _p = CourseProfile(initial);
     _seenLoad();
   }
 
   final int courseId;
+  final AnnouncementsSeenPoster _poster;
   CourseProfile? _p;
   String? _error;
   bool _loading = false;
@@ -90,7 +105,30 @@ class CourseProfileHub extends ChangeNotifier {
     if (_p != null || _error != null) await load();
   }
 
-  // ── announcements: "unread" = newer than the last one this person saw here (kept on the device) ──
+  // ── the course payload's state (D-111): closed + the server's unread count ──
+
+  CoursePageState? _seed;
+  bool? _serverClosed;
+  int? _serverUnread;
+
+  /// Takes the state of a freshly read course payload (the same object again is ignored). A closed course loads the
+  /// profile at once: its archive state and the read-only material live there.
+  void seed(CoursePageState? s) {
+    if (s == null || identical(s, _seed) || !s.known) return;
+    _seed = s;
+    _serverClosed = s.closed ?? _serverClosed;
+    _serverUnread = s.unread ?? _serverUnread;
+    _notify();
+    if (_serverClosed == true) ensure();
+  }
+
+  /// The server counts unread announcements (and has the seen route).
+  bool get serverUnread => _serverUnread != null;
+
+  /// The course is closed (archived): the profile's word once loaded, else the course payload's.
+  bool get closed => _p?.closed ?? _serverClosed ?? false;
+
+  // ── announcements: the server's count when it sends one, else newer than the last one seen on this device ──
 
   static const _seenKey = 'cp_announcements_seen';
   SharedPreferences? _prefs;
@@ -116,19 +154,31 @@ class CourseProfileHub extends ChangeNotifier {
     }).catchError((Object _) {});
   }
 
-  /// Announcements newer than the last one seen on this device (from the profile's latest ones).
+  /// Unread announcements: the server's count (known on open), else — an older server — the profile's latest ones
+  /// newer than the last one seen on this device.
   int get unread {
     final p = _p;
-    if (p == null || p.pastVersion) return 0;
+    if (p != null && p.pastVersion) return 0;
+    final s = _serverUnread;
+    if (s != null) return s;
+    if (p == null) return 0;
     return p.announcements.where((a) => (a['id'] is num ? (a['id'] as num).toInt() : 0) > (_seen ?? 0)).length;
   }
 
-  /// The Announcements tab was opened: everything up to its newest is seen.
+  /// The Announcements tab was opened: everything up to its newest is seen — on the device, and on the server when
+  /// it counts (POST …/announcements/seen {last_id}; a failure only leaves the badge for the next open).
   void markSeen(Iterable<Map<String, dynamic>> items) {
-    var top = _seen ?? 0;
+    var shown = 0;
     for (final a in items) {
       final id = a['id'] is num ? (a['id'] as num).toInt() : 0;
-      if (id > top) top = id;
+      if (id > shown) shown = id;
+    }
+    final top = shown > (_seen ?? 0) ? shown : (_seen ?? 0);
+    final s = _serverUnread;
+    if (s != null && shown > 0 && (s > 0 || shown > (_seen ?? 0))) {
+      _serverUnread = 0;
+      _poster(courseId, shown).catchError((Object _) {});
+      if (top == (_seen ?? 0)) _notify();
     }
     if (top == (_seen ?? 0)) return;
     _seen = top;
@@ -140,14 +190,23 @@ class CourseProfileHub extends ChangeNotifier {
     p.setStringList(_seenKey, list.length > 400 ? list.sublist(list.length - 400) : list).catchError((Object _) => false);
   }
 
-  /// Where an old entry point lands when it did not ask for a tab: a closed course's archive (student), the
-  /// announcements while some are unread, else the page's own first tab (null).
+  /// Where the page lands when nobody asked for a tab: a closed course's archive (student, no read-only pass yet),
+  /// the announcements while some are unread, else the page's own first tab (null).
   String? smartTab() {
     final p = _p;
-    if (p == null) return null;
-    if (p.closed && p.isStudent && p.archiveState != 'granted') return kCpTabArchive;
+    if (p == null && !serverUnread) return null;
+    if (p != null && p.closed && p.isStudent && p.archiveState != 'granted') return kCpTabArchive;
     if (unread > 0) return kCpTabAnnouncements;
     return null;
+  }
+
+  /// The tab the page OPENS on by itself, decided once from the course payload's state: null = not known yet (no
+  /// payload, or a closed course whose profile — the archive state — is still loading), '' = the page's own first
+  /// tab. An older server sends no state: this stays null and the page keeps its first tab.
+  String? openingTab() {
+    if (_seed == null) return null;
+    if (_serverClosed == true && _p == null) return _error != null ? '' : null;
+    return smartTab() ?? '';
   }
 
   void _notify() {
@@ -490,10 +549,12 @@ class _CoursePageLoaderState extends State<CoursePageLoader> {
     final p = CourseProfile(profile);
     final hub = CourseProfileHub(widget.courseId, initial: profile);
     final staff = p.isStaff;
-    final tab = cpMergedTab(widget.tab, staff: staff) ?? hub.smartTab();
+    var tab = cpMergedTab(widget.tab, staff: staff);
     Widget page;
     try {
       final json = Map<String, dynamic>.from(await api.get('/api/v1/courses/${widget.courseId}') as Map);
+      hub.seed(CoursePageState.fromJson(json));
+      tab ??= hub.smartTab();
       if (staff) {
         final course = TeacherCourse.fromJson(json);
         page = ChangeNotifierProvider(
