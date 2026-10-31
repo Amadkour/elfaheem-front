@@ -77,6 +77,7 @@ import UIKit
 import Firebase
 import ReplayKit
 import AVFoundation
+import MediaPlayer  // the listen bar's lock-screen controls (VodNowPlaying, D-104)
 import CoreMedia
 import CoreVideo
 import WebRTC
@@ -682,6 +683,7 @@ import os
         registerRecorderChannel(messenger: engine.binaryMessenger)
         registerEventChannel(messenger: engine.binaryMessenger)
         registerBroadcastStateChannel(messenger: engine.binaryMessenger)
+        VodNowPlaying.shared.register(messenger: engine.binaryMessenger) // a lecture as sound (D-104)
 
         // Live share: follow the extension's Started / Stopped for the whole
         // app lifetime, and start from a clean App Group (no stale markers or
@@ -4398,4 +4400,92 @@ private class RecEventStreamHandler: NSObject, FlutterStreamHandler {
         onListen(eventSink); return nil
     }
     func onCancel(withArguments args: Any?) -> FlutterError? { onCancel(); return nil }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VodNowPlaying — the listen bar's lecture on the lock screen / Control Center (D-104)
+//
+// The sound itself is video_player's AVPlayer (allowBackgroundPlayback + UIBackgroundModes audio). This only
+// publishes the title / position / rate to MPNowPlayingInfoCenter and sends the remote commands (play, pause,
+// ±10 s, scrub) back to Dart as "command" on the vod_media channel — the same protocol as Android's
+// VodMediaService.
+// ─────────────────────────────────────────────────────────────────────────────
+final class VodNowPlaying {
+    static let shared = VodNowPlaying()
+    private var channel: FlutterMethodChannel?
+    private var targets: [(MPRemoteCommand, Any)] = []
+    private var title = ""
+    private var subtitle = ""
+    private var playing = false
+    private var position = 0.0
+    private var duration = 0.0
+    private var speed = 1.0
+
+    func register(messenger: FlutterBinaryMessenger) {
+        let ch = FlutterMethodChannel(name: "com.example.flutter_education_app/vod_media", binaryMessenger: messenger)
+        ch.setMethodCallHandler { [weak self] call, result in
+            guard let self = self else { return }
+            let a = call.arguments as? [String: Any] ?? [:]
+            switch call.method {
+            case "start", "update":
+                if let v = a["title"] as? String { self.title = v }
+                if let v = a["subtitle"] as? String { self.subtitle = v }
+                if let v = a["playing"] as? Bool { self.playing = v }
+                if let v = a["position"] as? NSNumber { self.position = v.doubleValue / 1000 }
+                if let v = a["duration"] as? NSNumber { self.duration = v.doubleValue / 1000 }
+                if let v = a["speed"] as? NSNumber { self.speed = v.doubleValue }
+                if call.method == "start" { self.attach() }
+                self.publish()
+                result(true)
+            case "stop":
+                self.detach()
+                result(nil)
+            default:
+                result(FlutterMethodNotImplemented)
+            }
+        }
+        channel = ch
+    }
+
+    private func send(_ cmd: String, ms: Int? = nil) {
+        var args: [String: Any] = ["cmd": cmd]
+        if let ms = ms { args["ms"] = ms }
+        channel?.invokeMethod("command", arguments: args)
+    }
+
+    private func attach() {
+        guard targets.isEmpty else { return }
+        let c = MPRemoteCommandCenter.shared()
+        targets.append((c.playCommand, c.playCommand.addTarget { [weak self] _ in self?.send("play"); return .success }))
+        targets.append((c.pauseCommand, c.pauseCommand.addTarget { [weak self] _ in self?.send("pause"); return .success }))
+        targets.append((c.togglePlayPauseCommand, c.togglePlayPauseCommand.addTarget { [weak self] _ in
+            guard let self = self else { return .commandFailed }
+            self.send(self.playing ? "pause" : "play"); return .success }))
+        c.skipBackwardCommand.preferredIntervals = [10]
+        c.skipForwardCommand.preferredIntervals = [10]
+        targets.append((c.skipBackwardCommand, c.skipBackwardCommand.addTarget { [weak self] _ in self?.send("back"); return .success }))
+        targets.append((c.skipForwardCommand, c.skipForwardCommand.addTarget { [weak self] _ in self?.send("forward"); return .success }))
+        targets.append((c.changePlaybackPositionCommand, c.changePlaybackPositionCommand.addTarget { [weak self] e in
+            guard let e = e as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            self?.send("seek", ms: Int(e.positionTime * 1000)); return .success }))
+        for (cmd, _) in targets { cmd.isEnabled = true }
+    }
+
+    private func detach() {
+        for (cmd, target) in targets { cmd.removeTarget(target) }
+        targets.removeAll()
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
+    private func publish() {
+        var info: [String: Any] = [
+            MPMediaItemPropertyTitle: title,
+            MPMediaItemPropertyArtist: subtitle,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
+            MPNowPlayingInfoPropertyPlaybackRate: playing ? speed : 0.0,
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: speed,
+        ]
+        if duration > 0 { info[MPMediaItemPropertyPlaybackDuration] = duration }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
 }

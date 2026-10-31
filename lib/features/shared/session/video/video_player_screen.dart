@@ -958,7 +958,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       _isLoading = false;
       _switching = false;
     });
-    unawaited(old.dispose());
+    // The old stream goes only after the frame that draws the new one: disposing it first releases the platform
+    // texture the VideoPlayer widget still shows for one frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(old.dispose().catchError((Object _) {})));
+    WidgetsBinding.instance.scheduleFrame();
     if (carry.playing) {
       await next.play();
       _startHideTimer();
@@ -1418,13 +1421,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   Future<void> _openStreamPicker() async {
     _hideTimer?.cancel();
-    final picked = await showVodPicker<MaterialVariant>(
+    // The last row, "Audio only", answers [vodAudioOnlyChoice]: the page closes and the lecture goes on as sound in
+    // the bar at the top of the app (the same hand-off as the Listen button).
+    final picked = await showVodPicker<Object>(
       context,
-      (_, pick) => _StreamPickerSheet(material: _mat, activeVariant: _activeVariant, onSelect: pick),
+      (_, pick) => _StreamPickerSheet(
+        material: _mat,
+        activeVariant: _activeVariant,
+        onSelect: pick,
+        onAudioOnly: _canListen ? () => pick(vodAudioOnlyChoice) : null,
+      ),
     );
     if (!mounted) return;
     _startHideTimer();
-    if (picked != null) await _switchVariant(picked);
+    if (identical(picked, vodAudioOnlyChoice)) {
+      await _startListenOnly();
+    } else if (picked is MaterialVariant) {
+      await _switchVariant(picked);
+    }
   }
 
   Future<void> _openSpeedSheet() async {
@@ -2527,18 +2541,20 @@ class _StreamPickerSheet extends StatelessWidget {
     required this.material,
     required this.activeVariant,
     required this.onSelect,
+    this.onAudioOnly,
   });
 
   final SessionMaterialModel material;
   final MaterialVariant activeVariant;
   final void Function(MaterialVariant) onSelect;
 
+  /// "Audio only": close the video and go on as sound in the bar (null while the stream is not ready).
+  final VoidCallback? onAudioOnly;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final videoVariants = material.videoVariants;
-    final audioVariants = material.audioVariants;
-    final hasAudio = audioVariants.isNotEmpty;
 
     return _SheetFrame(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -2559,7 +2575,8 @@ class _StreamPickerSheet extends StatelessWidget {
           selected: v.url == activeVariant.url,
           onTap: () => onSelect(v),
         )),
-        if (hasAudio) ...[
+        // One "Audio only" row (the bar picks the lecture's audio track itself, else the lightest picture).
+        if (onAudioOnly != null) ...[
           const SizedBox(height: 16),
           _SectionHeader(
             icon: Icons.headphones_rounded,
@@ -2567,11 +2584,7 @@ class _StreamPickerSheet extends StatelessWidget {
             color: c.accent2,
           ),
           const SizedBox(height: 8),
-          ...audioVariants.map((v) => _VariantTile(
-            variant: v,
-            selected: v.url == activeVariant.url,
-            onTap: () => onSelect(v),
-          )),
+          VodAudioOnlyTile(onTap: onAudioOnly!),
         ],
       ]),
     );

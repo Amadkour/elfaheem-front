@@ -118,6 +118,7 @@ class MainActivity : FlutterFragmentActivity() {
         audioInterruptions?.stop()
         audioInterruptions = null
         LiveCallService.release(this)
+        VodMediaService.stop(this)
         super.onDestroy()
     }
 
@@ -221,6 +222,7 @@ class MainActivity : FlutterFragmentActivity() {
         super.configureFlutterEngine(flutterEngine)
         AnnotationOverlayChannel.register(this, flutterEngine.dartExecutor.binaryMessenger) // D-079 whole-screen annotation
         LiveCallService.register(this, flutterEngine.dartExecutor.binaryMessenger) // the room's mic in the background
+        VodMediaService.register(this, flutterEngine.dartExecutor.binaryMessenger) // a lecture as sound (D-104)
 
         // ── 1. Screen-share channel ───────────────────────────────────────────
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CH_SCREEN_SHARE)

@@ -1586,6 +1586,24 @@ have the same problem (not changed here).
 **Rejected.** Making the player a non-route host like the live room (D-059) — a larger change to every caller for the
 same result; an overlay bar drawn over the pages (it would cover app bars and back buttons); a media notification and
 lock-screen controls (needs `audio_service`, a new package — follow-up); keeping the picture stream in listen mode.
+**Round 7 (2026-10-31).** The owner: on the phone a quality pick STILL closed the video; add an "Audio" option that closes
+the video and plays as a WhatsApp-like bar, also in the background and with the screen off. (1) Closing: NOT reproduced yet — the phone stayed locked during this round, so the real cause is still owed (no app crash or ANR of ours in the phone's dropbox, so it is a Flutter-side close, not a process death). Defensive: the old stream is disposed only after the frame that draws the new one (`_switchVariant`).
+(2) The quality sheet ends with ONE "Audio only" row (`VodAudioOnlyTile`, answers `vodAudioOnlyChoice`): the page
+closes into the bar exactly like the Listen button (same controller, same place, no second POST …/play); the old
+in-place audio-track rows are gone from the sheet (the bar picks the audio track itself). (3) The bar is drawn like
+WhatsApp's voice-note bar: play / pause first, title + time (a tap anywhere on them goes back to the video), a speed
+chip that steps 1× → 1.5× → 2× (`VodListenSession.cycleSpeed`; a fixed pill of its own, so the label is never cut —
+it was at 390 px), close; the ±10 s buttons and an explicit expand button only from 600 px. (4) Outside the app
+WITHOUT a new package: Android `VodMediaService` (Kotlin) is a `mediaPlayback` foreground service for the whole
+listen session (FOREGROUND_SERVICE_MEDIA_PLAYBACK) with a framework `MediaSession` + `Notification.MediaStyle`
+notification (−10 s · play / pause · +10 s · close, seek line, lock screen, headset buttons) and a partial wake lock +
+Wi-Fi lock while the sound plays, so Doze / Samsung's battery manager do not cut the stream with the screen off; iOS
+`VodNowPlaying` (AppDelegate.swift) publishes MPNowPlayingInfoCenter and takes MPRemoteCommandCenter commands (the
+sound already went on through UIBackgroundModes audio). Both speak `com.example.flutter_education_app/vod_media`
+(`vod_media_controls.dart`; `VodMediaSync` sends only state changes and jumps — the OS runs the clock from the rate).
+Audio focus stays with ExoPlayer (video_player sets it). Screen protection never blocked the sound. `audio_service` /
+`just_audio_background` rejected: they want to own the player, and the lecture already plays in video_player's
+controller (handed over, not reopened, so no extra counted view).
 
 ## D-108 — The live room has ONE top line (the whiteboard's header joins it, the rest folds into ⋮); full view shows only the content and slides the bars in on a tap · 2026-10-31 · proposed
 

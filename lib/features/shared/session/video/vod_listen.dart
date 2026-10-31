@@ -12,6 +12,10 @@
 //
 // One sound at a time (MediaFocus): opening another lecture's player or joining a live room stops the bar; signing
 // out stops it too. Nothing is stored but the resume position (as the player already did).
+//
+// Outside the app (round 7): VodMediaControls (vod_media_controls.dart) runs the Android foreground media service /
+// the iOS Now Playing entry for the whole session, so the sound goes on with the screen off or in another app, and
+// the notification, the lock screen and a headset send play / pause / ±10 s / seek / stop back here.
 library;
 
 import 'dart:async';
@@ -25,6 +29,7 @@ import '../../../../core/media_focus.dart';
 import '../../../student/courses/details/course_detail_provider.dart';
 import '../../../student/courses/security/device_id_service.dart';
 import '../material/session_material_model.dart';
+import 'vod_media_controls.dart';
 import 'vod_player_parts.dart';
 
 /// Opens and initializes a player for [v] at [at] (clamped into the stream), with [speed] (and [volume] off phones).
@@ -93,7 +98,9 @@ class VodListenHandoff {
   /// The lecture with its play links (the player's resolved model) and as it was listed.
   final SessionMaterialModel material, current;
   final List<SessionMaterialModel>? playlist;
-  final double speed;
+
+  /// The playback speed (the bar's speed chip changes it; the player gets it back on Expand).
+  double speed;
   final bool captionsOn, isOffline, downloaded;
   final String? viewsNote;
   bool completionSent;
@@ -150,6 +157,49 @@ class VodListenSession extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     final target = vodListenVariant(h.material, h.variant, offline: h.isOffline);
     if (vodSwitchDecision(h.variant, target) == VodSwitch.go) unawaited(_swapTo(h, target));
+    unawaited(VodMediaControls.start(title: h.material.name, state: _mediaState(h), onCommand: _onMediaCommand));
+  }
+
+  /// The speeds the bar's chip steps through, like a voice note: 1× → 1.5× → 2× → 1×.
+  static const chipSpeeds = <double>[1.0, 1.5, 2.0];
+
+  /// The bar's speed chip: the next speed of [chipSpeeds] (a speed set in the player that is not one of them
+  /// goes to the next one above it).
+  void cycleSpeed() => setSpeed(vodNextChipSpeed(_h?.speed ?? 1.0, chipSpeeds));
+
+  void setSpeed(double speed) {
+    final h = _h;
+    if (h == null) return;
+    h.speed = speed;
+    final c = h.controller;
+    if (c.value.isInitialized) unawaited(c.setPlaybackSpeed(speed).catchError((Object _) {}));
+    notifyListeners();
+    VodMediaControls.update(_mediaState(h));
+  }
+
+  VodMediaState _mediaState(VodListenHandoff h) {
+    final v = h.controller.value;
+    return VodMediaState(playing: v.isPlaying, position: v.position, duration: v.duration, speed: h.speed);
+  }
+
+  void _onMediaCommand(VodMediaCommand cmd, Duration? at) {
+    final c = _h?.controller;
+    if (c == null) return;
+    switch (cmd) {
+      case VodMediaCommand.play:
+        if (!c.value.isPlaying) togglePlay();
+      case VodMediaCommand.pause:
+        if (c.value.isPlaying) togglePlay();
+      case VodMediaCommand.back:
+        seekBy(-10);
+      case VodMediaCommand.forward:
+        seekBy(10);
+      case VodMediaCommand.seek:
+        final d = c.value.duration;
+        if (at != null && d > Duration.zero) seekToFraction(at.inMilliseconds / d.inMilliseconds);
+      case VodMediaCommand.stop:
+        unawaited(stop());
+    }
   }
 
   /// Expand: hands the controller back to a new player (nothing is disposed).
@@ -247,6 +297,7 @@ class VodListenSession extends ChangeNotifier with WidgetsBindingObserver {
     _keepPlayingUntil = null;
     _switching = false;
     MediaFocus.release(this);
+    unawaited(VodMediaControls.stop());
     if (identical(_h, h)) _h = null;
     if (dispose) {
       final c = h.controller;
@@ -260,6 +311,7 @@ class VodListenSession extends ChangeNotifier with WidgetsBindingObserver {
     if (h == null) return;
     final v = h.controller.value;
     if (!v.isInitialized) return;
+    VodMediaControls.update(_mediaState(h));
     // Web: the browser paused the element the player page took off the screen — the person did not.
     final until = _keepPlayingUntil;
     if (until != null) {

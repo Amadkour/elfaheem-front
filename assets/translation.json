@@ -18352,5 +18352,21 @@
   "vod_switch_failed": {
     "en": "Couldn't switch to {q}. Still playing {old}.",
     "ar": "تعذّر التبديل إلى {q}، وما زال التشغيل على {old}."
+  },
+  "vod_speed": {
+    "en": "Playback speed",
+    "ar": "سرعة التشغيل"
+  },
+  "vod_media_channel": {
+    "en": "Lectures playing",
+    "ar": "المحاضرات قيد التشغيل"
+  },
+  "vod_audio_only_title": {
+    "en": "Audio only",
+    "ar": "الصوت فقط"
+  },
+  "vod_audio_only_sub": {
+    "en": "Closes the video and keeps playing in a bar at the top, also with the screen off or in another app",
+    "ar": "يغلق الفيديو ويكمل التشغيل في شريط أعلى التطبيق، حتى مع إطفاء الشاشة أو فتح تطبيق آخر"
   }
 }

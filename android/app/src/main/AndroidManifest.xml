@@ -29,6 +29,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- D-094: the presenter's camera keeps streaming while they share from another app (ScreenCaptureService). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <!-- D-104: a course lecture keeps playing as sound with the screen off / in another app (VodMediaService). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- D-079: the whole-screen annotation overlay draws over other apps while the presenter shares -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -128,6 +130,15 @@
             android:name=".LiveCallService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!--
+            VodMediaService (D-104): the listen bar's lecture as sound in the background - media notification,
+            lock-screen controls, wake + Wi-Fi locks while it plays.
+        -->
+        <service
+            android:name=".VodMediaService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!--
             flutter_webrtc screen share FGS — required on Android 14.
