@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Flutter rewrites the generated plugin registrant with LF on every pub get; checked out as LF it no longer shows as modified
+macos/Flutter/GeneratedPluginRegistrant.swift text eol=lf
