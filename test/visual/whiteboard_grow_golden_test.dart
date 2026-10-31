@@ -8,6 +8,9 @@
 //   viewer  a viewer of a page grown both ways (a note left of the column, a worked example right of it), who dragged
 //           the page away from the presenter: both rails with the presenter's marks, and "Follow …".
 //   follow  the same viewer after "Follow …": back on the presenter's part of the page.
+//   rails   (D-109) the same viewer following, both rails idle (the thumbs are scrollbars).
+//   vgrab   the viewer long-pressed the vertical thumb and drags it down (still held: wide, accent, glow).
+//   hgrab   the viewer long-pressed the sideways thumb and drags it left (still held).
 @Tags(['visual'])
 library;
 
@@ -259,6 +262,31 @@ Future<void> _panAwayThenFollow(WidgetTester t) async {
   }
 }
 
+var _grabPointer = 400;
+
+/// Lets the follow settle, then long-presses the [key] thumb and drags it by [by] (held).
+Future<void> Function(WidgetTester) _grab(String key, Offset by) => (t) async {
+      for (var i = 0; i < 30; i++) {
+        await t.pump(const Duration(milliseconds: 16));
+      }
+      final g = await t.startGesture(t.getCenter(find.byKey(ValueKey(key))), pointer: _grabPointer++);
+      await t.pump(const Duration(milliseconds: 600));
+      for (var i = 1; i <= 8; i++) {
+        await g.moveBy(by / 8);
+        await t.pump(const Duration(milliseconds: 16));
+      }
+      for (var i = 0; i < 12; i++) {
+        await t.pump(const Duration(milliseconds: 16));
+      }
+      // Still held.
+    };
+
+Future<void> _settle(WidgetTester t) async {
+  for (var i = 0; i < 30; i++) {
+    await t.pump(const Duration(milliseconds: 16));
+  }
+}
+
 Future<void> _render(WidgetTester tester, String name, Widget Function(BuildContext) scene,
     {Future<void> Function(WidgetTester t)? act, List<bool> themes = const [true]}) async {
   final prevLang = AppConfig.lang;
@@ -314,4 +342,7 @@ void main() {
   testWidgets('draw', (t) => _render(t, 'draw', _drawScene, act: _drawToRight));
   testWidgets('viewer', (t) => _render(t, 'viewer', _viewerScene, act: _panAway, themes: const [false, true]));
   testWidgets('follow', (t) => _render(t, 'follow', _viewerScene, act: _panAwayThenFollow));
+  testWidgets('rails', (t) => _render(t, 'rails', _viewerScene, act: _settle, themes: const [false, true]));
+  testWidgets('vgrab', (t) => _render(t, 'vgrab', _viewerScene, act: _grab('board.rail.thumb', const Offset(0, 160))));
+  testWidgets('hgrab', (t) => _render(t, 'hgrab', _viewerScene, act: _grab('board.side_rail.thumb', const Offset(-90, 0))));
 }

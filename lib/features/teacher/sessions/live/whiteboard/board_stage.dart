@@ -46,6 +46,14 @@
 // left of the column's once it grew left ([_frame] is that corner; positions inside are `ox + x × width`). A second,
 // horizontal rail along the bottom shows where the view is across the page (and where the presenter is); viewers
 // follow the presenter sideways too ([boardFollowLeft]).
+//
+// The rails are scrollbars (D-109, board_scrollbar.dart): a long press on a thumb (a finger or a pen; the mouse just
+// presses) grabs it — a tick of haptics, the thumb grows and takes the accent — and dragging it moves the view along
+// that axis in proportion to the page; a tap on the track beside the thumb moves a page. Their hit targets are 44 px
+// however thin they are drawn. A pointer on a rail is held back from the pen and the view pan until it grabs, taps the
+// track, or (a finger or pen that moves first) is handed to them as if it had just come down, so a stroke that starts
+// on a rail still draws and a grabbed thumb never does. A viewer who drags a thumb stops following; the presenter's
+// view goes out like any scroll. Tests: test/org/board_scrollbar_test.dart, test/ui/whiteboard_scrollbar_layout_test.dart.
 library;
 
 import 'dart:async';
@@ -73,6 +81,7 @@ import 'board_edge_scroll.dart';
 import 'board_format.dart';
 import 'board_painter.dart';
 import 'board_protocol.dart';
+import 'board_scrollbar.dart';
 
 /// The page's text style for a box of font size [size] (page-width fraction) on a page [pageWidth] wide.
 TextStyle boardTextStyle(BoardText tx, double pageWidth) => TextStyle(
@@ -177,6 +186,15 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   DateTime? _lastTapAt;
   String? _lastTapId;
 
+  // The rails as scrollbars (D-109): the rails at the last build (null: not shown) and the pointer on one.
+  BoardRailBox? _vRail, _hRail;
+  _RailGrab? _rail;
+  Timer? _railTimer;
+
+  /// What the pointer on a rail did down on the board, held back until it is handed over ([_railRelease]).
+  ({PointerDownEvent e, Offset frame})? _railDeferredDown;
+  PointerDownEvent? _railDeferredView;
+
   // text editing
   String? _editingId;
   final TextEditingController _text = TextEditingController();
@@ -234,6 +252,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     if (id != null) _c.endEdit(id);
     _probeTimer?.cancel();
     _offerTimer?.cancel();
+    _railTimer?.cancel();
     _ticker.dispose();
     _text.dispose();
     _focus.dispose();
@@ -364,6 +383,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   }
 
   void _probeDown(PointerDownEvent e) {
+    if (_rail != null) return;
     if (!_probing || e.kind == PointerDeviceKind.mouse || (_c.drawMode && _c.tool != BoardTool.hand)) return;
     _pressAt = e.localPosition;
     _probeTimer?.cancel();
@@ -476,9 +496,14 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     return !_c.drawMode || _handMode;
   }
 
-  void _down(PointerDownEvent e) {
+  void _down(PointerDownEvent e, {Offset? frame}) {
     if (!_c.drawMode) return;
     if (e.kind == PointerDeviceKind.mouse && (e.buttons & kPrimaryMouseButton) == 0) return;
+    if (_railGrabbed) return; // a thumb is being dragged: nothing draws
+    if (_railOwns(e.pointer)) {
+      _railDeferredDown = (e: e, frame: _frame);
+      return;
+    }
     final stylus = _isStylus(e.kind);
     if (stylus) {
       _stylusDown = true;
@@ -498,7 +523,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         return;
       }
     }
-    _downOrigin = _frame;
+    _downOrigin = frame ?? _frame;
     final stage = _stageOf(e);
     final local = stage - _origin; // on the page (x 0 = the column's left edge)
     final n = _norm(local);
@@ -926,6 +951,34 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         // Where the column's left edge (x 0) is in the shown rect: right of its left edge once it grew left (D-107).
         final ox = page.left - shown.left;
         final sideRail = cont && cv!.xMax - cv.xMin > cv.visibleW + 1e-3 && !vis.isEmpty;
+        // The rails (D-109): where they are drawn and what they show, for the painting and for the pointer.
+        final rtl = Directionality.of(context) == TextDirection.rtl;
+        BoardRailBox? vRail, hRail;
+        if (cont && !vis.isEmpty) {
+          final r = Rect.fromLTWH(
+              _railLeft(vis, size.width, rtl), vis.top + 10, 6, math.max(0.0, vis.height - (sideRail ? 30 : 20)));
+          vRail = BoardRailBox(
+            rect: r,
+            vertical: true,
+            metrics: BoardRailMetrics(track: r.height, lo: 0, hi: cv!.extent, start: cv.scroll, length: math.min(cv.visible, cv.extent)),
+          );
+          if (!vRail.metrics.scrollable) vRail = null;
+        }
+        // Across the page (D-107): once it reaches past what one screen shows. Page x runs left to right in every
+        // language, so this rail is never mirrored.
+        if (sideRail) {
+          final r = Rect.fromLTWH(vis.left + (rtl ? 26 : 12), vis.bottom - 12, math.max(0.0, vis.width - 38), 6);
+          hRail = BoardRailBox(
+            rect: r,
+            vertical: false,
+            metrics: BoardRailMetrics(track: r.width, lo: cv.xMin, hi: cv.xMax, start: cv.viewLeft, length: cv.visibleW),
+          );
+          if (!hRail.metrics.scrollable) hRail = null;
+        }
+        _vRail = vRail;
+        _hRail = hRail;
+        final grab = _rail;
+        final pvShown = presenting ? null : _c.presenterViewport.value;
 
         final content = Stack(clipBehavior: Clip.hardEdge, children: [
           Positioned.fill(
@@ -1076,37 +1129,19 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
             ),
           if (_c.needsUpdate)
             Positioned.fromRect(rect: page.isEmpty || cont ? screen : page, child: const _NeedsUpdate()),
-          if (cont && !vis.isEmpty)
-            Positioned(
-              top: vis.top + 10,
-              height: math.max(0.0, vis.height - (sideRail ? 30 : 20)),
-              left: _railLeft(vis, size.width, Directionality.of(context) == TextDirection.rtl),
-              width: 6,
-              child: IgnorePointer(
-                child: _ScrollRail(
-                  extent: cv!.extent,
-                  view: cv.viewport,
-                  presenter: presenting ? null : _c.presenterViewport.value,
-                ),
-              ),
+          if (vRail != null)
+            _railView(
+              vRail,
+              key: const ValueKey('board.rail'),
+              presenter: pvShown == null ? null : (pvShown.top, pvShown.height),
+              grabbed: grab != null && grab.grabbed && grab.vertical,
             ),
-          // Across the page (D-107): once it reaches past what one screen shows. Page x runs left to right in every
-          // language, so this rail is never mirrored.
-          if (sideRail)
-            Positioned(
-              top: vis.bottom - 12,
-              height: 6,
-              left: vis.left + (Directionality.of(context) == TextDirection.rtl ? 26 : 12),
-              width: math.max(0.0, vis.width - 38),
-              child: IgnorePointer(
-                child: _SideRail(
-                  key: const ValueKey('board.side_rail'),
-                  xMin: cv.xMin,
-                  xMax: cv.xMax,
-                  view: cv.viewport,
-                  presenter: presenting ? null : _c.presenterViewport.value,
-                ),
-              ),
+          if (hRail != null)
+            _railView(
+              hRail,
+              key: const ValueKey('board.side_rail'),
+              presenter: pvShown == null || pvShown.width <= 0 ? null : (pvShown.left, pvShown.width),
+              grabbed: grab != null && grab.grabbed && !grab.vertical,
             ),
           if (cont && !presenting && !_follow && _c.presenterViewport.value != null)
             Positioned(
@@ -1137,6 +1172,17 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
               top: 8,
               end: cont ? 16 : 8,
               child: _ZoomChip(percent: (_zoom * 100).round(), onReset: _resetZoom),
+            ),
+          // The rails' pointer (D-109): hit first, translucent, so whatever is below still gets every event.
+          if (vRail != null || hRail != null || grab != null)
+            Positioned.fill(
+              child: Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: _railDown,
+                onPointerMove: _railMove,
+                onPointerUp: _railUp,
+                onPointerCancel: _railUp,
+              ),
             ),
         ]);
         // Pinch (two fingers) / Ctrl + wheel zooms this device's view only; two fingers (or the wheel) pan it; a
@@ -1170,6 +1216,166 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         );
       }),
     );
+  }
+
+  // ── The rails as scrollbars (D-109) ────────────────────────────────────────
+
+  bool _railOwns(int pointer) => _rail?.pointer == pointer;
+  bool get _railGrabbed => _rail?.grabbed ?? false;
+
+  /// The drawn rail and, over its thumb, the grab cursor (translucent: it takes nothing from the board).
+  Widget _railView(BoardRailBox r, {required Key key, (double, double)? presenter, bool grabbed = false}) {
+    const box = BoardScrollRail.thickness;
+    final c = r.rect.center;
+    final at = r.vertical
+        ? Rect.fromLTWH(c.dx - box / 2, r.rect.top, box, r.rect.height)
+        : Rect.fromLTWH(r.rect.left, c.dy - box / 2, r.rect.width, box);
+    return Positioned.fromRect(
+      rect: at,
+      child: Stack(clipBehavior: Clip.none, children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: BoardScrollRail(
+              key: key,
+              vertical: r.vertical,
+              lo: r.metrics.lo,
+              hi: r.metrics.hi,
+              start: r.metrics.start,
+              length: r.metrics.length,
+              presenter: presenter,
+              grabbed: grabbed,
+            ),
+          ),
+        ),
+        Positioned.fromRect(
+          rect: r.thumbHitRect.shift(-at.topLeft),
+          child: MouseRegion(
+            opaque: false,
+            hitTestBehavior: HitTestBehavior.translucent,
+            cursor: grabbed ? SystemMouseCursors.grabbing : SystemMouseCursors.grab,
+          ),
+        ),
+      ]),
+    );
+  }
+
+  /// A pointer came down on the stage: on a rail, the rail holds it — a mouse grabs the thumb (or moves a page from
+  /// the track) at once; a finger or a pen grabs the thumb after a long press, moves a page with a tap on the track,
+  /// and is handed back to the board when it moves first.
+  void _railDown(PointerDownEvent e) {
+    if (_rail != null || _pointer != null || _viewPan != null || _pinch != null || !mounted) return;
+    final mouse = e.kind == PointerDeviceKind.mouse;
+    if (mouse && (e.buttons & kPrimaryMouseButton) == 0) return;
+    if (e.kind == PointerDeviceKind.touch && (_touches.isNotEmpty || _palmWindow)) return;
+    final hit = boardRailHit([_vRail, _hRail], e.localPosition);
+    if (hit == null) return;
+    final g = _RailGrab(pointer: e.pointer, kind: e.kind, vertical: hit.rail.vertical, part: hit.part, down: e.localPosition);
+    _rail = g;
+    if (mouse) {
+      if (hit.part == BoardRailPart.thumb) {
+        _railGrab();
+      } else {
+        _railPage(hit.rail, e.localPosition);
+      }
+      return;
+    }
+    if (hit.part == BoardRailPart.thumb) {
+      _railTimer = Timer(kLongPressTimeout, () {
+        if (!mounted || !identical(_rail, g) || g.grabbed) return;
+        unawaited(HapticFeedback.mediumImpact());
+        _railGrab();
+      });
+    }
+  }
+
+  /// The pointer on the rail takes the thumb: from now on its moves move the view.
+  void _railGrab() {
+    final g = _rail;
+    if (g == null) return;
+    final r = g.vertical ? _vRail : _hRail;
+    if (r == null) {
+      _railEnd();
+      return;
+    }
+    _railTimer?.cancel();
+    _probeTimer?.cancel();
+    _pressAt = null;
+    _railDeferredDown = null;
+    _railDeferredView = null;
+    setState(() {
+      g.grabbed = true;
+      g.thumb0 = r.metrics.thumbStart;
+    });
+  }
+
+  void _railMove(PointerMoveEvent e) {
+    final g = _rail;
+    if (g == null || g.pointer != e.pointer) return;
+    if (!g.grabbed) {
+      // A finger or a pen that moves before the long press draws / pans as if it had just come down.
+      if (g.kind != PointerDeviceKind.mouse && (e.localPosition - g.down).distance > kTouchSlop) _railRelease();
+      return;
+    }
+    final r = g.vertical ? _vRail : _hRail;
+    if (r == null || _box.isEmpty) return;
+    final d = e.localPosition - g.down;
+    _railApply(g.vertical, r.metrics.startForThumb(g.thumb0 + (g.vertical ? d.dy : d.dx)));
+  }
+
+  void _railUp(PointerEvent e) {
+    final g = _rail;
+    if (g == null || g.pointer != e.pointer) return;
+    if (!g.grabbed && e is PointerUpEvent && g.kind != PointerDeviceKind.mouse) {
+      if (g.part == BoardRailPart.track) {
+        // A tap on the track: a page that way (the tap is the rail's).
+        final r = g.vertical ? _vRail : _hRail;
+        _railEnd();
+        if (r != null) _railPage(r, g.down);
+      } else {
+        _railRelease(); // a tap on the thumb is the board's (a dot, a text box)
+      }
+      return;
+    }
+    _railEnd();
+  }
+
+  /// The view moved by the rail to [to] (its start on that axis: page fraction down, page widths across).
+  void _railApply(bool vertical, double to) {
+    if (_box.isEmpty || !_c.isContinuous) return;
+    _leaveFollow();
+    final v = _cvNow(_box);
+    setState(() {
+      if (vertical) {
+        _scroll = v.copyWith(scroll: to).clamped().scroll;
+      } else {
+        _cpanX = v.withViewLeft(to).panX;
+      }
+    });
+  }
+
+  /// A tap at [at] (stage) on [r]'s track: a page towards it.
+  void _railPage(BoardRailBox r, Offset at) {
+    final to = r.metrics.paged(r.along(at));
+    if (to != null) _railApply(r.vertical, to);
+  }
+
+  /// The rail lets go of its pointer (what it held back is dropped).
+  void _railEnd() {
+    final g = _rail;
+    _railTimer?.cancel();
+    _railTimer = null;
+    _rail = null;
+    _railDeferredDown = null;
+    _railDeferredView = null;
+    if (g != null && g.grabbed && mounted) setState(() {});
+  }
+
+  /// The rail hands its pointer to the board as if it had just come down there.
+  void _railRelease() {
+    final down = _railDeferredDown, view = _railDeferredView;
+    _railEnd();
+    if (down != null) _down(down.e, frame: down.frame);
+    if (view != null) _zoomDown(view, _box);
   }
 
   /// The rail beside the visible page's end edge (the left one in Arabic), inside it when there is no room outside.
@@ -1253,7 +1459,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
 
   /// Where the mouse looks over the page while drawing: grabbing while the view moves, grab where a drag moves it.
   MouseCursor _drawCursor() {
-    if (_viewPan != null) return SystemMouseCursors.grabbing;
+    if (_viewPan != null || _railGrabbed) return SystemMouseCursors.grabbing;
     if (_handMode) return SystemMouseCursors.grab;
     if (_c.tool == BoardTool.select) {
       return _hoverItem ? SystemMouseCursors.move : (_pannable ? SystemMouseCursors.grab : SystemMouseCursors.basic);
@@ -1263,11 +1469,16 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
 
   /// And over the stage (whoever is not drawing).
   MouseCursor _viewCursor() {
-    if (_viewPan != null) return SystemMouseCursors.grabbing;
+    if (_viewPan != null || _railGrabbed) return SystemMouseCursors.grabbing;
     return !_c.drawMode && _pannable ? SystemMouseCursors.grab : MouseCursor.defer;
   }
 
   void _zoomDown(PointerDownEvent e, Size size) {
+    if (_railGrabbed) return;
+    if (_railOwns(e.pointer)) {
+      _railDeferredView = e;
+      return;
+    }
     if (_isStylus(e.kind)) {
       // The pen came down: a palm resting on the page must not scroll it (the pen itself may move the view).
       if (_viewPan?.pointer != e.pointer) {
@@ -1564,114 +1775,95 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       };
 }
 
-/// Where this view is on a continuous page: a slim rail at the end edge, the view's thumb, and the presenter's view
-/// as an accent mark (viewers).
-class _ScrollRail extends StatelessWidget {
-  const _ScrollRail({required this.extent, required this.view, this.presenter});
+/// The pointer on a rail (D-109): which rail, on what, where it came down; once [grabbed], the thumb's start (px) then.
+class _RailGrab {
+  _RailGrab({required this.pointer, required this.kind, required this.vertical, required this.part, required this.down});
 
-  final double extent;
-  final BoardViewportPos view;
-  final BoardViewportPos? presenter;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
-        final h = c.maxHeight;
-        if (!h.isFinite || h <= 0 || extent <= 0 || view.height >= extent - 1e-6) return const SizedBox.shrink();
-        double y(double v) => (v / extent).clamp(0.0, 1.0) * h;
-        final top = y(view.top), bottom = math.max(y(view.bottom), y(view.top) + 18);
-        final p = presenter;
-        return Stack(clipBehavior: Clip.none, children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: LivePalette.shade(0.18), borderRadius: BorderRadius.circular(3)),
-            ),
-          ),
-          if (p != null)
-            Positioned(
-              left: -2,
-              right: -2,
-              top: y(p.top),
-              height: math.max(4.0, y(p.bottom) - y(p.top)),
-              child: DecoratedBox(
-                key: const ValueKey('board.rail.presenter'),
-                decoration: BoxDecoration(
-                  color: LivePalette.accent.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-            ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: top,
-            height: math.min(h, bottom) - top,
-            child: DecoratedBox(
-              key: const ValueKey('board.rail.thumb'),
-              decoration: BoxDecoration(
-                color: const Color(0xB3475569),
-                borderRadius: BorderRadius.circular(3),
-                border: Border.all(color: const Color(0x66FFFFFF), width: 0.8),
-              ),
-            ),
-          ),
-        ]);
-      });
+  final int pointer;
+  final PointerDeviceKind kind;
+  final bool vertical;
+  final BoardRailPart part;
+  final Offset down;
+  bool grabbed = false;
+  double thumb0 = 0;
 }
 
-/// Where this view is across a continuous page grown sideways (D-107): a slim rail along the bottom, the view's thumb
-/// and the presenter's view as an accent mark (viewers). Page x runs left to right in every language.
-class _SideRail extends StatelessWidget {
-  const _SideRail({super.key, required this.xMin, required this.xMax, required this.view, this.presenter});
+/// Where this view is on a continuous page (D-093 / D-107, scrollbars D-109): a slim track, the view's thumb and the
+/// presenter's view as an accent mark (viewers) — down the end edge ([vertical]) or across the bottom. [lo]..[hi] is
+/// the page's range on that axis, [start] / [length] the view's, [presenter] the presenter's (start, length).
+/// [grabbed]: the thumb is held — it grows and takes the accent. Drawn centred in a box [thickness] px across;
+/// plain values (test/ui/whiteboard_scrollbar_layout_test.dart).
+class BoardScrollRail extends StatelessWidget {
+  const BoardScrollRail({
+    super.key,
+    required this.vertical,
+    required this.lo,
+    required this.hi,
+    required this.start,
+    required this.length,
+    this.presenter,
+    this.grabbed = false,
+  });
 
-  final double xMin;
-  final double xMax;
-  final BoardViewportPos view;
-  final BoardViewportPos? presenter;
+  /// The box the rail is drawn in, across (px): the grabbed rail at its widest.
+  static const thickness = 16.0;
+
+  final bool vertical;
+  final double lo, hi, start, length;
+  final (double, double)? presenter;
+  final bool grabbed;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
-        final w = c.maxWidth;
-        final span = xMax - xMin;
-        if (!w.isFinite || w <= 0 || span <= 0 || view.width >= span - 1e-6) return const SizedBox.shrink();
-        double x(double v) => ((v - xMin) / span).clamp(0.0, 1.0) * w;
-        final left = x(view.left), right = math.max(x(view.right), x(view.left) + 18);
-        final p = presenter;
-        return Stack(clipBehavior: Clip.none, children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: LivePalette.shade(0.18), borderRadius: BorderRadius.circular(3)),
-            ),
-          ),
-          if (p != null && p.width > 0)
-            Positioned(
-              top: -2,
-              bottom: -2,
-              left: x(p.left),
-              width: math.max(4.0, x(p.right) - x(p.left)),
-              child: DecoratedBox(
-                key: const ValueKey('board.side_rail.presenter'),
-                decoration: BoxDecoration(
-                  color: LivePalette.accent.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(5),
-                ),
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(end: grabbed ? 1.0 : 0.0),
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        builder: (context, g, _) => LayoutBuilder(builder: (context, c) {
+          final len = vertical ? c.maxHeight : c.maxWidth;
+          final across = vertical ? c.maxWidth : c.maxHeight;
+          final m = BoardRailMetrics(track: len.isFinite ? len : 0, lo: lo, hi: hi, start: start, length: length);
+          if (!m.scrollable || !across.isFinite) return const SizedBox.shrink();
+          final track = ui.lerpDouble(6, 12, g)!;
+          final markW = math.min(across, track + 4);
+          double at(double v) => ((v - lo) / m.span).clamp(0.0, 1.0) * len;
+          Widget bar(Key? key, double a, double l, double w, BoxDecoration d) {
+            final off = (across - w) / 2;
+            return Positioned(
+              left: vertical ? off : a,
+              top: vertical ? a : off,
+              width: vertical ? w : l,
+              height: vertical ? l : w,
+              child: DecoratedBox(key: key, decoration: d),
+            );
+          }
+
+          final p = presenter;
+          final accent = LivePalette.accent;
+          final thumbColor = Color.lerp(const Color(0xB3475569), accent, g)!;
+          return Stack(clipBehavior: Clip.none, children: [
+            bar(null, 0, len, track,
+                BoxDecoration(color: LivePalette.shade(0.18 + 0.1 * g), borderRadius: BorderRadius.circular(track / 2))),
+            if (p != null)
+              bar(ValueKey(vertical ? 'board.rail.presenter' : 'board.side_rail.presenter'), at(p.$1),
+                  math.max(4.0, at(p.$1 + p.$2) - at(p.$1)), markW,
+                  BoxDecoration(color: accent.withValues(alpha: 0.55), borderRadius: BorderRadius.circular(markW / 2))),
+            bar(
+              ValueKey(vertical ? 'board.rail.thumb' : 'board.side_rail.thumb'),
+              m.thumbStart,
+              m.thumbLength,
+              track,
+              BoxDecoration(
+                color: thumbColor,
+                borderRadius: BorderRadius.circular(track / 2),
+                border: Border.all(color: Color.lerp(const Color(0x66FFFFFF), const Color(0xE6FFFFFF), g)!, width: 0.8 + 0.7 * g),
+                boxShadow: g <= 0
+                    ? null
+                    : [BoxShadow(color: accent.withValues(alpha: 0.45 * g), blurRadius: 10 * g, spreadRadius: 1 * g)],
               ),
             ),
-          Positioned(
-            top: 0,
-            bottom: 0,
-            left: math.min(left, w - 18),
-            width: math.min(w, right) - math.min(left, w - 18),
-            child: DecoratedBox(
-              key: const ValueKey('board.side_rail.thumb'),
-              decoration: BoxDecoration(
-                color: const Color(0xB3475569),
-                borderRadius: BorderRadius.circular(3),
-                border: Border.all(color: const Color(0x66FFFFFF), width: 0.8),
-              ),
-            ),
-          ),
-        ]);
-      });
+          ]);
+        }),
+      );
 }
 
 /// "Follow Dr. Mona" on a continuous page, once a viewer scrolled away from the presenter's view.
