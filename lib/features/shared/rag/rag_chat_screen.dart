@@ -458,7 +458,7 @@ class RagChatViewState extends State<RagChatView> {
   /// make no sense.
   void _noticeSwapped() {
     if (!mounted || !TickerMode.getValuesNotifier(context).value.enabled) return;
-    showAppNotice(t('محادثتك السابقة محفوظة في «المحادثات»', 'Your previous chat is saved under Chats'),
+    showAppNotice('rag_chat_moved_to_chats'.tr,
         icon: Icons.history_rounded, actionLabel: 'rag_chats'.tr, onAction: showSessions);
   }
 

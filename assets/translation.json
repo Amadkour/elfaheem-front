@@ -16917,6 +16917,10 @@
     "en": "{n} days ago",
     "ar": "منذ {n} أيام"
   },
+  "rag_chat_moved_to_chats": {
+    "en": "Your previous chat is saved under Chats",
+    "ar": "محادثتك السابقة محفوظة في «المحادثات»"
+  },
   "rag_chat_current": {
     "en": "Current",
     "ar": "الحالية"
