@@ -7761,6 +7761,10 @@
     "en": "Stop Share",
     "ar": "إيقاف المشاركة"
   },
+  "lr_stop_short": {
+    "en": "Stop",
+    "ar": "إيقاف"
+  },
   "lr_share": {
     "en": "Share",
     "ar": "مشاركة"

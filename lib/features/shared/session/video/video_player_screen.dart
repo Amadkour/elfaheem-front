@@ -526,14 +526,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       return;
     }
 
-    // Mobile: stream links only work together with this device's id header.
-    // Web: a <video> element can't send headers; the server's link already
-    // carries the id as ?d=..., so send none.
+    // Mobile: stream links only work together with this device's id header (the offline copy's loopback server
+    // ignores it; skipping every 127.0.0.1 link broke a build pointed at a local stack over `adb reverse`).
+    // Web: a <video> element can't send headers; the server's link already carries the id as ?d=..., so send none.
     final next = VideoPlayerController.networkUrl(
       Uri.parse(variant.url!),
-      httpHeaders: (kIsWeb || variant.url!.startsWith('http://127.0.0.1'))
-          ? const <String, String>{}
-          : await DeviceIdService.instance.headers(),
+      httpHeaders: kIsWeb ? const <String, String>{} : await DeviceIdService.instance.headers(),
       // Keep playing (sound) in background. iOS also needs
       // UIBackgroundModes=audio in Info.plist. Ignored on web.
       videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: true),

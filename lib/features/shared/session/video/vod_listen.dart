@@ -43,13 +43,11 @@ Future<VideoPlayerController> openVodController(
 }) async {
   final url = v.url;
   if (url == null || url.isEmpty) throw StateError('no stream url');
-  // Mobile: stream links only work with this device's id header. Web: a <video> element can't send headers (the
-  // link carries ?d=…); the offline copy's loopback server needs none.
+  // Mobile: stream links only work with this device's id header (the offline copy's loopback server ignores it).
+  // Web: a <video> element can't send headers (the link carries ?d=…).
   final c = VideoPlayerController.networkUrl(
     Uri.parse(url),
-    httpHeaders: (kIsWeb || url.startsWith('http://127.0.0.1'))
-        ? const <String, String>{}
-        : await DeviceIdService.instance.headers(),
+    httpHeaders: kIsWeb ? const <String, String>{} : await DeviceIdService.instance.headers(),
     videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: true),
   );
   try {

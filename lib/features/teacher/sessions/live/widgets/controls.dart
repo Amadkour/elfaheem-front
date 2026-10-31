@@ -457,6 +457,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
                 key: const ValueKey('live_room.share'),
                 icon: isSharing ? Icons.stop_screen_share_rounded : Icons.screen_share_rounded,
                 label: isSharing ? 'lr_stop_share'.tr : 'lr_share'.tr,
+                compactLabel: isSharing ? 'lr_stop_short'.tr : null, // "Stop S…" was cut under the phone's button
                 active: isSharing,
                 color: isSharing ? _emerald : null,
                 loading: _screenShareBusy,
@@ -582,6 +583,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
           key: const ValueKey('live_room.share'),
           icon: Icons.stop_screen_share_rounded,
           label: 'lr_stop_share'.tr,
+          compactLabel: 'lr_stop_short'.tr,
           active: true,
           color: _emerald,
           loading: busy,
