@@ -73,4 +73,5 @@ Future<bool> showTimetableTableExport(
   String? memberKey,
   String? memberLabel,
 }) =>
-    showAppExportSheet(context, timetableTableExport(id: id, title: title, slots: slots, names: names, meta: meta, memberKey: memberKey, memberLabel: memberLabel));
+    showAppExportSheet(
+        context, bilingualExport(() => timetableTableExport(id: id, title: title, slots: slots, names: names, meta: meta, memberKey: memberKey, memberLabel: memberLabel)));

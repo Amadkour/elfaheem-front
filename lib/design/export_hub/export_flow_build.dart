@@ -32,11 +32,12 @@ AppTableExport exportFlowVariant(AppTableExport e, AppExportChoice ch, String la
   final rows = ch.rows == 'selected' && (e.selectedRows?.isNotEmpty ?? false) ? e.selectedRows! : e.rows;
   final group = ch.groupByFor(e);
   return e.copyWith(
+    title: e.titles?[lang] ?? e.title,
     columns: [
       for (final c in e.columns)
         () {
           final l = ch.labelOf(c, lang);
-          return c.copyWith(label: l, labels: {...?c.labels, lang: l});
+          return c.copyWith(label: l, labels: {...?c.labels, lang: l}, statusLabels: c.statusLabelsByLang?[lang]);
         }(),
     ],
     rows: rows,

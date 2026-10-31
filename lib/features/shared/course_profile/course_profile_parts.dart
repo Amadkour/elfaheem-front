@@ -687,7 +687,7 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
     final a = _a!;
     await showAppExportSheet(
       context,
-      AppTableExport(
+      bilingualExport(() => AppTableExport(
         id: 'course_profile.attendance',
         title: t('الحضور', 'Attendance'),
         subtitle: widget.profile.name(AppConfig.lang == 'ar'),
@@ -708,7 +708,7 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
               'absence_pct': r['absence_pct'],
             }
         ],
-      ),
+      )),
     );
   }
 

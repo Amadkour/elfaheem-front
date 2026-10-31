@@ -42,7 +42,7 @@ import 'export/table_export_xlsx.dart';
 import 'export_hub/export_flow.dart' show showExportFlow;
 
 export 'export/table_export_model.dart'
-    show AppTableExport, AppExportColumn, AppColType, AppColAlign, AppTotal, AppExportFormat, AppStatusTone, cellText;
+    show AppTableExport, AppExportColumn, AppColType, AppColAlign, AppTotal, AppExportFormat, AppStatusTone, cellText, bilingualExport;
 export 'export/table_export_xlsx.dart' show appTableXlsx;
 export 'export/table_export_choice.dart' show AppExportChoice;
 export 'export/table_export_docx.dart' show appTableDocx;

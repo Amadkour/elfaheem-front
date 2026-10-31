@@ -52,6 +52,7 @@ class AppExportColumn {
     this.statusLabels,
     this.statusTones,
     this.labels,
+    this.statusLabelsByLang,
   });
 
   /// Key of the value in each row map.
@@ -86,13 +87,26 @@ class AppExportColumn {
   /// prints the one of the file's language. Missing = [label].
   final Map<String, String>? labels;
 
+  /// [statusLabels] per language (filled by [bilingualExport]); the Export Studio prints the file's language.
+  final Map<String, Map<String, String>>? statusLabelsByLang;
+
   /// The header in [lang]: [labels], else [label].
   String labelIn(String lang) {
     final l = labels?[lang];
     return l == null || l.trim().isEmpty ? label : l;
   }
 
-  AppExportColumn copyWith({String? label, double? width, AppTotal? total, bool? locked, bool? visible, Map<String, String>? labels}) => AppExportColumn(
+  AppExportColumn copyWith({
+    String? label,
+    double? width,
+    AppTotal? total,
+    bool? locked,
+    bool? visible,
+    Map<String, String>? labels,
+    Map<String, String>? statusLabels,
+    Map<String, Map<String, String>>? statusLabelsByLang,
+  }) =>
+      AppExportColumn(
         id,
         label ?? this.label,
         type: type,
@@ -103,9 +117,10 @@ class AppExportColumn {
         total: total ?? this.total,
         decimals: decimals,
         currency: currency,
-        statusLabels: statusLabels,
+        statusLabels: statusLabels ?? this.statusLabels,
         statusTones: statusTones,
         labels: labels ?? this.labels,
+        statusLabelsByLang: statusLabelsByLang ?? this.statusLabelsByLang,
       );
 
   bool get numeric => type == AppColType.number || type == AppColType.integer || type == AppColType.money || type == AppColType.percent;
@@ -143,6 +158,7 @@ class AppTableExport {
     this.orgId,
     this.serverDataset,
     this.serverParams,
+    this.titles,
   })  : rtl = rtl ?? AppConfig.lang == 'ar',
         generatedAt = generatedAt ?? DateTime.now().toUtc();
 
@@ -195,6 +211,9 @@ class AppTableExport {
   final String? serverDataset;
   final Map<String, Object?>? serverParams;
 
+  /// [title] per language (filled by [bilingualExport]); null = [title] in every language.
+  final Map<String, String>? titles;
+
   /// A copy with other rows / columns / direction / grouping (the Export Studio builds one per language).
   AppTableExport copyWith({
     String? title,
@@ -207,6 +226,8 @@ class AppTableExport {
     String? brand,
     List<String>? meta,
     Map<String, String>? filters,
+    List<Map<String, Object?>>? selectedRows,
+    Map<String, String>? titles,
   }) =>
       AppTableExport(
         id: id,
@@ -226,10 +247,11 @@ class AppTableExport {
         brandColor: brandColor,
         rtl: rtl ?? this.rtl,
         generatedAt: generatedAt,
-        selectedRows: selectedRows,
+        selectedRows: selectedRows ?? this.selectedRows,
         orgId: orgId,
         serverDataset: serverDataset,
         serverParams: serverParams,
+        titles: titles ?? this.titles,
       );
 
   AppExportColumn? column(String id) => columns.where((c) => c.id == id).firstOrNull;
@@ -276,6 +298,40 @@ class AppTableExport {
       ];
 
   String get totalText => totalLabel ?? tx('tx_total', 'Total', 'الإجمالي');
+}
+
+/// Builds the export with [build] in Arabic and in English and returns the build of the app language carrying both
+/// headers ([AppExportColumn.labels]), both status texts ([AppExportColumn.statusLabelsByLang]) and both titles
+/// ([AppTableExport.titles]), so an English or "Both" export prints English headers in the Arabic app (and the reverse).
+/// [build] must be synchronous and read the language through `t()` / `tx()` / `translate()` at call time; labels the
+/// caller already gave per language win.
+AppTableExport bilingualExport(AppTableExport Function() build) {
+  final keep = AppConfig.lang;
+  AppTableExport inLang(String lang) {
+    AppConfig.lang = lang;
+    try {
+      return build();
+    } finally {
+      AppConfig.lang = keep;
+    }
+  }
+
+  final cur = build();
+  final other = inLang(keep == 'ar' ? 'en' : 'ar');
+  final (ar, en) = keep == 'ar' ? (cur, other) : (other, cur);
+  return cur.copyWith(
+    columns: [
+      for (final c in cur.columns)
+        () {
+          final a = ar.column(c.id), e = en.column(c.id);
+          return c.copyWith(
+            labels: {'ar': a?.labelIn('ar') ?? c.label, 'en': e?.labelIn('en') ?? c.label, ...?c.labels},
+            statusLabelsByLang: c.statusLabels == null ? null : {'ar': ?a?.statusLabels, 'en': ?e?.statusLabels},
+          );
+        }(),
+    ],
+    titles: {'ar': ar.title, 'en': en.title},
+  );
 }
 
 /// A translated string with an inline fallback (works before translation.json loads, e.g. in tests).

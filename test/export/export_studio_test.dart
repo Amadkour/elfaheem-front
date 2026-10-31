@@ -16,6 +16,10 @@ import 'package:flutter_education_app/design/export_hub/export_designer.dart' sh
 import 'package:flutter_education_app/design/export_hub/export_flow_build.dart';
 import 'package:flutter_education_app/design/export_hub/export_themes.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/admin/admin_table_export.dart' show orgMembersExport;
+import 'package:flutter_education_app/features/shared/exports/export_schedules_page.dart'
+    show exportParamChoices, exportParamIsFlag, exportPeopleRoles, exportRolesOf;
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, String> unzip(Uint8List bytes) => {for (final f in ZipDecoder().decodeBytes(bytes)) if (f.isFile) f.name: utf8.decode(f.content)};
@@ -471,6 +475,75 @@ void main() {
       adapter.writeRects({d.blocks.first.id: Rect.fromLTWH(-50, 0, w * 3, 10)});
       expect(d.blocks.first.w, 1); // clamped into the content box
       ctl.dispose();
+    });
+  });
+
+  group('bilingual tables (English headers in the Arabic app)', () {
+    AppTableExport build() => AppTableExport(
+          id: 'org.attendance',
+          title: t('الحضور', 'Attendance'),
+          columns: [
+            AppExportColumn('name', t('الطالب', 'Student'), locked: true),
+            AppExportColumn('code', t('الرقم', 'ID'), labels: const {'ar': 'الكود', 'en': 'Code'}),
+            AppExportColumn('status', t('الحالة', 'Status'), type: AppColType.status, statusLabels: {'ok': t('حاضر', 'Present')}),
+          ],
+          rows: const [
+            {'name': 'Sara', 'code': '7', 'status': 'ok'},
+          ],
+          orgId: 5,
+        );
+
+    test('one build per language: both headers, status texts and titles; the app language is restored', () {
+      AppConfig.lang = 'ar';
+      final e = bilingualExport(build);
+      expect(AppConfig.lang, 'ar');
+      expect(e.title, 'الحضور');
+      expect(e.titles, {'ar': 'الحضور', 'en': 'Attendance'});
+      expect(e.column('name')!.labels, {'ar': 'الطالب', 'en': 'Student'});
+      expect(e.column('code')!.labels, {'ar': 'الكود', 'en': 'Code'}); // the caller's own labels win
+      expect(e.column('status')!.statusLabelsByLang, {
+        'ar': {'ok': 'حاضر'},
+        'en': {'ok': 'Present'},
+      });
+      expect(e.orgId, 5);
+    });
+
+    test('the English variant prints the English title, headers and status text', () {
+      AppConfig.lang = 'ar';
+      final e = bilingualExport(build);
+      final ch = AppExportChoice.of(e, AppExportFormat.values);
+      final en = exportFlowVariant(e, ch, 'en'), ar = exportFlowVariant(e, ch, 'ar');
+      expect(en.title, 'Attendance');
+      expect(en.column('name')!.label, 'Student');
+      expect(en.column('status')!.statusLabels, {'ok': 'Present'});
+      expect(ar.title, 'الحضور');
+      expect(ar.column('status')!.statusLabels, {'ok': 'حاضر'});
+    });
+
+    test('the paged-list export keeps the organization and the server dataset (Schedule / Share link)', () {
+      AppConfig.lang = 'ar';
+      final e = bilingualExport(() => orgMembersExport('students', const [], orgId: 9, roles: 'student', status: 'active'));
+      final sent = e.copyWith(filters: {...e.filters, 'x': 'y'});
+      expect(sent.orgId, 9);
+      expect(sent.serverDataset, 'org.people');
+      expect(sent.serverParams, {'org_id': 9, 'roles': 'student', 'status': 'active'});
+      expect(sent.titles?['en'], 'Students');
+      expect(sent.filters['x'], 'y');
+    });
+  });
+
+  group('schedule form parameters', () {
+    test('roles are picked from the server\'s list; status / lang are fixed choices; flags are switches', () {
+      expect(exportRolesOf(' student, teacher ,'), {'student', 'teacher'});
+      expect(exportRolesOf(null), isEmpty);
+      expect(exportPeopleRoles, containsAll(['student', 'teacher', 'teacher_assistant', 'admin_assistant']));
+      expect(exportParamChoices('org.people', 'status')!.first.$1, 'active'); // the server's default first
+      expect(exportParamChoices('org.complaints', 'status')!.map((c) => c.$1), ['', 'open', 'in_progress', 'resolved', 'closed']);
+      expect(exportParamChoices('gov.items', 'lang')!.map((c) => c.$1), ['ar', 'en']);
+      expect(exportParamChoices('org.people', 'org_id'), isNull);
+      expect(exportParamIsFlag('include_dropped'), isTrue);
+      expect(exportParamIsFlag('overdue'), isTrue);
+      expect(exportParamIsFlag('status'), isFalse);
     });
   });
 }

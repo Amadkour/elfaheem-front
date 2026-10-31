@@ -107,11 +107,61 @@ String exportParamLabel(String key) => switch (key) {
       'org_id' => tx('exs_param_org_id', 'Organization number', 'رقم المؤسسة'),
       'course_id' => tx('exs_param_course_id', 'Course number', 'رقم المقرر'),
       'dept_id' => tx('exs_param_dept_id', 'Department number', 'رقم القسم'),
-      'roles' => tx('exs_param_roles', 'Roles (comma-separated)', 'الأدوار (مفصولة بفواصل)'),
+      'roles' => tx('exs_param_roles', 'Roles', 'الأدوار'),
       'status' => tx('exs_param_status', 'Status', 'الحالة'),
-      'include_dropped' => tx('exs_param_include_dropped', 'Include dropped students (yes / no)', 'تضمين المنسحبين (نعم / لا)'),
+      'include_dropped' => tx('exs_param_include_dropped', 'Include dropped students', 'تضمين المنسحبين'),
+      'overdue' => tx('exs_param_overdue', 'Overdue only', 'المتأخرة فقط'),
+      'lang' => tx('exs_param_lang', 'Language of the values', 'لغة القيم'),
+      'type' => tx('exs_param_type', 'Type', 'النوع'),
+      'q' => tx('exs_param_q', 'Search', 'بحث'),
       _ => key,
     };
+
+/// The roles of the `org.people` dataset (the server's ROLE_MODULE keys), in the picker's order.
+const exportPeopleRoles = ['student', 'teacher', 'teacher_assistant', 'admin_assistant', 'org_admin'];
+
+String exportRoleLabel(String role) => switch (role) {
+      'student' => tx('exs_role_student', 'Students', 'الطلاب'),
+      'teacher' => tx('exs_role_teacher', 'Teachers', 'المعلمون'),
+      'teacher_assistant' => tx('exs_role_ta', 'Teaching assistants', 'المعيدون'),
+      'admin_assistant' => tx('exs_role_admin_assistant', 'Administrative staff', 'الإداريون'),
+      'org_admin' => tx('exs_role_org_admin', 'Organization admins', 'مديرو المؤسسة'),
+      _ => role,
+    };
+
+/// Yes / no parameters, drawn as a switch and sent as `true` / `false`.
+bool exportParamIsFlag(String key) => key == 'include_dropped' || key == 'overdue';
+
+/// The fixed values of a parameter of [dataset] as (value, label), drawn as a dropdown; null = free text. The first
+/// entry is the server's default ('' = no filter).
+List<(String, String)>? exportParamChoices(String dataset, String key) => switch ((dataset, key)) {
+      (_, 'lang') => [('ar', tx('exs_lang_ar', 'Arabic', 'العربية')), ('en', tx('exs_lang_en', 'English', 'الإنجليزية'))],
+      ('org.people', 'status') => [
+          ('active', tx('exs_st_active', 'Active members', 'الأعضاء النشطون')),
+          ('all', tx('exs_st_all', 'Everyone', 'الجميع')),
+        ],
+      ('org.complaints', 'status') => [
+          ('', tx('exs_st_any', 'Any status', 'أي حالة')),
+          ('open', tx('exs_st_open', 'Open', 'مفتوحة')),
+          ('in_progress', tx('exs_st_in_progress', 'In progress', 'قيد المعالجة')),
+          ('resolved', tx('exs_st_resolved', 'Resolved', 'تم حلها')),
+          ('closed', tx('exs_st_closed', 'Closed', 'مغلقة')),
+        ],
+      ('gov.items', 'status') => [
+          ('', tx('exs_st_any', 'Any status', 'أي حالة')),
+          ('open', tx('exs_st_open', 'Open', 'مفتوحة')),
+          ('in_review', tx('exs_st_in_review', 'In review', 'قيد المراجعة')),
+          ('pending', tx('exs_st_pending', 'Pending', 'معلّقة')),
+          ('approved', tx('exs_st_approved', 'Approved', 'مقبولة')),
+          ('rejected', tx('exs_st_rejected', 'Rejected', 'مرفوضة')),
+          ('closed', tx('exs_st_closed', 'Closed', 'مغلقة')),
+          ('withdrawn', tx('exs_st_withdrawn', 'Withdrawn', 'مسحوبة')),
+        ],
+      _ => null,
+    };
+
+/// The roles a comma-separated `roles` value holds (empty = the server's default: every role but org admins).
+Set<String> exportRolesOf(String? v) => {for (final r in (v ?? '').split(',')) if (r.trim().isNotEmpty) r.trim()};
 
 final _emailRe = RegExp(r'^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$');
 
@@ -880,6 +930,67 @@ class _ExportScheduleFormBodyState extends State<ExportScheduleFormBody> {
 
   TextEditingController _paramCtl(String key) => _params.putIfAbsent(key, () => TextEditingController(text: d.params[key] ?? ''));
 
+  /// A switch for a yes / no parameter, chips for the roles, a dropdown for fixed values, else a text field.
+  Widget _paramInput(String dataset, String p) {
+    if (exportParamIsFlag(p)) {
+      return AppSwitchTile(
+        title: exportParamLabel(p),
+        value: const {'1', 'true', 'yes'}.contains((d.params[p] ?? '').toLowerCase()),
+        onChanged: (v) => _changed(() => d.params[p] = v ? 'true' : 'false'),
+      );
+    }
+    if (p == 'roles') {
+      final picked = exportRolesOf(d.params[p]);
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(exportParamLabel(p), style: Theme.of(context).textTheme.labelLarge),
+            AppSpace.gapXs,
+            Wrap(
+              spacing: AppSpace.xs,
+              runSpacing: AppSpace.xs,
+              children: [
+                for (final r in exportPeopleRoles)
+                  FilterChip(
+                    label: Text(exportRoleLabel(r)),
+                    selected: picked.contains(r),
+                    onSelected: (on) => _changed(() {
+                      final next = {...picked};
+                      on ? next.add(r) : next.remove(r);
+                      d.params[p] = [for (final x in exportPeopleRoles) if (next.contains(x)) x].join(',');
+                    }),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+    final choices = exportParamChoices(dataset, p);
+    if (choices != null) {
+      final cur = d.params[p] ?? '';
+      final value = choices.any((c) => c.$1 == cur) ? cur : choices.first.$1;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+        child: AppDropdown<String>(
+          value: value,
+          decoration: InputDecoration(labelText: exportParamLabel(p)),
+          items: [for (final c in choices) DropdownMenuItem(value: c.$1, child: Text(c.$2, maxLines: 1, overflow: TextOverflow.ellipsis))],
+          onChanged: (v) => _changed(() => d.params[p] = v ?? ''),
+        ),
+      );
+    }
+    return AppField(
+      controller: _paramCtl(p),
+      label: exportParamLabel(p),
+      ltr: p.endsWith('_id'),
+      keyboard: p.endsWith('_id') ? TextInputType.number : null,
+      onChanged: (v) => d.params[p] = v,
+    );
+  }
+
   void _changed(VoidCallback fn) {
     setState(fn);
     widget.onChanged?.call();
@@ -973,14 +1084,7 @@ class _ExportScheduleFormBodyState extends State<ExportScheduleFormBody> {
           ),
         ),
       if (ds != null)
-        for (final p in ds.params)
-          AppField(
-            controller: _paramCtl(p),
-            label: exportParamLabel(p),
-            ltr: p.endsWith('_id'),
-            keyboard: p.endsWith('_id') ? TextInputType.number : null,
-            onChanged: (v) => d.params[p] = v,
-          ),
+        for (final p in ds.params) _paramInput(ds.key, p),
       Padding(
         padding: const EdgeInsets.only(bottom: AppSpace.xs),
         child: AppDropdown<int?>(

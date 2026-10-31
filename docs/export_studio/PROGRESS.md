@@ -70,8 +70,14 @@ save, stored rules while `export.studio` is off, the "Both" default, signed-out 
 candidates, course-mode `certificate_id` / `replace_existing`, edits lost during save, duplicate field limit,
 double-decoded verify token, stuck search tick. App links: Android + AASA `/e/*`.
 
-Known gaps (not blocking): no table passes English column labels yet (English / Both keep Arabic headers until
-renamed); the schedule form shows raw roles / status fields and server-run status prints raw values; `package:pdf`
-drops some spaces between Arabic and digits; members export lacks the courses count; dark mode not checked in the
-real app; `web/index.html` loads `video_protection.js` before `<base>` (404 on deep links such as `/verify`); the
-certificate renderer skips QR silently when `segno` is missing (the dev api image needs a rebuild).
+Follow-up (2026-10-31): every table export is built once per language (`bilingualExport`), so English / Both
+files print English headers, titles and status texts; `exportPagedList` no longer drops `orgId` / `serverDataset`
+(Schedule / Share link on org members); the schedule form picks roles (chips), status / language (dropdowns) and
+yes / no options (switches) instead of raw text; `video_protection.js` loads after `<base>`.
+
+Known gaps (not blocking): `package:pdf` drops the space at some Arabic / number and Arabic / Arabic word boundaries
+(reproduced: "أكتوبر2026", "علومالحاسب"; NBSP does not help, LRM / RLM fix the order but neither Tajawal nor
+IBM Plex Sans Arabic has a glyph for them, so a box is drawn) — needs a package upgrade or the server renderer;
+row values a table maps itself (role names, …) stay in the app language; members export has no courses count (the
+people API lacks it); dark mode not checked in the real app; the certificate renderer logs (does not show) a QR
+skipped for a missing `segno` — the dev api image needs a rebuild.

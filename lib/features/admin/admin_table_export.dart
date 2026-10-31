@@ -57,23 +57,8 @@ Future<void> exportPagedList(BuildContext context, AdminPagedProvider p, AppTabl
     if (p.hasMore) toast(t('جارٍ تجهيز كل الصفوف…', 'Preparing every row…'));
     final rows = await fetchAllRows(p);
     if (!context.mounted) return;
-    final e = build(rows);
-    await showAppExportSheet(
-        context,
-        AppTableExport(
-          id: e.id,
-          title: e.title,
-          subtitle: e.subtitle,
-          brand: e.brand,
-          meta: e.meta,
-          filters: {...activeFiltersOf(p), ...e.filters},
-          columns: e.columns,
-          rows: e.rows,
-          groupBy: e.groupBy,
-          totalLabel: e.totalLabel,
-          showTotals: e.showTotals,
-          allowColumnSelection: e.allowColumnSelection,
-        ));
+    final e = bilingualExport(() => build(rows));
+    await showAppExportSheet(context, e.copyWith(filters: {...activeFiltersOf(p), ...e.filters}));
   } catch (err) {
     toast(ApiException.from(err).message, error: true);
   } finally {

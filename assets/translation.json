@@ -20794,16 +20794,16 @@
     "ar": "رقم القسم"
   },
   "exs_param_roles": {
-    "en": "Roles (comma-separated)",
-    "ar": "الأدوار (مفصولة بفواصل)"
+    "en": "Roles",
+    "ar": "الأدوار"
   },
   "exs_param_status": {
     "en": "Status",
     "ar": "الحالة"
   },
   "exs_param_include_dropped": {
-    "en": "Include dropped students (yes / no)",
-    "ar": "تضمين المنسحبين (نعم / لا)"
+    "en": "Include dropped students",
+    "ar": "تضمين المنسحبين"
   },
   "exs_sched_paused": {
     "en": "Schedule paused",
@@ -21036,5 +21036,97 @@
   "exs_rules_left_out": {
     "en": "Rules on fields not in the file were left out",
     "ar": "استُبعدت القواعد على حقول غير موجودة في الملف"
+  },
+  "exs_param_overdue": {
+    "en": "Overdue only",
+    "ar": "المتأخرة فقط"
+  },
+  "exs_param_lang": {
+    "en": "Language of the values",
+    "ar": "لغة القيم"
+  },
+  "exs_param_type": {
+    "en": "Type",
+    "ar": "النوع"
+  },
+  "exs_param_q": {
+    "en": "Search",
+    "ar": "بحث"
+  },
+  "exs_role_student": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "exs_role_teacher": {
+    "en": "Teachers",
+    "ar": "المعلمون"
+  },
+  "exs_role_ta": {
+    "en": "Teaching assistants",
+    "ar": "المعيدون"
+  },
+  "exs_role_admin_assistant": {
+    "en": "Administrative staff",
+    "ar": "الإداريون"
+  },
+  "exs_role_org_admin": {
+    "en": "Organization admins",
+    "ar": "مديرو المؤسسة"
+  },
+  "exs_lang_ar": {
+    "en": "Arabic",
+    "ar": "العربية"
+  },
+  "exs_lang_en": {
+    "en": "English",
+    "ar": "الإنجليزية"
+  },
+  "exs_st_active": {
+    "en": "Active members",
+    "ar": "الأعضاء النشطون"
+  },
+  "exs_st_all": {
+    "en": "Everyone",
+    "ar": "الجميع"
+  },
+  "exs_st_any": {
+    "en": "Any status",
+    "ar": "أي حالة"
+  },
+  "exs_st_open": {
+    "en": "Open",
+    "ar": "مفتوحة"
+  },
+  "exs_st_in_progress": {
+    "en": "In progress",
+    "ar": "قيد المعالجة"
+  },
+  "exs_st_resolved": {
+    "en": "Resolved",
+    "ar": "تم حلها"
+  },
+  "exs_st_closed": {
+    "en": "Closed",
+    "ar": "مغلقة"
+  },
+  "exs_st_in_review": {
+    "en": "In review",
+    "ar": "قيد المراجعة"
+  },
+  "exs_st_pending": {
+    "en": "Pending",
+    "ar": "معلّقة"
+  },
+  "exs_st_approved": {
+    "en": "Approved",
+    "ar": "مقبولة"
+  },
+  "exs_st_rejected": {
+    "en": "Rejected",
+    "ar": "مرفوضة"
+  },
+  "exs_st_withdrawn": {
+    "en": "Withdrawn",
+    "ar": "مسحوبة"
   }
 }

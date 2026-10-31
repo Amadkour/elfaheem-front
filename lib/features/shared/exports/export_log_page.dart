@@ -193,7 +193,7 @@ class _ExportLogPageState extends State<ExportLogPage> {
     ];
     showAppExportSheet(
       context,
-      AppTableExport(
+      bilingualExport(() => AppTableExport(
         id: 'exports.log',
         title: exportLogTitle(),
         meta: [?_rangeLabel],
@@ -211,7 +211,7 @@ class _ExportLogPageState extends State<ExportLogPage> {
         ],
         rows: rows,
         orgId: widget.orgId,
-      ),
+      )),
     );
   }
 
