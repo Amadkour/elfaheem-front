@@ -33,6 +33,7 @@ import '../../teacher/profile/payout/teacher_payouts_screen.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';
 import '../rag/rag_chat_screen.dart' show RagChatScreen;
+import '../roadmap/recommendations.dart' show ProfileRecommendations;
 import 'about/about_and_terms_screen.dart';
 import 'about/about_terms_provider.dart';
 import '../../../design/app_language_switch.dart' show AppLanguageTile;
@@ -123,6 +124,12 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 28),
+
+                  // ── Recommended for you (students of personal accounts, D-120; nothing otherwise) ──
+                  ProfileRecommendations(
+                    role: context.read<MyAuthProvider>().currentUser?.role,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  ),
 
                   // ── Account section ──────────────────────────────────────
                   ParentComponent(

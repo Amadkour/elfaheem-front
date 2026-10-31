@@ -20,6 +20,7 @@ import '../../shared/category/categories_provider.dart';
 import '../../student/models.dart'
     show AppCurrency, AppCurrencyX, CourseStatus, CourseStatusX;
 import '../home/teacher_models.dart';
+import '../../shared/roadmap/roadmap_api.dart' show RoadmapDraft;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PendingSchedule  — a locally-added weekly appointment for a course that
@@ -119,6 +120,41 @@ class CourseFormProvider extends BaseProvider {
 
   /// Ordered — index 0 is step 1 of the roadmap, index 1 is step 2, etc.
   List<Map<String, dynamic>> selectedNextCourses = [];
+
+  /// The course's level and topic words (D-120): content signals of the recommendations.
+  String? level;
+  List<String> tags = [];
+
+  /// Editing a personal course of a personal account: its next courses live in the course's Path tab, so the
+  /// form neither shows nor sends them (a save would undo what the Path tab changed meanwhile).
+  bool nextCoursesInPath = false;
+
+  void setLevel(String? value) {
+    level = value;
+    notifyListeners();
+  }
+
+  /// Adds a topic word (same rules as the Path editor); false when nothing was added.
+  bool addTag(String raw) {
+    final d = RoadmapDraft(tags: tags);
+    if (!d.addTag(raw)) return false;
+    tags = d.tags;
+    notifyListeners();
+    return true;
+  }
+
+  void removeTag(String tag) {
+    tags = [...tags]..remove(tag);
+    notifyListeners();
+  }
+
+  /// The Path editor saved the course's level / topic words meanwhile: the form takes them over, so its own save
+  /// does not undo them.
+  void applyRoadmap(String? newLevel, List<String> newTags) {
+    level = newLevel;
+    tags = [...newTags];
+    notifyListeners();
+  }
   Set<int> selectedRecommendedCourseIds = {};
 
   /// Options not already chosen as a next-course step (so the picker
@@ -218,6 +254,9 @@ class CourseFormProvider extends BaseProvider {
     defaultPlanIndex = 0;
     selectedNextCourses = [];
     selectedRecommendedCourseIds = {};
+    level = null;
+    tags = [];
+    nextCoursesInPath = false;
     _listsChanged = false;
     _pendingSchedules = [];
     notifyListeners();
@@ -240,6 +279,8 @@ class CourseFormProvider extends BaseProvider {
     selectedCurrency = course.currency;
     defaultPlanIndex = course.defaultPricePlanIndex;
     selectedRecommendedCourseIds = course.recommendedCourseIds.toSet();
+    level = course.level;
+    tags = [...course.tags];
     _listsChanged = false;
     _pendingSchedules = [];
     notifyListeners();
@@ -407,6 +448,8 @@ class CourseFormProvider extends BaseProvider {
       'category_id': selectedSpecialization!['id'],
       'hours': ?totalHours,
       'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
+      'level': ?level,
+      if (tags.isNotEmpty) 'tags': tags,
       'recommended_course_ids': selectedRecommendedCourseIds.toList(),
       'discount_percentage': ?discountPercentage,
       'discount_days': ?discountDays,
@@ -505,7 +548,9 @@ class CourseFormProvider extends BaseProvider {
       if (selectedSpecialization?['id'] != null)
       'category_id': selectedSpecialization!['id'],
       'total_hours': ?totalHours,
-      'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
+      if (!nextCoursesInPath) 'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
+      'level': level,
+      'tags': tags,
       'recommended_course_ids': selectedRecommendedCourseIds.toList(),
       if (clearDiscount)
       'discount_percentage': null

@@ -12,6 +12,8 @@
 //                 ("No classes today · Next: … · Thu 30") — the empty courses section too. "This week" left the
 //                 home (the schedule page has it)
 //     my courses  courses_progress[] in one card (StudentCourseSummary): the 3 that matter now, slim lines
+//     journey     ONE small card under the courses, only with a clear field: "Continue your journey in <field>" ·
+//                 the next step · a light bar, a slow light sweep (HomeJourneyCard, D-120) → the whole path
 //     inbox       the 3 most urgent inbox rows (no second count); beside Today on a wide window
 //     feeds       ads · organizations · other courses · categories · best teachers (HomeProvider's marketing call,
 //                 never awaited for the first paint; each leaf listens on its own)
@@ -39,7 +41,10 @@ import 'package:flutter_education_app/features/org/org_member_today.dart' show o
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxCompactList, InboxItem, InboxScreen, openInboxItem;
+import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
+import 'package:flutter_education_app/features/shared/roadmap/roadmap_api.dart' show Journey, kRoadmapJourneyKey, roadmapOff;
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
+import 'package:flutter_education_app/features/student/home/home_journey.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
@@ -219,6 +224,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   onTab: _tab,
                                   onRetry: svc.refresh,
                                   onOpenCourse: (id) => AppNavigator.openCourse(id),
+                                  onOpenJourney: () => Navigator.of(context).push(
+                                    MaterialPageRoute(settings: const RouteSettings(name: '/journey'), builder: (_) => const JourneyPage()),
+                                  ),
                                   onOpenEvent: (e) => openHomeEvent(context, e),
                                   onOpenInbox: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InboxScreen())),
                                   onOpenInboxItem: (x) async {
@@ -306,6 +314,7 @@ class StudentHomeBody extends StatelessWidget {
     required this.onTab,
     this.onRetry,
     this.onOpenCourse,
+    this.onOpenJourney,
     this.onOpenEvent,
     this.onOpenInbox,
     this.onOpenInboxItem,
@@ -321,6 +330,9 @@ class StudentHomeBody extends StatelessWidget {
   final ValueChanged<String> onTab;
   final VoidCallback? onRetry;
   final ValueChanged<int>? onOpenCourse;
+
+  /// The journey card → the whole path (JourneyPage).
+  final VoidCallback? onOpenJourney;
   final ValueChanged<CalEvent>? onOpenEvent;
   final VoidCallback? onOpenInbox;
   final ValueChanged<InboxItem>? onOpenInboxItem;
@@ -483,6 +495,18 @@ class _Sections extends StatelessWidget {
           : StudentCourseSummary(courses: home.coursesProgress, events: [...home.today, ...home.upcoming], onOpen: body.onOpenCourse, onShowAll: () => body.onTab('my_courses')),
     ));
 
+    // ── the ONE journey card (D-120), under the courses and with them on every layout; no clear field → nothing
+    final j = roadmapOff(kRoadmapJourneyKey) || home.journey == null ? null : Journey.fromJson(home.journey);
+    final coursesBlock = j == null
+        ? courses
+        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            courses,
+            enter(Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              child: HomeJourneyCard(journey: j, onTap: body.onOpenJourney),
+            )),
+          ]);
+
     // ── inbox: the 3 most urgent rows (the count already sits in "Needs you")
     final inbox = inboxRows.isEmpty
         ? null
@@ -502,9 +526,9 @@ class _Sections extends StatelessWidget {
       // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my courses) beside
       // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
       HomeDashboard(
-        narrow: [?needs, today, courses, ?inbox],
-        main: [today, if (needs != null || inbox != null) courses],
-        side: needs == null && inbox == null ? [courses] : [?needs, ?inbox],
+        narrow: [?needs, today, coursesBlock, ?inbox],
+        main: [today, if (needs != null || inbox != null) coursesBlock],
+        side: needs == null && inbox == null ? [coursesBlock] : [?needs, ?inbox],
       ),
       ?body.feeds,
     ]);

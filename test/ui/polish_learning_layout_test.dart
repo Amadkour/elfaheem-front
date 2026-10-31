@@ -10,7 +10,6 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/shared/course/course_price_tag.dart';
 import 'package:flutter_education_app/features/shared/course/private_flag.dart';
-import 'package:flutter_education_app/features/shared/course/studend_course_roadmap_section.dart';
 import 'package:flutter_education_app/features/shared/course/topbar.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/features/shared/session/material/components/session_exam_tile.dart';
@@ -369,25 +368,6 @@ void main() {
                 onSetting: () {},
                 isFavorite: true,
               ),
-            ),
-          ));
-    });
-
-    testWidgets('student roadmap: next steps + recommendations', (tester) async {
-      const next = [
-        CourseSummary(id: 2, name: longName, finalPrice: 300),
-        CourseSummary(id: 3, name: 'Data Structures', finalPrice: 0),
-      ];
-      const recommended = [CourseSummary(id: 4, name: 'Algorithms II', finalPrice: 150)];
-      await expectNoLayoutErrors(tester, () => SingleChildScrollView(
-            child: CourseRoadmapSection(
-              currentCourseName: longName,
-              recentCompletedCourses: const [CourseSummary(id: 1, name: 'Programming 101', finalPrice: 0)],
-              nextCourses: next,
-              recommendedCourses: recommended,
-              similarCourses: const [],
-              onTapCourse: (_) {},
-              onEnrollRoadmap: () {},
             ),
           ));
     });

@@ -247,6 +247,7 @@ class MeHome {
     required this.teacher,
     this.liveNow = const [],
     this.liveNowKnown = false,
+    this.journey,
     this.legacy = false,
     this.raw = const {},
   });
@@ -283,6 +284,10 @@ class MeHome {
   /// The server sent `live_now` (an older one does not: the banner then follows the live events alone).
   final bool liveNowKnown;
 
+  /// Students: the "Continue your journey" card's block, raw (`Journey.fromJson`, shared/roadmap/roadmap_api.dart,
+  /// D-120); null = no card (no clear field, an organization account, an older server).
+  final Map<String, dynamic>? journey;
+
   /// Composed from today's separate calls (older server).
   final bool legacy;
   final Map<String, dynamic> raw;
@@ -309,6 +314,7 @@ class MeHome {
           .whereType<MeLiveRoom>()
           .toList(),
       liveNowKnown: m['live_now'] is List,
+      journey: m['journey'] is Map ? meHomeMap(m['journey']) : null,
       legacy: legacy,
       raw: m,
     );

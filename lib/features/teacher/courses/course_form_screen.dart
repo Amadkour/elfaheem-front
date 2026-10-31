@@ -28,11 +28,16 @@ import 'component/next_courses_field.dart';
 import 'course_form_provider.dart';
 import 'course_reel_field.dart';
 import 'course_privacy_card.dart';
+import '../../shared/roadmap/roadmap_api.dart' show RoadmapApi, kRoadmapPathKey, roadmapOff;
+import '../../shared/roadmap/roadmap_editor.dart' show RoadmapLevelChips, RoadmapTagsInput, showRoadmapEditor;
+import '../../shared/roadmap/roadmap_tab.dart' show roadmapAllowedHere;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+
+String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry point  — wraps the inner screen in a scoped provider
@@ -118,6 +123,20 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 
   bool get _isEdit => widget.course != null;
 
+  /// The course's Path editor, from the form (edit mode, personal course).
+  Future<void> _openPathEditor() async {
+    final id = widget.course!.id;
+    final p = context.read<CourseFormProvider>();
+    try {
+      final r = await const RoadmapApi().roadmap(id);
+      if (!mounted) return;
+      final saved = await showRoadmapEditor(context, courseId: id, roadmap: r);
+      if (saved != null) p.applyRoadmap(saved.course.level, saved.course.tags);
+    } catch (e) {
+      showAppNotice(ApiException.from(e).message, error: true);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -193,6 +212,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final p = context.read<CourseFormProvider>();
       if (_isEdit) {
+        // a personal course of a personal account: next courses are edited in its Path tab (D-120)
+        p.nextCoursesInPath = widget.course!.org == null && roadmapAllowedHere(context) && !roadmapOff(kRoadmapPathKey);
         await p.initUpdate(context, widget.course!);
       } else {
         await p.initCreate(context);
@@ -837,23 +858,73 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        'next_course_hint'.tr,
-                                        style: TextStyle(
-                                          fontFamily: AppFonts.family,
-                                          fontSize: 11,
-                                          color: context.colors.textLight,
+                                      if (provider.nextCoursesInPath) ...[
+                                        // ONE place to edit the path: the course's Path tab (D-120)
+                                        Text(
+                                          _t('تُحدَّد الكورسات التالية والمتطلبات السابقة في تبويب «المسار» للكورس.',
+                                              'Next courses and prerequisites are set in the course’s Path tab.'),
+                                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.textLight),
                                         ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      NextCoursesField(
-                                        selected: provider.selectedNextCourses,
-                                        availableOptions:
-                                        provider.availableNextCourseOptions,
-                                        onAdd: provider.addNextCourse,
-                                        onRemoveAt: provider.removeNextCourseAt,
-                                        onReorder: provider.moveNextCourse,
-                                      ),
+                                        const SizedBox(height: 4),
+                                        Align(
+                                          alignment: AlignmentDirectional.centerStart,
+                                          child: TextButton.icon(
+                                            onPressed: _openPathEditor,
+                                            style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
+                                            icon: const Icon(Icons.route_rounded, size: 18),
+                                            label: Text(_t('تعديل المسار', 'Edit path')),
+                                          ),
+                                        ),
+                                      ] else ...[
+                                        Text(
+                                          'next_course_hint'.tr,
+                                          style: TextStyle(
+                                            fontFamily: AppFonts.family,
+                                            fontSize: 11,
+                                            color: context.colors.textLight,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        NextCoursesField(
+                                          selected: provider.selectedNextCourses,
+                                          availableOptions:
+                                          provider.availableNextCourseOptions,
+                                          onAdd: provider.addNextCourse,
+                                          onRemoveAt: provider.removeNextCourseAt,
+                                          onReorder: provider.moveNextCourse,
+                                        ),
+                                      ],
+                                      if (roadmapAllowedHere(context) && widget.course?.org == null) ...[
+                                        const SizedBox(height: 18),
+                                        Text(
+                                          _t('المستوى', 'Level'),
+                                          style: TextStyle(
+                                            fontFamily: AppFonts.display,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: context.colors.heroShade.withValues(alpha: 0.55),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        RoadmapLevelChips(value: provider.level, onChanged: provider.setLevel),
+                                        const SizedBox(height: 18),
+                                        Text(
+                                          _t('كلمات مفتاحية', 'Topic words'),
+                                          style: TextStyle(
+                                            fontFamily: AppFonts.display,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: context.colors.heroShade.withValues(alpha: 0.55),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _t('تساعد على اقتراح كورسك للطلاب المهتمين.', 'They help suggest your course to interested students.'),
+                                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.textLight),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        RoadmapTagsInput(tags: provider.tags, onAdd: provider.addTag, onRemove: provider.removeTag),
+                                      ],
                                       const SizedBox(height: 18),
                                       Text(
                                         'recommended_courses_label'.tr,
