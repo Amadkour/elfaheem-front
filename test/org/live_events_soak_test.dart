@@ -176,7 +176,7 @@ void main() {
   test('a silent stream is dropped by the watchdog and reopened', () async {
     srv.handler = (req, n) => srv.sse(req);
     c = make(stallAfter: const Duration(milliseconds: 200))..bind();
-    await until(() => srv.requests.length >= 3, what: 'two stall reconnects');
+    await until(() => srv.requests.length >= 3, timeout: const Duration(seconds: 15), what: 'two stall reconnects');
   });
 
   test('the FCM and the SSE copy of one event reach the bus once, whichever comes first', () async {
@@ -222,14 +222,16 @@ void main() {
 
   test('background closes the stream; coming back reconnects at once', () async {
     srv.handler = (req, n) => srv.sse(req);
-    c = make(delayScale: 1)..bind();
+    // Every backoff ×10 (≥ 10 s): coming back within 5 s can only be the immediate reconnect, however slow the
+    // machine (a 900 ms wall-clock window against the 1 s minimum backoff failed under load).
+    c = make(delayScale: 10)..bind();
     await until(() => c.connected.value, what: 'connected');
     c.didChangeAppLifecycleState(AppLifecycleState.paused);
     await until(() => !c.busy && !c.connected.value, what: 'closed in the background');
     await Future<void>.delayed(const Duration(milliseconds: 200));
     expect(srv.requests, hasLength(1));
     c.didChangeAppLifecycleState(AppLifecycleState.resumed);
-    await until(() => c.connected.value, timeout: const Duration(milliseconds: 900), what: 'back without a backoff');
+    await until(() => c.connected.value, what: 'back without a backoff');
     expect(srv.requests, hasLength(2));
   });
 
