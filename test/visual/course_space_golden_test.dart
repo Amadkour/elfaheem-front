@@ -29,7 +29,13 @@ import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
 import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_education_app/features/shared/course_profile/course_profile_hub.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../ui/course_profile_test.dart' as cpt show payload;
 import 'home_screens_golden_test.dart' show pubspecFonts;
+
+Map<String, dynamic> cpPayload(String role) => cpt.payload(role);
 
 String _sdkFonts() {
   final root = Platform.environment['FLUTTER_ROOT'];
@@ -199,8 +205,9 @@ Widget _studentLessons(BuildContext context) {
                 onTap: () {},
               ),
               CourseSessionState.next => CourseSessionAction(
-                label: tr('ابدأ الاختبار', 'Start exam'),
-                icon: Icons.quiz_outlined,
+                label: tr('تابع', 'Continue'),
+                icon: Icons.play_arrow_rounded,
+                filled: true,
                 onTap: () {},
               ),
               _ => null,
@@ -232,6 +239,7 @@ Widget _teacherSessions(BuildContext context) {
   final states = courseTeacherStates([
     for (final (i, r) in rows.indexed) (live: i == 4, when: r.when, minutes: r.minutes),
   ]);
+  final groups = courseSessionGroups([for (final r in rows) r.when]);
   return Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -254,6 +262,7 @@ Widget _teacherSessions(BuildContext context) {
                   hint: r.files == 0 ? tr('لا مواد بعد', 'No materials yet') : null,
                 ),
                 rail: courseSessionRail(states, i),
+                group: groups[i],
                 wide: MediaQuery.sizeOf(context).width >= 900,
                 onTap: () {},
                 trailing: SizedBox(
@@ -317,7 +326,8 @@ Widget _student() => Builder(
       onBack: () {},
       topActions: [
         CourseSpaceTopAction(icon: Icons.ios_share_rounded, tooltip: 'share', onTap: () {}),
-        CourseSpaceTopAction(icon: Icons.favorite_rounded, tooltip: 'like', color: c.danger, onTap: () {}),
+        CourseSpaceTopAction(icon: Icons.favorite_rounded, tooltip: 'like', color: c.danger, selected: true, onTap: () {}),
+        CourseSpaceTopAction(icon: Icons.auto_stories_outlined, tooltip: 'ask', overflow: true, onTap: () {}),
       ],
       spotlight: [
         CourseSpotlightCard(
@@ -340,7 +350,6 @@ Widget _student() => Builder(
         ),
       ],
       actions: [
-        CourseSpaceAction(icon: Icons.dashboard_customize_rounded, label: tr('ملف المقرر', 'Course profile'), onTap: () {}),
         CourseSpaceAction(icon: Icons.insights_rounded, label: tr('تحليلاتي', 'My analytics'), color: c.purple, onTap: () {}),
         CourseSpaceAction(icon: Icons.workspace_premium_rounded, label: tr('شهاداتي', 'Certificates'), color: c.accent2, onTap: () {}),
         CourseSpaceAction(icon: Icons.headset_mic_rounded, label: tr('الدعم', 'Support'), color: c.success, onTap: () {}),
@@ -355,6 +364,8 @@ Widget _student() => Builder(
           builder: _studentLessons,
         ),
         CourseSpaceTab(id: 'exams', label: tr('الاختبارات', 'Exams'), icon: Icons.assignment_rounded, builder: (_) => const SizedBox()),
+        CourseSpaceTab(id: 'announcements', label: tr('الإعلانات', 'Announcements'), icon: Icons.campaign_rounded, count: 2, builder: (_) => const SizedBox()),
+        CourseSpaceTab(id: 'progress', label: tr('تقدّمي', 'Progress'), icon: Icons.insights_rounded, builder: (_) => const SizedBox()),
         CourseSpaceTab(id: 'about', label: tr('عن الكورس', 'About'), icon: Icons.info_outline_rounded, builder: (_) => const SizedBox()),
       ],
       activeTab: 'lessons',
@@ -425,7 +436,8 @@ Widget _teacher() => Builder(
       onBack: () {},
       topActions: [
         CourseSpaceTopAction(icon: Icons.ios_share_rounded, tooltip: 'share', onTap: () {}),
-        CourseSpaceTopAction(icon: Icons.edit_rounded, tooltip: 'edit', onTap: () {}),
+        CourseSpaceTopAction(icon: Icons.edit_rounded, tooltip: tr('تعديل الكورس', 'Edit course'), primary: true, onTap: () {}),
+        CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh', overflow: true, onTap: () {}),
       ],
       spotlight: [
         CourseReadinessCard(
@@ -440,7 +452,6 @@ Widget _teacher() => Builder(
       actions: [
         CourseSpaceAction(icon: Icons.add_rounded, label: tr('جلسة جديدة', 'New session'), onTap: () {}),
         CourseSpaceAction(icon: Icons.people_alt_rounded, label: tr('الطلاب', 'Students'), color: c.purple, onTap: () {}),
-        CourseSpaceAction(icon: Icons.dashboard_customize_rounded, label: tr('ملف المقرر', 'Course profile'), onTap: () {}),
         CourseSpaceAction(icon: Icons.science_rounded, label: tr('مختبر البيانات', 'Data Lab'), color: c.accent2, onTap: () {}),
         CourseSpaceAction(icon: Icons.calendar_month_rounded, label: tr('المواعيد', 'Schedule'), color: c.warning, onTap: () {}),
       ],
@@ -453,9 +464,31 @@ Widget _teacher() => Builder(
           live: true,
           builder: _teacherSessions,
         ),
-        CourseSpaceTab(id: 'details', label: tr('التفاصيل', 'Details'), icon: Icons.info_outline_rounded, builder: (_) => const SizedBox()),
+        CourseSpaceTab(id: 'announcements', label: tr('الإعلانات', 'Announcements'), icon: Icons.campaign_rounded, builder: (_) => const SizedBox()),
+        CourseSpaceTab(id: 'class', label: tr('الحضور', 'Attendance'), icon: Icons.how_to_reg_rounded, builder: (_) => const SizedBox()),
+        CourseSpaceTab(id: 'team', label: tr('الفريق', 'Team'), icon: Icons.groups_2_rounded, builder: (_) => const SizedBox()),
+        CourseSpaceTab(id: 'details', label: tr('عن الكورس', 'About'), icon: Icons.info_outline_rounded, builder: (_) => const SizedBox()),
       ],
       activeTab: 'sessions',
+      onTab: (_) {},
+    );
+  },
+);
+
+/// D-111: the course profile's tabs on the one page, with real profile payloads (student Progress, teacher Class,
+/// Announcements, Team).
+Widget _profileTab(String role, String tab) => Builder(
+  builder: (context) {
+    final hub = CourseProfileHub(7, initial: cpPayload(role));
+    final tabs = courseProfileTabs(hub: hub, staff: role != 'student', org: true, enrolled: true, forced: tab, onOpenTab: (_) {});
+    return CourseSpace(
+      hero: CourseSpaceHeroData(title: tr('هندسة البرمجيات', 'Software engineering'), category: 'CS101'),
+      onBack: () {},
+      tabs: [
+        CourseSpaceTab(id: 'sessions', label: tr('الجلسات', 'Sessions'), icon: Icons.play_lesson_rounded, builder: (_) => const SizedBox()),
+        ...tabs,
+      ],
+      activeTab: tab,
       onTab: (_) {},
     );
   },
@@ -669,6 +702,13 @@ void main() {
   testWidgets('course teacher real pieces', (t) => _render(t, 'course_teacher_real', _teacherReal));
   testWidgets('course materials', (t) => _render(t, 'course_materials', _materials));
   testWidgets('course teacher empty', (t) => _render(t, 'course_teacher_empty', _teacherEmpty));
+  testWidgets('course profile tabs', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await _render(t, 'course_tab_student_progress', () => _profileTab('student', 'progress'));
+    await _render(t, 'course_tab_student_announcements', () => _profileTab('student', 'announcements'));
+    await _render(t, 'course_tab_teacher_class', () => _profileTab('instructor', 'class'));
+    await _render(t, 'course_tab_teacher_team', () => _profileTab('instructor', 'team'));
+  });
 }
 
 /// N9: a session's files as the student sees them — one done mark, the recording titled "Session recording", stars

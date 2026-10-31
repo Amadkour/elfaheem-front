@@ -30,8 +30,11 @@ const _base = '/api/v1/course-profile';
 // ═════════════════════════════════════════════════════════════════════════════
 
 class CpStaffActions extends StatelessWidget {
-  const CpStaffActions({super.key, required this.profile, required this.onOpenTab, required this.onChanged});
+  const CpStaffActions({super.key, required this.profile, required this.onOpenTab, required this.onChanged, this.merged = false});
   final CourseProfile profile;
+
+  /// On the course page itself (D-111): no "Content & settings" pill (that is this page).
+  final bool merged;
   final ValueChanged<String> onOpenTab;
   final Future<void> Function() onChanged;
 
@@ -43,7 +46,7 @@ class CpStaffActions extends StatelessWidget {
     final sessions = p.attendableSessions;
     final target = p.attendanceTarget;
     final tools = <Widget>[
-      if (p.caps.anyManage && !p.readOnly)
+      if (p.caps.anyManage && !p.readOnly && !merged)
         AppPill(
             icon: p.caps.courseSettings ? Icons.tune_rounded : Icons.edit_note_rounded,
             label: p.caps.courseSettings ? t('المحتوى والإعدادات', 'Content & settings') : t('رفع وتعديل المواد', 'Upload & edit material'),
@@ -74,7 +77,9 @@ class CpStaffActions extends StatelessWidget {
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (canAttend) ...[
-        TeacherAttendanceCourseEntry(
+        // on the course page the spotlight already carries "Start attendance" (one entry per page)
+        if (!merged)
+          TeacherAttendanceCourseEntry(
           padding: EdgeInsets.zero,
           target: target == null ? null : LauncherSession(id: target.id, number: 0, name: target.name),
           sessions: [for (var i = 0; i < sessions.length; i++) LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name, date: sessions[i].scheduledAt)],

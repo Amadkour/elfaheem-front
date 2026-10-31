@@ -24,7 +24,7 @@ import 'org_levels_pages.dart' show MyLevelCard, OrgLevelsTab, showEnrollBlock;
 import 'org_program_form.dart' show orgAllCourses, showProgramForm;
 import 'org_v3.dart';
 import 'org_suggestions.dart' show OrgTermSuggestions;
-import '../shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
+import '../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -993,8 +993,7 @@ Future<bool> orgCourseGate(BuildContext context, int courseId) async {
           label: Text(t('ملف المقرر والأرشيف (كود / وصول تلقائي)', 'Course profile & archive (code / automatic access)')),
           onPressed: () {
             Navigator.pop(ctx);
-            Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => CourseProfileScreen(courseId: courseId, initialTab: 'archive')));
+            openCourseProfile(context, courseId, tab: 'archive');
           },
         ),
       ]),

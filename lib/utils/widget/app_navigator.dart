@@ -17,7 +17,7 @@ import '../../core/offline/downloads_availability.dart' show linkAvailableHere;
 import '../../core/attention/attention_service.dart' show AttentionService, OrgTabRequest;
 import '../../features/org/org_my_exams.dart' show MyExamsScreen;
 import '../../features/org/org_reports/report_page.dart' show OrgReceivedReportsPage;
-import '../../features/shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
+import '../../features/shared/course_profile/course_profile_hub.dart' show CoursePageLoader;
 import '../../features/shared/profile/compalints/complaint_provider.dart' show ComplaintProvider;
 import '../../features/shared/profile/compalints/complaints_screen.dart' show ComplaintDetailScreen, ComplaintsScreen;
 import '../../features/shared/profile/compalints/complaints_hub_page.dart' show openComplaintsHub;
@@ -97,7 +97,7 @@ class AppNavigator {
         if (targetId != null) {
           await nav.push(MaterialPageRoute(
               settings: RouteSettings(name: '/course-profile', arguments: targetId),
-              builder: (_) => CourseProfileScreen(courseId: targetId)));
+              builder: (_) => CoursePageLoader(courseId: targetId))); // the one course page, at the smart tab (D-111)
         } else {
           await nav.pushNamed('/notifications');
         }

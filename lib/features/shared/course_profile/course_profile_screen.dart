@@ -7,7 +7,9 @@
 //   closed course       read-only material behind an archive pass (auto · request · code)
 //   earlier version     staff open a past run (term) from Archive → Versions: read-only (runId)
 //
-// Open with openCourseProfile(context, courseId) or the named route '/course-profile' (arguments: course id).
+// Since D-111 the course profile lives INSIDE the course page (course_profile_hub.dart): openCourseProfile and the
+// '/course-profile' route open that page; this screen remains for an earlier version (runId, read-only) and as the
+// fallback when the course page itself cannot be opened.
 // The server decides the role and the capabilities (GET /api/v1/course-profile/{id}[?run_id=]) and enforces them on
 // every write; tabs come from cpTabs(). The header is identity only — each role's numbers live on its overview.
 library;
@@ -25,17 +27,22 @@ import '../rag/rag_chat_screen.dart';
 
 import '../../admin/admin_common.dart' show t;
 import 'course_profile_announcements.dart';
+import 'course_profile_hub.dart' show CoursePageLoader;
 import 'course_profile_models.dart';
 import 'course_profile_parts.dart';
 
 /// At or above this width the page shows a side rail (next session · announcements · team).
 const double kCpRailBreak = 1000;
 
-/// Opens the course profile (an earlier version with [runId]).
-Future<void> openCourseProfile(BuildContext context, int courseId, {int? runId}) =>
+/// Opens the course on its ONE page (D-111: the profile's parts are tabs of the course page), at [tab] (a profile
+/// tab name: announcements · attendance · team · archive …). An earlier version ([runId]) still opens this read-only
+/// profile screen.
+Future<void> openCourseProfile(BuildContext context, int courseId, {int? runId, String? tab}) =>
     Navigator.of(context).push(MaterialPageRoute(
       settings: RouteSettings(name: '/course-profile', arguments: courseId),
-      builder: (_) => CourseProfileScreen(courseId: courseId, runId: runId),
+      builder: (_) => runId != null
+          ? CourseProfileScreen(courseId: courseId, runId: runId)
+          : CoursePageLoader(courseId: courseId, tab: tab),
     ));
 
 class CourseProfileScreen extends StatefulWidget {

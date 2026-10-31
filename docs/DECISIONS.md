@@ -1686,3 +1686,37 @@ recording start, the privacy chip all class long, and on Android 14+ the one pro
 share); compositing the WebRTC camera texture natively (needs a change in the flutter_webrtc fork and drops what the
 room shows around the camera — the board, the controls); simply raising the Dart pacing (each Dart frame already
 cost ~55 ms on the S24: 30 fps would not fit in the UI / raster threads).
+
+## D-111 — ONE course page: the course profile's parts are tabs of the course details / studio; one frosted header capsule; the sessions timeline as cards on a line · 2026-10-31 · proposed
+
+**Context.** The owner: "in the course details there are two profiles (course details, course profile) — make it ONE
+smart page, as premium as possible; redesign the header icons (back, share, refresh, edit); the sessions list is too
+simple." The student's course details and the teacher's studio (both `CourseSpace`) each had a "Course profile" quick
+action that pushed `CourseProfileScreen` (overview · lectures · sections · attendance · announcements · certificates ·
+team · archive) — a second page about the same course with its own hero and tabs.
+**Decision.** The profile's parts became tabs of the one page (`lib/features/shared/course_profile/course_profile_hub.dart`):
+student — Announcements (unread count) · Progress (per-part progress, attendance, grade, certificates) · Archive (closed
+course: code / request) and the teaching team in About; staff — Announcements · Attendance (open attendance, by hand,
+the numbers, the attendance report, certificate rules) · Team (assistant grants) · Archive (access policy, requests,
+versions). The existing profile widgets are reused (`CpOverviewTab(merged: true)` drops what the page already shows);
+every capability is still the server's (`caps`), an archived course is read-only (an archived-course spotlight card;
+the student's Sessions tab reads the profile's material then, the buy card / bar are hidden), a TA posts to sections &
+labs unless granted, and Edit shows only with `course_settings` once the profile is known. The profile is loaded
+LAZILY (`CourseProfileHub`): when one of its tabs or About's team block is first built — opening the page costs no
+extra request. `openCourseProfile`, the `/course-profile` route and `course_profile` notifications open
+`CoursePageLoader`, which reads the profile (it needs the role), then GETs the course and opens the student page or the
+studio at the asked tab (old names mapped by `cpMergedTab`) or the smart one (closed → Archive, unread → Announcements).
+`CourseProfileScreen` stays only for an earlier run (Archive → Versions, read-only) and as the fallback when the course
+itself cannot be opened. Header: back is one frosted disc; every other action sits in ONE frosted capsule at the end
+(48 px targets, labels for screen readers, the favourite a toggle), the teacher's Edit carries its word on wide screens,
+and rarer actions (Ask the course documents, Refresh on web / desktop) go behind its ⋮; phones refresh by pulling.
+Sessions: each session is its own card on the timeline — a kind tile (live · video · section), "Up next" / "Live now"
+as the highlighted cards with their one primary action (the student's Start / Continue, Join, Enter room), a date chip,
+length and files, a progress ring on the student's node, a breathing live node (parked by Reduce motion), quieter done
+cards, and month headers when the dated sessions span months (`courseSessionGroups`).
+**Unread.** The server has no read state for announcements: "unread" is newer than the last one this person saw here,
+kept on the device; it shows once the profile is loaded. A server count (e.g. `announcements_unread` + `closed` on
+`GET /courses/{id}`) would let the badge and the archived state show on open with no extra request.
+**Rejected.** Loading the profile on every open (one more request per course page for data most visits never read);
+keeping the profile as a page behind a quick action (the owner's complaint); a separate Team / Archive for students
+(the team is a block in About, the archive appears only for a closed course).

@@ -4,8 +4,9 @@
 ///  hero        cover / intro reel · category · private · live-or-recorded · certificate · teacher ·
 ///              students / lessons / hours (+ the progress ring once enrolled)
 ///  spotlight   live now · attendance check-in (while open) · start / continue / completed
-///  actions     course profile · my analytics (Data Lab) · support
-///  tabs        Live (live courses) · Lessons · Exams · About
+///  actions     my analytics (Data Lab) · support
+///  tabs        Live (live courses) · Sessions · Exams · Announcements · Progress · (Archive) · About — the course
+///              profile's parts are tabs of THIS page (D-111, course_profile_hub.dart), loaded when first opened
 ///  buy         phones: sticky price + enroll bar · desktop: the side card (enrolled: the access card)
 ///
 /// Every fact is shown ONCE: numbers in the hero, price in the buy card / bar, the rest in About.
@@ -42,7 +43,8 @@ import 'components/share_link.dart';
 import 'course_access_sheet.dart';
 import 'course_detail_provider.dart';
 import 'course_live_join.dart';
-import '../../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
+import '../../../shared/course_profile/course_profile_hub.dart';
+import '../../../shared/course_profile/course_profile_parts.dart' show CpTrackTab;
 import 'growth_tr.dart';
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
@@ -82,9 +84,15 @@ void _openSupport(BuildContext context, CourseModel course) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class CourseDetailScreen extends StatefulWidget {
-  const CourseDetailScreen({super.key, required this.course});
+  const CourseDetailScreen({super.key, required this.course, this.profileHub, this.initialTab});
 
   final CourseModel course;
+
+  /// The course profile already loaded (opened from an old profile entry point); null → loaded on demand.
+  final CourseProfileHub? profileHub;
+
+  /// Open on this tab (live · lessons · exam · about · announcements · progress · archive).
+  final String? initialTab;
 
   @override
   State<CourseDetailScreen> createState() => _CourseDetailScreenState();
@@ -92,6 +100,13 @@ class CourseDetailScreen extends StatefulWidget {
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
   late final CourseDetailProvider _provider;
+  late final CourseProfileHub _hub = widget.profileHub ?? CourseProfileHub(int.tryParse(widget.course.id) ?? 0);
+
+  @override
+  void dispose() {
+    _hub.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -128,7 +143,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               onBack: Navigator.canPop(context) ? () => Navigator.maybePop(context) : null,
               onEnterCode: () => _enterCode(provider),
             )
-          : const _Body(),
+          : _Body(hub: _hub, initialTab: widget.initialTab),
     );
   }
 
@@ -152,7 +167,10 @@ class CourseDetailSkeleton extends StatelessWidget {
 
 /// Provides what the tabs need (exams, the session cards), then draws the page.
 class _Body extends StatelessWidget {
-  const _Body();
+  const _Body({required this.hub, this.initialTab});
+
+  final CourseProfileHub hub;
+  final String? initialTab;
 
   @override
   Widget build(BuildContext context) {
@@ -162,13 +180,16 @@ class _Body extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StudentExamProvider()),
         ChangeNotifierProvider(create: (_) => TeacherCourseScreenProvider(initialCourse: course.toTeacherModel)),
       ],
-      child: const _CoursePage(),
+      child: _CoursePage(hub: hub, initialTab: initialTab),
     );
   }
 }
 
 class _CoursePage extends StatefulWidget {
-  const _CoursePage();
+  const _CoursePage({required this.hub, this.initialTab});
+
+  final CourseProfileHub hub;
+  final String? initialTab;
 
   @override
   State<_CoursePage> createState() => _CoursePageState();
@@ -179,6 +200,52 @@ class _CoursePageState extends State<_CoursePage> {
   /// as MyAnalyticsProfileCard did.)
   bool? _studentView;
   String? _configFor;
+
+  /// A course-profile tab on screen (the provider's enum knows only its own tabs); null → the provider's tab.
+  String? _profileTab;
+  CourseDetailTab? _seenProviderTab;
+
+  CourseProfileHub get _hub => widget.hub;
+
+  @override
+  void initState() {
+    super.initState();
+    final tab = widget.initialTab;
+    if (tab != null) {
+      if (const {'live', 'exam', 'about', 'lessons', 'sessions'}.contains(tab)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.read<CourseDetailProvider>().setTab(_tabOf(tab));
+        });
+      } else {
+        _profileTab = tab;
+      }
+    }
+    _hub.addListener(_onHub);
+  }
+
+  @override
+  void dispose() {
+    _hub.removeListener(_onHub);
+    super.dispose();
+  }
+
+  void _onHub() {
+    if (mounted) setState(() {});
+  }
+
+  void _openTab(CourseDetailProvider p, String id) {
+    if (const {kCpTabAnnouncements, kCpTabProgress, kCpTabArchive, kCpTabTeam, kCpTabClass}.contains(id)) {
+      setState(() => _profileTab = id);
+    } else {
+      setState(() => _profileTab = null);
+      p.setTab(_tabOf(id));
+    }
+  }
+
+  Future<void> _refresh() async {
+    final p = context.read<CourseDetailProvider>();
+    await Future.wait([p.refresh(), _hub.refresh()]);
+  }
 
   void _loadDataLabConfig(CourseModel c) {
     if (!c.isEnrolled || _configFor == c.id) return;
@@ -225,7 +292,12 @@ class _CoursePageState extends State<_CoursePage> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<CourseDetailProvider>();
+    // a tab the provider switched to by itself (live card, continue …) takes over from a profile tab
+    if (_seenProviderTab != null && _seenProviderTab != p.activeTab) _profileTab = null;
+    _seenProviderTab = p.activeTab;
     final c = p.course;
+    final profile = _hub.profile;
+    final archived = profile != null && profile.closed && profile.isStudent;
     final col = context.colors;
     final ar = AppConfig.lang == 'ar';
     final title = (ar ? c.titleAr : c.titleEn) ?? '';
@@ -286,6 +358,7 @@ class _CoursePageState extends State<_CoursePage> {
     // the next thing that can be taken (an ended live session with nothing recorded is skipped, H8)
     final next = p.nextPlayable;
     final spotlight = <Widget>[
+      CourseArchiveSpot(hub: _hub, onOpenTab: (id) => _openTab(p, id)),
       // Join goes INTO the room (it used to switch to the Live tab only: on a wide window — the card sits in the side
       // column — with that tab already open, the click did nothing); a tap on the card opens the Live tab.
       if (live.isNotEmpty)
@@ -313,13 +386,6 @@ class _CoursePageState extends State<_CoursePage> {
 
     // ── quick actions ──────────────────────────────────────────────────────
     final actions = <CourseSpaceAction>[
-      if (c.isEnrolled && courseId != null)
-        CourseSpaceAction(
-          icon: Icons.dashboard_customize_rounded,
-          label: gt('ملف المقرر', 'Course profile'),
-          caption: gt('تقدّمك وحضورك وشهاداتك', 'Progress, attendance, certificates'),
-          onTap: () => openCourseProfile(context, courseId),
-        ),
       if (c.isEnrolled && _studentView != false)
         CourseSpaceAction(
           icon: Icons.insights_rounded,
@@ -360,7 +426,22 @@ class _CoursePageState extends State<_CoursePage> {
         icon: Icons.play_lesson_rounded,
         count: c.sessionsCount > 0 ? c.sessionsCount : p.sessions.length,
         featureKey: 'course_tabs.lessons',
-        builder: (_) => SessionsTab(provider: p, presented: p.sessions),
+        // an archived course the student may read: the profile's material (secured player, read-only)
+        builder: (_) => archived
+            ? CourseProfileTabBody(
+                hub: _hub,
+                builder: (pr) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    CpTrackTab(profile: pr, track: 'lecture', onChanged: _hub.load),
+                    if (pr.sections.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      CpTrackTab(profile: pr, track: 'section', onChanged: _hub.load),
+                    ],
+                  ],
+                ),
+              )
+            : SessionsTab(provider: p, presented: p.sessions),
       ),
       CourseSpaceTab(
         id: 'exam',
@@ -369,12 +450,28 @@ class _CoursePageState extends State<_CoursePage> {
         featureKey: 'exams',
         builder: (_) => StudentCourseExamsWidget(callback: p.refresh, courseId: c.id),
       ),
+      if (courseId != null)
+        ...courseProfileTabs(
+          hub: _hub,
+          staff: false,
+          org: c.org != null,
+          enrolled: c.isEnrolled,
+          forced: _profileTab,
+          onOpenTab: (id) => _openTab(p, id),
+        ),
       CourseSpaceTab(
         id: 'about',
         label: gt('عن الكورس', 'About'),
         icon: Icons.info_outline_rounded,
         featureKey: 'course_tabs.about',
-        builder: (_) => const AboutTab(),
+        builder: (_) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AboutTab(),
+            // the teaching team (assistants) of an enrolled student's course, from the profile
+            if (c.isEnrolled && courseId != null) CourseTeamBlock(hub: _hub),
+          ],
+        ),
       ),
     ];
 
@@ -389,7 +486,6 @@ class _CoursePageState extends State<_CoursePage> {
             : null,
         onBack: Navigator.canPop(context) ? () => Navigator.maybePop(context) : null,
         topActions: [
-          if (mouse) CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, onTap: p.refresh),
           CourseSpaceTopAction(
             icon: Icons.ios_share_rounded,
             tooltip: 'course_hero_share'.tr,
@@ -399,22 +495,29 @@ class _CoursePageState extends State<_CoursePage> {
             icon: c.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
             color: c.isFavorite ? col.danger : null,
             tooltip: 'course_hero_favourite'.tr,
+            selected: c.isFavorite,
             onTap: () => GuestGuard.run(context, p.toggleFavorite, reasonKey: 'guest_reason_favorite'),
           ),
+          // rarer: the ⋮ menu (refresh is pull-to-refresh on phones)
+          if (c.isEnrolled && courseId != null) courseAskDocsAction(context, courseId, title),
+          if (mouse)
+            CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, overflow: true, onTap: _refresh),
         ],
-        onRefresh: p.refresh,
+        onRefresh: _refresh,
         spotlight: spotlight,
         actions: actions,
         tabs: tabs,
-        activeTab: _tabId(p.activeTab),
-        onTab: (id) => p.setTab(_tabOf(id)),
+        activeTab: _profileTab ?? _tabId(p.activeTab),
+        onTab: (id) => _openTab(p, id),
         onNearEnd: () {
           if (p.activeTab == CourseDetailTab.lessons) p.loadMoreSessions();
         },
-        aside: c.isEnrolled
+        aside: archived
+            ? null
+            : c.isEnrolled
             ? CourseEnrolledCard(course: c)
             : CourseBuyCard(course: c, status: status, onEnroll: () => _openEnrollment(context, c)),
-        bottomBar: c.isEnrolled
+        bottomBar: c.isEnrolled || archived
             ? null
             : CourseBuyBar(course: c, status: status, onEnroll: () => _openEnrollment(context, c)),
         footer: CourseRoadmapSection(
