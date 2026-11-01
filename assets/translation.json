@@ -21572,5 +21572,9 @@
   "exs_wm_xlsx_note": {
     "en": "Excel prints it as a header picture: it shows in Page Layout view and on paper.",
     "ar": "يطبعها Excel صورةً في رأس الصفحة: تظهر في عرض تخطيط الصفحة وعند الطباعة."
+  },
+  "studio_insert_variable": {
+    "en": "Insert a variable",
+    "ar": "أدرج متغيرًا"
   }
 }

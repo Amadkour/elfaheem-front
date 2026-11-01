@@ -1156,21 +1156,28 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
         ]),
         children: [
           if (b.kind == 'text') ...[
-            _TextProp(
+            StudioTextProp(
               key: ValueKey('text-${b.id}'),
               label: t('النص', 'Text'),
               value: b.text,
               maxLines: 4,
               onChanged: (v) => _edit('text', () => b.text = v, coalesce: true),
             ),
-            _PlaceholderChips(
-              keys: const ['title', 'org', 'date', 'rows', 'period', 'exporter', 'dept', 'signer'],
-              extra: [for (final k in _data.meta.keys) if (!const ['org', 'dept', 'title', 'period', 'date', 'count', 'signer', 'exporter', 'session', 'council', 'session_date'].contains(k)) 'meta.$k'],
+            StudioPlaceholderChips(
+              label: t('أدرج متغيرًا', 'Insert a variable'),
+              items: [
+                for (final k in [
+                  ...const ['title', 'org', 'date', 'rows', 'period', 'exporter', 'dept', 'signer'],
+                  for (final k in _data.meta.keys)
+                    if (!const ['org', 'dept', 'title', 'period', 'date', 'count', 'signer', 'exporter', 'session', 'council', 'session_date'].contains(k)) 'meta.$k',
+                ])
+                  StudioPlaceholder(k, exportPlaceholderLabels()[k] ?? k),
+              ],
               onInsert: (k) => _edit('text', () => b.text = '${b.text}{{$k}}'),
             ),
           ],
           if (b.isImage) ...[
-            _TextProp(
+            StudioTextProp(
               key: ValueKey('url-${b.id}'),
               label: t('رابط الصورة', 'Image link'),
               hint: 'https://…',
@@ -1182,8 +1189,8 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
               Align(alignment: AlignmentDirectional.centerStart, child: AppPill(icon: Icons.upload_rounded, label: t('رفع صورة', 'Upload an image'), onTap: () => _upload(b))),
           ],
           if (b.kind == 'signature') ...[
-            _TextProp(key: ValueKey('sname-${b.id}'), label: t('الاسم', 'Name'), hint: '{{signer}}', value: b.name, onChanged: (v) => _edit('signature', () => b.name = v, coalesce: true)),
-            _TextProp(key: ValueKey('stitle-${b.id}'), label: t('الصفة', 'Title'), value: b.title, onChanged: (v) => _edit('signature', () => b.title = v, coalesce: true)),
+            StudioTextProp(key: ValueKey('sname-${b.id}'), label: t('الاسم', 'Name'), hint: '{{signer}}', value: b.name, onChanged: (v) => _edit('signature', () => b.name = v, coalesce: true)),
+            StudioTextProp(key: ValueKey('stitle-${b.id}'), label: t('الصفة', 'Title'), value: b.title, onChanged: (v) => _edit('signature', () => b.title = v, coalesce: true)),
           ],
         ],
       ),
@@ -1244,6 +1251,9 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
     ]);
   }
 
+  /// The header / footer variables as chips (the server fills the same names in scheduled runs).
+  List<StudioPlaceholder> _variableChips() => [for (final k in exportStudioVariables) StudioPlaceholder(k, exportPlaceholderLabels()[k] ?? k)];
+
   Widget _pagePanel(BuildContext context) {
     final d = _d;
     final f = d.frame, wm = d.watermark;
@@ -1284,11 +1294,11 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
         StudioColorField(label: t('اللون', 'Colour'), swatches: _studioSwatches, value: exportColor(d.fontColor), onChanged: (col) => _edit('colour', () => d.fontColor = _hexOfColor(col) ?? exportInk, coalesce: true)),
       ]),
       StudioPropSection(title: t('رأس الصفحة وتذييلها', 'Header & footer'), children: [
-        _TextProp(key: const ValueKey('header'), label: t('نص الرأس', 'Header text'), hint: '{{org_name}}', value: d.headerText, onChanged: (v) => _edit('header', () => d.headerText = v, coalesce: true)),
-        _PlaceholderChips(keys: exportStudioVariables, onInsert: (k) => _edit('header', () => d.headerText = '${d.headerText}{{$k}}')),
+        StudioTextProp(key: const ValueKey('header'), label: t('نص الرأس', 'Header text'), hint: '{{org_name}}', value: d.headerText, onChanged: (v) => _edit('header', () => d.headerText = v, coalesce: true)),
+        StudioPlaceholderChips(label: t('أدرج متغيرًا', 'Insert a variable'), items: _variableChips(), onInsert: (k) => _edit('header', () => d.headerText = '${d.headerText}{{$k}}')),
         AppSwitchTile(title: t('التاريخ في الرأس', 'Date in the header'), value: d.showDate, dense: true, onChanged: (v) => _edit('header', () => d.showDate = v)),
-        _TextProp(key: const ValueKey('footer'), label: t('نص التذييل', 'Footer text'), hint: '{{page}} / {{pages}}', value: d.footerText, onChanged: (v) => _edit('footer', () => d.footerText = v, coalesce: true)),
-        _PlaceholderChips(keys: exportStudioVariables, onInsert: (k) => _edit('footer', () => d.footerText = '${d.footerText}{{$k}}')),
+        StudioTextProp(key: const ValueKey('footer'), label: t('نص التذييل', 'Footer text'), hint: '{{page}} / {{pages}}', value: d.footerText, onChanged: (v) => _edit('footer', () => d.footerText = v, coalesce: true)),
+        StudioPlaceholderChips(label: t('أدرج متغيرًا', 'Insert a variable'), items: _variableChips(), onInsert: (k) => _edit('footer', () => d.footerText = '${d.footerText}{{$k}}')),
         AppSwitchTile(title: t('أرقام الصفحات', 'Page numbers'), value: d.showPageNumbers, dense: true, onChanged: (v) => _edit('footer', () => d.showPageNumbers = v)),
       ]),
       StudioPropSection(title: t('إطار الصفحة', 'Page frame'), children: [
@@ -1458,72 +1468,3 @@ class _AddMenu extends StatelessWidget {
 }
 
 /// A text property that keeps its own controller (typing is not reset by rebuilds).
-class _TextProp extends StatefulWidget {
-  const _TextProp({super.key, required this.label, required this.value, required this.onChanged, this.hint, this.maxLines = 1, this.ltr = false});
-  final String label, value;
-  final String? hint;
-  final int maxLines;
-  final bool ltr;
-  final ValueChanged<String> onChanged;
-
-  @override
-  State<_TextProp> createState() => _TextPropState();
-}
-
-class _TextPropState extends State<_TextProp> {
-  late final _c = TextEditingController(text: widget.value);
-  final _f = FocusNode();
-
-  @override
-  void didUpdateWidget(covariant _TextProp old) {
-    super.didUpdateWidget(old);
-    if (!_f.hasFocus && _c.text != widget.value) _c.text = widget.value;
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    _f.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final field = TextField(
-      controller: _c,
-      focusNode: _f,
-      minLines: 1,
-      maxLines: widget.maxLines,
-      maxLength: 1000,
-      onChanged: widget.onChanged,
-      style: appText(14, c: context.colors.textDark),
-      decoration: InputDecoration(isDense: true, labelText: widget.label, hintText: widget.hint, counterText: ''),
-    );
-    return widget.ltr ? Directionality(textDirection: TextDirection.ltr, child: field) : field;
-  }
-}
-
-/// "Insert" chips for {{placeholders}}.
-class _PlaceholderChips extends StatelessWidget {
-  const _PlaceholderChips({required this.keys, required this.onInsert, this.extra = const []});
-  final List<String> keys, extra;
-  final ValueChanged<String> onInsert;
-
-  @override
-  Widget build(BuildContext context) {
-    final labels = exportPlaceholderLabels();
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('أدرج متغيرًا', 'Insert a variable'), style: appText(12, c: context.colors.textMedium)),
-      const SizedBox(height: AppSpace.xxs),
-      Wrap(spacing: AppSpace.xxs + 2, runSpacing: AppSpace.xxs + 2, children: [
-        for (final k in [...keys, ...extra])
-          ActionChip(
-            label: Text(labels[k] ?? k, style: appText(12.5, w: FontWeight.w500, c: context.colors.textDark)),
-            avatar: Icon(Icons.data_object_rounded, size: 16, color: context.colors.textMedium),
-            tooltip: '{{$k}}',
-            onPressed: () => onInsert(k),
-          ),
-      ]),
-    ]);
-  }
-}

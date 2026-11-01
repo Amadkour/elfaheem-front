@@ -103,6 +103,17 @@ States: done · partial · left.
 - One editor (`export_watermark_editor.dart`) in the designer's Page panel and the Excel studio (upload or link).
 - Checked: `test/export/export_watermark_test.dart`; PDF rendered, Word / Excel converted by Office 365.
 
-## Next
+## B7 — Shared panels (2.3b) — done
 
-B7 shared panels (agent A left `studio_props.dart` alone: allowed).
+- Agent A did not change `lib/design/studio/studio_props.dart` (checked in `wt-front-cert` and on
+  `feature/studio-cert`), so the export designer's last bespoke controls moved there as additive widgets:
+  `StudioTextProp` (text / link / caption fields that keep the caret) and `StudioPlaceholderChips` ("Insert a
+  variable", host-defined spelling: `{{key}}` for exports, `{key}` for certificates). The export designer (element,
+  header / footer) and the watermark editor use them; every other style control there already was a studio
+  primitive (font picker, stepper, weight, alignment, colour, opacity, border, segmented).
+- The certificate designer still has its own panels (`cert_designer_panels.dart`, agent A's): it can adopt the two
+  widgets without a model change.
+
+## Gates
+
+See the final report (analyze, suites, web build).

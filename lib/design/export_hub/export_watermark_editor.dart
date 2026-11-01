@@ -43,23 +43,6 @@ class ExportWatermarkEditor extends StatefulWidget {
 }
 
 class _ExportWatermarkEditorState extends State<ExportWatermarkEditor> {
-  late final _text = TextEditingController(text: widget.mark.text);
-  late final _url = TextEditingController(text: widget.mark.imageUrl);
-
-  @override
-  void didUpdateWidget(covariant ExportWatermarkEditor old) {
-    super.didUpdateWidget(old);
-    if (_text.text != widget.mark.text) _text.text = widget.mark.text;
-    if (_url.text != widget.mark.imageUrl) _url.text = widget.mark.imageUrl;
-  }
-
-  @override
-  void dispose() {
-    _text.dispose();
-    _url.dispose();
-    super.dispose();
-  }
-
   Color _color(String hex) => Color(0xFF000000 | (int.tryParse(hex, radix: 16) ?? 0x94A3B8));
 
   @override
@@ -78,24 +61,20 @@ class _ExportWatermarkEditorState extends State<ExportWatermarkEditor> {
       ),
       const SizedBox(height: AppSpace.xs),
       if (!wm.isImage)
-        StudioPropField(
+        StudioTextProp(
           label: tx('exs_wm_text_label', 'Watermark text', 'نص العلامة المائية'),
-          child: TextField(
-            controller: _text,
-            maxLength: 60,
-            decoration: InputDecoration(isDense: true, counterText: '', hintText: tx('exs_wm_hint', 'Confidential', 'سري')),
-            onChanged: (v) => edit(() => wm.text = v),
-          ),
+          hint: tx('exs_wm_hint', 'Confidential', 'سري'),
+          maxLength: 60,
+          value: wm.text,
+          onChanged: (v) => edit(() => wm.text = v),
         )
       else ...[
-        StudioPropField(
+        StudioTextProp(
           label: tx('exs_wm_image_link', 'Image link', 'رابط الصورة'),
-          child: TextField(
-            controller: _url,
-            textDirection: TextDirection.ltr,
-            decoration: const InputDecoration(isDense: true, hintText: 'https://…'),
-            onChanged: (v) => edit(() => wm.imageUrl = v.trim()),
-          ),
+          hint: 'https://…',
+          ltr: true,
+          value: wm.imageUrl,
+          onChanged: (v) => edit(() => wm.imageUrl = v.trim()),
         ),
         if (widget.onUpload != null) ...[
           const SizedBox(height: AppSpace.xxs),
@@ -106,7 +85,7 @@ class _ExportWatermarkEditorState extends State<ExportWatermarkEditor> {
               label: tx('exs_wm_upload', 'Upload an image', 'رفع صورة'),
               onTap: () async {
                 final url = await widget.onUpload!();
-                if (url != null && url.isNotEmpty) edit(() => wm.imageUrl = _url.text = url);
+                if (url != null && url.isNotEmpty) edit(() => wm.imageUrl = url);
               },
             ),
           ),
