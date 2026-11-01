@@ -21433,7 +21433,6 @@
     "en": "No public courses yet",
     "ar": "لا توجد كورسات عامة بعد"
   },
-<<<<<<< HEAD
   "certd_aspect_lock": {
     "en": "Keep proportions",
     "ar": "الحفاظ على التناسب"
@@ -21745,7 +21744,7 @@
   "cert_from_template": {
     "en": "From a template",
     "ar": "من قالب"
-=======
+  },
   "export_font_bahij": {
     "en": "Bahij",
     "ar": "بهيج"
@@ -21889,6 +21888,5 @@
   "studio_insert_variable": {
     "en": "Insert a variable",
     "ar": "أدرج متغيرًا"
->>>>>>> feature/studio-export
   }
 }
