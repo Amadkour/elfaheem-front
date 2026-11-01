@@ -5,8 +5,10 @@
 //                                        forward, escalate, assign, status, withdraw, edit, delete, answer a route,
 //                                        comment) and reloads
 //   GovItemBody                          the presentational page (plain values + callbacks; layout-tested):
-//                                        header · decision banner / bar · pending route card · actions · routes
-//                                        chain · agenda history · timeline
+//                                        header (who it is for, D-140) · decision banner / bar · approval chain
+//                                        (current step + history, D-141) · pending route card · actions (export
+//                                        this item, resubmit after a rejection) · routes chain · agenda history ·
+//                                        timeline
 //   GovCommentComposer                   the comment box (internal switch for staff)
 library;
 
@@ -27,8 +29,10 @@ import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgCall, orgErrorText, orgUtc;
 import 'gov_api.dart';
 import 'gov_models.dart';
+import 'gov_request_parts.dart';
 import 'gov_route_sheet.dart';
 import 'gov_ui.dart';
+import 'gov_wiring.dart' show govExportHubEnabled, govExportItemIds;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Presentational body
@@ -52,6 +56,8 @@ class GovItemBody extends StatelessWidget {
     this.onDelete,
     this.onAnswerRoute,
     this.onOpenAttachment,
+    this.onResubmit,
+    this.onExport,
   });
 
   final WorkItem item;
@@ -59,6 +65,9 @@ class GovItemBody extends StatelessWidget {
   final int? currentUserId;
   final ValueChanged<String>? onDecide;
   final VoidCallback? onRoute, onEscalate, onRecall, onAssign, onStatus, onWithdraw, onEdit, onDelete;
+
+  /// The requester edits a rejected item and sends it again (D-141); export = this one item (D-140).
+  final VoidCallback? onResubmit, onExport;
   final ValueChanged<WorkRoute>? onAnswerRoute;
   final ValueChanged<GovAttachment>? onOpenAttachment;
 
@@ -85,13 +94,16 @@ class GovItemBody extends StatelessWidget {
       if (!member && can['route'] && onAssign != null && it.isOpen) AppPill(icon: Icons.person_add_alt_1_rounded, label: t('إسناد', 'Assign'), color: c.textMedium, onTap: busy ? null : onAssign),
       if (!member && (can['decide'] || can['route']) && onStatus != null) AppPill(icon: Icons.flag_rounded, label: t('الحالة', 'Status'), color: c.textMedium, onTap: busy ? null : onStatus),
       if (can['edit'] && onEdit != null) AppPill(icon: Icons.edit_rounded, label: t('تعديل', 'Edit'), color: c.textMedium, onTap: busy ? null : onEdit),
+      if (can['resubmit'] && onResubmit != null) AppPill(icon: Icons.replay_rounded, label: t('تعديل وإعادة تقديم', 'Edit and resubmit'), color: c.primary, onTap: busy ? null : onResubmit),
       if (can['withdraw'] && onWithdraw != null) AppPill(icon: Icons.undo_rounded, label: t('سحب المعاملة', 'Withdraw'), color: c.warning, onTap: busy ? null : onWithdraw),
+      if (!member && can['export'] && onExport != null) AppPill(icon: Icons.file_download_rounded, label: t('تصدير', 'Export'), color: c.textMedium, onTap: busy ? null : onExport),
       if (can['delete'] && onDelete != null) AppPill(icon: Icons.delete_outline_rounded, label: t('حذف', 'Delete'), color: c.danger, onTap: busy ? null : onDelete),
     ];
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
       _Header(item: it, member: member, onOpenAttachment: onOpenAttachment),
       if (it.decision != null) ...[const SizedBox(height: 10), _DecisionBanner(decision: it.decision!, status: it.status)],
       if (!member && can['decide'] && it.isDecidable && onDecide != null) ...[const SizedBox(height: 10), _DecisionBar(busy: busy, onDecide: onDecide!)],
+      if (it.chain != null && it.chain!.steps.isNotEmpty) ...[const SizedBox(height: 10), GovChainCard(chain: it.chain!)],
       if (pr != null) ...[
         const SizedBox(height: 10),
         _PendingRouteCard(route: pr, canAnswer: _routedToMe && onAnswerRoute != null && pr.action != 'vote', busy: busy, onAnswer: () => onAnswerRoute?.call(pr)),
@@ -149,18 +161,20 @@ class _Header extends StatelessWidget {
         ],
         if (it.attachments.isNotEmpty) ...[
           const SizedBox(height: 10),
-          Wrap(spacing: 6, runSpacing: 6, children: [
-            for (final a in it.attachments)
-              ActionChip(
-                avatar: Icon(Icons.attach_file_rounded, size: 16, color: c.primary),
-                label: Text(a.name.isEmpty ? t('مرفق', 'Attachment') : a.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textDark)),
-                onPressed: onOpenAttachment == null ? null : () => onOpenAttachment!(a),
-              ),
-          ]),
+          GovAttachmentChips(attachments: it.attachments, onOpen: onOpenAttachment),
         ],
         const Divider(height: 22),
         GovKV(Icons.apartment_rounded, t('لدى', 'With'), it.ownerDept?.name ?? '—'),
-        GovKV(Icons.outbox_rounded, t('المصدر', 'Source'), source),
+        GovKV(Icons.outbox_rounded, it.beneficiary == null ? t('المصدر', 'Source') : t('قدّمه', 'Filed by'), source),
+        if (it.beneficiary != null) GovBeneficiaryRows(it.beneficiary!),
+        if (it.chainStep != null && it.isOpen)
+          GovKV(
+            Icons.account_tree_rounded,
+            t('المرحلة', 'Step'),
+            it.chain?.currentStep == null
+                ? it.chainStep!.label
+                : '${it.chainStep!.index + 1}/${it.chainStep!.count} · ${it.chain!.currentStep!.label}',
+          ),
         if (!member || it.assignee != null) GovKV(Icons.person_rounded, t('المسؤول', 'Assignee'), it.assignee?.name ?? t('غير مسند', 'Unassigned')),
         if (it.category != null) GovKV(Icons.label_outline_rounded, t('التصنيف', 'Category'), it.category!.name),
         if (it.dueAt != null) GovKV(Icons.timer_rounded, t('الاستحقاق', 'Due'), govWhen(it.dueAt)),
@@ -655,13 +669,24 @@ class _GovItemScreenState extends State<GovItemScreen> {
 
   Future<void> _decide(String outcome) async {
     final it = _item!;
+    final reject = outcome == 'rejected';
+    final step = it.chain?.currentStep;
+    final more = !reject && it.chain != null && it.chain!.current != null && it.chain!.current! < it.chain!.steps.length - 1;
     final note = await askGovNote(
       context,
       title: outcome == 'approved' ? t('اعتماد ${it.ref}', 'Approve ${it.ref}') : t('رفض ${it.ref}', 'Reject ${it.ref}'),
-      confirmLabel: outcome == 'approved' ? t('اعتماد', 'Approve') : t('رفض', 'Reject'),
-      danger: outcome == 'rejected',
+      hint: reject
+          ? t('سبب الرفض (مطلوب — يصل إلى مقدّم الطلب)', 'Reason for rejecting (required — the requester sees it)')
+          : (more ? t('ملاحظة (اختياري) — ينتقل الطلب بعدها إلى «${it.chain!.steps[it.chain!.current! + 1].label}»', 'Note (optional) — then it moves to “${it.chain!.steps[it.chain!.current! + 1].label}”') : null),
+      confirmLabel: outcome == 'approved' ? (step != null && more ? t('اعتماد الخطوة', 'Approve this step') : t('اعتماد', 'Approve')) : t('رفض', 'Reject'),
+      danger: reject,
+      required: reject,
     );
     if (note == null) return;
+    if (reject && note.trim().length < 3) {
+      appToast(govCodeTexts()['reason_required']!, error: true);
+      return;
+    }
     await _do(() => _api!.decide(it.id, outcome: outcome, note: note.isEmpty ? null : note, version: it.version), ok: t('صدر القرار', 'Decision recorded'));
   }
 
@@ -720,6 +745,17 @@ class _GovItemScreenState extends State<GovItemScreen> {
     final note = await askGovNote(context, title: options[pick]!.$1, confirmLabel: options[pick]!.$1);
     if (note == null) return;
     await _do(() => _api!.setStatus(it.id, pick, note: note.isEmpty ? null : note), ok: t('تم', 'Done'));
+  }
+
+  Future<void> _resubmit() async {
+    final r = await showGovResubmitSheet(context, _item!);
+    if (r != null && mounted) setState(() => _item = r);
+  }
+
+  Future<void> _export() async {
+    final oid = _orgId;
+    if (oid == null) return;
+    await govExportItemIds(context, oid, [_item!.id], deptId: _item!.ownerDept?.id);
   }
 
   Future<void> _withdraw() async {
@@ -878,7 +914,9 @@ class _GovItemScreenState extends State<GovItemScreen> {
               onEdit: widget.member ? null : _edit,
               onDelete: widget.member ? null : _delete,
               onAnswerRoute: widget.member ? null : _answerRoute,
-              onOpenAttachment: (a) => openFileUrl(a.url),
+              onOpenAttachment: (a) => openGovAttachment(context, a),
+              onResubmit: widget.member ? _resubmit : null,
+              onExport: !widget.member && govExportHubEnabled() ? _export : null,
             ),
           ),
         ),

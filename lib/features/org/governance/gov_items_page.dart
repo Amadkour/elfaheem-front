@@ -25,6 +25,7 @@ import 'gov_delegations_page.dart' show GovActingBanner;
 import 'gov_filter.dart';
 import 'gov_item_screen.dart';
 import 'gov_models.dart';
+import 'gov_request_parts.dart' show GovForControllers, GovForSection, pickGovBeneficiary;
 import 'gov_route_sheet.dart';
 import 'gov_ui.dart';
 
@@ -101,6 +102,9 @@ class GovItemCard extends StatelessWidget {
                     if (it.category != null) AppBadgePill(it.category!.name, color: c.textMedium, icon: Icons.label_outline_rounded),
                     if (it.anonymous) AppBadgePill(t('هوية محجوبة', 'Anonymous'), color: c.textMedium, icon: Icons.visibility_off_rounded),
                     if (it.attachments.isNotEmpty) AppBadgePill('${it.attachments.length}', color: c.textMedium, icon: Icons.attach_file_rounded),
+                    if (it.beneficiary != null)
+                      AppBadgePill('${t('لصالح', 'For')}: ${it.beneficiary!.name}', color: c.purple, icon: it.beneficiary!.isExternal ? Icons.person_outline_rounded : Icons.group_rounded),
+                    if (it.chainStep != null && it.isOpen) AppBadgePill(it.chainStep!.label, color: c.primary, icon: Icons.account_tree_rounded),
                   ]),
                 ]),
               ),
@@ -126,6 +130,11 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
   var priority = 'medium';
   DateTime? due;
   var routeNow = false, busy = false;
+  // for whom (D-140): staff may file a request / complaint for a member or for someone outside the system
+  var forKind = 'self';
+  GovPerson? forMember;
+  final forCtl = GovForControllers();
+  var forErrors = const <String, String>{};
   final created = await showAppSheet<WorkItem>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Future<void> loadCats(int id) async {
@@ -165,6 +174,24 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
                   for (final x in cats.where((x) => x.isActive)) DropdownMenuItem(value: x.id, child: Text(x.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ],
                 onChanged: (v) => set(() => category = v == 0 ? null : v),
+              ),
+            ],
+            if (type == 'request' || type == 'complaint') ...[
+              const SizedBox(height: 12),
+              GovForSection(
+                kind: forKind,
+                member: forMember,
+                controllers: forCtl,
+                errors: forErrors,
+                onKind: (k) => set(() {
+                  forKind = k;
+                  forErrors = const {};
+                }),
+                onPickMember: () async {
+                  final p = await pickGovBeneficiary(ctx, api.orgId, deptId: owner?.id, selectedId: forMember?.id);
+                  if (p != null) set(() => forMember = p);
+                },
+                onClearMember: () => set(() => forMember = null),
               ),
             ],
             const SizedBox(height: 12),
@@ -208,6 +235,17 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
                         appToast(t('اكتب العنوان', 'Enter a title'), error: true);
                         return;
                       }
+                      Map<String, dynamic>? beneficiary;
+                      if (forKind != 'self' && (type == 'request' || type == 'complaint')) {
+                        final draft = BeneficiaryDraft(kind: forKind, member: forMember);
+                        forCtl.fill(draft);
+                        final errors = draft.validate();
+                        if (errors.isNotEmpty) {
+                          set(() => forErrors = errors);
+                          return;
+                        }
+                        beneficiary = draft.toJson();
+                      }
                       set(() => busy = true);
                       final r = await orgCall(() => api.createItem({
                             'type': type,
@@ -217,6 +255,7 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
                             'body': body.text.trim(),
                             'priority': priority,
                             'due_at': orgUtc(due),
+                            'beneficiary': ?beneficiary,
                           }));
                       if (!ctx.mounted) return;
                       set(() => busy = false);
@@ -247,6 +286,7 @@ class GovItemsPage extends StatefulWidget {
     this.embedded = false,
     this.initial,
     this.onExport,
+    this.onExportIds,
     this.orgId,
     this.showQuick = true,
   });
@@ -266,6 +306,9 @@ class GovItemsPage extends StatefulWidget {
 
   /// When given, an Export button opens the Export Hub with the current filter (wired by the coordinator).
   final Future<void> Function(ItemFilter filter)? onExport;
+
+  /// When given, the selection bar exports the selected items (`ids=`, checked per item by the server, D-140).
+  final Future<void> Function(List<int> ids)? onExportIds;
 
   /// Defaults to the selected organization of `OrgSession`.
   final int? orgId;
@@ -479,7 +522,14 @@ class _GovItemsPageState extends State<GovItemsPage> {
         ]),
       ),
       Expanded(child: _list(context)),
-      if (_selectMode && _selected.isNotEmpty) _BulkBar(count: _selected.length, onRoute: () => _bulk('route'), onClose: () => _bulk('close'), onAssign: () => _bulk('assign')),
+      if (_selectMode && _selected.isNotEmpty)
+        _BulkBar(
+          count: _selected.length,
+          onRoute: () => _bulk('route'),
+          onClose: () => _bulk('close'),
+          onAssign: () => _bulk('assign'),
+          onExport: canExport && widget.onExportIds != null ? () => widget.onExportIds!(_selected.toList()) : null,
+        ),
     ]);
     if (widget.embedded) return body;
     // staff only (a governance dashboard tile): the dashboard's header — Back · title · the entity · New item
@@ -544,9 +594,12 @@ class _GovItemsPageState extends State<GovItemsPage> {
 }
 
 class _BulkBar extends StatelessWidget {
-  const _BulkBar({required this.count, required this.onRoute, required this.onClose, required this.onAssign});
+  const _BulkBar({required this.count, required this.onRoute, required this.onClose, required this.onAssign, this.onExport});
   final int count;
   final VoidCallback onRoute, onClose, onAssign;
+
+  /// Export the selected items (Word / PDF / Excel through the Export Hub, D-140).
+  final VoidCallback? onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -559,6 +612,7 @@ class _BulkBar extends StatelessWidget {
         AppPill(icon: Icons.alt_route_rounded, label: t('إحالة', 'Route'), onTap: onRoute),
         AppPill(icon: Icons.person_add_alt_1_rounded, label: t('إسناد', 'Assign'), onTap: onAssign, color: c.textMedium),
         AppPill(icon: Icons.check_circle_outline_rounded, label: t('إغلاق', 'Close'), onTap: onClose, color: c.danger),
+        if (onExport != null) AppPill(icon: Icons.file_download_rounded, label: t('تصدير المحدد', 'Export selected'), onTap: onExport, color: c.textMedium),
       ]),
     );
   }
