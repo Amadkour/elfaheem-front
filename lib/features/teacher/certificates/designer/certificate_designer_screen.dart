@@ -330,9 +330,9 @@ class _DesignerSkeleton extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpace.md),
         child: Column(children: [
           const Row(children: [
-            AppSkeletonBox(width: 180, height: 40, radius: 12),
+            Flexible(child: AppSkeletonBox(width: 180, height: 40, radius: 12)),
             Spacer(),
-            AppSkeletonBox(width: 120, height: 40, radius: 12),
+            Flexible(child: AppSkeletonBox(width: 120, height: 40, radius: 12)),
           ]),
           const SizedBox(height: AppSpace.sm),
           const AppSkeletonBox(width: double.infinity, height: 48, radius: 12),
@@ -744,7 +744,7 @@ class _CertDockPanelState extends State<CertDockPanel> {
     final accent = ensureContrast(c.primary, [c.cardBg]);
     final height = open
         ? (widget.maxHeight * 0.45).clamp(220.0, 460.0).toDouble()
-        : CertDockPanel.headerHeight;
+        : CertDockPanel.headerHeight + 1; // + the top border
     return AnimatedContainer(
       duration: AppMotion.of(context).base,
       curve: AppMotion.curve,
@@ -772,7 +772,6 @@ class _CertDockPanelState extends State<CertDockPanel> {
                   Expanded(
                     child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
                   ),
-                  Text('certd_properties'.tr, style: AppType.meta(context)),
                   SizedBox(
                     width: AppTouch.min,
                     height: AppTouch.min,
@@ -784,10 +783,19 @@ class _CertDockPanelState extends State<CertDockPanel> {
             ),
           ),
         ),
-        if (open) ...[
-          Divider(height: 1, color: c.divider),
-          const Expanded(child: _PropsHost(scroll: true)),
-        ],
+        // the body only where the (animating) height leaves room for it
+        Expanded(
+          child: open
+              ? LayoutBuilder(
+                  builder: (context, box) => box.maxHeight < 24
+                      ? const SizedBox.shrink()
+                      : Column(children: [
+                          Divider(height: 1, color: c.divider),
+                          const Expanded(child: _PropsHost(scroll: true)),
+                        ]),
+                )
+              : const SizedBox.shrink(),
+        ),
       ]),
     );
   }

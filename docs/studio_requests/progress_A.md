@@ -51,16 +51,27 @@ watermark: {"kind": "text" | "image", "text": str ≤ 200, "src": image URL, "co
 
 ## Tasks
 
-| # | Task | State | Files | Next |
-|---|------|-------|-------|------|
-| 1 | Docked properties panel at every width | not started | | |
-| 2 | Resize: aspect-lock toggle, handles on phones | not started | | |
-| 3 | Text controls (model + panel + renderer) | not started | | |
-| 4 | Image fit / crop / rotation; 3 signatures regression | not started | | |
-| 5 | Layers: show/hide, lock, rename, reorder | not started | | |
-| 6 | Rulers, grid, snap-to-grid; autosave draft | not started | | |
-| 7 | Duplicate, default, sample-data preview | not started | | |
-| 8 | Page sizes A4 / Letter / custom + orientation | not started | | |
-| 9 | 2.1.1 round-trip test (ar + en, every format value) | not started | | |
-| 10 | 2.1.4 parity test (server boxes vs Flutter canvas) | not started | | |
-| 11 | Template gallery; certificate watermarks | not started | | |
+Front `lib/` paths are under `lib/features/teacher/certificates/designer/` (D/) unless said; back paths are in
+`wt-back-cert`. Back commits afa6081, 3d3ddba, b73b7bb; front ad49988 onwards.
+
+| # | Task | State | Files | Notes / next |
+|---|------|-------|-------|--------------|
+| 1 | Docked properties panel at every width | done | D/certificate_designer_screen.dart (`_Editor`, `CertDockPanel`) | ≥ 1100 three columns; ≥ 600 page + properties docked on the end side; phone: the page above a NON-modal panel (folds to a 52 px header), selecting an element opens it and `StudioController.reveal` pans the page so the element stays above it. The "works best on a tablet" gate and the modal properties sheet are gone. |
+| 2 | Resize: aspect-lock toggle; 8 handles / W×H / min size on phones | done | models (`aspect_lock`, `keepsAspect`), cert_studio_adapter.dart (`certResizeOfField`), D/cert_designer_panels.dart (switch; W/H keep the ratio while locked) | logo / signature unlock → free resize (8 handles where the box is ≥ 72 px on touch). Test "resize on a phone". |
+| 3 | Text controls (model + panel + renderer) | done | models, cert_text_layout.dart (new), cert_canvas_item.dart (`CertTextView`), panels (Text style / Box / Shadow sections); back renderer + schemas + sanitize | weight, italic, underline, line height (Auto = the font's own), direction, fill + opacity, border colour / width, radius, padding, shadow (colour, blur, offset, opacity). |
+| 4 | Image fit / crop / rotation; 3 signatures | done | panels (fit, Crop), screen (`_cropFieldImage`: the current image → `showAppImageCropper` → uploaded as the field's own), provider `cropFieldImage`; engine rotation (StudioItem.rotation) | Rotation for every kind, editor and renderer. A turned element moves but shows no handles (size via W/H). 3-signature regression: front `cert_studio_test.dart`, back `cert_studio.py` (pixel colour per field). |
+| 5 | Layers: show/hide, lock, rename, reorder | done | panels (`CertLayersList` lock button, Layer section: name + lock), adapter (locked items) | Hidden = not drawn (canvas + renderer); locked = no move / resize / delete / nudge. |
+| 6 | Rulers, grid, snap-to-grid; autosave | done | lib/design/studio/studio_canvas.dart (`_GridPainter`, `_RulerPainter`), studio_controller.dart (`setGrid`, `showRulers`, `reveal`), CertToolbarRow View menu; provider autosave (`CertDraftStore`, 1.5 s debounce, SharedPreferences) | The draft is restored when the server copy is still the version it was made on, with a "restored" notice + Discard; a save or Discard removes it. |
+| 7 | Duplicate, default, sample-data preview | done | D/certificate_designs_screen.dart (Duplicate, Make default, Default + language chips), screen `CertPreviewDialog` + `CertSampleDataForm`; back `assign(apply_all)` clears the scope's other default | |
+| 8 | Page A4 / Letter / custom + orientation | done | models (`CertPage`, `certPageLogical`), provider `setPage` (rescales; an English design that follows the Arabic theme follows), panels `CertPaperControl`; back `page_logical`, PNG dpi, PdfStream dpi | |
+| 9 | 2.1.1 round trip test | done | front `test/org/cert_studio_test.dart` (2.1.1 group), back `tests/org_v2/cert_studio.py` | |
+| 10 | 2.1.4 parity test | done | `test/org/cert_parity_test.dart` over `test/fixtures/cert_parity/parity.json` (back `scripts/contract/dump_cert_parity.py`, run in the API image for Raqm) | The drift it found: the editor drew every line at 1.15 × size, the renderer at the font's ascent + descent × 1.12 / 1.18 (Amiri 1.76, Cairo 1.87 …): Arabic boxes were up to 45 % short, and multi-line text never shrank. Fixed (cert_text_layout.dart). 20/20 elements within tolerance. |
+| 11 | Template gallery; certificate watermarks | done | back `certificate_draft_service.py` (5 templates × ar / en), routes `GET /certificate-designs/templates`, `POST …/templates/{key}`; front wizard `_TemplateStrip`, `CertTemplateCard`; watermark `CertWatermark`, `CertWatermarkView`, `CertWatermarkControl` | |
+
+Tests: front `test/org/cert_studio_test.dart`, `test/org/cert_parity_test.dart`, `test/ui/cert_studio_layout_test.dart`
+(+ updated `cert_designer_v2_test.dart`); visual `test/visual/cert_designer_golden_test.dart` → `test/visual/goldens/
+cert_designer_{page,text}_{390,1440}_{ar,en}_{light,dark}.png`. Back `tests/org_v2/cert_studio.py`.
+
+Known limits: a turned element has no resize handles (W / H in its properties); the canvas underline sits where the
+font puts it (the renderer's bar is 0.08 × size under the baseline: a few px apart); image shadows are not offered
+(text only); the parity fixture must be regenerated in the API's Docker image after a renderer change.

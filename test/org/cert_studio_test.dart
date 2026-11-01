@@ -326,6 +326,38 @@ void main() {
       expect(slice.fields.last.locked, isFalse);
     });
 
+    test('resize on a phone: touch handles, the minimum size, the aspect lock', () {
+      var slice = const CertLangSlice(fields: [
+        CertField(id: 's', kind: CertFieldKind.signature, x: 100, y: 100, w: 220, h: 80),
+        CertField(id: 'f', kind: CertFieldKind.signature, x: 500, y: 100, w: 220, h: 80, aspectLock: false),
+      ], orientation: 'landscape');
+      final c = StudioController<CertField>(
+        adapter: CertStudioAdapter(lang: 'ar', read: () => slice, write: (s) => slice = s),
+        page: const StudioPage(1000, 707),
+      );
+      // a 390 px phone fits the page at ~0.34: a 220-unit box is ~75 px wide on screen
+      const phone = .34;
+      final locked = studioVisibleHandles(StudioResize.aspect, const Size(220 * phone, 80 * phone), touch: true);
+      expect(locked.length, 4, reason: 'corners only while the ratio is kept');
+      final free = studioVisibleHandles(StudioResize.free, const Size(220 * phone, 80 * phone), touch: true);
+      expect(free, containsAll([StudioHandle.topLeft, StudioHandle.bottomRight, StudioHandle.top, StudioHandle.bottom]));
+      expect(studioVisibleHandles(StudioResize.free, const Size(300, 200), touch: true).length, 8);
+      // the kept ratio: a corner drag scales both sides
+      c.select('s');
+      expect(c.beginResize(StudioHandle.bottomRight), isTrue);
+      c.updateResize(const Offset(110, 0));
+      c.endGesture();
+      final s = slice.fields.first;
+      expect(s.w / s.h, closeTo(220 / 80, .01));
+      // the minimum size (16 × 16 for an image) holds however far the handle goes
+      c.select('f');
+      expect(c.beginResize(StudioHandle.bottomRight), isTrue);
+      c.updateResize(const Offset(-400, -400));
+      c.endGesture();
+      final f = slice.fields.last;
+      expect([f.w, f.h], [16, 16]);
+    });
+
     test('grid: snapping to it and showing it', () {
       final c = StudioController<int>(
         adapter: StudioMemoryAdapter([const StudioItem(id: 'x', rect: Rect.fromLTWH(13, 13, 40, 40), payload: 0)]),
