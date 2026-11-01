@@ -259,7 +259,7 @@ class LayoutModeStep extends StatelessWidget {
         title: t('كيف تريد عرض عناصرك؟', 'How do you want to show your items?'),
         subtitle: t('اختر شكلًا جاهزًا، ثم عدّله كما تحب في الخطوة التالية.', 'Pick a ready shape, then change it as you like in the next step.'),
         children: [
-          LayoutCardGrid(min: 190, children: [
+          LayoutCardGrid(min: 150, children: [
             mode('list', 1, t('قائمة', 'List'), t('سطر لكل عنصر، الحقول متتالية', 'One line per item, fields in a row')),
             mode('table', 1, t('جدول', 'Table'), t('أعمدة بعناوين، مناسب للأرقام', 'Columns with headings, good for figures')),
             mode('custom', 1, t('بطاقة مخصّصة', 'Custom card'), t('صمّم بطاقة العنصر بنفسك', 'Design the item\'s card yourself')),
@@ -377,8 +377,8 @@ class _LayoutItemsStepState extends State<LayoutItemsStep> {
             width: 360,
             child: StudioSegmented<bool>(
               segments: [
-                StudioSegment(value: false, label: t('تصميم البطاقة', 'Card design'), icon: Icons.dashboard_customize_outlined),
-                StudioSegment(value: true, label: t('خيارات الصفوف', 'Row options'), icon: Icons.tune_rounded),
+                StudioSegment(value: false, label: t('تصميم البطاقة', 'Card design')),
+                StudioSegment(value: true, label: t('خيارات الصفوف', 'Row options')),
               ],
               value: _options,
               onChanged: (v) => setState(() => _options = v),
@@ -482,7 +482,7 @@ class LayoutRowPreview extends StatelessWidget {
       ]),
       const SizedBox(height: AppSpace.xs),
       LayoutBuilder(builder: (context, box) {
-        final scale = (box.maxWidth / w).clamp(.5, 6.0).toDouble();
+        final scale = ((box.maxWidth - 2 * AppSpace.xs) / w).clamp(.5, 6.0).toDouble();
         final fit = row.height * scale > maxHeight ? maxHeight / (row.height * scale) : 1.0;
         final s = scale * fit;
         final cards = [for (var k = 0; k < row.perLine && i + k < n; k++) i + k];

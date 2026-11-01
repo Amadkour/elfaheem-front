@@ -181,7 +181,7 @@ class LayoutElementView extends StatelessWidget {
     final dir = switch (s.dir) {
       'rtl' => TextDirection.rtl,
       'ltr' => TextDirection.ltr,
-      _ => rtl ? TextDirection.rtl : TextDirection.ltr,
+      _ => _autoDir(r.text) ?? (rtl ? TextDirection.rtl : TextDirection.ltr),
     };
     final h = switch (s.align) {
       'center' => 0.0,
@@ -227,6 +227,15 @@ class LayoutElementView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// `dir: auto`: the direction of the text's first strong letter (Arabic / Hebrew → rtl, Latin → ltr).
+  static TextDirection? _autoDir(String s) {
+    for (final r in s.runes) {
+      if ((r >= 0x0590 && r <= 0x08FF) || (r >= 0xFB1D && r <= 0xFEFC)) return TextDirection.rtl;
+      if ((r >= 0x41 && r <= 0x5A) || (r >= 0x61 && r <= 0x7A) || (r >= 0xC0 && r <= 0x24F)) return TextDirection.ltr;
+    }
+    return null;
   }
 
   Widget _image(BuildContext context, Color color) {
