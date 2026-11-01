@@ -151,8 +151,11 @@ class LayoutElementView extends StatelessWidget {
     switch (e.kind) {
       case 'line':
         final b = border ?? LayoutBorder(width: 0.3, color: s.color);
+        // through the middle of its box: horizontal when w >= h, else vertical
+        final thick = (b.width * scale).clamp(1.0, 40.0).toDouble();
+        final ink = layoutColor(b.color, color);
         child = Center(
-          child: Container(height: (b.width * scale).clamp(1.0, 40.0), color: layoutColor(b.color, color)),
+          child: element.w >= element.h ? Container(height: thick, color: ink) : Container(width: thick, color: ink),
         );
         return Opacity(opacity: r.show ? 1 : .25, child: child);
       case 'rect':
@@ -184,12 +187,14 @@ class LayoutElementView extends StatelessWidget {
     final dir = switch (s.dir) {
       'rtl' => TextDirection.rtl,
       'ltr' => TextDirection.ltr,
-      _ => _autoDir(r.text) ?? (rtl ? TextDirection.rtl : TextDirection.ltr),
+      // auto (the server's rule): right-to-left only for Arabic text on a right-to-left page
+      _ => rtl && _hasArabic(r.text) ? TextDirection.rtl : TextDirection.ltr,
     };
+    // start / end follow the PAGE direction (physical), whatever the text's own direction
     final h = switch (s.align) {
       'center' => 0.0,
-      'end' => 1.0,
-      _ => -1.0,
+      'end' => rtl ? -1.0 : 1.0,
+      _ => rtl ? 1.0 : -1.0,
     };
     final v = switch (s.valign) {
       'top' => -1.0,
@@ -202,11 +207,7 @@ class LayoutElementView extends StatelessWidget {
       r.text,
       style: style,
       textDirection: dir,
-      textAlign: switch (s.align) {
-        'center' => TextAlign.center,
-        'end' => TextAlign.end,
-        _ => TextAlign.start,
-      },
+      textAlign: h == 0 ? TextAlign.center : (h < 0 ? TextAlign.left : TextAlign.right),
       maxLines: s.maxLines > 0 ? s.maxLines : (s.wrap ? null : 1),
       overflow: s.maxLines > 0 ? TextOverflow.ellipsis : TextOverflow.clip,
       softWrap: s.wrap,
@@ -215,10 +216,10 @@ class LayoutElementView extends StatelessWidget {
       textDirection: dir,
       child: ClipRect(
         child: OverflowBox(
-          alignment: AlignmentDirectional(h, v),
+          alignment: Alignment(h, v),
           maxHeight: double.infinity,
           child: Align(
-            alignment: AlignmentDirectional(h, v),
+            alignment: Alignment(h, v),
             child: icon == null
                 ? text
                 : Row(mainAxisSize: MainAxisSize.min, children: [
@@ -232,19 +233,12 @@ class LayoutElementView extends StatelessWidget {
     );
   }
 
-  /// `dir: auto`: the direction of the text's first strong letter (Arabic / Hebrew → rtl, Latin → ltr).
-  static TextDirection? _autoDir(String s) {
-    for (final r in s.runes) {
-      if ((r >= 0x0590 && r <= 0x08FF) || (r >= 0xFB1D && r <= 0xFEFC)) return TextDirection.rtl;
-      if ((r >= 0x41 && r <= 0x5A) || (r >= 0x61 && r <= 0x7A) || (r >= 0xC0 && r <= 0x24F)) return TextDirection.ltr;
-    }
-    return null;
-  }
+  static bool _hasArabic(String s) => s.runes.any((r) => (r >= 0x0600 && r <= 0x08FF) || (r >= 0xFB50 && r <= 0xFEFC));
 
   Widget _image(BuildContext context, Color color) {
     final e = element;
     final bytes = LayoutAssets.of(e.value);
-    final fit = switch (e.style.fit) {
+    final fit = switch (e.fit) {
       'cover' => BoxFit.cover,
       'fill' => BoxFit.fill,
       _ => BoxFit.contain,
@@ -264,8 +258,8 @@ class LayoutElementView extends StatelessWidget {
     final small = _style(color).copyWith(fontSize: (e.style.size * .9 * kPtMm * scale).clamp(1.0, 200.0));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Expanded(child: picture),
-      if ((e.style.sigName ?? '').isNotEmpty) Text(layoutFillVars(e.style.sigName!, vars), style: small.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip),
-      if ((e.style.sigTitle ?? '').isNotEmpty) Text(layoutFillVars(e.style.sigTitle!, vars), style: small, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip),
+      if ((e.sigName ?? '').isNotEmpty) Text(layoutFillVars(e.sigName!, vars), style: small.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip),
+      if ((e.sigTitle ?? '').isNotEmpty) Text(layoutFillVars(e.sigTitle!, vars), style: small, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip),
     ]);
   }
 }

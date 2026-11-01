@@ -182,12 +182,12 @@ class LayoutElementProps extends StatelessWidget {
               StudioSegment(value: 'cover', label: t('تغطية', 'Fill')),
               StudioSegment(value: 'fill', label: t('تمديد', 'Stretch')),
             ],
-            value: e.style.fit ?? 'contain',
-            onChanged: (v) => _edit('fit', () => e.style.fit = v),
+            value: e.fit ?? 'contain',
+            onChanged: (v) => _edit('fit', () => e.fit = v),
           ),
           if (e.kind == 'signature') ...[
-            StudioTextProp(label: t('الاسم', 'Name'), value: e.style.sigName ?? '', onChanged: (v) => _edit('signature name', () => e.style.sigName = v, coalesce: true)),
-            StudioTextProp(label: t('الصفة', 'Title'), value: e.style.sigTitle ?? '', onChanged: (v) => _edit('signature title', () => e.style.sigTitle = v, coalesce: true)),
+            StudioTextProp(label: t('الاسم', 'Name'), value: e.sigName ?? '', onChanged: (v) => _edit('signature name', () => e.sigName = v, coalesce: true)),
+            StudioTextProp(label: t('الصفة', 'Title'), value: e.sigTitle ?? '', onChanged: (v) => _edit('signature title', () => e.sigTitle = v, coalesce: true)),
           ],
         ];
       case 'qr' || 'page_number':

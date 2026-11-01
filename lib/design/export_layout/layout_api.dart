@@ -32,12 +32,17 @@ class LayoutFont {
 
   String label(String lang) => lang == 'ar' ? (labelAr.isEmpty ? labelEn : labelAr) : (labelEn.isEmpty ? labelAr : labelEn);
 
-  factory LayoutFont.fromJson(Map<String, dynamic> j) => LayoutFont(
-        id: '${j['id'] ?? j['key'] ?? ''}',
-        labelAr: '${j['label_ar'] ?? j['name_ar'] ?? j['label'] ?? j['name'] ?? ''}',
-        labelEn: '${j['label_en'] ?? j['name_en'] ?? j['label'] ?? j['name'] ?? ''}',
-        arabic: j['arabic'] != false && j['script'] != 'latin',
-      );
+  /// `{id, family, scripts: ["arabic", "latin"] | ["latin"], bold, italic}` (older shapes: label_ar / label_en).
+  factory LayoutFont.fromJson(Map<String, dynamic> j) {
+    final family = '${j['family'] ?? j['label'] ?? j['name'] ?? j['id'] ?? ''}';
+    final scripts = j['scripts'];
+    return LayoutFont(
+      id: '${j['id'] ?? j['key'] ?? ''}',
+      labelAr: '${j['label_ar'] ?? family}',
+      labelEn: '${j['label_en'] ?? family}',
+      arabic: scripts is List ? scripts.contains('arabic') : j['arabic'] != false,
+    );
+  }
 }
 
 /// One rendered page of the preview.
@@ -154,7 +159,8 @@ class LayoutApi {
 
   static bool _bare404(Object? body) => body is Map && body['detail'] == 'Not Found';
 
-  /// `GET /fonts` — the renderer's catalog.
+  /// `GET /fonts` — the renderer's catalog (the ONLY font list: Scheherazade New, Reem Kufi and Aref Ruqaa are not
+  /// in it, the renderer cannot join their Arabic).
   Future<ExportResult<List<LayoutFont>>> fonts() => _call(() => api.get('$_base/fonts'), (r) {
         final items = r is List ? _maps(r) : _maps(_map(r)['items'] ?? _map(r)['fonts']);
         return [for (final j in items) LayoutFont.fromJson(j)]..removeWhere((f) => f.id.isEmpty);
@@ -166,8 +172,8 @@ class LayoutApi {
       );
 
   /// `POST /preview` — the first, middle and last page of [lang]'s file as PNGs, rendered by the file's own renderer.
-  Future<ExportResult<LayoutPreview>> preview(LayoutDocument doc, {required String lang, String pages = 'first,middle,last', int sample = 200}) => _call(
-        () => api.post('$_base/preview', body: {'document': doc.toJson(), 'lang': lang, 'pages': pages, 'sample': sample}),
+  Future<ExportResult<LayoutPreview>> preview(LayoutDocument doc, {required String lang, String pages = 'first,middle,last', int sample = 200, String? title}) => _call(
+        () => api.post('$_base/preview', body: {'document': doc.toJson(), 'lang': lang, 'pages': pages, 'sample': sample, 'title': ?title}),
         (r) {
           final m = _map(r);
           return LayoutPreview([
@@ -259,11 +265,14 @@ class LayoutApi {
 /// Bilingual text for the layout routes' error codes.
 String layoutErrorText(String? code, [String? fallback]) => switch (code) {
       'rows_too_many' => tx('lay_err_rows_many', 'Too many rows for one export (50,000 at most)', 'عدد الصفوف أكبر من المسموح (50٬000 صف كحد أقصى)'),
-      'rows_too_big' || 'payload_too_big' => tx('lay_err_rows_big', 'The rows are too large to send (20 MB at most)', 'حجم الصفوف أكبر من المسموح (20 ميجابايت)'),
+      'rows_too_big' || 'payload_too_big' || 'upload_too_big' => tx('lay_err_rows_big', 'The rows are too large to send (20 MB at most)', 'حجم الصفوف أكبر من المسموح (20 ميجابايت)'),
       'upload_expired' || 'upload_not_found' => tx('lay_err_upload', 'The uploaded rows expired: export again', 'انتهت صلاحية الصفوف المرفوعة: أعد التصدير'),
       'asset_too_big' => tx('lay_err_asset_big', 'The image is larger than 2 MB', 'الصورة أكبر من 2 ميجابايت'),
-      'asset_type' || 'asset_invalid' => tx('lay_err_asset_type', 'Use a PNG or JPEG image', 'استخدم صورة PNG أو JPEG'),
+      'asset_type' || 'asset_invalid' || 'asset_type_invalid' => tx('lay_err_asset_type', 'Use a PNG or JPEG image', 'استخدم صورة PNG أو JPEG'),
       'run_not_found' => tx('lay_err_run', 'This export no longer exists', 'هذا التصدير لم يعد موجودًا'),
+      'run_not_ready' => tx('lay_err_not_ready', 'The file is not ready yet', 'الملف لم يجهز بعد'),
+      'run_not_cancelable' => tx('lay_err_not_cancelable', 'This export has already finished', 'انتهى هذا التصدير بالفعل'),
+      'feature_disabled' => tx('lay_err_disabled', 'This export is switched off on this platform', 'هذا التصدير موقوف على المنصة'),
       'layout_invalid' || 'document_invalid' => tx('lay_err_invalid', 'The design has a problem: check the notes', 'في التصميم مشكلة: راجع الملاحظات'),
       'font_unknown' => tx('lay_err_font', 'A font of the design is not available on the server', 'أحد خطوط التصميم غير متاح على الخادم'),
       'server_busy' => tx('lay_err_busy', 'The server is busy: try again in a moment', 'الخادم مشغول: حاول بعد لحظات'),

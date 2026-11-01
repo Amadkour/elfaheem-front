@@ -80,9 +80,6 @@ class LayoutStyle {
     this.wrap = true,
     this.maxLines = 0,
     this.dir = 'auto',
-    this.fit,
-    this.sigName,
-    this.sigTitle,
     Map<String, dynamic>? extra,
   }) : extra = extra ?? {};
 
@@ -109,21 +106,15 @@ class LayoutStyle {
   /// 0 = as many as fit (the rest is clipped); n = n lines then an ellipsis.
   int maxLines;
 
-  /// auto | rtl | ltr
+  /// auto | rtl | ltr (only the bidi base: start / end follow the page direction)
   String dir;
-
-  /// Images: contain | cover | fill.
-  String? fit;
-
-  /// Signatures: the name and title lines under the image.
-  String? sigName, sigTitle;
   final Map<String, dynamic> extra;
 
   bool get bold => weight >= 600;
 
   static const _known = {
     'font', 'size', 'weight', 'italic', 'color', 'bg', 'align', 'valign', 'padding', 'border', 'radius', 'wrap', //
-    'max_lines', 'dir', 'fit', 'sig_name', 'sig_title',
+    'max_lines', 'dir',
   };
 
   factory LayoutStyle.fromJson(Map<String, dynamic> j) => LayoutStyle(
@@ -141,9 +132,6 @@ class LayoutStyle {
         wrap: _b(j['wrap'], true),
         maxLines: _i(j['max_lines'], 0),
         dir: _s(j['dir']) ?? 'auto',
-        fit: _s(j['fit']),
-        sigName: _s(j['sig_name']),
-        sigTitle: _s(j['sig_title']),
         extra: _extra(j, _known),
       );
 
@@ -163,9 +151,6 @@ class LayoutStyle {
         'wrap': wrap,
         'max_lines': maxLines,
         'dir': dir,
-        if (fit != null) 'fit': fit,
-        if (sigName != null) 'sig_name': sigName,
-        if (sigTitle != null) 'sig_title': sigTitle,
       };
 
   LayoutStyle copy() => LayoutStyle.fromJson(toJson());
@@ -280,13 +265,14 @@ class LayoutCond {
 
 /// What a matching rule (or `else`) does to its element.
 class LayoutThen {
-  LayoutThen({this.show = true, this.text, this.color, this.bg, this.icon, Map<String, dynamic>? extra}) : extra = extra ?? {};
+  LayoutThen({this.show = true, this.text, this.color, this.bg, this.icon, this.bold, Map<String, dynamic>? extra}) : extra = extra ?? {};
 
   bool show;
+  bool? bold;
   String? text, color, bg, icon;
   final Map<String, dynamic> extra;
 
-  static const _known = {'show', 'text', 'color', 'bg', 'icon'};
+  static const _known = {'show', 'text', 'color', 'bg', 'icon', 'bold'};
 
   static LayoutThen? maybe(Object? v) => v is Map ? LayoutThen.fromJson(_map(v)) : null;
 
@@ -296,12 +282,14 @@ class LayoutThen {
         color: _s(j['color']),
         bg: _s(j['bg']),
         icon: _s(j['icon']),
+        bold: j['bold'] is bool ? j['bold'] as bool : null,
         extra: _extra(j, _known),
       );
 
   Map<String, dynamic> toJson() => {
         ...extra,
         'show': show,
+        if (bold != null) 'bold': bold,
         if (text != null) 'text': text,
         if (color != null) 'color': color,
         if (bg != null) 'bg': bg,
@@ -358,6 +346,9 @@ class LayoutElement {
     List<LayoutRule>? rules,
     this.otherwise,
     LayoutStyle? style,
+    this.fit,
+    this.sigName,
+    this.sigTitle,
     Map<String, dynamic>? extra,
   })  : rules = rules ?? [],
         style = style ?? LayoutStyle(),
@@ -380,12 +371,18 @@ class LayoutElement {
   /// `else`: applied when no rule matches.
   LayoutThen? otherwise;
   LayoutStyle style;
+
+  /// Images / signatures: contain | cover | fill.
+  String? fit;
+
+  /// Signatures: the name and title lines under the image (variables allowed).
+  String? sigName, sigTitle;
   final Map<String, dynamic> extra;
 
   static const kinds = ['text', 'field', 'image', 'line', 'rect', 'badge', 'qr', 'page_number', 'signature'];
   static const _known = {
     'id', 'kind', 'x', 'y', 'w', 'h', 'rotation', 'locked', 'name', 'value', 'bind', 'computed', 'rules', 'else', //
-    'style',
+    'style', 'fit', 'sig_name', 'sig_title',
   };
 
   bool get isText => kind == 'text' || kind == 'field' || kind == 'badge' || kind == 'page_number';
@@ -414,6 +411,9 @@ class LayoutElement {
         rules: [for (final r in _maps(j['rules'])) LayoutRule.fromJson(r)],
         otherwise: LayoutThen.maybe(j['else']),
         style: LayoutStyle.fromJson(_map(j['style'])),
+        fit: _s(j['fit']),
+        sigName: _s(j['sig_name']),
+        sigTitle: _s(j['sig_title']),
         extra: _extra(j, _known),
       );
 
@@ -434,6 +434,9 @@ class LayoutElement {
         if (rules.isNotEmpty) 'rules': [for (final r in rules) r.toJson()],
         if (otherwise != null) 'else': otherwise!.toJson(),
         'style': style.toJson(),
+        if (fit != null) 'fit': fit,
+        if (sigName != null) 'sig_name': sigName,
+        if (sigTitle != null) 'sig_title': sigTitle,
       };
 
   LayoutElement copy({String? id}) => LayoutElement.fromJson({...toJson(), 'id': ?id});
@@ -618,7 +621,7 @@ class LayoutPage {
 }
 
 class LayoutListSpec {
-  LayoutListSpec({List<LayoutBind>? fields, this.separator = ' · ', this.numbered = true, LayoutStyle? style, Map<String, dynamic>? extra})
+  LayoutListSpec({List<LayoutBind>? fields, this.separator = ' · ', this.numbered = true, LayoutStyle? style, this.rowHeight, Map<String, dynamic>? extra})
       : fields = fields ?? [],
         style = style ?? LayoutStyle(),
         extra = extra ?? {};
@@ -627,20 +630,30 @@ class LayoutListSpec {
   String separator;
   bool numbered;
   LayoutStyle style;
+
+  /// Fixed line height (mm); null = the server's default (font size × 1.3 × lines + padding).
+  double? rowHeight;
   final Map<String, dynamic> extra;
 
-  static const _known = {'fields', 'separator', 'numbered', 'style'};
+  static const _known = {'fields', 'separator', 'numbered', 'style', 'row_height'};
 
   factory LayoutListSpec.fromJson(Map<String, dynamic> j) => LayoutListSpec(
         fields: [if (j['fields'] is List) for (final f in j['fields'] as List) LayoutBind.of(f)],
         separator: _s(j['separator']) ?? ' · ',
         numbered: _b(j['numbered'], true),
         style: LayoutStyle.fromJson(_map(j['style'])),
+        rowHeight: j['row_height'] is num ? (j['row_height'] as num).toDouble() : null,
         extra: _extra(j, _known),
       );
 
-  Map<String, dynamic> toJson() =>
-      {...extra, 'fields': [for (final f in fields) f.toJson()], 'separator': separator, 'numbered': numbered, 'style': style.toJson()};
+  Map<String, dynamic> toJson() => {
+        ...extra,
+        'fields': [for (final f in fields) f.toJson()],
+        'separator': separator,
+        'numbered': numbered,
+        'style': style.toJson(),
+        if (rowHeight != null) 'row_height': rowHeight,
+      };
 }
 
 class LayoutColumn {
@@ -670,7 +683,7 @@ class LayoutColumn {
 }
 
 class LayoutTableSpec {
-  LayoutTableSpec({List<LayoutColumn>? columns, LayoutStyle? headerStyle, this.zebra, this.borders, this.repeatHeader = true, Map<String, dynamic>? extra})
+  LayoutTableSpec({List<LayoutColumn>? columns, LayoutStyle? headerStyle, this.zebra, this.borders, this.repeatHeader = true, this.rowHeight, this.headerHeight, Map<String, dynamic>? extra})
       : columns = columns ?? [],
         headerStyle = headerStyle ?? LayoutStyle(weight: 700),
         extra = extra ?? {};
@@ -680,9 +693,12 @@ class LayoutTableSpec {
   String? zebra;
   LayoutBorder? borders;
   bool repeatHeader;
+
+  /// Fixed heights (mm); null = the server's default from the font size.
+  double? rowHeight, headerHeight;
   final Map<String, dynamic> extra;
 
-  static const _known = {'columns', 'header_style', 'zebra', 'borders', 'repeat_header'};
+  static const _known = {'columns', 'header_style', 'zebra', 'borders', 'repeat_header', 'row_height', 'header_height'};
 
   factory LayoutTableSpec.fromJson(Map<String, dynamic> j) => LayoutTableSpec(
         columns: [for (final c in _maps(j['columns'])) LayoutColumn.fromJson(c)],
@@ -690,6 +706,8 @@ class LayoutTableSpec {
         zebra: _s(j['zebra']),
         borders: LayoutBorder.maybe(j['borders']),
         repeatHeader: _b(j['repeat_header'], true),
+        rowHeight: j['row_height'] is num ? (j['row_height'] as num).toDouble() : null,
+        headerHeight: j['header_height'] is num ? (j['header_height'] as num).toDouble() : null,
         extra: _extra(j, _known),
       );
 
@@ -700,6 +718,8 @@ class LayoutTableSpec {
         'zebra': zebra,
         if (borders != null) 'borders': borders!.toJson(),
         'repeat_header': repeatHeader,
+        if (rowHeight != null) 'row_height': rowHeight,
+        if (headerHeight != null) 'header_height': headerHeight,
       };
 }
 
@@ -748,12 +768,13 @@ class LayoutTotal {
 }
 
 class LayoutWatermark {
-  LayoutWatermark({this.text = '', this.opacity = 0.08, this.angle = 45, this.fontSize = 60, Map<String, dynamic>? extra}) : extra = extra ?? {};
-  String text;
+  LayoutWatermark({this.text = '', this.opacity = 0.08, this.angle = 45, this.fontSize = 60, this.color = '#808080', Map<String, dynamic>? extra})
+      : extra = extra ?? {};
+  String text, color;
   double opacity, angle, fontSize;
   final Map<String, dynamic> extra;
 
-  static const _known = {'text', 'opacity', 'angle', 'font_size'};
+  static const _known = {'text', 'opacity', 'angle', 'font_size', 'color'};
 
   static LayoutWatermark? maybe(Object? v) => v is Map ? LayoutWatermark.fromJson(_map(v)) : null;
 
@@ -762,10 +783,11 @@ class LayoutWatermark {
         opacity: _d(j['opacity'], 0.08),
         angle: _d(j['angle'], 45),
         fontSize: _d(j['font_size'], 60),
+        color: _s(j['color']) ?? '#808080',
         extra: _extra(j, _known),
       );
 
-  Map<String, dynamic> toJson() => {...extra, 'text': text, 'opacity': opacity, 'angle': angle, 'font_size': fontSize};
+  Map<String, dynamic> toJson() => {...extra, 'text': text, 'opacity': opacity, 'angle': angle, 'font_size': fontSize, 'color': color};
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -925,6 +947,7 @@ class LayoutDocument {
     List<String>? languages,
     Map<String, LayoutDesign>? designs,
     Map<String, dynamic>? source,
+    this.name,
     Map<String, dynamic>? extra,
   })  : languages = languages ?? ['ar'],
         designs = designs ?? {},
@@ -940,10 +963,13 @@ class LayoutDocument {
 
   /// {dataset, params} or {rows_upload}
   Map<String, dynamic> source;
+
+  /// The file name of a run (optional).
+  String? name;
   final Map<String, dynamic> extra;
 
   static const formats = ['pdf', 'docx', 'xlsx'];
-  static const _known = {'schema_version', 'format', 'languages', 'designs', 'source'};
+  static const _known = {'schema_version', 'format', 'languages', 'designs', 'source', 'name'};
 
   /// ar | en | both (the templates' `lang`).
   String get langKey => languages.length > 1 ? 'both' : languages.first;
@@ -957,6 +983,7 @@ class LayoutDocument {
       languages: [if (j['languages'] is List) for (final l in j['languages'] as List) '$l'],
       designs: {for (final e in designs.entries) if (e.value is Map) e.key: LayoutDesign.fromJson(_map(e.value))},
       source: _map(j['source']),
+      name: _s(j['name']),
       extra: _extra(j, _known),
     )..languages.removeWhere((l) => l != 'ar' && l != 'en');
   }
@@ -968,6 +995,7 @@ class LayoutDocument {
         'languages': [...languages],
         'designs': {for (final e in designs.entries) e.key: e.value.toJson()},
         if (withSource) 'source': source,
+        if (name != null) 'name': name,
       };
 
   LayoutDocument copy() => LayoutDocument.fromJson(toJson());

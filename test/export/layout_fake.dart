@@ -63,9 +63,10 @@ class LayoutFakeServer {
   Map<String, FakeHandler> routes() => {
         'GET /api/v1/exports/layout/fonts': (_) => {
               'items': [
-                {'id': 'tajawal', 'label_ar': 'تجوال', 'label_en': 'Tajawal'},
-                {'id': 'cairo', 'label_ar': 'القاهرة', 'label_en': 'Cairo'},
+                {'id': 'tajawal', 'family': 'Tajawal', 'scripts': ['arabic', 'latin'], 'bold': true, 'italic': false},
+                {'id': 'cairo', 'family': 'Cairo', 'scripts': ['arabic', 'latin'], 'bold': true, 'italic': false},
               ],
+              'default': 'tajawal',
             },
         'GET /api/v1/exports/templates': (_) => {
               'items': [
@@ -115,7 +116,7 @@ class LayoutFakeServer {
               {'index': 5, 'total': 5, 'png_b64': kPng1},
             ],
             'issues': [
-              {'code': 'xlsx_per_line', 'format': 'xlsx', 'message_ar': 'بطاقة واحدة في كل سطر في Excel', 'message_en': 'Excel shows one card per line'},
+              {'code': 'xlsx_per_line', 'format': 'xlsx', 'level': 'info', 'lang': 'en', 'message_ar': 'بطاقة واحدة في كل سطر في Excel', 'message_en': 'Excel shows one card per line'},
             ],
           };
         },

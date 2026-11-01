@@ -55,6 +55,20 @@ void main() {
       expect(doc.langKey, 'en');
     });
 
+    test('server keys: element fit / sig_name / sig_title, table and list heights, then.bold, watermark colour, name', () {
+      final e = LayoutElement.fromJson({'id': 's', 'kind': 'signature', 'fit': 'cover', 'sig_name': 'Dr. A', 'sig_title': 'Dean', 'style': {'size': 9}});
+      expect((e.fit, e.sigName, e.sigTitle), ('cover', 'Dr. A', 'Dean'));
+      expect(e.toJson()['style'], isNot(contains('fit')));
+      final t = LayoutTableSpec.fromJson({'row_height': 7, 'header_height': 9});
+      expect((t.rowHeight, t.headerHeight), (7.0, 9.0));
+      expect(LayoutListSpec.fromJson({'row_height': 6}).toJson()['row_height'], 6.0);
+      expect(LayoutThen.fromJson({'bold': true}).toJson()['bold'], isTrue);
+      expect(LayoutWatermark.fromJson(const {}).color, '#808080');
+      expect(LayoutDocument.fromJson({'languages': ['ar'], 'name': 'Roster.pdf'}).toJson()['name'], 'Roster.pdf');
+      final issue = LayoutIssue.fromJson({'code': 'font_no_arabic', 'level': 'warning', 'message_en': 'x'});
+      expect(issue.severity, 'warning');
+    });
+
     test('a FieldRef may be a bare name', () {
       final l = LayoutListSpec.fromJson({'fields': ['name', {'field': 'score', 'format': 'integer'}]});
       expect(l.fields.map((f) => f.field), ['name', 'score']);

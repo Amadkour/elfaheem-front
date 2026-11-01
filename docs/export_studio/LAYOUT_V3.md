@@ -125,3 +125,30 @@ Single click = select + properties in the docked side panel (bottom sheet on pho
 (web/desktop) or long-press (touch) on text = inline edit on the canvas; Enter / click outside confirms, Esc cancels.
 Drag, 8 handles, arrows nudge (shift ×10), snap guides, multi-select (shift/ctrl click, marquee), copy/paste/duplicate,
 Delete, undo/redo, zoom, right-click menu (duplicate, delete, bring forward/back, lock).
+
+## Server notes and clarifications (back implementation, 2026-11-01)
+Filled in by the server where the contract above was silent; the app should follow them (copy to the front file).
+- **FieldRef** = `"key"` or `{"field": "key", "label": "…"?, + the Bind format keys}` (`format`, `decimals`, `currency`,
+  `date_pattern`, `prefix`, `suffix`, `empty`). A list field with a `label` prints `label: value`.
+- **Fixed heights** (nothing grows; this is what makes page N/M and Word's exact rows possible): optional
+  `list.row_height`, `table.row_height`, `table.header_height` (mm); default = font size × 1.3 × (max_lines or 1) +
+  2 × padding. Group header without a band: one bold 8 mm line with the value. Totals: table → a row under the
+  columns (the first label in the first column that has no total); list / custom → one line `Label: value · …`.
+  `{{total}}` = the number of items.
+- **Directions:** table columns are in READING order (a right-to-left page puts the first column on the right; Word
+  `bidiVisual`, Excel RTL sheet); custom cards fill a line from the right in a right-to-left page. Element x / y stay
+  physical. Style `align` start / end resolve by the page direction (as the canvas' Directionality), `dir: auto`
+  sets only the bidi base: left-to-right for text with no Arabic, right-to-left for Arabic text on an RTL page.
+- **Fonts:** the catalog leaves out Scheherazade New, Reem Kufi and Aref Ruqaa (their files carry no Arabic
+  presentation forms and the renderer has no OpenType shaping). A glyph the design's font lacks (Arabic in a Latin
+  font) is drawn with Amiri, run by run, and validate() says so (`font_no_arabic`). Word names the fonts (no
+  embedding: `fonts_named` note); Excel names them.
+- **Elements:** a `line` is drawn through the middle of its box, horizontal when w ≥ h (Word / Excel: the cell's top
+  or left border). `fit`, `sig_name`, `sig_title` are element keys. `else` applies only to an element with `rules`.
+  Rule `then` may also carry `bold`. `watermark.color` (default #808080).
+- **keep_together: false** splits a card line across the page break (PDF, each part clipped); Word lets the rows split.
+- **Excel images:** bands may hold images (anchored to their merged cell); per-item images are dropped (`image_rows`).
+- **Assets:** the uploader owns them; a design naming an asset id renders it for whoever renders that design (the id
+  is a random 128-bit token), so organization templates keep their logo.
+- **Documents may carry `name`** (the run's file name). Runs: status `canceled` added; `progress` 0-100.
+- Response shapes and codes: back `FLUTTER_API_CHANGES.md` ("Export layout v3").

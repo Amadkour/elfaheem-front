@@ -153,7 +153,7 @@ LayoutDesign layoutStarter({required String mode, required String lang, required
   switch (mode) {
     case 'list':
       d.list
-        ..fields.addAll([for (final f in picked.take(4)) f.bind(lang: lang)])
+        ..fields.addAll([for (final f in picked.take(4)) f.bind()])
         ..separator = ' · '
         ..numbered = true
         ..style = LayoutStyle(size: 10, color: _ink);
@@ -440,7 +440,11 @@ class LayoutIssue {
         format: j['format']?.toString(),
         messageAr: '${j['message_ar'] ?? j['message'] ?? ''}',
         messageEn: '${j['message_en'] ?? j['message'] ?? ''}',
-        severity: '${j['severity'] ?? (j['code'] == 'error' ? 'error' : 'note')}',
+        severity: switch ('${j['level'] ?? j['severity'] ?? ''}') {
+          'error' => 'error',
+          'warning' => 'warning',
+          _ => 'note',
+        },
       );
 
   /// The same note from the server and from the app counts once.

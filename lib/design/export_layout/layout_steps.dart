@@ -319,7 +319,7 @@ List<LayoutAddOption> layoutRowAddOptions(LayoutFlowController f) {
         (id) => LayoutElement(id: id, kind: 'badge', y: 2, w: 22, h: 6, bind: first?.bind(), style: LayoutStyle(size: 8, align: 'center', bg: '#F2F4F7', radius: 3, maxLines: 1))),
     LayoutAddOption(t('رقم العنصر', 'Item number'), Icons.tag_rounded,
         (id) => LayoutElement(id: id, kind: 'text', y: 2, w: 8, h: 6, name: t('الرقم', 'Number'), computed: LayoutComputed(op: 'index'), style: LayoutStyle(size: 9, weight: 700, align: 'center'))),
-    LayoutAddOption(t('صورة', 'Image'), Icons.image_outlined, (id) => LayoutElement(id: id, kind: 'image', y: 2, w: 12, h: 12, style: LayoutStyle(fit: 'contain', padding: 0))),
+    LayoutAddOption(t('صورة', 'Image'), Icons.image_outlined, (id) => LayoutElement(id: id, kind: 'image', y: 2, w: 12, h: 12, fit: 'contain', style: LayoutStyle(padding: 0))),
     LayoutAddOption(t('خط', 'Line'), Icons.horizontal_rule_rounded,
         (id) => LayoutElement(id: id, kind: 'line', y: 1, w: 60, h: 1, style: LayoutStyle(border: LayoutBorder(width: .3, color: '#D0D5DD')))),
     LayoutAddOption(t('مربع', 'Box'), Icons.crop_square_rounded,
@@ -613,7 +613,7 @@ class LayoutFieldsEditor extends StatelessWidget {
         }
         rebalance();
       } else {
-        on ? d.list.fields.add(field.bind(lang: f.lang)) : d.list.fields.removeWhere((x) => x.field == key);
+        on ? d.list.fields.add(field.bind()) : d.list.fields.removeWhere((x) => x.field == key);
       }
       f.changed();
     }
@@ -945,7 +945,7 @@ List<LayoutAddOption> layoutBandAddOptions(LayoutFlowController f) {
   LayoutElement text(String id, String v, String name, {double w = 70, double h = 6, double size = 10, int weight = 400, String color = '#1A1A1A'}) =>
       LayoutElement(id: id, kind: 'text', y: 1, w: w, h: h, value: v, name: name, style: LayoutStyle(size: size, weight: weight, color: color, maxLines: 1));
   return [
-    LayoutAddOption(t('شعار', 'Logo'), Icons.image_outlined, (id) => LayoutElement(id: id, kind: 'image', y: 1, w: 18, h: 18, name: t('شعار', 'Logo'), style: LayoutStyle(fit: 'contain', padding: 0))),
+    LayoutAddOption(t('شعار', 'Logo'), Icons.image_outlined, (id) => LayoutElement(id: id, kind: 'image', y: 1, w: 18, h: 18, name: t('شعار', 'Logo'), fit: 'contain', style: LayoutStyle(padding: 0))),
     LayoutAddOption(t('العنوان', 'Title'), Icons.title_rounded, (id) => text(id, '{{title}}', t('العنوان', 'Title'), w: 110, h: 9, size: 16, weight: 700)),
     LayoutAddOption(t('عنوان فرعي', 'Subtitle'), Icons.short_text_rounded, (id) => text(id, t('عنوان فرعي', 'Subtitle'), t('عنوان فرعي', 'Subtitle'), w: 100, size: 11, color: '#475467')),
     LayoutAddOption(t('اسم المؤسسة', 'Organization name'), Icons.apartment_rounded, (id) => text(id, '{{org_name}}', t('اسم المؤسسة', 'Organization'))),
@@ -956,8 +956,8 @@ List<LayoutAddOption> layoutBandAddOptions(LayoutFlowController f) {
     LayoutAddOption(t('العدد الكلي', 'Total count'), Icons.functions_rounded, (id) => text(id, t('العدد: {{total}}', 'Items: {{total}}'), t('العدد الكلي', 'Total count'), w: 40, size: 9)),
     LayoutAddOption(t('المُصدِّر', 'Exported by'), Icons.person_outline_rounded, (id) => text(id, '{{exporter}}', t('المُصدِّر', 'Exported by'), w: 60, size: 8, color: '#667085')),
     LayoutAddOption(t('توقيع', 'Signature'), Icons.draw_rounded,
-        (id) => LayoutElement(id: id, kind: 'signature', y: 1, w: 45, h: 22, name: t('توقيع', 'Signature'), style: LayoutStyle(size: 9, align: 'center', fit: 'contain', sigName: t('الاسم', 'Name'), sigTitle: t('الصفة', 'Title')))),
-    LayoutAddOption(t('ختم', 'Stamp'), Icons.verified_outlined, (id) => LayoutElement(id: id, kind: 'image', y: 1, w: 25, h: 25, name: t('ختم', 'Stamp'), style: LayoutStyle(fit: 'contain', padding: 0))),
+        (id) => LayoutElement(id: id, kind: 'signature', y: 1, w: 45, h: 22, name: t('توقيع', 'Signature'), fit: 'contain', sigName: t('الاسم', 'Name'), sigTitle: t('الصفة', 'Title'), style: LayoutStyle(size: 9, align: 'center'))),
+    LayoutAddOption(t('ختم', 'Stamp'), Icons.verified_outlined, (id) => LayoutElement(id: id, kind: 'image', y: 1, w: 25, h: 25, name: t('ختم', 'Stamp'), fit: 'contain', style: LayoutStyle(padding: 0))),
     LayoutAddOption(t('رمز QR', 'QR code'), Icons.qr_code_2_rounded, (id) => LayoutElement(id: id, kind: 'qr', y: 1, w: 18, h: 18, value: '{{title}} {{date}}', name: t('رمز QR', 'QR code'), style: LayoutStyle(padding: 0))),
     LayoutAddOption(t('نص', 'Text'), Icons.text_fields_rounded, (id) => text(id, t('نص', 'Text'), t('نص', 'Text'))),
     LayoutAddOption(t('خط', 'Line'), Icons.horizontal_rule_rounded,
@@ -1344,7 +1344,11 @@ class LayoutIssuesCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(i.severity == 'error' ? Icons.error_outline_rounded : Icons.info_outline_rounded, size: 18, color: i.severity == 'error' ? c.danger : c.textMedium),
+              Icon(
+                i.severity == 'error' ? Icons.error_outline_rounded : (i.severity == 'warning' ? Icons.warning_amber_rounded : Icons.info_outline_rounded),
+                size: 18,
+                color: i.severity == 'error' ? c.danger : c.textMedium,
+              ),
               const SizedBox(width: AppSpace.xs),
               Expanded(child: Text(i.message(lang), style: appText(12.5, c: c.textDark))),
             ]),

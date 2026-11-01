@@ -22,7 +22,7 @@ Map<String, Object> _customDraft() {
     final d = layoutStarter(mode: 'custom', lang: l, fields: fields, perLine: 2);
     d.row.elements.first.rules.add(LayoutRule(when: [LayoutCond(field: 'score', op: '>=', value: 50)], then: LayoutThen(text: 'Pass', icon: 'check')));
     d.afterItems = LayoutBand(height: 26, elements: [
-      LayoutElement(id: 'sig', kind: 'signature', x: 2, y: 1, w: 45, h: 22, style: LayoutStyle(sigName: 'Dr. A', sigTitle: 'Dean')),
+      LayoutElement(id: 'sig', kind: 'signature', x: 2, y: 1, w: 45, h: 22, sigName: 'Dr. A', sigTitle: 'Dean'),
       LayoutElement(id: 'qr', kind: 'qr', x: 60, y: 1, w: 18, h: 18, value: '{{title}}'),
     ]);
     d.watermark = LayoutWatermark(text: 'DRAFT');

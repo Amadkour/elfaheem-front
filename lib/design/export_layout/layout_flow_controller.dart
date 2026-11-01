@@ -386,7 +386,7 @@ class LayoutFlowController extends ChangeNotifier {
       _notify();
       return;
     }
-    final r = await api.preview(doc, lang: l);
+    final r = await api.preview(doc, lang: l, title: titleIn(l));
     previewLoading = false;
     if (r.ok) {
       previews[l] = r.data;
@@ -429,6 +429,7 @@ class LayoutFlowController extends ChangeNotifier {
     _notify();
     final err = await ensureSource();
     if (err != null) return _fail(err);
+    doc.name = fileName;
     final started = await api.startRun(doc, name: fileName);
     if (!started.ok || started.data!.isEmpty) return _fail(started.error ?? '');
     if (phase == LayoutRunPhase.cancelled) {
