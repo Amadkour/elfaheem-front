@@ -47,6 +47,7 @@ class StudioItem<P> {
     this.visible = true,
     this.resize = StudioResize.free,
     this.minSize,
+    this.rotation = 0,
   });
 
   final String id;
@@ -65,6 +66,10 @@ class StudioItem<P> {
   /// The smallest size in page units (null = the controller's [StudioController.minSize]).
   final Size? minSize;
 
+  /// Degrees, clockwise, about the centre of [rect]. A turned item is drawn and hit turned; it moves like any item
+  /// but shows no resize handles (its size is edited in the host's properties).
+  final double rotation;
+
   StudioItem<P> copyWith({
     String? id,
     Rect? rect,
@@ -73,6 +78,7 @@ class StudioItem<P> {
     bool? visible,
     StudioResize? resize,
     Size? minSize,
+    double? rotation,
   }) =>
       StudioItem<P>(
         id: id ?? this.id,
@@ -82,6 +88,7 @@ class StudioItem<P> {
         visible: visible ?? this.visible,
         resize: resize ?? this.resize,
         minSize: minSize ?? this.minSize,
+        rotation: rotation ?? this.rotation,
       );
 }
 

@@ -161,7 +161,7 @@ class StudioController<P> extends ChangeNotifier {
   /// The single selected item when it can be resized (shows the 8 handles).
   StudioItem<P>? get resizable {
     final s = single;
-    return s != null && s.visible && !s.locked && s.resize != StudioResize.none ? s : null;
+    return s != null && s.visible && !s.locked && s.rotation == 0 && s.resize != StudioResize.none ? s : null;
   }
 
   // ── Gestures (one undo step each) ───────────────────────────────────────────────────────────────────────
@@ -363,6 +363,47 @@ class StudioController<P> extends ChangeNotifier {
     final l = handle.movesLeft ? ax - w : (handle.movesRight ? ax : ax - w / 2);
     final t = handle.movesTop ? ay - hh : (handle.movesBottom ? ay : ay - hh / 2);
     return Rect.fromLTWH(l, t, w, hh);
+  }
+
+  // ── Grid, rulers, reveal ─────────────────────────────────────────────────────────────────────────────────
+  bool _showGrid = false, _showRulers = false;
+
+  /// Draw [grid] on the page (snapping to it works whenever [grid] is set and snapping is on).
+  bool get showGrid => _showGrid && grid != null;
+  set showGrid(bool v) {
+    if (v == _showGrid) return;
+    _showGrid = v;
+    notifyListeners();
+  }
+
+  /// Rulers in page units along the canvas's top and start edges.
+  bool get showRulers => _showRulers;
+  set showRulers(bool v) {
+    if (v == _showRulers) return;
+    _showRulers = v;
+    notifyListeners();
+  }
+
+  /// Sets the snap grid (null = none) and shows it.
+  void setGrid(Size? g) {
+    grid = g;
+    _showGrid = g != null;
+    notifyListeners();
+  }
+
+  String? _reveal;
+
+  /// Asks the canvas to pan so item [id] is in view (e.g. above a panel that just opened).
+  void reveal(String id) {
+    _reveal = id;
+    notifyListeners();
+  }
+
+  /// The pending reveal (the canvas takes it once).
+  String? takeReveal() {
+    final r = _reveal;
+    _reveal = null;
+    return r;
   }
 
   // ── Snapping ─────────────────────────────────────────────────────────────────────────────────────────────

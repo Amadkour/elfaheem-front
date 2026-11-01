@@ -251,7 +251,7 @@ void main() {
       return CertStudioAdapter(lang: 'en', read: () => slice, write: (s) => slice = s, readOnly: readOnly);
     }
 
-    test('text keeps h = 0 and reports an estimated height; images keep their aspect', () {
+    test('text keeps h = 0 and reports the renderer box height; images keep their aspect', () {
       const text = CertField(id: 't', text: 'Hello', x: 10, y: 20, w: 300, size: 30, maxLines: 1);
       const multi = CertField(id: 'm', text: 'one\ntwo', x: 10, y: 120, w: 300, size: 20, maxLines: 3);
       const line = CertField(id: 'l', kind: CertFieldKind.line, x: 0, y: 300, w: 200, h: 3);
@@ -260,8 +260,9 @@ void main() {
       const photo = CertField(id: 'p', kind: CertFieldKind.photo, x: 40, y: 200, w: 120, h: 120);
       final a = adapter([text, multi, line, logo, qr, photo]);
       final items = {for (final i in a.readItems()) i.id: i};
-      expect(items['t']!.rect.height, closeTo(30 * kCertLineHeight, .01));
-      expect(items['m']!.rect.height, closeTo(2 * 20 * kCertLineHeight, .01));
+      // the renderer's rule: Tajawal's ascent + descent (1.0 × the font px) × 1.12 per line, px = size × 1.6
+      expect(items['t']!.rect.height, closeTo(48 * 1.12 / 1.6, .01));
+      expect(items['m']!.rect.height, closeTo(2 * 32 * 1.12 / 1.6, .01));
       expect(items['t']!.resize, StudioResize.horizontal);
       expect(items['l']!.resize, StudioResize.horizontal);
       expect(items['l']!.rect.height, 3);
