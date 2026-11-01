@@ -102,7 +102,7 @@ class GovItemBody extends StatelessWidget {
       _Header(item: it, member: member, onOpenAttachment: onOpenAttachment),
       if (it.decision != null) ...[const SizedBox(height: 10), _DecisionBanner(decision: it.decision!, status: it.status)],
       if (!member && can['decide'] && it.isDecidable && onDecide != null) ...[const SizedBox(height: 10), _DecisionBar(busy: busy, onDecide: onDecide!)],
-      if (it.chain != null && it.chain!.steps.isNotEmpty) ...[const SizedBox(height: 10), GovChainCard(chain: it.chain!)],
+      if (it.chain != null && it.chain!.steps.isNotEmpty) ...[const SizedBox(height: 10), GovChainCard(chain: it.chain!, itemStatus: it.status)],
       if (pr != null) ...[
         const SizedBox(height: 10),
         _PendingRouteCard(route: pr, canAnswer: _routedToMe && onAnswerRoute != null && pr.action != 'vote', busy: busy, onAnswer: () => onAnswerRoute?.call(pr)),
@@ -680,12 +680,10 @@ class _GovItemScreenState extends State<GovItemScreen> {
       confirmLabel: outcome == 'approved' ? (step != null && more ? t('اعتماد الخطوة', 'Approve this step') : t('اعتماد', 'Approve')) : t('رفض', 'Reject'),
       danger: reject,
       required: reject,
+      minLength: reject ? 3 : 0,
+      tooShort: govCodeTexts()['reason_required'],
     );
     if (note == null) return;
-    if (reject && note.trim().length < 3) {
-      appToast(govCodeTexts()['reason_required']!, error: true);
-      return;
-    }
     await _do(() => _api!.decide(it.id, outcome: outcome, note: note.isEmpty ? null : note, version: it.version), ok: t('صدر القرار', 'Decision recorded'));
   }
 

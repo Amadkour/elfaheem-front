@@ -659,10 +659,9 @@ class _EditorState extends State<_Editor> {
   }
 }
 
-/// The phone's properties panel, docked under the page (never over it): a header that folds / unfolds it, and the
-/// selected element's properties (or the page's) under it. Selecting an element opens it and asks the canvas to keep
-/// that element in view above it.
-class CertDockPanel extends StatefulWidget {
+/// The phone's properties panel, docked under the page (never over it): the engine's [StudioDockPanel] with the
+/// selected element's properties (or the page's). Selecting an element opens it and keeps that element in view.
+class CertDockPanel extends StatelessWidget {
   const CertDockPanel({super.key, required this.controller, required this.open, required this.maxHeight});
 
   final StudioController<CertField> controller;
@@ -671,139 +670,28 @@ class CertDockPanel extends StatefulWidget {
   /// The editor's height: the open panel takes about 45 % of it.
   final double maxHeight;
 
-  static const double headerHeight = 52;
+  static const double headerHeight = StudioDockPanel.headerHeight;
 
   @override
-  State<CertDockPanel> createState() => _CertDockPanelState();
-}
-
-class _CertDockPanelState extends State<CertDockPanel> {
-  String? _last;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onStudio);
-    widget.open.addListener(_onOpen);
-  }
-
-  @override
-  void didUpdateWidget(covariant CertDockPanel old) {
-    super.didUpdateWidget(old);
-    if (old.controller != widget.controller) {
-      old.controller.removeListener(_onStudio);
-      widget.controller.addListener(_onStudio);
-    }
-    if (old.open != widget.open) {
-      old.open.removeListener(_onOpen);
-      widget.open.addListener(_onOpen);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onStudio);
-    widget.open.removeListener(_onOpen);
-    super.dispose();
-  }
-
-  void _onStudio() {
-    final id = widget.controller.single?.id;
-    if (id != null && id != _last) {
-      _last = id;
-      if (!widget.open.value) {
-        widget.open.value = true;
-      } else {
-        _reveal();
-      }
-    } else if (id == null) {
-      _last = null;
-    }
-    if (mounted) setState(() {});
-  }
-
-  void _onOpen() {
-    if (mounted) setState(() {});
-    if (widget.open.value) _reveal();
-  }
-
-  /// After the panel's animation the canvas is shorter: keep the selected element in view.
-  void _reveal() {
-    final id = widget.controller.single?.id;
-    if (id == null) return;
-    Future.delayed(AppMotion.of(context).base + const Duration(milliseconds: 40), () {
-      if (mounted) widget.controller.reveal(id);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final open = widget.open.value;
-    final sel = widget.controller.single;
-    final multi = widget.controller.selection.length > 1;
-    final title = sel != null
-        ? certKindLabel(sel.payload.kind)
-        : (multi ? 'certd_multi_selected'.tr.replaceAll('{n}', '${widget.controller.selection.length}') : 'certd_page'.tr);
-    final icon = sel != null ? certKindIcon(sel.payload.kind) : Icons.description_outlined;
-    final accent = ensureContrast(c.primary, [c.cardBg]);
-    final height = open
-        ? (widget.maxHeight * 0.45).clamp(220.0, 460.0).toDouble()
-        : CertDockPanel.headerHeight + 1; // + the top border
-    return AnimatedContainer(
-      duration: AppMotion.of(context).base,
-      curve: AppMotion.curve,
-      height: height,
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        border: Border(top: BorderSide(color: c.divider)),
-        boxShadow: AppShadow.card(context),
-      ),
-      child: Column(children: [
-        Semantics(
-          button: true,
-          expanded: open,
-          label: '${'certd_properties'.tr} · $title',
-          excludeSemantics: true,
-          child: InkWell(
-            onTap: () => widget.open.value = !open,
-            child: SizedBox(
-              height: CertDockPanel.headerHeight,
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.xs, 0),
-                child: Row(children: [
-                  Icon(icon, size: 20, color: accent),
-                  const SizedBox(width: AppSpace.sm),
-                  Expanded(
-                    child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
-                  ),
-                  SizedBox(
-                    width: AppTouch.min,
-                    height: AppTouch.min,
-                    child: Icon(open ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
-                        color: c.textMedium),
-                  ),
-                ]),
-              ),
-            ),
-          ),
-        ),
-        // the body only where the (animating) height leaves room for it
-        Expanded(
-          child: open
-              ? LayoutBuilder(
-                  builder: (context, box) => box.maxHeight < 24
-                      ? const SizedBox.shrink()
-                      : Column(children: [
-                          Divider(height: 1, color: c.divider),
-                          const Expanded(child: _PropsHost(scroll: true)),
-                        ]),
-                )
-              : const SizedBox.shrink(),
-        ),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: controller,
+        builder: (context, _) {
+          final sel = controller.single;
+          final multi = controller.selection.length > 1;
+          final title = sel != null
+              ? certKindLabel(sel.payload.kind)
+              : (multi ? 'certd_multi_selected'.tr.replaceAll('{n}', '${controller.selection.length}') : 'certd_page'.tr);
+          return StudioDockPanel(
+            controller: controller,
+            open: open,
+            maxHeight: maxHeight,
+            title: title,
+            icon: sel != null ? certKindIcon(sel.payload.kind) : Icons.description_outlined,
+            semanticLabel: 'certd_properties'.tr,
+            body: const _PropsHost(scroll: true),
+          );
+        },
+      );
 }
 
 void _openToolsSheet(BuildContext context) {
@@ -979,6 +867,11 @@ class _Canvas extends StatelessWidget {
               CertWatermarkView(watermark: CertWatermark.of(v.theme)!, scale: scale, samples: samples, arabic: arabic)
           : null,
       onItemDoubleTap: onDoubleTap == null ? null : (_) => onDoubleTap!(),
+      // double click (long-press on touch) on a text edits it on the page; right click = the context menu
+      contextMenu: p.canEdit,
+      inlineText: p.canEdit ? (item) => item.payload.isText ? certFieldRawText(item.payload, arabic: arabic) : null : null,
+      inlineStyle: (context, item, scale) => certInlineStyle(item.payload, arabic: arabic, scale: scale, samples: samples),
+      onInlineCommit: (item, text) => p.setText(item.id, text),
       itemBuilder: (context, item, selected) {
         final f = item.payload;
         final url = f.isImage

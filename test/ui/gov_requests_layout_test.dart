@@ -4,11 +4,13 @@
 // beneficiary rows, the chain card (current step, earlier round) and the resubmit / export actions, the chain
 // editor, the attachment chips and the image preview's frame.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/org/governance/gov_item_screen.dart';
 import 'package:flutter_education_app/features/org/governance/gov_items_page.dart';
 import 'package:flutter_education_app/features/org/governance/gov_member_pages.dart';
 import 'package:flutter_education_app/features/org/governance/gov_models.dart';
 import 'package:flutter_education_app/features/org/governance/gov_request_parts.dart';
+import 'package:flutter_education_app/features/org/governance/gov_ui.dart' show askGovNote;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../org/gov_filter_test.dart' show sampleEntityJson;
@@ -145,5 +147,90 @@ void main() {
         ]),
       ),
     );
+  });
+
+  group('QA: the chain after it stopped · the rejection reason', () {
+    setUp(() => AppConfig.lang = 'en');
+
+    Future<void> pumpChain(WidgetTester tester, List<String> statuses, {String? itemStatus}) => tester.pumpWidget(layoutHost(
+          SingleChildScrollView(
+            child: GovChainCard(
+              chain: ItemChain(current: 1, steps: [for (final s in statuses) ChainStep(kind: 'entity', labelEn: 'Step', labelAr: 'خطوة', status: s)]),
+              itemStatus: itemStatus,
+            ),
+          ),
+          scale: 1,
+        ));
+
+    testWidgets('still moving: the current step and the waiting ones', (tester) async {
+      await pumpChain(tester, ['approved', 'current', 'waiting'], itemStatus: 'in_review');
+      expect(find.text('Current step'), findsOneWidget);
+      expect(find.text('Waiting'), findsOneWidget);
+      expect(find.text('Not reached'), findsNothing);
+    });
+
+    testWidgets('rejected at step 2: the step after it is not reached, not waiting', (tester) async {
+      await pumpChain(tester, ['approved', 'rejected', 'waiting'], itemStatus: 'rejected');
+      expect(find.text('Rejected'), findsOneWidget);
+      expect(find.text('Not reached'), findsOneWidget);
+      expect(find.text('Waiting'), findsNothing);
+      // a rejection in the chain is enough, whatever the item status the server sent
+      await pumpChain(tester, ['rejected', 'waiting', 'waiting']);
+      expect(find.text('Not reached'), findsNWidgets(2));
+    });
+
+    for (final status in ['withdrawn', 'closed']) {
+      testWidgets('$status mid-chain: the current step stopped there, the rest not reached', (tester) async {
+        await pumpChain(tester, ['approved', 'current', 'waiting'], itemStatus: status);
+        expect(find.text('Current step'), findsNothing);
+        expect(find.text('Stopped here'), findsOneWidget);
+        expect(find.text('Not reached'), findsOneWidget);
+        AppConfig.lang = 'ar';
+        await pumpChain(tester, ['approved', 'current', 'waiting'], itemStatus: status);
+        expect(find.text('توقّفت هنا'), findsOneWidget);
+        expect(find.text('لم تُبلَغ'), findsOneWidget);
+      });
+    }
+
+    testWidgets('a reason too short keeps the sheet open with what was typed and says why', (tester) async {
+      String? result;
+      var closed = false;
+      await tester.pumpWidget(layoutHost(
+        Builder(
+          builder: (ctx) => Center(
+            child: TextButton(
+              onPressed: () async {
+                result = await askGovNote(ctx, title: 'Reject', confirmLabel: 'Reject it', required: true, minLength: 3, tooShort: 'Too short');
+                closed = true;
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+        scale: 1,
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Reject it'));
+      await tester.pumpAndSettle();
+      expect(closed, isFalse, reason: 'an empty reason keeps the sheet open');
+      expect(find.text('Too short'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'ab');
+      await tester.pump();
+      expect(find.text('Too short'), findsNothing, reason: 'typing clears the error');
+      await tester.tap(find.text('Reject it'));
+      await tester.pumpAndSettle();
+      expect(closed, isFalse);
+      expect(find.text('Too short'), findsOneWidget);
+      expect(find.text('ab'), findsOneWidget, reason: 'what was typed is still there');
+
+      await tester.enterText(find.byType(TextField), 'ab — missing form');
+      await tester.tap(find.text('Reject it'));
+      await tester.pumpAndSettle();
+      expect(closed, isTrue);
+      expect(result, 'ab — missing form');
+    });
   });
 }

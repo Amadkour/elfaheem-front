@@ -173,6 +173,58 @@ void main() {
     }
   });
 
+  group('a locked layer in the properties panel', () {
+    Future<List<String>> pumpProps(WidgetTester t, {required bool locked}) async {
+      final edits = <String>[];
+      await _pumpAt(
+        t,
+        360,
+        SizedBox(
+          height: 560,
+          child: SingleChildScrollView(
+            child: CertFieldProps(
+              field: CertField(id: 'l', kind: CertFieldKind.logo, x: 40, y: 50, w: 120, h: 80, rotation: 10, locked: locked),
+              arabic: false,
+              onEdit: (change, {label = 'edit', coalesce = true}) => edits.add(label),
+              onText: (_) {},
+              onDelete: () {},
+            ),
+          ),
+        ),
+      );
+      return edits;
+    }
+
+    Iterable<StudioStepper> placeSteppers(WidgetTester t) => t
+        .widgetList<StudioStepper>(find.byType(StudioStepper))
+        .where((s) => const {'X', 'Y'}.contains(s.label) || s.label == 'certd_w'.tr || s.label == 'certd_h'.tr || s.label == 'certd_rotation'.tr);
+
+    testWidgets('X / Y / W / H / rotation are read-only and the turn buttons do nothing', (t) async {
+      final edits = await pumpProps(t, locked: true);
+      expect(placeSteppers(t).length, 5);
+      expect(placeSteppers(t).every((s) => !s.enabled), isTrue);
+      expect(find.text('certd_locked_position'.tr), findsOneWidget);
+      for (final f in t.widgetList<TextField>(find.descendant(of: find.byWidgetPredicate((w) => w is StudioStepper && w.label == 'X'), matching: find.byType(TextField)))) {
+        expect(f.enabled, isFalse);
+      }
+      final turn = t.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.rotate_90_degrees_cw_outlined));
+      expect(turn.onPressed, isNull);
+      expect(find.byTooltip('certd_delete'.tr), findsNothing, reason: 'a locked layer cannot be deleted');
+      expect(edits, isEmpty);
+    });
+
+    testWidgets('unlocked: the same fields edit the layer', (t) async {
+      final edits = await pumpProps(t, locked: false);
+      expect(placeSteppers(t).every((s) => s.enabled), isTrue);
+      expect(find.text('certd_locked_position'.tr), findsNothing);
+      final turn = find.widgetWithIcon(IconButton, Icons.rotate_90_degrees_cw_outlined);
+      await t.ensureVisible(turn);
+      await t.tap(turn);
+      await t.pump();
+      expect(edits, ['rotate']);
+    });
+  });
+
   testWidgets('the designer app bar draws an Arabic design name in the English app', (t) async {
     final fake = FakeApi({}, latency: Duration.zero, fallback: (_) => const <String, dynamic>{})..install();
     addTearDown(fake.uninstall);

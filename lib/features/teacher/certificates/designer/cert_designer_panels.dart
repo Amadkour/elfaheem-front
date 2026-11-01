@@ -594,13 +594,25 @@ class _CertFieldPropsState extends State<CertFieldProps> {
     final square = f.isSquare;
     final h0 = f.h <= 0 ? (f.w * 0.5).roundToDouble() : f.h;
     final lock = f.keepsAspect;
+    // a locked layer cannot be moved, resized or turned from here either (like on the canvas)
+    final free = !f.locked;
     return StudioPropSection(title: 'certd_position'.tr, children: [
+      if (f.locked)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: Row(children: [
+            Icon(Icons.lock_rounded, size: 16, color: context.colors.textMedium),
+            const SizedBox(width: AppSpace.xxs),
+            Expanded(child: Text('certd_locked_position'.tr, style: AppType.meta(context))),
+          ]),
+        ),
       _pair(
         StudioStepper(
           label: 'X',
           value: f.x,
           min: -300,
           max: 1500,
+          enabled: free,
           onChanged: (v) => _edit((x) => x.copyWith(x: v), label: 'move'),
         ),
         StudioStepper(
@@ -608,6 +620,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
           value: f.y,
           min: -300,
           max: 1500,
+          enabled: free,
           onChanged: (v) => _edit((x) => x.copyWith(y: v), label: 'move'),
         ),
       ),
@@ -618,6 +631,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
             value: f.w,
             min: 16,
             max: 1000,
+            enabled: free,
             onChanged: (v) => _edit(
                 (x) => lock && f.w > 0 ? x.copyWith(w: v, h: (h0 * v / f.w * 10).roundToDouble() / 10) : x.copyWith(w: v),
                 label: 'resize'),
@@ -627,6 +641,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
             value: h0,
             min: 10,
             max: 1000,
+            enabled: free,
             onChanged: (v) => _edit(
                 (x) => lock && h0 > 0 ? x.copyWith(h: v, w: (f.w * v / h0 * 10).roundToDouble() / 10) : x.copyWith(h: v),
                 label: 'resize'),
@@ -638,6 +653,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
           value: f.w,
           min: square ? 40 : 20,
           max: 1000,
+          enabled: free,
           onChanged: (v) => _edit((x) => x.copyWith(w: v, h: f.kind == CertFieldKind.photo ? v : null), label: 'resize'),
         ),
       if (f.isImage)
@@ -658,15 +674,16 @@ class _CertFieldPropsState extends State<CertFieldProps> {
             min: -180,
             max: 180,
             suffix: '°',
+            enabled: free,
             onChanged: (v) => _edit((x) => x.copyWith(rotation: v), label: 'rotate'),
           ),
         ),
         const SizedBox(width: AppSpace.xxs),
         _iconAction(Icons.rotate_90_degrees_cw_outlined, 'certd_rotate_90'.tr,
-            () => _edit((x) => x.copyWith(rotation: _turn90(x.rotation)), label: 'rotate', coalesce: false)),
+            free ? () => _edit((x) => x.copyWith(rotation: _turn90(x.rotation)), label: 'rotate', coalesce: false) : null),
         if (f.rotation != 0)
           _iconAction(Icons.restart_alt_rounded, 'certd_rotation_reset'.tr,
-              () => _edit((x) => x.copyWith(rotation: 0), label: 'rotate', coalesce: false)),
+              free ? () => _edit((x) => x.copyWith(rotation: 0), label: 'rotate', coalesce: false) : null),
       ]),
     ]);
   }
@@ -680,7 +697,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
     return n;
   }
 
-  Widget _iconAction(IconData icon, String label, VoidCallback onTap) => IconButton(
+  Widget _iconAction(IconData icon, String label, VoidCallback? onTap) => IconButton(
         tooltip: label,
         constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
         onPressed: widget.enabled ? onTap : null,
@@ -1239,7 +1256,8 @@ class _CertFieldPropsState extends State<CertFieldProps> {
           if (widget.onDuplicate != null) cmd(Icons.copy_rounded, 'certd_duplicate'.tr, widget.onDuplicate),
           if (widget.onForward != null) cmd(Icons.flip_to_front_rounded, 'certd_forward'.tr, widget.onForward),
           if (widget.onBackward != null) cmd(Icons.flip_to_back_rounded, 'certd_backward'.tr, widget.onBackward),
-          if (widget.onDelete != null) cmd(Icons.delete_outline_rounded, 'certd_delete'.tr, widget.onDelete, danger: true),
+          if (widget.onDelete != null && !f.locked)
+            cmd(Icons.delete_outline_rounded, 'certd_delete'.tr, widget.onDelete, danger: true),
         ]),
       ],
     ]);

@@ -135,7 +135,13 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
   GovPerson? forMember;
   final forCtl = GovForControllers();
   var forErrors = const <String, String>{};
-  final created = await showAppSheet<WorkItem>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+  final created = await showAppSheet<WorkItem>(context, (ctx) => _DisposeWith(
+      onDispose: () {
+        title.dispose();
+        body.dispose();
+        forCtl.dispose();
+      },
+      child: StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Future<void> loadCats(int id) async {
           final r = await orgCall(() => api.categories(id), quiet: true);
@@ -160,7 +166,11 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
               entities: entities,
               value: owner,
               onChanged: (d) {
-                set(() => owner = d);
+                set(() {
+                  // the member list is per entity: a member picked for another one is not kept
+                  if (d?.id != owner?.id) forMember = null;
+                  owner = d;
+                });
                 if (d != null) loadCats(d.id);
               },
             ),
@@ -267,10 +277,32 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
             ),
           ]),
         );
-      }));
+      })));
   if (created == null || !routeNow || !context.mounted) return created;
   final routed = await showGovRouteSheet(context, api, created, entities: entities);
   return routed ?? created;
+}
+
+/// Runs [onDispose] when the sheet's content is really removed (after its closing animation), so the controllers
+/// it owns are never disposed while a closing field still uses them.
+class _DisposeWith extends StatefulWidget {
+  const _DisposeWith({required this.onDispose, required this.child});
+  final VoidCallback onDispose;
+  final Widget child;
+
+  @override
+  State<_DisposeWith> createState() => _DisposeWithState();
+}
+
+class _DisposeWithState extends State<_DisposeWith> {
+  @override
+  void dispose() {
+    widget.onDispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

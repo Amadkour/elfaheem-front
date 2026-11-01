@@ -215,6 +215,9 @@ class _BeneficiarySheetState extends State<_BeneficiarySheet> {
   String _q = '';
   String? _error;
 
+  /// The newest search sent: an older answer that arrives after it is dropped.
+  int _seq = 0;
+
   @override
   void initState() {
     super.initState();
@@ -228,9 +231,10 @@ class _BeneficiarySheetState extends State<_BeneficiarySheet> {
   }
 
   Future<void> _load() async {
+    final seq = ++_seq;
     setState(() => _loading = true);
     final r = await orgCall(() => GovApi.memberPeople(widget.orgId, q: _q, deptId: widget.deptId), quiet: true);
-    if (!mounted) return;
+    if (!mounted || seq != _seq) return;
     setState(() {
       _loading = false;
       _people = r.ok ? r.data as List<GovPerson> : const [];
@@ -339,14 +343,26 @@ class GovChainPreview extends StatelessWidget {
   }
 }
 
+/// The item statuses after which its chain moves no further (its open steps were never reached).
+const govChainEndedStatuses = {'approved', 'rejected', 'closed', 'withdrawn'};
+
+/// Whether [chain] stopped before its end: a step rejected it, or the item ([itemStatus]) was decided, closed or
+/// withdrawn. Its open steps then read "Stopped here" / "Not reached", not "Current step" / "Waiting".
+bool govChainStopped(ItemChain chain, String? itemStatus) =>
+    govChainEndedStatuses.contains(itemStatus) || chain.steps.any((s) => s.status == 'rejected');
+
 /// An item's chain: every step with its status and record; the current one highlighted; earlier rounds folded.
 class GovChainCard extends StatelessWidget {
-  const GovChainCard({super.key, required this.chain});
+  const GovChainCard({super.key, required this.chain, this.itemStatus});
   final ItemChain chain;
+
+  /// The item's status (`withdrawn`, `closed`, …): a chain the item left mid-way shows where it stopped.
+  final String? itemStatus;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final stopped = govChainStopped(chain, itemStatus);
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
@@ -356,7 +372,8 @@ class GovChainCard extends StatelessWidget {
           if (chain.round > 1) AppBadgePill('${t('الجولة', 'Round')} ${chain.round}', color: c.purple, icon: Icons.replay_rounded),
         ]),
         const SizedBox(height: AppSpace.sm),
-        for (var i = 0; i < chain.steps.length; i++) GovChainStepRow(step: chain.steps[i], index: i, last: i == chain.steps.length - 1, current: chain.current == i),
+        for (var i = 0; i < chain.steps.length; i++)
+          GovChainStepRow(step: chain.steps[i], index: i, last: i == chain.steps.length - 1, current: !stopped && chain.current == i, stopped: stopped),
         if (chain.rounds.isNotEmpty)
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -373,7 +390,8 @@ class GovChainCard extends StatelessWidget {
                       child: Text('${t('الجولة', 'Round')} ${r.$1}', style: appText(12, w: FontWeight.w800, c: c.textLight)),
                     ),
                   ),
-                  for (var i = 0; i < r.$2.length; i++) GovChainStepRow(step: r.$2[i], index: i, last: i == r.$2.length - 1, current: false),
+                  // an earlier round always ended (rejected, then resubmitted)
+                  for (var i = 0; i < r.$2.length; i++) GovChainStepRow(step: r.$2[i], index: i, last: i == r.$2.length - 1, current: false, stopped: true),
                 ],
               ],
             ),
@@ -384,10 +402,13 @@ class GovChainCard extends StatelessWidget {
 }
 
 class GovChainStepRow extends StatelessWidget {
-  const GovChainStepRow({super.key, required this.step, required this.index, required this.last, required this.current});
+  const GovChainStepRow({super.key, required this.step, required this.index, required this.last, required this.current, this.stopped = false});
   final ChainStep step;
   final int index;
   final bool last, current;
+
+  /// The chain stopped before its end (see [govChainStopped]): an open step was never reached.
+  final bool stopped;
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +417,9 @@ class GovChainStepRow extends StatelessWidget {
       'approved' => (Icons.check_circle_rounded, c.success, t('اعتُمدت', 'Approved')),
       'rejected' => (Icons.cancel_rounded, c.danger, t('رُفضت', 'Rejected')),
       'skipped' => (Icons.redo_rounded, c.textLight, t('تُجووزت', 'Skipped')),
+      'current' when stopped => (Icons.stop_circle_outlined, c.textMedium, t('توقّفت هنا', 'Stopped here')),
       'current' => (Icons.radio_button_checked_rounded, appInk(context, c.primary), t('الخطوة الحالية', 'Current step')),
+      _ when stopped => (Icons.remove_circle_outline_rounded, c.textLight, t('لم تُبلَغ', 'Not reached')),
       _ => (Icons.radio_button_unchecked_rounded, c.textLight, t('بالانتظار', 'Waiting')),
     };
     final who = [

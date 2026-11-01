@@ -477,34 +477,60 @@ class GovPersonField extends StatelessWidget {
 }
 
 /// A bottom-sheet note box + confirm used by decide / answer / escalate / status.
-Future<String?> askGovNote(BuildContext context, {required String title, String? hint, String? confirmLabel, bool danger = false, bool required = false}) {
+/// [required] / [minLength]: a missing or too short note keeps the sheet open (with what was typed) and says why
+/// under the field ([tooShort], or a generic text).
+Future<String?> askGovNote(BuildContext context,
+    {required String title, String? hint, String? confirmLabel, bool danger = false, bool required = false, int minLength = 0, String? tooShort}) async {
   final ctrl = TextEditingController();
-  return showAppSheet<String>(context, (ctx) {
-    final c = ctx.colors;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        SheetHeader(title),
-        AppField(controller: ctrl, label: hint ?? t('ملاحظة (اختياري)', 'Note (optional)'), maxLines: 3),
-        const SizedBox(height: 12),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: danger ? c.danger : c.primary,
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-          onPressed: () {
-            if (required && ctrl.text.trim().isEmpty) {
-              appToast(t('اكتب السبب', 'Write the reason'), error: true);
-              return;
-            }
-            Navigator.pop(ctx, ctrl.text.trim());
-          },
-          child: Text(confirmLabel ?? t('تأكيد', 'Confirm'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
-        ),
-      ]),
-    );
-  });
+  String? error;
+  final r = await showAppSheet<String>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+        final c = ctx.colors;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            SheetHeader(title),
+            AppField(
+              controller: ctrl,
+              label: hint ?? t('ملاحظة (اختياري)', 'Note (optional)'),
+              maxLines: 3,
+              onChanged: (_) {
+                if (error != null) set(() => error = null);
+              },
+            ),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 4, bottom: 8),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(Icons.error_outline_rounded, size: 16, color: c.danger),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(error!, style: appText(12.5, w: FontWeight.w600, c: c.danger))),
+                ]),
+              ),
+            const SizedBox(height: 12),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: danger ? c.danger : c.primary,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: () {
+                final v = ctrl.text.trim();
+                if (required && v.isEmpty) {
+                  set(() => error = tooShort ?? t('اكتب السبب', 'Write the reason'));
+                  return;
+                }
+                if (v.isNotEmpty && v.length < minLength) {
+                  set(() => error = tooShort ?? t('السبب قصير جدًا', 'The reason is too short'));
+                  return;
+                }
+                Navigator.pop(ctx, v);
+              },
+              child: Text(confirmLabel ?? t('تأكيد', 'Confirm'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
+            ),
+          ]),
+        );
+      }));
+  return r;
 }
 
 /// "Needs a server update" banner for an older backend without the governance routes.

@@ -18493,6 +18493,30 @@
     "en": "Delete",
     "ar": "حذف"
   },
+  "studio_edit_text": {
+    "en": "Edit text",
+    "ar": "تعديل النص"
+  },
+  "studio_cut": {
+    "en": "Cut",
+    "ar": "قص"
+  },
+  "studio_copy": {
+    "en": "Copy",
+    "ar": "نسخ"
+  },
+  "studio_paste": {
+    "en": "Paste",
+    "ar": "لصق"
+  },
+  "studio_lock": {
+    "en": "Lock",
+    "ar": "قفل"
+  },
+  "studio_unlock": {
+    "en": "Unlock",
+    "ar": "إلغاء القفل"
+  },
   "studio_duplicate": {
     "en": "Duplicate",
     "ar": "تكرار"
@@ -21604,6 +21628,10 @@
   "certd_lock_hint": {
     "en": "A locked element cannot be moved, resized or deleted",
     "ar": "العنصر المقفل لا يمكن تحريكه أو تغيير حجمه أو حذفه"
+  },
+  "certd_locked_position": {
+    "en": "Locked — unlock the layer to move, resize or rotate it",
+    "ar": "مقفل — ألغِ قفل الطبقة لتحريكها أو تغيير حجمها أو تدويرها"
   },
   "certd_view": {
     "en": "View",

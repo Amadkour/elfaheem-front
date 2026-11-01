@@ -211,6 +211,7 @@ class StudioStepper extends StatefulWidget {
     this.step = 1,
     this.decimals = 0,
     this.suffix,
+    this.enabled = true,
   });
 
   final double value;
@@ -219,6 +220,9 @@ class StudioStepper extends StatefulWidget {
   final double min, max, step;
   final int decimals;
   final String? suffix;
+
+  /// False: the value shows read-only (no typing, no − / +), e.g. the position of a locked layer.
+  final bool enabled;
 
   @override
   State<StudioStepper> createState() => _StudioStepperState();
@@ -257,6 +261,7 @@ class _StudioStepperState extends State<StudioStepper> {
   }
 
   void _set(double v) {
+    if (!widget.enabled) return;
     final n = _clamp(v);
     _text.text = _fmt(n);
     if (n != widget.value) widget.onChanged(n);
@@ -290,16 +295,17 @@ class _StudioStepperState extends State<StudioStepper> {
       decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
       child: Row(children: [
         btn(Icons.remove_rounded, translate('studio_decrease'),
-            widget.value > widget.min ? () => _set(widget.value - widget.step) : null),
+            widget.enabled && widget.value > widget.min ? () => _set(widget.value - widget.step) : null),
         Expanded(
           child: TextField(
             controller: _text,
             focusNode: _focus,
+            enabled: widget.enabled,
             textAlign: TextAlign.center,
             keyboardType: TextInputType.numberWithOptions(decimal: widget.decimals > 0),
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,\-]'))],
             onSubmitted: _submit,
-            style: appText(14, w: FontWeight.w600, c: c.textDark)
+            style: appText(14, w: FontWeight.w600, c: widget.enabled ? c.textDark : c.textMedium)
                 .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
             decoration: InputDecoration(
               isDense: true,
@@ -314,7 +320,7 @@ class _StudioStepperState extends State<StudioStepper> {
           ),
         ),
         btn(Icons.add_rounded, translate('studio_increase'),
-            widget.value < widget.max ? () => _set(widget.value + widget.step) : null),
+            widget.enabled && widget.value < widget.max ? () => _set(widget.value + widget.step) : null),
       ]),
     );
     final label = widget.label;
