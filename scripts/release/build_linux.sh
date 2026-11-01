@@ -34,12 +34,14 @@ command -v flutter >/dev/null || { echo "flutter not on PATH ($HOME/flutter/bin)
 if [ -z "${NB_SKIP_APT:-}" ]; then
   say "build packages"
   pkgs=(clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev
-        dpkg-dev xvfb xauth)
+        dpkg-dev xvfb xauth libasound2-dev libpulse-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev)
   missing=()
   for p in "${pkgs[@]}"; do dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed" || missing+=("$p"); done
   if [ ${#missing[@]} -gt 0 ]; then
     echo "installing: ${missing[*]}"
-    DEBIAN_FRONTEND=noninteractive apt-get update -qq
+    # a broken third-party source (e.g. a docker.com list for the wrong distribution) must not stop the build: the
+    # install below fails by itself if a package is really unavailable
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq || echo "apt-get update reported errors (continuing)"
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "${missing[@]}"
   else
     echo "all present"
@@ -64,8 +66,12 @@ NAME="NextBrain-${VERSION}-${BUILD}-x64"
 say "flutter build linux $VERSION+$BUILD"
 flutter config --enable-linux-desktop >/dev/null
 flutter pub get >/dev/null
+# a configure that failed once (a missing -dev package) leaves CMAKE_INSTALL_PREFIX=/usr/local in the cache, and the
+# next build then installs the app into the system: always configure from scratch
+rm -rf build/linux
 flutter build linux --release --obfuscate --split-debug-info="build/debug-info/${full}/linux"
 BUNDLE="$SRC/build/linux/x64/release/bundle"
+grep -qx "CMAKE_INSTALL_PREFIX:PATH=$BUNDLE" build/linux/x64/release/CMakeCache.txt || { echo "install prefix is not the bundle: stop"; exit 1; }
 [ -x "$BUNDLE/nextbrain" ] || { echo "no binary at $BUNDLE/nextbrain"; exit 1; }
 
 say "smoke test (25 s under a virtual display)"
