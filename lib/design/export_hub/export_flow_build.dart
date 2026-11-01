@@ -14,8 +14,10 @@ library;
 
 import 'dart:typed_data';
 
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_education_app/config/app_config.dart' show AppConfig;
+
+import '../export/docx_fonts.dart';
+import '../export/export_fonts.dart' show ExportFonts;
 
 import '../export/export_studio_api.dart' show StudioTemplate;
 import '../export/export_studio_model.dart';
@@ -26,6 +28,7 @@ import '../export/table_export_pdf.dart';
 import '../export/table_export_xlsx.dart';
 import 'export_design.dart';
 import 'export_hub.dart' show buildExportFile;
+import 'export_pdf.dart' show loadExportFonts;
 
 /// The table [e] as [lang] prints it with the person's [ch].
 AppTableExport exportFlowVariant(AppTableExport e, AppExportChoice ch, String lang) {
@@ -113,9 +116,19 @@ class ExportFlowJob {
   }
 }
 
-/// The Arabic-capable fonts of the Standard PDF (the table exporter's pair).
-Future<(ByteData, ByteData)> loadStandardPdfFonts() async =>
-    (await rootBundle.load('assets/fonts/Tajawal-Regular.ttf'), await rootBundle.load('assets/fonts/Bahij_TheSansArabic-Bold.ttf'));
+/// The fonts of the Standard PDF without a chosen font: Tajawal regular + bold — what the live preview draws
+/// (it used to print bold text in Bahij while the preview showed Tajawal), ready for package:pdf.
+Future<(ByteData, ByteData)> loadStandardPdfFonts() async {
+  final (r, b, _) = await loadTablePdfFonts(ExportFonts.defaultId);
+  return (r, b);
+}
+
+/// The PDF fonts of a Standard file in the catalog font [id]: (regular, bold, fallbacks).
+Future<(ByteData, ByteData, List<ByteData>)> loadTablePdfFonts(String id) async {
+  final set = await loadExportFonts([id]);
+  final (r, b) = set.of(id);
+  return (r, b, set.fallbackOf(id));
+}
 
 /// Runs the SYNCHRONOUS writer [f] with the app language set to [lang], so the stamp ("Generated" / "أُنشئ"), the
 /// {{date}} variable and the date / number formats of an English file are English even in the Arabic app (and the
@@ -131,6 +144,8 @@ T inExportLang<T>(String lang, T Function() f) {
 }
 
 /// Builds the file of [job] in [lang]. [standardFonts] / [designFile] are injectable for tests.
+/// The person's font of [lang] ([AppExportChoice.fontFor]) sets the Standard table's font (embedded in Word, named
+/// in Excel) and replaces a design's page font.
 Future<ExportFlowFile> buildExportFlowFile(
   ExportFlowJob job,
   String lang, {
@@ -142,20 +157,33 @@ Future<ExportFlowFile> buildExportFlowFile(
   final cols = exportFlowColumns(v, ch);
   final numerals = ch.numeralsFor(lang);
   final design = job.format == AppExportFormat.xlsx ? null : job.designs[lang];
+  final font = ch.fontFor(lang);
   late Uint8List bytes;
   if (job.format == AppExportFormat.xlsx) {
-    bytes = inExportLang(lang, () => appTableXlsx(v, columns: cols, sheet: job.sheet, rules: job.rules, numerals: numerals, logo: job.logo, exporter: job.exporter));
+    final sheet = font.isEmpty ? job.sheet : (job.sheet.copy()..font = font);
+    bytes = inExportLang(lang, () => appTableXlsx(v, columns: cols, sheet: sheet, rules: job.rules, numerals: numerals, logo: job.logo, exporter: job.exporter));
   } else if (design == null) {
     if (job.format == AppExportFormat.docx) {
-      bytes = inExportLang(lang, () => appTableDocx(v, columns: cols, rules: job.rules, numerals: numerals));
+      // the Standard Word file prints (and embeds) the preview's font: the chosen one, else Tajawal
+      final id = font.isEmpty ? ExportFonts.defaultId : font;
+      final embed = DocxFonts.build(await loadDocxFontFiles([id]));
+      bytes = inExportLang(lang, () => appTableDocx(v, columns: cols, rules: job.rules, numerals: numerals, fonts: embed, fontId: id));
     } else {
-      final (regular, bold) = await (standardFonts ?? loadStandardPdfFonts)();
-      bytes = await appTablePdf(v, regular: regular, bold: bold, columns: cols, rules: job.rules, numerals: numerals);
+      ByteData regular, bold;
+      var fallback = const <ByteData>[];
+      if (standardFonts != null) {
+        (regular, bold) = await standardFonts();
+      } else {
+        // the preview's font: the chosen one, else Tajawal (regular + bold)
+        (regular, bold, fallback) = await loadTablePdfFonts(font.isEmpty ? ExportFonts.defaultId : font);
+      }
+      bytes = await appTablePdf(v, regular: regular, bold: bold, fallback: fallback, columns: cols, rules: job.rules, numerals: numerals);
     }
   } else {
     final ds = ExportDataset.fromTable(v, exporter: job.exporter);
     final content = exportFlowContent(v, ch, lang, job.rules);
     final d = design.copy()..rtl = lang == 'ar';
+    if (font.isNotEmpty) d.fontFamily = font;
     bytes = await (designFile ?? (d, ds, c, f) => buildExportFile(d, ds, c, f))(d, ds, content, job.format);
   }
   return ExportFlowFile(job.fileNameFor(lang), bytes, lang, job.format);
@@ -245,6 +273,7 @@ ExportTemplateOptions applyTemplate(StudioTemplate t, AppTableExport e, AppExpor
     ..addAll({...widths, ...o.sheet.widths});
   ch.totals = o.showTotals;
   if (o.numerals.isNotEmpty) ch.numerals.addAll(o.numerals);
+  if (o.fonts.isNotEmpty) ch.fonts.addAll(o.fonts);
   ch.theme = o.theme;
   return o;
 }
@@ -273,19 +302,32 @@ Map<String, dynamic> templateDesignJson(Map<String, ExportDesign?> designs) {
 
 /// A design that LOOKS like the Standard layout (brand band, info line, zebra table) — for the live preview and as
 /// the studio's starting point; the export itself uses the table writers.
-ExportDesign exportStandardPreviewDesign(String lang, {String brand = exportBrandHex}) {
+///
+/// With the [table] and its exported [columns], the page follows the table writers: landscape when the table is wide
+/// (wideTable), the columns at the writers' measured widths (columnWidths) and the body at the PDF writer's size
+/// (pdfFontSize) — test/export/export_parity_test.dart.
+ExportDesign exportStandardPreviewDesign(String lang, {String brand = exportBrandHex, AppTableExport? table, List<String>? columns}) {
   final ar = lang == 'ar';
   final b = hexOf(brand, exportBrandHex);
+  final cols = table?.resolve(columns) ?? const <AppExportColumn>[];
+  final measured = table == null ? const <double>[] : columnWidths(cols, table.rows);
+  final landscape = table != null && wideTable(cols, measured);
   return ExportDesign(
+    page: ExportPage(orientation: landscape ? 'landscape' : 'portrait', top: 9, right: 9, bottom: 8, left: 9),
     rtl: ar,
-    fontFamily: exportFontFamilies.first,
+    fontFamily: ExportFonts.defaultId,
     fontSize: 10,
     headerText: '',
     showDate: false,
     footerText: '{{date}}',
     showPageNumbers: true,
-    page: ExportPage(top: 9, right: 9, bottom: 8, left: 9),
-    table: ExportTableStyle(style: 'zebra', headerColor: shadeHex(b, .18), headerTextColor: onColorHex(shadeHex(b, .18)), fontSize: 9),
+    table: ExportTableStyle(
+      style: 'zebra',
+      headerColor: shadeHex(b, .18),
+      headerTextColor: onColorHex(shadeHex(b, .18)),
+      fontSize: table == null ? 9 : pdfFontSize(cols.length),
+      widths: {for (var k = 0; k < cols.length; k++) cols[k].id: measured[k]},
+    ),
     blocks: [
       ExportBlock(id: 'b1', kind: 'text', x: 0, y: 0, w: 1, h: .045, text: '{{title}}', font: BlockFont(size: 16, weight: 'bold', color: onColorHex(b)), align: 'start', background: b),
       ExportBlock(id: 'b2', kind: 'text', x: 0, y: .045, w: 1, h: .024, text: ar ? '{{org}} · {{date}} · {{rows}} صف' : '{{org}} · {{date}} · {{rows}} rows', font: BlockFont(size: 8.5, color: onColorHex(b)), align: 'start', background: b),

@@ -16,6 +16,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:image/image.dart' as img;
 
+import 'export_fonts.dart' show ExportFonts;
 import 'export_studio_model.dart';
 import 'table_export_model.dart';
 
@@ -30,11 +31,16 @@ class _St {
 }
 
 class _Styles {
-  _Styles(this.rtl, this.brand, {this.line = exportLineHex}) {
+  _Styles(this.rtl, this.brand, {this.line = exportLineHex, this.font = 'Arial', this.fontBold = false, this.fontItalic = false}) {
     style(const _St(border: 'none'));
   }
   final bool rtl;
   final String brand, line;
+
+  /// The sheet's font name (Excel cannot embed fonts: the reader's Excel draws it when it is installed) and whether
+  /// the chosen face is itself bold / italic (a "… Bold" catalog font).
+  final String font;
+  final bool fontBold, fontItalic;
   final _fonts = <String>[], _fills = <String>[], _xfs = <String>[], _fmts = <String>[];
   final _index = <String, int>{};
 
@@ -46,7 +52,7 @@ class _Styles {
   }
 
   int style(_St s) => _index.putIfAbsent(s.key, () {
-        final font = _add(_fonts, '<font>${s.bold ? '<b/>' : ''}${s.italic ? '<i/>' : ''}<sz val="${s.size}"/><color rgb="FF${s.color}"/><name val="Arial"/><family val="2"/></font>');
+        final font = _add(_fonts, '<font>${s.bold || fontBold ? '<b/>' : ''}${s.italic || fontItalic ? '<i/>' : ''}<sz val="${s.size}"/><color rgb="FF${s.color}"/><name val="${xmlEsc(this.font)}"/><family val="2"/></font>');
         final fill = s.fill == null ? 0 : 2 + _add(_fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF${s.fill}"/><bgColor indexed="64"/></patternFill></fill>');
         final fmt = s.fmt == null ? 0 : 164 + _add(_fmts, s.fmt!);
         final border = switch (s.border) { 'thin' => 1, 'total' => 2, 'band' => 3, _ => 0 };
@@ -150,7 +156,8 @@ Uint8List appTableXlsx(AppTableExport e,
   final headBold = so?.headerBold ?? true;
   final titleRow = so?.titleRow ?? true;
   final onBrand = onColorHex(brand);
-  final st = _Styles(rtl, brand, line: so?.borderColor ?? exportLineHex);
+  final face = so == null || so.font.isEmpty ? null : ExportFonts.byId(so.font);
+  final st = _Styles(rtl, brand, line: so?.borderColor ?? exportLineHex, font: face?.officeName ?? 'Arial', fontBold: face?.officeBold ?? false, fontItalic: face?.officeItalic ?? false);
   final measured = columnWidths(cols, ex.rows);
   final widths = [for (var k = 0; k < cols.length; k++) so?.widths[cols[k].id] ?? measured[k]];
   final decimals = [for (final c in cols) decimalsOf(c, ex.rows.map((r) => r[c.id]))];

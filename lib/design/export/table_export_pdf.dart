@@ -26,6 +26,9 @@ pw.TextDirection exportPdfTextDir(String s, bool rtl) =>
 
 final RegExp _latinLetters = RegExp(r'[A-Za-z]');
 
+/// The first strong letter of a text: Latin or Arabic.
+final RegExp _strongLetter = RegExp('[A-Za-z]|${_arabicLetters.pattern}');
+
 /// The pieces an RTL line is drawn as: one per word, except that a run of Latin words (with the neutral words between
 /// them: "Ahmed - Hamdy") stays one LTR piece so it reads left to right inside the Arabic line.
 List<String> exportPdfRtlRuns(String s) {
@@ -70,7 +73,18 @@ String exportPdfVisual(String s) {
 /// of [exportPdfRtlRuns] shaped here ([exportPdfVisual]) and laid out LTR, which never goes through that code, the
 /// pieces wrapped right to left (one line: a row scaled down to fit). Every other text stays one pw.Text.
 /// [textAlign] null = the document's start.
+///
+/// Inside an LTR document (an English file), a text with Arabic letters is shaped too: one whose first letter is
+/// Arabic (an Arabic name in an English list) is laid out like an RTL text aligned to the document's start; a Latin
+/// text with an Arabic part ("Bold title عربي") is drawn in its bidi visual order, one line per line. Before, package:pdf
+/// drew those Arabic letters unshaped and left to right.
 pw.Widget exportPdfText(String s, {required bool rtl, pw.TextStyle? style, pw.TextAlign? textAlign, int? maxLines}) {
+  if (!rtl && _arabicLetters.hasMatch(s)) {
+    final first = _strongLetter.firstMatch(s)?.group(0) ?? '';
+    if (_arabicLetters.hasMatch(first)) return exportPdfText(s, rtl: true, style: style, textAlign: textAlign ?? pw.TextAlign.left, maxLines: maxLines);
+    final nl = String.fromCharCode(10);
+    return pw.Text([for (final l in s.split(nl)) exportPdfVisual(l)].join(nl), textDirection: pw.TextDirection.ltr, textAlign: textAlign, maxLines: maxLines, style: style);
+  }
   final dir = exportPdfTextDir(s, rtl);
   final align = textAlign ?? (rtl ? pw.TextAlign.right : null);
   if (dir != pw.TextDirection.rtl || (maxLines != null && maxLines != 1)) {
@@ -129,15 +143,24 @@ pw.Widget exportPdfText(String s, {required bool rtl, pw.TextStyle? style, pw.Te
   );
 }
 
+/// Tests turn this off to read the page content streams (the parity tests measure the table's lines and text).
+bool exportPdfCompress = true;
+
 PdfColor _pc(String hex) => PdfColor.fromInt(0xFF000000 | int.parse(hex, radix: 16));
 
 /// Body font size (pt) for [columns] columns.
 double pdfFontSize(int columns) => columns <= 5 ? 9.5 : columns <= 8 ? 8.5 : columns <= 11 ? 7.5 : columns <= 14 ? 6.6 : 5.8;
 
-/// [regular] / [bold]: TTF bytes with Arabic glyphs. [rules] style the matching cells or leave rows out;
-/// [numerals] = the printed digits.
+/// [regular] / [bold]: TTF bytes with Arabic glyphs; [fallback]: fonts for what they cannot draw (a Latin-only
+/// font's Arabic, export_fonts.dart). [rules] style the matching cells or leave rows out; [numerals] = the printed
+/// digits.
 Future<Uint8List> appTablePdf(AppTableExport e,
-    {required ByteData regular, required ByteData bold, List<String>? columns, List<ExportRule> rules = const [], ExportNumerals numerals = ExportNumerals.western}) async {
+    {required ByteData regular,
+    required ByteData bold,
+    List<ByteData> fallback = const [],
+    List<String>? columns,
+    List<ExportRule> rules = const [],
+    ExportNumerals numerals = ExportNumerals.western}) async {
   final visible = exportVisibleRows(rules, e.rows);
   if (!identical(visible, e.rows)) e = e.copyWith(rows: visible);
   String p(String s) => exportDigits(s, numerals);
@@ -278,11 +301,14 @@ Future<Uint8List> appTablePdf(AppTableExport e,
 
   final format = landscape ? PdfPageFormat.a4.landscape : PdfPageFormat.a4;
   final brandLine = [if ((e.brand ?? '').isNotEmpty) e.brand!, e.stamp, '${e.rows.length} ${tx('tx_rows', 'rows', 'صف')}'].join('  ·  ');
+  final baseFont = pw.Font.ttf(regular);
   final doc = pw.Document(
+    compress: exportPdfCompress,
     title: e.title,
     author: e.brand ?? 'NextBrain',
     creator: 'NextBrain',
-    theme: pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold), fontFallback: [pw.Font.helvetica()]),
+    theme: pw.ThemeData.withFont(
+        base: baseFont, bold: identical(regular, bold) ? baseFont : pw.Font.ttf(bold), fontFallback: [for (final f in fallback) pw.Font.ttf(f), pw.Font.helvetica()]),
   );
   doc.addPage(pw.MultiPage(
     pageFormat: format,

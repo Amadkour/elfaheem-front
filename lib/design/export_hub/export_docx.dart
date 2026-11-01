@@ -18,9 +18,12 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:image/image.dart' as img;
 
+import '../export/docx_fonts.dart';
+import '../export/export_fonts.dart' show ExportFonts;
 import '../export/export_studio_model.dart' show exportDigits;
 import '../export/table_export_model.dart' show tintHex, xmlEsc;
 import 'export_design.dart';
+import 'export_layout.dart';
 import 'export_pdf.dart' show ExportLabels, HubTablePlan, voteOutcomeColors, voteApproveHex, voteRejectHex, voteAbstainHex, voteRestHex;
 
 const _wNs = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
@@ -29,12 +32,8 @@ const _wNs = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/m
     'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
     'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
 
-/// Word font name of a design family.
-String docxFontName(String family) => switch (family) {
-      'bahij' => 'Bahij TheSansArabic',
-      'plex' => 'IBM Plex Sans Arabic',
-      _ => 'Tajawal',
-    };
+/// Word font name of a design family when it is not embedded (the catalog's Office name).
+String docxFontName(String family) => ExportFonts.byId(family).officeName;
 
 /// Page (width, height) in twips, orientation applied.
 (int, int) docxPageTwips(ExportPage p) {
@@ -63,7 +62,10 @@ String _picture(String rid, int id, int cx, int cy) =>
     '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="$cx" cy="$cy"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>'
     '</a:graphicData></a:graphic></wp:inline></w:drawing></w:r>';
 
-Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<String, Uint8List> images = const {}}) {
+/// [fonts]: the design's catalog fonts embedded in the file (loadDocxFontFiles → DocxFonts.build); without them the
+/// runs only name the fonts.
+Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<String, Uint8List> images = const {}, DocxFonts? fonts}) {
+  final embed = fonts ?? DocxFonts.empty;
   final lang = c.langFor(d);
   final lb = ExportLabels(lang);
   final plan = HubTablePlan.of(d, data, c);
@@ -75,7 +77,11 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
   int tw(double mm) => (mm * 56.69).round();
   final mTop = tw(d.page.top), mBottom = tw(d.page.bottom), mLeft = tw(d.page.left), mRight = tw(d.page.right);
   final cw = pageW - mLeft - mRight, ch = pageH - mTop - mBottom;
-  final baseFont = docxFontName(d.fontFamily);
+  String rFonts(String family, {bool bold = false}) {
+    final id = family.isEmpty ? d.fontFamily : family;
+    return embed.has(id) ? embed.rPr(id, bold: bold) : embed.rPr(null, bold: bold, fallbackName: docxFontName(id));
+  }
+
   final media = <String, List<int>>{};
   final rels = <String>[];
   var picId = 0;
@@ -93,10 +99,9 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
 
   String run(String text, {double? size, bool bold = false, String? color, String family = ''}) {
     final hp = ((size ?? d.fontSize) * 2).round();
-    final font = family.isEmpty ? baseFont : docxFontName(family);
     final parts = p(text).split('\n');
     final t = [for (var i = 0; i < parts.length; i++) '${i > 0 ? '<w:br/>' : ''}<w:t xml:space="preserve">${xmlEsc(parts[i])}</w:t>'].join();
-    return '<w:r><w:rPr><w:rFonts w:ascii="$font" w:hAnsi="$font" w:cs="$font"/>${bold ? '<w:b/><w:bCs/>' : ''}'
+    return '<w:r><w:rPr>${rFonts(family, bold: bold)}'
         '<w:color w:val="${color ?? d.fontColor}"/><w:sz w:val="$hp"/><w:szCs w:val="$hp"/>${rtl ? '<w:rtl/>' : ''}</w:rPr>$t</w:r>';
   }
 
@@ -150,10 +155,8 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
     final cols = plan.cols;
     final fs = d.table.fontSize;
     final head = d.table.headerColor, onHead = d.table.headerTextColor, st = d.table.style;
-    double flex(ExportColumn col) => col.id == 'n' ? .45 : col.numeric ? .9 : (col.id == 'title' || col.id == 'subject' || col.id == 'body' ? 2.6 : 1.2);
-    final total = cols.fold<double>(0, (a, col) => a + flex(col));
     final width = (tb.w * cw).round();
-    final grid = [for (final col in cols) (width * flex(col) / total).round()];
+    final grid = [for (final f in exportColumnFractions(d, cols)) (width * f).round()];
     final borders = switch (st) {
       'grid' => '<w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map((e) => '<w:$e w:val="single" w:sz="4" w:space="0" w:color="$exportLine"/>').join()}</w:tblBorders>',
       'minimal' => '<w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:right w:val="nil"/><w:insideV w:val="nil"/>'
@@ -227,7 +230,7 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
     final (fillHex, inkHex) = voteOutcomeColors(r.outcome);
     final s = size ?? sz(.85);
     final hp = (s * 2).round();
-    return '<w:r><w:rPr><w:rFonts w:ascii="$baseFont" w:hAnsi="$baseFont" w:cs="$baseFont"/><w:b/><w:bCs/><w:color w:val="$inkHex"/>'
+    return '<w:r><w:rPr>${rFonts('', bold: true)}<w:color w:val="$inkHex"/>'
         '${v.style == 'pill' || v.style == 'bar' ? '<w:shd w:val="clear" w:color="auto" w:fill="$fillHex"/>' : ''}'
         '<w:sz w:val="$hp"/><w:szCs w:val="$hp"/>${rtl ? '<w:rtl/>' : ''}</w:rPr><w:t xml:space="preserve"> ${xmlEsc(p(v.style == 'text' ? '${lb.result}: ${lb.outcome(r.outcome)}' : lb.outcome(r.outcome)))} </w:t></w:r>';
   }
@@ -370,7 +373,7 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
   // ── header / footer: {{page}} / {{pages}} become fields
   String field(String code, double size) {
     final hp = (size * 2).round();
-    return '<w:fldSimple w:instr=" $code "><w:r><w:rPr><w:rFonts w:ascii="$baseFont" w:hAnsi="$baseFont" w:cs="$baseFont"/><w:color w:val="$exportMuted"/>'
+    return '<w:fldSimple w:instr=" $code "><w:r><w:rPr>${rFonts('')}<w:color w:val="$exportMuted"/>'
         '<w:sz w:val="$hp"/><w:szCs w:val="$hp"/>${rtl ? '<w:rtl/>' : ''}</w:rPr><w:t>1</w:t></w:r></w:fldSimple>';
   }
 
@@ -392,7 +395,7 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
   final hasHeader = d.headerText.trim().isNotEmpty || d.showDate || wm.visible;
   final hasFooter = d.footerText.trim().isNotEmpty || d.showPageNumbers;
   final hfNs = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
-  final hs = d.fontSize * .78;
+  final hs = exportHeaderSize(d), fs = exportFooterSize(d);
   String hfTable(String startRuns, String endRuns, {bool top = false}) {
     final half = (cw / 2).round();
     final cells = [(half, para(startRuns, jc: 'start')), (half, para(endRuns, jc: 'end'))];
@@ -435,7 +438,7 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
     return '<w:pgBorders w:offsetFrom="text"><w:top $side/><w:left $side/><w:bottom $side/><w:right $side/></w:pgBorders>';
   }
   final footer = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr $hfNs>'
-      '${hfTable(withFields(fill(d.footerText), hs), d.showPageNumbers ? '${run('${lb.page} ', size: hs, color: exportMuted)}${field('PAGE', hs)}${run(' ${lb.of} ', size: hs, color: exportMuted)}${field('NUMPAGES', hs)}' : '', top: true)}'
+      '${hfTable(withFields(fill(d.footerText), fs), d.showPageNumbers ? '${run('${lb.page} ', size: fs, color: exportMuted)}${field('PAGE', fs)}${run(' ${lb.of} ', size: fs, color: exportMuted)}${field('NUMPAGES', fs)}' : '', top: true)}'
       '<w:p/></w:ftr>';
 
   final doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document $_wNs><w:body>$body'
@@ -455,7 +458,7 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
       '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
       '${hasHeader ? '<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>' : ''}'
       '${hasFooter ? '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>' : ''}'
-      '</Types>');
+      '${embed.contentTypes}</Types>');
   put('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
@@ -464,10 +467,10 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
       '${hasHeader ? '<Relationship Id="rHdr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>' : ''}'
       '${hasFooter ? '<Relationship Id="rFtr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>' : ''}'
-      '${rels.join()}</Relationships>');
+      '${rels.join()}${embed.documentRels}</Relationships>');
   put('word/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr>'
-      '<w:rFonts w:ascii="$baseFont" w:hAnsi="$baseFont" w:cs="$baseFont"/><w:sz w:val="${(d.fontSize * 2).round()}"/><w:szCs w:val="${(d.fontSize * 2).round()}"/>'
+      '${rFonts('')}<w:sz w:val="${(d.fontSize * 2).round()}"/><w:szCs w:val="${(d.fontSize * 2).round()}"/>'
       '${rtl ? '<w:lang w:bidi="ar-SA"/>' : ''}</w:rPr></w:rPrDefault>'
       '<w:pPrDefault><w:pPr><w:spacing w:after="0"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>');
   if (hasHeader) put('word/header1.xml', header);
@@ -475,5 +478,6 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
   put('word/document.xml', doc);
   var n = 0;
   media.forEach((url, bytes) => a.add(ArchiveFile.bytes('word/media/img${++n}.png', bytes)));
+  embed.parts().forEach((name, bytes) => a.add(ArchiveFile.bytes(name, bytes)));
   return ZipEncoder().encodeBytes(a);
 }

@@ -367,9 +367,15 @@ void main() {
       expect(exportPdfVisual('2026'), '2026');
     });
 
-    test('Latin text and the LTR document keep one pw.Text', () {
+    test('Latin text keeps one pw.Text; Arabic inside an LTR document is shaped too', () {
       expect(exportPdfText('Ahmed Hamdy', rtl: true), isA<pw.Text>());
-      expect(exportPdfText('علوم الحاسب', rtl: false), isA<pw.Text>());
+      // an Arabic name in an English file: laid out like an RTL text (it printed unshaped, letters reversed)
+      expect(exportPdfText('علوم الحاسب', rtl: false), isA<pw.Directionality>());
+      // a Latin text with an Arabic part: one pw.Text in bidi visual order, the Arabic shaped
+      final mixed = exportPdfText('Course علوم', rtl: false);
+      expect(mixed, isA<pw.Text>());
+      expect((mixed as pw.Text).text.toPlainText(), startsWith('Course '));
+      expect(mixed.text.toPlainText().runes.where((r) => r >= 0xFE70 && r <= 0xFEFF), hasLength(4));
       expect(exportPdfText('علوم الحاسب', rtl: true), isA<pw.Directionality>());
       expect(exportPdfText('القاهرة', rtl: true), isA<pw.Text>()); // one word: the shaped word itself
     });

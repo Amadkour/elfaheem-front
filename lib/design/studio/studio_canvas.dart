@@ -32,6 +32,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../app_tokens.dart';
+import '../export/export_fonts.dart' show ExportFonts;
 import 'studio_controller.dart';
 import 'studio_model.dart';
 
@@ -126,6 +127,13 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     final k = _kind;
     if (k != null) return k == PointerDeviceKind.touch || k == PointerDeviceKind.stylus;
     return defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // the certificate fonts are plain assets (not pubspec fonts): registered the first time a studio opens (7.1)
+    ExportFonts.ensureCertFamilies();
   }
 
   @override

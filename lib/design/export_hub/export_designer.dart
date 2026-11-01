@@ -37,7 +37,9 @@ import '../app_kit.dart';
 import '../app_tokens.dart';
 import '../export/export_studio_model.dart';
 import '../studio/studio.dart';
+import '../export/export_fonts.dart' show ExportFonts;
 import 'export_design.dart';
+import 'export_layout.dart';
 import 'export_pdf.dart';
 
 // The page preview is the printed sheet: paper and ink are document colours, not theme colours.
@@ -48,8 +50,18 @@ Color exportColor(String hex, [Color fallback = const Color(0xFF1E293B)]) {
   return h.isEmpty ? fallback : Color(int.parse('FF$h', radix: 16));
 }
 
-/// The Flutter font family of a design family (pubspec: tajawal · bahji · PaperPlex).
-String exportFlutterFont(String family) => switch (family) { 'bahij' => 'bahji', 'plex' => 'PaperPlex', _ => 'tajawal' };
+/// The Flutter font family of a design family: the catalog font registered for the previews (`xf_<id>`, the PDF's
+/// own copy of the files — see ExportFonts.ensurePreview). Asking for it starts loading it (once); until it lands the
+/// text draws in the fallback and redraws when the font arrives.
+String exportFlutterFont(String family) {
+  final f = ExportFonts.byId(family.isEmpty ? ExportFonts.defaultId : family);
+  ExportFonts.ensurePreview(f.id);
+  return f.previewFamily;
+}
+
+/// The fallback families of a design family in the previews (its Arabic stand-in, then IBM Plex Sans Arabic) — what
+/// the PDF falls back to.
+List<String> exportFlutterFallback(String family) => ExportFonts.byId(family.isEmpty ? ExportFonts.defaultId : family).previewFallback;
 
 /// Swatches offered for text, lines and the table header.
 const exportSwatches = ['1E293B', '64748B', '0F766E', '1E40AF', '7C3AED', '991B1B', '92400E', '166534', '000000', 'FFFFFF'];
@@ -187,11 +199,15 @@ class _PaperDecor extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = design;
     final ml = d.page.left * scale, mr = d.page.right * scale, mt = d.page.top * scale, mb = d.page.bottom * scale;
-    final st = TextStyle(fontFamily: exportFlutterFont(d.fontFamily), fontSize: (d.fontSize * .78 * .3528 * scale).clamp(3, 40), color: exportColor(exportMuted));
+    // points → millimetres → pixels, at the writers' sizes (export_layout.dart)
+    TextStyle st({bool footer = false}) => TextStyle(
+        fontFamily: exportFlutterFont(d.fontFamily),
+        fontSize: ((footer ? exportFooterSize(d) : exportHeaderSize(d)) * .3528 * scale).clamp(3, 40).toDouble(),
+        color: exportColor(exportMuted));
     String fill(String s) => _digits(fillPlaceholders(s, values).replaceAll('{{page}}', '1').replaceAll('{{pages}}', '1'), content);
-    Widget hf(String start, String end) => Row(children: [
-          Expanded(child: Text(start, maxLines: 1, overflow: TextOverflow.ellipsis, style: st)),
-          if (end.isNotEmpty) Flexible(child: Text(end, maxLines: 1, overflow: TextOverflow.clip, style: st)),
+    Widget hf(String start, String end, {bool footer = false}) => Row(children: [
+          Expanded(child: Text(start, maxLines: 1, overflow: TextOverflow.ellipsis, style: st(footer: footer))),
+          if (end.isNotEmpty) Flexible(child: Text(end, maxLines: 1, overflow: TextOverflow.clip, style: st(footer: footer))),
         ]);
     final lb = ExportLabels(d.lang);
     return Stack(clipBehavior: Clip.hardEdge, children: [
@@ -220,7 +236,7 @@ class _PaperDecor extends StatelessWidget {
           left: ml,
           right: mr,
           bottom: (mb * .35).clamp(1, math.max(1.0, mb)),
-          child: hf(fill(d.footerText), d.showPageNumbers ? _digits('${lb.page} 1 ${lb.of} 1', content) : ''),
+          child: hf(fill(d.footerText), d.showPageNumbers ? _digits(exportFooterPageText(lb.page, lb.of, 1, 1), content) : '', footer: true),
         ),
     ]);
   }
@@ -394,7 +410,10 @@ class ExportPagePreview extends StatelessWidget {
     final d = design;
     final (pwMm, phMm) = d.page.mm;
     final values = _previewValues(d, dataset, content);
-    return Center(
+    // a text that names its family but no fallback inherits the page font's (the PDF's) fallback chain
+    return DefaultTextStyle.merge(
+      style: TextStyle(fontFamily: exportFlutterFont(d.fontFamily), fontFamilyFallback: exportFlutterFallback(d.fontFamily)),
+      child: Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: AspectRatio(
@@ -432,6 +451,7 @@ class ExportPagePreview extends StatelessWidget {
             );
           }),
         ),
+      ),
       ),
     );
   }
@@ -519,7 +539,9 @@ class _TablePreview extends StatelessWidget {
           padding: EdgeInsets.symmetric(vertical: fs * .35),
           child: Row(children: cells),
         );
-    int flex(ExportColumn col) => col.id == 'n' ? 1 : col.numeric ? 2 : (col.id == 'title' || col.id == 'subject' || col.id == 'body' || col.id == 'name' ? 5 : 3);
+    // the writers' widths (export_layout.dart), in thousandths
+    final fractions = exportColumnFractions(d, cols);
+    int flex(ExportColumn col) => math.max(1, (fractions[cols.indexOf(col)] * 1000).round());
     String label(ExportColumn col) => _digits(cc?.labels[col.id] ?? col.label(d.lang), cc);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       row(

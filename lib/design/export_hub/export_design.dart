@@ -19,6 +19,7 @@ import 'dart:math' as math;
 import 'package:flutter_education_app/core/app_time.dart';
 
 import '../../features/admin/admin_common.dart' show asMap, asMapList, t;
+import '../export/export_fonts.dart' show ExportFonts;
 import '../export/export_studio_model.dart' show ExportNumerals, ExportRule;
 import '../export/table_export_model.dart' show AppColType, AppExportColumn, AppTableExport, AppTotal, cellText;
 
@@ -29,17 +30,14 @@ import '../export/table_export_model.dart' show AppColType, AppExportColumn, App
 const exportBlockKinds = ['text', 'logo', 'signature', 'table', 'items', 'line'];
 const exportFlowKinds = ['table', 'items'];
 const exportPageSizes = ['A4', 'Letter', 'A3'];
-const exportFontFamilies = ['tajawal', 'bahij', 'plex'];
+/// Every font a design may name: the export font catalog (= the certificate studio's fonts + Bahij, IBM Plex).
+List<String> get exportFontFamilies => ExportFonts.ids;
 const exportTableStyles = ['grid', 'zebra', 'minimal'];
 const exportVotePositions = ['beside', 'below', 'both'];
 const exportVoteStyles = ['bar', 'pill', 'text'];
 const exportModules = ['items', 'complaints', 'requests', 'council', 'minutes', 'grades', 'table'];
 
-Map<String, String> exportFontLabels() => {
-      'tajawal': t('تجوال', 'Tajawal'),
-      'bahij': t('بهيج', 'Bahij'),
-      'plex': t('IBM Plex', 'IBM Plex'),
-    };
+Map<String, String> exportFontLabels([String lang = 'ar']) => {for (final f in ExportFonts.sortedFor(lang)) f.id: f.label};
 
 Map<String, String> exportBlockLabels() => {
       'text': t('نص', 'Text'),
@@ -296,8 +294,9 @@ class ExportPage {
 }
 
 class ExportTableStyle {
-  ExportTableStyle({this.style = 'zebra', this.headerColor = exportBrand, this.headerTextColor = 'FFFFFF', this.fontSize = 10, List<String>? columns})
-      : columns = columns ?? [];
+  ExportTableStyle({this.style = 'zebra', this.headerColor = exportBrand, this.headerTextColor = 'FFFFFF', this.fontSize = 10, List<String>? columns, Map<String, double>? widths})
+      : columns = columns ?? [],
+        widths = widths ?? {};
 
   String style, headerColor, headerTextColor;
   double fontSize;
@@ -305,12 +304,20 @@ class ExportTableStyle {
   /// Column ids printed, in order. Empty = every dataset column.
   List<String> columns;
 
+  /// Column id → relative width; a missing column gets export_layout.exportColumnWeight. Empty = all automatic.
+  final Map<String, double> widths;
+
   factory ExportTableStyle.fromJson(Map<String, dynamic> j) => ExportTableStyle(
         style: _pick(j['style'], exportTableStyles, 'zebra'),
         headerColor: hexOf(j['header_color'], exportBrand),
         headerTextColor: hexOf(j['header_text_color'], 'FFFFFF'),
         fontSize: _d(j['font_size'], 10).clamp(5, 24).toDouble(),
         columns: [for (final c in (j['columns'] as List? ?? const [])) '$c'],
+        widths: {
+          if (j['widths'] is Map)
+            for (final e in (j['widths'] as Map).entries)
+              if (_d(e.value, 0) > 0) '${e.key}': _d(e.value, 0).clamp(.05, 100).toDouble(),
+        },
       );
 
   Map<String, dynamic> toJson() => {
@@ -319,6 +326,7 @@ class ExportTableStyle {
         'header_text_color': hexJson(headerTextColor),
         'font_size': fontSize,
         'columns': columns,
+        if (widths.isNotEmpty) 'widths': widths,
       };
 }
 
@@ -443,7 +451,7 @@ class ExportDesign {
   final ExportPage page;
   bool rtl;
 
-  /// tajawal | bahij | plex — the page font (blocks may override the family).
+  /// A catalog font id (export_fonts.dart) — the page font (blocks may override the family).
   String fontFamily;
   double fontSize, lineSpacing;
   String fontColor;

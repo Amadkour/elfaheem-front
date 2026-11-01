@@ -21432,5 +21432,37 @@
   "instructor_courses_empty": {
     "en": "No public courses yet",
     "ar": "لا توجد كورسات عامة بعد"
+  },
+  "export_font_bahij": {
+    "en": "Bahij",
+    "ar": "بهيج"
+  },
+  "export_font_plex": {
+    "en": "IBM Plex Sans Arabic",
+    "ar": "IBM Plex عربي"
+  },
+  "exs_font": {
+    "en": "Font",
+    "ar": "الخط"
+  },
+  "exs_font_layout": {
+    "en": "The layout's font",
+    "ar": "خط التصميم"
+  },
+  "exs_font_xlsx_hint": {
+    "en": "Excel cannot embed fonts: the file names this font, and Excel shows it where it is installed (a similar font elsewhere).",
+    "ar": "لا يمكن تضمين الخطوط في Excel: يحمل الملف اسم الخط ويظهر حيث يكون مثبّتًا، وإلا يُعرض خط مشابه."
+  },
+  "exs_font_docx_hint": {
+    "en": "The font is embedded in the Word file.",
+    "ar": "يُضمَّن الخط داخل ملف Word."
+  },
+  "exs_font_pdf_standin": {
+    "en": "In PDF, the Arabic letters of this font are drawn with",
+    "ar": "في PDF تُرسم الحروف العربية لهذا الخط بخط"
+  },
+  "exs_font_latin_only": {
+    "en": "This font has no Arabic letters: Arabic text uses",
+    "ar": "هذا الخط بلا حروف عربية: يُكتب النص العربي بخط"
   }
 }

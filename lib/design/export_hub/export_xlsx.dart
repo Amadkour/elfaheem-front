@@ -11,6 +11,7 @@ library;
 
 import 'dart:typed_data';
 
+import '../export/export_fonts.dart' show ExportFonts;
 import '../export/export_studio_model.dart' show ExportRuleStyle, exportDigits;
 import '../export/table_export_model.dart' show AppColType, AppTotal, dateValue, numValue, tintHex, xmlEsc, zipFiles;
 import '../export/table_export_xlsx.dart' show xlsxCol, xlsxSerial, xlsxSheetName;
@@ -27,11 +28,14 @@ class _St {
 }
 
 class _Styles {
-  _Styles(this.rtl, this.font) {
+  _Styles(this.rtl, this.font, {this.bold = false, this.italic = false}) {
     style(const _St(border: 'none'));
   }
   final bool rtl;
   final String font;
+
+  /// The chosen face is itself bold / italic (a "… Bold" catalog font).
+  final bool bold, italic;
   final _fonts = <String>[], _fills = <String>[], _xfs = <String>[], _fmts = <String>[];
   final _index = <String, int>{};
 
@@ -43,7 +47,7 @@ class _Styles {
   }
 
   int style(_St s) => _index.putIfAbsent(s.key, () {
-        final font = _add(_fonts, '<font>${s.bold ? '<b/>' : ''}<sz val="${s.size}"/><color rgb="FF${s.color}"/><name val="${xmlEsc(this.font)}"/><family val="2"/></font>');
+        final font = _add(_fonts, '<font>${s.bold || bold ? '<b/>' : ''}${italic ? '<i/>' : ''}<sz val="${s.size}"/><color rgb="FF${s.color}"/><name val="${xmlEsc(this.font)}"/><family val="2"/></font>');
         final fill = s.fill == null ? 0 : 2 + _add(_fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF${s.fill}"/><bgColor indexed="64"/></patternFill></fill>');
         final fmt = s.fmt == null ? 0 : 164 + _add(_fmts, s.fmt!);
         final border = switch (s.border) { 'thin' => 1, 'bottom' => 2, _ => 0 };
@@ -85,8 +89,9 @@ Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
   final plan = HubTablePlan.of(d, data, c);
   final values = data.placeholderValues(lang)..['rows'] = '${plan.rows.length}';
   final rtl = d.rtl;
-  final fontName = switch (d.fontFamily) { 'bahij' => 'Bahij TheSansArabic', 'plex' => 'IBM Plex Sans Arabic', _ => 'Tajawal' };
-  final st = _Styles(rtl, fontName);
+  // Excel cannot embed a font: it names the catalog font (drawn when the reader has it installed)
+  final face = ExportFonts.byId(d.fontFamily);
+  final st = _Styles(rtl, face.officeName, bold: face.officeBold, italic: face.officeItalic);
   final cols = plan.cols;
   final rows = plan.rows;
   final n = cols.isEmpty ? 1 : cols.length;

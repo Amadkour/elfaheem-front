@@ -28,6 +28,7 @@ import '../../features/admin/admin_common.dart' show SheetHeader, t, toast;
 import '../../features/org/governance/gov_models.dart' show ExportTemplate;
 import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
 import '../app_kit.dart';
+import '../export/docx_fonts.dart' show DocxFonts, loadDocxFontFiles;
 import 'export_design.dart';
 import 'export_designer.dart';
 import 'export_docx.dart';
@@ -50,7 +51,8 @@ Future<bool> exportHub(BuildContext context, ExportDataset dataset, {int? orgId,
 /// Builds the bytes of one file: [design] decides the language.
 Future<Uint8List> buildExportFile(ExportDesign design, ExportDataset dataset, ExportContent content, AppExportFormat format, {Map<String, Uint8List>? images}) async => switch (format) {
       AppExportFormat.xlsx => exportXlsx(design, dataset, content),
-      AppExportFormat.docx => exportDocx(design, dataset, content, images: images ?? await loadExportImages(design)),
+      AppExportFormat.docx => exportDocx(design, dataset, content,
+          images: images ?? await loadExportImages(design), fonts: DocxFonts.build(await loadDocxFontFiles(design.fontFamilies))),
       AppExportFormat.pdf => await exportPdf(design, dataset, content, fonts: await loadExportFonts(design.fontFamilies), images: images ?? await loadExportImages(design)),
     };
 
