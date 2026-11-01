@@ -613,20 +613,27 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
     );
   }
 
+  // one image object for every page (a new one per page would embed the picture once per page)
+  final wmImage = wm.isImage ? image(wm.imageUrl) : null;
+  final wmAlign = exportWatermarkAlign(wm.position, rtl);
   pw.Widget pageBackground(pw.Context ctx) {
     final ins = fr.inset * PdfPageFormat.mm;
     return pw.SizedBox(
       width: cw,
       height: ch,
       child: pw.Stack(overflow: pw.Overflow.visible, alignment: pw.Alignment.center, children: [
-        if (wm.visible)
-          pw.Center(
+        if (wm.visible && (!wm.isImage || wmImage != null))
+          // at its position in the content box (export_watermark.dart: the preview and Excel use the same)
+          pw.Align(
+            alignment: pw.Alignment(wmAlign.$1, -wmAlign.$2),
             child: pw.Transform.rotate(
               angle: -wm.angle * math.pi / 180,
               child: pw.Opacity(
                 opacity: wm.opacity,
-                child: pw.Text(p(wm.text.trim()),
-                    softWrap: false, textDirection: dir, style: pw.TextStyle(font: theme.defaultTextStyle.font, fontBold: theme.defaultTextStyle.fontBold, fontSize: wm.size, fontWeight: pw.FontWeight.bold, color: _pc(wm.color))),
+                child: wm.isImage
+                    ? pw.Image(wmImage!, width: wm.imageWidth * cw)
+                    : exportPdfText(p(wm.text.trim()), rtl: rtl, maxLines: 1,
+                        style: pw.TextStyle(font: theme.defaultTextStyle.font, fontBold: theme.defaultTextStyle.fontBold, fontSize: wm.size, fontWeight: pw.FontWeight.bold, color: _pc(wm.color))),
               ),
             ),
           ),

@@ -408,7 +408,30 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
   }
 
   // the standard Word watermark: WordArt text (VML shapetype 136) behind the page, anchored in the header
+  // the watermark's place in the margins box (export_watermark.dart: the preview and the PDF use the same)
+  final (wmAx, wmAy) = exportWatermarkAlign(wm.position, rtl);
+  final wmH = wmAx < 0 ? 'left' : (wmAx > 0 ? 'right' : 'center'), wmV = wmAy < 0 ? 'top' : (wmAy > 0 ? 'bottom' : 'center');
+  final wmBytes = wm.isImage ? images[wm.imageUrl] : null;
+  final wmSize = wmBytes == null ? null : _imageSize(wmBytes);
+
+  // an image watermark: a picture behind the text, anchored in the header, faded (alphaModFix) and turned (xfrm rot)
+  String imageWatermark() {
+    final cx = (wm.imageWidth * cw * twipToEmu).round();
+    final cy = (cx * wmSize!.$2 / wmSize.$1).round();
+    return '<w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:drawing>'
+        '<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="0" behindDoc="1" locked="1" layoutInCell="1" allowOverlap="1">'
+        '<wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="margin"><wp:align>$wmH</wp:align></wp:positionH>'
+        '<wp:positionV relativeFrom="margin"><wp:align>$wmV</wp:align></wp:positionV><wp:extent cx="$cx" cy="$cy"/>'
+        '<wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="9001" name="Watermark"/><wp:cNvGraphicFramePr/>'
+        '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic>'
+        '<pic:nvPicPr><pic:cNvPr id="9001" name="Watermark"/><pic:cNvPicPr/></pic:nvPicPr>'
+        '<pic:blipFill><a:blip r:embed="rWm"><a:alphaModFix amt="${(wm.opacity * 100000).round()}"/></a:blip><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+        '<pic:spPr><a:xfrm rot="${(wm.angle * 60000).round()}"><a:off x="0" y="0"/><a:ext cx="$cx" cy="$cy"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+        '</pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r></w:p>';
+  }
+
   String watermark() {
+    if (wm.isImage) return wmSize == null ? '' : imageWatermark();
     final text = p(wm.text.trim());
     final wPt = math.max(wm.size, math.min(cw / 20, wm.size * .62 * text.length)), hPt = wm.size;
     final rotation = ((wm.angle.round() % 360) + 360) % 360;
@@ -422,12 +445,14 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
         '<v:textpath on="t" fitshape="t"/><v:handles><v:h position="#0,bottomRight" xrange="6629,14971"/></v:handles><o:lock v:ext="edit" text="t" shapetype="t"/></v:shapetype>'
         '<v:shape id="NextBrainWatermark" o:spid="_x0000_s2049" type="#_x0000_t136" '
         'style="position:absolute;margin-left:0;margin-top:0;width:${wPt.toStringAsFixed(1)}pt;height:${hPt.toStringAsFixed(1)}pt;rotation:$rotation;z-index:-251657216;'
-        'mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" '
+        'mso-position-horizontal:$wmH;mso-position-horizontal-relative:margin;mso-position-vertical:$wmV;mso-position-vertical-relative:margin" '
         'o:allowincell="f" fillcolor="#${wm.color}" stroked="f"><v:fill opacity="${wm.opacity.toStringAsFixed(2)}"/>'
         '<v:textpath style="font-family:&quot;${xmlEsc(font)}&quot;;font-size:1pt" string="${xmlEsc(text)}"/></v:shape></w:pict></w:r></w:p>';
   }
 
-  final header = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $hfNs xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">'
+  final header = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $hfNs xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" '
+      'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+      'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
       '${wm.visible ? watermark() : ''}'
       '${d.headerText.trim().isNotEmpty || d.showDate ? hfTable(withFields(fill(d.headerText), hs), d.showDate ? run(values['date'] ?? '', size: hs, color: exportMuted) : '') : ''}<w:p/></w:hdr>';
   String pageBorders() {
@@ -474,6 +499,12 @@ Uint8List exportDocx(ExportDesign d, ExportDataset data, ExportContent c, {Map<S
       '${rtl ? '<w:lang w:bidi="ar-SA"/>' : ''}</w:rPr></w:rPrDefault>'
       '<w:pPrDefault><w:pPr><w:spacing w:after="0"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>');
   if (hasHeader) put('word/header1.xml', header);
+  if (hasHeader && wm.visible && wmSize != null) {
+    put('word/_rels/header1.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rWm" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/watermark.png"/></Relationships>');
+    a.add(ArchiveFile.bytes('word/media/watermark.png', wmBytes!));
+  }
   if (hasFooter) put('word/footer1.xml', footer);
   put('word/document.xml', doc);
   var n = 0;

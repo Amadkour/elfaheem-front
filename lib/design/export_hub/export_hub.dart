@@ -29,7 +29,10 @@ import '../../features/org/governance/gov_models.dart' show ExportTemplate;
 import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
 import '../app_kit.dart';
 import '../export/docx_fonts.dart' show DocxFonts, loadDocxFontFiles;
+import '../export/export_fonts.dart' show ExportFonts;
 import '../export/export_job.dart';
+import '../export/export_watermark_png.dart';
+import '../export/xlsx_watermark.dart';
 import 'export_design.dart';
 import 'export_designer.dart';
 import 'export_docx.dart';
@@ -55,7 +58,11 @@ Future<Uint8List> buildExportFile(ExportDesign design, ExportDataset dataset, Ex
     {Map<String, Uint8List>? images, ExportJob? progress}) async {
   switch (format) {
     case AppExportFormat.xlsx:
-      return exportCompute(() => exportXlsx(design, dataset, content), job: progress);
+      final (pw, ph) = design.page.mm;
+      final wm = await xlsxWatermarkFor(design.watermark,
+          landscape: false, paper: (pw, ph), rtl: design.rtl, fontId: design.fontFamily,
+          margins: (design.page.left / 25.4, design.page.right / 25.4, design.page.top / 25.4, design.page.bottom / 25.4));
+      return exportCompute(() => exportXlsx(design, dataset, content, watermark: wm), job: progress);
     case AppExportFormat.docx:
       final imgs = images ?? await loadExportImages(design);
       final files = await loadDocxFontFiles(design.fontFamilies);
@@ -65,6 +72,17 @@ Future<Uint8List> buildExportFile(ExportDesign design, ExportDataset dataset, Ex
       final fonts = await loadExportFonts(design.fontFamilies);
       return exportCompute(() => exportPdf(design, dataset, content, fonts: fonts, images: imgs), job: progress);
   }
+}
+
+/// [wm] as an Excel header picture over a page of [paper] millimetres (orientation applied) and [margins] in inches
+/// (left, right, top, bottom); null when there is nothing to draw. The picture is drawn here, on the UI isolate.
+Future<XlsxWatermark?> xlsxWatermarkFor(ExportWatermark wm,
+    {required bool landscape, required bool rtl, (double, double) paper = (210, 297), (double, double, double, double) margins = (.4, .4, .5, .6), String fontId = ''}) async {
+  if (!wm.visible) return null;
+  final (wPt, hPt) = xlsxContentPt(landscape: landscape, paper: paper, left: margins.$1, right: margins.$2, top: margins.$3, bottom: margins.$4);
+  final image = wm.isImage ? await loadExportImage(wm.imageUrl) : null;
+  final png = await exportWatermarkPng(wm, widthMm: wPt / 72 * 25.4, heightMm: hPt / 72 * 25.4, rtl: rtl, image: image, fontId: fontId.isEmpty ? ExportFonts.defaultId : fontId);
+  return png == null ? null : XlsxWatermark(png, widthPt: wPt, heightPt: hPt);
 }
 
 /// Builds and saves one file per language of [content]. Returns the number of files produced. [progress] shows the
@@ -231,6 +249,7 @@ class _ExportHubSheetState extends State<ExportHubSheet> {
   Future<void> _run() async {
     setState(() => _busy = true);
     await _saveChoice(ds.prefId, _choiceJson());
+    if (!mounted) return;
     final content = _content.copy()..columns = _columns == null ? null : [for (final c in ds.columns) if (_columns!.contains(c.id)) c.id];
     final n = await runExportWithProgress<int>(context, (p) => exportWithDesigns(ds, content, _format, _designFor, progress: p)) ?? 0;
     if (!mounted) return;

@@ -21492,5 +21492,85 @@
   "exs_cancelled": {
     "en": "Export cancelled",
     "ar": "أُلغي التصدير"
+  },
+  "exs_wm_center": {
+    "en": "Centre",
+    "ar": "في المنتصف"
+  },
+  "exs_wm_top": {
+    "en": "Top",
+    "ar": "أعلى"
+  },
+  "exs_wm_bottom": {
+    "en": "Bottom",
+    "ar": "أسفل"
+  },
+  "exs_wm_top_start": {
+    "en": "Top, start",
+    "ar": "أعلى البداية"
+  },
+  "exs_wm_top_end": {
+    "en": "Top, end",
+    "ar": "أعلى النهاية"
+  },
+  "exs_wm_bottom_start": {
+    "en": "Bottom, start",
+    "ar": "أسفل البداية"
+  },
+  "exs_wm_bottom_end": {
+    "en": "Bottom, end",
+    "ar": "أسفل النهاية"
+  },
+  "exs_wm_text": {
+    "en": "Text",
+    "ar": "نص"
+  },
+  "exs_wm_image": {
+    "en": "Image",
+    "ar": "صورة"
+  },
+  "exs_wm_text_label": {
+    "en": "Watermark text",
+    "ar": "نص العلامة المائية"
+  },
+  "exs_wm_hint": {
+    "en": "Confidential",
+    "ar": "سري"
+  },
+  "exs_wm_image_link": {
+    "en": "Image link",
+    "ar": "رابط الصورة"
+  },
+  "exs_wm_upload": {
+    "en": "Upload an image",
+    "ar": "رفع صورة"
+  },
+  "exs_wm_position": {
+    "en": "Position",
+    "ar": "الموضع"
+  },
+  "exs_wm_width": {
+    "en": "Width",
+    "ar": "العرض"
+  },
+  "exs_wm_size": {
+    "en": "Size",
+    "ar": "الحجم"
+  },
+  "exs_wm_angle": {
+    "en": "Rotation",
+    "ar": "الدوران"
+  },
+  "exs_wm_colour": {
+    "en": "Colour",
+    "ar": "اللون"
+  },
+  "exs_wm_title": {
+    "en": "Watermark",
+    "ar": "العلامة المائية"
+  },
+  "exs_wm_xlsx_note": {
+    "en": "Excel prints it as a header picture: it shows in Page Layout view and on paper.",
+    "ar": "يطبعها Excel صورةً في رأس الصفحة: تظهر في عرض تخطيط الصفحة وعند الطباعة."
   }
 }

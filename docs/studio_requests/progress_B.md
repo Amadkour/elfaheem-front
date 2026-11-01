@@ -40,7 +40,7 @@ States: done · partial · left.
 - The 27 certificate fonts left pubspec `fonts:` (the web engine downloads every manifest font at start-up,
   6.2 MB) and became plain assets (`assets/fonts/cert/`).
 - The certificate studio's families (`CertCinzel`, …) are registered by `ExportFonts.ensureCertFamilies()` from a
-  one-line hook in `lib/design/studio/studio_canvas.dart` `initState` (every studio opens through the canvas; the
+  one-line hook in `lib/design/studio/studio_toolbar.dart` `build` (both designers show that toolbar; the
   certificate designer's font picker shows all of them anyway). Fallback: until a file lands the text draws in the
   default font and redraws when it arrives (RenderParagraph listens to font changes).
 - Exports load only the files of the fonts they use, once (`ExportFonts.bytes` cache; test "lazy").
@@ -89,6 +89,20 @@ States: done · partial · left.
 - Web: the PDF writer itself (package:pdf `save()`) is one synchronous call; the dialog paints before it starts
   and Cancel is honoured between files / pages, not inside one `save()`.
 
+## B6 — Watermark in data exports (6.4) — done
+
+- `lib/design/export/export_watermark.dart`: one model (text or image, position centre / top / bottom / corners
+  with start-end by reading side, size, rotation, opacity, colour, image width); additive JSON keys. Used by
+  `ExportDesign.watermark` and the new `XlsxSheetOptions.watermark`.
+- PDF: in each page's background, at its position in the content box; an image is embedded once per document.
+- Word: text = the WordArt watermark at the position; image = a picture behind the text anchored in the header
+  (`alphaModFix` opacity, `xfrm rot`), `word/_rels/header1.xml.rels`.
+- Excel: a header picture (`&C&G` + `legacyDrawingHF` VML; `xlsx_watermark.dart`) of a transparent PNG of the
+  content box drawn on the UI isolate (`export_watermark_png.dart`), both Excel writers.
+- Preview: in the content box at the same alignment (it was centred on the whole paper).
+- One editor (`export_watermark_editor.dart`) in the designer's Page panel and the Excel studio (upload or link).
+- Checked: `test/export/export_watermark_test.dart`; PDF rendered, Word / Excel converted by Office 365.
+
 ## Next
 
-B6 watermark, B7 shared panels (only if agent A left `studio_props.dart` alone).
+B7 shared panels (agent A left `studio_props.dart` alone: allowed).

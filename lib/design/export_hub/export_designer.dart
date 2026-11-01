@@ -40,6 +40,7 @@ import '../studio/studio.dart';
 import '../export/export_fonts.dart' show ExportFonts;
 import 'export_design.dart';
 import 'export_layout.dart';
+import 'export_watermark_editor.dart';
 import 'export_pdf.dart';
 
 // The page preview is the printed sheet: paper and ink are document colours, not theme colours.
@@ -84,6 +85,11 @@ Future<Map<String, Uint8List>> loadExportImages(ExportDesign d) async {
     if (!b.isImage || b.url.isEmpty) continue;
     final bytes = await loadExportImage(b.url);
     if (bytes != null) out[b.url] = bytes;
+  }
+  final wm = d.watermark;
+  if (wm.visible && wm.isImage) {
+    final bytes = await loadExportImage(wm.imageUrl);
+    if (bytes != null) out[wm.imageUrl] = bytes;
   }
   return out;
 }
@@ -189,11 +195,14 @@ String _digits(String s, ExportContent? c) => c == null ? s : exportDigits(s, c.
 /// The paper's own layer (behind the blocks): header and footer text in the margins, the frame, the watermark.
 /// [scale] = screen pixels per millimetre; [box] = the paper size in pixels.
 class _PaperDecor extends StatelessWidget {
-  const _PaperDecor({required this.design, required this.values, required this.scale, this.content});
+  const _PaperDecor({required this.design, required this.values, required this.scale, this.content, this.images});
   final ExportDesign design;
   final Map<String, String> values;
   final double scale;
   final ExportContent? content;
+
+  /// Image bytes by URL (an image watermark uploaded this session).
+  final Map<String, Uint8List>? images;
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +220,16 @@ class _PaperDecor extends StatelessWidget {
         ]);
     final lb = ExportLabels(d.lang);
     return Stack(clipBehavior: Clip.hardEdge, children: [
-      if (d.watermark.visible) Positioned.fill(child: _Watermark(mark: d.watermark, family: exportFlutterFont(d.fontFamily), scale: scale)),
+      if (d.watermark.visible)
+        Positioned(
+          left: ml,
+          top: mt,
+          right: mr,
+          bottom: mb,
+          child: LayoutBuilder(
+            builder: (_, box) => _Watermark(mark: d.watermark, family: exportFlutterFont(d.fontFamily), scale: scale, rtl: d.rtl, contentWidth: box.maxWidth, images: images),
+          ),
+        ),
       if (d.frame.visible)
         Positioned(
           left: math.max(0, ml - d.frame.inset * scale),
@@ -242,31 +260,50 @@ class _PaperDecor extends StatelessWidget {
   }
 }
 
+/// The watermark in the content box, at its position, turned and faded like the PDF / Word / Excel files
+/// (export_watermark.dart). [contentWidth] in pixels sizes an image watermark.
 class _Watermark extends StatelessWidget {
-  const _Watermark({required this.mark, required this.family, required this.scale});
+  const _Watermark({required this.mark, required this.family, required this.scale, required this.rtl, required this.contentWidth, this.images});
   final ExportWatermark mark;
   final String family;
-  final double scale;
+  final double scale, contentWidth;
+  final bool rtl;
+  final Map<String, Uint8List>? images;
 
   @override
-  Widget build(BuildContext context) => IgnorePointer(
-        child: Center(
-          child: Transform.rotate(
-            angle: mark.angle * math.pi / 180,
-            child: Text(
-              mark.text,
-              maxLines: 1,
-              softWrap: false,
-              style: TextStyle(
-                fontFamily: family,
-                fontSize: (mark.size * .3528 * scale).clamp(4, 400),
-                fontWeight: FontWeight.w800,
-                color: exportColor(mark.color).withValues(alpha: mark.opacity.clamp(0, 1).toDouble()),
-              ),
-            ),
-          ),
+  Widget build(BuildContext context) {
+    final (ax, ay) = exportWatermarkAlign(mark.position, rtl);
+    final Widget body;
+    if (mark.isImage) {
+      final known = images?[mark.imageUrl];
+      Widget pic(Uint8List? b) => b == null ? const SizedBox.shrink() : Image.memory(b, width: mark.imageWidth * contentWidth, fit: BoxFit.contain, gaplessPlayback: true);
+      body = Opacity(
+        opacity: mark.opacity.clamp(0, 1).toDouble(),
+        child: known != null ? pic(known) : FutureBuilder<Uint8List?>(future: loadExportImage(mark.imageUrl), builder: (_, s) => pic(s.data)),
+      );
+    } else {
+      body = Text(
+        mark.text.trim(),
+        maxLines: 1,
+        softWrap: false,
+        textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+        style: TextStyle(
+          fontFamily: family,
+          fontSize: (mark.size * .3528 * scale).clamp(4, 400),
+          fontWeight: FontWeight.w800,
+          color: exportColor(mark.color).withValues(alpha: mark.opacity.clamp(0, 1).toDouble()),
         ),
       );
+    }
+    return IgnorePointer(
+      child: OverflowBox(
+        maxWidth: double.infinity,
+        maxHeight: double.infinity,
+        alignment: Alignment(ax, ay),
+        child: Transform.rotate(angle: mark.angle * math.pi / 180, child: body),
+      ),
+    );
+  }
 }
 
 /// One block's printed content at [scale] px / mm (no selection chrome: the engine / the preview draws that).
@@ -436,7 +473,7 @@ class ExportPagePreview extends StatelessWidget {
                     boxShadow: [BoxShadow(color: c.textDark.withValues(alpha: .10), blurRadius: 16, offset: const Offset(0, 6))],
                   ),
                   child: Stack(clipBehavior: Clip.hardEdge, children: [
-                    Positioned.fill(child: _PaperDecor(design: d, values: values, scale: scale, content: content)),
+                    Positioned.fill(child: _PaperDecor(design: d, values: values, scale: scale, content: content, images: images)),
                     for (final b in d.blocks)
                       Positioned(
                         left: ml + b.x * cw,
@@ -867,6 +904,24 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
   }
 
   // ── images
+  /// Picks and uploads an image to the organization; its URL (bytes remembered for the preview), or null.
+  Future<String?> _uploadImage() async {
+    final f = await FilePicker.pickFile(type: FileType.image);
+    if (f == null || !mounted || widget.orgId == null) return null;
+    final bytes = await f.readAsBytes();
+    try {
+      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: f.name, fileBytes: bytes);
+      final url = r is Map ? '${r['url'] ?? ''}' : '';
+      if (url.isEmpty) return null;
+      rememberExportImage(url, bytes);
+      _images[url] = bytes;
+      return url;
+    } on ApiException catch (e) {
+      toast(e.message, error: true);
+      return null;
+    }
+  }
+
   Future<void> _upload(ExportBlock b) async {
     final f = await FilePicker.pickFile(type: FileType.image);
     if (f == null || !mounted) return;
@@ -935,7 +990,7 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
             focusNode: _focus,
             autofocus: wide,
             paperInsets: EdgeInsets.fromLTRB(_d.page.left, _d.page.top, _d.page.right, _d.page.bottom),
-            paperBuilder: (context, scale) => _PaperDecor(design: _d, values: _previewValues(_d, _data, widget.content), scale: scale, content: widget.content),
+            paperBuilder: (context, scale) => _PaperDecor(design: _d, values: _previewValues(_d, _data, widget.content), scale: scale, content: widget.content, images: _images),
             itemBuilder: (context, item, selected) => _BlockContent(
               design: _d,
               dataset: _data,
@@ -1258,12 +1313,12 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
         ],
       ]),
       StudioPropSection(title: t('العلامة المائية', 'Watermark'), children: [
-        _TextProp(key: const ValueKey('wm'), label: t('النص', 'Text'), hint: t('سري', 'Confidential'), value: wm.text, onChanged: (v) => _edit('watermark', () => wm.text = v, coalesce: true)),
-        if (wm.text.trim().isNotEmpty) ...[
-          StudioStepper(label: t('الحجم', 'Size'), value: wm.size, min: 12, max: 160, step: 4, suffix: 'pt', onChanged: (v) => _edit('watermark', () => wm.size = v, coalesce: true)),
-          StudioOpacitySlider(value: wm.opacity, onChanged: (v) => _edit('watermark', () => wm.opacity = v, coalesce: true)),
-          StudioColorField(label: t('اللون', 'Colour'), swatches: _studioSwatches, value: exportColor(wm.color), onChanged: (col) => _edit('watermark', () => wm.color = _hexOfColor(col) ?? '94A3B8', coalesce: true)),
-        ],
+        ExportWatermarkEditor(
+          key: const ValueKey('wm'),
+          mark: wm,
+          onEdit: (change) => _edit('watermark', change, coalesce: true),
+          onUpload: widget.orgId == null ? null : _uploadImage,
+        ),
       ]),
     ]);
   }

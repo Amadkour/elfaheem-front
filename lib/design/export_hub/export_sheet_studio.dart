@@ -25,6 +25,7 @@ import '../export/export_studio_model.dart';
 import '../studio/studio_props.dart';
 import 'export_designer.dart' show exportColor, exportSwatches, rememberExportImage;
 import 'export_flow_parts.dart' show ExportSheetPreview, xs;
+import 'export_watermark_editor.dart';
 
 Future<XlsxSheetOptions?> openExportSheetStudio(
   BuildContext context, {
@@ -87,6 +88,21 @@ class _ExportSheetStudioPageState extends State<ExportSheetStudioPage> {
       _set(() => _s.logoUrl = _logo.text = url);
     } catch (e) {
       showAppNotice(ApiException.from(e).message, error: true);
+    }
+  }
+
+  Future<String?> _uploadWatermark() async {
+    final f = await FilePicker.pickFile(type: FileType.image);
+    if (f == null || !mounted || widget.orgId == null) return null;
+    final Uint8List bytes = await f.readAsBytes();
+    try {
+      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: f.name, fileBytes: bytes);
+      final url = r is Map ? '${r['url'] ?? ''}' : '';
+      if (url.isNotEmpty) rememberExportImage(url, bytes);
+      return url.isEmpty ? null : url;
+    } catch (e) {
+      showAppNotice(ApiException.from(e).message, error: true);
+      return null;
     }
   }
 
@@ -232,6 +248,15 @@ class _ExportSheetStudioPageState extends State<ExportSheetStudioPage> {
               }
             }),
           ),
+      ]),
+      StudioPropSection(title: xs('exs_wm_title', 'Watermark', 'العلامة المائية'), children: [
+        ExportWatermarkEditor(
+          mark: _s.watermark,
+          onEdit: _set,
+          onUpload: widget.orgId == null ? null : _uploadWatermark,
+          note: xs('exs_wm_xlsx_note', 'Excel prints it as a header picture: it shows in Page Layout view and on paper.',
+              'يطبعها Excel صورةً في رأس الصفحة: تظهر في عرض تخطيط الصفحة وعند الطباعة.'),
+        ),
       ]),
       StudioPropSection(title: xs('exs_sheet_direction', 'Sheet direction', 'اتجاه الورقة'), children: [
         StudioSegmented<String>(

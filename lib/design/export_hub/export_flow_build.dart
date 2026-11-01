@@ -28,7 +28,7 @@ import '../export/table_export_model.dart';
 import '../export/table_export_pdf.dart';
 import '../export/table_export_xlsx.dart';
 import 'export_design.dart';
-import 'export_hub.dart' show buildExportFile;
+import 'export_hub.dart' show buildExportFile, xlsxWatermarkFor;
 import 'export_pdf.dart' show loadExportFonts;
 
 /// The table [e] as [lang] prints it with the person's [ch].
@@ -164,7 +164,12 @@ Future<ExportFlowFile> buildExportFlowFile(
   if (job.format == AppExportFormat.xlsx) {
     final sheet = font.isEmpty ? job.sheet : (job.sheet.copy()..font = font);
     final rules = job.rules, logo = job.logo, exporter = job.exporter;
-    bytes = await exportCompute(() => inExportLang(lang, () => appTableXlsx(v, columns: cols, sheet: sheet, rules: rules, numerals: numerals, logo: logo, exporter: exporter)),
+    // the watermark as a header picture, drawn here (UI isolate) over the page the writer will set up
+    final shown = v.resolve(cols);
+    final wm = await xlsxWatermarkFor(sheet.watermark,
+        landscape: wideTable(shown, columnWidths(shown, v.rows)), rtl: sheet.rtlFor(lang), fontId: font.isEmpty ? ExportFonts.defaultId : font);
+    bytes = await exportCompute(
+        () => inExportLang(lang, () => appTableXlsx(v, columns: cols, sheet: sheet, rules: rules, numerals: numerals, logo: logo, exporter: exporter, watermark: wm)),
         job: progress);
   } else if (design == null) {
     if (job.format == AppExportFormat.docx) {

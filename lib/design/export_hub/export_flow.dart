@@ -394,6 +394,7 @@ class _ExportFlowSheetState extends State<ExportFlowSheet> {
         ? job
         : ExportFlowJob(source: job.source, format: job.format, choice: job.choice, rules: job.rules, sheet: job.sheet, designs: job.designs, exporter: job.exporter, logo: logo);
     final files = <ExportFlowFile>[];
+    if (!mounted) return;
     // the writers run off the UI behind a progress dialog with Cancel (7.2)
     final finished = await runExportWithProgress<bool>(context, (progress) async {
       final langs = run.languages;

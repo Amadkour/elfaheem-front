@@ -91,7 +91,7 @@ Set<String> pdfBaseFonts(Uint8List pdf) => {for (final m in RegExp(r'/BaseFont\s
 Map<String, String> unzipText(Uint8List b) =>
     {for (final f in ZipDecoder().decodeBytes(b)) if (f.isFile && (f.name.endsWith('.xml') || f.name.endsWith('.rels'))) f.name: utf8.decode(f.content)};
 
-/// The widths of the first <w:tblGrid> with [n] columns.
+/// The widths of the first `w:tblGrid` with [n] columns.
 List<int> docxGrid(String doc, int n) {
   for (final g in RegExp(r'<w:tblGrid>(.*?)</w:tblGrid>').allMatches(doc)) {
     final cols = [for (final c in RegExp(r'<w:gridCol w:w="(\d+)"/>').allMatches(g.group(1)!)) int.parse(c.group(1)!)];

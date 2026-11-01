@@ -19,6 +19,7 @@ import 'package:image/image.dart' as img;
 import 'export_fonts.dart' show ExportFonts;
 import 'export_studio_model.dart';
 import 'table_export_model.dart';
+import 'xlsx_watermark.dart';
 
 class _St {
   const _St({this.fill, this.color = exportInkHex, this.bold = false, this.size = 10, this.h = 'general', this.wrap = false, this.border = 'thin', this.italic = false, this.fmt, this.indent = 0});
@@ -140,7 +141,13 @@ final _vars = RegExp(r'\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}');
 /// and dates stay real numbers); [logo] (PNG / JPEG bytes) is drawn at the start of the title band; [exporter]
 /// fills {{exporter}} in the sheet title.
 Uint8List appTableXlsx(AppTableExport e,
-    {List<String>? columns, XlsxSheetOptions? sheet, List<ExportRule> rules = const [], ExportNumerals numerals = ExportNumerals.western, Uint8List? logo, String? exporter}) {
+    {List<String>? columns,
+    XlsxSheetOptions? sheet,
+    List<ExportRule> rules = const [],
+    ExportNumerals numerals = ExportNumerals.western,
+    Uint8List? logo,
+    String? exporter,
+    XlsxWatermark? watermark}) {
   final visible = exportVisibleRows(rules, e.rows);
   final ex = identical(visible, e.rows) ? e : e.copyWith(rows: visible);
   final so = sheet;
@@ -391,8 +398,9 @@ Uint8List appTableXlsx(AppTableExport e,
       '<printOptions horizontalCentered="1"/>'
       '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.6" header="0.3" footer="0.3"/>'
       '<pageSetup orientation="${landscape ? 'landscape' : 'portrait'}" paperSize="9" fitToWidth="1" fitToHeight="0"/>'
-      '<headerFooter><oddFooter>$footerText</oddFooter></headerFooter>'
+      '<headerFooter>${watermark == null ? '' : XlsxWatermark.oddHeader}<oddFooter>$footerText</oddFooter></headerFooter>'
       '${logoExt == null ? '' : '<drawing r:id="rId1"/>'}'
+      '${watermark == null ? '' : XlsxWatermark.sheetElement}'
       '</worksheet>');
 
   final files = <String, String>{
@@ -401,6 +409,7 @@ Uint8List appTableXlsx(AppTableExport e,
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
         '<Default Extension="xml" ContentType="application/xml"/>'
         '${logoExt == null ? '' : '<Default Extension="$logoExt" ContentType="image/$logoExt"/>'}'
+        '${watermark == null ? '' : XlsxWatermark.contentTypes(withPng: logoExt != 'png')}'
         '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
         '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
         '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
@@ -428,11 +437,13 @@ Uint8List appTableXlsx(AppTableExport e,
     'xl/worksheets/sheet1.xml': sheetXml.toString(),
     'xl/styles.xml': st.xml(),
   };
-  if (logoExt == null) return zipFiles(files);
+  if (logoExt == null && watermark == null) return zipFiles(files);
 
   files['xl/worksheets/_rels/sheet1.xml.rels'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>';
+      '${logoExt == null ? '' : '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>'}'
+      '${watermark == null ? '' : XlsxWatermark.sheetRel}</Relationships>';
+  if (logoExt == null) return zipFiles(files, binary: watermark!.parts());
   files['xl/drawings/_rels/drawing1.xml.rels'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.$logoExt"/></Relationships>';
@@ -448,5 +459,6 @@ Uint8List appTableXlsx(AppTableExport e,
   final a = Archive();
   files.forEach((name, body) => a.add(ArchiveFile.bytes(name, utf8.encode(body))));
   a.add(ArchiveFile.bytes('xl/media/image1.$logoExt', logo!));
+  watermark?.parts().forEach((name, body) => a.add(ArchiveFile.bytes(name, body)));
   return ZipEncoder().encodeBytes(a);
 }
