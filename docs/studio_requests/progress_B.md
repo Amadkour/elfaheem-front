@@ -45,7 +45,34 @@ States: done · partial · left.
   default font and redraws when it arrives (RenderParagraph listens to font changes).
 - Exports load only the files of the fonts they use, once (`ExportFonts.bytes` cache; test "lazy").
 
+## B3 — Zero drift from the preview (2.3c) — done
+
+- `lib/design/export_hub/export_layout.dart`: the column widths (`exportColumnFractions`, honouring the new
+  `ExportTableStyle.widths`) and the header / footer sizes the preview, the PDF writer and the Word writer all read.
+  Drift found and fixed: the preview's columns used other weights (name wide, 1:2:3:5) than the files; the PDF
+  footer was .74 of the font size, the preview / Word .78; the Standard PDF printed bold in Bahij and Word in Arial
+  while the preview showed Tajawal; the Standard preview was always portrait with fixed widths while the table
+  writers go landscape for wide tables and measure the columns.
+- `test/export/export_parity_test.dart` (ar + en; formal + clean themes; Standard with 4 and 9 columns): PDF
+  (uncompressed, `exportPdfCompress = false`: the cells' clip boxes = column widths, /MediaBox, /BaseFont), Word
+  (`tblGrid`, `pgSz`, `pgMar`, header / footer sizes, `rFonts`) and the rendered preview (cell widths, page aspect,
+  footer size in points, font family) agree within 0.4 – 0.6 %.
+
+## B4 — Certificate Word export (2.1.6) — done
+
+- `lib/design/export/cert_docx.dart` (pure): one A4 page without margins; background behind the text; text boxes
+  (Word 2010 shapes) at the fields' boxes with the catalog font embedded, size / colour / alignment / letter
+  spacing, Arabic right to left, the renderer's shrink rule; every logo / signature field its OWN picture
+  (`src`, else that language's default; one image part per distinct picture); signature name / title under the
+  picture; photo cropped round; QR picture; lines.
+- `lib/features/shared/certificates_issue/cert_issue_word.dart`: fetches the batch's design, fills the
+  placeholders like `CertificateIssueService._variables` (date, default title localized, organization, course,
+  row values, name, serial, verify link), draws the QR codes, loads pictures and fonts; "Word file (.docx)" in each
+  issued certificate's menu (`IssuedCertTile.onWord`), one file per issued language.
+- Checked in Word 365 (COM → PDF → PNG): 1 page, 15 shapes, both languages; `test/export/cert_docx_test.dart`.
+- Not filled client-side: teacher name, attendance, progress of course batches (the issued record does not carry
+  them; the server computes them at issue time) — they print empty, like a placeholder without a value.
+
 ## Next
 
-B3 parity tests (preview layout vs PDF / Word writers), B4 certificate Word export, B5 background exports,
-B6 watermark, B7 shared panels (only if agent A left `studio_props.dart` alone).
+B5 background exports, B6 watermark, B7 shared panels (only if agent A left `studio_props.dart` alone).

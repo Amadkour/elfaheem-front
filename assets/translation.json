@@ -21464,5 +21464,13 @@
   "exs_font_latin_only": {
     "en": "This font has no Arabic letters: Arabic text uses",
     "ar": "هذا الخط بلا حروف عربية: يُكتب النص العربي بخط"
+  },
+  "ci_word": {
+    "en": "Word file (.docx)",
+    "ar": "ملف Word (.docx)"
+  },
+  "ci_word_done": {
+    "en": "Word file saved",
+    "ar": "حُفظ ملف Word"
   }
 }

@@ -166,6 +166,29 @@ Map<int, int> ttfCmap(Uint8List ttf) {
   }
 }
 
+/// The advance width of [text] in [ttf] as a fraction of the font size (no kerning, no shaping: an estimate, enough
+/// to tell whether a line fits a box). A character the font lacks counts as half an em.
+double ttfTextWidth(Uint8List ttf, String text) {
+  try {
+    final f = _Font(ttf);
+    final head = f.tables['head']!.$1, hhea = f.tables['hhea']!.$1, hmtx = f.tables['hmtx']!.$1;
+    final upm = f.u16(head + 18), metrics = f.u16(hhea + 34);
+    final cmap = f.cmap();
+    var sum = 0.0;
+    for (final r in text.runes) {
+      final g = cmap[r];
+      if (g == null) {
+        sum += upm / 2;
+        continue;
+      }
+      sum += f.u16(hmtx + 4 * (g < metrics ? g : metrics - 1));
+    }
+    return sum / upm;
+  } catch (_) {
+    return text.length * .5;
+  }
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  GSUB → presentation forms
 // ═════════════════════════════════════════════════════════════════════════════
