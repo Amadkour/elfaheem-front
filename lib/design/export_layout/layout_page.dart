@@ -25,7 +25,6 @@ import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library
 import '../app_kit.dart';
 import '../app_notice.dart';
 import '../app_tokens.dart';
-import '../export/table_export_model.dart' show AppTableExport, AppExportFormat;
 import '../export_hub/export_flow_parts.dart' show ExportFlowStepper;
 import 'layout_api.dart';
 import 'layout_flow_controller.dart';
@@ -253,7 +252,8 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
       ),
       bottomNavigationBar: _nav(context),
       child: LayoutBuilder(builder: (context, box) {
-        final compact = box.maxWidth < kLayoutCanvasMin;
+        // the stepper's own "labels fit" guess is for shorter labels: the dots form below 1200 px
+        final compact = box.maxWidth < 1200;
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Container(
             color: c.cardBg,

@@ -7,6 +7,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/export_layout/layout_logic.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_education_app/design/export_layout/layout_page.dart';
+import 'package:flutter_education_app/design/studio/studio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -52,6 +53,28 @@ void main() {
     testWidgets('custom cards in two languages, step ${step + 1}', (tester) async {
       SharedPreferences.setMockInitialValues(_customDraft());
       await expectNoLayoutErrors(tester, () => ExportLayoutPage(export: layoutTestExport(), liveStream: kNoStream, saveFile: (_, _, _) async {}, initialStep: step), frames: 8);
+    });
+  }
+
+  // between the phone form and the side dock (720 – 1000 px): the canvas with the engine's docked panel under it
+  for (final step in [2, 3]) {
+    testWidgets('tablet width, docked properties, step ${step + 1}', (tester) async {
+      SharedPreferences.setMockInitialValues(_customDraft());
+      addTearDown(tester.view.reset);
+      for (final lang in ['ar', 'en']) {
+        AppConfig.lang = lang;
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(900, 760);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(layoutHost(ExportLayoutPage(export: layoutTestExport(), liveStream: kNoStream, saveFile: (_, _, _) async {}, initialStep: step)));
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(find.byType(StudioDockPanel), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: 'layout error at 900x760 / $lang');
+      }
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
     });
   }
 

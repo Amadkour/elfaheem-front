@@ -6,7 +6,9 @@
 //                           snapshot = the elements' JSON, restore refills the SAME list (the design keeps it)
 //   LayoutCanvasEditor      toolbar (add element · the engine's commands) + StudioCanvas + the properties of the
 //                           selection: docked at the side on wide screens, a non-blocking panel under the canvas on
-//                           narrower ones. Double click / double tap = quick edit of the text (or the field).
+//                           narrower ones (the engine's StudioDockPanel). Double click / long-press on a static text
+//                           edits it in place on the canvas (the engine's inline editor, one undo step); on a bound
+//                           field it opens the field picker. Right click: the engine's context menu (lock included).
 library;
 
 import 'dart:convert';
@@ -21,7 +23,7 @@ import 'layout_element_view.dart';
 import 'layout_model.dart';
 import 'layout_props.dart';
 
-class LayoutElementsAdapter implements StudioAdapter<LayoutElement> {
+class LayoutElementsAdapter implements StudioAdapter<LayoutElement>, StudioLockAdapter {
   LayoutElementsAdapter(this.elements, {required this.newId});
 
   /// The design's own list (mutated in place).
@@ -88,6 +90,16 @@ class LayoutElementsAdapter implements StudioAdapter<LayoutElement> {
   StudioItem<LayoutElement> cloneItem(StudioItem<LayoutElement> item) {
     final id = newId();
     return item.copyWith(id: id, payload: item.payload.copy(id: id));
+  }
+
+  @override
+  bool get canLock => true;
+
+  @override
+  void setLocked(Set<String> ids, bool locked) {
+    for (final e in elements) {
+      if (ids.contains(e.id)) e.locked = locked;
+    }
   }
 
   @override
@@ -158,6 +170,7 @@ class LayoutCanvasEditor extends StatefulWidget {
 class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
   late StudioController<LayoutElement> _ctl;
   String _sig = '';
+  final _dockOpen = ValueNotifier<bool>(false);
 
   StudioPage get _page => StudioPage(widget.width, widget.height, unitPx: kMmPx);
 
@@ -223,6 +236,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
     _ctl
       ..removeListener(_onCtl)
       ..dispose();
+    _dockOpen.dispose();
     super.dispose();
   }
 
@@ -238,36 +252,62 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
     _ctl.select(e.id);
   }
 
-  Future<void> _quickEdit(String id) async {
+  /// The text an element edits in place: static text, a page number, a QR code's text (a bound field or a computed
+  /// value has none: it picks a field instead).
+  static String? _inlineText(StudioItem<LayoutElement> item) {
+    final e = item.payload;
+    if (e.locked || e.bind != null || e.computed != null) return null;
+    if (e.kind == 'text' || e.kind == 'badge' || e.kind == 'page_number' || e.kind == 'qr') return e.value ?? '';
+    return null;
+  }
+
+  StudioInlineStyle _inlineStyle(BuildContext context, StudioItem<LayoutElement> item, double scale) {
+    final e = item.payload;
+    final s = e.style;
+    return StudioInlineStyle(
+      style: layoutTextStyle(e, widget.pageFont, scale, layoutColor(s.color, const Color(0xFF1A1A1A))!),
+      textAlign: switch (s.align) {
+        'center' => TextAlign.center,
+        'end' => TextAlign.end,
+        _ => TextAlign.start,
+      },
+      textDirection: widget.rtl ? TextDirection.rtl : TextDirection.ltr,
+      multiline: s.maxLines != 1,
+      padding: EdgeInsets.all((s.padding * scale).clamp(0.0, 40.0)),
+      background: layoutColor(s.bg),
+    );
+  }
+
+  /// Double click on an element without in-place text: a bound field picks its field; on a phone-width editor the
+  /// docked properties open.
+  Future<void> _doubleTap(String id) async {
     final e = _ctl.itemById(id)?.payload;
     if (e == null || e.locked) return;
-    if (e.bind != null && e.computed == null) {
-      final picked = await showAppSheet<String>(
-        context,
-        (ctx) => SafeArea(
-          child: ListView(shrinkWrap: true, children: [
-            AppSheetHeader(t('اختر الحقل', 'Pick the field')),
-            for (final f in widget.fields)
-              ListTile(
-                minTileHeight: AppTouch.min,
-                title: Text(f.label),
-                trailing: f.key == e.bind!.field ? Icon(Icons.check_rounded, color: ctx.colors.primary) : null,
-                onTap: () => Navigator.of(ctx).pop(f.key),
-              ),
-          ]),
-        ),
-      );
-      if (picked != null) {
-        _ctl.record('field', () {
-          e.bind!.field = picked;
-          e.name = widget.fields.firstWhere((f) => f.key == picked).label;
-        });
-      }
+    if (e.bind == null || e.computed != null) {
+      if (!widget.wide) _dockOpen.value = true;
       return;
     }
-    if (!e.isText && e.kind != 'qr') return;
-    final v = await showDialog<String>(context: context, builder: (_) => _QuickTextDialog(initial: e.value ?? ''));
-    if (v != null && v != e.value) _ctl.record('text', () => e.value = v);
+    final picked = await showAppSheet<String>(
+      context,
+      (ctx) => SafeArea(
+        child: ListView(shrinkWrap: true, children: [
+          AppSheetHeader(t('اختر الحقل', 'Pick the field')),
+          for (final f in widget.fields)
+            ListTile(
+              minTileHeight: AppTouch.min,
+              title: Text(f.label),
+              trailing: f.key == e.bind!.field ? Icon(Icons.check_rounded, color: ctx.colors.primary) : null,
+              onTap: () => Navigator.of(ctx).pop(f.key),
+            ),
+        ]),
+      ),
+    );
+    if (picked != null) {
+      _ctl.record('field', () {
+        e.bind!.field = picked;
+        e.name = widget.fields.firstWhere((f) => f.key == picked).label;
+      });
+    }
   }
 
   Widget _addMenu(BuildContext context) => PopupMenuButton<LayoutAddOption>(
@@ -297,7 +337,10 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
           controller: _ctl,
           pageColor: layoutColor(widget.background, kStudioPaper)!,
           padding: AppSpace.md,
-          onItemDoubleTap: _quickEdit,
+          onItemDoubleTap: _doubleTap,
+          inlineText: _inlineText,
+          inlineStyle: _inlineStyle,
+          onInlineCommit: (item, text) => item.payload.value = text,
           overlayBuilder: widget.border == null
               ? null
               : (context, scale) => IgnorePointer(
@@ -349,13 +392,24 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
         ),
       ]);
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      toolbar,
-      const SizedBox(height: AppSpace.xs),
-      Expanded(flex: 4, child: canvas),
-      const SizedBox(height: AppSpace.xs),
-      Expanded(flex: 5, child: panel),
-    ]);
+    return LayoutBuilder(
+      builder: (context, box) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        toolbar,
+        const SizedBox(height: AppSpace.xs),
+        Expanded(child: canvas),
+        StudioDockPanel(
+          controller: _ctl,
+          open: _dockOpen,
+          maxHeight: box.maxHeight,
+          semanticLabel: t('خصائص العنصر', 'Element properties'),
+          title: sel == null
+              ? (_ctl.selection.length > 1 ? '${_ctl.selection.length} ${t('عناصر محددة', 'selected')}' : t('لا عنصر محدد', 'Nothing selected'))
+              : (sel.name ?? layoutKindLabel(sel.kind)),
+          icon: sel == null ? Icons.ads_click_rounded : Icons.tune_rounded,
+          body: props,
+        ),
+      ]),
+    );
   }
 }
 
@@ -382,43 +436,4 @@ class _EmptyProps extends StatelessWidget {
       ]),
     );
   }
-}
-
-/// The quick text edit of a double click: Enter / Done confirms, Esc / Cancel leaves the text as it was.
-class _QuickTextDialog extends StatefulWidget {
-  const _QuickTextDialog({required this.initial});
-  final String initial;
-
-  @override
-  State<_QuickTextDialog> createState() => _QuickTextDialogState();
-}
-
-class _QuickTextDialogState extends State<_QuickTextDialog> {
-  late final _text = TextEditingController(text: widget.initial);
-
-  @override
-  void dispose() {
-    _text.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: Text(t('تعديل النص', 'Edit the text')),
-        content: SizedBox(
-          width: 420,
-          child: TextField(
-            controller: _text,
-            autofocus: true,
-            minLines: 1,
-            maxLines: 4,
-            onSubmitted: (s) => Navigator.of(context).pop(s),
-            decoration: InputDecoration(hintText: t('النص، ويمكن إدراج {{date}} وغيره', 'The text; {{date}} and the like are allowed')),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t('إلغاء', 'Cancel'))),
-          FilledButton(onPressed: () => Navigator.of(context).pop(_text.text), child: Text(t('تم', 'Done'))),
-        ],
-      );
 }

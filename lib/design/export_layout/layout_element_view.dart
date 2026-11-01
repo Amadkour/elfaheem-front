@@ -75,6 +75,21 @@ Map<String, String> layoutSampleVars({required String lang, String title = '', S
       'group': lang == 'ar' ? 'المجموعة' : 'Group',
     };
 
+/// The text style of [e] at [scale] screen px per mm: the design's font (the page's when the element has none), pt → mm.
+TextStyle layoutTextStyle(LayoutElement e, String pageFont, double scale, Color color) {
+  final s = e.style;
+  final family = s.font ?? pageFont;
+  return TextStyle(
+    fontFamily: exportFlutterFont(family),
+    fontFamilyFallback: exportFlutterFallback(family),
+    fontSize: (s.size * kPtMm * scale).clamp(1.0, 400.0),
+    fontWeight: s.bold ? FontWeight.w700 : FontWeight.w400,
+    fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
+    color: color,
+    height: 1.15,
+  );
+}
+
 /// One element in its box (the caller sizes the box).
 class LayoutElementView extends StatelessWidget {
   const LayoutElementView({
@@ -162,19 +177,7 @@ class LayoutElementView extends StatelessWidget {
     return Opacity(opacity: r.show ? 1 : .25, child: child);
   }
 
-  TextStyle _style(Color color) {
-    final s = element.style;
-    final family = s.font ?? pageFont;
-    return TextStyle(
-      fontFamily: exportFlutterFont(family),
-      fontFamilyFallback: exportFlutterFallback(family),
-      fontSize: (s.size * kPtMm * scale).clamp(1.0, 400.0),
-      fontWeight: s.bold ? FontWeight.w700 : FontWeight.w400,
-      fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
-      color: color,
-      height: 1.15,
-    );
-  }
+  TextStyle _style(Color color) => layoutTextStyle(element, pageFont, scale, color);
 
   Widget _text(LayoutResolved r, Color color) {
     final s = element.style;

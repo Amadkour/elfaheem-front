@@ -158,6 +158,23 @@ void main() {
     ctl.dispose();
   });
 
+  test('the canvas adapter: Lock (context menu) and in-place text are one undo step each', () {
+    final items = [LayoutElement(id: 't', kind: 'text', value: 'Name:', w: 20, h: 5), LayoutElement(id: 'f', kind: 'field', bind: LayoutBind(field: 'name'))];
+    final ctl = StudioController<LayoutElement>(adapter: LayoutElementsAdapter(items, newId: () => 'n'), page: const StudioPage(100, 20));
+    ctl.select('t');
+    expect(ctl.canLock, isTrue);
+    ctl.toggleLock();
+    expect(items.first.locked, isTrue);
+    expect(ctl.itemById('t')!.locked, isTrue);
+    ctl.undo();
+    expect(items.first.locked, isFalse);
+    ctl.commitText('t', 'Student:', (item, text) => item.payload.value = text);
+    expect(items.first.value, 'Student:');
+    ctl.undo();
+    expect(items.first.value, 'Name:');
+    ctl.dispose();
+  });
+
   testWidgets('templates: v3 ones listed (v2 left out), one click opens, save sends schema_version 3 without the source', (tester) async {
     await open(tester, step: 1);
     expect(find.byKey(const ValueKey('layout-tpl-5')), findsOneWidget);
