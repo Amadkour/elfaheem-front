@@ -26,6 +26,9 @@
 // through AppTime) · status (tinted pill). `locked` columns are always exported; `allowColumnSelection: false` →
 // the fields are fixed. Pure builders (appTableXlsx / appTableDocx / appTablePdf) live in lib/design/export/ and are
 // unit-tested in test/export/.
+//
+// While the kill switch `export.layout_v3` is not disabled, both entry points open the v3 page instead
+// (lib/design/export_layout/layout_page.dart, D-142: the server renders the preview pages and the file).
 library;
 
 import 'package:flutter/foundation.dart';
