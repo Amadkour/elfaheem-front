@@ -254,6 +254,8 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
         _entity = e;
         _category = category;
       });
+    } else if (_forMember != null) {
+      setState(() => _forMember = null); // the entity is gone: so is the member picked for it
     }
   }
 
@@ -410,6 +412,11 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
                 )
               : null,
           onEntity: (e) => setState(() {
+            // the member list is per entity: a member picked for another one is not kept
+            if (e?.id != _entity?.id) {
+              _forMember = null;
+              _forErrors = const {};
+            }
             _entity = e;
             _category = null;
             _toCouncil = false;

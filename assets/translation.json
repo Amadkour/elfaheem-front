@@ -21605,6 +21605,10 @@
     "en": "A locked element cannot be moved, resized or deleted",
     "ar": "العنصر المقفل لا يمكن تحريكه أو تغيير حجمه أو حذفه"
   },
+  "certd_locked_position": {
+    "en": "Locked — unlock the layer to move, resize or rotate it",
+    "ar": "مقفل — ألغِ قفل الطبقة لتحريكها أو تغيير حجمها أو تدويرها"
+  },
   "certd_view": {
     "en": "View",
     "ar": "العرض"
