@@ -73,6 +73,22 @@ States: done · partial · left.
 - Not filled client-side: teacher name, attendance, progress of course batches (the issued record does not carry
   them; the server computes them at issue time) — they print empty, like a placeholder without a value.
 
+## B5 — Background exports with progress and Cancel (7.2) — done
+
+- `lib/design/export/export_job.dart`: `ExportJob` (progress, step label, cancel), `exportCompute` (the pure writer
+  in a killable isolate on phones / desktop, carrying the language, the translations and the timezone the writers
+  read; on the web — no isolates for app code — on the page's thread after yielding a frame, with cancel checks),
+  `runExportWithProgress` (dialog: bar, step, Cancel).
+- Used by the export flow (`showAppExportSheet`: every file of an export, both languages), the Export Hub sheet
+  (`exportWithDesigns`, `buildExportFile`) and the PagedList "export all" (`fetchAllRows`: "Fetching rows n / total",
+  Cancel between pages). Fonts and images load before the writer (rootBundle / http stay on the UI isolate).
+- `test/export/export_job_test.dart`: the writer runs on another isolate with the app's language / translations /
+  timezone; Cancel kills a 30 s writer in < 5 s; errors reach the caller; the dialog (step, Cancel → null) and its
+  layout at 320 / 1400 px ar / en. Widget tests run writers inline (`exportUseIsolates = false`: isolate messages
+  never reach the fake-async zone).
+- Web: the PDF writer itself (package:pdf `save()`) is one synchronous call; the dialog paints before it starts
+  and Cancel is honoured between files / pages, not inside one `save()`.
+
 ## Next
 
-B5 background exports, B6 watermark, B7 shared panels (only if agent A left `studio_props.dart` alone).
+B6 watermark, B7 shared panels (only if agent A left `studio_props.dart` alone).

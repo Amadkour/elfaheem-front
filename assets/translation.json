@@ -21472,5 +21472,25 @@
   "ci_word_done": {
     "en": "Word file saved",
     "ar": "حُفظ ملف Word"
+  },
+  "exs_progress_title": {
+    "en": "Preparing the file…",
+    "ar": "جارٍ تجهيز الملف…"
+  },
+  "exs_progress_writing": {
+    "en": "Writing",
+    "ar": "جارٍ كتابة"
+  },
+  "exs_cancel": {
+    "en": "Cancel",
+    "ar": "إلغاء"
+  },
+  "exs_cancelling": {
+    "en": "Cancelling…",
+    "ar": "جارٍ الإلغاء…"
+  },
+  "exs_cancelled": {
+    "en": "Export cancelled",
+    "ar": "أُلغي التصدير"
   }
 }

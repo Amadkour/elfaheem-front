@@ -43,6 +43,7 @@ import '../export/export_studio_model.dart';
 import '../export/table_export_choice.dart';
 import '../export/table_export_model.dart';
 import '../export/export_fonts.dart' show ExportFonts;
+import '../export/export_job.dart';
 import '../studio/studio_props.dart' show StudioFontOption, StudioFontPicker, StudioSegment, StudioSegmented;
 import 'export_design.dart';
 import 'export_designer.dart';
@@ -393,21 +394,38 @@ class _ExportFlowSheetState extends State<ExportFlowSheet> {
         ? job
         : ExportFlowJob(source: job.source, format: job.format, choice: job.choice, rules: job.rules, sheet: job.sheet, designs: job.designs, exporter: job.exporter, logo: logo);
     final files = <ExportFlowFile>[];
-    for (final lang in run.languages) {
-      try {
-        final f = await buildExportFlowFile(run, lang);
-        if (widget.saveFile != null) {
-          await widget.saveFile!(f.bytes, f.name, f.mime);
-        } else {
-          await saver.dlSaveBytes(f.bytes, f.name, f.mime);
+    // the writers run off the UI behind a progress dialog with Cancel (7.2)
+    final finished = await runExportWithProgress<bool>(context, (progress) async {
+      final langs = run.languages;
+      for (var i = 0; i < langs.length; i++) {
+        final lang = langs[i];
+        progress.step(
+            '${xs('exs_progress_writing', 'Writing', 'جارٍ كتابة')} ${switch (ch.format) { AppExportFormat.xlsx => 'Excel', AppExportFormat.docx => 'Word', AppExportFormat.pdf => 'PDF' }} · ${lang == 'ar' ? 'العربية' : 'English'} · ${run.rowCount} ${xs('exs_rows', 'rows', 'صف')}',
+            langs.length == 1 ? null : i / langs.length);
+        try {
+          final f = await buildExportFlowFile(run, lang, progress: progress);
+          progress.throwIfCancelled();
+          if (widget.saveFile != null) {
+            await widget.saveFile!(f.bytes, f.name, f.mime);
+          } else {
+            await saver.dlSaveBytes(f.bytes, f.name, f.mime);
+          }
+          files.add(f);
+        } on ExportCancelled {
+          rethrow;
+        } catch (err) {
+          debugPrint('export flow failed ($lang): $err');
+          showAppNotice(xs('exs_export_failed', 'Could not create the file. Try again.', 'تعذّر إنشاء الملف. حاول مرة أخرى.'), error: true);
         }
-        files.add(f);
-      } catch (err) {
-        debugPrint('export flow failed ($lang): $err');
-        showAppNotice(xs('exs_export_failed', 'Could not create the file. Try again.', 'تعذّر إنشاء الملف. حاول مرة أخرى.'), error: true);
       }
-    }
+      return true;
+    });
     if (!mounted) return;
+    if (finished == null) {
+      setState(() => _busy = false);
+      showAppNotice(xs('exs_cancelled', 'Export cancelled', 'أُلغي التصدير'));
+      return;
+    }
     if (files.isNotEmpty) {
       showAppNotice(files.length == 1
           ? '${xs('exs_saved', 'Saved', 'تم الحفظ')}: ${exportLtr(files.first.name)} · ${exportLtr(exportSizeLabel(files.first.bytes.length))}'

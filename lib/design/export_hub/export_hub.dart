@@ -29,6 +29,7 @@ import '../../features/org/governance/gov_models.dart' show ExportTemplate;
 import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
 import '../app_kit.dart';
 import '../export/docx_fonts.dart' show DocxFonts, loadDocxFontFiles;
+import '../export/export_job.dart';
 import 'export_design.dart';
 import 'export_designer.dart';
 import 'export_docx.dart';
@@ -48,26 +49,44 @@ Future<bool> exportHub(BuildContext context, ExportDataset dataset, {int? orgId,
   return done ?? false;
 }
 
-/// Builds the bytes of one file: [design] decides the language.
-Future<Uint8List> buildExportFile(ExportDesign design, ExportDataset dataset, ExportContent content, AppExportFormat format, {Map<String, Uint8List>? images}) async => switch (format) {
-      AppExportFormat.xlsx => exportXlsx(design, dataset, content),
-      AppExportFormat.docx => exportDocx(design, dataset, content,
-          images: images ?? await loadExportImages(design), fonts: DocxFonts.build(await loadDocxFontFiles(design.fontFamilies))),
-      AppExportFormat.pdf => await exportPdf(design, dataset, content, fonts: await loadExportFonts(design.fontFamilies), images: images ?? await loadExportImages(design)),
-    };
+/// Builds the bytes of one file: [design] decides the language. The images and fonts are loaded here, the writer
+/// runs off the UI (exportCompute; [progress] cancels it).
+Future<Uint8List> buildExportFile(ExportDesign design, ExportDataset dataset, ExportContent content, AppExportFormat format,
+    {Map<String, Uint8List>? images, ExportJob? progress}) async {
+  switch (format) {
+    case AppExportFormat.xlsx:
+      return exportCompute(() => exportXlsx(design, dataset, content), job: progress);
+    case AppExportFormat.docx:
+      final imgs = images ?? await loadExportImages(design);
+      final files = await loadDocxFontFiles(design.fontFamilies);
+      return exportCompute(() => exportDocx(design, dataset, content, images: imgs, fonts: DocxFonts.build(files)), job: progress);
+    case AppExportFormat.pdf:
+      final imgs = images ?? await loadExportImages(design);
+      final fonts = await loadExportFonts(design.fontFamilies);
+      return exportCompute(() => exportPdf(design, dataset, content, fonts: fonts, images: imgs), job: progress);
+  }
+}
 
-/// Builds and saves one file per language of [content]. Returns the number of files produced.
-Future<int> exportWithDesigns(ExportDataset dataset, ExportContent content, AppExportFormat format, ExportDesign Function(String lang) designFor) async {
+/// Builds and saves one file per language of [content]. Returns the number of files produced. [progress] shows the
+/// step and cancels (ExportCancelled is rethrown).
+Future<int> exportWithDesigns(ExportDataset dataset, ExportContent content, AppExportFormat format, ExportDesign Function(String lang) designFor,
+    {ExportJob? progress}) async {
   var n = 0;
   final safe = dataset.title.replaceAll(RegExp(r'[\\/:*?"<>|\r\n]+'), '_').trim();
-  for (final lang in content.languages) {
+  final langs = content.languages;
+  for (var i = 0; i < langs.length; i++) {
+    final lang = langs[i];
+    progress?.step('${t('جارٍ كتابة', 'Writing')} ${format.ext.toUpperCase()} · ${lang == 'ar' ? 'العربية' : 'English'}', langs.length == 1 ? null : i / langs.length);
     try {
       final d = designFor(lang);
-      final bytes = await buildExportFile(d, dataset, content, format);
+      final bytes = await buildExportFile(d, dataset, content, format, progress: progress);
+      progress?.throwIfCancelled();
       final name = '${safe.isEmpty ? dataset.module : safe}${content.languages.length > 1 ? '_$lang' : ''}.${format.ext}';
       final path = await saver.dlSaveBytes(bytes, name, format.mime);
       if (path != null) toast(kIsWeb ? t('تم تنزيل الملف', 'File downloaded') : '${t('حُفظ في', 'Saved to')} $path');
       n++;
+    } on ExportCancelled {
+      rethrow;
     } catch (e) {
       debugPrint('export hub failed ($lang): $e');
       toast(t('تعذّر إنشاء الملف', 'Could not create the file'), error: true);
@@ -213,7 +232,7 @@ class _ExportHubSheetState extends State<ExportHubSheet> {
     setState(() => _busy = true);
     await _saveChoice(ds.prefId, _choiceJson());
     final content = _content.copy()..columns = _columns == null ? null : [for (final c in ds.columns) if (_columns!.contains(c.id)) c.id];
-    final n = await exportWithDesigns(ds, content, _format, _designFor);
+    final n = await runExportWithProgress<int>(context, (p) => exportWithDesigns(ds, content, _format, _designFor, progress: p)) ?? 0;
     if (!mounted) return;
     setState(() => _busy = false);
     if (n > 0) Navigator.pop(context, true);

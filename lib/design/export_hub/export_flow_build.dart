@@ -18,6 +18,7 @@ import 'package:flutter_education_app/config/app_config.dart' show AppConfig;
 
 import '../export/docx_fonts.dart';
 import '../export/export_fonts.dart' show ExportFonts;
+import '../export/export_job.dart';
 
 import '../export/export_studio_api.dart' show StudioTemplate;
 import '../export/export_studio_model.dart';
@@ -151,6 +152,7 @@ Future<ExportFlowFile> buildExportFlowFile(
   String lang, {
   Future<(ByteData, ByteData)> Function()? standardFonts,
   Future<Uint8List> Function(ExportDesign d, ExportDataset ds, ExportContent c, AppExportFormat f)? designFile,
+  ExportJob? progress,
 }) async {
   final ch = job.choice;
   final v = exportFlowVariant(job.source, ch, lang);
@@ -161,13 +163,17 @@ Future<ExportFlowFile> buildExportFlowFile(
   late Uint8List bytes;
   if (job.format == AppExportFormat.xlsx) {
     final sheet = font.isEmpty ? job.sheet : (job.sheet.copy()..font = font);
-    bytes = inExportLang(lang, () => appTableXlsx(v, columns: cols, sheet: sheet, rules: job.rules, numerals: numerals, logo: job.logo, exporter: job.exporter));
+    final rules = job.rules, logo = job.logo, exporter = job.exporter;
+    bytes = await exportCompute(() => inExportLang(lang, () => appTableXlsx(v, columns: cols, sheet: sheet, rules: rules, numerals: numerals, logo: logo, exporter: exporter)),
+        job: progress);
   } else if (design == null) {
     if (job.format == AppExportFormat.docx) {
       // the Standard Word file prints (and embeds) the preview's font: the chosen one, else Tajawal
       final id = font.isEmpty ? ExportFonts.defaultId : font;
-      final embed = DocxFonts.build(await loadDocxFontFiles([id]));
-      bytes = inExportLang(lang, () => appTableDocx(v, columns: cols, rules: job.rules, numerals: numerals, fonts: embed, fontId: id));
+      final files = await loadDocxFontFiles([id]);
+      final rules = job.rules;
+      bytes = await exportCompute(() => inExportLang(lang, () => appTableDocx(v, columns: cols, rules: rules, numerals: numerals, fonts: DocxFonts.build(files), fontId: id)),
+          job: progress);
     } else {
       ByteData regular, bold;
       var fallback = const <ByteData>[];
@@ -177,14 +183,15 @@ Future<ExportFlowFile> buildExportFlowFile(
         // the preview's font: the chosen one, else Tajawal (regular + bold)
         (regular, bold, fallback) = await loadTablePdfFonts(font.isEmpty ? ExportFonts.defaultId : font);
       }
-      bytes = await appTablePdf(v, regular: regular, bold: bold, fallback: fallback, columns: cols, rules: job.rules, numerals: numerals);
+      final rules = job.rules;
+      bytes = await exportCompute(() => appTablePdf(v, regular: regular, bold: bold, fallback: fallback, columns: cols, rules: rules, numerals: numerals), job: progress);
     }
   } else {
     final ds = ExportDataset.fromTable(v, exporter: job.exporter);
     final content = exportFlowContent(v, ch, lang, job.rules);
     final d = design.copy()..rtl = lang == 'ar';
     if (font.isNotEmpty) d.fontFamily = font;
-    bytes = await (designFile ?? (d, ds, c, f) => buildExportFile(d, ds, c, f))(d, ds, content, job.format);
+    bytes = await (designFile ?? (d, ds, c, f) => buildExportFile(d, ds, c, f, progress: progress))(d, ds, content, job.format);
   }
   return ExportFlowFile(job.fileNameFor(lang), bytes, lang, job.format);
 }

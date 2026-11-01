@@ -12,6 +12,7 @@ import '../../core/api_client.dart';
 import '../../config/app_config.dart' show AppConfig;
 import '../../core/app_time.dart';
 import '../../design/app_table_export.dart';
+import '../../design/export/export_job.dart' show ExportJob, runExportWithProgress;
 import 'admin_common.dart';
 import 'admin_filter_models.dart' show encodeFilters;
 import 'admin_models.dart' show PageData;
@@ -19,10 +20,12 @@ import 'admin_providers.dart' show AdminPagedProvider;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Every row of [p]'s list (current search / filters / sort), [pageSize] per request, at most [maxRows].
-Future<List<Map<String, dynamic>>> fetchAllRows(AdminPagedProvider p, {int pageSize = 200, int maxRows = 20000}) async {
+/// [progress] shows "rows n / total" and stops between pages when the person cancels (ExportCancelled).
+Future<List<Map<String, dynamic>>> fetchAllRows(AdminPagedProvider p, {int pageSize = 200, int maxRows = 20000, ExportJob? progress}) async {
   if (!p.hasMore && p.loaded) return List.of(p.rows);
   final out = <Map<String, dynamic>>[];
   for (var page = 1;; page++) {
+    progress?.throwIfCancelled();
     final r = await ApiClient().get(p.path, queryParams: {
       for (final e in p.filters.entries)
         if (e.value != null && '${e.value}'.isNotEmpty) e.key: e.value,
@@ -35,8 +38,11 @@ Future<List<Map<String, dynamic>>> fetchAllRows(AdminPagedProvider p, {int pageS
     if (r is! Map) break;
     final d = PageData(Map<String, dynamic>.from(r));
     out.addAll(d.items);
+    final total = d.pages <= 0 ? out.length : (d.pages * pageSize).clamp(out.length, maxRows);
+    progress?.step('${t('جلب الصفوف', 'Fetching rows')} ${out.length} / $total', d.pages <= 0 ? null : page / d.pages);
     if (d.items.isEmpty || page >= d.pages || out.length >= maxRows) break;
   }
+  progress?.throwIfCancelled();
   return out;
 }
 
@@ -54,8 +60,14 @@ Future<void> exportPagedList(BuildContext context, AdminPagedProvider p, AppTabl
   if (_busy) return;
   _busy = true;
   try {
-    if (p.hasMore) toast(t('جارٍ تجهيز كل الصفوف…', 'Preparing every row…'));
-    final rows = await fetchAllRows(p);
+    // every page behind a progress dialog with Cancel; the export sheet then writes the file (with its own progress)
+    final rows = p.hasMore || !p.loaded
+        ? await runExportWithProgress(context, (job) => fetchAllRows(p, progress: job), title: t('جارٍ تجهيز كل الصفوف…', 'Preparing every row…'))
+        : List.of(p.rows);
+    if (rows == null) {
+      toast(t('أُلغي التصدير', 'Export cancelled'));
+      return;
+    }
     if (!context.mounted) return;
     final e = bilingualExport(() => build(rows));
     await showAppExportSheet(context, e.copyWith(filters: {...activeFiltersOf(p), ...e.filters}));

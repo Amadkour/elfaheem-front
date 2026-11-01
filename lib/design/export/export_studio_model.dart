@@ -18,6 +18,8 @@ library;
 
 import 'package:flutter_education_app/core/app_time.dart';
 
+import 'export_watermark.dart';
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Conditional styling rules
 // ═════════════════════════════════════════════════════════════════════════════
@@ -279,7 +281,9 @@ class XlsxSheetOptions {
     this.rtl,
     this.logoUrl = '',
     this.font = '',
-  }) : widths = widths ?? {};
+    ExportWatermark? watermark,
+  })  : widths = widths ?? {},
+        watermark = watermark ?? ExportWatermark();
 
   /// The title band (title, then a line with the organization · date · rows) above the header row.
   bool titleRow;
@@ -308,6 +312,9 @@ class XlsxSheetOptions {
   /// and the reader's Excel draws it when installed.
   String font;
 
+  /// Printed behind the sheet as a header picture (export_watermark.dart).
+  final ExportWatermark watermark;
+
   bool rtlFor(String lang) => rtl ?? lang == 'ar';
 
   factory XlsxSheetOptions.fromJson(Map<String, dynamic> j) {
@@ -335,6 +342,7 @@ class XlsxSheetOptions {
       rtl: j['rtl'] is bool ? j['rtl'] as bool : null,
       logoUrl: '${j['logo_url'] ?? ''}',
       font: '${j['font'] ?? ''}',
+      watermark: j['watermark'] is Map ? ExportWatermark.fromJson((j['watermark'] as Map).cast<String, dynamic>()) : null,
     );
   }
 
@@ -357,6 +365,7 @@ class XlsxSheetOptions {
         'rtl': ?rtl,
         if (logoUrl.isNotEmpty) 'logo_url': logoUrl,
         if (font.isNotEmpty) 'font': font,
+        if (watermark.visible) 'watermark': watermark.toJson(),
       };
 
   XlsxSheetOptions copy() => XlsxSheetOptions.fromJson(toJson());
