@@ -15,9 +15,11 @@
 //                "Customize for English"); "Languages" picks which ones certificates are issued in. Any number of
 //                logos and signatures (each with its own image; signatures with the signer's name and title),
 //                a verification QR, the student photo, dynamic values and custom {fields}.
-//                Desktop: tools + layers on the start side, the page in the middle, properties on the end side.
-//                Tablet: the page with the toolbar; tools, layers and properties open in bottom sheets.
-//                Phone: StudioSmallScreenGate first ("works best on a tablet or computer" → continue anyway).
+//                Desktop (≥ 1100): tools + layers on the start side, the page in the middle, properties on the end.
+//                Tablet (≥ 600): the page and the properties docked on the end side; tools and layers in sheets.
+//                Phone: the page above a NON-modal properties panel docked at the bottom (collapsible); selecting
+//                an element opens it and pans the page so the element stays in view above it.
+//                Every edit is autosaved as a local draft (device storage); opening the design again offers it back.
 //   3. SAVE    – stores both languages. When opened from a course certificate (certificateId) the design is also
 //                attached to it, so every certificate issued afterwards (manual, bulk, approve, auto) uses it.
 //
@@ -39,8 +41,11 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
 
+import 'package:dio/dio.dart';
+
 import 'cert_canvas_item.dart';
 import 'cert_designer_panels.dart';
+import 'cert_studio_adapter.dart';
 import 'certificate_design_models.dart';
 import 'certificate_designer_provider.dart';
 
@@ -55,6 +60,27 @@ Future<Uint8List?> _pickImage(BuildContext context) async {
 
 void _failed(CertificateDesignerProvider p, [String key = 'certd_upload_failed']) =>
     showAppNotice(p.errorMessage ?? key.tr, error: true);
+
+/// The bytes of an image already on the page (to crop it). Null when it cannot be read (offline, CORS on the web).
+Future<Uint8List?> _imageBytes(String url) async {
+  try {
+    final r = await Dio().get<List<int>>(url, options: Options(responseType: ResponseType.bytes));
+    final data = r.data;
+    return data == null ? null : Uint8List.fromList(data);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Crop element [id]'s image: the current image in the app cropper (or a new one when it cannot be read).
+Future<void> _cropFieldImage(BuildContext context, String id, String? url) async {
+  final p = context.read<CertificateDesignerProvider>();
+  final current = (url ?? '').isEmpty ? null : await _imageBytes(url!);
+  if (!context.mounted) return;
+  final bytes = current == null ? await _pickImage(context) : await showAppImageCropper(context, current, allowOriginal: false);
+  if (bytes == null || !context.mounted) return;
+  if (!await p.cropFieldImage(id, bytes) && context.mounted) _failed(p);
+}
 
 /// Open the designer.
 ///  • [designId]      edit this design
@@ -120,6 +146,10 @@ class _DesignerViewState extends State<_DesignerView> {
       } else if (widget.certificateId != null) {
         await p.loadForCertificate(widget.certificateId!); // null design → wizard
       }
+      if (p.design != null && await p.restoreDraftIfAny()) {
+        showAppNotice('certd_draft_restored'.tr,
+            icon: Icons.restore_rounded, actionLabel: 'certd_draft_discard'.tr, onAction: p.discardDraft);
+      }
       if (mounted) setState(() => _initializing = false);
     });
   }
@@ -147,7 +177,7 @@ class _DesignerViewState extends State<_DesignerView> {
     final lang = p.lang;
     showDialog(
       context: context,
-      builder: (_) => ChangeNotifierProvider.value(value: p, child: _PreviewDialog(initialLang: lang)),
+      builder: (_) => ChangeNotifierProvider.value(value: p, child: CertPreviewDialog(initialLang: lang)),
     );
     await p.preview(lang);
   }
@@ -179,7 +209,11 @@ class _DesignerViewState extends State<_DesignerView> {
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final nav = Navigator.of(context);
-        if (await _confirmDiscard()) nav.pop();
+        final p = context.read<CertificateDesignerProvider>();
+        if (await _confirmDiscard()) {
+          await p.discardDraft(); // "Discard" also drops the autosaved draft
+          nav.pop();
+        }
       },
       child: Scaffold(
         backgroundColor: c.background,
@@ -219,12 +253,7 @@ class _DesignerViewState extends State<_DesignerView> {
                       ? Column(children: [
                           // read-only (organization / someone else's design): offer an editable copy
                           if (!p.design!.canEdit) _CustomizeBanner(certificateId: widget.certificateId),
-                          Expanded(
-                            child: StudioSmallScreenGate(
-                              onBack: () => Navigator.of(context).maybePop(),
-                              child: const _Editor(),
-                            ),
-                          ),
+                          const Expanded(child: _Editor()),
                         ])
                       : _Wizard(orgId: widget.orgId),
                 ),
@@ -301,9 +330,9 @@ class _DesignerSkeleton extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpace.md),
         child: Column(children: [
           const Row(children: [
-            AppSkeletonBox(width: 180, height: 40, radius: 12),
+            Flexible(child: AppSkeletonBox(width: 180, height: 40, radius: 12)),
             Spacer(),
-            AppSkeletonBox(width: 120, height: 40, radius: 12),
+            Flexible(child: AppSkeletonBox(width: 120, height: 40, radius: 12)),
           ]),
           const SizedBox(height: AppSpace.sm),
           const AppSkeletonBox(width: double.infinity, height: 48, radius: 12),
@@ -374,6 +403,7 @@ class _Wizard extends StatelessWidget {
         child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
           Text('cert_wizard_intro'.tr, style: AppType.row(context).copyWith(height: 1.5)),
           const SizedBox(height: AppSpace.md),
+          section('certd_templates'.tr, _TemplateStrip(orgId: orgId)),
           section(
             'cert_orientation'.tr,
             StudioSegmented<String>(
@@ -539,10 +569,24 @@ Future<String?> _pickPlaceholder(BuildContext context) async {
   return picked;
 }
 
-class _Editor extends StatelessWidget {
+class _Editor extends StatefulWidget {
   const _Editor();
 
-  static const double wideMin = 1100;
+  static const double wideMin = 1100, tabletMin = 600;
+
+  @override
+  State<_Editor> createState() => _EditorState();
+}
+
+class _EditorState extends State<_Editor> {
+  /// The phone's docked panel: open (properties shown) or folded to its header.
+  final _dockOpen = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _dockOpen.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -550,14 +594,16 @@ class _Editor extends StatelessWidget {
     final c = context.colors;
     final studio = p.studio;
     return LayoutBuilder(builder: (context, box) {
-      final wide = box.maxWidth >= wideMin;
+      final wide = box.maxWidth >= _Editor.wideMin;
+      final tablet = !wide && box.maxWidth >= _Editor.tabletMin;
+      final phone = !wide && !tablet;
       final canvas = Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, 0),
           child: const _LangBar(),
         ),
         Padding(
-          padding: const EdgeInsets.all(AppSpace.sm),
+          padding: EdgeInsets.all(phone ? AppSpace.xs : AppSpace.sm),
           child: CertToolbarRow(
             controller: studio,
             enabled: p.canEdit,
@@ -573,32 +619,185 @@ class _Editor extends StatelessWidget {
                     StudioToolButton(
                       icon: Icons.layers_outlined,
                       label: 'certd_layers'.tr,
-                      showLabel: true,
+                      showLabel: !phone,
                       onPressed: () => _openLayersSheet(context),
-                    ),
-                    StudioToolButton(
-                      icon: Icons.tune_rounded,
-                      label: 'certd_properties'.tr,
-                      showLabel: true,
-                      onPressed: () => _openPropsSheet(context),
                     ),
                   ],
           ),
         ),
         Expanded(
           child: ClipRect(
-            child: _Canvas(onDoubleTap: wide ? null : () => _openPropsSheet(context)),
+            child: _Canvas(onDoubleTap: phone ? () => _dockOpen.value = true : null),
           ),
         ),
       ]);
-      if (!wide) return canvas;
       final side = BoxDecoration(color: c.cardBg, border: Border.symmetric(vertical: BorderSide(color: c.divider)));
-      return Row(children: [
-        Container(width: 224, decoration: side, child: const _ToolsColumn()),
+      if (wide) {
+        return Row(children: [
+          Container(width: 224, decoration: side, child: const _ToolsColumn()),
+          Expanded(child: canvas),
+          Container(width: 336, decoration: side, child: const _PropsHost(scroll: true)),
+        ]);
+      }
+      if (tablet) {
+        // the properties stay docked on the end side: the page is never covered
+        return Row(children: [
+          Expanded(child: canvas),
+          Container(width: box.maxWidth >= 900 ? 336 : 300, decoration: side, child: const _PropsHost(scroll: true)),
+        ]);
+      }
+      return Column(children: [
         Expanded(child: canvas),
-        Container(width: 336, decoration: side, child: const _PropsHost(scroll: true)),
+        CertDockPanel(controller: studio, open: _dockOpen, maxHeight: box.maxHeight),
       ]);
     });
+  }
+}
+
+/// The phone's properties panel, docked under the page (never over it): a header that folds / unfolds it, and the
+/// selected element's properties (or the page's) under it. Selecting an element opens it and asks the canvas to keep
+/// that element in view above it.
+class CertDockPanel extends StatefulWidget {
+  const CertDockPanel({super.key, required this.controller, required this.open, required this.maxHeight});
+
+  final StudioController<CertField> controller;
+  final ValueNotifier<bool> open;
+
+  /// The editor's height: the open panel takes about 45 % of it.
+  final double maxHeight;
+
+  static const double headerHeight = 52;
+
+  @override
+  State<CertDockPanel> createState() => _CertDockPanelState();
+}
+
+class _CertDockPanelState extends State<CertDockPanel> {
+  String? _last;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onStudio);
+    widget.open.addListener(_onOpen);
+  }
+
+  @override
+  void didUpdateWidget(covariant CertDockPanel old) {
+    super.didUpdateWidget(old);
+    if (old.controller != widget.controller) {
+      old.controller.removeListener(_onStudio);
+      widget.controller.addListener(_onStudio);
+    }
+    if (old.open != widget.open) {
+      old.open.removeListener(_onOpen);
+      widget.open.addListener(_onOpen);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onStudio);
+    widget.open.removeListener(_onOpen);
+    super.dispose();
+  }
+
+  void _onStudio() {
+    final id = widget.controller.single?.id;
+    if (id != null && id != _last) {
+      _last = id;
+      if (!widget.open.value) {
+        widget.open.value = true;
+      } else {
+        _reveal();
+      }
+    } else if (id == null) {
+      _last = null;
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _onOpen() {
+    if (mounted) setState(() {});
+    if (widget.open.value) _reveal();
+  }
+
+  /// After the panel's animation the canvas is shorter: keep the selected element in view.
+  void _reveal() {
+    final id = widget.controller.single?.id;
+    if (id == null) return;
+    Future.delayed(AppMotion.of(context).base + const Duration(milliseconds: 40), () {
+      if (mounted) widget.controller.reveal(id);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final open = widget.open.value;
+    final sel = widget.controller.single;
+    final multi = widget.controller.selection.length > 1;
+    final title = sel != null
+        ? certKindLabel(sel.payload.kind)
+        : (multi ? 'certd_multi_selected'.tr.replaceAll('{n}', '${widget.controller.selection.length}') : 'certd_page'.tr);
+    final icon = sel != null ? certKindIcon(sel.payload.kind) : Icons.description_outlined;
+    final accent = ensureContrast(c.primary, [c.cardBg]);
+    final height = open
+        ? (widget.maxHeight * 0.45).clamp(220.0, 460.0).toDouble()
+        : CertDockPanel.headerHeight + 1; // + the top border
+    return AnimatedContainer(
+      duration: AppMotion.of(context).base,
+      curve: AppMotion.curve,
+      height: height,
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        border: Border(top: BorderSide(color: c.divider)),
+        boxShadow: AppShadow.card(context),
+      ),
+      child: Column(children: [
+        Semantics(
+          button: true,
+          expanded: open,
+          label: '${'certd_properties'.tr} · $title',
+          excludeSemantics: true,
+          child: InkWell(
+            onTap: () => widget.open.value = !open,
+            child: SizedBox(
+              height: CertDockPanel.headerHeight,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.xs, 0),
+                child: Row(children: [
+                  Icon(icon, size: 20, color: accent),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                  ),
+                  SizedBox(
+                    width: AppTouch.min,
+                    height: AppTouch.min,
+                    child: Icon(open ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
+                        color: c.textMedium),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+        // the body only where the (animating) height leaves room for it
+        Expanded(
+          child: open
+              ? LayoutBuilder(
+                  builder: (context, box) => box.maxHeight < 24
+                      ? const SizedBox.shrink()
+                      : Column(children: [
+                          Divider(height: 1, color: c.divider),
+                          const Expanded(child: _PropsHost(scroll: true)),
+                        ]),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ]),
+    );
   }
 }
 
@@ -629,17 +828,6 @@ void _openLayersSheet(BuildContext context) {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           AppSheetHeader('certd_layers'.tr),
           const Flexible(child: _LayersHost(shrinkWrap: true)),
-        ]),
-      ));
-}
-
-void _openPropsSheet(BuildContext context) {
-  final p = context.read<CertificateDesignerProvider>();
-  showAppSheet<void>(context, (ctx) => ChangeNotifierProvider.value(
-        value: p,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          AppSheetHeader('certd_properties'.tr),
-          const Flexible(child: _PropsHost(scroll: true)),
         ]),
       ));
 }
@@ -690,6 +878,7 @@ class _LayersHost extends StatelessWidget {
           onSelect: (id) => st.select(id),
           onToggleVisible: (id) =>
               p.updateField(id, (f) => f.copyWith(visible: !f.visible), label: 'visibility', coalesce: false),
+          onToggleLock: (id) => p.updateField(id, (f) => f.copyWith(locked: !f.locked), label: 'lock', coalesce: false),
           onReorder: p.reorderLayer,
           onDelete: p.removeField,
         ),
@@ -780,6 +969,10 @@ class _Canvas extends StatelessWidget {
       pageBackground: (bg ?? '').isEmpty
           ? null
           : Image.network(bg!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
+      overlayBuilder: CertWatermark.of(v.theme)?.visible == true
+          ? (context, scale) =>
+              CertWatermarkView(watermark: CertWatermark.of(v.theme)!, scale: scale, samples: samples, arabic: arabic)
+          : null,
       onItemDoubleTap: onDoubleTap == null ? null : (_) => onDoubleTap!(),
       itemBuilder: (context, item, selected) {
         final f = item.payload;
@@ -867,6 +1060,17 @@ class _FieldPropsHost extends StatelessWidget {
         if (b != null && !await p.replaceFieldImage(f.id, b) && context.mounted) _failed(p);
       },
       onUseDefaultImage: () => p.useDefaultImage(f.id),
+      onCropImage: f.isImage
+          ? () => _cropFieldImage(
+              context,
+              f.id,
+              (f.src ?? '').isNotEmpty
+                  ? f.src
+                  : (f.kind == CertFieldKind.logo ? v.logoUrl : v.signatureUrl))
+          : null,
+      autoLineHeight: f.isText
+          ? certFieldLayout(f.copyWith(lineHeight: null), arabic: p.editArabic, samples: p.customSamples)?.heightFactor
+          : null,
       signatureTuner: ownSig && p.canReprocess(target)
           ? CertSignatureTuner(
               ink: p.sigInk(target),
@@ -960,6 +1164,22 @@ class _PagePanelState extends State<_PagePanel> {
             onChanged: edit ? (o) => p.setOrientation(l, o) : null,
           ),
           if (en) Text('certd_orientation_own'.tr, style: AppType.meta(context)),
+        ]),
+        StudioPropSection(title: 'certd_paper'.tr, children: [
+          CertPaperControl(
+            page: CertPage.of(v.theme),
+            enabled: edit,
+            onChanged: (pg) => p.setPage(l, pg),
+          ),
+          if (en && themeState == CertInherit.same) Text('certd_paper_follows_ar'.tr, style: AppType.meta(context)),
+        ]),
+        StudioPropSection(title: 'certd_watermark'.tr, children: [
+          CertWatermarkControl(
+            watermark: CertWatermark.of(v.theme),
+            enabled: edit,
+            onChanged: (wm, {coalesce = false}) => p.setWatermark(l, wm, coalesce: coalesce),
+            onUploadImage: () => upload((b) => p.uploadWatermarkImage(l, b)),
+          ),
         ]),
         StudioPropSection(title: 'cert_background'.tr, children: [
           CertAssetRow(
@@ -1103,23 +1323,27 @@ class _PagePanelState extends State<_PagePanel> {
 // Preview (exact server render with sample data)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PreviewDialog extends StatefulWidget {
-  const _PreviewDialog({required this.initialLang});
+/// The server's exact render with sample data — and "Sample data": the person types a real student's values
+/// (name, course, teacher, date, …) per language to see the certificate as it will be issued.
+class CertPreviewDialog extends StatefulWidget {
+  const CertPreviewDialog({super.key, required this.initialLang});
   final String initialLang;
 
   @override
-  State<_PreviewDialog> createState() => _PreviewDialogState();
+  State<CertPreviewDialog> createState() => _CertPreviewDialogState();
 }
 
-class _PreviewDialogState extends State<_PreviewDialog> {
+class _CertPreviewDialogState extends State<CertPreviewDialog> {
   late String _lang = widget.initialLang;
+  bool _editing = false;
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<CertificateDesignerProvider>();
     final c = context.colors;
     final langs = p.design?.langs ?? const ['ar', 'en'];
-    final ratio = (p.design?.view(_lang).landscape ?? true) ? kLogicalLong / kLogicalShort : kLogicalShort / kLogicalLong;
+    final lv = p.design?.view(_lang);
+    final ratio = lv == null ? kLogicalLong / kLogicalShort : lv.logicalW / lv.logicalH;
     return Dialog(
       insetPadding: const EdgeInsets.all(AppSpace.md),
       child: ConstrainedBox(
@@ -1142,12 +1366,32 @@ class _PreviewDialogState extends State<_PreviewDialog> {
                   ),
                 ),
               IconButton(
+                tooltip: 'certd_sample_data'.tr,
+                isSelected: _editing,
+                onPressed: () => setState(() => _editing = !_editing),
+                icon: const Icon(Icons.edit_note_rounded),
+              ),
+              IconButton(
                 tooltip: 'close'.tr,
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.close_rounded),
               ),
             ]),
           ),
+          if (_editing)
+            Flexible(
+              child: CertSampleDataForm(
+                key: ValueKey('samples-$_lang'),
+                lang: _lang,
+                values: p.previewSamples[_lang] ?? const {},
+                onApply: (vals) {
+                  p.setPreviewSamples(_lang, vals);
+                  setState(() => _editing = false);
+                  p.preview(_lang);
+                },
+              ),
+            ),
+          if (!_editing)
           Flexible(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
@@ -1205,5 +1449,73 @@ class _CustomizeBanner extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The template gallery in the wizard: ready-made designs (each with its own Arabic and English layout); a tap makes
+/// the person's own copy and opens it in the editor.
+class _TemplateStrip extends StatefulWidget {
+  const _TemplateStrip({this.orgId});
+  final int? orgId;
+
+  @override
+  State<_TemplateStrip> createState() => _TemplateStripState();
+}
+
+class _TemplateStripState extends State<_TemplateStrip> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<CertificateDesignerProvider>().loadTemplates();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<CertificateDesignerProvider>();
+    final list = p.templates;
+    final lang = AppConfig.lang == 'ar' ? 'ar' : 'en';
+    if (list == null) {
+      return SizedBox(
+        height: 170,
+        child: AppShimmer(
+          child: Row(children: [
+            for (var i = 0; i < 2; i++) ...[
+              const AppSkeletonBox(width: 200, height: 160, radius: 12),
+              const SizedBox(width: AppSpace.sm),
+            ],
+          ]),
+        ),
+      );
+    }
+    if (list.isEmpty) return Text('certd_templates_none'.tr, style: AppType.meta(context));
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text('certd_templates_hint'.tr, style: AppType.meta(context)),
+      const SizedBox(height: AppSpace.sm),
+      SizedBox(
+        height: 172,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: list.length,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpace.sm),
+          itemBuilder: (context, i) {
+            final t = list[i];
+            final img = t.preview(lang);
+            return CertTemplateCard(
+              name: t.name(lang),
+              preview: img == null ? null : MemoryImage(img),
+              portrait: t.orientation == 'portrait',
+              onTap: p.busy
+                  ? null
+                  : () async {
+                      final ok = await p.createFromTemplate(t.key, orgId: widget.orgId);
+                      if (!ok && context.mounted) _failed(p, 'certificate_action_failed');
+                    },
+            );
+          },
+        ),
+      ),
+    ]);
   }
 }

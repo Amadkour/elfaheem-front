@@ -2029,3 +2029,54 @@ the manifest from the files it serves. Readers: the web banner and the "Get the 
 warnings); iOS native through TestFlight once an Apple Developer account (or the nonprofit / education fee waiver)
 exists; the `applicationId` is still `com.example.flutter_education_app` (Play rejects `com.example`; changing it
 means a new Firebase Android app and a reinstall for everyone).
+
+## D-140 — Requests for someone else: who may file them, and where the person's details live · 2026-11-01 · accepted
+
+**Context.** The owner's brief (Studio + Requests, items 3.1–3.5): any member and a department manager can submit a
+request or complaint — to an academic or service department, or to the Department Council — for themselves, for
+another member picked from a searchable list, or for a person outside the system entered by hand (name required;
+phone, e-mail, national id or student number, relation optional, all validated). The server must enforce a "create
+for others" right; members get it for the council path only if the governance spec says so. Before, the staff route
+took a bare `source_user_id` (never checked for membership) and the app never sent it; attachments were URLs only.
+**Decision.**
+- *Who may file for others.* A new action `workflow.on_behalf` ("Create for others") on the `workflow` module.
+  It is held by the org / platform admin, the head of the target entity, and the system roles `dept_head` and
+  `dept_staff` of that entity (migration 0037 backfills the existing roles once; an admin may take it away or grant
+  it to anyone, per entity). A plain member does NOT have it by default, also not on the council path: the spec
+  (§6, `to_council`) puts a member's OWN request before their Department Council, so filing for someone else stays a
+  staff / manager right there too (the head of a scientific department has it, and may use `to_council` for others).
+  The check is `beneficiary.can_create_for_others` on the server; the member entity list carries
+  `can_submit_for_others` so the form shows the choice only where it will be accepted.
+- *Who it is for* is a separate row, `org_work_beneficiaries` (kind `member` with `user_id`, or `external` with
+  name and the optional fields), not columns on the item: the personal details then travel only where needed. The
+  submitter stays `source_user_id` (they withdraw, resubmit and are excluded from a council vote); the member it was
+  filed for sees, follows and comments on the item and gets every notice. A picked user must be a live member of the
+  SAME organization (422 `beneficiary_not_member`), and a request for someone else is never anonymous (422
+  `beneficiary_anonymous`).
+- *Where the details show.* List and search: the name. Detail and export: name, relation, and the contact / id fields
+  only for the people who handle the item and the submitter. Timeline and audit trail: the kind, the user id and the
+  name — never contact details. Notifications: the item's ref and title only. Logs: nothing of it.
+- *Attachments* are real uploads (`org_work_attachments`): the type comes from the magic bytes, the size is capped
+  (`GOV_ATTACHMENT_MAX_MB`, 10), the storage key is made by the server, files sit in private storage and are opened
+  through a 10-minute link handed out after the item's own view check; older URL entries are kept only when they are
+  our own signed file links.
+- *Export* takes `ids=` (one item, the selected ones) next to the filters, each id checked for `workflow.export`.
+
+## D-141 — The approval chain is a list of existing moves, not a second workflow · 2026-11-01 · accepted
+
+**Context.** Item 6.7: a configurable chain per department (manager → council), steps editable by the org admin, every
+step recording who approved or rejected, when and why; a rejection needs a reason; the requester can resubmit after
+editing; the item page shows the current step and the whole history. The governance module already routes
+(approval / vote), decides with a compare-and-set, escalates and reopens.
+**Decision.** A chain is `Organization.settings.governance.chains[dept_id]` = ordered steps of four kinds —
+`manager` (first only: the entity's head and delegates decide with the usual `decide`), `entity` (an `approval` route
+to another entity), `council` (a `vote` route to the entity's Department Council), `faculty_council` — edited by the
+org admin (`GET|PUT …/entities/{id}/chain`, the entity page's "Approval chain" tab). A new item snapshots its entity's
+chain into `org_work_items.chain`, so changing the settings never moves items already filed. Approving a non-final step
+is a compare-and-set on the item's version (the first decision still wins, the others get the lock-out notice) that
+records the step and enters the next one through the existing route code; a council's close does the same for a
+council step; the last step's approval, or a rejection at any step, is the existing final decision. Every rejection
+— chain or not — needs a reason (422 `reason_required`, ≥ 3 characters), which reaches the requester. The requester
+resubmits a rejected item (`POST …/items/{id}/resubmit`, edits allowed): the decision is cleared and a new round starts
+at the first step, the earlier rounds kept in `chain.rounds`; a staff "reopen" restarts the chain the same way. No
+chain configured = the single decision by the entity, exactly as before.

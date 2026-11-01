@@ -265,6 +265,19 @@ Export Hub (data + templates):
 - `GET /me/votes` · `POST /agenda/{aid}/vote` (council members use the app in member mode too).
 - `GET /me/delegations`.
 - `GET /me/assignments` → forms I must answer (pending assignments with due dates).
+- **For someone else (D-140).** `POST /{org_id}/items` (and the staff `POST /items`) take `beneficiary: {kind: self |
+  member | external, user_id?, name?, phone?, email?, national_id?, student_number?, relation?}`; the right is
+  `workflow.on_behalf` (org admin · head of the entity · dept_head / dept_staff; never a plain member by default,
+  not for the council path either), 403 `on_behalf_forbidden`, 422 `beneficiary_invalid {field}` /
+  `beneficiary_not_member` / `beneficiary_anonymous`. `GET /{org_id}/people?q=&dept_id=` = the member picker (names
+  only). Item JSON `beneficiary` (null = self) and `chain_step`; entities `can_submit_for_others` and `chain`.
+- **Attachments (D-140).** `POST /{org_id}/attachments` (multipart `file`) → `{id, name, type, ext, size, kind: file,
+  preview}` (415 `file_type` by the real type, 413 `file_too_big`); items / comments / resubmit send `[{id}]`;
+  `GET /attachments/{id}?inline=` → a 10-minute link after the item's view check.
+- **Approval chain (D-141).** Staff `GET|PUT /entities/{dept_id}/chain` (org admin writes); item JSON `chain`
+  (`{round, current, steps: [{kind, status, by, at, note, via, label_*}], rounds}`); a rejection needs `note`
+  (422 `reason_required`); `POST /items/{id}/resubmit {title?, body?, attachments?, note?}` by the submitter of a
+  rejected item starts a new round. Export: `GET …/export/data?ids=1,2,3` (each id checked).
 
 ## 7. Export Hub — the design document (`lib/design/export_hub/export_design.dart`)
 

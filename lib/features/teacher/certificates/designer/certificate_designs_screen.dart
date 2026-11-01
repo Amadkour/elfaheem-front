@@ -3,6 +3,8 @@
 // Library of certificate designs the user can use:
 //   • their own designs (individual teachers),
 //   • their organization's designs (university / faculty admins, admin assistants, teachers, TAs).
+// Each card shows the languages it issues in and whether it is THE default (used for every course without a design
+// of its own); its menu duplicates a design or makes it the default (one default per owner / organization).
 //
 // Open it from the admin / organization dashboard (pass orgId) or from a course certificate
 // (pass certificateId → every card gets a "Use" button that attaches the design to that certificate).
@@ -65,6 +67,43 @@ class CertificateDesignsProvider extends BaseProvider {
     return ok;
   }
 
+  /// A full copy of [id] (my own, editable), added at the top.
+  Future<CertDesign?> duplicate(int id) async {
+    busyIds.add(id);
+    notifyListeners();
+    final r = await run(() => _api.post('/api/v1/certificate-designs/$id/duplicate'));
+    busyIds.remove(id);
+    CertDesign? copy;
+    if (r is Map<String, dynamic>) {
+      copy = CertDesign.fromJson(r);
+      items.insert(0, copy);
+    }
+    notifyListeners();
+    return copy;
+  }
+
+  /// Makes [d] THE default of its scope (used for every course without its own design). The server clears the
+  /// previous default of the same owner / organization; the list follows.
+  Future<bool> setDefault(CertDesign d) async {
+    busyIds.add(d.id);
+    notifyListeners();
+    final courses = (d.extra['course_ids'] as List?)?.whereType<num>().map((e) => e.toInt()).toList() ?? const <int>[];
+    final r = await run(() => _api.put('/api/v1/certificate-designs/${d.id}/assignment',
+        body: {'apply_all': true, 'course_ids': courses}));
+    busyIds.remove(d.id);
+    final ok = r is Map<String, dynamic>;
+    if (ok) {
+      items = [
+        for (final x in items)
+          x.id == d.id
+              ? CertDesign.fromJson({...x.toJson(), 'apply_all': true})
+              : (certSameDefaultScope(x, d) ? CertDesign.fromJson({...x.toJson(), 'apply_all': false}) : x),
+      ];
+    }
+    notifyListeners();
+    return ok;
+  }
+
   Future<bool> attach(int certificateId, int designId) async {
     busyIds.add(designId);
     notifyListeners();
@@ -74,6 +113,13 @@ class CertificateDesignsProvider extends BaseProvider {
     return r is Map<String, dynamic>;
   }
 }
+
+/// Whether [a] and [b] share one default (the same organization, or the same owner's personal designs).
+bool certSameDefaultScope(CertDesign a, CertDesign b) =>
+    a.orgId != null ? a.orgId == b.orgId : (b.orgId == null && a.ownerId == b.ownerId);
+
+/// THE default design of its scope (`apply_all`).
+bool certIsDefault(CertDesign d) => d.extra['apply_all'] == true;
 
 class CertificateDesignsScreen extends StatelessWidget {
   final int? orgId;
@@ -224,6 +270,11 @@ class _DesignCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 4),
+                Wrap(spacing: 4, runSpacing: 4, children: [
+                  if (certIsDefault(design)) _Chip(label: 'cert_default_badge'.tr, icon: Icons.star_rounded, strong: true),
+                  for (final l in design.langs) _Chip(label: l == 'ar' ? 'certd_lang_ar'.tr : 'certd_lang_en'.tr),
+                ]),
               ]),
             ),
             if (busy)
@@ -235,6 +286,12 @@ class _DesignCard extends StatelessWidget {
                     onOpen();
                   } else if (v == 'assign') {
                     await showDesignAssignment(context, design.id);
+                  } else if (v == 'duplicate') {
+                    final copy = await context.read<CertificateDesignsProvider>().duplicate(design.id);
+                    showAppNotice((copy != null ? 'cert_duplicated' : 'certificate_action_failed').tr, error: copy == null);
+                  } else if (v == 'default') {
+                    final ok = await context.read<CertificateDesignsProvider>().setDefault(design);
+                    showAppNotice((ok ? 'cert_default_set' : 'certificate_action_failed').tr, error: !ok);
                   } else if (v == 'delete') {
                     final ok = await showDialog<bool>(
                       context: context,
@@ -252,6 +309,8 @@ class _DesignCard extends StatelessWidget {
                 },
                 itemBuilder: (_) => [
                   PopupMenuItem(value: 'edit', child: Text('cert_edit_design'.tr)),
+                  PopupMenuItem(value: 'duplicate', child: Text('cert_duplicate_design'.tr)),
+                  if (!certIsDefault(design)) PopupMenuItem(value: 'default', child: Text('cert_set_default'.tr)),
                   PopupMenuItem(value: 'assign', child: Text('cert_use_for_courses'.tr)),
                   PopupMenuItem(value: 'delete', child: Text('delete'.tr)),
                 ],
@@ -365,4 +424,29 @@ Future<void> showDesignAssignment(BuildContext context, int designId) async {
       );
     }),
   );
+}
+
+/// A small label on a design card (a language, "Default").
+class _Chip extends StatelessWidget {
+  const _Chip({required this.label, this.icon, this.strong = false});
+  final String label;
+  final IconData? icon;
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: strong ? c.primaryTint : c.inputBg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: c.divider),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (icon != null) ...[Icon(icon, size: 12, color: c.textMedium), const SizedBox(width: 2)],
+        Text(label, style: c.caption.copyWith(fontSize: 11, color: c.textDark)),
+      ]),
+    );
+  }
 }

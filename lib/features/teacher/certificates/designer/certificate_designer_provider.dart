@@ -14,12 +14,19 @@
 //     a verification QR, custom {placeholders} with preview samples
 //   • signature upload with automatic background removal (server side, re-run with another ink / strength)
 //   • exact server preview, save, and "use for this course certificate"
+//   • studio: text / box / shadow styles, image fit and crop, rotation, layer names and locks, paper sizes (A4,
+//     Letter, custom) and a watermark per language, a template gallery, and an AUTOSAVED local draft (device
+//     storage, debounced) that is offered back when the design is opened again
 //
 // Only ApiClient.get / post are used (images travel as base64 JSON), so this works with the existing ApiClient.
 
+import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show Size;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../config/app_config.dart' show Trans;
 import '../../../../core/api_client.dart';
@@ -105,11 +112,14 @@ CertDesign normalizeCertDesign(CertDesign d) {
   );
 }
 
-/// Every field of [fields] rescaled from page [from] to page [to] (orientation switch), like the server does.
-List<CertField> rescaleCertFields(List<CertField> fields, String from, String to) {
-  double w(String o) => o == 'portrait' ? kLogicalShort : kLogicalLong;
-  double h(String o) => o == 'portrait' ? kLogicalLong : kLogicalShort;
-  final sx = w(to) / w(from), sy = h(to) / h(from);
+/// Every field of [fields] rescaled from page [from] to page [to] (orientation switch on A4), like the server does.
+List<CertField> rescaleCertFields(List<CertField> fields, String from, String to) =>
+    rescaleCertFieldsTo(fields, certPageLogical(from, null), certPageLogical(to, null));
+
+/// Every field of [fields] rescaled from a page of size [from] to one of size [to] (logical units): the same relative
+/// places; a QR code stays square, images keep their ratio.
+List<CertField> rescaleCertFieldsTo(List<CertField> fields, Size from, Size to) {
+  final sx = to.width / from.width, sy = to.height / from.height;
   final m = sx < sy ? sx : sy;
   double r(double v) => (v * 10).roundToDouble() / 10;
   return [
@@ -133,11 +143,82 @@ Map<String, String> certPreviewVariables(List<CertField> fields, Map<String, Str
   return out;
 }
 
+/// Where the autosaved drafts live: device storage (SharedPreferences), one entry per design. Tests pass a map.
+class CertDraftStore {
+  const CertDraftStore();
+
+  static String keyOf(int designId) => 'cert_design_draft_$designId';
+
+  Future<String?> read(int designId) async => (await SharedPreferences.getInstance()).getString(keyOf(designId));
+  Future<void> write(int designId, String json) async =>
+      (await SharedPreferences.getInstance()).setString(keyOf(designId), json);
+  Future<void> remove(int designId) async => (await SharedPreferences.getInstance()).remove(keyOf(designId));
+}
+
+/// An in-memory [CertDraftStore] (tests).
+class CertMemoryDraftStore extends CertDraftStore {
+  CertMemoryDraftStore();
+  final Map<int, String> data = {};
+
+  @override
+  Future<String?> read(int designId) async => data[designId];
+  @override
+  Future<void> write(int designId, String json) async => data[designId] = json;
+  @override
+  Future<void> remove(int designId) async => data.remove(designId);
+}
+
+/// A template of the gallery (GET /certificate-designs/templates).
+class CertTemplate {
+  const CertTemplate({
+    required this.key,
+    required this.nameAr,
+    required this.nameEn,
+    required this.orientation,
+    this.previewAr,
+    this.previewEn,
+  });
+
+  final String key, nameAr, nameEn, orientation;
+  final Uint8List? previewAr, previewEn;
+
+  String name(String lang) => lang == 'ar' ? nameAr : nameEn;
+  Uint8List? preview(String lang) => lang == 'ar' ? (previewAr ?? previewEn) : (previewEn ?? previewAr);
+
+  static Uint8List? _img(Object? v) {
+    if (v is! String || v.isEmpty) return null;
+    final raw = v.contains(',') ? v.substring(v.indexOf(',') + 1) : v;
+    try {
+      return base64Decode(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  factory CertTemplate.fromJson(Map<String, dynamic> j) => CertTemplate(
+        key: '${j['key']}',
+        nameAr: '${j['name_ar'] ?? j['key']}',
+        nameEn: '${j['name_en'] ?? j['key']}',
+        orientation: j['orientation'] == 'portrait' ? 'portrait' : 'landscape',
+        previewAr: _img(j['preview_ar']),
+        previewEn: _img(j['preview_en']),
+      );
+}
+
 class CertificateDesignerProvider extends BaseProvider {
   final ApiClient _api;
+  final CertDraftStore _drafts;
 
-  CertificateDesignerProvider({ApiClient? api, String initialLang = 'ar'})
-      : _api = api ?? ApiClient(),
+  /// How long after the last edit the local draft is written.
+  final Duration autosaveDelay;
+
+  CertificateDesignerProvider({
+    ApiClient? api,
+    String initialLang = 'ar',
+    CertDraftStore? drafts,
+    this.autosaveDelay = const Duration(milliseconds: 1500),
+  })  : _api = api ?? ApiClient(),
+        _drafts = drafts ?? const CertDraftStore(),
         lang = initialLang == 'en' ? 'en' : 'ar';
 
   // ── editing state ────────────────────────────────────────────────────────
@@ -159,6 +240,77 @@ class CertificateDesignerProvider extends BaseProvider {
   void _markDirty() {
     dirty = true;
     _edits++;
+    _scheduleAutosave();
+  }
+
+  // ── autosave (a local draft, device storage) ─────────────────────────────
+
+  Timer? _autosave;
+
+  /// The draft was restored when the design opened (the screen says so, with "Discard").
+  bool restoredDraft = false;
+
+  void _scheduleAutosave() {
+    final d = design;
+    if (d == null || !d.canEdit) return;
+    _autosave?.cancel();
+    _autosave = Timer(autosaveDelay, () => unawaited(writeDraftNow()));
+  }
+
+  String? get _base => loaded?.extra['updated_at']?.toString();
+
+  /// Writes the local draft right away (the debounced autosave calls this).
+  Future<void> writeDraftNow() async {
+    _autosave?.cancel();
+    final d = design;
+    if (d == null || !d.canEdit || !dirty) return;
+    await _drafts.write(
+      d.id,
+      jsonEncode({'base': _base, 'saved_at': DateTime.now().toUtc().toIso8601String(), 'lang': lang, 'design': d.toJson()}),
+    );
+  }
+
+  /// After loading: puts back the local draft of this design when one exists AND it was made on the version the server
+  /// still has (a draft of an older version is dropped). Returns true when restored.
+  Future<bool> restoreDraftIfAny() async {
+    final d = loaded;
+    if (d == null || !d.canEdit) return false;
+    final raw = await _drafts.read(d.id);
+    if (raw == null) return false;
+    try {
+      final j = jsonDecode(raw) as Map<String, dynamic>;
+      if (j['base']?.toString() != _base) {
+        await _drafts.remove(d.id);
+        return false;
+      }
+      final restored = normalizeCertDesign(CertDesign.fromJson(Map<String, dynamic>.from(j['design'] as Map)));
+      if (restored.id != d.id) return false;
+      design = restored.copyWith(canEdit: d.canEdit);
+      if (j['lang'] == 'en' || j['lang'] == 'ar') lang = j['lang'] as String;
+      if (!design!.hasLang(lang)) lang = design!.langs.first;
+      dirty = true;
+      restoredDraft = true;
+      _syncStudios(clearHistory: true);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      await _drafts.remove(d.id);
+      return false;
+    }
+  }
+
+  /// Drops the local draft and goes back to the saved design.
+  Future<void> discardDraft() async {
+    final d = loaded;
+    _autosave?.cancel();
+    if (d == null) return;
+    await _drafts.remove(d.id);
+    design = normalizeCertDesign(d);
+    if (!design!.hasLang(lang)) lang = design!.langs.first;
+    dirty = false;
+    restoredDraft = false;
+    _syncStudios(clearHistory: true);
+    notifyListeners();
   }
 
   bool saving = false;
@@ -180,6 +332,18 @@ class CertificateDesignerProvider extends BaseProvider {
 
   Uint8List? previewBytes;
   bool previewing = false;
+
+  /// The preview's own values for the built-in placeholders, per language (student name, course, …): the person types
+  /// a real student's data to see the certificate as issued. Empty = the server's samples.
+  final Map<String, Map<String, String>> previewSamples = {'ar': {}, 'en': {}};
+
+  void setPreviewSamples(String l, Map<String, String> values) {
+    previewSamples[l] = {
+      for (final e in values.entries)
+        if (e.value.trim().isNotEmpty) e.key: e.value.trim(),
+    };
+    notifyListeners();
+  }
 
   void setWizardOrientation(String o) {
     wizardOrientation = o;
@@ -434,8 +598,14 @@ class CertificateDesignerProvider extends BaseProvider {
   Future<String?> uploadLogoBytes(Uint8List bytes) =>
       _upload('/api/v1/certificate-designs/logo', {'image_base64': base64Encode(bytes)});
 
-  Future<String?> uploadBackgroundBytes(Uint8List bytes, {required String orientation}) =>
-      _upload('/api/v1/certificate-designs/background?orientation=$orientation', {'image_base64': base64Encode(bytes)});
+  Future<String?> uploadBackgroundBytes(Uint8List bytes, {required String orientation, CertPage page = CertPage.a4}) {
+    final q = StringBuffer('orientation=$orientation');
+    if (page.size != 'a4') {
+      q.write('&page=${page.size}');
+      if (page.size == 'custom') q.write('&w_mm=${page.wMm}&h_mm=${page.hMm}');
+    }
+    return _upload('/api/v1/certificate-designs/background?$q', {'image_base64': base64Encode(bytes)});
+  }
 
   /// Re-runs the background removal of [target]'s last photo with another ink / strength and puts the new image
   /// where the old one was.
@@ -544,11 +714,13 @@ class CertificateDesignerProvider extends BaseProvider {
   Future<void> setOrientation(String l, String orientation) async {
     final d = design;
     if (d == null || !canEdit) return;
-    final from = d.view(l).orientation;
+    final v = d.view(l);
+    final from = v.orientation;
     if (from == orientation) return;
+    final fromSize = certPageLogical(from, v.theme), toSize = certPageLogical(orientation, v.theme);
     _page(l, 'orientation', (s) => s.copyWith(
           orientation: orientation,
-          fields: rescaleCertFields(s.fields, from, orientation),
+          fields: rescaleCertFieldsTo(s.fields, fromSize, toSize),
         ));
     // A generated background of that language has to be redrawn for the new page shape (an English one that
     // follows the Arabic background is left alone).
@@ -585,9 +757,22 @@ class CertificateDesignerProvider extends BaseProvider {
       l, 'signature', (s) => s.copyWith(signatureUrl: l == 'ar' ? url : (inherit ? null : (url ?? ''))));
 
   /// Theme of [l] ({color, dark, style}). English: null = same as Arabic.
-  void setTheme(String l, Map<String, dynamic>? theme, {bool coalesce = false}) =>
-      _page(l, 'theme', (s) => s.copyWith(theme: l == 'ar' ? (theme ?? const <String, dynamic>{}) : theme),
-          coalesce: coalesce);
+  /// A theme that brings another paper size (English "Reset to Arabic") rescales the language's elements with it.
+  void setTheme(String l, Map<String, dynamic>? theme, {bool coalesce = false}) {
+    final d = design;
+    if (d == null) return;
+    final v = d.view(l);
+    final next = l == 'ar' ? (theme ?? const <String, dynamic>{}) : (theme ?? d.theme);
+    final from = certPageLogical(v.orientation, v.theme), to = certPageLogical(v.orientation, next);
+    _page(
+        l,
+        'theme',
+        (s) => s.copyWith(
+              theme: l == 'ar' ? (theme ?? const <String, dynamic>{}) : theme,
+              fields: from == to ? null : rescaleCertFieldsTo(s.fields, from, to),
+            ),
+        coalesce: coalesce);
+  }
 
   /// Regenerate the decorative background of language [lang] from its theme (`lang: "en"` writes only the English
   /// background / theme, and with [resetFields] the English layout; the Arabic design is not touched).
@@ -615,6 +800,7 @@ class CertificateDesignerProvider extends BaseProvider {
           'logo_url': v.logoUrl,
           'signature_url': v.signatureUrl,
           'reset_fields': resetFields,
+          'page': ?CertPage.of(v.theme).toJson(),
         }));
     busy = false;
     if (r is Map<String, dynamic>) {
@@ -643,6 +829,78 @@ class CertificateDesignerProvider extends BaseProvider {
     notifyListeners();
     return false;
   }
+
+  /// The paper of language [l] (A4 / Letter / custom): every element of [l] keeps its relative place. An English
+  /// design that follows the Arabic theme follows the Arabic paper too, so its own layout is rescaled with it.
+  void setPage(String l, CertPage page) {
+    final d = design;
+    if (d == null || !canEdit) return;
+    final v = d.view(l);
+    if (CertPage.of(v.theme) == page) return;
+    final theme = {...v.theme}..remove('page');
+    final pj = page.toJson();
+    if (pj != null) theme['page'] = pj;
+    final from = certPageLogical(v.orientation, v.theme), to = certPageLogical(v.orientation, theme);
+    _page(l, 'page', (s) => s.copyWith(theme: theme, fields: rescaleCertFieldsTo(s.fields, from, to)));
+    if (l == 'ar' && design!.themeEn == null) {
+      final en = design!.view('en');
+      final enFrom = certPageLogical(en.orientation, d.theme), enTo = certPageLogical(en.orientation, theme);
+      _page('en', 'page', (s) => s.copyWith(fields: rescaleCertFieldsTo(s.fields, enFrom, enTo)));
+    }
+  }
+
+  /// The watermark of language [l] (null = none). English: sets its own theme.
+  void setWatermark(String l, CertWatermark? wm, {bool coalesce = false}) {
+    final d = design;
+    if (d == null || !canEdit) return;
+    final theme = {...d.view(l).theme}..remove('watermark');
+    if (wm != null) theme['watermark'] = wm.toJson();
+    _page(l, 'watermark', (s) => s.copyWith(theme: theme), coalesce: coalesce);
+  }
+
+  /// Uploads an image watermark for language [l].
+  Future<bool> uploadWatermarkImage(String l, Uint8List bytes) async {
+    final url = await uploadLogoBytes(bytes);
+    if (url == null) return false;
+    final cur = CertWatermark.of(design!.view(l).theme) ?? const CertWatermark(kind: 'image', opacity: 0.15, rotation: 0);
+    setWatermark(l, cur.copyWith(kind: 'image', src: url, resetSize: cur.kind != 'image'));
+    return true;
+  }
+
+  /// Element [id]'s image cropped ([bytes] from the app cropper) becomes its own image. Stored as is (a signature's
+  /// background was already removed), so the ink tuner no longer applies to it.
+  Future<bool> cropFieldImage(String id, Uint8List bytes) async {
+    final l = lang;
+    final url = await uploadLogoBytes(bytes);
+    if (url == null) return false;
+    _sigBytes.remove(fieldTarget(l, id));
+    _edit('image', () => _setFields(l, [for (final x in fieldsOf(l)) x.id == id ? x.copyWith(src: url) : x]), forLang: l);
+    return true;
+  }
+
+  // ── templates ────────────────────────────────────────────────────────────
+
+  List<CertTemplate>? templates;
+  bool loadingTemplates = false;
+
+  /// The gallery (loaded once).
+  Future<void> loadTemplates({bool force = false}) async {
+    if ((templates != null && !force) || loadingTemplates) return;
+    loadingTemplates = true;
+    notifyListeners();
+    final r = await run(() => _api.get('/api/v1/certificate-designs/templates'));
+    loadingTemplates = false;
+    if (r is List) templates = r.whereType<Map<String, dynamic>>().map(CertTemplate.fromJson).toList();
+    notifyListeners();
+  }
+
+  /// My own design from template [key] (both languages), opened in the editor.
+  Future<bool> createFromTemplate(String key, {int? orgId, String? themeColorHex, String? name}) =>
+      _create(() => _api.post('/api/v1/certificate-designs/templates/$key', body: {
+            'org_id': orgId,
+            'name': ?name,
+            'theme_color': ?themeColorHex,
+          }));
 
   // ── elements ─────────────────────────────────────────────────────────────
 
@@ -834,7 +1092,8 @@ class CertificateDesignerProvider extends BaseProvider {
   Future<bool> uploadBackground(String l, Uint8List bytes) async {
     final d = design;
     if (d == null) return false;
-    final url = await uploadBackgroundBytes(bytes, orientation: d.view(l).orientation);
+    final v = d.view(l);
+    final url = await uploadBackgroundBytes(bytes, orientation: v.orientation, page: CertPage.of(v.theme));
     if (url == null) return false;
     setBackground(l, url);
     return true;
@@ -895,7 +1154,7 @@ class CertificateDesignerProvider extends BaseProvider {
     notifyListeners();
     final v = d.view(l);
     final fields = fieldsOf(l);
-    final vars = certPreviewVariables(fields, customSamples);
+    final vars = {...certPreviewVariables(fields, customSamples), ...?previewSamples[l]};
     final r = await run(() => _api.post('/api/v1/certificate-designs/${d.id}/preview', body: {
           'lang': l,
           'orientation': v.orientation,
@@ -931,9 +1190,12 @@ class CertificateDesignerProvider extends BaseProvider {
     final r = await run(() => _api.post('/api/v1/certificate-designs/${d.id}/save', body: body));
     saving = false;
     if (r is Map<String, dynamic>) {
+      _autosave?.cancel();
       if (_edits == edits) {
         adopt(CertDesign.fromJson(r), resetHistory: false); // the server copy is the source of truth after saving
         dirty = false;
+        restoredDraft = false;
+        await _drafts.remove(d.id);
       } else {
         // edited while the save was in flight: keep the working copy (it holds those edits) and stay dirty
         loaded = CertDesign.fromJson(r);
@@ -956,6 +1218,9 @@ class CertificateDesignerProvider extends BaseProvider {
 
   @override
   void dispose() {
+    final pending = _autosave?.isActive ?? false;
+    _autosave?.cancel();
+    if (pending) unawaited(writeDraftNow()); // closing within the debounce still keeps the last edits
     for (final s in _studios.values) {
       s.dispose();
     }

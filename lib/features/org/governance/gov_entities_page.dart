@@ -4,7 +4,8 @@
 //   GovEntitiesPage          grouped cards (name · head · members · open / pending decision / overdue), create
 //                            (DeptIn + kind + program → POST …/entities), change kind (PATCH …/entities/{id})
 //   GovEntityCard            presentational card (layout-tested)
-//   GovEntityDetailPage      tabs Items (GovItemsPage) · Categories (CRUD) · Delegations (GovDelegationsPage)
+//   GovEntityDetailPage      tabs Items (GovItemsPage) · Categories (CRUD) · Delegations (GovDelegationsPage) ·
+//                            Approval chain (GovChainEditorPage, D-141; the org admin edits it)
 //   showGovCategorySheet     create / edit a category (kind · names · description · form link · order)
 library;
 
@@ -24,6 +25,7 @@ import 'gov_api.dart';
 import 'gov_delegations_page.dart';
 import 'gov_items_page.dart';
 import 'gov_models.dart';
+import 'gov_request_parts.dart' show GovChainEditorPage;
 import 'gov_ui.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -402,9 +404,11 @@ class GovEntityDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final oid = orgId ?? context.read<OrgSession>().currentId;
+    final chainTab = !entity.isCouncil && oid != null;   // D-141: the approval chain (the org admin edits it)
     // pushed from the staff Entities list only: the dashboard's header (Back · name · kind line), the tabs head the body
     return DefaultTabController(
-      length: 3,
+      length: chainTab ? 4 : 3,
       child: OrgPushedPage(
         title: entity.name,
         subtitle: [entityKindLabel(entity.kind), if (entity.code.isNotEmpty) entity.code].join(' · '),
@@ -420,7 +424,10 @@ class GovEntityDetailPage extends StatelessWidget {
                 Tab(text: t('المعاملات', 'Items')),
                 Tab(text: t('التصنيفات', 'Categories')),
                 Tab(text: t('التفويض', 'Delegation')),
+                if (chainTab) Tab(text: t('سلسلة الاعتماد', 'Approval chain')),
               ],
+              isScrollable: chainTab,
+              tabAlignment: chainTab ? TabAlignment.start : null,
             ),
           ),
           Expanded(
@@ -428,6 +435,7 @@ class GovEntityDetailPage extends StatelessWidget {
               GovItemsPage(deptId: entity.id, orgId: orgId, embedded: true, onExport: onExport),
               _CategoriesTab(entity: entity, orgId: orgId),
               GovDelegationsPage(entity.id, entity: entity, orgId: orgId, embedded: true),
+              if (chainTab) GovChainEditorPage(orgId: oid, entity: entity, embedded: true),
             ]),
           ),
         ]),

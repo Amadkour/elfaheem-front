@@ -1,9 +1,11 @@
 // lib/features/org/governance/gov_member_pages.dart — the member side (spec §6, `/api/v1/org/public/governance`):
 //
-//   GovSubmitPage(orgId)      submit a complaint / request to an entity: entity → category → type → title · body ·
+//   GovSubmitPage(orgId)      submit a complaint / request to an entity: entity → for whom (me · a member · someone
+//                             outside the system, with the "create for others" right, D-140) → category → type → title · body ·
 //                             (a department's team member may send a request straight to its Department Council:
 //                             `to_council`, the item lands on the next agenda and the member does not vote on it)
-//                             priority · anonymous · attachments (uploaded through the public uploads route)
+//                             priority · anonymous · attachments (real uploads, type / size checked by the server);
+//                             the entity's approval chain (D-141) is shown before sending
 //   GovSubmitForm             the presentational form (layout-tested)
 //   GovMyItemsPage            what I submitted + what was routed to me personally → GovItemScreen(member: true)
 //   GovMyAssignmentsPage      forms I must answer, with due dates → the existing form-filling screen
@@ -13,19 +15,19 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asMap, t;
 import '../org_member_space.dart' show OrgFormFillScreen;
 import '../org_page_header.dart' show OrgHeaderButton, OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
-import '../org_providers.dart' show orgBase;
-import '../org_ui.dart' show orgPickAndUpload;
 import '../org_v3.dart' show orgCall, orgErrorText;
 import 'gov_api.dart';
 import 'gov_item_screen.dart';
 import 'gov_items_page.dart' show GovItemCard;
 import 'gov_models.dart';
+import 'gov_request_parts.dart';
 import 'gov_ui.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -57,6 +59,8 @@ class GovSubmitForm extends StatelessWidget {
     this.busy = false,
     this.uploading = false,
     this.error,
+    this.forWho,
+    this.forOthers = false,
   });
 
   final List<Entity> entities;
@@ -79,6 +83,13 @@ class GovSubmitForm extends StatelessWidget {
   final VoidCallback? onSubmit;
   final String? error;
 
+  /// The "For: Me / A member / Someone outside the system" section (GovForSection), given when the person may file
+  /// for others in the chosen entity (D-140).
+  final Widget? forWho;
+
+  /// Filing for someone else: the "hide my identity" switch goes (the server refuses anonymity then).
+  final bool forOthers;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -98,6 +109,7 @@ class GovSubmitForm extends StatelessWidget {
         onChanged: (v) => onEntity(entities.where((x) => x.id == v).firstOrNull),
       ),
       if (e != null && (e.description ?? '').isNotEmpty) ...[const SizedBox(height: 6), Text(e.description!, style: appText(12, c: c.textMedium, h: 1.4))],
+      if (forWho != null) ...[const SizedBox(height: AppSpace.sm), forWho!],
       if (cats.isNotEmpty) ...[
         const SizedBox(height: 12),
         Text(t('ما موضوعها؟', 'What is it about?'), style: appText(12, c: c.textLight)),
@@ -152,32 +164,31 @@ class GovSubmitForm extends StatelessWidget {
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final p in priorities) AppChoiceChip(label: priorityLabelOf(p), selected: priority == p, onTap: () => onPriority(p)),
       ]),
-      const SizedBox(height: 6),
-      AppSwitchTile(
-        icon: Icons.visibility_off_rounded,
-        title: t('إخفاء هويتي', 'Hide my identity'),
-        subtitle: t('يرى الموظف المعاملة دون اسمك؛ ما زال بإمكانك متابعتها', 'Staff see the item without your name; you can still follow it'),
-        value: anonymous,
-        onChanged: onAnonymous,
-      ),
+      if (!forOthers) ...[
+        const SizedBox(height: 6),
+        AppSwitchTile(
+          icon: Icons.visibility_off_rounded,
+          title: t('إخفاء هويتي', 'Hide my identity'),
+          subtitle: t('يرى الموظف المعاملة دون اسمك؛ ما زال بإمكانك متابعتها', 'Staff see the item without your name; you can still follow it'),
+          value: anonymous,
+          onChanged: onAnonymous,
+        ),
+      ],
       const SizedBox(height: 6),
       Text(t('مرفقات', 'Attachments'), style: appText(12, c: c.textLight)),
+      const SizedBox(height: 2),
+      Text(t('PDF أو صور أو مستندات Office — حتى 10 ميجابايت للملف', 'PDF, images or Office documents — up to 10 MB each'), style: appText(11.5, c: c.textLight)),
       const SizedBox(height: 6),
+      if (attachments.isNotEmpty) ...[GovAttachmentChips(attachments: attachments, onRemove: onRemoveAttachment), const SizedBox(height: 6)],
       Wrap(spacing: 6, runSpacing: 6, children: [
-        for (final a in attachments)
-          InputChip(
-            avatar: Icon(Icons.attach_file_rounded, size: 16, color: c.primary),
-            label: Text(a.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textDark)),
-            onDeleted: () => onRemoveAttachment(a),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
         ActionChip(
           avatar: uploading ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_rounded, size: 16, color: c.primary),
           label: Text(t('إضافة ملف', 'Add file'), style: appText(12, w: FontWeight.w700, c: c.primary)),
-          onPressed: uploading ? null : onAddAttachment,
+          onPressed: uploading || attachments.length >= 10 ? null : onAddAttachment,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ]),
+      if (e != null && e.chain.isNotEmpty && !(councilOffer && toCouncil)) ...[const SizedBox(height: AppSpace.sm), GovChainPreview(steps: e.chain)],
       if (error != null) ...[const SizedBox(height: 10), AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)],
       const SizedBox(height: 14),
       AppPrimaryButton(label: t('إرسال', 'Send'), icon: Icons.send_rounded, busy: busy, onPressed: e == null ? null : onSubmit),
@@ -206,6 +217,12 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
   final _attachments = <GovAttachment>[];
   String? _error;
 
+  // for whom (D-140)
+  var _forKind = 'self';
+  GovPerson? _forMember;
+  final _forCtl = GovForControllers();
+  Map<String, String> _forErrors = const {};
+
   /// Staff in this organization see the dashboard's header: its Refresh reloads the entities in place (what was
   /// typed stays; a re-key would lose it).
   final _refresh = OrgPageRefresh();
@@ -221,6 +238,7 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
   void dispose() {
     _title.dispose();
     _body.dispose();
+    _forCtl.dispose();
     _refresh.dispose();
     super.dispose();
   }
@@ -257,12 +275,24 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
 
   Future<void> _addAttachment() async {
     setState(() => _uploading = true);
-    final f = await orgPickAndUpload('$orgBase/public/uploads');
+    final a = await uploadGovAttachment(widget.orgId);
     if (!mounted) return;
     setState(() {
       _uploading = false;
-      if (f != null) _attachments.add(GovAttachment.fromJson(f));
+      if (a != null) _attachments.add(a);
     });
+  }
+
+  bool get _forOthers => _forKind != 'self' && (_entity?.canSubmitForOthers ?? false);
+
+  Future<void> _pickMember() async {
+    final p = await pickGovBeneficiary(context, widget.orgId, deptId: _entity?.id, selectedId: _forMember?.id);
+    if (p != null && mounted) {
+      setState(() {
+        _forMember = p;
+        _forErrors = const {};
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -270,9 +300,24 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
       setState(() => _error = t('اكتب العنوان', 'Enter a title'));
       return;
     }
+    Map<String, dynamic>? beneficiary;
+    if (_forOthers) {
+      final draft = BeneficiaryDraft(kind: _forKind, member: _forMember);
+      _forCtl.fill(draft);
+      final errors = draft.validate();
+      if (errors.isNotEmpty) {
+        setState(() {
+          _forErrors = errors;
+          _error = t('راجع بيانات صاحب الطلب', 'Check the details of the person it is for');
+        });
+        return;
+      }
+      beneficiary = draft.toJson();
+    }
     setState(() {
       _busy = true;
       _error = null;
+      _forErrors = const {};
     });
     final type = _category?.kind == 'complaint' ? 'complaint' : _type;
     final r = await orgCall(
@@ -283,7 +328,8 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
               'title': _title.text.trim(),
               'body': _body.text.trim(),
               'priority': _priority,
-              'is_anonymous': _anonymous,
+              'is_anonymous': _anonymous && beneficiary == null,
+              'beneficiary': ?beneficiary,
               if (_toCouncil && type == 'request' && (_entity?.canSubmitToCouncil ?? false)) 'to_council': true,
               if (_attachments.isNotEmpty) 'attachments': [for (final a in _attachments) a.toJson()],
             }),
@@ -291,7 +337,11 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (!r.ok) {
-      setState(() => _error = govCodeTexts()[r.code] ?? orgErrorText(r.error!));
+      setState(() {
+        _error = govCodeTexts()[r.code] ?? orgErrorText(r.error!);
+        final field = r.detail['field'];
+        if (r.code == 'beneficiary_invalid' && field != null) _forErrors = {'$field': _error!};
+      });
       return;
     }
     final m = asMap(r.data);
@@ -344,10 +394,26 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
           error: _error,
           toCouncil: _toCouncil,
           onToCouncil: (v) => setState(() => _toCouncil = v),
+          forOthers: _forOthers,
+          forWho: (_entity?.canSubmitForOthers ?? false)
+              ? GovForSection(
+                  kind: _forKind,
+                  member: _forMember,
+                  controllers: _forCtl,
+                  errors: _forErrors,
+                  onKind: (k) => setState(() {
+                    _forKind = k;
+                    _forErrors = const {};
+                  }),
+                  onPickMember: _pickMember,
+                  onClearMember: () => setState(() => _forMember = null),
+                )
+              : null,
           onEntity: (e) => setState(() {
             _entity = e;
             _category = null;
             _toCouncil = false;
+            if (!(e?.canSubmitForOthers ?? false)) _forKind = 'self';
             if (e != null && !e.acceptsComplaints && _type == 'complaint') _type = 'request';
           }),
           onCategory: (c) => setState(() => _category = c),

@@ -42,6 +42,18 @@ class GovApi {
 
   Future<dynamic> deleteCategory(int cid) => _api.delete('$base/categories/$cid');
 
+  /// The entity's approval chain (D-141): `{steps, kinds, can_edit}`; [] = one decision by the entity.
+  Future<(List<ChainStep>, bool)> chain(int deptId) async {
+    final m = asMap(await _api.get('$base/entities/$deptId/chain'));
+    return ([for (final s in asMapList(m['steps'])) ChainStep.fromJson(s)], m['can_edit'] == true);
+  }
+
+  /// The whole list (org admin; 422 `chain_invalid` with the step `index`).
+  Future<List<ChainStep>> saveChain(int deptId, List<ChainStep> steps) async {
+    final m = asMap(await _api.put('$base/entities/$deptId/chain', body: {'steps': [for (final s in steps) s.toSettingsJson()]}));
+    return [for (final s in asMapList(m['steps'])) ChainStep.fromJson(s)];
+  }
+
   Future<Map<String, dynamic>> settings() async => asMap(await _api.get('$base/settings'));
 
   Future<dynamic> saveSettings(Map<String, dynamic> body) => _api.put('$base/settings', body: body);
@@ -230,8 +242,30 @@ class GovApi {
   static Future<WorkItem> memberItem(int id, {ApiClient? client}) async =>
       WorkItem.fromJson(asMap(await (client ?? ApiClient()).get('$memberBase/items/$id')));
 
-  static Future<dynamic> memberComment(int id, String body, {ApiClient? client}) =>
-      (client ?? ApiClient()).post('$memberBase/items/$id/comments', body: {'body': body});
+  static Future<dynamic> memberComment(int id, String body, {List<GovAttachment> attachments = const [], ApiClient? client}) =>
+      (client ?? ApiClient()).post('$memberBase/items/$id/comments', body: {
+        'body': body,
+        if (attachments.isNotEmpty) 'attachments': [for (final a in attachments) a.toJson()],
+      });
+
+  /// The requester edits a rejected item and sends it again (D-141): `{title?, body?, attachments?, note?}`.
+  static Future<dynamic> memberResubmit(int id, Map<String, dynamic> body, {ApiClient? client}) =>
+      (client ?? ApiClient()).post('$memberBase/items/$id/resubmit', body: body);
+
+  /// Members to file a request FOR (D-140): names only; 403 `on_behalf_forbidden` without the right.
+  static Future<List<GovPerson>> memberPeople(int orgId, {String? q, int? deptId, ApiClient? client}) async {
+    final r = await (client ?? ApiClient()).get('$memberBase/$orgId/people', queryParams: {'q': ?(q?.trim().isEmpty ?? true ? null : q!.trim()), 'dept_id': ?deptId});
+    return [for (final p in asMapList(asMap(r)['items'])) GovPerson.fromJson(p)];
+  }
+
+  /// The upload route of request / comment files (multipart `file`; real type and size checked by the server).
+  static String uploadPath(int orgId) => '$memberBase/$orgId/attachments';
+
+  /// A 10-minute link to an uploaded attachment, after the item's view check (`inline` for the preview).
+  static Future<String> attachmentLink(int id, {bool inline = false, ApiClient? client}) async {
+    final m = asMap(await (client ?? ApiClient()).get('$memberBase/attachments/$id', queryParams: {'inline': inline}));
+    return '${m['url'] ?? ''}';
+  }
 
   static Future<dynamic> memberWithdraw(int id, {ApiClient? client}) => (client ?? ApiClient()).post('$memberBase/items/$id/withdraw', body: const {});
 
