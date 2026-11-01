@@ -90,6 +90,13 @@ Paths: F = front `lib/`, B = back.
 ### E — QA
 - [not started] E1 Real-app check of cert designer ar/en save, preview, issue (2.1.1, 2.1.4) — S
 - [not started] E2 Layout harness for every new widget; e2e for C1–C4 — M
+- [done] E3 Render review + adversarial review of A and C (`feature/studio-qa`): designer app bar name in either script
+  (font fallback), the selected layer row keeps its name in the 224 px column (lock / delete in a "more" menu), the
+  studio toolbar drops its labels where they do not fit and shows a chevron on a cut edge (never clips), requests'
+  attachment / chain inks through `appInk` in dark mode; bugs fixed with tests: edits made during an in-flight save
+  were never autosaved, attachment upload refusals showed the server's Arabic text in English, the picker offered
+  `.zip` (always refused), a picker failure left "uploading" on. Tests: `test/ui/studio_qa_test.dart`, additions to
+  `test/org/cert_studio_test.dart` and `test/org/gov_requests_test.dart`.
 
 ## Next step
 A1 (docked properties panel) and B1 (export font catalog) first, in parallel; then A2, B2, B3.

@@ -18417,6 +18417,14 @@
     "en": "Undo",
     "ar": "تراجع"
   },
+  "studio_scroll_more": {
+    "en": "More tools",
+    "ar": "مزيد من الأدوات"
+  },
+  "studio_scroll_back": {
+    "en": "Earlier tools",
+    "ar": "الأدوات السابقة"
+  },
   "studio_redo": {
     "en": "Redo",
     "ar": "إعادة"

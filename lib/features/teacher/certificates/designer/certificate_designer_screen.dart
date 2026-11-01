@@ -34,6 +34,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -218,8 +219,12 @@ class _DesignerViewState extends State<_DesignerView> {
       child: Scaffold(
         backgroundColor: c.background,
         appBar: AppBar(
-          title: Text(hasDesign ? p.design!.name : 'cert_designer_title'.tr,
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+          // the design's name in either script whatever the UI language (an Arabic name in the English UI drew only
+          // its punctuation: the Latin UI font has no Arabic glyphs); no name → the page's title
+          title: Text(hasDesign && p.design!.name.trim().isNotEmpty ? p.design!.name : 'cert_designer_title'.tr,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.section(context).copyWith(fontFamilyFallback: AppFonts.fallback)),
           centerTitle: false,
           actions: [
             if (hasDesign) ...[
