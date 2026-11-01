@@ -205,6 +205,20 @@ Map<String, String> govCodeTexts() => {
       'template_not_found': t('القالب غير موجود', 'Template not found'),
       'export_forbidden': t('تصدير نتائج التصويت يحتاج صلاحية', 'Exporting vote results needs a permission'),
       'dept_no_items': t('هذه الجهة لا تستقبل معاملات عبر التطبيق', 'This entity does not accept items through the app'),
+      // D-140 / D-141: for someone else · attachments · export by ids · approval chain
+      'on_behalf_forbidden': t('التقديم نيابةً عن غيرك يحتاج صلاحية في هذه الجهة', 'Filing for someone else needs a right in this entity'),
+      'beneficiary_invalid': t('بيانات صاحب الطلب غير صحيحة', 'The details of the person it is for are not valid'),
+      'beneficiary_not_member': t('هذا الشخص ليس عضواً فعّالاً في المؤسسة', 'This person is not an active member of the organization'),
+      'beneficiary_anonymous': t('لا يُخفى اسم مقدّم طلب نيابةً عن غيره', 'A request filed for someone else cannot be anonymous'),
+      'file_type': t('نوع الملف غير مسموح (PDF، صور، مستندات Office، نص)', 'File type not allowed (PDF, images, Office documents, text)'),
+      'file_too_big': t('الملف أكبر من الحد المسموح', 'The file is larger than allowed'),
+      'attachment_invalid': t('المرفق غير موجود أو ليس لك', 'The attachment does not exist or is not yours'),
+      'too_many_attachments': t('الحد الأقصى 10 مرفقات', 'At most 10 attachments'),
+      'attachment_not_found': t('المرفق غير موجود', 'Attachment not found'),
+      'storage_unavailable': t('تعذّر تجهيز رابط الملف — حاول مجدداً', 'Could not prepare the file link — try again'),
+      'ids_invalid': t('اختيار المعاملات غير صالح', 'The selection is not valid'),
+      'reason_required': t('اكتب سبب الرفض — يصل إلى مقدّم الطلب', 'Write the reason for rejecting — the requester will see it'),
+      'chain_invalid': t('خطوات سلسلة الاعتماد غير صالحة', 'The approval chain steps are not valid'),
     };
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -251,16 +265,34 @@ class GovDept {
   Map<String, dynamic> toJson() => {'id': id, 'name_ar': nameAr, 'name_en': nameEn, 'kind': kind, 'icon': icon, 'color': color, 'logo_url': logoUrl};
 }
 
+/// An attachment entry. Uploaded files (D-140) carry an [id] and no URL: the link is asked for when opening
+/// (`GET …/attachments/{id}`, 10 minutes, after the item's view check). Older entries are `{name, url}`.
 class GovAttachment {
-  const GovAttachment({required this.name, required this.url, this.type, this.size});
+  const GovAttachment({required this.name, this.url = '', this.id, this.type, this.ext, this.size, this.preview = false});
   final String name, url;
-  final String? type;
+  final int? id;
+  final String? type, ext;
   final int? size;
 
-  factory GovAttachment.fromJson(Map<String, dynamic> j) =>
-      GovAttachment(name: '${j['name'] ?? ''}', url: '${j['url'] ?? ''}', type: j['type'] as String?, size: j['size'] == null ? null : asInt(j['size']));
+  /// An image or a PDF: opens in the in-app preview.
+  final bool preview;
 
-  Map<String, dynamic> toJson() => {'name': name, 'url': url, if (type != null) 'type': type, if (size != null) 'size': size};
+  bool get isFile => id != null;
+  bool get isImage => const {'png', 'jpg', 'jpeg', 'webp', 'gif'}.contains((ext ?? name.split('.').last).toLowerCase());
+  bool get isPdf => (ext ?? name.split('.').last).toLowerCase() == 'pdf';
+
+  factory GovAttachment.fromJson(Map<String, dynamic> j) => GovAttachment(
+        name: '${j['name'] ?? ''}',
+        url: '${j['url'] ?? ''}',
+        id: j['id'] == null ? null : asInt(j['id']),
+        type: j['type'] as String?,
+        ext: j['ext'] as String?,
+        size: j['size'] == null ? null : asInt(j['size']),
+        preview: asBool(j['preview']),
+      );
+
+  /// What a submit / comment / resubmit sends: an uploaded file by id, an older entry as it was.
+  Map<String, dynamic> toJson() => id != null ? {'id': id} : {'name': name, 'url': url, if (type != null) 'type': type, if (size != null) 'size': size};
 }
 
 /// `can` blocks the server sends with every object.
@@ -330,6 +362,8 @@ class Entity {
     this.can = const GovCan({}),
     this.categories = const [],
     this.canSubmitToCouncil = false,
+    this.canSubmitForOthers = false,
+    this.chain = const [],
     this.raw = const {},
   });
 
@@ -349,6 +383,13 @@ class Entity {
 
   /// Member side: I sit on this scientific department's team, so my request may go straight to its council.
   final bool canSubmitToCouncil;
+
+  /// Member side (D-140): I hold the "create for others" right here, so the form offers "For: a member / someone
+  /// outside the system".
+  final bool canSubmitForOthers;
+
+  /// The entity's approval chain (D-141), shown on the form before sending; empty = one decision by the entity.
+  final List<ChainStep> chain;
   final Map<String, dynamic> raw;
 
   int get id => dept.id;
@@ -376,6 +417,8 @@ class Entity {
       head: GovUser.from(j['head']),
       members: asInt(j['members']),
       canSubmitToCouncil: asBool(j['can_submit_to_council']),
+      canSubmitForOthers: asBool(j['can_submit_for_others']),
+      chain: [for (final s in asMapList(j['chain'])) ChainStep.fromJson(s)],
       counts: EntityCounts.fromJson(j['counts']),
       can: GovCan(asMap(j['can'])),
       categories: [for (final c in asMapList(j['categories'])) Category.fromJson(c)],
@@ -540,6 +583,9 @@ class WorkItem {
     this.agenda = const [],
     this.complaintId,
     this.formResponseId,
+    this.beneficiary,
+    this.chain,
+    this.chainStep,
     this.raw = const {},
   });
 
@@ -562,6 +608,13 @@ class WorkItem {
   final List<WorkEvent> events;
   final List<AgendaRef> agenda;
   final int? complaintId, formResponseId;
+
+  /// Who the item is FOR when that is not the submitter (D-140); null = the submitter themselves.
+  final Beneficiary? beneficiary;
+
+  /// The approval chain with every step's who / when / why (detail only, D-141) and the list card's short form.
+  final ItemChain? chain;
+  final ChainStepBrief? chainStep;
   final Map<String, dynamic> raw;
 
   bool get isOpen => openStatuses.contains(status);
@@ -604,9 +657,205 @@ class WorkItem {
       agenda: [for (final a in asMapList(j['agenda'])) AgendaRef.fromJson(a)],
       complaintId: legacy['complaint_id'] == null ? null : asInt(legacy['complaint_id']),
       formResponseId: legacy['form_response_id'] == null ? null : asInt(legacy['form_response_id']),
+      beneficiary: Beneficiary.from(j['beneficiary']),
+      chain: ItemChain.from(j['chain']),
+      chainStep: ChainStepBrief.from(j['chain_step']),
       raw: j,
     );
   }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  For whom (D-140) · approval chain (D-141)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Who an item is FOR: another member ([user]) or a person outside the system. The contact / id fields come only
+/// to the people who handle the item and to the submitter.
+class Beneficiary {
+  const Beneficiary({required this.kind, this.name = '', this.relation, this.user, this.phone, this.email, this.nationalId, this.studentNumber});
+  final String kind; // member | external
+  final String name;
+  final String? relation, phone, email, nationalId, studentNumber;
+  final GovUser? user;
+
+  bool get isExternal => kind == 'external';
+  bool get hasContact => [phone, email, nationalId, studentNumber].any((x) => (x ?? '').isNotEmpty);
+
+  static Beneficiary? from(dynamic j) {
+    if (j is! Map) return null;
+    final m = asMap(j);
+    String? s(String k) => (m[k] == null || '${m[k]}'.isEmpty) ? null : '${m[k]}';
+    return Beneficiary(
+      kind: '${m['kind'] ?? 'member'}',
+      name: '${m['name'] ?? ''}',
+      relation: s('relation'),
+      user: GovUser.from(m['user']),
+      phone: s('phone'),
+      email: s('email'),
+      nationalId: s('national_id'),
+      studentNumber: s('student_number'),
+    );
+  }
+}
+
+/// A member returned by `GET …/{org_id}/people` (the "for a member" picker; names only).
+class GovPerson {
+  const GovPerson({required this.id, required this.name, this.username, this.role});
+  final int id;
+  final String name;
+  final String? username, role;
+
+  factory GovPerson.fromJson(Map<String, dynamic> j) =>
+      GovPerson(id: asInt(j['id']), name: '${j['name'] ?? ''}', username: j['username'] as String?, role: j['role'] as String?);
+}
+
+/// What the submit form builds for `beneficiary` and validates the way the server does (beneficiary.py), so the
+/// person sees the problem next to the field before sending. [kind]: self · member · external.
+class BeneficiaryDraft {
+  BeneficiaryDraft({this.kind = 'self', this.member, this.name = '', this.phone = '', this.email = '', this.nationalId = '', this.studentNumber = '', this.relation = ''});
+  String kind;
+  GovPerson? member;
+  String name, phone, email, nationalId, studentNumber, relation;
+
+  static final _arabicDigits = RegExp('[٠-٩۰-۹]');
+  static String _latinDigits(String s) => s.replaceAllMapped(_arabicDigits, (m) {
+        final u = m[0]!.codeUnitAt(0);
+        return String.fromCharCode(48 + (u >= 0x06F0 ? u - 0x06F0 : u - 0x0660));
+      });
+  static String _squash(String s) => s.trim().replaceAll(RegExp(r'\s+'), ' ');
+
+  /// field → message; empty = valid. Mirrors the server: the name is required (2+ characters, a letter), every
+  /// optional field is checked only when filled.
+  Map<String, String> validate() {
+    final out = <String, String>{};
+    if (kind == 'member' && member == null) out['user_id'] = t('اختر العضو', 'Pick the member');
+    if (kind == 'external') {
+      final n = _squash(name);
+      if (n.length < 2 || !RegExp(r'\p{L}', unicode: true).hasMatch(n) || RegExp(r'[<>{}\[\]\\/@#$%^*=+|~`]').hasMatch(n)) {
+        out['name'] = t('اكتب الاسم (حرفان على الأقل)', 'Enter the name (at least 2 letters)');
+      }
+      final p = _latinDigits(phone.trim());
+      final digits = p.replaceAll(RegExp(r'\D'), '');
+      if (p.isNotEmpty && (!RegExp(r'^\+?[0-9][0-9 ()\-]{5,22}$').hasMatch(p) || digits.length < 6 || digits.length > 15)) {
+        out['phone'] = t('رقم الهاتف غير صحيح', 'Invalid phone number');
+      }
+      final e = email.trim();
+      if (e.isNotEmpty && !RegExp(r'^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$').hasMatch(e)) out['email'] = t('البريد غير صحيح', 'Invalid e-mail');
+      final nid = _latinDigits(nationalId.replaceAll(' ', ''));
+      if (nid.isNotEmpty && !RegExp(r'^[A-Za-z0-9\-]{5,20}$').hasMatch(nid)) out['national_id'] = t('رقم الهوية غير صحيح', 'Invalid national id');
+      final sn = _latinDigits(studentNumber.replaceAll(' ', ''));
+      if (sn.isNotEmpty && !RegExp(r'^[A-Za-z0-9/\-_.]{2,40}$').hasMatch(sn)) out['student_number'] = t('الرقم الجامعي غير صحيح', 'Invalid student number');
+    }
+    final r = _squash(relation);
+    if (kind != 'self' && r.isNotEmpty && (r.length < 2 || r.length > 60 || RegExp(r'[<>{}\[\]\\@#$%^*=+|~`]').hasMatch(r))) {
+      out['relation'] = t('الصلة غير صحيحة', 'Invalid relation');
+    }
+    return out;
+  }
+
+  /// The request body's `beneficiary` (null = self).
+  Map<String, dynamic>? toJson() {
+    if (kind == 'member' && member != null) {
+      return {'kind': 'member', 'user_id': member!.id, if (_squash(relation).isNotEmpty) 'relation': _squash(relation)};
+    }
+    if (kind != 'external') return null;
+    String? v(String s) => s.trim().isEmpty ? null : s.trim();
+    return {
+      'kind': 'external',
+      'name': _squash(name),
+      'phone': ?v(phone),
+      'email': ?v(email),
+      'national_id': ?v(nationalId),
+      'student_number': ?v(studentNumber),
+      'relation': ?v(_squash(relation)),
+    };
+  }
+}
+
+const chainStepKinds = ['manager', 'entity', 'council', 'faculty_council'];
+
+String chainKindLabel(String k) => switch (k) {
+      'manager' => t('مدير الجهة', 'Manager'),
+      'entity' => t('جهة أخرى', 'Another entity'),
+      'council' => t('مجلس القسم', 'Department council'),
+      'faculty_council' => t('مجلس الكلية', 'Faculty council'),
+      _ => k,
+    };
+
+/// One step of an approval chain: the settings form (kind + dept) or an item's step with its record.
+class ChainStep {
+  const ChainStep({required this.kind, this.deptId, this.dept, this.labelAr = '', this.labelEn = '', this.status = 'waiting', this.by, this.at, this.note, this.via});
+  final String kind;
+  final int? deptId;
+  final GovDept? dept;
+  final String labelAr, labelEn;
+
+  /// waiting · current · approved · rejected · skipped
+  final String status;
+  final GovUser? by;
+  final DateTime? at;
+  final String? note, via;
+
+  String get label {
+    final ar = labelAr.isNotEmpty ? labelAr : chainKindLabel(kind), en = labelEn.isNotEmpty ? labelEn : chainKindLabel(kind);
+    return t(ar, en);
+  }
+
+  bool get isDone => status == 'approved' || status == 'rejected' || status == 'skipped';
+
+  factory ChainStep.fromJson(Map<String, dynamic> j) => ChainStep(
+        kind: '${j['kind'] ?? 'manager'}',
+        deptId: j['dept_id'] == null ? null : asInt(j['dept_id']),
+        dept: GovDept.from(j['dept']),
+        labelAr: '${j['label_ar'] ?? ''}',
+        labelEn: '${j['label_en'] ?? ''}',
+        status: '${j['status'] ?? 'waiting'}',
+        by: GovUser.from(j['by']),
+        at: orgParseUtc(j['at']),
+        note: (j['note'] == null || '${j['note']}'.isEmpty) ? null : '${j['note']}',
+        via: j['via'] as String?,
+      );
+
+  Map<String, dynamic> toSettingsJson() => {'kind': kind, 'dept_id': ?deptId};
+}
+
+/// An item's chain: the current round's steps, the index of the current one, earlier rounds (resubmits).
+class ItemChain {
+  const ItemChain({this.round = 1, this.current, this.steps = const [], this.rounds = const []});
+  final int round;
+  final int? current;
+  final List<ChainStep> steps;
+  final List<(int, List<ChainStep>)> rounds;
+
+  ChainStep? get currentStep => current != null && current! >= 0 && current! < steps.length ? steps[current!] : null;
+
+  static ItemChain? from(dynamic j) {
+    if (j is! Map) return null;
+    final m = asMap(j);
+    return ItemChain(
+      round: asInt(m['round'], 1),
+      current: m['current'] == null ? null : asInt(m['current']),
+      steps: [for (final s in asMapList(m['steps'])) ChainStep.fromJson(s)],
+      rounds: [
+        for (final r in asMapList(m['rounds'])) (asInt(r['round'], 1), [for (final s in asMapList(r['steps'])) ChainStep.fromJson(s)]),
+      ],
+    );
+  }
+}
+
+/// The list card's "step 2 of 3 · council".
+class ChainStepBrief {
+  const ChainStepBrief({required this.index, required this.count, this.kind, this.round = 1});
+  final int index, count, round;
+  final String? kind;
+
+  static ChainStepBrief? from(dynamic j) {
+    if (j is! Map) return null;
+    final m = asMap(j);
+    return ChainStepBrief(index: asInt(m['index']), count: asInt(m['count']), kind: m['kind'] as String?, round: asInt(m['round'], 1));
+  }
+
+  String get label => '${t('الخطوة', 'Step')} ${index + 1}/$count${kind == null ? '' : ' · ${chainKindLabel(kind!)}'}';
 }
 
 /// A paged list reply: `{items, total, page, size, pages, facets}`.

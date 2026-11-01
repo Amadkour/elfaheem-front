@@ -43,6 +43,15 @@ Future<void> govExportItems(BuildContext context, int orgId, ItemFilter filter, 
   await exportHub(context, ds, orgId: orgId, deptId: deptId, canVotes: false);
 }
 
+/// One item or the selected ones → `GET …/export/data?module=items&ids=…` (the server checks every id, 403
+/// `export_forbidden` naming the refused ones) → the hub (D-140).
+Future<void> govExportItemIds(BuildContext context, int orgId, List<int> ids, {int? deptId}) async {
+  if (ids.isEmpty) return;
+  final ds = await fetchExportDataset(orgId, 'items', {'ids': ids.join(','), 'include_decisions': true, 'include_notes': true});
+  if (ds == null || !context.mounted) return;
+  await exportHub(context, ds, orgId: orgId, deptId: deptId, canVotes: false);
+}
+
 /// A council session → the hub. A closed session asks first: the session report (`module=council`) or the
 /// minutes (`module=minutes`, the Minutes preset); vote results only with `councils.export` (the server refuses
 /// otherwise).
@@ -89,7 +98,8 @@ List<(String, String, IconData, Widget)> govServiceSubs(OrgSession s) {
   if (!staff) return const [];
   return [
     ('governance', t('المعاملات', 'Items'), Icons.account_tree_rounded,
-        Builder(builder: (ctx) => GovItemsPage(embedded: true, orgId: oid, onExport: govExportHubEnabled() ? (f) => govExportItems(ctx, oid, f) : null))),
+        Builder(builder: (ctx) => GovItemsPage(embedded: true, orgId: oid, onExport: govExportHubEnabled() ? (f) => govExportItems(ctx, oid, f) : null,
+            onExportIds: govExportHubEnabled() ? (ids) => govExportItemIds(ctx, oid, ids) : null))),
     ('entities', t('الجهات', 'Entities'), Icons.apartment_rounded, GovEntitiesPage(embedded: true, orgId: oid)),
     if (s.isOrgAdmin || s.canAny('councils'))
       ('councils', t('المجالس', 'Councils'), Icons.gavel_rounded,
@@ -143,7 +153,8 @@ Future<void> govOpenAssignmentsLink(NavigatorState nav) => nav.push(MaterialPage
 
 /// Department dashboard: the Items tab body of an entity.
 Widget govDeptItemsTab(BuildContext context, int orgId, int deptId) =>
-    GovItemsPage(deptId: deptId, embedded: true, orgId: orgId, onExport: govExportHubEnabled() ? (f) => govExportItems(context, orgId, f, deptId: deptId) : null);
+    GovItemsPage(deptId: deptId, embedded: true, orgId: orgId, onExport: govExportHubEnabled() ? (f) => govExportItems(context, orgId, f, deptId: deptId) : null,
+        onExportIds: govExportHubEnabled() ? (ids) => govExportItemIds(context, orgId, ids, deptId: deptId) : null);
 
 /// Department dashboard quick action: the council of a scientific department (by its council ENTITY id).
 Future<void> govOpenCouncilOfDept(BuildContext context, int orgId, int councilDeptId) async {
