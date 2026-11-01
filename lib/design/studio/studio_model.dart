@@ -5,9 +5,10 @@
 // (tests, demos and simple hosts). See studio.dart for how a studio plugs in.
 library;
 
-import 'dart:ui' show Color, Rect, Size;
+import 'dart:ui' show Color, Rect, Size, TextDirection;
 
 import 'package:flutter/foundation.dart' show immutable;
+import 'package:flutter/painting.dart' show EdgeInsets, TextAlign, TextStyle;
 
 /// The page in its OWN units: 1000 × 707 logical units for a certificate, millimetres of the content box for an
 /// export page, … The engine never assumes a unit; [unitPx] is how many screen pixels one unit takes at 100 %.
@@ -208,9 +209,48 @@ abstract class StudioAdapter<P> {
   void restore(Object snapshot);
 }
 
+/// Optional, next to [StudioAdapter]: a host whose items can be locked from the canvas (the context menu's Lock /
+/// Unlock, [StudioController.setLocked]). [canLock] false (a read-only design) hides the command.
+abstract class StudioLockAdapter {
+  bool get canLock;
+
+  /// Locks or unlocks the items [ids]. Called inside [StudioController.record] (one undo step).
+  void setLocked(Set<String> ids, bool locked);
+}
+
+/// How the canvas's in-place text editor looks for one item: the item's own font, size, colour, alignment and
+/// direction at the canvas scale (screen pixels), so the text does not jump when the editor opens.
+@immutable
+class StudioInlineStyle {
+  const StudioInlineStyle({
+    required this.style,
+    this.textAlign = TextAlign.start,
+    this.textDirection,
+    this.multiline = false,
+    this.padding = EdgeInsets.zero,
+    this.background,
+  });
+
+  /// Already scaled to screen pixels (font size × canvas scale).
+  final TextStyle style;
+  final TextAlign textAlign;
+
+  /// Null = the app's direction (Arabic text in an English app still flows right to left inside the field).
+  final TextDirection? textDirection;
+
+  /// Shift+Enter inserts a new line (Enter alone always confirms).
+  final bool multiline;
+
+  /// Screen pixels between the item's box and its text.
+  final EdgeInsets padding;
+
+  /// Drawn behind the editor (the item is hidden while it is edited); null = the page colour.
+  final Color? background;
+}
+
 /// An adapter over a plain list of items: for tests, previews and hosts without a model of their own.
 /// Payloads are kept as they are: give [copyPayload] when they are mutable.
-class StudioMemoryAdapter<P> implements StudioAdapter<P> {
+class StudioMemoryAdapter<P> implements StudioAdapter<P>, StudioLockAdapter {
   StudioMemoryAdapter(Iterable<StudioItem<P>> items, {P Function(P payload)? copyPayload, String idPrefix = 'item'})
       : items = List.of(items),
         _copy = copyPayload,
@@ -267,6 +307,16 @@ class StudioMemoryAdapter<P> implements StudioAdapter<P> {
     } while (indexOf(id) >= 0);
     final copy = _copy;
     return item.copyWith(id: id, payload: copy == null ? item.payload : copy(item.payload));
+  }
+
+  @override
+  bool get canLock => true;
+
+  @override
+  void setLocked(Set<String> ids, bool locked) {
+    for (var i = 0; i < items.length; i++) {
+      if (ids.contains(items[i].id)) items[i] = items[i].copyWith(locked: locked);
+    }
   }
 
   @override

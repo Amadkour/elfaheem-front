@@ -16,6 +16,7 @@ import 'package:flutter_education_app/design/export_hub/export_flow.dart';
 import 'package:flutter_education_app/design/export_hub/export_flow_parts.dart';
 import 'package:flutter_education_app/design/export_hub/export_sheet_studio.dart';
 import 'package:flutter_education_app/design/export_hub/export_themes.dart';
+import 'package:flutter_education_app/design/studio/studio.dart';
 import 'package:flutter_education_app/features/shared/exports/exports_center_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -186,6 +187,35 @@ void main() {
           if (tab.evaluate().isNotEmpty) await tester.tap(tab.first, warnIfMissed: false);
           await tester.pump(const Duration(milliseconds: 100));
         }
+      },
+    );
+  });
+
+  testWidgets('designer: one selection shows its properties in the docked panel (no sheet); a text block edits in place', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () {
+        final d = exportThemeDesign('formal', AppConfig.lang)!;
+        return ExportDesignerPage(design: d, dataset: ExportDataset.fromTable(sample()), module: 'table', lang: AppConfig.lang, askName: false, saveLabel: 'Use', onSave: (_, _) async => true);
+      },
+      scaffold: false,
+      act: (tester) async {
+        // the phone's "works best on a larger screen" gate (its key when the test loads no translations)
+        for (final label in const ['المتابعة على أي حال', 'Continue anyway', 'studio_small_continue']) {
+          final go = find.text(label);
+          if (go.evaluate().isNotEmpty) await tester.tap(go.first, warnIfMissed: false);
+        }
+        await tester.pump(const Duration(milliseconds: 100));
+        final ctl = tester.widget<StudioCanvas<ExportBlock>>(find.byType(StudioCanvas<ExportBlock>)).controller;
+        final text = ctl.items.firstWhere((i) => i.payload.kind == 'text');
+        ctl.select(text.id);
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.byType(BottomSheet), findsNothing);
+        expect(find.text(exportBlockLabels()['text']!), findsWidgets);
+        expect(ctl.startTextEdit(text.id), isTrue);
+        await tester.pump();
+        await tester.pump();
+        expect(find.byKey(const ValueKey('studio-inline-editor')), findsOneWidget);
       },
     );
   });

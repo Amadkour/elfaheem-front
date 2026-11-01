@@ -6,7 +6,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'dart:ui' show Offset, Rect, Size;
+import 'dart:ui' show Offset, Rect, Size, TextAlign, TextDirection;
 
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
@@ -318,6 +318,41 @@ void main() {
   });
 
   group('studio engine', () {
+    test('lock / unlock from the canvas, the in-place text edit (one undo step) and its style', () {
+      var slice = const CertLangSlice(fields: [
+        CertField(id: 't', kind: CertFieldKind.text, text: 'Hi', textAr: 'مرحبا', x: 100, y: 300, w: 200, align: 'right', bgColor: '#FFEEAA'),
+        CertField(id: 'l', kind: CertFieldKind.logo, x: 10, y: 10, w: 100, h: 50),
+      ], orientation: 'landscape');
+      final a = CertStudioAdapter(lang: 'ar', read: () => slice, write: (s) => slice = s);
+      final c = StudioController<CertField>(adapter: a, page: const StudioPage(1000, 707));
+      c.select('l');
+      expect(c.canLock, isTrue);
+      c.toggleLock();
+      expect(slice.fields.last.locked, isTrue);
+      c.undo();
+      expect(slice.fields.last.locked, isFalse);
+
+      expect(c.startTextEdit('t'), isTrue);
+      c.commitText('t', 'أهلا', (item, text) => a.write(a.read().withFields([
+            for (final f in a.read().fields) f.id == item.id ? f.copyWith(textAr: text) : f,
+          ])));
+      expect(slice.fields.first.textAr, 'أهلا');
+      expect(c.undoLabel, 'text');
+      c.undo();
+      expect(slice.fields.first.textAr, 'مرحبا');
+
+      final st = certInlineStyle(slice.fields.first, arabic: true, scale: 2);
+      expect(st.textDirection, TextDirection.rtl);
+      expect(st.textAlign, TextAlign.right);
+      expect(st.multiline, isTrue);
+      expect(st.background, isNotNull);
+
+      // a read-only design cannot lock
+      a.readOnly = true;
+      c.refresh();
+      expect(c.canLock, isFalse);
+    });
+
     test('lock, aspect lock and rotation reach the canvas items', () {
       var slice = const CertLangSlice(fields: [
         CertField(id: 'a', kind: CertFieldKind.logo, x: 10, y: 10, w: 100, h: 50, locked: true),

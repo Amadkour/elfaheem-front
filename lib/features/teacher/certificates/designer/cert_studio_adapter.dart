@@ -117,7 +117,28 @@ int _idSeq = 0;
 /// A fresh field id (unique in a layout; the server only needs uniqueness per layout).
 String certNewFieldId() => 'f${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${(_idSeq++).toRadixString(36)}';
 
-class CertStudioAdapter implements StudioAdapter<CertField> {
+/// The canvas's in-place editor over text field [f] at [scale] screen pixels per unit: the field's font, size (the
+/// laid-out one, after any shrink to fit), colour, alignment, direction, fill and padding. Shift+Enter adds a line.
+StudioInlineStyle certInlineStyle(CertField f, {required bool arabic, required double scale, Map<String, String> samples = const {}}) {
+  final l = certFieldLayout(f, arabic: arabic, samples: samples);
+  final raw = certFieldRawText(f, arabic: arabic);
+  final rtl = f.direction == 'rtl' || (f.direction == 'auto' && (certArabicChars.hasMatch(raw) || (raw.isEmpty && arabic)));
+  final base = certTextStyle(f, scale: scale, size: l?.fontSize ?? f.size, opacityFactor: 1);
+  return StudioInlineStyle(
+    style: base.copyWith(
+      color: hexToColor(f.color),
+      fontWeight: f.bold ? FontWeight.w700 : FontWeight.w400,
+      fontStyle: f.italic ? FontStyle.italic : FontStyle.normal,
+    ),
+    textAlign: f.align == 'left' ? TextAlign.left : (f.align == 'right' ? TextAlign.right : TextAlign.center),
+    textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+    multiline: true,
+    padding: EdgeInsets.all(f.padding.clamp(0, 100) * scale),
+    background: f.bgColor == null ? null : hexToColor(f.bgColor!).withValues(alpha: f.bgOpacity.clamp(0.0, 1.0)),
+  );
+}
+
+class CertStudioAdapter implements StudioAdapter<CertField>, StudioLockAdapter {
   CertStudioAdapter({
     required this.lang,
     required this.read,
@@ -204,6 +225,13 @@ class CertStudioAdapter implements StudioAdapter<CertField> {
     // a copy is never locked (the engine unlocks it too) and drops the layer name's uniqueness worries
     return item.copyWith(id: id, payload: item.payload.copyWithNewId(id).copyWith(locked: false));
   }
+
+  @override
+  bool get canLock => !readOnly;
+
+  @override
+  void setLocked(Set<String> ids, bool locked) =>
+      _setFields([for (final f in _fields) ids.contains(f.id) ? f.copyWith(locked: locked) : f]);
 
   @override
   Object snapshot() => read();

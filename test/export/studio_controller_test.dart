@@ -469,4 +469,151 @@ void main() {
       expect(c.scale, closeTo(3.7795, 1e-3));
     });
   });
+
+  group('clipboard, lock, in-place text', () {
+    test('copy / paste adds unlocked copies offset by pasteOffset, each paste further; selection = the copies', () {
+      final c = make([box('a', 100, 100, 50, 50), box('b', 300, 300, 50, 50, locked: true)])..pasteOffset = const Offset(4, 4);
+      expect(c.canPaste, isFalse);
+      c
+        ..select('a')
+        ..select('b', additive: true)
+        ..copy();
+      expect(c.canPaste, isTrue);
+      expect(c.clipboardLength, 2);
+      c.paste();
+      expect(c.items, hasLength(4));
+      final first = c.selection.toList();
+      expect(first, hasLength(2));
+      expect(first.every((id) => id != 'a' && id != 'b'), isTrue);
+      final copies = [for (final id in first) c.itemById(id)!];
+      expect(copies.map((i) => i.rect.topLeft).toSet(), {const Offset(104, 104), const Offset(304, 304)});
+      expect(copies.every((i) => !i.locked), isTrue);
+      c.paste();
+      expect(c.items, hasLength(6));
+      expect({for (final id in c.selection) c.itemById(id)!.rect.topLeft}, {const Offset(108, 108), const Offset(308, 308)});
+      // one undo step per paste
+      c.undo();
+      expect(c.items, hasLength(4));
+    });
+
+    test('cut removes what is not locked; the first paste lands in place', () {
+      final c = make([box('a', 100, 100, 50, 50), box('l', 300, 300, 50, 50, locked: true)]);
+      c
+        ..select('a')
+        ..select('l', additive: true)
+        ..cut();
+      expect(order(c), ['l']);
+      c.paste();
+      expect(c.items, hasLength(3));
+      expect({for (final id in c.selection) c.itemById(id)!.rect.topLeft}, {const Offset(100, 100), const Offset(300, 300)});
+    });
+
+    test('the clipboard keeps the copied payload, not later edits', () {
+      final a = StudioMemoryAdapter<String>([box('a', 0, 0, 10, 10)]);
+      final c = StudioController<String>(adapter: a, page: const StudioPage(1000, 700));
+      c
+        ..select('a')
+        ..copy();
+      c.record('text', () => a.update('a', (i) => i.copyWith(payload: 'changed')));
+      c.paste();
+      expect(c.itemById(c.selection.single)!.payload, 'a');
+    });
+
+    test('bring to front / send to back / forward / backward', () {
+      final c = make([box('a', 0, 0, 10, 10), box('b', 0, 0, 10, 10), box('c', 0, 0, 10, 10)]);
+      c
+        ..select('a')
+        ..bringToFront();
+      expect(order(c), ['b', 'c', 'a']);
+      c.sendBackward();
+      expect(order(c), ['b', 'a', 'c']);
+      c.sendToBack();
+      expect(order(c), ['a', 'b', 'c']);
+      c.bringForward();
+      expect(order(c), ['b', 'a', 'c']);
+      c.undo();
+      expect(order(c), ['a', 'b', 'c']);
+    });
+
+    test('lock blocks move, resize, nudge and delete; unlock restores them; each is one undo step', () {
+      final c = make([box('a', 100, 100, 50, 50), box('b', 300, 300, 50, 50)], snap: false);
+      c.select('a');
+      expect(c.canLock, isTrue);
+      expect(c.selectionLocked, isFalse);
+      c.toggleLock();
+      expect(c.itemById('a')!.locked, isTrue);
+      expect(c.selectionLocked, isTrue);
+      expect(c.undoLabel, 'lock');
+      expect(c.beginMove(), isFalse);
+      expect(c.beginResize(StudioHandle.bottomRight), isFalse);
+      c.nudge(1, 0);
+      c.deleteSelection();
+      c.cut();
+      expect(rectOf(c, 'a'), const Rect.fromLTWH(100, 100, 50, 50));
+      expect(order(c), ['a', 'b']);
+      c.toggleLock();
+      expect(c.itemById('a')!.locked, isFalse);
+      c.nudge(1, 0);
+      expect(rectOf(c, 'a').left, 101);
+      c
+        ..undo()
+        ..undo();
+      expect(c.itemById('a')!.locked, isTrue);
+    });
+
+    test('an adapter without StudioLockAdapter cannot lock', () {
+      final c = StudioController<String>(adapter: _NoLock([box('a', 0, 0, 10, 10)]), page: const StudioPage(100, 100))..select('a');
+      expect(c.canLock, isFalse);
+      c.toggleLock();
+      expect(c.itemById('a')!.locked, isFalse);
+    });
+
+    test('commitText is ONE undo step, also when the host records on its own', () {
+      final a = StudioMemoryAdapter<String>([box('a', 0, 0, 10, 10)]);
+      final c = StudioController<String>(adapter: a, page: const StudioPage(1000, 700));
+      expect(c.startTextEdit('a'), isTrue);
+      expect(c.editingId, 'a');
+      expect(c.selection, {'a'});
+      c.commitText('a', 'Hello', (item, text) => c.record('inner', () => a.update(item.id, (i) => i.copyWith(payload: text)), coalesce: true));
+      expect(c.editingId, isNull);
+      expect(c.itemById('a')!.payload, 'Hello');
+      expect(c.historyLength, 1);
+      expect(c.undoLabel, 'text');
+      c.undo();
+      expect(c.itemById('a')!.payload, 'a');
+      c.redo();
+      expect(c.itemById('a')!.payload, 'Hello');
+    });
+
+    test('a locked or hidden item never opens the in-place editor', () {
+      final c = make([box('l', 0, 0, 10, 10, locked: true), box('h', 0, 0, 10, 10, visible: false)]);
+      expect(c.startTextEdit('l'), isFalse);
+      expect(c.startTextEdit('h'), isFalse);
+      expect(c.startTextEdit('nope'), isFalse);
+      expect(c.editingId, isNull);
+    });
+  });
+}
+
+/// An adapter that cannot lock (like the Export Hub's): no StudioLockAdapter.
+class _NoLock implements StudioAdapter<String> {
+  _NoLock(List<StudioItem<String>> items) : _m = StudioMemoryAdapter<String>(items);
+  final StudioMemoryAdapter<String> _m;
+
+  @override
+  List<StudioItem<String>> readItems() => _m.readItems();
+  @override
+  void writeRects(Map<String, Rect> rects) => _m.writeRects(rects);
+  @override
+  void addItems(List<StudioItem<String>> items) => _m.addItems(items);
+  @override
+  void removeItems(Set<String> ids) => _m.removeItems(ids);
+  @override
+  void reorder(List<String> ids) => _m.reorder(ids);
+  @override
+  StudioItem<String> cloneItem(StudioItem<String> item) => _m.cloneItem(item);
+  @override
+  Object snapshot() => _m.snapshot();
+  @override
+  void restore(Object snapshot) => _m.restore(snapshot);
 }
