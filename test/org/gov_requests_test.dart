@@ -3,7 +3,9 @@
 // body; the item / entity JSON of the new blocks parses; an uploaded attachment is sent back by id only; every new
 // server code has a text in both languages.
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/features/org/governance/gov_models.dart';
+import 'package:flutter_education_app/features/org/governance/gov_request_parts.dart' show govAttachmentExtensions, govUploadErrorText;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'gov_filter_test.dart' show sampleEntityJson, sampleItemJson;
@@ -158,5 +160,20 @@ void main() {
         expect(texts[c], isNotNull, reason: '$c ($lang)');
       }
     }
+  });
+
+  // QA (agent E): an upload refused by the server showed the server's Arabic text in the English app, and the picker
+  // offered .zip, which the attachment route always refuses.
+  test('upload errors: the coded refusals in the app language; the picker offers only accepted types', () {
+    const refused = ApiException(statusCode: 415, message: 'نوع الملف غير مسموح (PDF، صور، مستندات Office، نص)', code: 'file_type');
+    AppConfig.lang = 'en';
+    expect(govUploadErrorText(refused), startsWith('File type not allowed'));
+    expect(govUploadErrorText(const ApiException(statusCode: 413, message: 'كبير', code: 'file_too_big')), 'The file is larger than allowed');
+    expect(govUploadErrorText(const ApiException(statusCode: 0, message: 'No connection')), 'No connection');
+    AppConfig.lang = 'ar';
+    expect(govUploadErrorText(refused), startsWith('نوع الملف غير مسموح'));
+    // the server's TYPES (governance/attachments.py) + jpeg; nothing it refuses
+    expect(govAttachmentExtensions.toSet(),
+        {'pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'docx', 'xlsx', 'pptx', 'doc', 'xls', 'ppt', 'txt', 'csv'});
   });
 }

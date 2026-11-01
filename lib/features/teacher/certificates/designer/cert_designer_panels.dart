@@ -1322,6 +1322,9 @@ class CertToolsPanel extends StatelessWidget {
 
 /// Every element of the layout, the TOP one first (like a layers panel): tap to select, eye to show / hide, drag
 /// to reorder, bin to delete.
+/// Below this width the layers list draws slim actions and folds the selected row's lock / delete into a menu.
+const double kCertLayersCompactWidth = 300;
+
 class CertLayersList extends StatelessWidget {
   const CertLayersList({
     super.key,
@@ -1387,14 +1390,33 @@ class CertLayersList extends StatelessWidget {
             onTap: () => onSelect(f.id),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: AppTouch.min),
-              child: Row(children: [
+              child: LayoutBuilder(builder: (context, box) {
+                // A narrow list (the desktop's 224 px column): slimmer buttons, and the selected row's lock / delete
+                // go into one "more" menu, so the name keeps its room beside the actions.
+                final compact = box.maxWidth < kCertLayersCompactWidth;
+                final canLock = enabled && onToggleLock != null;
+                final canDelete = enabled && onDelete != null && !f.locked;
+                final menu = compact && sel && (canLock || canDelete);
+                final lockLabel = (f.locked ? 'certd_unlock' : 'certd_lock').tr;
+                final danger = ensureContrast(c.danger, [c.cardBg]);
+                Widget action({required String tooltip, required VoidCallback onPressed, required Widget icon}) =>
+                    compact
+                        ? IconButton(
+                            tooltip: tooltip,
+                            onPressed: onPressed,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(width: 34, height: AppTouch.min),
+                            icon: icon,
+                          )
+                        : IconButton(tooltip: tooltip, onPressed: onPressed, icon: icon);
+                return Row(children: [
                 if (enabled && onReorder != null)
                   ReorderableDragStartListener(
                     index: i,
                     child: Tooltip(
                       message: 'certd_drag_reorder'.tr,
                       child: SizedBox(
-                        width: 36,
+                        width: compact ? 28 : 36,
                         height: AppTouch.min,
                         child: Icon(Icons.drag_indicator_rounded, size: 18, color: c.textLight),
                       ),
@@ -1419,36 +1441,70 @@ class CertLayersList extends StatelessWidget {
                       textDirection: strong.isEmpty ? null : (ar ? TextDirection.rtl : TextDirection.ltr),
                       textAlign: rtl ? TextAlign.right : TextAlign.left,
                       style: appText(13,
-                          w: sel ? FontWeight.w600 : FontWeight.w500, c: f.visible ? c.textDark : c.textLight),
+                              w: sel ? FontWeight.w600 : FontWeight.w500, c: f.visible ? c.textDark : c.textLight)
+                          .copyWith(fontFamilyFallback: AppFonts.fallback),
                     );
                   }),
                 ),
-                if (enabled && onToggleLock != null && (f.locked || sel))
-                  IconButton(
-                    tooltip: (f.locked ? 'certd_unlock' : 'certd_lock').tr,
+                if (!menu && canLock && (f.locked || sel))
+                  action(
+                    tooltip: lockLabel,
                     onPressed: () => onToggleLock!(f.id),
                     icon: Icon(f.locked ? Icons.lock_rounded : Icons.lock_open_rounded,
                         size: 18, color: f.locked ? c.textMedium : c.textLight),
                   )
                 else if (f.locked)
                   SizedBox(
-                    width: AppTouch.min,
+                    width: compact ? 24 : AppTouch.min,
                     child: Icon(Icons.lock_rounded, size: 16, color: c.textLight, semanticLabel: 'certd_locked'.tr),
                   ),
                 if (enabled && onToggleVisible != null)
-                  IconButton(
+                  action(
                     tooltip: (f.visible ? 'pl_hide' : 'pl_show').tr,
                     onPressed: () => onToggleVisible!(f.id),
                     icon: Icon(f.visible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                         size: 18, color: f.visible ? c.textLight : c.textMedium),
                   ),
-                if (enabled && onDelete != null && sel && !f.locked)
-                  IconButton(
+                if (menu)
+                  PopupMenuButton<String>(
+                    tooltip: 'more'.tr,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 160),
+                    onSelected: (v) => v == 'lock' ? onToggleLock!(f.id) : onDelete!(f.id),
+                    itemBuilder: (_) => [
+                      if (canLock)
+                        PopupMenuItem<String>(
+                          value: 'lock',
+                          child: Row(children: [
+                            Icon(f.locked ? Icons.lock_open_rounded : Icons.lock_rounded, size: 20, color: c.textMedium),
+                            const SizedBox(width: AppSpace.sm),
+                            Flexible(child: Text(lockLabel, style: appText(14, c: c.textDark))),
+                          ]),
+                        ),
+                      if (canDelete)
+                        PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(children: [
+                            Icon(Icons.delete_outline_rounded, size: 20, color: danger),
+                            const SizedBox(width: AppSpace.sm),
+                            Flexible(child: Text('certd_delete'.tr, style: appText(14, c: danger))),
+                          ]),
+                        ),
+                    ],
+                    child: SizedBox(
+                      width: 34,
+                      height: AppTouch.min,
+                      child: Icon(Icons.more_vert_rounded, size: 18, color: c.textMedium),
+                    ),
+                  )
+                else if (enabled && onDelete != null && sel && !f.locked)
+                  action(
                     tooltip: 'certd_delete'.tr,
                     onPressed: () => onDelete!(f.id),
-                    icon: Icon(Icons.delete_outline_rounded, size: 18, color: ensureContrast(c.danger, [c.cardBg])),
+                    icon: Icon(Icons.delete_outline_rounded, size: 18, color: danger),
                   ),
-              ]),
+              ]);
+              }),
             ),
           ),
         );
