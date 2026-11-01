@@ -466,9 +466,21 @@ List<(LayoutElement, LayoutElement)> layoutOverlaps(List<LayoutElement> els) {
   return out;
 }
 
+/// The server draws at most this many distinct images per document (`assets_capped`).
+const kLayoutMaxImages = 10;
+
 /// The notes the studio can tell before the server does: what Excel / Word will change, with the closest alternative.
 List<LayoutIssue> layoutLocalIssues(LayoutDesign d, String format) {
   final out = <LayoutIssue>[];
+  final images = {for (final e in d.allElements) if (e.isImage && (e.value ?? '').isNotEmpty) e.value};
+  if (images.length > kLayoutMaxImages) {
+    out.add(LayoutIssue(
+      code: 'assets_capped',
+      severity: 'warning',
+      messageAr: 'التصميم يستعمل ${images.length} صور مختلفة: يُرسم أول $kLayoutMaxImages فقط.',
+      messageEn: 'The design uses ${images.length} different images: only the first $kLayoutMaxImages are drawn.',
+    ));
+  }
   if (format == 'pdf') return out;
   final parts = <List<LayoutElement>>[for (final b in d.bands) b.elements, if (d.mode == 'custom') d.row.elements];
   for (final els in parts) {

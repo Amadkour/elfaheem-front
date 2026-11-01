@@ -270,6 +270,20 @@ void main() {
     await close(tester);
   });
 
+  testWidgets('server limits read as friendly text: preview_busy with Retry, render_timeout on a run', (tester) async {
+    server.previewBusy = true;
+    server.runFails = true;
+    server.runError = 'render_timeout';
+    await open(tester, step: 4);
+    await _until(tester, () => find.textContaining('A preview is already being prepared').evaluate().isNotEmpty);
+    server.previewBusy = false;
+    await _tap(tester, find.text('Retry'));
+    await _until(tester, () => find.text('Page 1 of 5').evaluate().isNotEmpty);
+    await _tap(tester, find.byKey(const ValueKey('layout-run-start')));
+    await _until(tester, () => find.textContaining('Creating the file took too long').evaluate().isNotEmpty);
+    await close(tester);
+  });
+
   testWidgets('the draft is autosaved per page and restored on the next visit', (tester) async {
     await open(tester);
     await _tap(tester, find.byKey(const ValueKey('layout-format-xlsx')));

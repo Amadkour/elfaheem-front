@@ -152,3 +152,4 @@ Filled in by the server where the contract above was silent; the app should foll
   is a random 128-bit token), so organization templates keep their logo.
 - **Documents may carry `name`** (the run's file name). Runs: status `canceled` added; `progress` 0-100.
 - Response shapes and codes: back `FLUTTER_API_CHANGES.md` ("Export layout v3").
+- **Limits:** 2 000 characters drawn per element (then …); ≤ 10 distinct images per document; Excel custom ≤ 400 000 ÷ elements-per-card items; preview sample ≤ 200 rows, 20 s; assets ≤ 16 MP, stored ≤ 2000 px, kept while a v3 template names them (else 30 days).

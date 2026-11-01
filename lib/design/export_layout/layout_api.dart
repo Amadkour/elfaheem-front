@@ -152,7 +152,8 @@ class LayoutApi {
       if (missing) {
         return ExportResult.fail(tx('exs_needs_update', 'This needs a server update', 'هذه الميزة تحتاج تحديث الخادم'), status: x.statusCode, missing: true);
       }
-      final code = x.code ?? ApiException.codedDetail(x.body).$1;
+      // a 413 refused before the body was read carries no code
+      final code = x.code ?? ApiException.codedDetail(x.body).$1 ?? (x.statusCode == 413 ? 'upload_too_big' : null);
       return ExportResult.fail(layoutErrorText(code, x.message), code: code, status: x.statusCode);
     }
   }
@@ -265,6 +266,14 @@ class LayoutApi {
 /// Bilingual text for the layout routes' error codes.
 String layoutErrorText(String? code, [String? fallback]) => switch (code) {
       'rows_too_many' => tx('lay_err_rows_many', 'Too many rows for one export (50,000 at most)', 'عدد الصفوف أكبر من المسموح (50٬000 صف كحد أقصى)'),
+      'rows_invalid' => tx('lay_err_rows_invalid', 'The rows could not be read: export again', 'تعذّرت قراءة الصفوف: أعد التصدير'),
+      'preview_busy' => tx('lay_err_preview_busy', 'A preview is already being prepared: try again in a moment', 'تُجهَّز معاينة أخرى الآن: حاول بعد لحظات'),
+      'preview_timeout' => tx('lay_err_preview_timeout', 'The preview took too long: simplify the design or try again',
+          'استغرقت المعاينة وقتًا طويلًا: بسّط التصميم أو حاول مجددًا'),
+      'render_timeout' => tx('lay_err_render_timeout', 'Creating the file took too long: try again, or export fewer items',
+          'استغرق إنشاء الملف وقتًا طويلًا: حاول مجددًا أو صدّر عناصر أقل'),
+      'asset_quota' => tx('lay_err_asset_quota', 'You have reached your image storage limit', 'بلغت الحد المسموح لتخزين الصور'),
+      'asset_too_large' || 'image_too_large' || 'asset_pixels' => tx('lay_err_asset_pixels', 'The image is too large (16 megapixels at most)', 'الصورة كبيرة جدًا (16 ميجابكسل كحد أقصى)'),
       'rows_too_big' || 'payload_too_big' || 'upload_too_big' => tx('lay_err_rows_big', 'The rows are too large to send (20 MB at most)', 'حجم الصفوف أكبر من المسموح (20 ميجابايت)'),
       'upload_expired' || 'upload_not_found' => tx('lay_err_upload', 'The uploaded rows expired: export again', 'انتهت صلاحية الصفوف المرفوعة: أعد التصدير'),
       'asset_too_big' => tx('lay_err_asset_big', 'The image is larger than 2 MB', 'الصورة أكبر من 2 ميجابايت'),

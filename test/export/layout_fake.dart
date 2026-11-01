@@ -51,6 +51,12 @@ class LayoutFakeServer {
   /// How many status reads a run takes before it is done.
   int runSteps = 2;
   bool runFails = false;
+
+  /// The run's error when it fails (a code or a sentence).
+  String runError = 'Disk full';
+
+  /// The next preview answers 429 preview_busy.
+  bool previewBusy = false;
   final posted = <String, List<Object?>>{};
   final savedTemplates = <Map<String, dynamic>>[];
 
@@ -109,6 +115,9 @@ class LayoutFakeServer {
         'POST /api/v1/exports/layout/validate': (_) => const {'ok': true, 'issues': []},
         'POST /api/v1/exports/layout/preview': (o) {
           (posted['preview'] ??= []).add(_body(o.data));
+          if (previewBusy) {
+            return const FakeResponse(429, {'detail': {'code': 'preview_busy', 'message': 'معاينة أخرى قيد التجهيز', 'message_en': 'Another preview is running'}});
+          }
           return {
             'pages': [
               {'index': 1, 'total': 5, 'png_b64': kPng1},
@@ -127,7 +136,7 @@ class LayoutFakeServer {
         },
         'GET /api/v1/exports/layout/runs/r1': (_) {
           runPolls++;
-          if (runFails) return const {'status': 'failed', 'progress': 40, 'error': 'Disk full'};
+          if (runFails) return {'status': 'failed', 'progress': 40, 'error': runError};
           return runPolls >= runSteps
               ? const {'status': 'done', 'progress': 100, 'rows': 120, 'file_name': 'Students.pdf'}
               : {'status': 'running', 'progress': 30 * runPolls, 'rows': 120};

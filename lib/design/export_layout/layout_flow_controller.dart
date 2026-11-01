@@ -453,7 +453,11 @@ class LayoutFlowController extends ChangeNotifier {
       _notify();
       return false;
     }
-    if (!done.done) return _fail(done.error ?? (AppConfig.lang == 'ar' ? 'تعذّر إنشاء الملف' : 'Could not create the file'));
+    if (!done.done) {
+      final e = done.error;
+      // a run's error is a code (render_timeout, …) or a sentence
+      return _fail(e == null || e.isEmpty ? (AppConfig.lang == 'ar' ? 'تعذّر إنشاء الملف' : 'Could not create the file') : (RegExp(r'^[a-z_]+$').hasMatch(e) ? layoutErrorText(e, e) : e));
+    }
     return downloadAgain();
   }
 

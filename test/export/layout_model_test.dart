@@ -230,6 +230,10 @@ void main() {
       expect(layoutLocalIssues(d, 'docx').map((i) => i.code).toSet(), {'overlap'});
       expect(layoutLocalIssues(d, 'pdf'), isEmpty);
       expect(layoutLocalIssues(d, 'xlsx').first.message('ar'), isNotEmpty);
+      for (var i = 0; i < 11; i++) {
+        d.header.elements.add(LayoutElement(id: 'img$i', kind: 'image', value: 'asset$i', x: 0, y: 0, w: 1, h: 1));
+      }
+      expect(layoutLocalIssues(d, 'pdf').map((i) => i.code), ['assets_capped'], reason: 'at most 10 distinct images per document');
     });
   });
 }
