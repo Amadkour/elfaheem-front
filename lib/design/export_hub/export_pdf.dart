@@ -1,7 +1,7 @@
 // lib/design/export_hub/export_pdf.dart
 //
 // The Export Hub's PDF writer (package:pdf). Pure apart from `loadExportFonts`, which reads the bundled fonts
-// through rootBundle — the writer itself takes the font bytes and the images (keyed by URL) so the tests can call
+// through the export font catalog (lib/design/export/export_fonts.dart) — the writer itself takes the font bytes and the images (keyed by URL) so the tests can call
 // it with files from disk. Page size / orientation / margins, header and footer with "{{page}} / {{pages}}",
 // text · logo · signature · line blocks at their fractions, the table block flowing over pages with a repeating
 // header, and the items block (one card per council item with the vote result beside / below / both).
@@ -13,30 +13,33 @@ library;
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:flutter/services.dart' show ByteData, rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../export/export_fonts.dart' show ExportFonts;
 import '../export/export_studio_model.dart';
 import '../export/table_export_model.dart' show AppColType, AppExportColumn, AppTotal, aggregate, aggregateText, decimalsOf, tintHex;
-import '../export/table_export_pdf.dart' show exportPdfText, exportPdfTextDir;
+import '../export/table_export_pdf.dart' show exportPdfCompress, exportPdfText, exportPdfTextDir;
 import 'export_design.dart';
+import 'export_layout.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Fonts
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// (regular, bold) asset paths of a design font family. Bahij ships bold only; it is used for both weights.
-(String, String) exportFontAssets(String family) => switch (family) {
-      'bahij' => ('assets/fonts/Bahij_TheSansArabic-Bold.ttf', 'assets/fonts/Bahij_TheSansArabic-Bold.ttf'),
-      'plex' => ('assets/fonts/plex/IBMPlexSansArabic-Regular.ttf', 'assets/fonts/plex/IBMPlexSansArabic-Bold.ttf'),
-      _ => ('assets/fonts/Tajawal-Regular.ttf', 'assets/fonts/cert/Tajawal-Bold.ttf'),
-    };
+/// (regular, bold) asset paths of a design font family (the export font catalog, export_fonts.dart).
+(String, String) exportFontAssets(String family) {
+  final f = ExportFonts.byId(family);
+  return (f.regularAsset, f.boldAsset);
+}
 
 /// The TTF bytes per family the writer may need.
 class ExportFontSet {
-  ExportFontSet(this.regular, this.bold);
+  ExportFontSet(this.regular, this.bold, [Map<String, List<ByteData>>? fallbacks]) : fallbacks = fallbacks ?? {};
   final Map<String, ByteData> regular, bold;
+
+  /// Per family: the fonts that draw what it cannot (its Arabic stand-in, then IBM Plex Sans Arabic).
+  final Map<String, List<ByteData>> fallbacks;
 
   bool has(String family) => regular.containsKey(family) && bold.containsKey(family);
 
@@ -46,17 +49,32 @@ class ExportFontSet {
     final k = regular.keys.first;
     return (regular[k]!, bold[k]!);
   }
+
+  List<ByteData> fallbackOf(String family) => fallbacks[has(family) ? family : regular.keys.first] ?? const [];
 }
 
-/// Loads the bundled fonts of [families] (the design's `fontFamilies`).
+/// One pw.Font per font file of a document: a file two families share is embedded once.
+class ExportPdfFontCache {
+  final _fonts = <ByteData, pw.Font>{};
+  pw.Font of(ByteData b) => _fonts.putIfAbsent(b, () => pw.Font.ttf(b));
+}
+
+/// Loads the fonts of [families] (the design's `fontFamilies`) — only those, once per run (ExportFonts caches the
+/// files): each one ready for package:pdf (Arabic presentation forms completed), with its Arabic stand-in and IBM
+/// Plex Sans Arabic as the fallbacks.
 Future<ExportFontSet> loadExportFonts(Iterable<String> families) async {
-  final reg = <String, ByteData>{}, bold = <String, ByteData>{};
-  for (final f in {...families, if (families.isEmpty) 'tajawal'}) {
-    final (r, b) = exportFontAssets(f);
-    reg[f] = await rootBundle.load(r);
-    bold[f] = b == r ? reg[f]! : await rootBundle.load(b);
+  final views = <String, ByteData>{};
+  Future<ByteData> view(String asset) async => views[asset] ??= ByteData.sublistView((await ExportFonts.pdfFile(asset)).$1);
+  final reg = <String, ByteData>{}, bold = <String, ByteData>{}, fb = <String, List<ByteData>>{};
+  final plex = await view(ExportFonts.byId('plex').regularAsset);
+  for (final id in {...families, if (families.isEmpty) ExportFonts.defaultId}) {
+    final f = ExportFonts.byId(id);
+    reg[id] = await view(f.regularAsset);
+    bold[id] = await view(f.boldAsset);
+    final standIn = await ExportFonts.pdfArabicStandIn(f);
+    fb[id] = [if (standIn != null) await view(ExportFonts.byId(standIn).regularAsset), if (f.id != 'plex') plex];
   }
-  return ExportFontSet(reg, bold);
+  return ExportFontSet(reg, bold, fb);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -200,23 +218,26 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
   final format = PdfPageFormat(pwMm * PdfPageFormat.mm, phMm * PdfPageFormat.mm,
       marginTop: d.page.top * PdfPageFormat.mm, marginBottom: d.page.bottom * PdfPageFormat.mm, marginLeft: d.page.left * PdfPageFormat.mm, marginRight: d.page.right * PdfPageFormat.mm);
   final cw = format.availableWidth, ch = format.availableHeight;
+  final pdfFonts = ExportPdfFontCache();
   final (baseReg, baseBold) = fonts.of(d.fontFamily);
-  final theme = pw.ThemeData.withFont(base: pw.Font.ttf(baseReg), bold: pw.Font.ttf(baseBold), fontFallback: [pw.Font.helvetica()]);
-  final fontCache = <String, (pw.Font, pw.Font)>{};
-  (pw.Font, pw.Font) family(String f) => fontCache.putIfAbsent(f.isEmpty ? d.fontFamily : f, () {
+  List<pw.Font> fallbackOf(String f) => [for (final b in fonts.fallbackOf(f)) pdfFonts.of(b), pw.Font.helvetica()];
+  final theme = pw.ThemeData.withFont(base: pdfFonts.of(baseReg), bold: pdfFonts.of(baseBold), fontFallback: fallbackOf(d.fontFamily));
+  final fontCache = <String, (pw.Font, pw.Font, List<pw.Font>)>{};
+  (pw.Font, pw.Font, List<pw.Font>) family(String f) => fontCache.putIfAbsent(f.isEmpty ? d.fontFamily : f, () {
         final (r, b) = fonts.of(f.isEmpty ? d.fontFamily : f);
-        return (pw.Font.ttf(r), pw.Font.ttf(b));
+        return (pdfFonts.of(r), pdfFonts.of(b), fallbackOf(f.isEmpty ? d.fontFamily : f));
       });
   final ink = _pc(d.fontColor), line = _pc(exportLine);
 
   String fill(String s) => fillPlaceholders(s, values);
 
   pw.TextStyle style({BlockFont? f, double? size, bool? bold, String? color}) {
-    final (r, b) = family(f?.family ?? '');
+    final (r, b, fallback) = family(f?.family ?? '');
     final fs = size ?? f?.size ?? d.fontSize;
     return pw.TextStyle(
       font: r,
       fontBold: b,
+      fontFallback: fallback,
       fontSize: fs,
       fontWeight: (bold ?? f?.bold ?? false) ? pw.FontWeight.bold : pw.FontWeight.normal,
       color: color != null ? _pc(color) : (f != null && f.color.isNotEmpty ? _pc(f.color) : ink),
@@ -302,7 +323,7 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
     final head = d.table.headerColor, onHead = d.table.headerTextColor;
     final st = d.table.style;
     final pad = pw.EdgeInsets.symmetric(horizontal: fs * .5, vertical: fs * .4 * d.lineSpacing);
-    double flex(ExportColumn col) => col.id == 'n' ? .45 : col.numeric ? .9 : (col.id == 'title' || col.id == 'subject' || col.id == 'body' ? 2.6 : 1.2);
+    final fractions = exportColumnFractions(d, cols0);
     pw.Widget cell(String s, ExportColumn col, {bool header = false, bool bold = false, String? color, String? fill}) => pw.Container(
           padding: pad,
           alignment: col.numeric && !header ? (rtl ? pw.Alignment.centerLeft : pw.Alignment.centerRight) : (rtl ? pw.Alignment.centerRight : pw.Alignment.centerLeft),
@@ -353,7 +374,7 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
           ],
         );
     pw.Widget tableOf(List<pw.TableRow> rows) => pw.Table(
-          columnWidths: {for (var i = 0; i < ks.length; i++) i: pw.FlexColumnWidth(flex(cols0[ks[i]]))},
+          columnWidths: {for (var i = 0; i < ks.length; i++) i: pw.FlexColumnWidth(fractions[ks[i]])},
           border: border,
           defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
           children: rows,
@@ -538,8 +559,8 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
           padding: const pw.EdgeInsets.only(bottom: 3),
           decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: line, width: .5))),
           child: pw.Row(children: [
-            pw.Expanded(child: text(pages(fill(d.headerText), ctx), size: d.fontSize * .78, color: exportMuted, maxLines: 1)),
-            if (d.showDate) text(values['date'] ?? '', size: d.fontSize * .78, color: exportMuted, a: 'end'),
+            pw.Expanded(child: text(pages(fill(d.headerText), ctx), size: exportHeaderSize(d), color: exportMuted, maxLines: 1)),
+            if (d.showDate) text(values['date'] ?? '', size: exportHeaderSize(d), color: exportMuted, a: 'end'),
           ]),
         );
   pw.Widget footer(pw.Context ctx) => !hasFooter
@@ -549,13 +570,13 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
           padding: const pw.EdgeInsets.only(top: 3),
           decoration: pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: line, width: .5))),
           child: pw.Row(children: [
-            pw.Expanded(child: text(pages(fill(d.footerText), ctx), size: d.fontSize * .74, color: exportMuted, maxLines: 1)),
-            if (d.showPageNumbers) text('${lb.page} ${ctx.pageNumber} ${lb.of} ${ctx.pagesCount}', size: d.fontSize * .74, color: exportMuted, a: 'end'),
+            pw.Expanded(child: text(pages(fill(d.footerText), ctx), size: exportFooterSize(d), color: exportMuted, maxLines: 1)),
+            if (d.showPageNumbers) text(exportFooterPageText(lb.page, lb.of, ctx.pageNumber, ctx.pagesCount), size: exportFooterSize(d), color: exportMuted, a: 'end'),
           ]),
         );
 
   // ── pages
-  final doc = pw.Document(theme: theme, title: data.title, author: values['org']?.isEmpty == false ? values['org'] : 'NextBrain', creator: 'NextBrain');
+  final doc = pw.Document(compress: exportPdfCompress, theme: theme, title: data.title, author: values['org']?.isEmpty == false ? values['org'] : 'NextBrain', creator: 'NextBrain');
   final segs = d.segments;
   final content = <pw.Widget>[];
   var cursor = 0.0; // the fraction already printed
@@ -592,20 +613,27 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
     );
   }
 
+  // one image object for every page (a new one per page would embed the picture once per page)
+  final wmImage = wm.isImage ? image(wm.imageUrl) : null;
+  final wmAlign = exportWatermarkAlign(wm.position, rtl);
   pw.Widget pageBackground(pw.Context ctx) {
     final ins = fr.inset * PdfPageFormat.mm;
     return pw.SizedBox(
       width: cw,
       height: ch,
       child: pw.Stack(overflow: pw.Overflow.visible, alignment: pw.Alignment.center, children: [
-        if (wm.visible)
-          pw.Center(
+        if (wm.visible && (!wm.isImage || wmImage != null))
+          // at its position in the content box (export_watermark.dart: the preview and Excel use the same)
+          pw.Align(
+            alignment: pw.Alignment(wmAlign.$1, -wmAlign.$2),
             child: pw.Transform.rotate(
               angle: -wm.angle * math.pi / 180,
               child: pw.Opacity(
                 opacity: wm.opacity,
-                child: pw.Text(p(wm.text.trim()),
-                    softWrap: false, textDirection: dir, style: pw.TextStyle(font: theme.defaultTextStyle.font, fontBold: theme.defaultTextStyle.fontBold, fontSize: wm.size, fontWeight: pw.FontWeight.bold, color: _pc(wm.color))),
+                child: wm.isImage
+                    ? pw.Image(wmImage!, width: wm.imageWidth * cw)
+                    : exportPdfText(p(wm.text.trim()), rtl: rtl, maxLines: 1,
+                        style: pw.TextStyle(font: theme.defaultTextStyle.font, fontBold: theme.defaultTextStyle.fontBold, fontSize: wm.size, fontWeight: pw.FontWeight.bold, color: _pc(wm.color))),
               ),
             ),
           ),

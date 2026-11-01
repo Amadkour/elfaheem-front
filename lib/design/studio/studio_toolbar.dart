@@ -2,8 +2,9 @@
 //
 // The studio's command bar: undo · redo | zoom out · zoom % (menu) · zoom in · fit | snap | align & distribute
 // (menu) | delete, plus the host's own [leading] / [trailing] actions (add text, preview, save, …). From
-// [wideBreakpoint] the main commands carry their label next to the icon; below it they are icons with tooltips
-// and the bar scrolls sideways instead of overflowing.
+// [wideBreakpoint] the main commands carry their label next to the icon (only while the labelled bar fits: else
+// icons); below it they are icons with tooltips, and a bar that still does not fit scrolls sideways with a chevron
+// on the cut edge (a tap scrolls on) instead of clipping its last command.
 library;
 
 import 'package:flutter/material.dart';
@@ -13,10 +14,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../app_contrast.dart';
 import '../app_kit.dart' show appText;
 import '../app_tokens.dart';
+import '../export/export_fonts.dart' show ExportFonts;
 import 'studio_controller.dart';
 import 'studio_model.dart';
 
-class StudioToolbar extends StatelessWidget {
+class StudioToolbar extends StatefulWidget {
   const StudioToolbar({
     super.key,
     required this.controller,
@@ -32,21 +34,111 @@ class StudioToolbar extends StatelessWidget {
   final double wideBreakpoint;
 
   @override
+  State<StudioToolbar> createState() => _StudioToolbarState();
+}
+
+/// The labels show only where the labelled bar fits: a labelled bar that would scroll drops them (at that width).
+/// When even the icons do not fit, the bar scrolls and a chevron on the cut edge says so (a tap scrolls on).
+class _StudioToolbarState extends State<StudioToolbar> {
+  final _scroll = ScrollController();
+
+  /// The width at which the labelled bar did not fit (icons only while the bar keeps that width).
+  double? _squeezedAt;
+  bool _before = false, _after = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scroll.hasClients) _cues(_scroll.position);
+  }
+
+  void _cues(ScrollMetrics m) {
+    final before = m.extentBefore > 0.5, after = m.extentAfter > 0.5;
+    if (mounted && (before != _before || after != _after)) {
+      setState(() {
+        _before = before;
+        _after = after;
+      });
+    }
+  }
+
+  void _page(int dir) {
+    if (!_scroll.hasClients) return;
+    final p = _scroll.position;
+    final to = (p.pixels + dir * p.viewportDimension * 0.7).clamp(p.minScrollExtent, p.maxScrollExtent).toDouble();
+    final d = AppMotion.of(context).base;
+    if (d == Duration.zero) {
+      _scroll.jumpTo(to);
+    } else {
+      _scroll.animateTo(to, duration: d, curve: AppMotion.curve);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // the certificate fonts are plain assets (not pubspec fonts): registered the first time a studio shows (7.1;
+    // both designers show this toolbar). Idempotent: the registration runs once per app run.
+    ExportFonts.ensureCertFamilies();
     final c = context.colors;
+    final controller = widget.controller, leading = widget.leading, trailing = widget.trailing;
     return LayoutBuilder(builder: (context, box) {
-      final wide = box.maxWidth >= wideBreakpoint;
+      final width = box.maxWidth;
+      final wide = width >= widget.wideBreakpoint && _squeezedAt != width;
+      Widget cue(int dir) => DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.cardAll,
+              gradient: LinearGradient(
+                begin: dir > 0 ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
+                end: dir > 0 ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
+                colors: [c.cardBg.withValues(alpha: 0), c.cardBg, c.cardBg],
+                stops: const [0, .45, 1],
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(start: dir > 0 ? AppSpace.md : 0, end: dir > 0 ? 0 : AppSpace.md),
+              child: IconButton(
+                tooltip: translate(dir > 0 ? 'studio_scroll_more' : 'studio_scroll_back'),
+                onPressed: () => _page(dir),
+                icon: Icon(dir > 0 ? Icons.chevron_right_rounded : Icons.chevron_left_rounded, color: c.textDark),
+              ),
+            ),
+          );
       return DecoratedBox(
         decoration: BoxDecoration(
           color: c.cardBg,
           borderRadius: AppRadius.cardAll,
           border: Border.all(color: c.divider),
         ),
-        child: ListenableBuilder(
+        child: Stack(children: [
+          NotificationListener<ScrollMetricsNotification>(
+            onNotification: (n) {
+              final m = n.metrics;
+              if (wide && m.maxScrollExtent > 0.5) {
+                // the labelled bar does not fit this width: icons only
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _squeezedAt != width) setState(() => _squeezedAt = width);
+                });
+              } else {
+                _cues(m);
+              }
+              return false;
+            },
+            child: ListenableBuilder(
           listenable: controller,
           builder: (context, _) {
             final ctl = controller;
             return SingleChildScrollView(
+              controller: _scroll,
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xxs),
               child: Row(children: [
@@ -105,7 +197,11 @@ class StudioToolbar extends StatelessWidget {
               ]),
             );
           },
-        ),
+            ),
+          ),
+          if (_before) PositionedDirectional(start: 0, top: 0, bottom: 0, child: cue(-1)),
+          if (_after) PositionedDirectional(end: 0, top: 0, bottom: 0, child: cue(1)),
+        ]),
       );
     });
   }

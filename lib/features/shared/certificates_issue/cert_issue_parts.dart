@@ -1221,6 +1221,7 @@ class IssuedCertTile extends StatelessWidget {
     this.onCopyLink,
     this.onRevoke,
     this.onReissue,
+    this.onWord,
   });
 
   final IssuedCert cert;
@@ -1228,6 +1229,9 @@ class IssuedCertTile extends StatelessWidget {
   final VoidCallback? onCopyLink;
   final VoidCallback? onRevoke;
   final VoidCallback? onReissue;
+
+  /// Downloads the certificate as an editable Word file (cert_issue_word.dart).
+  final VoidCallback? onWord;
 
   @override
   Widget build(BuildContext context) {
@@ -1268,8 +1272,11 @@ class IssuedCertTile extends StatelessWidget {
             if (v == 'link') onCopyLink?.call();
             if (v == 'revoke') onRevoke?.call();
             if (v == 'reissue') onReissue?.call();
+            if (v == 'word') onWord?.call();
           },
           itemBuilder: (_) => [
+            if (onWord != null)
+              PopupMenuItem(value: 'word', child: _menuRow(Icons.description_outlined, 'ci_word'.tr)),
             if (onCopyLink != null)
               PopupMenuItem(value: 'link', child: _menuRow(Icons.link_rounded, 'ci_copy_link'.tr)),
             if (onReissue != null)

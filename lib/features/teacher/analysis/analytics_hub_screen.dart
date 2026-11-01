@@ -35,7 +35,7 @@ import '../home/teacher_models.dart';
 import 'attendance/teacher_attendance_screen.dart';
 import 'exam/teacher_exam_hub_screen.dart';
 import 'flags/teacher_read_flags_screen.dart';
-import 'package:flutter_education_app/design/app_charts.dart' show appChartPalette, appCompactNumber;
+import 'package:flutter_education_app/design/app_charts.dart' show appCompactNumber;
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader;
 import 'package:flutter_education_app/design/app_refresh.dart';
 

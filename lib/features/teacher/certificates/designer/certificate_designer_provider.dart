@@ -1197,8 +1197,11 @@ class CertificateDesignerProvider extends BaseProvider {
         restoredDraft = false;
         await _drafts.remove(d.id);
       } else {
-        // edited while the save was in flight: keep the working copy (it holds those edits) and stay dirty
+        // edited while the save was in flight: keep the working copy (it holds those edits) and stay dirty; the
+        // draft is written again on the NEW server version (the cancelled autosave held those edits, and a draft
+        // made on the old version would be dropped as outdated on the next open)
         loaded = CertDesign.fromJson(r);
+        _scheduleAutosave();
       }
       notifyListeners();
       return true;

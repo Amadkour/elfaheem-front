@@ -60,7 +60,7 @@ String _substitute(String template, Map<String, dynamic> vars) {
   final wrap = _arabic.hasMatch(template);
   return template.replaceAllMapped(_placeholder, (m) {
     final v = '${vars[m.group(1)] ?? ''}';
-    return wrap && v.isNotEmpty && !_arabic.hasMatch(v) ? '‪$v‬' : v;
+    return wrap && v.isNotEmpty && !_arabic.hasMatch(v) ? '\u202A$v\u202C' : v;
   });
 }
 

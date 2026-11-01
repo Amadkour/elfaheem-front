@@ -18,6 +18,8 @@ library;
 
 import 'package:flutter_education_app/core/app_time.dart';
 
+import 'export_watermark.dart';
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Conditional styling rules
 // ═════════════════════════════════════════════════════════════════════════════
@@ -278,7 +280,10 @@ class XlsxSheetOptions {
     this.dateFormat = 'yyyy-mm-dd',
     this.rtl,
     this.logoUrl = '',
-  }) : widths = widths ?? {};
+    this.font = '',
+    ExportWatermark? watermark,
+  })  : widths = widths ?? {},
+        watermark = watermark ?? ExportWatermark();
 
   /// The title band (title, then a line with the organization · date · rows) above the header row.
   bool titleRow;
@@ -302,6 +307,13 @@ class XlsxSheetOptions {
 
   /// A logo drawn at the top corner of the title band (an uploaded image URL).
   String logoUrl;
+
+  /// The sheet's font: a catalog id (export_fonts.dart), '' = Arial. Excel cannot embed fonts — the file names it
+  /// and the reader's Excel draws it when installed.
+  String font;
+
+  /// Printed behind the sheet as a header picture (export_watermark.dart).
+  final ExportWatermark watermark;
 
   bool rtlFor(String lang) => rtl ?? lang == 'ar';
 
@@ -329,6 +341,8 @@ class XlsxSheetOptions {
       dateFormat: xlsxDateFormats.contains(j['date_format']) ? '${j['date_format']}' : 'yyyy-mm-dd',
       rtl: j['rtl'] is bool ? j['rtl'] as bool : null,
       logoUrl: '${j['logo_url'] ?? ''}',
+      font: '${j['font'] ?? ''}',
+      watermark: j['watermark'] is Map ? ExportWatermark.fromJson((j['watermark'] as Map).cast<String, dynamic>()) : null,
     );
   }
 
@@ -350,6 +364,8 @@ class XlsxSheetOptions {
         'datetime_format': '$dateFormat hh:mm',
         'rtl': ?rtl,
         if (logoUrl.isNotEmpty) 'logo_url': logoUrl,
+        if (font.isNotEmpty) 'font': font,
+        if (watermark.visible) 'watermark': watermark.toJson(),
       };
 
   XlsxSheetOptions copy() => XlsxSheetOptions.fromJson(toJson());
@@ -359,9 +375,10 @@ class XlsxSheetOptions {
 /// language and the starter theme it came from. `totals` is also written as the list of aggregated column keys
 /// (the server's renderer reads that list).
 class ExportTemplateOptions {
-  ExportTemplateOptions({XlsxSheetOptions? sheet, this.groupBy, this.showTotals = true, Map<String, String>? numerals, this.theme = 'standard'})
+  ExportTemplateOptions({XlsxSheetOptions? sheet, this.groupBy, this.showTotals = true, Map<String, String>? numerals, this.theme = 'standard', Map<String, String>? fonts})
       : sheet = sheet ?? XlsxSheetOptions(),
-        numerals = numerals ?? {};
+        numerals = numerals ?? {},
+        fonts = fonts ?? {};
 
   final XlsxSheetOptions sheet;
   /// The group column; '' = "No grouping" chosen on purpose, null = not chosen (the page's default applies).
@@ -371,6 +388,10 @@ class ExportTemplateOptions {
 
   /// standard | clean | formal | colorful
   String theme;
+
+  /// Per language: the file's catalog font (export_fonts.dart). The server's renderer ignores it (it prints with
+  /// its own font), the app applies it.
+  final Map<String, String> fonts;
 
   factory ExportTemplateOptions.fromJson(Map<String, dynamic> j) => ExportTemplateOptions(
         sheet: XlsxSheetOptions.fromJson(j),
@@ -382,6 +403,7 @@ class ExportTemplateOptions {
             for (final e in (j['numerals'] as Map).entries) '${e.key}': ExportNumerals.parse(e.value).name,
         },
         theme: const ['standard', 'clean', 'formal', 'colorful'].contains(j['theme']) ? '${j['theme']}' : 'standard',
+        fonts: exportFontPrefs(j['fonts']),
       );
 
   /// [totalKeys]: the exported columns that aggregate (written when [showTotals]).
@@ -392,8 +414,17 @@ class ExportTemplateOptions {
         'totals': showTotals ? totalKeys : const <String>[],
         if (numerals.isNotEmpty) 'numerals': numerals,
         'theme': theme,
+        if (fonts.isNotEmpty) 'fonts': fonts,
       };
 }
+
+/// A per-language font map (`{"ar": "amiri", "en": "playfair"}`) from JSON: only ar / en keys and plausible ids
+/// (lower-case letters, digits, '_'); an id the catalog lacks falls back to Tajawal when it is used.
+Map<String, String> exportFontPrefs(Object? raw) => {
+      if (raw is Map)
+        for (final e in raw.entries)
+          if ((e.key == 'ar' || e.key == 'en') && RegExp(r'^[a-z0-9_]{1,40}$').hasMatch('${e.value}')) '${e.key}': '${e.value}',
+    };
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  File names and page keys

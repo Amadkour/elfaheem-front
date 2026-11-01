@@ -903,6 +903,8 @@ class ExportSheetPreview extends StatelessWidget {
     double wOf(int k) => ((sheet.widths[cols[k].id] ?? widths[k]) * 6.2).clamp(44, 300).toDouble();
     final rtl = sheet.rtlFor(e.rtl ? 'ar' : 'en');
     final fs = (sheet.fontSize + 1).clamp(9, 16).toDouble();
+    // the sheet's catalog font (Excel names it), else the document font
+    final family = sheet.font.isEmpty ? _sheetFont : exportFlutterFont(sheet.font);
     final line = exportColor(sheet.borderColor);
     String digits(String s) => exportDigits(s, numerals);
     Widget cell(String text, double w, {Color? bg, Color? ink, bool bold = false, TextAlign align = TextAlign.start, bool letter = false}) => Container(
@@ -920,7 +922,7 @@ class ExportSheetPreview extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: align,
-                style: TextStyle(fontFamily: _sheetFont, fontSize: letter ? 10.5 : fs, height: 1.1, fontWeight: bold ? FontWeight.w700 : FontWeight.w400, color: ink ?? const Color(0xFF1F2933))),
+                style: TextStyle(fontFamily: family, fontSize: letter ? 10.5 : fs, height: 1.1, fontWeight: bold ? FontWeight.w700 : FontWeight.w400, color: ink ?? const Color(0xFF1F2933))),
           ),
         );
     TextAlign alignOf(AppExportColumn col) => switch (col.resolvedAlign) { AppColAlign.end => TextAlign.end, AppColAlign.center => TextAlign.center, _ => TextAlign.start };
@@ -941,7 +943,7 @@ class ExportSheetPreview extends StatelessWidget {
           alignment: AlignmentDirectional.centerStart,
           child: Row(children: [
             if (sheet.logoUrl.isNotEmpty) ...[Icon(Icons.image_outlined, size: 18, color: exportColor(onColorHex(brand))), const SizedBox(width: 6)],
-            Expanded(child: Text(digits(title.replaceAll('{{title}}', e.title).replaceAll(RegExp(r'\{\{[a-z_]+\}\}'), '…')), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: _sheetFont, fontSize: 15, fontWeight: FontWeight.w700, color: exportColor(onColorHex(brand))))),
+            Expanded(child: Text(digits(title.replaceAll('{{title}}', e.title).replaceAll(RegExp(r'\{\{[a-z_]+\}\}'), '…')), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: family, fontSize: 15, fontWeight: FontWeight.w700, color: exportColor(onColorHex(brand))))),
           ]),
         ),
       ]));

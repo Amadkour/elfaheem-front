@@ -182,8 +182,8 @@ class GovSubmitForm extends StatelessWidget {
       if (attachments.isNotEmpty) ...[GovAttachmentChips(attachments: attachments, onRemove: onRemoveAttachment), const SizedBox(height: 6)],
       Wrap(spacing: 6, runSpacing: 6, children: [
         ActionChip(
-          avatar: uploading ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_rounded, size: 16, color: c.primary),
-          label: Text(t('إضافة ملف', 'Add file'), style: appText(12, w: FontWeight.w700, c: c.primary)),
+          avatar: uploading ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_rounded, size: 16, color: appInk(context, c.primary)),
+          label: Text(t('إضافة ملف', 'Add file'), style: appText(12, w: FontWeight.w700, c: appInk(context, c.primary))),
           onPressed: uploading || attachments.length >= 10 ? null : onAddAttachment,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -254,6 +254,8 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
         _entity = e;
         _category = category;
       });
+    } else if (_forMember != null) {
+      setState(() => _forMember = null); // the entity is gone: so is the member picked for it
     }
   }
 
@@ -410,6 +412,11 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
                 )
               : null,
           onEntity: (e) => setState(() {
+            // the member list is per entity: a member picked for another one is not kept
+            if (e?.id != _entity?.id) {
+              _forMember = null;
+              _forErrors = const {};
+            }
             _entity = e;
             _category = null;
             _toCouncil = false;

@@ -3,6 +3,7 @@
 // signatures keep three images, the autosaved local draft, paper sizes, layers (lock, name, aspect lock, rotation)
 // on the studio engine. The provider talks to an in-memory server that stores what it is sent, like the real one
 // (tests/org_v2/cert_studio.py checks the real server side of the same contract).
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' show Offset, Rect, Size;
@@ -54,6 +55,22 @@ class _CertServer implements ApiClient {
       return Future<dynamic>.value({'url': 'https://cdn.test/img-${++_uploads}.png', 'width': 400, 'height': 160});
     }
     return Future<dynamic>.error(StateError('unexpected ${i.memberName} $path'));
+  }
+}
+
+/// A server whose save waits for [gate] (an edit can be made while the save travels).
+class _SlowSaveServer extends _CertServer {
+  _SlowSaveServer(super.design);
+
+  Completer<void>? gate;
+
+  @override
+  dynamic noSuchMethod(Invocation i) {
+    final g = gate;
+    if (g != null && i.memberName == #post && '${i.positionalArguments.first}'.endsWith('/save')) {
+      return g.future.then((_) => super.noSuchMethod(i));
+    }
+    return super.noSuchMethod(i);
   }
 }
 
@@ -272,6 +289,31 @@ void main() {
       await third.loadDesign(42);
       expect(await third.restoreDraftIfAny(), isFalse);
       expect(store.data.containsKey(42), isFalse);
+    });
+
+    // QA (agent E): an edit typed while a save was in flight had its autosave cancelled by the save's answer, so
+    // closing the app before the next edit lost it.
+    test('an edit made while a save is in flight is autosaved on the new server version', () async {
+      final store = CertMemoryDraftStore();
+      final server = _SlowSaveServer(_design());
+      final p = CertificateDesignerProvider(api: server, drafts: store, autosaveDelay: const Duration(milliseconds: 20));
+      await p.loadDesign(42);
+      p.updateField('title', (f) => f.copyWith(size: 50));
+      server.gate = Completer<void>();
+      final saving = p.save();
+      p.updateField('title', (f) => f.copyWith(size: 70)); // typed while the save travels
+      server.gate!.complete();
+      expect(await saving, isTrue);
+      expect(p.dirty, isTrue, reason: 'the edit after the save is not saved yet');
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(store.data.containsKey(42), isTrue, reason: 'the edit is kept on the device');
+
+      final reopened = CertificateDesignerProvider(api: server, drafts: store);
+      await reopened.loadDesign(42);
+      expect(await reopened.restoreDraftIfAny(), isTrue, reason: 'the draft is on the version the server now has');
+      expect(reopened.fieldsOf('ar').first.size, 70);
+      p.dispose();
+      reopened.dispose();
     });
   });
 

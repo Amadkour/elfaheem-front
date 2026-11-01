@@ -552,9 +552,11 @@ String xmlEsc(Object? v) => '${v ?? ''}'
     .replaceAll('"', '&quot;')
     .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
 
-Uint8List zipFiles(Map<String, String> files) {
+/// A zip of the text [files] (and the [binary] ones: embedded fonts, pictures).
+Uint8List zipFiles(Map<String, String> files, {Map<String, List<int>> binary = const {}}) {
   final a = Archive();
   files.forEach((name, body) => a.add(ArchiveFile.bytes(name, utf8.encode(body))));
+  binary.forEach((name, body) => a.add(ArchiveFile.bytes(name, body)));
   return ZipEncoder().encodeBytes(a);
 }
 

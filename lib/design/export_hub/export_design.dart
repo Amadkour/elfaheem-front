@@ -19,6 +19,10 @@ import 'dart:math' as math;
 import 'package:flutter_education_app/core/app_time.dart';
 
 import '../../features/admin/admin_common.dart' show asMap, asMapList, t;
+import '../export/export_fonts.dart' show ExportFonts;
+import '../export/export_watermark.dart';
+
+export '../export/export_watermark.dart';
 import '../export/export_studio_model.dart' show ExportNumerals, ExportRule;
 import '../export/table_export_model.dart' show AppColType, AppExportColumn, AppTableExport, AppTotal, cellText;
 
@@ -29,17 +33,14 @@ import '../export/table_export_model.dart' show AppColType, AppExportColumn, App
 const exportBlockKinds = ['text', 'logo', 'signature', 'table', 'items', 'line'];
 const exportFlowKinds = ['table', 'items'];
 const exportPageSizes = ['A4', 'Letter', 'A3'];
-const exportFontFamilies = ['tajawal', 'bahij', 'plex'];
+/// Every font a design may name: the export font catalog (= the certificate studio's fonts + Bahij, IBM Plex).
+List<String> get exportFontFamilies => ExportFonts.ids;
 const exportTableStyles = ['grid', 'zebra', 'minimal'];
 const exportVotePositions = ['beside', 'below', 'both'];
 const exportVoteStyles = ['bar', 'pill', 'text'];
 const exportModules = ['items', 'complaints', 'requests', 'council', 'minutes', 'grades', 'table'];
 
-Map<String, String> exportFontLabels() => {
-      'tajawal': t('تجوال', 'Tajawal'),
-      'bahij': t('بهيج', 'Bahij'),
-      'plex': t('IBM Plex', 'IBM Plex'),
-    };
+Map<String, String> exportFontLabels([String lang = 'ar']) => {for (final f in ExportFonts.sortedFor(lang)) f.id: f.label};
 
 Map<String, String> exportBlockLabels() => {
       'text': t('نص', 'Text'),
@@ -296,8 +297,9 @@ class ExportPage {
 }
 
 class ExportTableStyle {
-  ExportTableStyle({this.style = 'zebra', this.headerColor = exportBrand, this.headerTextColor = 'FFFFFF', this.fontSize = 10, List<String>? columns})
-      : columns = columns ?? [];
+  ExportTableStyle({this.style = 'zebra', this.headerColor = exportBrand, this.headerTextColor = 'FFFFFF', this.fontSize = 10, List<String>? columns, Map<String, double>? widths})
+      : columns = columns ?? [],
+        widths = widths ?? {};
 
   String style, headerColor, headerTextColor;
   double fontSize;
@@ -305,12 +307,20 @@ class ExportTableStyle {
   /// Column ids printed, in order. Empty = every dataset column.
   List<String> columns;
 
+  /// Column id → relative width; a missing column gets export_layout.exportColumnWeight. Empty = all automatic.
+  final Map<String, double> widths;
+
   factory ExportTableStyle.fromJson(Map<String, dynamic> j) => ExportTableStyle(
         style: _pick(j['style'], exportTableStyles, 'zebra'),
         headerColor: hexOf(j['header_color'], exportBrand),
         headerTextColor: hexOf(j['header_text_color'], 'FFFFFF'),
         fontSize: _d(j['font_size'], 10).clamp(5, 24).toDouble(),
         columns: [for (final c in (j['columns'] as List? ?? const [])) '$c'],
+        widths: {
+          if (j['widths'] is Map)
+            for (final e in (j['widths'] as Map).entries)
+              if (_d(e.value, 0) > 0) '${e.key}': _d(e.value, 0).clamp(.05, 100).toDouble(),
+        },
       );
 
   Map<String, dynamic> toJson() => {
@@ -319,6 +329,7 @@ class ExportTableStyle {
         'header_text_color': hexJson(headerTextColor),
         'font_size': fontSize,
         'columns': columns,
+        if (widths.isNotEmpty) 'widths': widths,
       };
 }
 
@@ -379,28 +390,6 @@ class ExportFrame {
   Map<String, dynamic> toJson() => {'style': style, 'width': width, 'color': hexJson(color), 'radius': radius, 'inset': inset};
 }
 
-/// Diagonal text behind the content of every page ("DRAFT", "Confidential"); empty text = none.
-class ExportWatermark {
-  ExportWatermark({this.text = '', this.color = '94A3B8', this.opacity = .14, this.size = 64, this.angle = -40});
-
-  String text, color;
-
-  /// 0 – 1, the font size in points and the angle in degrees (negative = rising to the end of the line).
-  double opacity, size, angle;
-
-  bool get visible => text.trim().isNotEmpty && opacity > 0;
-
-  factory ExportWatermark.fromJson(Map<String, dynamic> j) => ExportWatermark(
-        text: '${j['text'] ?? ''}',
-        color: hexOf(j['color'], '94A3B8'),
-        opacity: _d(j['opacity'], .14).clamp(0, 1).toDouble(),
-        size: _d(j['size'], 64).clamp(12, 160).toDouble(),
-        angle: _d(j['angle'], -40).clamp(-90, 90).toDouble(),
-      );
-
-  Map<String, dynamic> toJson() => {'text': text, 'color': hexJson(color), 'opacity': opacity, 'size': size, 'angle': angle};
-}
-
 /// One print area: [blocks] (static, top to bottom) followed by [flow] (the table / items block, or null at the end).
 class ExportSegment {
   const ExportSegment(this.blocks, this.flow, this.top);
@@ -443,7 +432,7 @@ class ExportDesign {
   final ExportPage page;
   bool rtl;
 
-  /// tajawal | bahij | plex — the page font (blocks may override the family).
+  /// A catalog font id (export_fonts.dart) — the page font (blocks may override the family).
   String fontFamily;
   double fontSize, lineSpacing;
   String fontColor;

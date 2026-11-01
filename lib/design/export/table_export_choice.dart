@@ -4,7 +4,7 @@
 // test/export/export_studio_test.dart).
 library;
 
-import 'export_studio_model.dart' show ExportNumerals;
+import 'export_studio_model.dart' show ExportNumerals, exportFontPrefs;
 import 'table_export_model.dart';
 
 /// The flow state of one table: a format, every column id in the user's order, the selected ones, and the Export
@@ -21,8 +21,10 @@ class AppExportChoice {
     this.totals = true,
     this.rows = 'all',
     this.theme = 'standard',
+    Map<String, String>? fonts,
   })  : labels = labels ?? {},
-        numerals = numerals ?? {};
+        numerals = numerals ?? {},
+        fonts = fonts ?? {};
 
   AppExportFormat format;
   List<String> order;
@@ -48,6 +50,12 @@ class AppExportChoice {
 
   /// The starter theme of a PDF / Word design: standard | clean | formal | colorful.
   String theme;
+
+  /// Per language: the file's font, a catalog id (export_fonts.dart); missing = the layout's own font.
+  final Map<String, String> fonts;
+
+  /// The chosen font of [l], or '' (the layout's own).
+  String fontFor(String l) => fonts[l] ?? '';
 
   /// Exported ids in output order.
   List<String> get columns => [for (final id in order) if (selected.contains(id)) id];
@@ -111,6 +119,7 @@ class AppExportChoice {
         't': totals,
         'r': rows,
         'th': theme,
+        if (fonts.isNotEmpty) 'fo': fonts,
       };
 
   /// Defaults of [e], overlaid with a remembered [json] (unknown ids dropped, new columns at their declared place).
@@ -171,6 +180,7 @@ class AppExportChoice {
     if (json['r'] == 'selected' && (e.selectedRows?.isNotEmpty ?? false)) choice.rows = 'selected';
     final th = json['th'];
     if (const ['standard', 'clean', 'formal', 'colorful'].contains(th)) choice.theme = '$th';
+    choice.fonts.addAll(exportFontPrefs(json['fo']));
     return choice;
   }
 }

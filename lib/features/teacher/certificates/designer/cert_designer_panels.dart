@@ -594,13 +594,25 @@ class _CertFieldPropsState extends State<CertFieldProps> {
     final square = f.isSquare;
     final h0 = f.h <= 0 ? (f.w * 0.5).roundToDouble() : f.h;
     final lock = f.keepsAspect;
+    // a locked layer cannot be moved, resized or turned from here either (like on the canvas)
+    final free = !f.locked;
     return StudioPropSection(title: 'certd_position'.tr, children: [
+      if (f.locked)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: Row(children: [
+            Icon(Icons.lock_rounded, size: 16, color: context.colors.textMedium),
+            const SizedBox(width: AppSpace.xxs),
+            Expanded(child: Text('certd_locked_position'.tr, style: AppType.meta(context))),
+          ]),
+        ),
       _pair(
         StudioStepper(
           label: 'X',
           value: f.x,
           min: -300,
           max: 1500,
+          enabled: free,
           onChanged: (v) => _edit((x) => x.copyWith(x: v), label: 'move'),
         ),
         StudioStepper(
@@ -608,6 +620,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
           value: f.y,
           min: -300,
           max: 1500,
+          enabled: free,
           onChanged: (v) => _edit((x) => x.copyWith(y: v), label: 'move'),
         ),
       ),
@@ -618,6 +631,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
             value: f.w,
             min: 16,
             max: 1000,
+            enabled: free,
             onChanged: (v) => _edit(
                 (x) => lock && f.w > 0 ? x.copyWith(w: v, h: (h0 * v / f.w * 10).roundToDouble() / 10) : x.copyWith(w: v),
                 label: 'resize'),
@@ -627,6 +641,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
             value: h0,
             min: 10,
             max: 1000,
+            enabled: free,
             onChanged: (v) => _edit(
                 (x) => lock && h0 > 0 ? x.copyWith(h: v, w: (f.w * v / h0 * 10).roundToDouble() / 10) : x.copyWith(h: v),
                 label: 'resize'),
@@ -638,6 +653,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
           value: f.w,
           min: square ? 40 : 20,
           max: 1000,
+          enabled: free,
           onChanged: (v) => _edit((x) => x.copyWith(w: v, h: f.kind == CertFieldKind.photo ? v : null), label: 'resize'),
         ),
       if (f.isImage)
@@ -658,15 +674,16 @@ class _CertFieldPropsState extends State<CertFieldProps> {
             min: -180,
             max: 180,
             suffix: '°',
+            enabled: free,
             onChanged: (v) => _edit((x) => x.copyWith(rotation: v), label: 'rotate'),
           ),
         ),
         const SizedBox(width: AppSpace.xxs),
         _iconAction(Icons.rotate_90_degrees_cw_outlined, 'certd_rotate_90'.tr,
-            () => _edit((x) => x.copyWith(rotation: _turn90(x.rotation)), label: 'rotate', coalesce: false)),
+            free ? () => _edit((x) => x.copyWith(rotation: _turn90(x.rotation)), label: 'rotate', coalesce: false) : null),
         if (f.rotation != 0)
           _iconAction(Icons.restart_alt_rounded, 'certd_rotation_reset'.tr,
-              () => _edit((x) => x.copyWith(rotation: 0), label: 'rotate', coalesce: false)),
+              free ? () => _edit((x) => x.copyWith(rotation: 0), label: 'rotate', coalesce: false) : null),
       ]),
     ]);
   }
@@ -680,7 +697,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
     return n;
   }
 
-  Widget _iconAction(IconData icon, String label, VoidCallback onTap) => IconButton(
+  Widget _iconAction(IconData icon, String label, VoidCallback? onTap) => IconButton(
         tooltip: label,
         constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
         onPressed: widget.enabled ? onTap : null,
@@ -1239,7 +1256,8 @@ class _CertFieldPropsState extends State<CertFieldProps> {
           if (widget.onDuplicate != null) cmd(Icons.copy_rounded, 'certd_duplicate'.tr, widget.onDuplicate),
           if (widget.onForward != null) cmd(Icons.flip_to_front_rounded, 'certd_forward'.tr, widget.onForward),
           if (widget.onBackward != null) cmd(Icons.flip_to_back_rounded, 'certd_backward'.tr, widget.onBackward),
-          if (widget.onDelete != null) cmd(Icons.delete_outline_rounded, 'certd_delete'.tr, widget.onDelete, danger: true),
+          if (widget.onDelete != null && !f.locked)
+            cmd(Icons.delete_outline_rounded, 'certd_delete'.tr, widget.onDelete, danger: true),
         ]),
       ],
     ]);
@@ -1322,6 +1340,9 @@ class CertToolsPanel extends StatelessWidget {
 
 /// Every element of the layout, the TOP one first (like a layers panel): tap to select, eye to show / hide, drag
 /// to reorder, bin to delete.
+/// Below this width the layers list draws slim actions and folds the selected row's lock / delete into a menu.
+const double kCertLayersCompactWidth = 300;
+
 class CertLayersList extends StatelessWidget {
   const CertLayersList({
     super.key,
@@ -1387,14 +1408,33 @@ class CertLayersList extends StatelessWidget {
             onTap: () => onSelect(f.id),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: AppTouch.min),
-              child: Row(children: [
+              child: LayoutBuilder(builder: (context, box) {
+                // A narrow list (the desktop's 224 px column): slimmer buttons, and the selected row's lock / delete
+                // go into one "more" menu, so the name keeps its room beside the actions.
+                final compact = box.maxWidth < kCertLayersCompactWidth;
+                final canLock = enabled && onToggleLock != null;
+                final canDelete = enabled && onDelete != null && !f.locked;
+                final menu = compact && sel && (canLock || canDelete);
+                final lockLabel = (f.locked ? 'certd_unlock' : 'certd_lock').tr;
+                final danger = ensureContrast(c.danger, [c.cardBg]);
+                Widget action({required String tooltip, required VoidCallback onPressed, required Widget icon}) =>
+                    compact
+                        ? IconButton(
+                            tooltip: tooltip,
+                            onPressed: onPressed,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(width: 34, height: AppTouch.min),
+                            icon: icon,
+                          )
+                        : IconButton(tooltip: tooltip, onPressed: onPressed, icon: icon);
+                return Row(children: [
                 if (enabled && onReorder != null)
                   ReorderableDragStartListener(
                     index: i,
                     child: Tooltip(
                       message: 'certd_drag_reorder'.tr,
                       child: SizedBox(
-                        width: 36,
+                        width: compact ? 28 : 36,
                         height: AppTouch.min,
                         child: Icon(Icons.drag_indicator_rounded, size: 18, color: c.textLight),
                       ),
@@ -1419,36 +1459,70 @@ class CertLayersList extends StatelessWidget {
                       textDirection: strong.isEmpty ? null : (ar ? TextDirection.rtl : TextDirection.ltr),
                       textAlign: rtl ? TextAlign.right : TextAlign.left,
                       style: appText(13,
-                          w: sel ? FontWeight.w600 : FontWeight.w500, c: f.visible ? c.textDark : c.textLight),
+                              w: sel ? FontWeight.w600 : FontWeight.w500, c: f.visible ? c.textDark : c.textLight)
+                          .copyWith(fontFamilyFallback: AppFonts.fallback),
                     );
                   }),
                 ),
-                if (enabled && onToggleLock != null && (f.locked || sel))
-                  IconButton(
-                    tooltip: (f.locked ? 'certd_unlock' : 'certd_lock').tr,
+                if (!menu && canLock && (f.locked || sel))
+                  action(
+                    tooltip: lockLabel,
                     onPressed: () => onToggleLock!(f.id),
                     icon: Icon(f.locked ? Icons.lock_rounded : Icons.lock_open_rounded,
                         size: 18, color: f.locked ? c.textMedium : c.textLight),
                   )
                 else if (f.locked)
                   SizedBox(
-                    width: AppTouch.min,
+                    width: compact ? 24 : AppTouch.min,
                     child: Icon(Icons.lock_rounded, size: 16, color: c.textLight, semanticLabel: 'certd_locked'.tr),
                   ),
                 if (enabled && onToggleVisible != null)
-                  IconButton(
+                  action(
                     tooltip: (f.visible ? 'pl_hide' : 'pl_show').tr,
                     onPressed: () => onToggleVisible!(f.id),
                     icon: Icon(f.visible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                         size: 18, color: f.visible ? c.textLight : c.textMedium),
                   ),
-                if (enabled && onDelete != null && sel && !f.locked)
-                  IconButton(
+                if (menu)
+                  PopupMenuButton<String>(
+                    tooltip: 'more'.tr,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 160),
+                    onSelected: (v) => v == 'lock' ? onToggleLock!(f.id) : onDelete!(f.id),
+                    itemBuilder: (_) => [
+                      if (canLock)
+                        PopupMenuItem<String>(
+                          value: 'lock',
+                          child: Row(children: [
+                            Icon(f.locked ? Icons.lock_open_rounded : Icons.lock_rounded, size: 20, color: c.textMedium),
+                            const SizedBox(width: AppSpace.sm),
+                            Flexible(child: Text(lockLabel, style: appText(14, c: c.textDark))),
+                          ]),
+                        ),
+                      if (canDelete)
+                        PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(children: [
+                            Icon(Icons.delete_outline_rounded, size: 20, color: danger),
+                            const SizedBox(width: AppSpace.sm),
+                            Flexible(child: Text('certd_delete'.tr, style: appText(14, c: danger))),
+                          ]),
+                        ),
+                    ],
+                    child: SizedBox(
+                      width: 34,
+                      height: AppTouch.min,
+                      child: Icon(Icons.more_vert_rounded, size: 18, color: c.textMedium),
+                    ),
+                  )
+                else if (enabled && onDelete != null && sel && !f.locked)
+                  action(
                     tooltip: 'certd_delete'.tr,
                     onPressed: () => onDelete!(f.id),
-                    icon: Icon(Icons.delete_outline_rounded, size: 18, color: ensureContrast(c.danger, [c.cardBg])),
+                    icon: Icon(Icons.delete_outline_rounded, size: 18, color: danger),
                   ),
-              ]),
+              ]);
+              }),
             ),
           ),
         );

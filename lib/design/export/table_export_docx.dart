@@ -4,22 +4,28 @@
 // whose header row repeats on every page, zebra rows, status cells, group rows with subtotals, a totals row, and a
 // "Page x of y" footer. Landscape when the table is wide; RTL (bidi paragraphs, bidiVisual table) when Arabic.
 // Export Studio options: conditional styling rules (cell fill / colour / bold / label, hidden rows) and
-// Arabic-Indic digits in every printed text (the PAGE / NUMPAGES fields stay fields).
+// Arabic-Indic digits in every printed text (the PAGE / NUMPAGES fields stay fields). A catalog font
+// (export_fonts.dart) is embedded in the file (docx_fonts.dart); without one the text is Arial, as before.
 library;
 
 import 'dart:typed_data';
 
+import 'docx_fonts.dart';
 import 'export_studio_model.dart';
 import 'table_export_model.dart';
 
 class _Doc {
-  _Doc(this.rtl, [this.numerals = ExportNumerals.western]);
+  _Doc(this.rtl, [this.numerals = ExportNumerals.western, this.fonts, this.fontId]);
   final bool rtl;
   final ExportNumerals numerals;
+  final DocxFonts? fonts;
+  final String? fontId;
+
+  String font({bool bold = false}) => (fonts ?? DocxFonts.empty).rPr(fontId, bold: bold);
 
   String run(String text, {bool bold = false, String color = exportInkHex, int halfPt = 18, bool italic = false}) {
     final lines = exportDigits(text, numerals).split('\n');
-    final rpr = '<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>${bold ? '<w:b/><w:bCs/>' : ''}${italic ? '<w:i/><w:iCs/>' : ''}'
+    final rpr = '<w:rPr>${font(bold: bold)}${italic ? '<w:i/><w:iCs/>' : ''}'
         '<w:color w:val="$color"/><w:sz w:val="$halfPt"/><w:szCs w:val="$halfPt"/>${rtl ? '<w:rtl/>' : ''}</w:rPr>';
     return [for (var i = 0; i < lines.length; i++) '<w:r>$rpr${i > 0 ? '<w:br/>' : ''}<w:t xml:space="preserve">${xmlEsc(lines[i])}</w:t></w:r>'].join();
   }
@@ -47,11 +53,14 @@ class _Doc {
 /// Body font size (half points) for [columns] columns.
 int docxFontHalfPt(int columns) => columns <= 5 ? 20 : columns <= 8 ? 18 : columns <= 11 ? 16 : columns <= 14 ? 14 : 12;
 
-/// [e] as a Word document. [rules] style the matching cells or leave rows out; [numerals] = the printed digits.
-Uint8List appTableDocx(AppTableExport e, {List<String>? columns, List<ExportRule> rules = const [], ExportNumerals numerals = ExportNumerals.western}) {
+/// [e] as a Word document. [rules] style the matching cells or leave rows out; [numerals] = the printed digits;
+/// [fonts] + [fontId]: the catalog font of every run, embedded (null = Arial).
+Uint8List appTableDocx(AppTableExport e,
+    {List<String>? columns, List<ExportRule> rules = const [], ExportNumerals numerals = ExportNumerals.western, DocxFonts? fonts, String? fontId}) {
   final visible = exportVisibleRows(rules, e.rows);
   if (!identical(visible, e.rows)) e = e.copyWith(rows: visible);
-  final w = _Doc(e.rtl, numerals);
+  final embed = fontId != null && (fonts?.has(fontId) ?? false) ? fonts! : DocxFonts.empty;
+  final w = _Doc(e.rtl, numerals, embed, fontId);
   final cols = e.resolve(columns);
   final brand = brandOf(e);
   final head = shadeHex(brand, .18);
@@ -151,7 +160,7 @@ Uint8List appTableDocx(AppTableExport e, {List<String>? columns, List<ExportRule
   }
 
   final pageWord = e.rtl ? 'صفحة' : 'Page', ofWord = e.rtl ? 'من' : 'of';
-  String field(String code) => '<w:fldSimple w:instr=" $code "><w:r><w:rPr><w:sz w:val="16"/><w:szCs w:val="16"/>${e.rtl ? '<w:rtl/>' : ''}</w:rPr><w:t>1</w:t></w:r></w:fldSimple>';
+  String field(String code) => '<w:fldSimple w:instr=" $code "><w:r><w:rPr>${w.font()}<w:sz w:val="16"/><w:szCs w:val="16"/>${e.rtl ? '<w:rtl/>' : ''}</w:rPr><w:t>1</w:t></w:r></w:fldSimple>';
   final footer = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
       '<w:p><w:pPr>${e.rtl ? '<w:bidi/>' : ''}<w:pBdr><w:top w:val="single" w:sz="4" w:space="4" w:color="$exportLineHex"/></w:pBdr><w:jc w:val="center"/></w:pPr>'
@@ -171,7 +180,7 @@ Uint8List appTableDocx(AppTableExport e, {List<String>? columns, List<ExportRule
         '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
         '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
         '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>'
-        '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>',
+        '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>${embed.contentTypes}</Types>',
     '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
@@ -180,12 +189,12 @@ Uint8List appTableDocx(AppTableExport e, {List<String>? columns, List<ExportRule
     'word/_rels/document.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
-        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>',
+        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>${embed.documentRels}</Relationships>',
     'word/styles.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr>'
-        '<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="18"/><w:szCs w:val="18"/>${e.rtl ? '<w:lang w:bidi="ar-SA"/>' : ''}</w:rPr></w:rPrDefault>'
+        '${w.font()}<w:sz w:val="18"/><w:szCs w:val="18"/>${e.rtl ? '<w:lang w:bidi="ar-SA"/>' : ''}</w:rPr></w:rPrDefault>'
         '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>',
     'word/footer1.xml': footer,
     'word/document.xml': doc,
-  });
+  }, binary: embed.parts());
 }

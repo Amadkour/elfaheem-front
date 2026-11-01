@@ -590,8 +590,12 @@ String orgFileUrl(String? url) {
 const _imageExt = {'png', 'jpg', 'jpeg', 'webp', 'gif'};
 
 /// Pick a file and upload it. Images go through the app cropper first (zoom, circle, smaller size).
+/// [errorText] turns a refused upload into the toast's text (default: the server's message).
 Future<Map<String, dynamic>?> orgPickAndUpload(String uploadPath,
-    {List<String>? extensions, BuildContext? context, CropShape cropShape = CropShape.square}) async {
+    {List<String>? extensions,
+    BuildContext? context,
+    CropShape cropShape = CropShape.square,
+    String Function(ApiException e)? errorText}) async {
   final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: extensions ?? orgFileExtensions);
   if (f == null) return null;
   var name = f.name;
@@ -611,7 +615,7 @@ Future<Map<String, dynamic>?> orgPickAndUpload(String uploadPath,
     out['url'] = orgFileUrl('${out['url'] ?? ''}');
     return out;
   } on ApiException catch (e) {
-    toast(e.message, error: true);
+    toast(errorText?.call(e) ?? e.message, error: true);
     return null;
   }
 }

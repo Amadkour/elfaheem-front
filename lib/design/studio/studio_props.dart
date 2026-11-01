@@ -211,6 +211,7 @@ class StudioStepper extends StatefulWidget {
     this.step = 1,
     this.decimals = 0,
     this.suffix,
+    this.enabled = true,
   });
 
   final double value;
@@ -219,6 +220,9 @@ class StudioStepper extends StatefulWidget {
   final double min, max, step;
   final int decimals;
   final String? suffix;
+
+  /// False: the value shows read-only (no typing, no − / +), e.g. the position of a locked layer.
+  final bool enabled;
 
   @override
   State<StudioStepper> createState() => _StudioStepperState();
@@ -257,6 +261,7 @@ class _StudioStepperState extends State<StudioStepper> {
   }
 
   void _set(double v) {
+    if (!widget.enabled) return;
     final n = _clamp(v);
     _text.text = _fmt(n);
     if (n != widget.value) widget.onChanged(n);
@@ -290,16 +295,17 @@ class _StudioStepperState extends State<StudioStepper> {
       decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
       child: Row(children: [
         btn(Icons.remove_rounded, translate('studio_decrease'),
-            widget.value > widget.min ? () => _set(widget.value - widget.step) : null),
+            widget.enabled && widget.value > widget.min ? () => _set(widget.value - widget.step) : null),
         Expanded(
           child: TextField(
             controller: _text,
             focusNode: _focus,
+            enabled: widget.enabled,
             textAlign: TextAlign.center,
             keyboardType: TextInputType.numberWithOptions(decimal: widget.decimals > 0),
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,\-]'))],
             onSubmitted: _submit,
-            style: appText(14, w: FontWeight.w600, c: c.textDark)
+            style: appText(14, w: FontWeight.w600, c: widget.enabled ? c.textDark : c.textMedium)
                 .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
             decoration: InputDecoration(
               isDense: true,
@@ -314,7 +320,7 @@ class _StudioStepperState extends State<StudioStepper> {
           ),
         ),
         btn(Icons.add_rounded, translate('studio_increase'),
-            widget.value < widget.max ? () => _set(widget.value + widget.step) : null),
+            widget.enabled && widget.value < widget.max ? () => _set(widget.value + widget.step) : null),
       ]),
     );
     final label = widget.label;
@@ -643,5 +649,85 @@ class StudioOpacitySlider extends StatelessWidget {
         onChangeEnd: onChangeEnd,
       ),
     );
+  }
+}
+
+/// A text property (a block's text, a link, a caption): keeps the caret while the host rebuilds on every key, takes
+/// the host's value again when the field is not focused (undo, another element selected). [ltr] for links.
+class StudioTextProp extends StatefulWidget {
+  const StudioTextProp({super.key, required this.label, required this.value, required this.onChanged, this.hint, this.maxLines = 1, this.ltr = false, this.maxLength = 1000});
+  final String label, value;
+  final String? hint;
+  final int maxLines, maxLength;
+  final bool ltr;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<StudioTextProp> createState() => _StudioTextPropState();
+}
+
+class _StudioTextPropState extends State<StudioTextProp> {
+  late final _c = TextEditingController(text: widget.value);
+  final _f = FocusNode();
+
+  @override
+  void didUpdateWidget(covariant StudioTextProp old) {
+    super.didUpdateWidget(old);
+    if (!_f.hasFocus && _c.text != widget.value) _c.text = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    _f.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final field = TextField(
+      controller: _c,
+      focusNode: _f,
+      minLines: 1,
+      maxLines: widget.maxLines,
+      maxLength: widget.maxLength,
+      onChanged: widget.onChanged,
+      style: appText(14, c: context.colors.textDark),
+      decoration: InputDecoration(isDense: true, labelText: widget.label, hintText: widget.hint, counterText: ''),
+    );
+    return widget.ltr ? Directionality(textDirection: TextDirection.ltr, child: field) : field;
+  }
+}
+
+/// One "insert a variable" chip: the inserted [key] and what the person reads.
+class StudioPlaceholder {
+  const StudioPlaceholder(this.key, this.label);
+  final String key, label;
+}
+
+/// "Insert a variable" chips under a text property ({{key}} in the export designer, {key} in certificates: the host
+/// inserts its own spelling in [onInsert]).
+class StudioPlaceholderChips extends StatelessWidget {
+  const StudioPlaceholderChips({super.key, required this.items, required this.onInsert, this.label});
+  final List<StudioPlaceholder> items;
+  final ValueChanged<String> onInsert;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(label ?? translate('studio_insert_variable'), style: appText(12, c: c.textMedium)),
+      const SizedBox(height: AppSpace.xxs),
+      Wrap(spacing: AppSpace.xxs + 2, runSpacing: AppSpace.xxs + 2, children: [
+        for (final p in items)
+          ActionChip(
+            label: Text(p.label, style: appText(12.5, w: FontWeight.w500, c: c.textDark)),
+            avatar: Icon(Icons.data_object_rounded, size: 16, color: c.textMedium),
+            tooltip: p.key,
+            onPressed: () => onInsert(p.key),
+          ),
+      ]),
+    ]);
   }
 }
