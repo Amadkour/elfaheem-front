@@ -2,9 +2,11 @@
 //
 // How one certificate element looks on the studio canvas — drawn the way the server renderer
 // (certificate_design_renderer.py) draws it, so the canvas matches the issued PNG:
-//   text       the cert font of the field (kCertFonts, the server's own files), Arabic → `text_ar`, one-line fields
-//              shrink to the box, wrapped fields stop at max_lines
-//   logo /     the image fitted (contain) and centred in the w × h box; a signature's caption lines sit centred
+//   text       the renderer's own layout (cert_text_layout.dart: the font size after shrinking, the line advance,
+//              the line count), the cert font of the field (kCertFonts, the server's own files), Arabic → `text_ar`;
+//              bold / italic siblings or a faux stroke / slant, underline, direction, and the box: padding, fill,
+//              outline, corner radius and a drop shadow (of the box when it has a fill, else of the glyphs)
+//   logo /     the image in the w × h box: contain (fitted, centred), cover or fill; a signature's caption lines sit
 //   signature  ~2 units under the DRAWN image: the name at size × 0.75 slightly bold, the title at size × 0.6 with
 //              opacity × 0.8, each one line shrunk to the box width
 //   qr         a placeholder QR (finder squares + modules) in the field's ink on a white quiet zone
@@ -20,6 +22,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'cert_studio_adapter.dart';
+import 'cert_text_layout.dart';
 import 'certificate_design_models.dart';
 
 /// The renderer's caption scales (SIG_NAME_SCALE, SIG_TITLE_SCALE) and its gap under the image (logical units).
@@ -79,30 +82,125 @@ class CertFieldView extends StatelessWidget {
   Widget _text() {
     final f = field;
     final resolved = resolveSample(certFieldRawText(f, arabic: arabic), arabic: arabic, custom: samples);
-    final dir = certArabicChars.hasMatch(resolved) ? TextDirection.rtl : TextDirection.ltr;
-    // the renderer drops letter spacing on Arabic text (tracking would break the joins)
-    final style = dir == TextDirection.rtl
-        ? certTextStyle(f, scale: scale).copyWith(letterSpacing: 0)
-        : certTextStyle(f, scale: scale);
+    // the box width follows a live resize ([size]); the renderer draws nothing for an empty text
+    final l = certTextLayout(f.copyWith(w: size.width), resolved);
+    if (l == null) return const SizedBox.expand();
+    return CertTextView(field: f, layout: l, scale: scale);
+  }
+}
+
+/// A laid-out text field (see [certTextLayout]) at [scale] screen pixels per unit: the box (fill, outline, radius,
+/// shadow), the lines `padding` inside it, faux bold / italic, underline. Shared with the parity test.
+class CertTextView extends StatelessWidget {
+  const CertTextView({super.key, required this.field, required this.layout, required this.scale});
+
+  final CertField field;
+  final CertTextLayout layout;
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) {
+    final f = field;
+    final l = layout;
+    final s = scale;
+    final dir = f.direction == 'rtl' || (f.direction == 'auto' && l.arabic) ? TextDirection.rtl : TextDirection.ltr;
+    final opacity = f.opacity.clamp(0.0, 1.0);
+    final ink = hexToColor(f.color).withValues(alpha: opacity);
+    final hasFill = f.bgColor != null;
+    final shadow = f.shadowColor == null
+        ? null
+        : (
+            color: hexToColor(f.shadowColor!).withValues(alpha: f.shadowOpacity.clamp(0.0, 1.0) * opacity),
+            offset: Offset(f.shadowDx * s, f.shadowDy * s),
+            blur: f.shadowBlur * s,
+          );
+    final cf = l.font;
+    TextStyle style({Paint? foreground}) => TextStyle(
+          fontFamily: cf.family,
+          fontFamilyFallback: cf.arabicFallback == null ? null : [cf.arabicFallback!],
+          fontWeight: FontWeight.w400,
+          fontStyle: FontStyle.normal,
+          fontSize: l.fontSize * s,
+          height: l.heightFactor,
+          leadingDistribution: TextLeadingDistribution.even,
+          letterSpacing: l.letterSpacing * s,
+          color: foreground == null ? ink : null,
+          foreground: foreground,
+          decoration: f.underline ? TextDecoration.underline : null,
+          decorationColor: ink,
+          decorationThickness: 1.4,
+          shadows: shadow != null && !hasFill
+              ? [Shadow(color: shadow.color, offset: shadow.offset, blurRadius: shadow.blur)]
+              : null,
+        );
     final align = f.align == 'left' ? TextAlign.left : (f.align == 'right' ? TextAlign.right : TextAlign.center);
-    final alignment =
-        f.align == 'left' ? Alignment.topLeft : (f.align == 'right' ? Alignment.topRight : Alignment.topCenter);
-    final text = resolved.isEmpty ? ' ' : resolved;
-    final w = math.max(1.0, size.width * scale);
-    final Widget body = f.maxLines <= 1
-        ? FittedBox(
-            fit: f.shrink ? BoxFit.scaleDown : BoxFit.none,
-            alignment: alignment,
-            child: Text(text, style: style, textDirection: dir, softWrap: false),
+    Widget text(TextStyle st) => Text(
+          l.text,
+          style: st,
+          textAlign: align,
+          textDirection: dir,
+          maxLines: l.lines,
+          softWrap: l.lines > 1,
+          overflow: TextOverflow.clip,
+        );
+    Widget body = text(style());
+    if (l.strokeWidth > 0) {
+      body = Stack(children: [
+        text(style(
+          foreground: Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = l.strokeWidth * 2 * s
+            ..strokeJoin = StrokeJoin.round
+            ..color = ink,
+        )),
+        body,
+      ]);
+    }
+    if (l.lines <= 1) {
+      // one line: never wrap, and a hair of measuring difference must not push a second line in
+      final alignment = f.align == 'left'
+          ? Alignment.centerLeft
+          : (f.align == 'right' ? Alignment.centerRight : Alignment.center);
+      body = FittedBox(fit: BoxFit.scaleDown, alignment: alignment, child: body);
+    }
+    if (l.fauxItalic) {
+      body = Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.skewX(-math.atan(kCertFauxItalic)),
+        child: body,
+      );
+    }
+    final pad = l.padding * s;
+    final inner = Padding(padding: EdgeInsets.all(pad), child: SizedBox(width: double.infinity, child: body));
+    final box = (hasFill || (f.borderColor != null && f.borderWidth > 0) || (shadow != null && hasFill))
+        ? DecoratedBox(
+            decoration: BoxDecoration(
+              color: hasFill
+                  ? hexToColor(f.bgColor!).withValues(alpha: f.bgOpacity.clamp(0.0, 1.0) * opacity)
+                  : null,
+              borderRadius: BorderRadius.circular(
+                  math.min(f.radius * s, math.min(l.boxWidth, l.boxHeight) * s / 2)),
+              border: f.borderColor != null && f.borderWidth > 0
+                  ? Border.all(
+                      color: hexToColor(f.borderColor!).withValues(alpha: opacity),
+                      width: math.max(1 / kCertRenderScale, f.borderWidth) * s,
+                      strokeAlign: BorderSide.strokeAlignInside,
+                    )
+                  : null,
+              boxShadow: shadow != null && hasFill
+                  ? [BoxShadow(color: shadow.color, offset: shadow.offset, blurRadius: shadow.blur)]
+                  : null,
+            ),
+            child: inner,
           )
-        : Text(text, style: style, textAlign: align, textDirection: dir, maxLines: f.maxLines, overflow: TextOverflow.fade);
+        : inner;
     return OverflowBox(
       alignment: Alignment.topCenter,
       minHeight: 0,
       maxHeight: double.infinity,
-      minWidth: w,
-      maxWidth: w,
-      child: SizedBox(width: w, child: body),
+      minWidth: l.boxWidth * s,
+      maxWidth: l.boxWidth * s,
+      child: SizedBox(width: l.boxWidth * s, height: math.max(1.0, l.boxHeight * s), child: box),
     );
   }
 }
@@ -126,7 +224,7 @@ class _CertImage extends StatelessWidget {
       opacity: field.opacity.clamp(0.0, 1.0),
       child: Image.network(
         u,
-        fit: BoxFit.contain,
+        fit: certBoxFit(field.fit),
         alignment: Alignment.center,
         errorBuilder: (_, _, _) => placeholder,
       ),
@@ -198,6 +296,13 @@ class _DashedRectPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DashedRectPainter old) => old.color != color;
 }
+
+/// The Flutter fit of a field's `fit`.
+BoxFit certBoxFit(String fit) => switch (fit) {
+      'cover' => BoxFit.cover,
+      'fill' => BoxFit.fill,
+      _ => BoxFit.contain,
+    };
 
 /// Where the renderer draws an image of [imageSize] pixels in a w × h box ([box], page units): contain + centred.
 /// Returns the drawn rect in page units relative to the box.
@@ -288,7 +393,8 @@ class _CertSignatureViewState extends State<CertSignatureView> {
     final f = widget.field;
     final s = widget.scale;
     final hasImage = (widget.url ?? '').isNotEmpty;
-    final drawn = hasImage ? certContainRect(widget.size, _imageSize) : Offset.zero & widget.size;
+    // cover / fill draw over the whole box; contain only where the image lands
+    final drawn = hasImage && f.fit == 'contain' ? certContainRect(widget.size, _imageSize) : Offset.zero & widget.size;
     final lines = <(String, double, double, double)>[
       // text, size scale, stroke (fraction of the font size), opacity factor — the renderer's numbers
       if ((f.sigName ?? '').trim().isNotEmpty) (f.sigName!, kCertSigNameScale, 0.025, 1.0),
@@ -450,4 +556,84 @@ class CertQrPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CertQrPainter old) => old.ink != ink || old.opacity != opacity || old.seed != seed;
+}
+
+/// The page's watermark (`theme.watermark`) at [scale], over the background and under every element — placed like
+/// the renderer: centre at 50 % (top 20 %, bottom 80 %) of the page height, or a tiled grid from the page centre
+/// (steps = the turned element + 8 % of the page, every other row shifted by half).
+class CertWatermarkView extends StatelessWidget {
+  const CertWatermarkView({super.key, required this.watermark, required this.scale, this.samples = const {}, this.arabic = true});
+
+  final CertWatermark watermark;
+  final double scale;
+  final Map<String, String> samples;
+  final bool arabic;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = watermark;
+    if (!w.visible) return const SizedBox.shrink();
+    return LayoutBuilder(builder: (context, box) {
+      final pw = box.maxWidth, ph = box.maxHeight;
+      final angle = w.rotation * math.pi / 180;
+      Widget tile;
+      Size size;
+      if (w.isImage) {
+        final tw = pw * w.size.clamp(0.02, 2.0);
+        tile = Image.network(w.src!, width: tw, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox.shrink());
+        size = Size(tw, tw); // unknown ratio until it loads: a square step is close enough for the tile grid
+      } else {
+        final text = resolveSample(w.text, arabic: arabic, custom: samples);
+        final cf = certFont(w.font);
+        final style = TextStyle(
+          fontFamily: cf.family,
+          fontFamilyFallback: cf.arabicFallback == null ? null : [cf.arabicFallback!],
+          fontSize: w.size.clamp(6, 400) * scale,
+          height: 1.1,
+          color: hexToColor(w.color),
+        );
+        final tp = TextPainter(
+          text: TextSpan(text: text, style: style),
+          textDirection: certArabicChars.hasMatch(text) ? TextDirection.rtl : TextDirection.ltr,
+          maxLines: 1,
+        )..layout();
+        size = tp.size;
+        tp.dispose();
+        tile = Text(text, maxLines: 1, softWrap: false, style: style);
+      }
+      // the turned element's bounding box
+      final c = math.cos(angle).abs(), s = math.sin(angle).abs();
+      final bw = size.width * c + size.height * s, bh = size.width * s + size.height * c;
+      final turned = Opacity(
+        opacity: w.opacity.clamp(0.0, 1.0),
+        child: Transform.rotate(angle: angle, child: tile),
+      );
+      final centres = <Offset>[];
+      if (w.position == 'tile') {
+        final sx = bw + pw * 0.08, sy = bh + ph * 0.08;
+        final rows = (ph / sy / 2).floor() + 2, cols = (pw / sx / 2).floor() + 2;
+        for (var r = -rows; r <= rows; r++) {
+          final shift = r.isOdd ? sx / 2 : 0.0;
+          for (var col = -cols; col <= cols; col++) {
+            centres.add(Offset(pw / 2 + col * sx + shift, ph / 2 + r * sy));
+          }
+        }
+      } else {
+        centres.add(Offset(pw / 2, ph * (w.position == 'top' ? 0.2 : (w.position == 'bottom' ? 0.8 : 0.5))));
+      }
+      return ClipRect(
+        child: Stack(clipBehavior: Clip.hardEdge, children: [
+          for (final o in centres)
+            if (o.dx + bw / 2 > 0 && o.dx - bw / 2 < pw && o.dy + bh / 2 > 0 && o.dy - bh / 2 < ph)
+              Positioned(
+                left: o.dx - size.width / 2,
+                top: o.dy - size.height / 2,
+                width: size.width,
+                height: size.height,
+                child: OverflowBox(maxWidth: double.infinity, maxHeight: double.infinity, child: turned),
+              ),
+        ]),
+      );
+    });
+  }
 }

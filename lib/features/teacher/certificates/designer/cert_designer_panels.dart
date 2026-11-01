@@ -9,10 +9,12 @@
 //   CertAssetRow         a page image (background, default logo / signature) with its state: Arabic upload /
 //                        remove; English "Same as Arabic" + Customize for English, or its own image + Reset to Arabic
 //   CertFieldProps       the selected element's properties (text · logo · signature with captions · QR · line ·
-//                        photo) on the studio's property primitives (studio_props.dart)
+//                        photo) on the studio's property primitives (studio_props.dart): text style (bold, italic,
+//                        underline, line height, direction), the text box (fill, outline, radius, padding, shadow),
+//                        image fit and crop, rotation, the aspect lock, the layer's name and lock
 //   CertSignatureTuner   ink colour + background-removal strength of an uploaded signature
 //   CertToolsPanel       "Add to the page": text, dynamic field, logo, signature, line, student photo, QR
-//   CertLayersList       every element, top first: select, show / hide, reorder, delete
+//   CertLayersList       every element, top first: select, show / hide, lock, rename, reorder, delete
 //   CertToolbarRow       the studio toolbar + duplicate and order (z) commands
 //   showCertCustomFieldDialog   "Add a field…": a custom {key} (a–z, 0–9, _) and its preview sample
 library;
@@ -54,6 +56,8 @@ String certKindLabel(CertFieldKind k) => switch (k) {
 
 /// A layer's one-line name: the wording for text, the signer's name for a signature, else the kind.
 String certFieldTitle(CertField f, {required bool arabic}) {
+  final own = (f.name ?? '').trim();
+  if (own.isNotEmpty) return own;
   switch (f.kind) {
     case CertFieldKind.text:
       final t = ((arabic && (f.textAr ?? '').isNotEmpty) ? f.textAr! : (f.text ?? '')).replaceAll('\n', ' ').trim();
@@ -452,14 +456,22 @@ class CertFieldProps extends StatefulWidget {
     this.onAskCustomField,
     this.onReplaceImage,
     this.onUseDefaultImage,
+    this.onCropImage,
     this.signatureTuner,
     this.onDuplicate,
     this.onDelete,
     this.onForward,
     this.onBackward,
+    this.autoLineHeight,
   });
 
   final CertField field;
+
+  /// The line height the font gives when the field has none of its own (× the size), shown as "Auto".
+  final double? autoLineHeight;
+
+  /// Crop the element's image (logo / signature).
+  final VoidCallback? onCropImage;
 
   /// The language being edited (the text box edits that language's wording).
   final bool arabic;
@@ -493,6 +505,8 @@ class _CertFieldPropsState extends State<CertFieldProps> {
   late final _name = TextEditingController(text: widget.field.sigName ?? '');
   late final _title = TextEditingController(text: widget.field.sigTitle ?? '');
   late final _qr = TextEditingController(text: widget.field.text ?? '');
+  late final _layer = TextEditingController(text: widget.field.name ?? '');
+  final _layerFocus = FocusNode();
   final _textFocus = FocusNode();
   final _nameFocus = FocusNode();
   final _titleFocus = FocusNode();
@@ -514,14 +528,15 @@ class _CertFieldPropsState extends State<CertFieldProps> {
     sync(_name, _nameFocus, f.sigName ?? '');
     sync(_title, _titleFocus, f.sigTitle ?? '');
     sync(_qr, _qrFocus, f.text ?? '');
+    sync(_layer, _layerFocus, f.name ?? '');
   }
 
   @override
   void dispose() {
-    for (final c in [_text, _name, _title, _qr]) {
+    for (final c in [_text, _name, _title, _qr, _layer]) {
       c.dispose();
     }
-    for (final n in [_textFocus, _nameFocus, _titleFocus, _qrFocus]) {
+    for (final n in [_textFocus, _nameFocus, _titleFocus, _qrFocus, _layerFocus]) {
       n.dispose();
     }
     super.dispose();
@@ -577,6 +592,8 @@ class _CertFieldPropsState extends State<CertFieldProps> {
 
   Widget _position(CertField f) {
     final square = f.isSquare;
+    final h0 = f.h <= 0 ? (f.w * 0.5).roundToDouble() : f.h;
+    final lock = f.keepsAspect;
     return StudioPropSection(title: 'certd_position'.tr, children: [
       _pair(
         StudioStepper(
@@ -601,14 +618,18 @@ class _CertFieldPropsState extends State<CertFieldProps> {
             value: f.w,
             min: 16,
             max: 1000,
-            onChanged: (v) => _edit((x) => x.copyWith(w: v), label: 'resize'),
+            onChanged: (v) => _edit(
+                (x) => lock && f.w > 0 ? x.copyWith(w: v, h: (h0 * v / f.w * 10).roundToDouble() / 10) : x.copyWith(w: v),
+                label: 'resize'),
           ),
           StudioStepper(
             label: 'certd_h'.tr,
-            value: f.h <= 0 ? (f.w * 0.5).roundToDouble() : f.h,
+            value: h0,
             min: 10,
             max: 1000,
-            onChanged: (v) => _edit((x) => x.copyWith(h: v), label: 'resize'),
+            onChanged: (v) => _edit(
+                (x) => lock && h0 > 0 ? x.copyWith(h: v, w: (f.w * v / h0 * 10).roundToDouble() / 10) : x.copyWith(h: v),
+                label: 'resize'),
           ),
         )
       else
@@ -619,8 +640,254 @@ class _CertFieldPropsState extends State<CertFieldProps> {
           max: 1000,
           onChanged: (v) => _edit((x) => x.copyWith(w: v, h: f.kind == CertFieldKind.photo ? v : null), label: 'resize'),
         ),
+      if (f.isImage)
+        AppSwitchTile(
+          dense: true,
+          title: 'certd_aspect_lock'.tr,
+          subtitle: 'certd_aspect_lock_hint'.tr,
+          value: lock,
+          onChanged: widget.enabled
+              ? (v) => _edit((x) => x.copyWith(aspectLock: v), label: 'aspect', coalesce: false)
+              : null,
+        ),
+      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Expanded(
+          child: StudioStepper(
+            label: 'certd_rotation'.tr,
+            value: f.rotation,
+            min: -180,
+            max: 180,
+            suffix: '°',
+            onChanged: (v) => _edit((x) => x.copyWith(rotation: v), label: 'rotate'),
+          ),
+        ),
+        const SizedBox(width: AppSpace.xxs),
+        _iconAction(Icons.rotate_90_degrees_cw_outlined, 'certd_rotate_90'.tr,
+            () => _edit((x) => x.copyWith(rotation: _turn90(x.rotation)), label: 'rotate', coalesce: false)),
+        if (f.rotation != 0)
+          _iconAction(Icons.restart_alt_rounded, 'certd_rotation_reset'.tr,
+              () => _edit((x) => x.copyWith(rotation: 0), label: 'rotate', coalesce: false)),
+      ]),
     ]);
   }
+
+  /// +90°, kept in -180 … 180.
+  static double _turn90(double r) {
+    var n = r + 90;
+    while (n > 180) {
+      n -= 360;
+    }
+    return n;
+  }
+
+  Widget _iconAction(IconData icon, String label, VoidCallback onTap) => IconButton(
+        tooltip: label,
+        constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+        onPressed: widget.enabled ? onTap : null,
+        icon: Icon(icon, size: 20, color: ensureContrast(context.colors.primary, [context.colors.cardBg])),
+      );
+
+  /// The layer: its own name (shown in the layers list) and the lock.
+  Widget _layerSection(CertField f) => StudioPropSection(title: 'certd_layer'.tr, children: [
+        StudioPropField(
+          label: 'certd_layer_name'.tr,
+          child: TextField(
+            controller: _layer,
+            focusNode: _layerFocus,
+            maxLength: 80,
+            buildCounter: _counter,
+            maxLines: 1,
+            style: appText(14, w: FontWeight.w500, c: context.colors.textDark),
+            decoration: InputDecoration(isDense: true, hintText: certFieldTitle(f.copyWith(name: null), arabic: widget.arabic)),
+            onChanged: (v) => _edit((x) => x.copyWith(name: v.trim().isEmpty ? null : v), label: 'name'),
+          ),
+        ),
+        AppSwitchTile(
+          dense: true,
+          title: 'certd_lock'.tr,
+          subtitle: 'certd_lock_hint'.tr,
+          value: f.locked,
+          onChanged: widget.enabled ? (v) => _edit((x) => x.copyWith(locked: v), label: 'lock', coalesce: false) : null,
+        ),
+      ]);
+
+  /// Bold · Italic · Underline as three toggles.
+  Widget _styleToggles(CertField f) {
+    final c = context.colors;
+    final accent = ensureContrast(c.primary, [Color.alphaBlend(c.primaryTint, c.cardBg), c.cardBg]);
+    Widget toggle(IconData icon, String label, bool on, CertField Function(CertField x) change) => Semantics(
+          button: true,
+          toggled: on,
+          label: label,
+          excludeSemantics: true,
+          child: Tooltip(
+            message: label,
+            child: InkWell(
+              onTap: widget.enabled ? () => _edit(change, label: 'style', coalesce: false) : null,
+              borderRadius: AppRadius.chipAll,
+              child: AnimatedContainer(
+                duration: AppMotion.of(context).fast,
+                width: AppTouch.min,
+                height: AppTouch.min,
+                decoration: BoxDecoration(
+                  color: on ? c.primaryTint : c.inputBg,
+                  borderRadius: AppRadius.chipAll,
+                  border: Border.all(color: on ? accent : c.divider, width: on ? 1.5 : 1),
+                ),
+                child: Icon(icon, size: 20, color: on ? accent : c.textMedium),
+              ),
+            ),
+          ),
+        );
+    return StudioPropField(
+      label: 'certd_text_style'.tr,
+      child: Wrap(spacing: AppSpace.xs, children: [
+        toggle(Icons.format_bold_rounded, 'certd_bold'.tr, f.bold, (x) => x.copyWith(weight: x.bold ? 'normal' : 'bold')),
+        toggle(Icons.format_italic_rounded, 'certd_italic'.tr, f.italic, (x) => x.copyWith(italic: !x.italic)),
+        toggle(Icons.format_underlined_rounded, 'certd_underline'.tr, f.underline,
+            (x) => x.copyWith(underline: !x.underline)),
+      ]),
+    );
+  }
+
+  Widget _lineHeight(CertField f) {
+    final c = context.colors;
+    final auto = f.lineHeight == null;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      StudioStepper(
+        label: auto ? '${'certd_line_height'.tr} · ${'certd_auto'.tr}' : 'certd_line_height'.tr,
+        value: f.lineHeight ?? ((widget.autoLineHeight ?? 1.2) * 10).roundToDouble() / 10,
+        min: 0.8,
+        max: 3,
+        step: .1,
+        decimals: 1,
+        onChanged: (v) => _edit((x) => x.copyWith(lineHeight: v), label: 'line_height'),
+      ),
+      if (!auto)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            onPressed: widget.enabled
+                ? () => _edit((x) => x.copyWith(lineHeight: null), label: 'line_height', coalesce: false)
+                : null,
+            style: TextButton.styleFrom(
+                minimumSize: const Size(AppTouch.min, AppTouch.min),
+                foregroundColor: ensureContrast(c.primary, [c.cardBg])),
+            icon: const Icon(Icons.restart_alt_rounded, size: 18),
+            label: Text('certd_line_height_auto'.tr, style: appText(13, w: FontWeight.w600)),
+          ),
+        ),
+    ]);
+  }
+
+  Widget _direction(CertField f) => StudioPropField(
+        label: 'certd_direction'.tr,
+        child: StudioSegmented<String>(
+          segments: [
+            StudioSegment(value: 'auto', label: 'certd_dir_auto'.tr),
+            StudioSegment(value: 'rtl', label: 'certd_dir_rtl'.tr),
+            StudioSegment(value: 'ltr', label: 'certd_dir_ltr'.tr),
+          ],
+          value: f.direction,
+          onChanged: widget.enabled ? (v) => _edit((x) => x.copyWith(direction: v), label: 'direction', coalesce: false) : null,
+        ),
+      );
+
+  Color? _hex(String? h) => h == null ? null : hexToColor(h);
+
+  /// The text box: fill (+ its opacity), outline (+ width), corner radius, inner padding.
+  Widget _boxSection(CertField f) => StudioPropSection(title: 'certd_box'.tr, children: [
+        StudioColorField(
+          label: 'certd_box_fill'.tr,
+          value: _hex(f.bgColor),
+          allowNone: true,
+          swatches: _swatches,
+          onChanged: (col) => _edit((x) => x.copyWith(bgColor: col == null ? null : colorToHex(col)), label: 'box_fill'),
+        ),
+        if (f.bgColor != null)
+          StudioOpacitySlider(
+            label: 'certd_box_fill_opacity'.tr,
+            value: f.bgOpacity,
+            onChanged: (v) => _edit((x) => x.copyWith(bgOpacity: (v * 100).roundToDouble() / 100), label: 'box_opacity'),
+          ),
+        StudioColorField(
+          label: 'certd_box_border'.tr,
+          value: _hex(f.borderColor),
+          allowNone: true,
+          swatches: _swatches,
+          onChanged: (col) => _edit(
+              (x) => col == null
+                  ? x.copyWith(borderColor: null, borderWidth: 0)
+                  : x.copyWith(borderColor: colorToHex(col), borderWidth: x.borderWidth > 0 ? null : 1.5),
+              label: 'box_border'),
+        ),
+        if (f.borderColor != null)
+          StudioStepper(
+            label: 'certd_box_border_width'.tr,
+            value: f.borderWidth,
+            min: 0,
+            max: 20,
+            step: .5,
+            decimals: 1,
+            onChanged: (v) => _edit((x) => x.copyWith(borderWidth: v), label: 'box_border_width'),
+          ),
+        _pair(
+          StudioStepper(
+            label: 'certd_box_radius'.tr,
+            value: f.radius,
+            max: 200,
+            onChanged: (v) => _edit((x) => x.copyWith(radius: v), label: 'box_radius'),
+          ),
+          StudioStepper(
+            label: 'certd_box_padding'.tr,
+            value: f.padding,
+            max: 100,
+            onChanged: (v) => _edit((x) => x.copyWith(padding: v), label: 'box_padding'),
+          ),
+        ),
+      ]);
+
+  Widget _shadowSection(CertField f) => StudioPropSection(title: 'certd_shadow'.tr, children: [
+        StudioColorField(
+          label: 'certd_shadow_color'.tr,
+          value: _hex(f.shadowColor),
+          allowNone: true,
+          swatches: _swatches,
+          onChanged: (col) => _edit((x) => x.copyWith(shadowColor: col == null ? null : colorToHex(col)), label: 'shadow'),
+        ),
+        if (f.shadowColor != null) ...[
+          _pair(
+            StudioStepper(
+              label: 'certd_shadow_blur'.tr,
+              value: f.shadowBlur,
+              max: 40,
+              onChanged: (v) => _edit((x) => x.copyWith(shadowBlur: v), label: 'shadow_blur'),
+            ),
+            StudioOpacitySlider(
+              label: 'certd_shadow_opacity'.tr,
+              value: f.shadowOpacity,
+              onChanged: (v) => _edit((x) => x.copyWith(shadowOpacity: (v * 100).roundToDouble() / 100),
+                  label: 'shadow_opacity'),
+            ),
+          ),
+          _pair(
+            StudioStepper(
+              label: 'certd_shadow_dx'.tr,
+              value: f.shadowDx,
+              min: -50,
+              max: 50,
+              onChanged: (v) => _edit((x) => x.copyWith(shadowDx: v), label: 'shadow_dx'),
+            ),
+            StudioStepper(
+              label: 'certd_shadow_dy'.tr,
+              value: f.shadowDy,
+              min: -50,
+              max: 50,
+              onChanged: (v) => _edit((x) => x.copyWith(shadowDy: v), label: 'shadow_dy'),
+            ),
+          ),
+        ],
+      ]);
 
   Widget _imageSection(CertField f, String defaultLabel) {
     final c = context.colors;
@@ -655,6 +922,13 @@ class _CertFieldPropsState extends State<CertFieldProps> {
           label: Text(own || (url ?? '').isNotEmpty ? 'certd_replace_image'.tr : 'certd_upload_image'.tr,
               style: appText(13, w: FontWeight.w600)),
         ),
+        if ((url ?? '').isNotEmpty && widget.onCropImage != null)
+          TextButton.icon(
+            onPressed: widget.enabled ? widget.onCropImage : null,
+            style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: accent),
+            icon: const Icon(Icons.crop_rounded, size: 18),
+            label: Text('certd_crop'.tr, style: appText(13, w: FontWeight.w600)),
+          ),
         if (own && (widget.defaultImageUrl ?? '').isNotEmpty)
           TextButton.icon(
             onPressed: widget.enabled ? widget.onUseDefaultImage : null,
@@ -663,6 +937,18 @@ class _CertFieldPropsState extends State<CertFieldProps> {
             label: Text(defaultLabel, style: appText(13, w: FontWeight.w600)),
           ),
       ]),
+      StudioPropField(
+        label: 'certd_fit'.tr,
+        child: StudioSegmented<String>(
+          segments: [
+            StudioSegment(value: 'contain', label: 'certd_fit_contain'.tr),
+            StudioSegment(value: 'cover', label: 'certd_fit_cover'.tr),
+            StudioSegment(value: 'fill', label: 'certd_fit_fill'.tr),
+          ],
+          value: f.fit,
+          onChanged: widget.enabled ? (v) => _edit((x) => x.copyWith(fit: v), label: 'fit', coalesce: false) : null,
+        ),
+      ),
     ]);
   }
 
@@ -782,6 +1068,13 @@ class _CertFieldPropsState extends State<CertFieldProps> {
         ),
         _opacity(f),
       ]),
+      StudioPropSection(title: 'certd_style'.tr, children: [
+        _styleToggles(f),
+        _lineHeight(f),
+        _direction(f),
+      ]),
+      _boxSection(f),
+      _shadowSection(f),
     ];
   }
 
@@ -936,6 +1229,7 @@ class _CertFieldPropsState extends State<CertFieldProps> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             ..._body(f),
             _position(f),
+            _layerSection(f),
           ]),
         ),
       ),
@@ -1037,6 +1331,7 @@ class CertLayersList extends StatelessWidget {
     this.selectedId,
     this.enabled = true,
     this.onToggleVisible,
+    this.onToggleLock,
     this.onReorder,
     this.onDelete,
     this.shrinkWrap = false,
@@ -1049,6 +1344,9 @@ class CertLayersList extends StatelessWidget {
   final bool enabled;
   final ValueChanged<String> onSelect;
   final ValueChanged<String>? onToggleVisible;
+
+  /// Lock / unlock an element (it cannot be moved, resized or deleted while locked).
+  final ValueChanged<String>? onToggleLock;
 
   /// Layout (bottom-first) indices: the element at [from] ends at [to].
   final void Function(int from, int to)? onReorder;
@@ -1125,6 +1423,18 @@ class CertLayersList extends StatelessWidget {
                     );
                   }),
                 ),
+                if (enabled && onToggleLock != null && (f.locked || sel))
+                  IconButton(
+                    tooltip: (f.locked ? 'certd_unlock' : 'certd_lock').tr,
+                    onPressed: () => onToggleLock!(f.id),
+                    icon: Icon(f.locked ? Icons.lock_rounded : Icons.lock_open_rounded,
+                        size: 18, color: f.locked ? c.textMedium : c.textLight),
+                  )
+                else if (f.locked)
+                  SizedBox(
+                    width: AppTouch.min,
+                    child: Icon(Icons.lock_rounded, size: 16, color: c.textLight, semanticLabel: 'certd_locked'.tr),
+                  ),
                 if (enabled && onToggleVisible != null)
                   IconButton(
                     tooltip: (f.visible ? 'pl_hide' : 'pl_show').tr,
@@ -1132,7 +1442,7 @@ class CertLayersList extends StatelessWidget {
                     icon: Icon(f.visible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                         size: 18, color: f.visible ? c.textLight : c.textMedium),
                   ),
-                if (enabled && onDelete != null && sel)
+                if (enabled && onDelete != null && sel && !f.locked)
                   IconButton(
                     tooltip: 'certd_delete'.tr,
                     onPressed: () => onDelete!(f.id),
@@ -1149,9 +1459,18 @@ class CertLayersList extends StatelessWidget {
 
 /// The studio toolbar with the designer's own trailing commands: duplicate and the order (z) menu.
 class CertToolbarRow extends StatelessWidget {
-  const CertToolbarRow({super.key, required this.controller, this.leading = const [], this.enabled = true});
+  const CertToolbarRow({
+    super.key,
+    required this.controller,
+    this.leading = const [],
+    this.enabled = true,
+    this.gridSize = const Size(25, 25),
+  });
 
   final StudioController<Object?> controller;
+
+  /// The snap grid the View menu turns on (page units).
+  final Size gridSize;
   final List<Widget> leading;
   final bool enabled;
 
@@ -1182,6 +1501,35 @@ class CertToolbarRow extends StatelessWidget {
               label: 'certd_duplicate'.tr,
               showLabel: wide,
               onPressed: has ? controller.duplicate : null,
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'certd_view'.tr,
+              onSelected: (v) {
+                if (v == 'grid') {
+                  controller.setGrid(controller.showGrid ? null : gridSize);
+                } else {
+                  controller.showRulers = !controller.showRulers;
+                }
+              },
+              itemBuilder: (_) => [
+                CheckedPopupMenuItem<String>(
+                  value: 'grid',
+                  checked: controller.showGrid,
+                  child: Text('certd_grid'.tr, style: appText(14, c: c.textDark)),
+                ),
+                CheckedPopupMenuItem<String>(
+                  value: 'rulers',
+                  checked: controller.showRulers,
+                  child: Text('certd_rulers'.tr, style: appText(14, c: c.textDark)),
+                ),
+              ],
+              child: StudioToolFace(
+                icon: Icons.straighten_rounded,
+                label: 'certd_view'.tr,
+                showLabel: wide,
+                enabled: true,
+                trailingIcon: Icons.expand_more_rounded,
+              ),
             ),
             PopupMenuButton<String>(
               enabled: has,
@@ -1295,6 +1643,397 @@ class _CustomFieldDialogState extends State<_CustomFieldDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: Text('cancel'.tr)),
         FilledButton(onPressed: _submit, child: Text('certd_insert'.tr)),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Paper, watermark, preview sample data, templates
+// ─────────────────────────────────────────────────────────────────────────────
+
+Widget _twoUp(Widget a, Widget b) => LayoutBuilder(
+      builder: (context, box) => box.maxWidth < 300
+          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [a, const SizedBox(height: AppSpace.sm), b])
+          : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: a),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(child: b),
+            ]),
+    );
+
+String _mm(double v) => v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 1);
+
+/// A4 · Letter · Custom (width × height in mm). The orientation stays its own control.
+class CertPaperControl extends StatelessWidget {
+  const CertPaperControl({super.key, required this.page, required this.onChanged, this.enabled = true});
+
+  final CertPage page;
+  final ValueChanged<CertPage> onChanged;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final (long, short) = page.mm;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      StudioSegmented<String>(
+        segments: [
+          StudioSegment(value: 'a4', label: 'certd_paper_a4'.tr),
+          StudioSegment(value: 'letter', label: 'certd_paper_letter'.tr),
+          StudioSegment(value: 'custom', label: 'certd_paper_custom'.tr),
+        ],
+        value: page.size,
+        onChanged: enabled
+            ? (v) => onChanged(v == 'custom' ? CertPage(size: 'custom', wMm: long, hMm: short) : CertPage(size: v))
+            : null,
+      ),
+      if (page.size == 'custom') ...[
+        const SizedBox(height: AppSpace.sm),
+        _twoUp(
+          StudioStepper(
+            label: 'certd_paper_w_mm'.tr,
+            value: page.wMm ?? long,
+            min: kCertPageMmMin,
+            max: kCertPageMmMax,
+            suffix: 'mm',
+            onChanged: (v) => onChanged(CertPage(size: 'custom', wMm: v, hMm: page.hMm ?? short)),
+          ),
+          StudioStepper(
+            label: 'certd_paper_h_mm'.tr,
+            value: page.hMm ?? short,
+            min: kCertPageMmMin,
+            max: kCertPageMmMax,
+            suffix: 'mm',
+            onChanged: (v) => onChanged(CertPage(size: 'custom', wMm: page.wMm ?? long, hMm: v)),
+          ),
+        ),
+      ],
+      const SizedBox(height: AppSpace.xxs),
+      Text('certd_paper_hint'.tr.replaceAll('{w}', _mm(long)).replaceAll('{h}', _mm(short)), style: AppType.meta(context)),
+    ]);
+  }
+}
+
+/// One watermark change; [coalesce] for sliders and typing.
+typedef CertWatermarkEdit = void Function(CertWatermark? wm, {bool coalesce});
+
+/// The page's watermark: none / text / image, then its text (font, colour) or image, opacity, angle, size and place.
+class CertWatermarkControl extends StatefulWidget {
+  const CertWatermarkControl({
+    super.key,
+    required this.watermark,
+    required this.onChanged,
+    this.onUploadImage,
+    this.enabled = true,
+  });
+
+  final CertWatermark? watermark;
+  final CertWatermarkEdit onChanged;
+  final VoidCallback? onUploadImage;
+  final bool enabled;
+
+  @override
+  State<CertWatermarkControl> createState() => _CertWatermarkControlState();
+}
+
+class _CertWatermarkControlState extends State<CertWatermarkControl> {
+  late final _text = TextEditingController(text: widget.watermark?.text ?? '');
+  final _focus = FocusNode();
+
+  @override
+  void didUpdateWidget(covariant CertWatermarkControl old) {
+    super.didUpdateWidget(old);
+    final t = widget.watermark?.text ?? '';
+    if (!_focus.hasFocus && _text.text != t) _text.text = t;
+  }
+
+  @override
+  void dispose() {
+    _text.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _kind(String v) {
+    final w = widget.watermark;
+    if (v == 'none') {
+      widget.onChanged(null);
+    } else if (v == 'text') {
+      final t = (w?.text ?? '').trim().isEmpty ? 'certd_wm_default_text'.tr : w!.text;
+      _text.text = t;
+      widget.onChanged((w ?? const CertWatermark()).copyWith(kind: 'text', text: t, resetSize: w?.kind != 'text'));
+    } else if ((w?.src ?? '').isEmpty) {
+      widget.onUploadImage?.call();
+    } else {
+      widget.onChanged(w!.copyWith(kind: 'image', resetSize: w.kind != 'image'));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final w = widget.watermark;
+    final accent = ensureContrast(c.primary, [c.cardBg]);
+    void set(CertWatermark next, {bool coalesce = true}) => widget.onChanged(next, coalesce: coalesce);
+    final children = <Widget>[
+      StudioSegmented<String>(
+        segments: [
+          StudioSegment(value: 'none', label: 'certd_wm_none'.tr),
+          StudioSegment(value: 'text', label: 'certd_wm_text'.tr),
+          StudioSegment(value: 'image', label: 'certd_wm_image'.tr),
+        ],
+        value: w == null ? 'none' : w.kind,
+        onChanged: _kind,
+      ),
+    ];
+    if (w != null) {
+      children.add(const SizedBox(height: AppSpace.sm));
+      if (!w.isImage) {
+        children.addAll([
+          StudioPropField(
+            label: 'certd_wm_text'.tr,
+            child: TextField(
+              controller: _text,
+              focusNode: _focus,
+              maxLength: 200,
+              maxLines: 1,
+              style: appText(14, w: FontWeight.w500, c: c.textDark),
+              decoration: const InputDecoration(isDense: true, counterText: ''),
+              onChanged: (t) => set(w.copyWith(text: t)),
+            ),
+          ),
+          StudioFontPicker(
+            options: [for (final ft in kCertFonts) StudioFontOption(id: ft.key, label: ft.labelKey.tr, family: ft.family)],
+            value: w.font,
+            onChanged: (v) => set(w.copyWith(font: v), coalesce: false),
+          ),
+          StudioColorField(
+            value: hexToColor(w.color),
+            onChanged: (col) {
+              if (col != null) set(w.copyWith(color: colorToHex(col)));
+            },
+          ),
+        ]);
+      } else {
+        children.add(Row(children: [
+          Container(
+            width: 72,
+            height: 56,
+            decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
+            clipBehavior: Clip.antiAlias,
+            child: (w.src ?? '').isEmpty
+                ? Icon(Icons.image_outlined, color: c.textLight)
+                : Image.network(w.src!,
+                    fit: BoxFit.contain, errorBuilder: (_, _, _) => Icon(Icons.broken_image_outlined, color: c.textLight)),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: widget.onUploadImage,
+                style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: accent),
+                icon: const Icon(Icons.upload_rounded, size: 18),
+                label: Text((w.src ?? '').isEmpty ? 'certd_upload_image'.tr : 'certd_replace_image'.tr,
+                    style: appText(13, w: FontWeight.w600)),
+              ),
+            ),
+          ),
+        ]));
+      }
+      children.addAll([
+        StudioOpacitySlider(value: w.opacity, onChanged: (v) => set(w.copyWith(opacity: (v * 100).roundToDouble() / 100))),
+        _twoUp(
+          StudioStepper(
+            label: 'certd_rotation'.tr,
+            value: w.rotation,
+            min: -180,
+            max: 180,
+            suffix: '°',
+            onChanged: (v) => set(w.copyWith(rotation: v)),
+          ),
+          w.isImage
+              ? StudioStepper(
+                  label: 'certd_wm_size_pct'.tr,
+                  value: (w.size * 100).roundToDouble(),
+                  min: 2,
+                  max: 200,
+                  suffix: '%',
+                  onChanged: (v) => set(w.copyWith(size: v / 100)),
+                )
+              : StudioStepper(
+                  label: 'certd_font_size'.tr,
+                  value: w.size,
+                  min: 6,
+                  max: 400,
+                  onChanged: (v) => set(w.copyWith(size: v)),
+                ),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        StudioPropField(
+          label: 'certd_wm_position'.tr,
+          child: StudioSegmented<String>(
+            segments: [
+              StudioSegment(value: 'top', label: 'certd_wm_top'.tr),
+              StudioSegment(value: 'center', label: 'certd_wm_center'.tr),
+              StudioSegment(value: 'bottom', label: 'certd_wm_bottom'.tr),
+              StudioSegment(value: 'tile', label: 'certd_wm_tile'.tr),
+            ],
+            value: w.position,
+            onChanged: (v) => set(w.copyWith(position: v), coalesce: false),
+          ),
+        ),
+      ]);
+    }
+    return AbsorbPointer(
+      absorbing: !widget.enabled,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+    );
+  }
+}
+
+/// The built-in values the preview can take from the person (a real student's data).
+const List<String> kCertSampleKeys = [
+  'student_name', 'course_name', 'certificate_title', 'teacher_name', 'date', 'org_name', 'serial',
+];
+
+/// "Sample data" of the preview: one field per built-in value of [lang], prefilled with the person's last values
+/// (empty = the server's sample, shown as the hint).
+class CertSampleDataForm extends StatefulWidget {
+  const CertSampleDataForm({super.key, required this.lang, required this.values, required this.onApply});
+
+  final String lang;
+  final Map<String, String> values;
+  final ValueChanged<Map<String, String>> onApply;
+
+  @override
+  State<CertSampleDataForm> createState() => _CertSampleDataFormState();
+}
+
+class _CertSampleDataFormState extends State<CertSampleDataForm> {
+  late final Map<String, TextEditingController> _ctl = {
+    for (final k in kCertSampleKeys) k: TextEditingController(text: widget.values[k] ?? ''),
+  };
+
+  @override
+  void dispose() {
+    for (final c in _ctl.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ar = widget.lang == 'ar';
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('certd_sample_data_hint'.tr.replaceAll('{lang}', certLangName(widget.lang)), style: AppType.meta(context)),
+        const SizedBox(height: AppSpace.sm),
+        for (final k in kCertSampleKeys)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+            child: Builder(builder: (context) {
+              final ph = kCertPlaceholders.firstWhere((p) => p.key == k);
+              return TextField(
+                controller: _ctl[k],
+                maxLength: 300,
+                maxLines: 1,
+                textDirection: k == 'serial' ? TextDirection.ltr : (ar ? TextDirection.rtl : TextDirection.ltr),
+                style: appText(14, w: FontWeight.w500, c: c.textDark),
+                decoration: InputDecoration(
+                  isDense: true,
+                  counterText: '',
+                  labelText: ph.labelKey.tr,
+                  hintText: ar ? ph.sampleAr : ph.sampleEn,
+                ),
+              );
+            }),
+          ),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
+          TextButton(
+            onPressed: () {
+              for (final ctl in _ctl.values) {
+                ctl.clear();
+              }
+              widget.onApply(const {});
+            },
+            style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+            child: Text('certd_sample_reset'.tr, style: appText(13, w: FontWeight.w600)),
+          ),
+          FilledButton.icon(
+            onPressed: () => widget.onApply({for (final e in _ctl.entries) e.key: e.value.text}),
+            style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), backgroundColor: c.primary),
+            icon: Icon(Icons.visibility_outlined, size: 18, color: c.onHero),
+            label: Text('certd_sample_apply'.tr, style: appText(13, w: FontWeight.w600, c: c.onHero)),
+          ),
+        ]),
+      ]),
+    );
+  }
+}
+
+/// One template of the gallery: its preview and its name; tap = start from it.
+class CertTemplateCard extends StatelessWidget {
+  const CertTemplateCard({
+    super.key,
+    required this.name,
+    required this.preview,
+    required this.portrait,
+    required this.onTap,
+    this.width = 200,
+  });
+
+  final String name;
+  final ImageProvider? preview;
+  final bool portrait;
+  final VoidCallback? onTap;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return SizedBox(
+      width: width,
+      child: Semantics(
+        button: true,
+        label: name,
+        excludeSemantics: true,
+        child: Material(
+          color: c.cardBg,
+          borderRadius: AppRadius.cardAll,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              decoration: BoxDecoration(borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
+              padding: const EdgeInsets.all(AppSpace.xs),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                AspectRatio(
+                  aspectRatio: kLogicalLong / kLogicalShort,
+                  child: Container(
+                    decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
+                    clipBehavior: Clip.antiAlias,
+                    alignment: Alignment.center,
+                    child: preview == null
+                        ? Icon(Icons.workspace_premium_outlined, color: c.textLight)
+                        : Image(image: preview!, fit: BoxFit.contain),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.xs),
+                Row(children: [
+                  Expanded(
+                    child: Text(name,
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.textDark)),
+                  ),
+                  if (portrait) Icon(Icons.crop_portrait_rounded, size: 16, color: c.textLight),
+                ]),
+              ]),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

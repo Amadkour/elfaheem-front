@@ -13,7 +13,7 @@
 //   `langs` = the languages certificates are issued in. Fields gain `src` (a logo / signature box's own image),
 //   `sig_name` / `sig_title` (captions under a signature) and the `qr` kind. Unknown keys are kept as they are.
 
-import 'dart:ui' show Color;
+import 'dart:ui' show Color, Size;
 
 const double kLogicalLong = 1000;
 const double kLogicalShort = 707;
@@ -182,10 +182,17 @@ double? _num(Object? v) => v is num ? v.toDouble() : (v is String ? double.tryPa
 
 String? _str(Object? v) => v is String ? v : null;
 
+String? _hexOrNull(Object? v) =>
+    v is String && RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(v) ? v.toUpperCase() : null;
+
 class CertField {
   static const _known = {
     'id', 'kind', 'text', 'text_ar', 'x', 'y', 'w', 'h', 'align', 'font', 'size', 'color', 'letter_spacing',
     'opacity', 'max_lines', 'shrink', 'visible', 'shape', 'src', 'sig_name', 'sig_title',
+    // studio keys (docs/studio_requests/progress_A.md): the server stores each only when it is not its default
+    'name', 'locked', 'aspect_lock', 'rotation', 'weight', 'italic', 'underline', 'line_height', 'direction',
+    'bg_color', 'bg_opacity', 'border_color', 'border_width', 'radius', 'padding', 'shadow_color', 'shadow_blur',
+    'shadow_dx', 'shadow_dy', 'shadow_opacity', 'fit',
   };
 
   final String id;
@@ -214,6 +221,49 @@ class CertField {
   final String? sigName;
   final String? sigTitle;
 
+  // ── studio keys (absent on the server = the default, which draws what an old design drew) ──
+
+  /// The layer's own name (null = the wording / kind).
+  final String? name;
+
+  /// Editor only: cannot be moved, resized or deleted.
+  final bool locked;
+
+  /// Editor only: keep the box's ratio while resizing (null = per kind: images keep it).
+  final bool? aspectLock;
+
+  /// Degrees, clockwise, about the centre of the field's box (every kind).
+  final double rotation;
+
+  /// Text: 'normal' | 'bold' (the font's bold file when the catalog has one, else a stroke).
+  final String weight;
+  final bool italic;
+  final bool underline;
+
+  /// Text: line advance × the font size (null = the font's own line height, like the renderer).
+  final double? lineHeight;
+
+  /// Text: 'auto' | 'rtl' | 'ltr'.
+  final String direction;
+
+  /// Text box: fill, outline, corner radius and inner padding (logical units).
+  final String? bgColor;
+  final double bgOpacity;
+  final String? borderColor;
+  final double borderWidth;
+  final double radius;
+  final double padding;
+
+  /// Text: drop shadow (null colour = none) — of the box when it has a fill, else of the glyphs.
+  final String? shadowColor;
+  final double shadowBlur;
+  final double shadowDx;
+  final double shadowDy;
+  final double shadowOpacity;
+
+  /// Logo / signature: 'contain' | 'cover' | 'fill'.
+  final String fit;
+
   /// Keys this app does not know (a newer server): sent back unchanged.
   final Map<String, dynamic> extra;
 
@@ -239,8 +289,37 @@ class CertField {
     this.src,
     this.sigName,
     this.sigTitle,
+    this.name,
+    this.locked = false,
+    this.aspectLock,
+    this.rotation = 0,
+    this.weight = 'normal',
+    this.italic = false,
+    this.underline = false,
+    this.lineHeight,
+    this.direction = 'auto',
+    this.bgColor,
+    this.bgOpacity = 1,
+    this.borderColor,
+    this.borderWidth = 0,
+    this.radius = 0,
+    this.padding = 0,
+    this.shadowColor,
+    this.shadowBlur = 6,
+    this.shadowDx = 0,
+    this.shadowDy = 3,
+    this.shadowOpacity = 0.35,
+    this.fit = 'contain',
     this.extra = const {},
   });
+
+  bool get bold => weight == 'bold';
+
+  /// Whether the text box draws a fill or an outline.
+  bool get hasBox => bgColor != null || (borderColor != null && borderWidth > 0);
+
+  /// Whether the box keeps its ratio while resizing: the person's choice, else per kind (images, photo, QR).
+  bool get keepsAspect => isSquare || (aspectLock ?? isImage);
 
   bool get isText => kind == CertFieldKind.text;
   bool get isImage => kind == CertFieldKind.signature || kind == CertFieldKind.logo;
@@ -270,6 +349,27 @@ class CertField {
         src: (_str(j['src']) ?? '').isEmpty ? null : _str(j['src']),
         sigName: _str(j['sig_name']),
         sigTitle: _str(j['sig_title']),
+        name: (_str(j['name']) ?? '').trim().isEmpty ? null : _str(j['name']),
+        locked: j['locked'] == true,
+        aspectLock: j['aspect_lock'] is bool ? j['aspect_lock'] as bool : null,
+        rotation: _num(j['rotation']) ?? 0,
+        weight: _str(j['weight']) == 'bold' ? 'bold' : 'normal',
+        italic: j['italic'] == true,
+        underline: j['underline'] == true,
+        lineHeight: _num(j['line_height']),
+        direction: const ['rtl', 'ltr'].contains(_str(j['direction'])) ? _str(j['direction'])! : 'auto',
+        bgColor: _hexOrNull(j['bg_color']),
+        bgOpacity: _num(j['bg_opacity']) ?? 1,
+        borderColor: _hexOrNull(j['border_color']),
+        borderWidth: _num(j['border_width']) ?? 0,
+        radius: _num(j['radius']) ?? 0,
+        padding: _num(j['padding']) ?? 0,
+        shadowColor: _hexOrNull(j['shadow_color']),
+        shadowBlur: _num(j['shadow_blur']) ?? 6,
+        shadowDx: _num(j['shadow_dx']) ?? 0,
+        shadowDy: _num(j['shadow_dy']) ?? 3,
+        shadowOpacity: _num(j['shadow_opacity']) ?? 0.35,
+        fit: const ['cover', 'fill'].contains(_str(j['fit'])) ? _str(j['fit'])! : 'contain',
         extra: {
           for (final e in j.entries)
             if (!_known.contains(e.key)) e.key: e.value,
@@ -299,6 +399,30 @@ class CertField {
         if (isImage && src != null) 'src': src,
         if (kind == CertFieldKind.signature && (sigName ?? '').isNotEmpty) 'sig_name': sigName,
         if (kind == CertFieldKind.signature && (sigTitle ?? '').isNotEmpty) 'sig_title': sigTitle,
+        // studio keys: only when not the default (the server drops a default too, so a round trip is stable)
+        if ((name ?? '').trim().isNotEmpty) 'name': name,
+        if (locked) 'locked': true,
+        if (aspectLock != null) 'aspect_lock': aspectLock,
+        if (rotation != 0) 'rotation': rotation,
+        if (isText) ...{
+          if (bold) 'weight': 'bold',
+          if (italic) 'italic': true,
+          if (underline) 'underline': true,
+          if (lineHeight != null) 'line_height': lineHeight,
+          if (direction != 'auto') 'direction': direction,
+          if (bgColor != null) 'bg_color': bgColor,
+          if (bgOpacity != 1) 'bg_opacity': bgOpacity,
+          if (borderColor != null) 'border_color': borderColor,
+          if (borderWidth != 0) 'border_width': borderWidth,
+          if (radius != 0) 'radius': radius,
+          if (padding != 0) 'padding': padding,
+          if (shadowColor != null) 'shadow_color': shadowColor,
+          if (shadowBlur != 6) 'shadow_blur': shadowBlur,
+          if (shadowDx != 0) 'shadow_dx': shadowDx,
+          if (shadowDy != 3) 'shadow_dy': shadowDy,
+          if (shadowOpacity != 0.35) 'shadow_opacity': shadowOpacity,
+        },
+        if (isImage && fit != 'contain') 'fit': fit,
       };
 
   CertField copyWith({
@@ -325,6 +449,27 @@ class CertField {
     bool clearSrc = false,
     String? sigName,
     String? sigTitle,
+    Object? name = _keep,
+    bool? locked,
+    Object? aspectLock = _keep,
+    double? rotation,
+    String? weight,
+    bool? italic,
+    bool? underline,
+    Object? lineHeight = _keep,
+    String? direction,
+    Object? bgColor = _keep,
+    double? bgOpacity,
+    Object? borderColor = _keep,
+    double? borderWidth,
+    double? radius,
+    double? padding,
+    Object? shadowColor = _keep,
+    double? shadowBlur,
+    double? shadowDx,
+    double? shadowDy,
+    double? shadowOpacity,
+    String? fit,
   }) =>
       CertField(
         id: id ?? this.id,
@@ -348,6 +493,27 @@ class CertField {
         src: clearSrc ? null : (src ?? this.src),
         sigName: sigName ?? this.sigName,
         sigTitle: sigTitle ?? this.sigTitle,
+        name: identical(name, _keep) ? this.name : name as String?,
+        locked: locked ?? this.locked,
+        aspectLock: identical(aspectLock, _keep) ? this.aspectLock : aspectLock as bool?,
+        rotation: rotation ?? this.rotation,
+        weight: weight ?? this.weight,
+        italic: italic ?? this.italic,
+        underline: underline ?? this.underline,
+        lineHeight: identical(lineHeight, _keep) ? this.lineHeight : lineHeight as double?,
+        direction: direction ?? this.direction,
+        bgColor: identical(bgColor, _keep) ? this.bgColor : bgColor as String?,
+        bgOpacity: bgOpacity ?? this.bgOpacity,
+        borderColor: identical(borderColor, _keep) ? this.borderColor : borderColor as String?,
+        borderWidth: borderWidth ?? this.borderWidth,
+        radius: radius ?? this.radius,
+        padding: padding ?? this.padding,
+        shadowColor: identical(shadowColor, _keep) ? this.shadowColor : shadowColor as String?,
+        shadowBlur: shadowBlur ?? this.shadowBlur,
+        shadowDx: shadowDx ?? this.shadowDx,
+        shadowDy: shadowDy ?? this.shadowDy,
+        shadowOpacity: shadowOpacity ?? this.shadowOpacity,
+        fit: fit ?? this.fit,
         extra: extra,
       );
 
@@ -401,8 +567,8 @@ class CertLangView {
   });
 
   bool get landscape => orientation != 'portrait';
-  double get logicalW => landscape ? kLogicalLong : kLogicalShort;
-  double get logicalH => landscape ? kLogicalShort : kLogicalLong;
+  double get logicalW => certPageLogical(orientation, theme).width;
+  double get logicalH => certPageLogical(orientation, theme).height;
   bool get dark => theme['dark'] == true;
 }
 
@@ -506,8 +672,8 @@ class CertDesign {
   });
 
   bool get landscape => orientation != 'portrait';
-  double get logicalW => landscape ? kLogicalLong : kLogicalShort;
-  double get logicalH => landscape ? kLogicalShort : kLogicalLong;
+  double get logicalW => certPageLogical(orientation, theme).width;
+  double get logicalH => certPageLogical(orientation, theme).height;
 
   bool hasLang(String lang) => langs.contains(lang);
 
@@ -701,4 +867,151 @@ class CertDesign {
         logoUrlEn: identical(logoUrlEn, _keep) ? this.logoUrlEn : logoUrlEn as String?,
         extra: extra,
       );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page size and watermark (theme keys, per language; the renderer's page_logical / _draw_watermark)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The paper sizes the designer offers, (long side, short side) in mm.
+const Map<String, (double, double)> kCertPageMm = {'a4': (297, 210), 'letter': (279.4, 215.9)};
+const double kCertPageMmMin = 50, kCertPageMmMax = 1000, kCertPageShortMin = 300;
+
+/// `theme.page`: 'a4' (also when missing) | 'letter' | 'custom' with its own [wMm] × [hMm].
+class CertPage {
+  const CertPage({this.size = 'a4', this.wMm, this.hMm});
+
+  final String size;
+  final double? wMm, hMm;
+
+  static const a4 = CertPage();
+
+  factory CertPage.of(Map<String, dynamic>? theme) {
+    final p = theme?['page'];
+    if (p is! Map) return a4;
+    final size = const ['letter', 'custom'].contains(p['size']) ? p['size'] as String : 'a4';
+    return CertPage(size: size, wMm: _num(p['w_mm']), hMm: _num(p['h_mm']));
+  }
+
+  /// (long, short) in mm.
+  (double, double) get mm {
+    if (size == 'custom' && wMm != null && hMm != null) {
+      final a = wMm!.clamp(kCertPageMmMin, kCertPageMmMax).toDouble();
+      final b = hMm!.clamp(kCertPageMmMin, kCertPageMmMax).toDouble();
+      return a >= b ? (a, b) : (b, a);
+    }
+    return kCertPageMm[size] ?? kCertPageMm['a4']!;
+  }
+
+  /// The theme value (null = A4, the key is left out).
+  Map<String, dynamic>? toJson() => size == 'a4'
+      ? null
+      : {'size': size, if (size == 'custom') ...{'w_mm': wMm, 'h_mm': hMm}};
+
+  @override
+  bool operator ==(Object other) => other is CertPage && other.size == size && other.wMm == wMm && other.hMm == hMm;
+
+  @override
+  int get hashCode => Object.hash(size, wMm, hMm);
+}
+
+/// The logical page of [orientation] on [theme]'s paper: long side 1000, short side round(1000 × short / long)
+/// (A4 707, Letter 773), at least 300 — exactly the renderer's page_logical.
+Size certPageLogical(String? orientation, Map<String, dynamic>? theme) {
+  final page = CertPage.of(theme);
+  double short;
+  if (page.size == 'a4') {
+    short = kLogicalShort;
+  } else {
+    final (l, s) = page.mm;
+    short = (1000 * s / l).roundToDouble().clamp(kCertPageShortMin, 1000).toDouble();
+  }
+  return orientation == 'portrait' ? Size(short, kLogicalLong) : Size(kLogicalLong, short);
+}
+
+/// `theme.watermark`: text or image, drawn over the background and under every field.
+class CertWatermark {
+  const CertWatermark({
+    this.kind = 'text',
+    this.text = '',
+    this.src,
+    this.color = '#000000',
+    this.font = 'tajawal',
+    this.opacity = 0.12,
+    this.rotation = -30,
+    double? size,
+    this.position = 'center',
+  }) : _size = size;
+
+  final String kind; // text | image
+  final String text;
+  final String? src;
+  final String color;
+  final String font;
+  final double opacity;
+
+  /// Degrees, clockwise (-30 rises to the right).
+  final double rotation;
+  final double? _size;
+  final String position; // center | top | bottom | tile
+
+  bool get isImage => kind == 'image';
+
+  /// Text: the font size (logical); image: the width as a fraction of the page width.
+  double get size => _size ?? (isImage ? 0.5 : 96);
+
+  /// Whether it draws anything.
+  bool get visible => opacity > 0 && (isImage ? (src ?? '').isNotEmpty : text.trim().isNotEmpty);
+
+  static CertWatermark? of(Map<String, dynamic>? theme) {
+    final w = theme?['watermark'];
+    if (w is! Map) return null;
+    return CertWatermark(
+      kind: w['kind'] == 'image' ? 'image' : 'text',
+      text: _str(w['text']) ?? '',
+      src: (_str(w['src']) ?? '').isEmpty ? null : _str(w['src']),
+      color: _hexOrNull(w['color']) ?? '#000000',
+      font: _str(w['font']) ?? 'tajawal',
+      opacity: _num(w['opacity']) ?? 0.12,
+      rotation: _num(w['rotation']) ?? -30,
+      size: _num(w['size']),
+      position: const ['top', 'bottom', 'tile'].contains(w['position']) ? w['position'] as String : 'center',
+    );
+  }
+
+  CertWatermark copyWith({
+    String? kind,
+    String? text,
+    Object? src = _keep,
+    String? color,
+    String? font,
+    double? opacity,
+    double? rotation,
+    double? size,
+    bool resetSize = false,
+    String? position,
+  }) =>
+      CertWatermark(
+        kind: kind ?? this.kind,
+        text: text ?? this.text,
+        src: identical(src, _keep) ? this.src : src as String?,
+        color: color ?? this.color,
+        font: font ?? this.font,
+        opacity: opacity ?? this.opacity,
+        rotation: rotation ?? this.rotation,
+        size: resetSize ? null : (size ?? _size),
+        position: position ?? this.position,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'kind': kind,
+        if (!isImage) 'text': text,
+        if (isImage && src != null) 'src': src,
+        if (!isImage) 'color': color,
+        if (!isImage) 'font': font,
+        'opacity': opacity,
+        'rotation': rotation,
+        'size': size,
+        'position': position,
+      };
 }

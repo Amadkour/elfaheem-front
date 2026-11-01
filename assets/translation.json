@@ -21432,5 +21432,317 @@
   "instructor_courses_empty": {
     "en": "No public courses yet",
     "ar": "لا توجد كورسات عامة بعد"
+  },
+  "certd_aspect_lock": {
+    "en": "Keep proportions",
+    "ar": "الحفاظ على التناسب"
+  },
+  "certd_aspect_lock_hint": {
+    "en": "Width and height change together",
+    "ar": "يتغير العرض والارتفاع معًا"
+  },
+  "certd_auto": {
+    "en": "Auto",
+    "ar": "تلقائي"
+  },
+  "certd_bold": {
+    "en": "Bold",
+    "ar": "عريض"
+  },
+  "certd_italic": {
+    "en": "Italic",
+    "ar": "مائل"
+  },
+  "certd_underline": {
+    "en": "Underline",
+    "ar": "تسطير"
+  },
+  "certd_text_style": {
+    "en": "Style",
+    "ar": "النمط"
+  },
+  "certd_style": {
+    "en": "Text style",
+    "ar": "نمط النص"
+  },
+  "certd_line_height": {
+    "en": "Line height",
+    "ar": "ارتفاع السطر"
+  },
+  "certd_line_height_auto": {
+    "en": "Back to automatic",
+    "ar": "العودة إلى التلقائي"
+  },
+  "certd_direction": {
+    "en": "Direction",
+    "ar": "الاتجاه"
+  },
+  "certd_dir_auto": {
+    "en": "Auto",
+    "ar": "تلقائي"
+  },
+  "certd_dir_rtl": {
+    "en": "Right to left",
+    "ar": "من اليمين"
+  },
+  "certd_dir_ltr": {
+    "en": "Left to right",
+    "ar": "من اليسار"
+  },
+  "certd_box": {
+    "en": "Box",
+    "ar": "الإطار"
+  },
+  "certd_box_fill": {
+    "en": "Fill",
+    "ar": "التعبئة"
+  },
+  "certd_box_fill_opacity": {
+    "en": "Fill opacity",
+    "ar": "شفافية التعبئة"
+  },
+  "certd_box_border": {
+    "en": "Border",
+    "ar": "الحد"
+  },
+  "certd_box_border_width": {
+    "en": "Border width",
+    "ar": "سُمك الحد"
+  },
+  "certd_box_radius": {
+    "en": "Corner radius",
+    "ar": "استدارة الزوايا"
+  },
+  "certd_box_padding": {
+    "en": "Padding",
+    "ar": "الهامش الداخلي"
+  },
+  "certd_shadow": {
+    "en": "Shadow",
+    "ar": "الظل"
+  },
+  "certd_shadow_color": {
+    "en": "Shadow colour",
+    "ar": "لون الظل"
+  },
+  "certd_shadow_blur": {
+    "en": "Blur",
+    "ar": "التمويه"
+  },
+  "certd_shadow_opacity": {
+    "en": "Shadow opacity",
+    "ar": "شفافية الظل"
+  },
+  "certd_shadow_dx": {
+    "en": "Offset X",
+    "ar": "الإزاحة الأفقية"
+  },
+  "certd_shadow_dy": {
+    "en": "Offset Y",
+    "ar": "الإزاحة الرأسية"
+  },
+  "certd_crop": {
+    "en": "Crop",
+    "ar": "قص"
+  },
+  "certd_fit": {
+    "en": "Fit",
+    "ar": "الملاءمة"
+  },
+  "certd_fit_contain": {
+    "en": "Fit inside",
+    "ar": "احتواء"
+  },
+  "certd_fit_cover": {
+    "en": "Fill and crop",
+    "ar": "تغطية"
+  },
+  "certd_fit_fill": {
+    "en": "Stretch",
+    "ar": "تمديد"
+  },
+  "certd_rotation": {
+    "en": "Rotation",
+    "ar": "الدوران"
+  },
+  "certd_rotate_90": {
+    "en": "Rotate 90°",
+    "ar": "تدوير 90°"
+  },
+  "certd_rotation_reset": {
+    "en": "No rotation",
+    "ar": "بدون دوران"
+  },
+  "certd_layer": {
+    "en": "Layer",
+    "ar": "الطبقة"
+  },
+  "certd_layer_name": {
+    "en": "Layer name",
+    "ar": "اسم الطبقة"
+  },
+  "certd_lock": {
+    "en": "Lock",
+    "ar": "قفل"
+  },
+  "certd_unlock": {
+    "en": "Unlock",
+    "ar": "إلغاء القفل"
+  },
+  "certd_locked": {
+    "en": "Locked",
+    "ar": "مقفل"
+  },
+  "certd_lock_hint": {
+    "en": "A locked element cannot be moved, resized or deleted",
+    "ar": "العنصر المقفل لا يمكن تحريكه أو تغيير حجمه أو حذفه"
+  },
+  "certd_view": {
+    "en": "View",
+    "ar": "العرض"
+  },
+  "certd_grid": {
+    "en": "Grid and snap to grid",
+    "ar": "الشبكة والالتقاط إليها"
+  },
+  "certd_rulers": {
+    "en": "Rulers",
+    "ar": "المساطر"
+  },
+  "certd_paper": {
+    "en": "Paper",
+    "ar": "الورق"
+  },
+  "certd_paper_a4": {
+    "en": "A4",
+    "ar": "A4"
+  },
+  "certd_paper_letter": {
+    "en": "Letter",
+    "ar": "Letter"
+  },
+  "certd_paper_custom": {
+    "en": "Custom",
+    "ar": "مخصص"
+  },
+  "certd_paper_w_mm": {
+    "en": "Width",
+    "ar": "العرض"
+  },
+  "certd_paper_h_mm": {
+    "en": "Height",
+    "ar": "الارتفاع"
+  },
+  "certd_paper_hint": {
+    "en": "{w} × {h} mm — elements keep their places when the paper changes",
+    "ar": "{w} × {h} مم — تحتفظ العناصر بأماكنها عند تغيير الورق"
+  },
+  "certd_paper_follows_ar": {
+    "en": "Follows the Arabic design until you customize the English theme",
+    "ar": "يتبع التصميم العربي حتى تخصص سمة الإنجليزية"
+  },
+  "certd_watermark": {
+    "en": "Watermark",
+    "ar": "العلامة المائية"
+  },
+  "certd_wm_none": {
+    "en": "None",
+    "ar": "بدون"
+  },
+  "certd_wm_text": {
+    "en": "Text",
+    "ar": "نص"
+  },
+  "certd_wm_image": {
+    "en": "Image",
+    "ar": "صورة"
+  },
+  "certd_wm_default_text": {
+    "en": "ORIGINAL",
+    "ar": "أصلية"
+  },
+  "certd_wm_position": {
+    "en": "Position",
+    "ar": "الموضع"
+  },
+  "certd_wm_top": {
+    "en": "Top",
+    "ar": "أعلى"
+  },
+  "certd_wm_center": {
+    "en": "Centre",
+    "ar": "الوسط"
+  },
+  "certd_wm_bottom": {
+    "en": "Bottom",
+    "ar": "أسفل"
+  },
+  "certd_wm_tile": {
+    "en": "Repeat",
+    "ar": "تكرار"
+  },
+  "certd_wm_size_pct": {
+    "en": "Size (page width)",
+    "ar": "الحجم (من عرض الصفحة)"
+  },
+  "certd_draft_restored": {
+    "en": "Your unsaved changes were restored",
+    "ar": "استُعيدت تعديلاتك غير المحفوظة"
+  },
+  "certd_draft_discard": {
+    "en": "Discard",
+    "ar": "تجاهل"
+  },
+  "certd_sample_data": {
+    "en": "Sample data",
+    "ar": "بيانات التجربة"
+  },
+  "certd_sample_data_hint": {
+    "en": "Type a real student's details to see the {lang} certificate as it will be issued. Empty fields use the sample.",
+    "ar": "اكتب بيانات طالب حقيقية لترى الشهادة {lang} كما ستصدر. الحقول الفارغة تستخدم المثال."
+  },
+  "certd_sample_apply": {
+    "en": "Preview",
+    "ar": "معاينة"
+  },
+  "certd_sample_reset": {
+    "en": "Use the sample",
+    "ar": "استخدام المثال"
+  },
+  "certd_templates": {
+    "en": "Start from a template",
+    "ar": "ابدأ من قالب"
+  },
+  "certd_templates_hint": {
+    "en": "Each template has its own Arabic and English design. It becomes your own copy to edit.",
+    "ar": "لكل قالب تصميم عربي وتصميم إنجليزي. يصبح نسختك الخاصة للتعديل."
+  },
+  "certd_templates_none": {
+    "en": "No templates yet",
+    "ar": "لا توجد قوالب بعد"
+  },
+  "cert_duplicate_design": {
+    "en": "Duplicate",
+    "ar": "نسخ التصميم"
+  },
+  "cert_duplicated": {
+    "en": "Copy created",
+    "ar": "أُنشئت نسخة"
+  },
+  "cert_set_default": {
+    "en": "Make default",
+    "ar": "تعيين كافتراضي"
+  },
+  "cert_default_badge": {
+    "en": "Default",
+    "ar": "افتراضي"
+  },
+  "cert_default_set": {
+    "en": "This design is now the default for all courses",
+    "ar": "أصبح هذا التصميم الافتراضي لكل الدورات"
+  },
+  "cert_from_template": {
+    "en": "From a template",
+    "ar": "من قالب"
   }
 }

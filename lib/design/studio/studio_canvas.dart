@@ -56,6 +56,7 @@ class StudioCanvas<P> extends StatefulWidget {
     this.autofocus = false,
     this.paperInsets = EdgeInsets.zero,
     this.paperBuilder,
+    this.overlayBuilder,
   });
 
   final StudioController<P> controller;
@@ -84,6 +85,9 @@ class StudioCanvas<P> extends StatefulWidget {
   /// Draws the whole paper (margins included) under the items: header / footer text, a frame, a watermark.
   /// Receives the screen pixels per page unit.
   final Widget Function(BuildContext context, double scale)? paperBuilder;
+
+  /// Drawn over the page background and under the items (a watermark), at the page's size.
+  final Widget Function(BuildContext context, double scale)? overlayBuilder;
 
   /// Screen pixels per page unit for the item being built.
   static double scaleOf(BuildContext context) =>
@@ -201,7 +205,25 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
               : _origin! - insetOff,
           paperSize,
         );
-        final origin = _origin = paperOrigin + insetOff;
+        var origin = _origin = paperOrigin + insetOff;
+        final reveal = _ctl.takeReveal();
+        final rr = reveal == null ? null : _ctl.rectOf(reveal);
+        if (rr != null) {
+          final m = widget.padding;
+          final r = Rect.fromLTWH(origin.dx + rr.left * scale, origin.dy + rr.top * scale, rr.width * scale, rr.height * scale);
+          var dx = 0.0, dy = 0.0;
+          if (r.width + 2 * m <= _viewport.width) {
+            if (r.left < m) dx = m - r.left;
+            if (r.right > _viewport.width - m) dx = _viewport.width - m - r.right;
+          }
+          if (r.height + 2 * m <= _viewport.height) {
+            if (r.top < m) dy = m - r.top;
+            if (r.bottom > _viewport.height - m) dy = _viewport.height - m - r.bottom;
+          }
+          if (dx != 0 || dy != 0) {
+            origin = _origin = _clampOrigin(origin + Offset(dx, dy) - insetOff, paperSize) + insetOff;
+          }
+        }
         if (_layer == null || _layerScale != scale) {
           _layerScale = scale;
           _layer = _StudioPageLayer<P>(
@@ -210,6 +232,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
             builder: widget.itemBuilder,
             paper: widget.pageColor,
             background: widget.pageBackground,
+            overlay: widget.overlayBuilder,
             decorate: !hasPaper,
           );
           final theme = Theme.of(context);
@@ -261,6 +284,25 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
             height: pageSize.height,
             child: IgnorePointer(child: _overlay!),
           ),
+          if (_ctl.showRulers)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _RulerPainter(
+                    origin: origin,
+                    scale: scale,
+                    page: _ctl.page.size,
+                    unitPx: _ctl.page.unitPx,
+                    band: c.cardBg,
+                    ink: c.textMedium,
+                    line: c.divider,
+                    label: TextStyle(fontFamily: Theme.of(context).textTheme.bodySmall?.fontFamily, fontSize: 9, color: c.textMedium),
+                    selection: _ctl.selectionBounds,
+                    accent: c.primary,
+                  ),
+                ),
+              ),
+            ),
         ]);
       }),
     );
@@ -312,7 +354,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     for (final it in _ctl.items.reversed) {
       if (!it.visible) continue;
       final rect = _ctl.rectOf(it.id) ?? it.rect;
-      if (rect.inflate(tol).contains(p)) return (null, it.id);
+      if (rect.inflate(tol).contains(studioUnrotate(p, rect.center, it.rotation))) return (null, it.id);
     }
     return (null, null);
   }
@@ -571,6 +613,7 @@ class _StudioPageLayer<P> extends StatelessWidget {
     required this.builder,
     required this.paper,
     this.background,
+    this.overlay,
     this.decorate = true,
   });
 
@@ -579,6 +622,7 @@ class _StudioPageLayer<P> extends StatelessWidget {
   final StudioItemBuilder<P> builder;
   final Color paper;
   final Widget? background;
+  final Widget Function(BuildContext context, double scale)? overlay;
 
   /// false when a larger paper is drawn behind the page (StudioCanvas.paperInsets).
   final bool decorate;
@@ -595,6 +639,19 @@ class _StudioPageLayer<P> extends StatelessWidget {
           child: ClipRect(
             child: Stack(clipBehavior: Clip.none, children: [
               if (background != null) Positioned.fill(child: background!),
+              if (overlay != null) Positioned.fill(child: IgnorePointer(child: overlay!(context, scale))),
+              if (controller.showGrid)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _GridPainter(
+                        grid: controller.grid!,
+                        scale: scale,
+                        color: paper.computeLuminance() > .5 ? const Color(0x1F1C1C24) : const Color(0x26FFFFFF),
+                      ),
+                    ),
+                  ),
+                ),
               for (final it in controller.items)
                 if (it.visible)
                   _ItemView<P>(
@@ -634,7 +691,7 @@ class _ItemView<P> extends StatelessWidget {
         top: r.top * scale,
         width: math.max(r.width * scale, 1),
         height: math.max(r.height * scale, 1),
-        child: child,
+        child: item.rotation == 0 ? child : Transform.rotate(angle: item.rotation * math.pi / 180, child: child),
       );
 
   @override
@@ -687,7 +744,16 @@ class _OverlayPainter extends CustomPainter {
       if (!sel.contains(it.id) || !it.visible) continue;
       final r = _s(ctl.rectOf(it.id) ?? it.rect);
       frame.color = it.locked ? muted : primary;
-      canvas.drawRect(r, frame);
+      if (it.rotation == 0) {
+        canvas.drawRect(r, frame);
+      } else {
+        canvas
+          ..save()
+          ..translate(r.center.dx, r.center.dy)
+          ..rotate(it.rotation * math.pi / 180)
+          ..drawRect(Rect.fromCenter(center: Offset.zero, width: r.width, height: r.height), frame)
+          ..restore();
+      }
     }
     if (sel.length > 1) {
       final b = ctl.selectionBounds;
@@ -840,4 +906,135 @@ class _BorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _BorderPainter old) =>
       old.border != border || old.background != background || old.scale != scale;
+}
+
+/// [p] turned back by [degrees] about [center]: where a point on a turned item lies on the item before the turn.
+Offset studioUnrotate(Offset p, Offset center, double degrees) {
+  if (degrees == 0) return p;
+  final a = -degrees * math.pi / 180;
+  final d = p - center;
+  return center + Offset(d.dx * math.cos(a) - d.dy * math.sin(a), d.dx * math.sin(a) + d.dy * math.cos(a));
+}
+
+/// The snap grid drawn on the page: thin lines every grid step, a stronger one every 5.
+class _GridPainter extends CustomPainter {
+  const _GridPainter({required this.grid, required this.scale, required this.color});
+  final Size grid;
+  final double scale;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gx = grid.width * scale, gy = grid.height * scale;
+    if (gx < 4 || gy < 4) return;
+    final thin = Paint()
+      ..color = color
+      ..strokeWidth = .5;
+    final strong = Paint()
+      ..color = color.withValues(alpha: math.min(1, color.a * 2))
+      ..strokeWidth = .8;
+    var i = 0;
+    for (var x = 0.0; x <= size.width + .5; x += gx, i++) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), i % 5 == 0 ? strong : thin);
+    }
+    i = 0;
+    for (var y = 0.0; y <= size.height + .5; y += gy, i++) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), i % 5 == 0 ? strong : thin);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridPainter old) => old.grid != grid || old.scale != scale || old.color != color;
+}
+
+/// Rulers along the canvas's top and left edges, in page units (the page's origin at 0), with the selection's
+/// extent marked. Physical: the page is never mirrored, so the vertical ruler is on the left in Arabic too.
+class _RulerPainter extends CustomPainter {
+  const _RulerPainter({
+    required this.origin,
+    required this.scale,
+    required this.page,
+    required this.unitPx,
+    required this.band,
+    required this.ink,
+    required this.line,
+    required this.label,
+    required this.accent,
+    this.selection,
+  });
+
+  static const double thickness = 18;
+
+  final Offset origin;
+  final double scale, unitPx;
+  final Size page;
+  final Color band, ink, line, accent;
+  final TextStyle label;
+  final Rect? selection;
+
+  /// A tick step (page units) that leaves at least ~8 px between ticks.
+  double _step() {
+    for (final s in const [1.0, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000]) {
+      if (s * scale >= 8) return s.toDouble();
+    }
+    return 1000;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bg = Paint()..color = band;
+    final edge = Paint()
+      ..color = line
+      ..strokeWidth = 1;
+    final tick = Paint()
+      ..color = ink
+      ..strokeWidth = 1;
+    canvas
+      ..drawRect(Rect.fromLTWH(0, 0, size.width, thickness), bg)
+      ..drawRect(Rect.fromLTWH(0, 0, thickness, size.height), bg)
+      ..drawLine(const Offset(0, thickness), Offset(size.width, thickness), edge)
+      ..drawLine(const Offset(thickness, 0), Offset(thickness, size.height), edge);
+    final sel = selection;
+    if (sel != null) {
+      final hi = Paint()..color = accent.withValues(alpha: .25);
+      canvas
+        ..drawRect(Rect.fromLTRB(origin.dx + sel.left * scale, 0, origin.dx + sel.right * scale, thickness), hi)
+        ..drawRect(Rect.fromLTRB(0, origin.dy + sel.top * scale, thickness, origin.dy + sel.bottom * scale), hi);
+    }
+    final step = _step();
+    final major = step * 5;
+    void text(String s, Offset at, {bool vertical = false}) {
+      final tp = TextPainter(text: TextSpan(text: s, style: label), textDirection: ui.TextDirection.ltr)..layout();
+      if (vertical) {
+        canvas
+          ..save()
+          ..translate(at.dx, at.dy)
+          ..rotate(-math.pi / 2);
+        tp.paint(canvas, Offset(-tp.width / 2, 0));
+        canvas.restore();
+      } else {
+        tp.paint(canvas, Offset(at.dx - tp.width / 2, at.dy));
+      }
+      tp.dispose();
+    }
+
+    for (var u = 0.0; u <= page.width + 1e-6; u += step) {
+      final x = origin.dx + u * scale;
+      if (x < thickness || x > size.width) continue;
+      final isMajor = (u / major - (u / major).round()).abs() < 1e-6;
+      canvas.drawLine(Offset(x, thickness - (isMajor ? 8 : 4)), Offset(x, thickness), tick);
+      if (isMajor) text(u.round().toString(), Offset(x, 1));
+    }
+    for (var u = 0.0; u <= page.height + 1e-6; u += step) {
+      final y = origin.dy + u * scale;
+      if (y < thickness || y > size.height) continue;
+      final isMajor = (u / major - (u / major).round()).abs() < 1e-6;
+      canvas.drawLine(Offset(thickness - (isMajor ? 8 : 4), y), Offset(thickness, y), tick);
+      if (isMajor) text(u.round().toString(), Offset(1, y), vertical: true);
+    }
+    canvas.drawRect(const Rect.fromLTWH(0, 0, thickness, thickness), bg);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RulerPainter old) => true;
 }

@@ -4,13 +4,14 @@
 // plug in"). One adapter per LANGUAGE: the Arabic and the English design each have their own StudioController, so
 // selection, zoom and undo history never cross from one language to the other.
 //
-//   item      = CertField, rect in logical page units (1000 × 707 / 707 × 1000)
-//   text      h = 0 is stored (height follows the text): readItems reports the estimated height (size × lines ×
-//             1.15, measured with the field's own cert font), writeRects writes x, y, w and keeps h = 0;
+//   item      = CertField, rect in logical page units (1000 × 707 / 707 × 1000, or the design's page size)
+//   text      h = 0 is stored (height follows the text): readItems reports the renderer's box height
+//             (cert_text_layout.dart: 2 × padding + lines × advance), writeRects writes x, y, w and keeps h = 0;
 //             resize horizontal
 //   line      rect height = its thickness; writeRects never changes the thickness; resize horizontal
-//   logo / signature  w × h box, resize keeping the aspect
+//   logo / signature  w × h box, resize keeping the aspect unless the person unlocked it (`aspect_lock: false`)
 //   photo / qr        squares of side w, resize keeping the aspect
+//   every kind        `locked` → a locked item, `rotation` → the item's rotation
 //   snapshot  the language's CertLangSlice (fields + that language's page settings) — immutable
 library;
 
@@ -19,11 +20,12 @@ import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
 
+import 'cert_text_layout.dart';
 import 'certificate_design_models.dart';
 
 final RegExp certArabicChars = RegExp(r'[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]');
 
-/// The line height the canvas draws certificate text with (× the font size).
+/// The line height of an EMPTY text box (× the font size): a box with no text still has a line to select.
 const double kCertLineHeight = 1.15;
 
 /// The text a field shows in [arabic] / English, as the renderer picks it: Arabic uses `text_ar` when it is set.
@@ -45,22 +47,17 @@ TextStyle certTextStyle(CertField f, {double scale = 1, double? size, Color? col
   );
 }
 
-/// Estimated height (page units) of a text field of width [width]: one line for a one-line field (it shrinks to
-/// fit), else the wrapped lines up to max_lines.
-double certTextHeight(CertField f, {required bool arabic, double? width, Map<String, String> samples = const {}}) {
-  final one = f.size * kCertLineHeight;
+/// The renderer's layout of a text field with the sample values (null when it has no text).
+CertTextLayout? certFieldLayout(CertField f, {required bool arabic, double? width, Map<String, String> samples = const {}}) {
   final text = resolveSample(certFieldRawText(f, arabic: arabic), arabic: arabic, custom: samples);
-  if (f.maxLines <= 1 || text.trim().isEmpty) return one;
-  final ar = certArabicChars.hasMatch(text);
-  final tp = TextPainter(
-    // the renderer drops letter spacing on Arabic text (tracking would break the joins)
-    text: TextSpan(text: text, style: ar ? certTextStyle(f).copyWith(letterSpacing: 0) : certTextStyle(f)),
-    textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
-    maxLines: f.maxLines,
-  )..layout(maxWidth: math.max(1, width ?? f.w));
-  final lines = tp.computeLineMetrics().length.clamp(1, f.maxLines);
-  tp.dispose();
-  return lines * one;
+  return certTextLayout(width == null ? f : f.copyWith(w: width), text);
+}
+
+/// Height (page units) of a text field's box: what the renderer draws (2 × padding + lines × advance); an empty
+/// box keeps one line of the font size so it can still be selected.
+double certTextHeight(CertField f, {required bool arabic, double? width, Map<String, String> samples = const {}}) {
+  final l = certFieldLayout(f, arabic: arabic, width: width, samples: samples);
+  return l?.boxHeight ?? f.size * kCertLineHeight + 2 * f.padding.clamp(0, 100);
 }
 
 /// The page rect of a field (see the header for each kind).
@@ -83,6 +80,10 @@ StudioResize certResizeOf(CertFieldKind k) => switch (k) {
       CertFieldKind.text || CertFieldKind.line => StudioResize.horizontal,
       _ => StudioResize.aspect,
     };
+
+/// How [f] resizes: per kind, and a logo / signature freely once the person turned its aspect lock off.
+StudioResize certResizeOfField(CertField f) =>
+    f.isImage && !f.keepsAspect ? StudioResize.free : certResizeOf(f.kind);
 
 Size certMinSizeOf(CertFieldKind k) => switch (k) {
       CertFieldKind.text => const Size(40, 1),
@@ -151,8 +152,9 @@ class CertStudioAdapter implements StudioAdapter<CertField> {
               rect: certFieldRect(f, arabic: arabic, samples: samples),
               payload: f,
               visible: f.visible,
-              locked: readOnly,
-              resize: certResizeOf(f.kind),
+              locked: readOnly || f.locked,
+              rotation: f.rotation,
+              resize: certResizeOfField(f),
               minSize: certMinSizeOf(f.kind),
             ),
       ];
@@ -199,7 +201,8 @@ class CertStudioAdapter implements StudioAdapter<CertField> {
   @override
   StudioItem<CertField> cloneItem(StudioItem<CertField> item) {
     final id = certNewFieldId();
-    return item.copyWith(id: id, payload: item.payload.copyWithNewId(id));
+    // a copy is never locked (the engine unlocks it too) and drops the layer name's uniqueness worries
+    return item.copyWith(id: id, payload: item.payload.copyWithNewId(id).copyWith(locked: false));
   }
 
   @override
