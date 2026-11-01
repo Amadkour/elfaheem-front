@@ -42,7 +42,9 @@ import '../export/export_studio_api.dart';
 import '../export/export_studio_model.dart';
 import '../export/table_export_choice.dart';
 import '../export/table_export_model.dart';
-import '../studio/studio_props.dart' show StudioSegment, StudioSegmented;
+import '../export/export_fonts.dart' show ExportFonts;
+import '../export/export_job.dart';
+import '../studio/studio_props.dart' show StudioFontOption, StudioFontPicker, StudioSegment, StudioSegmented;
 import 'export_design.dart';
 import 'export_designer.dart';
 import 'export_flow_build.dart';
@@ -245,7 +247,51 @@ class _ExportFlowSheetState extends State<ExportFlowSheet> {
     return exportThemeDesign(ch.theme, lang, brand: _brand);
   }
 
-  ExportDesign _previewDesign(String lang) => _designFor(lang) ?? exportStandardPreviewDesign(lang, brand: _brand);
+  ExportDesign _previewDesign(String lang) {
+    final d = (_designFor(lang) ?? exportStandardPreviewDesign(lang, brand: _brand, table: exportFlowVariant(e, ch, lang), columns: exportFlowColumns(exportFlowVariant(e, ch, lang), ch))).copy();
+    // the person's font replaces the page font, exactly as the writers do (export_flow_build.dart)
+    if (ch.fontFor(lang).isNotEmpty) d.fontFamily = ch.fontFor(lang);
+    return d;
+  }
+
+  /// The sheet as Excel writes [lang]'s file (the chosen font named in it).
+  XlsxSheetOptions _sheetFor(String lang) => ch.fontFor(lang).isEmpty ? _sheet : (_sheet.copy()..font = ch.fontFor(lang));
+
+  /// The font row of the design step: every catalog font (the certificate studio's), drawn in itself, with what the
+  /// format does with it.
+  Widget _fontPicker(BuildContext context, String lang) {
+    final c = context.colors;
+    final id = ch.fontFor(lang);
+    final f = ExportFonts.byId(id);
+    final standIn = id.isEmpty ? null : f.pdfArabicStandInId;
+    final notes = <String>[
+      if (_xlsx)
+        xs('exs_font_xlsx_hint', 'Excel cannot embed fonts: the file names this font, and Excel shows it where it is installed (a similar font elsewhere).',
+            'لا يمكن تضمين الخطوط في Excel: يحمل الملف اسم الخط ويظهر حيث يكون مثبّتًا، وإلا يُعرض خط مشابه.')
+      else if (ch.format == AppExportFormat.docx)
+        xs('exs_font_docx_hint', 'The font is embedded in the Word file.', 'يُضمَّن الخط داخل ملف Word.'),
+      if (!_xlsx && standIn != null && lang == 'ar' && f.arabic)
+        '${xs('exs_font_pdf_standin', 'In PDF, the Arabic letters of this font are drawn with', 'في PDF تُرسم الحروف العربية لهذا الخط بخط')} ${ExportFonts.byId(standIn).label}.'
+      else if (!_xlsx && standIn != null && !f.arabic)
+        '${xs('exs_font_latin_only', 'This font has no Arabic letters: Arabic text uses', 'هذا الخط بلا حروف عربية: يُكتب النص العربي بخط')} ${ExportFonts.byId(standIn).label}.',
+    ];
+    ExportFonts.ensureAllPreviews();
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      StudioFontPicker(
+        label: xs('exs_font', 'Font', 'الخط'),
+        options: [
+          StudioFontOption(id: '', label: xs('exs_font_layout', "The layout's font", 'خط التصميم')),
+          for (final x in ExportFonts.sortedFor(lang)) StudioFontOption(id: x.id, label: x.label, family: x.previewFamily),
+        ],
+        value: id,
+        onChanged: (v) => setState(() => v.isEmpty ? ch.fonts.remove(lang) : ch.fonts[lang] = v),
+      ),
+      for (final n in notes) ...[
+        const SizedBox(height: AppSpace.xxs),
+        Text(n, style: appText(12, c: c.textMedium)),
+      ],
+    ]);
+  }
 
   bool _custom(String lang) => _designs.containsKey(_dk(lang));
 
@@ -348,21 +394,39 @@ class _ExportFlowSheetState extends State<ExportFlowSheet> {
         ? job
         : ExportFlowJob(source: job.source, format: job.format, choice: job.choice, rules: job.rules, sheet: job.sheet, designs: job.designs, exporter: job.exporter, logo: logo);
     final files = <ExportFlowFile>[];
-    for (final lang in run.languages) {
-      try {
-        final f = await buildExportFlowFile(run, lang);
-        if (widget.saveFile != null) {
-          await widget.saveFile!(f.bytes, f.name, f.mime);
-        } else {
-          await saver.dlSaveBytes(f.bytes, f.name, f.mime);
-        }
-        files.add(f);
-      } catch (err) {
-        debugPrint('export flow failed ($lang): $err');
-        showAppNotice(xs('exs_export_failed', 'Could not create the file. Try again.', 'تعذّر إنشاء الملف. حاول مرة أخرى.'), error: true);
-      }
-    }
     if (!mounted) return;
+    // the writers run off the UI behind a progress dialog with Cancel (7.2)
+    final finished = await runExportWithProgress<bool>(context, (progress) async {
+      final langs = run.languages;
+      for (var i = 0; i < langs.length; i++) {
+        final lang = langs[i];
+        progress.step(
+            '${xs('exs_progress_writing', 'Writing', 'جارٍ كتابة')} ${switch (ch.format) { AppExportFormat.xlsx => 'Excel', AppExportFormat.docx => 'Word', AppExportFormat.pdf => 'PDF' }} · ${lang == 'ar' ? 'العربية' : 'English'} · ${run.rowCount} ${xs('exs_rows', 'rows', 'صف')}',
+            langs.length == 1 ? null : i / langs.length);
+        try {
+          final f = await buildExportFlowFile(run, lang, progress: progress);
+          progress.throwIfCancelled();
+          if (widget.saveFile != null) {
+            await widget.saveFile!(f.bytes, f.name, f.mime);
+          } else {
+            await saver.dlSaveBytes(f.bytes, f.name, f.mime);
+          }
+          files.add(f);
+        } on ExportCancelled {
+          rethrow;
+        } catch (err) {
+          debugPrint('export flow failed ($lang): $err');
+          showAppNotice(xs('exs_export_failed', 'Could not create the file. Try again.', 'تعذّر إنشاء الملف. حاول مرة أخرى.'), error: true);
+        }
+      }
+      return true;
+    });
+    if (!mounted) return;
+    if (finished == null) {
+      setState(() => _busy = false);
+      showAppNotice(xs('exs_cancelled', 'Export cancelled', 'أُلغي التصدير'));
+      return;
+    }
     if (files.isNotEmpty) {
       showAppNotice(files.length == 1
           ? '${xs('exs_saved', 'Saved', 'تم الحفظ')}: ${exportLtr(files.first.name)} · ${exportLtr(exportSizeLabel(files.first.bytes.length))}'
@@ -443,7 +507,7 @@ class _ExportFlowSheetState extends State<ExportFlowSheet> {
     }
     setState(() => _busy = true);
     // "No grouping" is saved as '' so the template clears the page's default group when applied
-    final opts = ExportTemplateOptions(sheet: _sheet, groupBy: ch.groupByFor(e) ?? '', showTotals: ch.totals, numerals: Map.of(ch.numerals), theme: ch.theme)
+    final opts = ExportTemplateOptions(sheet: _sheet, groupBy: ch.groupByFor(e) ?? '', showTotals: ch.totals, numerals: Map.of(ch.numerals), theme: ch.theme, fonts: Map.of(ch.fonts))
         .toJson(totalKeys: templateTotalKeys(e, ch));
     // a rule on a field the file does not print would be refused (422 rules_invalid): left out, and said so
     final split = templateRules(e, ch, [for (final r in _rules) if (r.effective) r]);
@@ -601,7 +665,7 @@ class _ExportFlowSheetState extends State<ExportFlowSheet> {
     final lang = ch.languages.contains(_previewLang) ? _previewLang : ch.languages.first;
     final v = exportFlowVariant(e, ch, lang);
     if (_xlsx) {
-      return ExportSheetPreview(export: v, columns: exportFlowColumns(v, ch), sheet: _sheet, rules: _rules, numerals: ch.numeralsFor(lang));
+      return ExportSheetPreview(export: v, columns: exportFlowColumns(v, ch), sheet: _sheetFor(lang), rules: _rules, numerals: ch.numeralsFor(lang));
     }
     return ExportPagePreview(
       design: _previewDesign(lang)..rtl = lang == 'ar',
@@ -808,6 +872,8 @@ class _ExportFlowSheetState extends State<ExportFlowSheet> {
             ),
         ]);
       }),
+      const SizedBox(height: AppSpace.md),
+      _fontPicker(context, lang),
       if (_custom(lang) && !_xlsx) ...[
         const SizedBox(height: AppSpace.xs),
         AppBanner(

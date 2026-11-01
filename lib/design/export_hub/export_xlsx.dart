@@ -6,14 +6,16 @@
 // the design is RTL). A council dataset gets a second sheet "Votes" (item · approve · reject · abstain · eligible ·
 // % · outcome) when vote results are included. Export Studio: the content's rules (cell styles, hidden rows),
 // group headings with subtotals, a totals row, header overrides ([HubTablePlan]) and Arabic-Indic digits in the
-// text cells (numbers and dates stay numbers). The page frame and the watermark are Word / PDF only.
+// text cells (numbers and dates stay numbers). The page frame is Word / PDF only; the watermark prints as a header picture (xlsx_watermark.dart).
 library;
 
 import 'dart:typed_data';
 
+import '../export/export_fonts.dart' show ExportFonts;
 import '../export/export_studio_model.dart' show ExportRuleStyle, exportDigits;
 import '../export/table_export_model.dart' show AppColType, AppTotal, dateValue, numValue, tintHex, xmlEsc, zipFiles;
 import '../export/table_export_xlsx.dart' show xlsxCol, xlsxSerial, xlsxSheetName;
+import '../export/xlsx_watermark.dart';
 import 'export_design.dart';
 import 'export_pdf.dart' show ExportLabels, HubTablePlan, voteOutcomeColors;
 
@@ -27,11 +29,14 @@ class _St {
 }
 
 class _Styles {
-  _Styles(this.rtl, this.font) {
+  _Styles(this.rtl, this.font, {this.bold = false, this.italic = false}) {
     style(const _St(border: 'none'));
   }
   final bool rtl;
   final String font;
+
+  /// The chosen face is itself bold / italic (a "… Bold" catalog font).
+  final bool bold, italic;
   final _fonts = <String>[], _fills = <String>[], _xfs = <String>[], _fmts = <String>[];
   final _index = <String, int>{};
 
@@ -43,7 +48,7 @@ class _Styles {
   }
 
   int style(_St s) => _index.putIfAbsent(s.key, () {
-        final font = _add(_fonts, '<font>${s.bold ? '<b/>' : ''}<sz val="${s.size}"/><color rgb="FF${s.color}"/><name val="${xmlEsc(this.font)}"/><family val="2"/></font>');
+        final font = _add(_fonts, '<font>${s.bold || bold ? '<b/>' : ''}${italic ? '<i/>' : ''}<sz val="${s.size}"/><color rgb="FF${s.color}"/><name val="${xmlEsc(this.font)}"/><family val="2"/></font>');
         final fill = s.fill == null ? 0 : 2 + _add(_fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF${s.fill}"/><bgColor indexed="64"/></patternFill></fill>');
         final fmt = s.fmt == null ? 0 : 164 + _add(_fmts, s.fmt!);
         final border = switch (s.border) { 'thin' => 1, 'bottom' => 2, _ => 0 };
@@ -79,14 +84,16 @@ String? exportXlsxFormat(String type) => switch (type) {
 
 String _num(num v) => v == v.roundToDouble() && v.abs() < 1e15 ? v.toInt().toString() : v.toString();
 
-Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
+/// [watermark]: the design's watermark as a header picture (xlsx_watermark.dart), made by the caller.
+Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c, {XlsxWatermark? watermark}) {
   final lang = c.langFor(d);
   final lb = ExportLabels(lang);
   final plan = HubTablePlan.of(d, data, c);
   final values = data.placeholderValues(lang)..['rows'] = '${plan.rows.length}';
   final rtl = d.rtl;
-  final fontName = switch (d.fontFamily) { 'bahij' => 'Bahij TheSansArabic', 'plex' => 'IBM Plex Sans Arabic', _ => 'Tajawal' };
-  final st = _Styles(rtl, fontName);
+  // Excel cannot embed a font: it names the catalog font (drawn when the reader has it installed)
+  final face = ExportFonts.byId(d.fontFamily);
+  final st = _Styles(rtl, face.officeName, bold: face.officeBold, italic: face.officeItalic);
   final cols = plan.cols;
   final rows = plan.rows;
   final n = cols.isEmpty ? 1 : cols.length;
@@ -237,7 +244,8 @@ Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
       '${merges.isEmpty ? '' : '<mergeCells count="${merges.length}">${merges.map((m) => '<mergeCell ref="$m"/>').join()}</mergeCells>'}'
       '<pageMargins left="${d.page.left / 25.4}" right="${d.page.right / 25.4}" top="${d.page.top / 25.4}" bottom="${d.page.bottom / 25.4}" header="0.3" footer="0.3"/>'
       '<pageSetup orientation="${d.page.orientation}" paperSize="${d.page.size == 'Letter' ? 1 : d.page.size == 'A3' ? 8 : 9}" fitToWidth="1" fitToHeight="0"/>'
-      '<headerFooter><oddFooter>${xmlEsc(rtl ? '&L&8${lb.page} &P ${lb.of} &N&R&8${exportDigits(data.title, c.numerals)}' : '&L&8${exportDigits(data.title, c.numerals)}&R&8${lb.page} &P ${lb.of} &N')}</oddFooter></headerFooter>'
+      '<headerFooter>${watermark == null ? '' : XlsxWatermark.oddHeader}<oddFooter>${xmlEsc(rtl ? '&L&8${lb.page} &P ${lb.of} &N&R&8${exportDigits(data.title, c.numerals)}' : '&L&8${exportDigits(data.title, c.numerals)}&R&8${lb.page} &P ${lb.of} &N')}</oddFooter></headerFooter>'
+      '${watermark == null ? '' : XlsxWatermark.sheetElement}'
       '</worksheet>';
 
   // ── sheet 2: votes
@@ -291,6 +299,7 @@ Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
         '<Default Extension="xml" ContentType="application/xml"/>'
+        '${watermark == null ? '' : XlsxWatermark.contentTypes(withPng: true)}'
         '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
         '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
         '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
@@ -323,5 +332,8 @@ Uint8List exportXlsx(ExportDesign d, ExportDataset data, ExportContent c) {
     'xl/worksheets/sheet1.xml': sheet1,
     'xl/worksheets/sheet2.xml': ?sheet2,
     'xl/styles.xml': st.xml(),
-  });
+    if (watermark != null)
+      'xl/worksheets/_rels/sheet1.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${XlsxWatermark.sheetRel}</Relationships>',
+  }, binary: watermark?.parts() ?? const {});
 }

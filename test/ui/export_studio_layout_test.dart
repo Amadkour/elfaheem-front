@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/export/export_job.dart' show exportUseIsolates;
 import 'package:flutter_education_app/design/export/export_studio_model.dart';
 import 'package:flutter_education_app/design/export/table_export_choice.dart';
 import 'package:flutter_education_app/design/export/table_export_model.dart';
@@ -69,6 +70,9 @@ Widget flow(int step, {AppTableExport? export, List<String>? saved}) => LayoutBu
     });
 
 void main() {
+  // widget tests run in a fake-async zone that isolate messages never reach: the writer runs inline, as on the web
+  setUpAll(() => exportUseIsolates = false);
+  tearDownAll(() => exportUseIsolates = true);
   setUp(() {
     AppConfig.disableList = [];
     SharedPreferences.setMockInitialValues({});
@@ -94,6 +98,9 @@ void main() {
         final quick = find.textContaining(AppConfig.lang == 'ar' ? 'تصدير سريع' : 'Quick export');
         if (quick.evaluate().isNotEmpty) await tester.tap(quick.first, warnIfMissed: false);
         await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+        for (var i = 0; i < 10 && saved.isEmpty; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
         await tester.pump(const Duration(milliseconds: 100));
       },
     );

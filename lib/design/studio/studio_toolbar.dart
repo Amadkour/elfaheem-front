@@ -13,6 +13,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../app_contrast.dart';
 import '../app_kit.dart' show appText;
 import '../app_tokens.dart';
+import '../export/export_fonts.dart' show ExportFonts;
 import 'studio_controller.dart';
 import 'studio_model.dart';
 
@@ -33,6 +34,9 @@ class StudioToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // the certificate fonts are plain assets (not pubspec fonts): registered the first time a studio shows (7.1;
+    // both designers show this toolbar). Idempotent: the registration runs once per app run.
+    ExportFonts.ensureCertFamilies();
     final c = context.colors;
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= wideBreakpoint;

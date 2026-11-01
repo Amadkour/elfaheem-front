@@ -21433,6 +21433,7 @@
     "en": "No public courses yet",
     "ar": "لا توجد كورسات عامة بعد"
   },
+<<<<<<< HEAD
   "certd_aspect_lock": {
     "en": "Keep proportions",
     "ar": "الحفاظ على التناسب"
@@ -21744,5 +21745,150 @@
   "cert_from_template": {
     "en": "From a template",
     "ar": "من قالب"
+=======
+  "export_font_bahij": {
+    "en": "Bahij",
+    "ar": "بهيج"
+  },
+  "export_font_plex": {
+    "en": "IBM Plex Sans Arabic",
+    "ar": "IBM Plex عربي"
+  },
+  "exs_font": {
+    "en": "Font",
+    "ar": "الخط"
+  },
+  "exs_font_layout": {
+    "en": "The layout's font",
+    "ar": "خط التصميم"
+  },
+  "exs_font_xlsx_hint": {
+    "en": "Excel cannot embed fonts: the file names this font, and Excel shows it where it is installed (a similar font elsewhere).",
+    "ar": "لا يمكن تضمين الخطوط في Excel: يحمل الملف اسم الخط ويظهر حيث يكون مثبّتًا، وإلا يُعرض خط مشابه."
+  },
+  "exs_font_docx_hint": {
+    "en": "The font is embedded in the Word file.",
+    "ar": "يُضمَّن الخط داخل ملف Word."
+  },
+  "exs_font_pdf_standin": {
+    "en": "In PDF, the Arabic letters of this font are drawn with",
+    "ar": "في PDF تُرسم الحروف العربية لهذا الخط بخط"
+  },
+  "exs_font_latin_only": {
+    "en": "This font has no Arabic letters: Arabic text uses",
+    "ar": "هذا الخط بلا حروف عربية: يُكتب النص العربي بخط"
+  },
+  "ci_word": {
+    "en": "Word file (.docx)",
+    "ar": "ملف Word (.docx)"
+  },
+  "ci_word_done": {
+    "en": "Word file saved",
+    "ar": "حُفظ ملف Word"
+  },
+  "exs_progress_title": {
+    "en": "Preparing the file…",
+    "ar": "جارٍ تجهيز الملف…"
+  },
+  "exs_progress_writing": {
+    "en": "Writing",
+    "ar": "جارٍ كتابة"
+  },
+  "exs_cancel": {
+    "en": "Cancel",
+    "ar": "إلغاء"
+  },
+  "exs_cancelling": {
+    "en": "Cancelling…",
+    "ar": "جارٍ الإلغاء…"
+  },
+  "exs_cancelled": {
+    "en": "Export cancelled",
+    "ar": "أُلغي التصدير"
+  },
+  "exs_wm_center": {
+    "en": "Centre",
+    "ar": "في المنتصف"
+  },
+  "exs_wm_top": {
+    "en": "Top",
+    "ar": "أعلى"
+  },
+  "exs_wm_bottom": {
+    "en": "Bottom",
+    "ar": "أسفل"
+  },
+  "exs_wm_top_start": {
+    "en": "Top, start",
+    "ar": "أعلى البداية"
+  },
+  "exs_wm_top_end": {
+    "en": "Top, end",
+    "ar": "أعلى النهاية"
+  },
+  "exs_wm_bottom_start": {
+    "en": "Bottom, start",
+    "ar": "أسفل البداية"
+  },
+  "exs_wm_bottom_end": {
+    "en": "Bottom, end",
+    "ar": "أسفل النهاية"
+  },
+  "exs_wm_text": {
+    "en": "Text",
+    "ar": "نص"
+  },
+  "exs_wm_image": {
+    "en": "Image",
+    "ar": "صورة"
+  },
+  "exs_wm_text_label": {
+    "en": "Watermark text",
+    "ar": "نص العلامة المائية"
+  },
+  "exs_wm_hint": {
+    "en": "Confidential",
+    "ar": "سري"
+  },
+  "exs_wm_image_link": {
+    "en": "Image link",
+    "ar": "رابط الصورة"
+  },
+  "exs_wm_upload": {
+    "en": "Upload an image",
+    "ar": "رفع صورة"
+  },
+  "exs_wm_position": {
+    "en": "Position",
+    "ar": "الموضع"
+  },
+  "exs_wm_width": {
+    "en": "Width",
+    "ar": "العرض"
+  },
+  "exs_wm_size": {
+    "en": "Size",
+    "ar": "الحجم"
+  },
+  "exs_wm_angle": {
+    "en": "Rotation",
+    "ar": "الدوران"
+  },
+  "exs_wm_colour": {
+    "en": "Colour",
+    "ar": "اللون"
+  },
+  "exs_wm_title": {
+    "en": "Watermark",
+    "ar": "العلامة المائية"
+  },
+  "exs_wm_xlsx_note": {
+    "en": "Excel prints it as a header picture: it shows in Page Layout view and on paper.",
+    "ar": "يطبعها Excel صورةً في رأس الصفحة: تظهر في عرض تخطيط الصفحة وعند الطباعة."
+  },
+  "studio_insert_variable": {
+    "en": "Insert a variable",
+    "ar": "أدرج متغيرًا"
+>>>>>>> feature/studio-export
   }
 }

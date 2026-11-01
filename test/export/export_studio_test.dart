@@ -22,7 +22,9 @@ import 'package:flutter_education_app/features/shared/exports/export_schedules_p
     show exportParamChoices, exportParamIsFlag, exportPeopleRoles, exportRolesOf;
 import 'package:flutter_test/flutter_test.dart';
 
-Map<String, String> unzip(Uint8List bytes) => {for (final f in ZipDecoder().decodeBytes(bytes)) if (f.isFile) f.name: utf8.decode(f.content)};
+import '../support/disk_fonts.dart';
+
+Map<String, String> unzip(Uint8List bytes) => {for (final f in ZipDecoder().decodeBytes(bytes)) if (f.isFile) f.name: f.name.endsWith('.odttf') || f.name.endsWith('.png') ? '<binary ${f.content.length}>' : utf8.decode(f.content)};
 
 const cols = [
   AppExportColumn('name', 'Name', locked: true, labels: {'ar': 'الاسم', 'en': 'Name'}),
@@ -45,6 +47,7 @@ AppTableExport table({List<Map<String, Object?>>? selected}) => AppTableExport(
     );
 
 void main() {
+  useDiskFonts();
   setUp(() => AppConfig.lang = 'en');
 
   group('rules (the server\'s rule_matches)', () {

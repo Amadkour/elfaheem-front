@@ -37,7 +37,10 @@ import '../app_kit.dart';
 import '../app_tokens.dart';
 import '../export/export_studio_model.dart';
 import '../studio/studio.dart';
+import '../export/export_fonts.dart' show ExportFonts;
 import 'export_design.dart';
+import 'export_layout.dart';
+import 'export_watermark_editor.dart';
 import 'export_pdf.dart';
 
 // The page preview is the printed sheet: paper and ink are document colours, not theme colours.
@@ -48,8 +51,18 @@ Color exportColor(String hex, [Color fallback = const Color(0xFF1E293B)]) {
   return h.isEmpty ? fallback : Color(int.parse('FF$h', radix: 16));
 }
 
-/// The Flutter font family of a design family (pubspec: tajawal · bahji · PaperPlex).
-String exportFlutterFont(String family) => switch (family) { 'bahij' => 'bahji', 'plex' => 'PaperPlex', _ => 'tajawal' };
+/// The Flutter font family of a design family: the catalog font registered for the previews (`xf_<id>`, the PDF's
+/// own copy of the files — see ExportFonts.ensurePreview). Asking for it starts loading it (once); until it lands the
+/// text draws in the fallback and redraws when the font arrives.
+String exportFlutterFont(String family) {
+  final f = ExportFonts.byId(family.isEmpty ? ExportFonts.defaultId : family);
+  ExportFonts.ensurePreview(f.id);
+  return f.previewFamily;
+}
+
+/// The fallback families of a design family in the previews (its Arabic stand-in, then IBM Plex Sans Arabic) — what
+/// the PDF falls back to.
+List<String> exportFlutterFallback(String family) => ExportFonts.byId(family.isEmpty ? ExportFonts.defaultId : family).previewFallback;
 
 /// Swatches offered for text, lines and the table header.
 const exportSwatches = ['1E293B', '64748B', '0F766E', '1E40AF', '7C3AED', '991B1B', '92400E', '166534', '000000', 'FFFFFF'];
@@ -72,6 +85,11 @@ Future<Map<String, Uint8List>> loadExportImages(ExportDesign d) async {
     if (!b.isImage || b.url.isEmpty) continue;
     final bytes = await loadExportImage(b.url);
     if (bytes != null) out[b.url] = bytes;
+  }
+  final wm = d.watermark;
+  if (wm.visible && wm.isImage) {
+    final bytes = await loadExportImage(wm.imageUrl);
+    if (bytes != null) out[wm.imageUrl] = bytes;
   }
   return out;
 }
@@ -177,25 +195,41 @@ String _digits(String s, ExportContent? c) => c == null ? s : exportDigits(s, c.
 /// The paper's own layer (behind the blocks): header and footer text in the margins, the frame, the watermark.
 /// [scale] = screen pixels per millimetre; [box] = the paper size in pixels.
 class _PaperDecor extends StatelessWidget {
-  const _PaperDecor({required this.design, required this.values, required this.scale, this.content});
+  const _PaperDecor({required this.design, required this.values, required this.scale, this.content, this.images});
   final ExportDesign design;
   final Map<String, String> values;
   final double scale;
   final ExportContent? content;
 
+  /// Image bytes by URL (an image watermark uploaded this session).
+  final Map<String, Uint8List>? images;
+
   @override
   Widget build(BuildContext context) {
     final d = design;
     final ml = d.page.left * scale, mr = d.page.right * scale, mt = d.page.top * scale, mb = d.page.bottom * scale;
-    final st = TextStyle(fontFamily: exportFlutterFont(d.fontFamily), fontSize: (d.fontSize * .78 * .3528 * scale).clamp(3, 40), color: exportColor(exportMuted));
+    // points → millimetres → pixels, at the writers' sizes (export_layout.dart)
+    TextStyle st({bool footer = false}) => TextStyle(
+        fontFamily: exportFlutterFont(d.fontFamily),
+        fontSize: ((footer ? exportFooterSize(d) : exportHeaderSize(d)) * .3528 * scale).clamp(3, 40).toDouble(),
+        color: exportColor(exportMuted));
     String fill(String s) => _digits(fillPlaceholders(s, values).replaceAll('{{page}}', '1').replaceAll('{{pages}}', '1'), content);
-    Widget hf(String start, String end) => Row(children: [
-          Expanded(child: Text(start, maxLines: 1, overflow: TextOverflow.ellipsis, style: st)),
-          if (end.isNotEmpty) Flexible(child: Text(end, maxLines: 1, overflow: TextOverflow.clip, style: st)),
+    Widget hf(String start, String end, {bool footer = false}) => Row(children: [
+          Expanded(child: Text(start, maxLines: 1, overflow: TextOverflow.ellipsis, style: st(footer: footer))),
+          if (end.isNotEmpty) Flexible(child: Text(end, maxLines: 1, overflow: TextOverflow.clip, style: st(footer: footer))),
         ]);
     final lb = ExportLabels(d.lang);
     return Stack(clipBehavior: Clip.hardEdge, children: [
-      if (d.watermark.visible) Positioned.fill(child: _Watermark(mark: d.watermark, family: exportFlutterFont(d.fontFamily), scale: scale)),
+      if (d.watermark.visible)
+        Positioned(
+          left: ml,
+          top: mt,
+          right: mr,
+          bottom: mb,
+          child: LayoutBuilder(
+            builder: (_, box) => _Watermark(mark: d.watermark, family: exportFlutterFont(d.fontFamily), scale: scale, rtl: d.rtl, contentWidth: box.maxWidth, images: images),
+          ),
+        ),
       if (d.frame.visible)
         Positioned(
           left: math.max(0, ml - d.frame.inset * scale),
@@ -220,37 +254,56 @@ class _PaperDecor extends StatelessWidget {
           left: ml,
           right: mr,
           bottom: (mb * .35).clamp(1, math.max(1.0, mb)),
-          child: hf(fill(d.footerText), d.showPageNumbers ? _digits('${lb.page} 1 ${lb.of} 1', content) : ''),
+          child: hf(fill(d.footerText), d.showPageNumbers ? _digits(exportFooterPageText(lb.page, lb.of, 1, 1), content) : '', footer: true),
         ),
     ]);
   }
 }
 
+/// The watermark in the content box, at its position, turned and faded like the PDF / Word / Excel files
+/// (export_watermark.dart). [contentWidth] in pixels sizes an image watermark.
 class _Watermark extends StatelessWidget {
-  const _Watermark({required this.mark, required this.family, required this.scale});
+  const _Watermark({required this.mark, required this.family, required this.scale, required this.rtl, required this.contentWidth, this.images});
   final ExportWatermark mark;
   final String family;
-  final double scale;
+  final double scale, contentWidth;
+  final bool rtl;
+  final Map<String, Uint8List>? images;
 
   @override
-  Widget build(BuildContext context) => IgnorePointer(
-        child: Center(
-          child: Transform.rotate(
-            angle: mark.angle * math.pi / 180,
-            child: Text(
-              mark.text,
-              maxLines: 1,
-              softWrap: false,
-              style: TextStyle(
-                fontFamily: family,
-                fontSize: (mark.size * .3528 * scale).clamp(4, 400),
-                fontWeight: FontWeight.w800,
-                color: exportColor(mark.color).withValues(alpha: mark.opacity.clamp(0, 1).toDouble()),
-              ),
-            ),
-          ),
+  Widget build(BuildContext context) {
+    final (ax, ay) = exportWatermarkAlign(mark.position, rtl);
+    final Widget body;
+    if (mark.isImage) {
+      final known = images?[mark.imageUrl];
+      Widget pic(Uint8List? b) => b == null ? const SizedBox.shrink() : Image.memory(b, width: mark.imageWidth * contentWidth, fit: BoxFit.contain, gaplessPlayback: true);
+      body = Opacity(
+        opacity: mark.opacity.clamp(0, 1).toDouble(),
+        child: known != null ? pic(known) : FutureBuilder<Uint8List?>(future: loadExportImage(mark.imageUrl), builder: (_, s) => pic(s.data)),
+      );
+    } else {
+      body = Text(
+        mark.text.trim(),
+        maxLines: 1,
+        softWrap: false,
+        textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+        style: TextStyle(
+          fontFamily: family,
+          fontSize: (mark.size * .3528 * scale).clamp(4, 400),
+          fontWeight: FontWeight.w800,
+          color: exportColor(mark.color).withValues(alpha: mark.opacity.clamp(0, 1).toDouble()),
         ),
       );
+    }
+    return IgnorePointer(
+      child: OverflowBox(
+        maxWidth: double.infinity,
+        maxHeight: double.infinity,
+        alignment: Alignment(ax, ay),
+        child: Transform.rotate(angle: mark.angle * math.pi / 180, child: body),
+      ),
+    );
+  }
 }
 
 /// One block's printed content at [scale] px / mm (no selection chrome: the engine / the preview draws that).
@@ -394,7 +447,10 @@ class ExportPagePreview extends StatelessWidget {
     final d = design;
     final (pwMm, phMm) = d.page.mm;
     final values = _previewValues(d, dataset, content);
-    return Center(
+    // a text that names its family but no fallback inherits the page font's (the PDF's) fallback chain
+    return DefaultTextStyle.merge(
+      style: TextStyle(fontFamily: exportFlutterFont(d.fontFamily), fontFamilyFallback: exportFlutterFallback(d.fontFamily)),
+      child: Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: AspectRatio(
@@ -417,7 +473,7 @@ class ExportPagePreview extends StatelessWidget {
                     boxShadow: [BoxShadow(color: c.textDark.withValues(alpha: .10), blurRadius: 16, offset: const Offset(0, 6))],
                   ),
                   child: Stack(clipBehavior: Clip.hardEdge, children: [
-                    Positioned.fill(child: _PaperDecor(design: d, values: values, scale: scale, content: content)),
+                    Positioned.fill(child: _PaperDecor(design: d, values: values, scale: scale, content: content, images: images)),
                     for (final b in d.blocks)
                       Positioned(
                         left: ml + b.x * cw,
@@ -432,6 +488,7 @@ class ExportPagePreview extends StatelessWidget {
             );
           }),
         ),
+      ),
       ),
     );
   }
@@ -519,7 +576,9 @@ class _TablePreview extends StatelessWidget {
           padding: EdgeInsets.symmetric(vertical: fs * .35),
           child: Row(children: cells),
         );
-    int flex(ExportColumn col) => col.id == 'n' ? 1 : col.numeric ? 2 : (col.id == 'title' || col.id == 'subject' || col.id == 'body' || col.id == 'name' ? 5 : 3);
+    // the writers' widths (export_layout.dart), in thousandths
+    final fractions = exportColumnFractions(d, cols);
+    int flex(ExportColumn col) => math.max(1, (fractions[cols.indexOf(col)] * 1000).round());
     String label(ExportColumn col) => _digits(cc?.labels[col.id] ?? col.label(d.lang), cc);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       row(
@@ -845,6 +904,24 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
   }
 
   // ── images
+  /// Picks and uploads an image to the organization; its URL (bytes remembered for the preview), or null.
+  Future<String?> _uploadImage() async {
+    final f = await FilePicker.pickFile(type: FileType.image);
+    if (f == null || !mounted || widget.orgId == null) return null;
+    final bytes = await f.readAsBytes();
+    try {
+      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: f.name, fileBytes: bytes);
+      final url = r is Map ? '${r['url'] ?? ''}' : '';
+      if (url.isEmpty) return null;
+      rememberExportImage(url, bytes);
+      _images[url] = bytes;
+      return url;
+    } on ApiException catch (e) {
+      toast(e.message, error: true);
+      return null;
+    }
+  }
+
   Future<void> _upload(ExportBlock b) async {
     final f = await FilePicker.pickFile(type: FileType.image);
     if (f == null || !mounted) return;
@@ -913,7 +990,7 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
             focusNode: _focus,
             autofocus: wide,
             paperInsets: EdgeInsets.fromLTRB(_d.page.left, _d.page.top, _d.page.right, _d.page.bottom),
-            paperBuilder: (context, scale) => _PaperDecor(design: _d, values: _previewValues(_d, _data, widget.content), scale: scale, content: widget.content),
+            paperBuilder: (context, scale) => _PaperDecor(design: _d, values: _previewValues(_d, _data, widget.content), scale: scale, content: widget.content, images: _images),
             itemBuilder: (context, item, selected) => _BlockContent(
               design: _d,
               dataset: _data,
@@ -1079,21 +1156,28 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
         ]),
         children: [
           if (b.kind == 'text') ...[
-            _TextProp(
+            StudioTextProp(
               key: ValueKey('text-${b.id}'),
               label: t('النص', 'Text'),
               value: b.text,
               maxLines: 4,
               onChanged: (v) => _edit('text', () => b.text = v, coalesce: true),
             ),
-            _PlaceholderChips(
-              keys: const ['title', 'org', 'date', 'rows', 'period', 'exporter', 'dept', 'signer'],
-              extra: [for (final k in _data.meta.keys) if (!const ['org', 'dept', 'title', 'period', 'date', 'count', 'signer', 'exporter', 'session', 'council', 'session_date'].contains(k)) 'meta.$k'],
+            StudioPlaceholderChips(
+              label: t('أدرج متغيرًا', 'Insert a variable'),
+              items: [
+                for (final k in [
+                  ...const ['title', 'org', 'date', 'rows', 'period', 'exporter', 'dept', 'signer'],
+                  for (final k in _data.meta.keys)
+                    if (!const ['org', 'dept', 'title', 'period', 'date', 'count', 'signer', 'exporter', 'session', 'council', 'session_date'].contains(k)) 'meta.$k',
+                ])
+                  StudioPlaceholder(k, exportPlaceholderLabels()[k] ?? k),
+              ],
               onInsert: (k) => _edit('text', () => b.text = '${b.text}{{$k}}'),
             ),
           ],
           if (b.isImage) ...[
-            _TextProp(
+            StudioTextProp(
               key: ValueKey('url-${b.id}'),
               label: t('رابط الصورة', 'Image link'),
               hint: 'https://…',
@@ -1105,8 +1189,8 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
               Align(alignment: AlignmentDirectional.centerStart, child: AppPill(icon: Icons.upload_rounded, label: t('رفع صورة', 'Upload an image'), onTap: () => _upload(b))),
           ],
           if (b.kind == 'signature') ...[
-            _TextProp(key: ValueKey('sname-${b.id}'), label: t('الاسم', 'Name'), hint: '{{signer}}', value: b.name, onChanged: (v) => _edit('signature', () => b.name = v, coalesce: true)),
-            _TextProp(key: ValueKey('stitle-${b.id}'), label: t('الصفة', 'Title'), value: b.title, onChanged: (v) => _edit('signature', () => b.title = v, coalesce: true)),
+            StudioTextProp(key: ValueKey('sname-${b.id}'), label: t('الاسم', 'Name'), hint: '{{signer}}', value: b.name, onChanged: (v) => _edit('signature', () => b.name = v, coalesce: true)),
+            StudioTextProp(key: ValueKey('stitle-${b.id}'), label: t('الصفة', 'Title'), value: b.title, onChanged: (v) => _edit('signature', () => b.title = v, coalesce: true)),
           ],
         ],
       ),
@@ -1167,6 +1251,9 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
     ]);
   }
 
+  /// The header / footer variables as chips (the server fills the same names in scheduled runs).
+  List<StudioPlaceholder> _variableChips() => [for (final k in exportStudioVariables) StudioPlaceholder(k, exportPlaceholderLabels()[k] ?? k)];
+
   Widget _pagePanel(BuildContext context) {
     final d = _d;
     final f = d.frame, wm = d.watermark;
@@ -1207,11 +1294,11 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
         StudioColorField(label: t('اللون', 'Colour'), swatches: _studioSwatches, value: exportColor(d.fontColor), onChanged: (col) => _edit('colour', () => d.fontColor = _hexOfColor(col) ?? exportInk, coalesce: true)),
       ]),
       StudioPropSection(title: t('رأس الصفحة وتذييلها', 'Header & footer'), children: [
-        _TextProp(key: const ValueKey('header'), label: t('نص الرأس', 'Header text'), hint: '{{org_name}}', value: d.headerText, onChanged: (v) => _edit('header', () => d.headerText = v, coalesce: true)),
-        _PlaceholderChips(keys: exportStudioVariables, onInsert: (k) => _edit('header', () => d.headerText = '${d.headerText}{{$k}}')),
+        StudioTextProp(key: const ValueKey('header'), label: t('نص الرأس', 'Header text'), hint: '{{org_name}}', value: d.headerText, onChanged: (v) => _edit('header', () => d.headerText = v, coalesce: true)),
+        StudioPlaceholderChips(label: t('أدرج متغيرًا', 'Insert a variable'), items: _variableChips(), onInsert: (k) => _edit('header', () => d.headerText = '${d.headerText}{{$k}}')),
         AppSwitchTile(title: t('التاريخ في الرأس', 'Date in the header'), value: d.showDate, dense: true, onChanged: (v) => _edit('header', () => d.showDate = v)),
-        _TextProp(key: const ValueKey('footer'), label: t('نص التذييل', 'Footer text'), hint: '{{page}} / {{pages}}', value: d.footerText, onChanged: (v) => _edit('footer', () => d.footerText = v, coalesce: true)),
-        _PlaceholderChips(keys: exportStudioVariables, onInsert: (k) => _edit('footer', () => d.footerText = '${d.footerText}{{$k}}')),
+        StudioTextProp(key: const ValueKey('footer'), label: t('نص التذييل', 'Footer text'), hint: '{{page}} / {{pages}}', value: d.footerText, onChanged: (v) => _edit('footer', () => d.footerText = v, coalesce: true)),
+        StudioPlaceholderChips(label: t('أدرج متغيرًا', 'Insert a variable'), items: _variableChips(), onInsert: (k) => _edit('footer', () => d.footerText = '${d.footerText}{{$k}}')),
         AppSwitchTile(title: t('أرقام الصفحات', 'Page numbers'), value: d.showPageNumbers, dense: true, onChanged: (v) => _edit('footer', () => d.showPageNumbers = v)),
       ]),
       StudioPropSection(title: t('إطار الصفحة', 'Page frame'), children: [
@@ -1236,12 +1323,12 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
         ],
       ]),
       StudioPropSection(title: t('العلامة المائية', 'Watermark'), children: [
-        _TextProp(key: const ValueKey('wm'), label: t('النص', 'Text'), hint: t('سري', 'Confidential'), value: wm.text, onChanged: (v) => _edit('watermark', () => wm.text = v, coalesce: true)),
-        if (wm.text.trim().isNotEmpty) ...[
-          StudioStepper(label: t('الحجم', 'Size'), value: wm.size, min: 12, max: 160, step: 4, suffix: 'pt', onChanged: (v) => _edit('watermark', () => wm.size = v, coalesce: true)),
-          StudioOpacitySlider(value: wm.opacity, onChanged: (v) => _edit('watermark', () => wm.opacity = v, coalesce: true)),
-          StudioColorField(label: t('اللون', 'Colour'), swatches: _studioSwatches, value: exportColor(wm.color), onChanged: (col) => _edit('watermark', () => wm.color = _hexOfColor(col) ?? '94A3B8', coalesce: true)),
-        ],
+        ExportWatermarkEditor(
+          key: const ValueKey('wm'),
+          mark: wm,
+          onEdit: (change) => _edit('watermark', change, coalesce: true),
+          onUpload: widget.orgId == null ? null : _uploadImage,
+        ),
       ]),
     ]);
   }
@@ -1381,72 +1468,3 @@ class _AddMenu extends StatelessWidget {
 }
 
 /// A text property that keeps its own controller (typing is not reset by rebuilds).
-class _TextProp extends StatefulWidget {
-  const _TextProp({super.key, required this.label, required this.value, required this.onChanged, this.hint, this.maxLines = 1, this.ltr = false});
-  final String label, value;
-  final String? hint;
-  final int maxLines;
-  final bool ltr;
-  final ValueChanged<String> onChanged;
-
-  @override
-  State<_TextProp> createState() => _TextPropState();
-}
-
-class _TextPropState extends State<_TextProp> {
-  late final _c = TextEditingController(text: widget.value);
-  final _f = FocusNode();
-
-  @override
-  void didUpdateWidget(covariant _TextProp old) {
-    super.didUpdateWidget(old);
-    if (!_f.hasFocus && _c.text != widget.value) _c.text = widget.value;
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    _f.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final field = TextField(
-      controller: _c,
-      focusNode: _f,
-      minLines: 1,
-      maxLines: widget.maxLines,
-      maxLength: 1000,
-      onChanged: widget.onChanged,
-      style: appText(14, c: context.colors.textDark),
-      decoration: InputDecoration(isDense: true, labelText: widget.label, hintText: widget.hint, counterText: ''),
-    );
-    return widget.ltr ? Directionality(textDirection: TextDirection.ltr, child: field) : field;
-  }
-}
-
-/// "Insert" chips for {{placeholders}}.
-class _PlaceholderChips extends StatelessWidget {
-  const _PlaceholderChips({required this.keys, required this.onInsert, this.extra = const []});
-  final List<String> keys, extra;
-  final ValueChanged<String> onInsert;
-
-  @override
-  Widget build(BuildContext context) {
-    final labels = exportPlaceholderLabels();
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('أدرج متغيرًا', 'Insert a variable'), style: appText(12, c: context.colors.textMedium)),
-      const SizedBox(height: AppSpace.xxs),
-      Wrap(spacing: AppSpace.xxs + 2, runSpacing: AppSpace.xxs + 2, children: [
-        for (final k in [...keys, ...extra])
-          ActionChip(
-            label: Text(labels[k] ?? k, style: appText(12.5, w: FontWeight.w500, c: context.colors.textDark)),
-            avatar: Icon(Icons.data_object_rounded, size: 16, color: context.colors.textMedium),
-            tooltip: '{{$k}}',
-            onPressed: () => onInsert(k),
-          ),
-      ]),
-    ]);
-  }
-}

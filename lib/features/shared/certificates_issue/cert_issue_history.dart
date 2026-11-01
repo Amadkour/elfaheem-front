@@ -17,12 +17,14 @@ import '../../../core/live/event_wait.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_notice.dart';
 import '../../../design/app_tokens.dart';
+import '../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../teacher/data_lab/data_lab_saver_web.dart' as saver;
 import '../../../utils/widget/parent_component.dart';
 import '../../auth/auth_provider.dart';
 import 'cert_issue_actions.dart';
 import 'cert_issue_api.dart';
 import 'cert_issue_logic.dart';
 import 'cert_issue_parts.dart';
+import 'cert_issue_word.dart';
 
 int? _meId(BuildContext context) {
   try {
@@ -381,6 +383,22 @@ class _CertBatchViewState extends State<CertBatchView> {
     if (mounted) setState(() => _downloading = null);
   }
 
+  /// The certificate as Word file(s), one per issued language, saved like every export.
+  Future<void> _word(IssuedCert cert) async {
+    final b = _batch;
+    if (b == null || b.designId == null) return;
+    setState(() => _downloading = 'word');
+    try {
+      for (final (name, bytes) in await issuedCertificateWordFiles(cert, b)) {
+        await saver.dlSaveBytes(bytes, name, AppExportFormat.docx.mime);
+      }
+      showAppNotice('ci_word_done'.tr);
+    } catch (e) {
+      showAppNotice(certIssueErrorText(e), error: true);
+    }
+    if (mounted) setState(() => _downloading = null);
+  }
+
   Future<void> _revoke(IssuedCert cert) async {
     final reason = await certAskText(context,
         title: 'ci_revoke_title'.tr,
@@ -475,6 +493,7 @@ class _CertBatchViewState extends State<CertBatchView> {
       onCopyLink: (x) => certCopy(x.verifyUrl),
       onRevoke: _revoke,
       onReissue: _reissue,
+      onWord: _batch?.designId == null || _downloading != null ? null : _word,
     );
   }
 }
@@ -502,6 +521,7 @@ class CertBatchBody extends StatelessWidget {
     this.onCopyLink,
     this.onRevoke,
     this.onReissue,
+    this.onWord,
   });
 
   final IssueBatch? batch;
@@ -523,6 +543,7 @@ class CertBatchBody extends StatelessWidget {
   final ValueChanged<IssuedCert>? onCopyLink;
   final ValueChanged<IssuedCert>? onRevoke;
   final ValueChanged<IssuedCert>? onReissue;
+  final ValueChanged<IssuedCert>? onWord;
 
   @override
   Widget build(BuildContext context) {
@@ -587,6 +608,7 @@ class CertBatchBody extends StatelessWidget {
             onCopyLink: x.verifyUrl == null || onCopyLink == null ? null : () => onCopyLink!(x),
             onRevoke: onRevoke == null ? null : () => onRevoke!(x),
             onReissue: onReissue == null ? null : () => onReissue!(x),
+            onWord: onWord == null ? null : () => onWord!(x),
           ),
         );
       },
