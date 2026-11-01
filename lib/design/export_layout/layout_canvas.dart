@@ -266,29 +266,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
       return;
     }
     if (!e.isText && e.kind != 'qr') return;
-    final text = TextEditingController(text: e.value ?? '');
-    final v = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t('تعديل النص', 'Edit the text')),
-        content: SizedBox(
-          width: 420,
-          child: TextField(
-            controller: text,
-            autofocus: true,
-            minLines: 1,
-            maxLines: 4,
-            onSubmitted: (s) => Navigator.of(ctx).pop(s),
-            decoration: InputDecoration(hintText: t('النص، ويمكن إدراج {{date}} وغيره', 'The text; {{date}} and the like are allowed')),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t('إلغاء', 'Cancel'))),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(text.text), child: Text(t('تم', 'Done'))),
-        ],
-      ),
-    );
-    text.dispose();
+    final v = await showDialog<String>(context: context, builder: (_) => _QuickTextDialog(initial: e.value ?? ''));
     if (v != null && v != e.value) _ctl.record('text', () => e.value = v);
   }
 
@@ -404,4 +382,43 @@ class _EmptyProps extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// The quick text edit of a double click: Enter / Done confirms, Esc / Cancel leaves the text as it was.
+class _QuickTextDialog extends StatefulWidget {
+  const _QuickTextDialog({required this.initial});
+  final String initial;
+
+  @override
+  State<_QuickTextDialog> createState() => _QuickTextDialogState();
+}
+
+class _QuickTextDialogState extends State<_QuickTextDialog> {
+  late final _text = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(t('تعديل النص', 'Edit the text')),
+        content: SizedBox(
+          width: 420,
+          child: TextField(
+            controller: _text,
+            autofocus: true,
+            minLines: 1,
+            maxLines: 4,
+            onSubmitted: (s) => Navigator.of(context).pop(s),
+            decoration: InputDecoration(hintText: t('النص، ويمكن إدراج {{date}} وغيره', 'The text; {{date}} and the like are allowed')),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t('إلغاء', 'Cancel'))),
+          FilledButton(onPressed: () => Navigator.of(context).pop(_text.text), child: Text(t('تم', 'Done'))),
+        ],
+      );
 }

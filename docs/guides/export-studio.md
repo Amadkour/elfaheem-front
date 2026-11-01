@@ -13,3 +13,17 @@ with the renderer's own rules (`cert_text_layout.dart`: 2 px shrink steps, the f
 renderer change). Properties are docked at every width (phone: a non-modal panel under the page); every edit is
 autosaved as a local draft (`CertDraftStore`). Template gallery: `GET /certificate-designs/templates`,
 `POST /certificate-designs/templates/{key}`.
+
+**Export layout v3 (D-142, contract `docs/export_studio/LAYOUT_V3.md`)** — while the kill switch `export.layout_v3` is not
+disabled, `showAppExportSheet` / `showExportFlow` open the full-page flow in `lib/design/export_layout/` instead of the
+sheet: `layout_model.dart` (the v3 document, mm, unknown keys kept), `layout_logic.dart` (starters List / Table / Custom
+1-2-3 per line, Arabic = the English starter mirrored, the row preview's rule evaluation, the local Excel / Word notes),
+`layout_api.dart` (`/api/v1/exports/layout/*`: fonts, validate, preview PNGs, rows upload, assets, runs watched with
+JobWatch; v3 templates on `/api/v1/exports/templates` with `schema_version: 3`), `layout_flow_controller.dart` (state,
+local draft per page key, last template per page key, source = the page's dataset else the rows uploaded once),
+`layout_page.dart` + `layout_steps.dart` (Format & language · How to show · Design the items · Fixed parts · Preview &
+export), `layout_canvas.dart` (the row card and each band on the shared studio engine) and `layout_props.dart`
+(type Static / Dynamic / Conditional / Computed, field + format, the rule builder). The SERVER renders the preview
+pages and the file. Phones get the simple form (starters, field picking, toggles); the canvas needs 720 px. Tests:
+`test/export/layout_model_test.dart`, `layout_flow_test.dart` (FakeApi server in `layout_fake.dart`),
+`test/ui/layout_flow_layout_test.dart`.

@@ -22,6 +22,16 @@ import 'api_call_scan.dart';
 const knownMissing = <String, String>{
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
+  // export layout v3 (lib/design/export_layout/layout_api.dart): the routes land with the server branch
+  'GET /api/v1/exports/layout/fonts': 'server on feature/export-layout (D-142)',
+  'POST /api/v1/exports/layout/validate': 'server on feature/export-layout (D-142)',
+  'POST /api/v1/exports/layout/preview': 'server on feature/export-layout (D-142)',
+  'POST /api/v1/exports/layout/rows': 'server on feature/export-layout (D-142)',
+  'POST /api/v1/exports/layout/assets': 'server on feature/export-layout (D-142)',
+  'POST /api/v1/exports/layout/runs': 'server on feature/export-layout (D-142)',
+  'GET /api/v1/exports/layout/runs/{}': 'server on feature/export-layout (D-142)',
+  'GET /api/v1/exports/layout/runs/{}/download': 'server on feature/export-layout (D-142)',
+  'POST /api/v1/exports/layout/runs/{}/cancel': 'server on feature/export-layout (D-142)',
 };
 
 void main() {

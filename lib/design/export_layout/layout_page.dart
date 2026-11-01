@@ -155,50 +155,13 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
   }
 
   Future<void> _saveTemplate() async {
-    final name = TextEditingController(text: widget.export.title);
-    var scope = 'user';
-    final ok = await showDialog<bool>(
+    final r = await showDialog<(String, String)>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          title: Text(t('حفظ كقالب', 'Save as a template')),
-          content: SizedBox(
-            width: 420,
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              TextField(
-                key: const ValueKey('layout-template-name'),
-                controller: name,
-                autofocus: true,
-                maxLength: 120,
-                decoration: InputDecoration(labelText: t('اسم القالب', 'Template name')),
-                onSubmitted: (_) => Navigator.of(ctx).pop(true),
-              ),
-              if (widget.export.orgId != null) ...[
-                const SizedBox(height: AppSpace.xs),
-                AppDropdown<String>(
-                  value: scope,
-                  decoration: InputDecoration(labelText: t('لمن', 'For'), isDense: true),
-                  items: [
-                    DropdownMenuItem(value: 'user', child: Text(t('لي وحدي', 'Just me'))),
-                    DropdownMenuItem(value: 'org', child: Text(t('للمؤسسة', 'The organization'))),
-                  ],
-                  onChanged: (v) => setLocal(() => scope = v ?? 'user'),
-                ),
-              ],
-            ]),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t('إلغاء', 'Cancel'))),
-            FilledButton(key: const ValueKey('layout-template-save'), onPressed: () => Navigator.of(ctx).pop(true), child: Text(t('حفظ', 'Save'))),
-          ],
-        ),
-      ),
+      builder: (_) => _TemplateNameDialog(initial: widget.export.title, orgScope: widget.export.orgId != null),
     );
-    final n = name.text.trim();
-    name.dispose();
-    if (ok != true || n.isEmpty) return;
-    final err = await _flow.saveTemplate(n, scope: scope);
-    showAppNotice(err ?? '${t('حُفظ القالب', 'Template saved')}: $n', error: err != null);
+    if (r == null || r.$1.isEmpty) return;
+    final err = await _flow.saveTemplate(r.$1, scope: r.$2);
+    showAppNotice(err ?? '${t('حُفظ القالب', 'Template saved')}: ${r.$1}', error: err != null);
   }
 
   Widget _tabs(BuildContext context) {
@@ -303,4 +266,61 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
       }),
     );
   }
+}
+
+/// Name (and, in an organization, who it is for) of a new template. Pops (name, scope) or null.
+class _TemplateNameDialog extends StatefulWidget {
+  const _TemplateNameDialog({required this.initial, required this.orgScope});
+  final String initial;
+  final bool orgScope;
+
+  @override
+  State<_TemplateNameDialog> createState() => _TemplateNameDialogState();
+}
+
+class _TemplateNameDialogState extends State<_TemplateNameDialog> {
+  late final _name = TextEditingController(text: widget.initial);
+  String _scope = 'user';
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _done() => Navigator.of(context).pop((_name.text.trim(), _scope));
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(t('حفظ كقالب', 'Save as a template')),
+        content: SizedBox(
+          width: 420,
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            TextField(
+              key: const ValueKey('layout-template-name'),
+              controller: _name,
+              autofocus: true,
+              maxLength: 120,
+              decoration: InputDecoration(labelText: t('اسم القالب', 'Template name')),
+              onSubmitted: (_) => _done(),
+            ),
+            if (widget.orgScope) ...[
+              const SizedBox(height: AppSpace.xs),
+              AppDropdown<String>(
+                value: _scope,
+                decoration: InputDecoration(labelText: t('لمن', 'For'), isDense: true),
+                items: [
+                  DropdownMenuItem(value: 'user', child: Text(t('لي وحدي', 'Just me'))),
+                  DropdownMenuItem(value: 'org', child: Text(t('للمؤسسة', 'The organization'))),
+                ],
+                onChanged: (v) => setState(() => _scope = v ?? 'user'),
+              ),
+            ],
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t('إلغاء', 'Cancel'))),
+          FilledButton(key: const ValueKey('layout-template-save'), onPressed: _done, child: Text(t('حفظ', 'Save'))),
+        ],
+      );
 }
