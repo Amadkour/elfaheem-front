@@ -63,10 +63,10 @@ Map<String, dynamic> _openList(List<String> details) {
     ...first,
     for (final i in all['items'] as List)
       if ((i as Map)['status'] == 'open' && !ids.contains(i['id'])) i,
-  ]..sort((a, b) => ((a as Map)['id'] as int).compareTo((b as Map)['id'] as int));
+  ]..sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
   final counts = <String, int>{};
   for (final i in open) {
-    counts['${(i as Map)['kind']}'] = (counts['${i['kind']}'] ?? 0) + 1;
+    counts['${i['kind']}'] = (counts['${i['kind']}'] ?? 0) + 1;
   }
   return {'items': open, 'total': open.length, 'open_by_kind': counts};
 }

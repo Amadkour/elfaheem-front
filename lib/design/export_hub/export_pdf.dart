@@ -19,7 +19,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../export/export_fonts.dart' show ExportFonts;
 import '../export/export_studio_model.dart';
 import '../export/table_export_model.dart' show AppColType, AppExportColumn, AppTotal, aggregate, aggregateText, decimalsOf, tintHex;
-import '../export/table_export_pdf.dart' show exportPdfCompress, exportPdfText, exportPdfTextDir;
+import '../export/table_export_pdf.dart' show exportPdfCompress, exportPdfText;
 import 'export_design.dart';
 import 'export_layout.dart';
 
