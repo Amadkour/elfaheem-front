@@ -49,6 +49,9 @@ class AppReleasesPage extends StatefulWidget {
 class AppReleasesPageState extends State<AppReleasesPage> {
   ReleasePage? _page;
   BuilderStatus? _builder;
+
+  /// D-144: the Codemagic setup; null on an older server (the D-143 build server strip is shown then).
+  ReleaseConfig? _config;
   String? _error;
   String? _platform, _status;
   int _pages = 1;
@@ -89,12 +92,14 @@ class AppReleasesPageState extends State<AppReleasesPage> {
     try {
       final f = await Future.wait<Object?>([
         _list(),
-        _api.builderStatus().then<Object?>((b) => b, onError: (_) => _builder),
+        _api.config().then<Object?>((c) => c, onError: (_) => _config),
+        if (_config == null) _api.builderStatus().then<Object?>((b) => b, onError: (_) => _builder),
       ]);
       if (!mounted) return;
       setState(() {
         _page = f[0] as ReleasePage;
-        _builder = f[1] as BuilderStatus?;
+        _config = f[1] as ReleaseConfig?;
+        if (f.length > 2) _builder = f[2] as BuilderStatus?;
         _error = null;
       });
     } catch (e) {
@@ -147,6 +152,7 @@ class AppReleasesPageState extends State<AppReleasesPage> {
     final created = await Navigator.of(context).push<AppRelease>(MaterialPageRoute(
       settings: const RouteSettings(name: '/app_releases/new'),
       builder: (_) => NewAppReleasePage(api: _api, latest: latest, nextBuild: next, initialPlatform: _platform ?? 'android', askPassword: widget.askPassword),
+      // the form checks the setup itself (fresh), so a stale page never enables Create
     ));
     if (!mounted) return;
     await _load(silent: true);
@@ -156,7 +162,8 @@ class AppReleasesPageState extends State<AppReleasesPage> {
   Future<void> _open(AppRelease r) async {
     await Navigator.of(context).push(MaterialPageRoute(
       settings: RouteSettings(name: '/app_releases/${r.id}'),
-      builder: (_) => AppReleaseDetailPage(id: r.id, initial: r, api: _api, stream: widget.stream, bus: widget.bus, askPassword: widget.askPassword),
+      builder: (_) => AppReleaseDetailPage(
+          id: r.id, initial: r, api: _api, stream: widget.stream, bus: widget.bus, askPassword: widget.askPassword, codemagicAppId: _config?.appId),
     ));
     if (mounted) await _load(silent: true);
   }
@@ -206,14 +213,18 @@ class AppReleasesPageState extends State<AppReleasesPage> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1100),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  BuilderStatusBanner(
-                    status: _builder,
-                    onRotateToken: _rotate,
-                    onOpenBusy: _builder?.busyRelease == null
-                        ? null
-                        : () => _open(page?.items.where((r) => r.id == _builder!.busyRelease).firstOrNull ??
-                            AppRelease(id: _builder!.busyRelease!, platform: 'android', version: '')),
-                  ),
+                  if (_config != null)
+                    CodemagicStatusBanner(config: _config!)
+                  else
+                    // an older server (no Codemagic config): the D-143 build server strip
+                    BuilderStatusBanner(
+                      status: _builder,
+                      onRotateToken: _rotate,
+                      onOpenBusy: _builder?.busyRelease == null
+                          ? null
+                          : () => _open(page?.items.where((r) => r.id == _builder!.busyRelease).firstOrNull ??
+                              AppRelease(id: _builder!.busyRelease!, platform: 'android', version: '')),
+                    ),
                   const SizedBox(height: AppSpace.md),
                   if (_error != null && page == null)
                     AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)

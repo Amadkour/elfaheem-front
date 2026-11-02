@@ -22,6 +22,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../core/display/app_fonts.dart';
 import '../../../core/get_app/get_app_service.dart';
+import '../../../core/release/app_downloads.dart' show AppDownloadsService;
 import '../../../design/app_notice.dart';
 import '../../../design/app_settings.dart';
 import '../../../design/app_tokens.dart';
@@ -88,6 +89,7 @@ class _GetAppBannerState extends State<GetAppBanner> {
     GuestState.instance,
     ViewAsState.instance,
     AppConfig.disableListVersion,
+    AppDownloadsService.instance,
   ]);
 
   @override
@@ -139,7 +141,8 @@ class _GetAppBannerState extends State<GetAppBanner> {
   Widget build(BuildContext context) {
     if (!kIsWeb) return widget.child;
     final pageOk = _pageOk;
-    final offer = pageOk && _s.bannerEligible ? _s.offer : null;
+    // D-144: while the website channel publishes downloads, its strip (AppDownloadBanner) is the one offer
+    final offer = pageOk && _s.bannerEligible && !AppDownloadsService.instance.hasDownloads ? _s.offer : null;
     final push = pageOk && offer == null && _s.pushPromptEligible;
     final Widget strip;
     if (offer != null) {

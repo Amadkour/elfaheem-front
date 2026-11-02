@@ -9,11 +9,16 @@
 // are drawn at once; while the status stays the same only the new log lines are fetched (GET …/log?after=<last>),
 // a new status reloads the whole release. Without the stream: a poll every 3 s while it builds, every minute after.
 // [ReleaseDetailView] draws plain values (test/ui/app_releases_layout_test.dart).
+//
+// D-144 (Codemagic): the channel (store | website) and the per-version settings (workflow, Play track, package name),
+// a link to the Codemagic build, the files the website channel uploaded (with their sizes), and for a store version the
+// note that Play production / the App Store still review it ("Live" = submitted).
 library;
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -38,6 +43,16 @@ typedef ReleaseFileSaver = Future<void> Function(Uint8List bytes, String name);
 
 Future<void> _saveFile(Uint8List bytes, String name) => p8SaveBytes(bytes, name);
 
+/// Opens a link outside the app (the Codemagic build page, a published file).
+Future<void> openReleaseLink(String url) async {
+  final uri = Uri.tryParse(url);
+  try {
+    if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) throw StateError('not opened');
+  } catch (_) {
+    showAppNotice(t('تعذّر فتح الرابط', 'Could not open the link'), error: true);
+  }
+}
+
 /// True when [e] is about release [id] (`id` or `release_id`).
 bool releaseEventMatches(LiveEvent e, int id) =>
     (e.type == LiveEvents.appReleaseUpdated || e.type == LiveEvents.appReleaseLive) &&
@@ -53,9 +68,15 @@ class AppReleaseDetailPage extends StatefulWidget {
     this.bus,
     this.askPassword = askReleasePassword,
     this.saveFile = _saveFile,
+    this.codemagicAppId,
+    this.openLink = openReleaseLink,
   });
 
   final int id;
+
+  /// The Codemagic application id (from `GET …/config`), for the build link when the release carries none.
+  final String? codemagicAppId;
+  final ValueChanged<String> openLink;
 
   /// Drawn at once while the full release (with its log) loads.
   final AppRelease? initial;
@@ -201,6 +222,11 @@ class AppReleaseDetailPageState extends State<AppReleaseDetailPage> {
 
   Future<void> _download(ReleaseArtifact a) async {
     if (_busy != null) return;
+    // a website-channel file is already public (GET /app/downloads/<platform>/<name>): the browser downloads it
+    if (a.url != null && a.url!.startsWith('https://')) {
+      widget.openLink(a.url!);
+      return;
+    }
     setState(() => _busy = 'artifact:${a.name}');
     try {
       final bytes = await _api.artifact(widget.id, a.name);
@@ -233,6 +259,8 @@ class AppReleaseDetailPageState extends State<AppReleaseDetailPage> {
                   onPublish: r.canPublish ? _publish : null,
                   onRollback: r.canRollback ? _rollback : null,
                   onDownload: _download,
+                  codemagicLink: r.codemagicLink(appId: widget.codemagicAppId),
+                  onOpenLink: widget.openLink,
                 ),
     );
   }
@@ -249,9 +277,15 @@ class ReleaseDetailView extends StatelessWidget {
     this.onPublish,
     this.onRollback,
     this.onDownload,
+    this.codemagicLink,
+    this.onOpenLink,
   });
 
   final AppRelease release;
+
+  /// The Codemagic build page of this release (D-144), when known.
+  final String? codemagicLink;
+  final ValueChanged<String>? onOpenLink;
 
   /// The action running now: 'cancel', 'publish', 'artifact:' + the file name, …
   final String? busy;
@@ -263,9 +297,18 @@ class ReleaseDetailView extends StatelessWidget {
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= 1000;
       final main = [
-        _Header(release: release, busy: busy, onCancel: onCancel, onRetry: onRetry, onPublish: onPublish, onRollback: onRollback),
+        _Header(
+          release: release,
+          busy: busy,
+          onCancel: onCancel,
+          onRetry: onRetry,
+          onPublish: onPublish,
+          onRollback: onRollback,
+          codemagicLink: codemagicLink,
+          onOpenLink: onOpenLink,
+        ),
         const SizedBox(height: AppSpace.md),
-        if (releasePlatformBuildable(release.platform)) ReleaseLogCard(lines: release.log, running: release.active),
+        if (release.builds) ReleaseLogCard(lines: release.log, running: release.active, codemagic: release.viaCodemagic),
       ];
       final side = [
         _Facts(release: release),
@@ -298,11 +341,22 @@ class ReleaseDetailView extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.release, this.busy, this.onCancel, this.onRetry, this.onPublish, this.onRollback});
+  const _Header({
+    required this.release,
+    this.busy,
+    this.onCancel,
+    this.onRetry,
+    this.onPublish,
+    this.onRollback,
+    this.codemagicLink,
+    this.onOpenLink,
+  });
 
   final AppRelease release;
   final String? busy;
   final VoidCallback? onCancel, onRetry, onPublish, onRollback;
+  final String? codemagicLink;
+  final ValueChanged<String>? onOpenLink;
 
   @override
   Widget build(BuildContext context) {
@@ -314,9 +368,9 @@ class _Header extends StatelessWidget {
     final stepText = r.step ??
         (r.active && r.log.isNotEmpty ? r.log.last.text : null) ??
         switch (r.status) {
-          'queued' => t('ينتظر خادم البناء', 'Waiting for the build server'),
+          'queued' => r.viaCodemagic ? t('في طابور Codemagic', 'Waiting in the Codemagic queue') : t('ينتظر خادم البناء', 'Waiting for the build server'),
           'building' || 'testing' || 'uploading' => releaseStatusName(r.status),
-          'ready' => r.autoPublish && r.source != 'google_play' ? t('يُنشر الآن', 'Publishing') : t('جاهز — اضغط «انشره الآن»', 'Ready — press Make live'),
+          'ready' => r.autoPublish && (r.viaCodemagic || r.source != 'google_play') ? t('يُنشر الآن', 'Publishing') : t('جاهز — اضغط «انشره الآن»', 'Ready — press Make live'),
           'live' when !r.current => t('استبدله إصدار أحدث', 'A newer version replaced it'),
           'live' => r.liveAt == null ? t('منشور', 'Live') : t('منشور منذ ${AppTime.dateTime(r.liveAt!)}', 'Live since ${AppTime.dateTime(r.liveAt!)}'),
           _ => null,
@@ -371,6 +425,7 @@ class _Header extends StatelessWidget {
                 releaseChipOf(r),
                 if (r.isLive && r.status != 'live') AppBadgePill(t('منشور', 'Live'), color: c.success, icon: Icons.check_circle_rounded),
                 AppBadgePill(releasePolicyName(r.policy), color: r.policy == 'must' ? c.danger : c.textMedium),
+                AppBadgePill(releaseChannelName(r.platform, r.channel), color: c.textMedium, icon: releaseChannelIcon(r.platform, r.channel)),
               ]),
             ]),
           ),
@@ -393,7 +448,11 @@ class _Header extends StatelessWidget {
           const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: releaseErrorText(r.error, r.error!)),
         ],
-        if (r.source == 'google_play' && r.platform == 'android' && (r.status == 'ready' || r.status == 'live')) ...[
+        if (r.isStore && r.viaCodemagic && r.status != 'failed' && r.status != 'canceled') ...[
+          const SizedBox(height: AppSpace.sm),
+          AppBanner(key: const ValueKey('release.store_note'), icon: Icons.gavel_rounded, color: c.warning, text: releaseStoreReviewNote(r.platform)),
+        ],
+        if (!r.viaCodemagic && r.source == 'google_play' && r.platform == 'android' && (r.status == 'ready' || r.status == 'live')) ...[
           const SizedBox(height: AppSpace.sm),
           AppBanner(
             icon: Icons.back_hand_outlined,
@@ -402,9 +461,20 @@ class _Header extends StatelessWidget {
                 'Download the AAB from the files, upload it in the Play Console, then press Make live.'),
           ),
         ],
-        if (actions.isNotEmpty) ...[
+        if (actions.isNotEmpty || codemagicLink != null) ...[
           const SizedBox(height: AppSpace.md),
-          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: actions),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            ...actions,
+            if (codemagicLink != null)
+              TextButton.icon(
+                key: const ValueKey('release.codemagic'),
+                onPressed: onOpenLink == null ? null : () => onOpenLink!(codemagicLink!),
+                style: TextButton.styleFrom(foregroundColor: c.primary, minimumSize: const Size(48, AppTouch.min)),
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: Text(t('البناء على Codemagic', 'The build on Codemagic'),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
+              ),
+          ]),
         ],
       ]),
     );
@@ -413,10 +483,13 @@ class _Header extends StatelessWidget {
 
 /// The build server's log, newest at the bottom; it follows new lines while the reader is at the bottom.
 class ReleaseLogCard extends StatefulWidget {
-  const ReleaseLogCard({super.key, required this.lines, this.running = false});
+  const ReleaseLogCard({super.key, required this.lines, this.running = false, this.codemagic = false});
 
   final List<ReleaseLogLine> lines;
   final bool running;
+
+  /// Built on Codemagic: the steps arrive from its status sync (the full log is on the build's page).
+  final bool codemagic;
 
   @override
   State<ReleaseLogCard> createState() => _ReleaseLogCardState();
@@ -490,7 +563,10 @@ class _ReleaseLogCardState extends State<ReleaseLogCard> {
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpace.md),
-                    child: Text(widget.running ? t('ينتظر أول سطر من خادم البناء…', 'Waiting for the first line from the build server…') : t('لا سجل', 'No log'),
+                    child: Text(
+                        widget.running
+                            ? (widget.codemagic ? t('ينتظر أول خطوة من Codemagic…', 'Waiting for the first step from Codemagic…') : t('ينتظر أول سطر من خادم البناء…', 'Waiting for the first line from the build server…'))
+                            : t('لا سجل', 'No log'),
                         textAlign: TextAlign.center, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family)),
                   ),
                 )
@@ -530,12 +606,15 @@ class _Facts extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = release;
     final rows = <(IconData, String, String, bool)>[
-      if (releasePlatformBuildable(r.platform)) ...[
+      (releaseChannelIcon(r.platform, r.channel), t('قناة التنزيل', 'Download channel'), releaseChannelName(r.platform, r.channel), false),
+      if (r.builds) ...[
         (Icons.account_tree_outlined, t('الفرع', 'Branch'), r.branch ?? '—', true),
+        if (r.workflow != null) (Icons.route_rounded, t('سير العمل', 'Workflow'), r.workflow!, true),
+        if (r.track != null) (Icons.alt_route_rounded, t('مسار Google Play', 'Play track'), r.track!, true),
+        if (r.packageName != null) (Icons.inventory_2_outlined, t('اسم الحزمة', 'Package name'), r.packageName!, true),
         (Icons.commit_rounded, t('الإيداع', 'Commit'), r.shortCommit ?? t('يُحدَّد عند بدء البناء', 'Pinned when the build starts'), r.shortCommit != null),
         (Icons.fact_check_outlined, t('الفحص', 'Gate'), releaseGateName(r.gate), false),
       ],
-      (releaseSourceIcon(r.source), t('مصدر التنزيل', 'Download source'), releaseSourceName(r.source), false),
       if (r.storeUrl != null) (Icons.link_rounded, t('الرابط', 'Link'), r.storeUrl!, true),
       if (r.downloadUrl != null && r.downloadUrl != r.storeUrl) (Icons.download_outlined, t('رابط التحديث', 'Update link'), r.downloadUrl!, true),
       if ((r.attempt ?? 1) > 1) (Icons.replay_rounded, t('المحاولة', 'Attempt'), '${r.attempt}', false),
@@ -605,13 +684,23 @@ class _Artifacts extends StatelessWidget {
     return AppCard(
       key: const ValueKey('release.artifacts'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(t('الملفات', 'Files'), style: AppType.section(context).copyWith(fontFamily: AppFonts.family)),
+        Text(release.channel == 'website' && release.viaCodemagic ? t('الملفات على خادمنا', 'Files on our server') : t('الملفات', 'Files'),
+            style: AppType.section(context).copyWith(fontFamily: AppFonts.family)),
         const SizedBox(height: AppSpace.xs),
         for (final a in release.artifacts)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 3),
             child: Row(children: [
-              Icon(a.kind == 'aab' ? Icons.shop_rounded : Icons.insert_drive_file_outlined, size: 20, color: c.primary),
+              Icon(
+                  switch (a.kind) {
+                    'aab' => Icons.shop_rounded,
+                    'apk' => Icons.android_rounded,
+                    'zip' || 'tar.gz' || 'gz' || 'tar' => Icons.folder_zip_outlined,
+                    'deb' => Icons.terminal_rounded,
+                    _ => Icons.insert_drive_file_outlined,
+                  },
+                  size: 20,
+                  color: c.primary),
               const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

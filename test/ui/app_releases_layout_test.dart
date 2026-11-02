@@ -1,7 +1,9 @@
 // No overflow on any screen size (layout_harness: 320×640 and 1400×900, ar / en, text ×1.3) for App versions (D-143):
 // the build server strip, the list grouped by platform (and empty), the New version page on every platform with the
 // store link and its note, the release page (building with its log, ready with files, failed), the token sheet, the
-// web "new version" strip and the update dialog with a store source.
+// web "new version" strip and the update dialog with a store source. D-144: the channel cards, the readiness box
+// (ready / not ready / checking / the check failed), a Codemagic release (link, files, store note), the Codemagic
+// strip of the list, and the website download strip + sheet (every offer kind).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/release/web_release_watch.dart';
 import 'package:flutter_education_app/core/version_check_service.dart';
@@ -10,6 +12,8 @@ import 'package:flutter_education_app/features/admin/app_releases/app_release_fo
 import 'package:flutter_education_app/features/admin/app_releases/app_releases_models.dart';
 import 'package:flutter_education_app/features/admin/app_releases/app_releases_page.dart';
 import 'package:flutter_education_app/features/admin/app_releases/app_releases_view.dart';
+import 'package:flutter_education_app/features/shared/get_app/app_download_banner.dart';
+import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppBannerView;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/app_releases_samples.dart';
@@ -51,30 +55,105 @@ void main() {
   });
 
   final latest = {for (final r in sampleReleases()) if (r.isLive) r.platform: r};
+  final config = ReleaseConfig.fromJson(releaseConfigJson());
   for (final p in kReleasePlatformOrder) {
-    testWidgets('form: $p', (tester) async {
-      await expectNoLayoutErrors(
-        tester,
-        () => NewAppReleasePage(latest: latest, initialPlatform: p, askPassword: (_) async => null),
-        scaffold: false,
-      );
-    });
+    for (final ch in releaseChannelsFor(p)) {
+      testWidgets('form: $p · $ch', (tester) async {
+        await expectNoLayoutErrors(
+          tester,
+          () => NewAppReleasePage(latest: latest, initialPlatform: p, initialChannel: ch, config: config, askPassword: (_) async => null),
+          scaffold: false,
+        );
+      });
+    }
   }
 
-  testWidgets('form: Google Play source with its link and note, and the field errors', (tester) async {
+  testWidgets('form: Google Play ready (a real package) with the field errors', (tester) async {
     await expectNoLayoutErrors(
       tester,
-      () => NewAppReleasePage(latest: latest, askPassword: (_) async => null),
+      () => NewAppReleasePage(
+          latest: latest,
+          initialChannel: 'store',
+          config: ReleaseConfig.fromJson(releaseConfigJson(notReady: const {}, packageName: 'site.nextbrain.app')),
+          askPassword: (_) async => null),
       scaffold: false,
       act: (tester) async {
-        await _tapVisible(tester, 'release.source.google_play');
         await tester.enterText(find.byKey(const ValueKey('release.version')), '1.4');
         await tester.enterText(find.byKey(const ValueKey('release.branch')), 'bad branch!');
+        await tester.enterText(find.byKey(const ValueKey('release.store_url')), 'http://x');
         await _tapVisible(tester, 'release.submit');
         await tester.pump(const Duration(seconds: 4)); // the notice goes
       },
     );
   });
+
+  testWidgets('form: Codemagic not set up at all (every channel misses the token)', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => NewAppReleasePage(latest: latest, initialPlatform: 'web', config: ReleaseConfig.fromJson(releaseConfigJson(codemagic: false)), askPassword: (_) async => null),
+      scaffold: false,
+    );
+  });
+
+  testWidgets('readiness box: every state', (tester) async {
+    final notReady = ReleaseConfig.fromJson(releaseConfigJson(codemagic: false, notReady: const {
+      'android:store': ['PLAY_PACKAGE_NAME', 'package_name_example', 'CODEMAGIC_WORKFLOW_ANDROID_STORE', 'SOMETHING_NEW_ON_THE_SERVER'],
+    })).readiness('android', 'store');
+    await expectNoLayoutErrors(
+      tester,
+      () => _scroll(Column(children: [
+        ReleaseReadinessBox(builds: true, readiness: notReady, what: 'Android · Google Play'),
+        const SizedBox(height: 8),
+        const ReleaseReadinessBox(builds: true, readiness: ReleaseReadiness.ok, what: 'Android · My website'),
+        const SizedBox(height: 8),
+        const ReleaseReadinessBox(builds: true, readiness: null, loading: true, what: 'Web'),
+        const SizedBox(height: 8),
+        ReleaseReadinessBox(builds: true, readiness: null, error: 'Service unavailable', onRetry: () {}, what: 'Web'),
+        const SizedBox(height: 8),
+        CodemagicStatusBanner(config: ReleaseConfig.fromJson(releaseConfigJson())),
+        const SizedBox(height: 8),
+        CodemagicStatusBanner(config: ReleaseConfig.fromJson(releaseConfigJson(codemagic: false))),
+      ])),
+    );
+  });
+
+  testWidgets('detail: a Codemagic store release and a website release with its files', (tester) async {
+    final store = AppRelease.fromJson(codemagicReleaseJson(channel: 'store', status: 'live', isLive: true, progress: 100, config: {'track': 'production', 'package_name': 'site.nextbrain.app'}));
+    final site = AppRelease.fromJson(codemagicReleaseJson(status: 'uploading', progress: 92, artifacts: codemagicApkArtifacts, log: sampleLog(8)));
+    for (final r in [store, site]) {
+      await expectNoLayoutErrors(
+          tester, () => ReleaseDetailView(release: r, codemagicLink: r.codemagicLink(), onOpenLink: (_) {}, onDownload: (_) {}, onRollback: r.canRollback ? () {} : null));
+    }
+  });
+
+  final downloads = parseAppDownloads(downloadsJson(), apiBase: 'https://nextbrain.site/api');
+  for (final os in const [GetAppOs.android, GetAppOs.windows, GetAppOs.linux, GetAppOs.ios, GetAppOs.macos]) {
+    testWidgets('download strip + sheet: ${os.name}', (tester) async {
+      final offer = appDownloadOfferFor(GetAppEnv(isWeb: true, os: os, iosSafari: os == GetAppOs.ios), downloads)!;
+      final w = appDownloadStripText(offer, downloads);
+      await expectNoLayoutErrors(
+        tester,
+        () => Column(children: [
+          GetAppBannerView(
+            icon: w.icon,
+            title: w.title,
+            meta: w.meta,
+            actionLabel: w.action,
+            onAction: () {},
+            onDismiss: () {},
+            detailsLabel: offer.kind == AppDownloadOfferKind.browse ? null : 'Other downloads',
+            onDetails: offer.kind == AppDownloadOfferKind.browse ? null : () {},
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Material(child: AppDownloadsSheetBody(releases: downloads, offer: offer, iosSafari: false, onDownload: (_) {})),
+            ),
+          ),
+        ]),
+      );
+    });
+  }
 
   testWidgets('detail: building with the log tail', (tester) async {
     final r = AppRelease.fromJson(releaseJson(progress: 46, step: 'flutter build apk --release (arm64-v8a)', log: sampleLog(60)));

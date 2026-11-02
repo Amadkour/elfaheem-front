@@ -3,7 +3,11 @@
 // "New version" (D-143, docs/release/APP_RELEASES.md "Flow" 1) as a full page: the platform as cards, version +
 // build number (prefilled from the newest one + 1), what's new in Arabic and English, the update policy + the minimum
 // supported version, the branch (default `production`) and the gate for the platforms the build server builds, the
-// download source with its link, and "publish when the build succeeds". Create asks for the account password (the
+// download source with its link, and "publish when the build succeeds".
+// D-144 (docs/release/APP_RELEASES_CODEMAGIC.md): the download channel per platform (store | website, only the valid
+// ones), the Codemagic settings prefilled from `GET …/config` defaults and editable (workflow, Play track + package
+// name, store link, branch — never a secret), and a readiness box listing what the server still lacks (env names);
+// Create stays OFF while the chosen platform + channel is not ready, and a 400 `channel_not_configured` lands there too. Create asks for the account password (the
 // re-auth sheet) and sends it with the request; the server's refusals land on their field (version_exists → the
 // version, branch_invalid / branch_not_found → the branch) or in the strip above the button (reauth_failed,
 // build_running). On success the page pops with the new release.
@@ -12,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/display/app_fonts.dart';
 import '../../../design/app_kit.dart';
@@ -43,7 +48,9 @@ class NewAppReleasePage extends StatefulWidget {
     this.latest = const {},
     this.nextBuild = const {},
     this.initialPlatform = 'android',
+    this.initialChannel,
     this.askPassword = askReleasePassword,
+    this.config,
   });
 
   final AppReleasesApi api;
@@ -54,7 +61,13 @@ class NewAppReleasePage extends StatefulWidget {
   /// The server's default build number per platform (`next_build_number` of the list).
   final Map<String, int> nextBuild;
   final String initialPlatform;
+
+  /// The channel picked at open (the platform's default when null or not offered).
+  final String? initialChannel;
   final ReleasePasswordPrompt askPassword;
+
+  /// The Codemagic setup, when the caller has it already (fetched from [api] otherwise).
+  final ReleaseConfig? config;
 
   @override
   State<NewAppReleasePage> createState() => NewAppReleasePageState();
@@ -62,6 +75,7 @@ class NewAppReleasePage extends StatefulWidget {
 
 class NewAppReleasePageState extends State<NewAppReleasePage> {
   late String _platform = widget.initialPlatform;
+  late String _channel = _validChannel(widget.initialPlatform, widget.initialChannel);
   final _version = TextEditingController();
   final _build = TextEditingController();
   final _notesAr = TextEditingController();
@@ -69,9 +83,11 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
   final _min = TextEditingController();
   final _branch = TextEditingController(text: 'production');
   final _url = TextEditingController();
+  final _workflow = TextEditingController();
+  final _package = TextEditingController();
+  String _track = 'internal';
   String _policy = 'recommended';
   String _gate = 'test_first';
-  String _source = 'website';
   bool _auto = true;
   bool _busy = false;
   Map<String, String> _errors = const {};
@@ -79,36 +95,118 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
   /// A refusal that belongs to no field (wrong password, a build already running, …).
   String? _general;
 
+  /// The Codemagic setup (`GET …/config`); null while it loads or when it failed ([_configError]).
+  late ReleaseConfig? _config = widget.config;
+  String? _configError;
+
+  /// What the server listed in a 400 `channel_not_configured`, per `platform:channel` (cleared by a new check).
+  final Map<String, ReleaseReadiness> _serverMissing = {};
+
+  static String _validChannel(String platform, String? channel) {
+    final offered = releaseChannelsFor(platform);
+    return channel != null && offered.contains(channel) ? channel : offered.first;
+  }
+
   @override
   void initState() {
     super.initState();
     _prefill();
+    if (_config == null) _loadConfig();
   }
 
   @override
   void dispose() {
-    for (final c in [_version, _build, _notesAr, _notesEn, _min, _branch, _url]) {
+    for (final c in [_version, _build, _notesAr, _notesEn, _min, _branch, _url, _workflow, _package]) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _loadConfig() async {
+    setState(() => _configError = null);
+    try {
+      final cfg = await widget.api.config();
+      if (!mounted) return;
+      setState(() {
+        _config = cfg;
+        _serverMissing.clear();
+        _prefillConfig();
+      });
+    } catch (e) {
+      if (mounted) setState(() => _configError = ReleaseFailure.from(e).message);
+    }
   }
 
   void _prefill() {
     final last = widget.latest[_platform];
     _version.text = last == null ? '1.0.0' : nextPatchVersion(last.version);
     _build.text = '${widget.nextBuild[_platform] ?? (last?.buildNumber ?? 0) + 1}';
-    if (!releaseSourcesFor(_platform).contains(_source)) _source = 'website';
+    _prefillConfig();
+  }
+
+  /// The server's defaults for this platform + channel into the fields (editable).
+  void _prefillConfig() {
+    final d = _config?.defaultsFor(_platform, _channel);
+    _workflow.text = d?.workflow ?? '';
+    _package.text = d?.packageName ?? '';
+    _url.text = d?.storeUrl ?? '';
+    _track = kPlayTracks.contains(d?.track) ? d!.track! : 'internal';
+    if (d?.branch != null) _branch.text = d!.branch!;
   }
 
   void _pickPlatform(String p) {
     if (p == _platform) return;
     setState(() {
       _platform = p;
+      _channel = _validChannel(p, _channel);
       _errors = const {};
       _general = null;
       _prefill();
     });
   }
+
+  void _pickChannel(String ch) {
+    if (ch == _channel) return;
+    setState(() {
+      _channel = ch;
+      _errors = const {};
+      _general = null;
+      _prefillConfig();
+    });
+  }
+
+  bool get _builds => releaseChannelBuilds(_platform, _channel);
+
+  String get _key => releaseChannelKey(_platform, _channel);
+
+  /// What blocks this platform + channel: the server's check, plus a refusal it sent; null while it is unknown.
+  ReleaseReadiness? get _readiness {
+    final cfg = _config;
+    final refused = _serverMissing[_key];
+    ReleaseReadiness? r = cfg?.readiness(_platform, _channel).without(_fixedByForm) ?? (_builds ? null : ReleaseReadiness.ok);
+    if (refused != null) r = (r ?? ReleaseReadiness.ok).and(refused);
+    return r;
+  }
+
+  /// What this version's own values cover (the server applies the same overrides when it re-checks): a workflow id,
+  /// a real Play package name, a known track.
+  Set<String> get _fixedByForm {
+    final out = <String>{};
+    if (kWorkflowPattern.hasMatch(_workflow.text.trim())) out.addAll(kCodemagicWorkflowEnvs);
+    if (AppReleaseDraft.playFields(_platform, _channel)) {
+      final pkg = _package.text.trim();
+      if (kPackageNamePattern.hasMatch(pkg) && !pkg.toLowerCase().startsWith('com.example.')) {
+        out.addAll(const {'PLAY_PACKAGE_NAME', 'package_name_example'});
+      }
+      if (kPlayTracks.contains(_track)) out.add('PLAY_TRACK');
+    }
+    return out;
+  }
+
+  bool get _ready => _readiness?.ready ?? false;
+
+  /// A field the readiness depends on changed.
+  void _rebuild(String _) => setState(() {});
 
   AppReleaseDraft get _draft => AppReleaseDraft(
         platform: _platform,
@@ -120,13 +218,16 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
         minSupported: _min.text.trim().isEmpty ? null : _min.text.trim(),
         branch: _branch.text.trim(),
         gate: _gate,
-        source: _platform == 'web' ? 'website' : _source,
+        channel: _channel,
         storeUrl: _url.text.trim(),
+        workflow: _workflow.text.trim(),
+        track: _track,
+        packageName: _package.text.trim(),
         autoPublish: _auto,
       );
 
   Future<void> _submit() async {
-    if (_busy) return;
+    if (_busy || !_ready) return;
     final d = _draft;
     final errs = validateReleaseDraft(d);
     if (_build.text.trim().isNotEmpty && d.buildNumber == null) errs['build_number'] = 'build_number';
@@ -144,15 +245,27 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
     try {
       final created = await widget.api.create(d, password: password);
       if (!mounted) return;
-      showAppNotice(t('أُنشئ الإصدار ${created.label} — يبدأ خادم البناء العمل عليه', 'Version ${created.label} created — the build server picks it up next'));
+      showAppNotice(d.builds
+          ? t('أُنشئ الإصدار ${created.label} — بدأ Codemagic بناءه', 'Version ${created.label} created — Codemagic is building it')
+          : t('سُجّل الإصدار ${created.label}', 'Version ${created.label} saved'));
       Navigator.of(context).pop(created);
     } catch (e) {
       final f = ReleaseFailure.from(e);
       if (!mounted) return;
       final field = releaseErrorField(f.code);
       setState(() {
-        if (field != null) {
-          _errors = {..._errors, field: f.message};
+        if (f.code == 'channel_not_configured') {
+          // the readiness box lists what the server says is missing; Confirm stays off until a new check
+          final refused = ReleaseReadiness.fromJson({...f.extra, 'ready': false});
+          _serverMissing[_key] = refused.missing.isEmpty ? const ReleaseReadiness(missing: ['channel_not_configured']) : refused;
+        } else if (field != null || f.code == 'config_invalid') {
+          // config_invalid names its field (workflow, track, package_name, store_url, branch)
+          final at = field ?? '${f.extra['field'] ?? ''}';
+          if (at.isEmpty || at == 'config') {
+            _general = f.message;
+          } else {
+            _errors = {..._errors, at: f.message};
+          }
         } else {
           _general = f.message;
         }
@@ -168,8 +281,10 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final buildable = releasePlatformBuildable(_platform);
+    final builds = _builds;
     final last = widget.latest[_platform];
+    final readiness = _readiness;
+    final needsUrl = AppReleaseDraft.needsUrl(_platform, _channel);
     return BasePage(
       key: const ValueKey('release.form'),
       appBar: ScreenAppBar(title: t('إصدار جديد', 'New version')),
@@ -186,11 +301,42 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
                       title: t('المنصة', 'Platform'),
                       child: _PlatformCards(selected: _platform, onPick: _pickPlatform),
                     ),
-                    if (_platform == 'ios')
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpace.md),
-                        child: AppBanner(icon: Icons.info_outline_rounded, text: releasePlatformHint('ios')),
-                      ),
+                    _Section(
+                      title: t('قناة التنزيل', 'Download channel'),
+                      subtitle: t('من أين يحصل الناس على هذا الإصدار', 'Where people get this version'),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        _ChoiceGrid(
+                          minWidth: 280,
+                          children: [
+                            for (final ch in releaseChannelsFor(_platform))
+                              _ChoiceCard(
+                                key: ValueKey('release.channel.$ch'),
+                                icon: releaseChannelIcon(_platform, ch),
+                                title: releaseChannelName(_platform, ch),
+                                subtitle: releaseChannelHint(_platform, ch),
+                                badge: releaseChannelBuilds(_platform, ch) ? null : t('تسجيل فقط', 'Record only'),
+                                selected: _channel == ch,
+                                onTap: () => _pickChannel(ch),
+                              ),
+                          ],
+                        ),
+                        if (_channel == 'store' && builds) ...[
+                          const SizedBox(height: AppSpace.sm),
+                          AppBanner(key: const ValueKey('release.store_note'), icon: Icons.gavel_rounded, color: c.warning, text: releaseStoreReviewNote(_platform)),
+                        ],
+                        const SizedBox(height: AppSpace.sm),
+                        ReleaseReadinessBox(
+                          key: const ValueKey('release.readiness'),
+                          builds: builds,
+                          readiness: readiness,
+                          loading: _config == null && _configError == null && builds,
+                          error: _config == null && builds ? _configError : null,
+                          onRetry: _loadConfig,
+                          what: '${releasePlatformShort(_platform)} · ${releaseChannelName(_platform, _channel)}',
+                        ),
+                        const SizedBox(height: AppSpace.sm),
+                      ]),
+                    ),
                     _Section(
                       title: t('الإصدار', 'Version'),
                       subtitle: last == null
@@ -221,7 +367,9 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
                     ),
                     _Section(
                       title: t('ما الجديد', "What's new"),
-                      subtitle: t('يظهر في نافذة التحديث وصفحة التنزيلات', 'Shown in the update prompt and on the downloads page'),
+                      subtitle: _channel == 'store' && builds
+                          ? t('يظهر في نافذة التحديث، ويُرسل إلى المتجر كملاحظات الإصدار', 'Shown in the update prompt and sent to the store as the release notes')
+                          : t('يظهر في نافذة التحديث وشريط التنزيل', 'Shown in the update prompt and the download strip'),
                       child: _Pair(
                         first: _Field(fieldKey: 'release.notes_ar', controller: _notesAr, label: t('بالعربية', 'In Arabic'), maxLines: 4, rtl: true),
                         second: _Field(fieldKey: 'release.notes_en', controller: _notesEn, label: t('بالإنجليزية', 'In English'), maxLines: 4, ltr: true),
@@ -260,60 +408,18 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
                         ),
                       ]),
                     ),
-                    if (buildable)
-                      _Section(
-                        title: t('البناء', 'Build'),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                          _Field(
-                            fieldKey: 'release.branch',
-                            controller: _branch,
-                            label: t('الفرع', 'Branch'),
-                            helper: t('الموقع المنشور الآن مبني من الفرع $kLiveSiteBranch', 'The live site is currently built from $kLiveSiteBranch'),
-                            ltr: true,
-                            error: _errors['branch'],
-                          ),
-                          const SizedBox(height: AppSpace.sm),
-                          _ChoiceGrid(
-                            minWidth: 280,
-                            children: [
-                              _ChoiceCard(
-                                key: const ValueKey('release.gate.test_first'),
-                                icon: Icons.fact_check_outlined,
-                                title: releaseGateName('test_first'),
-                                subtitle: t('يُشغَّل المحلل وكل مجموعات الاختبار قبل البناء؛ يضيف ٢٠–٣٠ دقيقة لكنه يوقف إصداراً معطوباً',
-                                    'The analyzer and every test suite run before the build; adds 20–30 minutes but stops a broken version'),
-                                selected: _gate == 'test_first',
-                                onTap: () => setState(() => _gate = 'test_first'),
-                              ),
-                              _ChoiceCard(
-                                key: const ValueKey('release.gate.direct'),
-                                icon: Icons.bolt_rounded,
-                                title: releaseGateName('direct'),
-                                subtitle: t('يبني ويرفع فوراً دون اختبارات — للإصلاحات العاجلة على فرع مُختبَر',
-                                    'Builds and uploads at once, no tests — for urgent fixes on a branch already tested'),
-                                selected: _gate == 'direct',
-                                color: c.warning,
-                                onTap: () => setState(() => _gate = 'direct'),
-                              ),
-                            ],
-                          ),
-                        ]),
-                      ),
-                    if (_platform != 'web') _sourceSection(context),
+                    if (builds) _buildSection(context) else if (needsUrl) _linkSection(context),
                     _Section(
                       title: t('النشر', 'Publishing'),
                       child: AppCard(
                         padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
                         child: AppSwitchTile(
                           key: const ValueKey('release.auto_publish'),
-                          // a Google Play release goes live by hand after the Play Console upload
-                          subtitleWidget: _source == 'google_play' && _platform == 'android'
-                              ? Text(t('إصدار Google Play يُنشر يدوياً بعد رفعه في Play Console', 'A Google Play version goes live by hand after the Play Console upload'),
-                                  style: AppType.meta(context).copyWith(fontFamily: AppFonts.family, color: c.warning))
-                              : null,
                           icon: Icons.rocket_launch_rounded,
-                          title: buildable
-                              ? t('انشر تلقائياً عند نجاح البناء', 'Publish automatically when the build succeeds')
+                          title: builds
+                              ? (_channel == 'store'
+                                  ? t('اعتبره منشوراً حين يُنهي Codemagic الرفع إلى المتجر', 'Mark it live when Codemagic finishes the store upload')
+                                  : t('انشر تلقائياً عند نجاح البناء', 'Publish automatically when the build succeeds'))
                               : t('اجعله المنشور فور حفظه', 'Make it live as soon as it is saved'),
                           subtitle: t('وإلا يبقى «جاهزاً» حتى تضغط «انشره الآن»', 'Otherwise it stays Ready until you press Make live'),
                           value: _auto,
@@ -330,61 +436,260 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
         _SubmitBar(
           error: _general,
           busy: _busy,
-          label: buildable ? t('أنشئ الإصدار وابدأ البناء', 'Create and start the build') : t('سجّل الإصدار', 'Save the version'),
+          enabled: _ready,
+          disabledHint: _ready
+              ? null
+              : (readiness == null
+                  ? (_configError != null
+                      ? t('تعذّر التحقق من إعداد البناء — أعد المحاولة أعلاه', 'Could not check the build setup — retry above')
+                      : t('يجري التحقق من إعداد البناء…', 'Checking the build setup…'))
+                  : t('هذه القناة غير جاهزة بعد — ما ينقصها مذكور أعلاه', 'This channel is not ready yet — what is missing is listed above')),
+          label: builds ? t('أنشئ الإصدار وابدأ البناء', 'Create and start the build') : t('سجّل الإصدار', 'Save the version'),
           onSubmit: _submit,
         ),
       ]),
     );
   }
 
-  Widget _sourceSection(BuildContext context) {
-    final sources = releaseSourcesFor(_platform);
-    final needsUrl = AppReleaseDraft.needsUrl(_platform, _source);
-    final urlLabel = switch (_source) {
-      'google_play' => t('رابط التطبيق على Google Play', 'Google Play link'),
-      'app_store' => t('رابط التطبيق على App Store', 'App Store link'),
-      'custom' => t('الرابط', 'Link'),
-      _ => t('رابط الملف', 'File link'),
-    };
+  /// Branch, the Codemagic workflow, Play's track and package name, the store link, the gate — the server's defaults,
+  /// editable for this version (never a secret).
+  Widget _buildSection(BuildContext context) {
+    final c = context.colors;
+    final play = AppReleaseDraft.playFields(_platform, _channel);
+    final store = _channel == 'store';
     return _Section(
-      title: t('مصدر التنزيل', 'Download source'),
-      subtitle: t('ما يفتحه زر «حدّث الآن» في التطبيق', 'What the app\'s Update button opens'),
+      title: t('البناء على Codemagic', 'Build on Codemagic'),
+      subtitle: t('القيم الافتراضية من إعداد الخادم؛ يمكنك تغييرها لهذا الإصدار', "The server's defaults; you may change them for this version"),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          for (final s in sources)
-            AppChoiceChip(
-              key: ValueKey('release.source.$s'),
-              label: releaseSourceName(s),
-              icon: releaseSourceIcon(s),
-              selected: _source == s,
-              onTap: () => setState(() => _source = s),
+        _Pair(
+          first: _Field(
+            fieldKey: 'release.branch',
+            controller: _branch,
+            label: t('الفرع', 'Branch'),
+            helper: t('الموقع المنشور الآن مبني من الفرع $kLiveSiteBranch', 'The live site is currently built from $kLiveSiteBranch'),
+            ltr: true,
+            error: _errors['branch'],
+          ),
+          second: _Field(
+            fieldKey: 'release.workflow',
+            controller: _workflow,
+            onChanged: _rebuild,
+            label: t('سير العمل في Codemagic', 'Codemagic workflow'),
+            hint: releaseDefaultWorkflow(_platform, _channel),
+            helper: t('كما في codemagic.yaml', 'As in codemagic.yaml'),
+            ltr: true,
+            error: _errors['workflow'],
+          ),
+        ),
+        if (play)
+          _Pair(
+            first: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
+              child: AppDropdown<String>(
+                key: const ValueKey('release.track'),
+                value: _track,
+                decoration: InputDecoration(labelText: t('مسار Google Play', 'Google Play track'), errorText: _errors['track']),
+                items: [
+                  for (final tr in kPlayTracks)
+                    DropdownMenuItem(value: tr, child: Text(releaseTrackName(tr), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                ],
+                onChanged: (v) => setState(() => _track = v ?? _track),
+              ),
             ),
-        ]),
-        if (needsUrl) ...[
-          const SizedBox(height: AppSpace.sm),
+            second: _Field(
+              fieldKey: 'release.package_name',
+              controller: _package,
+              onChanged: _rebuild,
+              label: t('اسم الحزمة', 'Package name'),
+              hint: 'site.nextbrain.app',
+              helper: t('يُسجَّل مع الإصدار؛ تغيير معرّف التطبيق قرار منفصل', 'Recorded with the version; changing the app id is a separate decision'),
+              ltr: true,
+              error: _errors['package_name'],
+            ),
+          ),
+        if (store)
           _Field(
             fieldKey: 'release.store_url',
             controller: _url,
-            label: urlLabel,
+            label: _platform == 'android' ? t('رابط التطبيق على Google Play', 'Google Play link') : t('رابط التطبيق على App Store', 'App Store link'),
             hint: 'https://',
+            helper: t('ما يفتحه زر «حدّث الآن» في التطبيق', "What the app's Update button opens"),
             ltr: true,
             keyboard: TextInputType.url,
             error: _errors['store_url'],
           ),
-        ],
-        if (_source == 'google_play' || _source == 'app_store') ...[
-          const SizedBox(height: AppSpace.sm),
-          AppBanner(
-            icon: Icons.back_hand_outlined,
-            color: context.colors.warning,
-            text: _source == 'google_play'
-                ? t('الرفع إلى Google Play يدوي في هذه المرحلة: نزّل ملف AAB من صفحة الإصدار وارفعه في Play Console، ثم اجعله منشوراً.',
-                    'Uploading to Google Play is done by hand for now: download the AAB from the version page, upload it in the Play Console, then make it live.')
-                : t('لا يُبنى تطبيق للآيفون هنا: يُسجَّل الرابط فقط لتطبيق المتجر مستقبلاً.',
-                    'No iPhone app is built here: the link is recorded for a future store app.'),
-          ),
-        ],
+        const SizedBox(height: AppSpace.xxs),
+        _ChoiceGrid(
+          minWidth: 280,
+          children: [
+            _ChoiceCard(
+              key: const ValueKey('release.gate.test_first'),
+              icon: Icons.fact_check_outlined,
+              title: releaseGateName('test_first'),
+              subtitle: t('يُشغَّل المحلل وكل مجموعات الاختبار قبل البناء؛ يضيف ٢٠–٣٠ دقيقة لكنه يوقف إصداراً معطوباً',
+                  'The analyzer and every test suite run before the build; adds 20–30 minutes but stops a broken version'),
+              selected: _gate == 'test_first',
+              onTap: () => setState(() => _gate = 'test_first'),
+            ),
+            _ChoiceCard(
+              key: const ValueKey('release.gate.direct'),
+              icon: Icons.bolt_rounded,
+              title: releaseGateName('direct'),
+              subtitle: t('يبني ويرفع فوراً دون اختبارات — للإصلاحات العاجلة على فرع مُختبَر',
+                  'Builds and uploads at once, no tests — for urgent fixes on a branch already tested'),
+              selected: _gate == 'direct',
+              color: c.warning,
+              onTap: () => setState(() => _gate = 'direct'),
+            ),
+          ],
+        ),
       ]),
+    );
+  }
+
+  /// A recorded-only macOS version: the file or store link the app's Update button opens.
+  Widget _linkSection(BuildContext context) => _Section(
+        title: t('الرابط', 'Link'),
+        subtitle: t('ما يفتحه زر «حدّث الآن» في التطبيق', "What the app's Update button opens"),
+        child: _Field(
+          fieldKey: 'release.store_url',
+          controller: _url,
+          label: _channel == 'store' ? t('رابط المتجر', 'Store link') : t('رابط الملف (اختياري)', 'File link (optional)'),
+          hint: 'https://',
+          ltr: true,
+          keyboard: TextInputType.url,
+          error: _errors['store_url'],
+        ),
+      );
+}
+
+/// The workflow id codemagic.yaml gives a platform + channel (the field's hint when the server sends no default).
+String releaseDefaultWorkflow(String platform, String channel) => switch (platform) {
+      'android' => channel == 'store' ? 'android-store' : 'android-website',
+      'ios' => 'ios-store',
+      'web' => 'web-website',
+      'linux' => 'linux-website',
+      'windows' => 'windows-website',
+      _ => '',
+    };
+
+/// "Ready to build" or what is missing on the server (env names for the owner, sentences for the admin), the check
+/// still running, or a check that failed with a Retry — drawn from plain values (test/ui/app_releases_layout_test.dart).
+class ReleaseReadinessBox extends StatelessWidget {
+  /// The server's own sentence for the item (it sends one per item, parallel to `missing`), else ours.
+  static String _text(ReleaseReadiness r, String item) {
+    final own = r.reasonFor(item, AppConfig.lang);
+    return own.isNotEmpty ? own : releaseMissingText(item);
+  }
+
+  const ReleaseReadinessBox({
+    super.key,
+    required this.builds,
+    required this.readiness,
+    required this.what,
+    this.loading = false,
+    this.error,
+    this.onRetry,
+  });
+
+  /// Codemagic builds this channel (a recorded-only one needs no setup and shows nothing when ready).
+  final bool builds;
+  final ReleaseReadiness? readiness;
+
+  /// "Android · Google Play"
+  final String what;
+  final bool loading;
+  final String? error;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final r = readiness;
+    if (loading && r == null) {
+      return AppBanner(icon: Icons.hourglass_top_rounded, color: c.textMedium, text: t('يجري التحقق من إعداد البناء…', 'Checking the build setup…'));
+    }
+    if (r == null) {
+      // the Retry button under the sentence (beside it, a large text size squeezes the sentence to nothing)
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppBanner(
+          icon: Icons.cloud_off_rounded,
+          color: c.warning,
+          text: t('تعذّر التحقق من إعداد البناء، فلا يمكن البدء الآن', 'Could not check the build setup, so a build cannot start now') +
+              (error == null || error!.isEmpty ? '' : ' — ${error!}'),
+        ),
+        if (onRetry != null)
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(
+              key: const ValueKey('release.readiness.retry'),
+              onPressed: onRetry,
+              style: TextButton.styleFrom(foregroundColor: c.primary, minimumSize: const Size(48, AppTouch.min)),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(t('أعد المحاولة', 'Retry'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+            ),
+          ),
+      ]);
+    }
+    if (r.ready) {
+      if (!builds) return const SizedBox.shrink();
+      return AppBanner(
+        icon: Icons.check_circle_outline_rounded,
+        color: c.success,
+        text: t('جاهز: يبني Codemagic $what', 'Ready: Codemagic builds $what'),
+      );
+    }
+    final col = c.danger;
+    final meta = AppType.meta(context).copyWith(fontFamily: AppFonts.family, height: 1.4);
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xs),
+        decoration: BoxDecoration(
+          color: col.withValues(alpha: 0.07),
+          borderRadius: AppRadius.cardAll,
+          border: Border.all(color: col.withValues(alpha: 0.28)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.block_rounded, size: 20, color: col),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t('غير جاهز بعد: $what', 'Not ready yet: $what'),
+                    style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(t('زر الإنشاء متوقف حتى يُضبط ما يلي في ‎.env.production على الخادم (أو في Codemagic):',
+                        'The Create button stays off until these are set in .env.production on the server (or in Codemagic):'),
+                    style: meta),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: AppSpace.xs),
+          for (final m in r.missing)
+            Padding(
+              key: ValueKey('release.readiness.missing.$m'),
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, bottom: AppSpace.xs),
+              child: Wrap(
+                spacing: AppSpace.xs,
+                runSpacing: 2,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(_text(r, m), style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontSize: 13.5, height: 1.4)),
+                  if (releaseMissingIsEnv(m))
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
+                      child: Text(m,
+                          textDirection: TextDirection.ltr,
+                          style: appText(12, w: FontWeight.w600, c: c.textDark).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                    ),
+                ],
+              ),
+            ),
+        ]),
+      ),
     );
   }
 }
@@ -441,6 +746,7 @@ class _Field extends StatelessWidget {
     this.rtl = false,
     this.keyboard,
     this.digitsOnly = false,
+    this.onChanged,
   });
 
   final String fieldKey;
@@ -450,6 +756,7 @@ class _Field extends StatelessWidget {
   final int maxLines;
   final bool ltr, rtl, digitsOnly;
   final TextInputType? keyboard;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -459,6 +766,7 @@ class _Field extends StatelessWidget {
       child: TextField(
         key: ValueKey(fieldKey),
         controller: controller,
+        onChanged: onChanged,
         maxLines: maxLines,
         minLines: maxLines > 1 ? 2 : 1,
         keyboardType: maxLines > 1 ? TextInputType.multiline : keyboard,
@@ -581,7 +889,7 @@ class _PlatformCards extends StatelessWidget {
                   icon: releasePlatformIcon(p),
                   title: compact ? releasePlatformShort(p) : releasePlatformName(p),
                   subtitle: compact ? null : (p == 'ios' ? t('تطبيق الويب للآيفون', 'The web app for iPhone') : releasePlatformHint(p)),
-                  badge: releasePlatformBuildable(p) ? null : t('تسجيل فقط', 'Record only'),
+                  badge: releaseChannelsFor(p).any((ch) => releaseChannelBuilds(p, ch)) ? null : t('تسجيل فقط', 'Record only'),
                   selected: selected == p,
                   onTap: () => onPick(p),
                 ),
@@ -597,12 +905,16 @@ class _PlatformCards extends StatelessWidget {
 }
 
 class _SubmitBar extends StatelessWidget {
-  const _SubmitBar({required this.label, required this.onSubmit, this.busy = false, this.error});
+  const _SubmitBar({required this.label, required this.onSubmit, this.busy = false, this.error, this.enabled = true, this.disabledHint});
 
   final String label;
   final VoidCallback onSubmit;
   final bool busy;
   final String? error;
+
+  /// false: the chosen platform + channel is not ready (the button is off and [disabledHint] says why).
+  final bool enabled;
+  final String? disabledHint;
 
   @override
   Widget build(BuildContext context) {
@@ -623,12 +935,19 @@ class _SubmitBar extends StatelessWidget {
                     AppBanner(key: const ValueKey('release.error'), icon: Icons.error_outline_rounded, color: c.danger, text: error!),
                     const SizedBox(height: AppSpace.xs),
                   ],
+                  if (!enabled && disabledHint != null) ...[
+                    Text(disabledHint!,
+                        key: const ValueKey('release.submit.hint'),
+                        textAlign: TextAlign.center,
+                        style: AppType.meta(context).copyWith(fontFamily: AppFonts.family, color: c.textMedium)),
+                    const SizedBox(height: AppSpace.xs),
+                  ],
                   AppPrimaryButton(
                     key: const ValueKey('release.submit'),
                     label: label,
                     icon: Icons.lock_outline_rounded,
                     busy: busy,
-                    onPressed: busy ? null : onSubmit,
+                    onPressed: busy || !enabled ? null : onSubmit,
                   ),
                 ]),
               ),

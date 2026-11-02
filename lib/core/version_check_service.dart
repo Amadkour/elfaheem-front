@@ -14,6 +14,11 @@
 /// link, that answer wins ([serverUpdateOffer]): the dialog shows its notes and its button opens the store or the
 /// website link. An older server (no `download_url`) or a failed call leaves the manifest rule above in charge.
 ///
+/// App versions through Codemagic (D-144): the answer may name the `channel` (store | website) instead of a `source`.
+/// store → the store button (Google Play on Android, the App Store elsewhere); website → `download_url` is the file on
+/// our server (Android: the universal APK), opened in the browser to download. A path without a host
+/// (`/api/v1/app/downloads/…`) is read against the API base. Without those fields nothing changes.
+///
 /// It never delays the launch: the check runs in the background and the dialog appears when the answer arrives.
 /// Kill switch: `app.update_prompt`. The web build is always current and never checks.
 library;
@@ -34,6 +39,7 @@ import '../design/app_notice.dart';
 import '../design/app_tokens.dart';
 import '../main.dart'; // navigatorKey
 import 'api_client.dart';
+import 'release/app_downloads.dart' show resolveDownloadUrl;
 import '../features/shared/get_app/get_app_sheet.dart' show getAppLtr;
 import 'display/app_fonts.dart';
 import 'get_app/get_app_service.dart' show fetchReleasesManifest, releasesManifestUriFor;
@@ -92,23 +98,34 @@ String _notesIn(Object? v, String lang) {
   return v is String ? v.trim() : '';
 }
 
+/// The source the dialog's button speaks for: the server's `source`, or its D-144 `channel` (store → Google Play on
+/// Android, the App Store elsewhere; website → a file to download).
+String updateSourceOf(Map<String, dynamic> r, {String? platform}) {
+  final source = '${r['source'] ?? ''}'.trim();
+  final channel = '${r['channel'] ?? ''}'.trim();
+  final store = platform == 'android' ? 'google_play' : 'app_store';
+  if (source == 'store') return store;
+  if (source.isNotEmpty && source != 'website') return source; // google_play | app_store | custom
+  if (channel == 'store') return store;
+  return 'website';
+}
+
 /// The update `GET /app/version-check` asks for, when it names an https link (null: no update, an older server
 /// without `download_url`, or a link that is not https — the manifest decides then).
 @visibleForTesting
-ServerUpdateOffer? serverUpdateOffer(Map<String, dynamic> r, {required String lang}) {
+ServerUpdateOffer? serverUpdateOffer(Map<String, dynamic> r, {required String lang, String? platform, String? apiBase}) {
   final must = r['must_update'] == true;
   if (!must && r['should_update'] != true) return null;
-  final url = '${r['download_url'] ?? ''}'.trim();
+  final url = resolveDownloadUrl('${r['download_url'] ?? ''}'.trim(), apiBase: apiBase ?? AppConfig.baseUrl);
   final uri = Uri.tryParse(url);
   if (url.isEmpty || uri == null || uri.scheme != 'https' || uri.host.isEmpty) return null;
   var notes = _notesIn(r['notes'], lang);
   if (notes.isEmpty) notes = _notesIn(r['release_notes'], lang);
-  final source = '${r['source'] ?? ''}'.trim();
   return ServerUpdateOffer(
     force: must,
     version: '${r['latest_version'] ?? r['version'] ?? ''}',
     url: url,
-    source: source.isEmpty ? 'website' : source,
+    source: updateSourceOf(r, platform: platform),
     notes: notes,
   );
 }
@@ -132,7 +149,7 @@ class VersionCheckService {
       ApiClient.instance.checkVersion(version: info.version, platform: key).then<Object?>((m) => m, onError: (_) => null),
       fetchReleasesManifest(releasesManifestUriFor(AppConfig.baseUrl)).then<Object?>((m) => m, onError: (_) => null),
     ]);
-    final server = asked[0] is Map<String, dynamic> ? serverUpdateOffer(asked[0] as Map<String, dynamic>, lang: AppConfig.lang) : null;
+    final server = asked[0] is Map<String, dynamic> ? serverUpdateOffer(asked[0] as Map<String, dynamic>, lang: AppConfig.lang, platform: key) : null;
     if (AppConfig.disableList.contains(kUpdatePromptKey)) return;
 
     final bool force;

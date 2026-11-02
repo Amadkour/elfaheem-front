@@ -35,8 +35,197 @@ DateTime? releaseTime(Object? v) {
 const List<String> kReleasePlatformOrder = ['android', 'ios', 'web', 'linux', 'windows', 'macos'];
 
 /// Built on the build server (the others are recorded only: iOS is the web app, Windows / macOS are not buildable on
-/// Linux).
+/// Linux). D-144: Codemagic builds per channel — use [releaseChannelBuilds] where the channel is known.
 bool releasePlatformBuildable(String platform) => const {'android', 'web', 'linux'}.contains(platform);
+
+// ── D-144: download channels, the Codemagic setup and its readiness (docs/release/APP_RELEASES_CODEMAGIC.md) ──
+
+/// `store` (Codemagic hands the build to Google Play / the App Store) or `website` (our server keeps the files and the
+/// web app's banner offers them).
+const List<String> kReleaseChannels = ['website', 'store'];
+
+/// The channels each platform offers, the default first ("Platforms × channels"; the server's `platforms`): iOS
+/// "website" is the web app (Apple allows no other install); the Microsoft Store and macOS record a link only.
+List<String> releaseChannelsFor(String platform) => switch (platform) {
+      'android' || 'ios' || 'macos' || 'windows' => const ['website', 'store'],
+      _ => const ['website'],
+    };
+
+/// Codemagic builds this platform on this channel (the others are recorded only: iOS website = the web app, macOS).
+bool releaseChannelBuilds(String platform, String channel) => switch (platform) {
+      'android' => channel == 'store' || channel == 'website',
+      'ios' => channel == 'store',
+      'web' || 'linux' || 'windows' => channel == 'website',
+      _ => false,
+    };
+
+/// The D-143 `source` as a channel (google_play / app_store → store; website / custom → website).
+String releaseChannelOfSource(String? source) => const {'google_play', 'app_store'}.contains(source) ? 'store' : 'website';
+
+/// The readiness key of the config answer: `android:store`.
+String releaseChannelKey(String platform, String channel) => '$platform:$channel';
+
+/// The Play tracks a store version may go to.
+const List<String> kPlayTracks = ['internal', 'alpha', 'beta', 'production'];
+
+/// A Java-style package name with at least two parts (`site.nextbrain.app`).
+final RegExp kPackageNamePattern = RegExp(r'^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$');
+
+/// The env names of the Codemagic workflow ids (a workflow typed in the form covers them).
+const Set<String> kCodemagicWorkflowEnvs = {
+  'CODEMAGIC_WORKFLOW_ANDROID_STORE',
+  'CODEMAGIC_WORKFLOW_ANDROID_WEBSITE',
+  'CODEMAGIC_WORKFLOW_IOS_STORE',
+  'CODEMAGIC_WORKFLOW_WEB',
+  'CODEMAGIC_WORKFLOW_LINUX',
+  'CODEMAGIC_WORKFLOW_WINDOWS',
+};
+
+/// The Codemagic workflow ids (codemagic.yaml).
+final RegExp kWorkflowPattern = RegExp(r'^[A-Za-z0-9._-]{1,100}$');
+
+List<String> _strList(Object? v) {
+  if (v is String) return v.trim().isEmpty ? const [] : [v.trim()];
+  if (v is! List) return const [];
+  return [
+    for (final x in v)
+      if (x is Map)
+        ?_str(x['env'] ?? x['key'] ?? x['code'] ?? x['name'])
+      else
+        ?_str(x),
+  ];
+}
+
+/// Whether one (platform, channel) — or Codemagic itself — can be built now, and what is missing: env names
+/// (`PLAY_PACKAGE_NAME`, `CODEMAGIC_API_TOKEN`, …) or codes (`package_name_example`).
+class ReleaseReadiness {
+  const ReleaseReadiness({this.ready = false, this.missing = const [], this.reasonsAr = const [], this.reasonsEn = const []});
+
+  static const ReleaseReadiness ok = ReleaseReadiness(ready: true);
+
+  final bool ready;
+  final List<String> missing;
+
+  /// The server's own sentence for each [missing] item (same order; '' where it sent none).
+  final List<String> reasonsAr, reasonsEn;
+
+  /// The server's sentence for [item] in [lang] ('' when it sent none).
+  String reasonFor(String item, String lang) {
+    final i = missing.indexOf(item);
+    final list = lang == 'ar' ? reasonsAr : reasonsEn;
+    return i >= 0 && i < list.length ? list[i] : '';
+  }
+
+  factory ReleaseReadiness.fromJson(Object? raw) {
+    if (raw is bool) return ReleaseReadiness(ready: raw);
+    final m = _map(raw);
+    final missing = _strList(m['missing']);
+    List<String> aligned(Object? v) {
+      final l = v is List ? [for (final x in v) '${x ?? ''}'.trim()] : const <String>[];
+      return [for (var i = 0; i < missing.length; i++) i < l.length ? l[i] : ''];
+    }
+
+    return ReleaseReadiness(
+      ready: _bool(m['ready'], fallback: missing.isEmpty && raw is Map),
+      missing: missing,
+      reasonsAr: aligned(m['reasons_ar']),
+      reasonsEn: aligned(m['reasons_en']),
+    );
+  }
+
+  /// This and [other] together: ready only when both are, every missing item once (with its sentence).
+  ReleaseReadiness and(ReleaseReadiness other) {
+    final items = [...missing], ar = [...reasonsAr], en = [...reasonsEn];
+    while (ar.length < items.length) {
+      ar.add('');
+    }
+    while (en.length < items.length) {
+      en.add('');
+    }
+    for (var i = 0; i < other.missing.length; i++) {
+      if (items.contains(other.missing[i])) continue;
+      items.add(other.missing[i]);
+      ar.add(i < other.reasonsAr.length ? other.reasonsAr[i] : '');
+      en.add(i < other.reasonsEn.length ? other.reasonsEn[i] : '');
+    }
+    return ReleaseReadiness(ready: ready && other.ready, missing: items, reasonsAr: ar, reasonsEn: en);
+  }
+
+  /// Without the [fixed] items (the form's own value covers them, as the server's re-check will see): ready when
+  /// nothing else is missing.
+  ReleaseReadiness without(Set<String> fixed) {
+    if (fixed.isEmpty || !missing.any(fixed.contains)) return this;
+    final keep = [for (var i = 0; i < missing.length; i++) if (!fixed.contains(missing[i])) i];
+    String at(List<String> l, int i) => i < l.length ? l[i] : '';
+    return ReleaseReadiness(
+      ready: keep.isEmpty,
+      missing: [for (final i in keep) missing[i]],
+      reasonsAr: [for (final i in keep) at(reasonsAr, i)],
+      reasonsEn: [for (final i in keep) at(reasonsEn, i)],
+    );
+  }
+}
+
+/// The form's defaults for one platform + channel (env on the server, editable per version; never a secret).
+class ReleaseChannelDefaults {
+  const ReleaseChannelDefaults({this.workflow, this.track, this.packageName, this.storeUrl, this.branch});
+
+  final String? workflow, track, packageName, storeUrl, branch;
+}
+
+/// `GET /api/v1/admin/app-releases/config` → `{codemagic {ready, missing}, channels {"android:store": {ready, missing,
+/// reasons_ar?, reasons_en?}}, defaults {android: {workflow, track, package_name, store_url}, …}}`.
+class ReleaseConfig {
+  const ReleaseConfig({this.codemagic = ReleaseReadiness.ok, this.channels = const {}, this.defaults = const {}, this.appId});
+
+  final ReleaseReadiness codemagic;
+  final Map<String, ReleaseReadiness> channels;
+
+  /// The raw `defaults` per platform (read through [defaultsFor]).
+  final Map<String, Map<String, dynamic>> defaults;
+
+  /// The Codemagic application id, when the server shares it (for the build link).
+  final String? appId;
+
+  factory ReleaseConfig.fromJson(Object? raw) {
+    final m = _map(raw);
+    final cm = m['codemagic'];
+    return ReleaseConfig(
+      codemagic: cm == null ? ReleaseReadiness.ok : ReleaseReadiness.fromJson(cm),
+      channels: {for (final e in _map(m['channels']).entries) e.key: ReleaseReadiness.fromJson(e.value)},
+      defaults: {for (final e in _map(m['defaults']).entries) if (e.value is Map) e.key: _map(e.value)},
+      appId: _str(_map(cm)['app_id']) ?? _str(m['app_id']),
+    );
+  }
+
+  /// What blocks building [platform] on [channel]: Codemagic's own setup plus the channel's. A channel Codemagic does
+  /// not build (iOS website, macOS) is ready unless the server says otherwise.
+  ReleaseReadiness readiness(String platform, String channel) {
+    final ch = channels[releaseChannelKey(platform, channel)];
+    if (!releaseChannelBuilds(platform, channel)) return ch ?? ReleaseReadiness.ok;
+    return codemagic.and(ch ?? ReleaseReadiness.ok);
+  }
+
+  /// The defaults of [platform] on [channel]: `defaults[platform]`, with `defaults[platform][channel]` (a map) over
+  /// it; the workflow may also come as `workflows {store, website}` or `workflow_<channel>`.
+  ReleaseChannelDefaults defaultsFor(String platform, String channel) {
+    final base = defaults[platform] ?? const <String, dynamic>{};
+    final own = base[channel] is Map ? _map(base[channel]) : const <String, dynamic>{};
+    final d = {...base, ...own};
+    final wf = d['workflows'];
+    final workflow = _str(own['workflow']) ??
+        (wf is Map ? _str(wf[channel]) : null) ??
+        _str(d['workflow_$channel']) ??
+        (d['workflow'] is Map ? _str((d['workflow'] as Map)[channel]) : _str(d['workflow']));
+    return ReleaseChannelDefaults(
+      workflow: workflow,
+      track: _str(d['track']),
+      packageName: _str(d['package_name']),
+      storeUrl: _str(d['store_url']),
+      branch: _str(d['branch']),
+    );
+  }
+}
 
 /// Every status, in flow order (APP_RELEASES.md "Statuses").
 const List<String> kReleaseStatuses = [
@@ -179,6 +368,14 @@ class AppRelease {
     this.logCount,
     this.artifacts = const [],
     this.log = const [],
+    this.channel = 'website',
+    this.executor,
+    this.codemagicBuildId,
+    this.codemagicUrl,
+    this.workflow,
+    this.track,
+    this.packageName,
+    this.buildable,
   });
 
   final int id;
@@ -233,6 +430,36 @@ class AppRelease {
   final List<ReleaseArtifact> artifacts;
   final List<ReleaseLogLine> log;
 
+  /// D-144: `store` | `website` (an older server's `source` is mapped: google_play / app_store → store).
+  final String channel;
+
+  /// Who builds it: `codemagic` (D-144) or the D-143 build agent (`builder` / null).
+  final String? executor;
+
+  /// The Codemagic build of the current attempt, and its page (`https://codemagic.io/app/<appId>/build/<buildId>`).
+  final String? codemagicBuildId, codemagicUrl;
+
+  /// The per-version overrides the release was created with (`config {workflow, track, package_name}`).
+  final String? workflow, track, packageName;
+
+  /// The server's `buildable`; null from an older reply (derived from the platform and channel then).
+  final bool? buildable;
+
+  bool get isStore => channel == 'store';
+
+  /// Built (by Codemagic or the D-143 agent) rather than recorded only.
+  bool get builds => buildable ?? (viaCodemagic ? releaseChannelBuilds(platform, channel) : releasePlatformBuildable(platform));
+
+  /// Built by Codemagic (D-144).
+  bool get viaCodemagic => executor == 'codemagic' || codemagicBuildId != null || codemagicUrl != null;
+
+  /// The Codemagic build page: the server's link, else built from [appId] and the build id.
+  String? codemagicLink({String? appId}) {
+    if (codemagicUrl != null) return codemagicUrl;
+    if (codemagicBuildId == null || appId == null || appId.isEmpty) return null;
+    return 'https://codemagic.io/app/$appId/build/$codemagicBuildId';
+  }
+
   bool get active => releaseStatusActive(status);
 
   /// Live now — the one its platform serves.
@@ -242,7 +469,7 @@ class AppRelease {
   String get shownStatus => status == 'live' && !current ? 'replaced' : status;
 
   bool get canCancel => actions?.cancel ?? const {'queued', 'building', 'testing'}.contains(status);
-  bool get canRetry => actions?.retry ?? (const {'failed', 'canceled'}.contains(status) && releasePlatformBuildable(platform));
+  bool get canRetry => actions?.retry ?? (const {'failed', 'canceled'}.contains(status) && builds);
   bool get canPublish => actions?.publish ?? status == 'ready';
   bool get canRollback => actions?.rollback ?? current;
 
@@ -259,7 +486,18 @@ class AppRelease {
     final String? author = by is Map
         ? (_str(by['name']) ?? _str(by['username']) ?? _str(by['email']))
         : (_str(j['created_by_name']) ?? (by is num ? '#${by.toInt()}' : _str(by)));
+    final cfg = _map(j['config']);
+    final cm = _map(j['codemagic']);
+    final b = j['buildable'];
     return AppRelease(
+      channel: _str(j['channel']) ?? releaseChannelOfSource(_str(j['source'])),
+      executor: _str(j['executor']),
+      codemagicBuildId: _str(j['codemagic_build_id'] ?? cm['build_id']),
+      codemagicUrl: _str(j['codemagic_url'] ?? j['build_url'] ?? cm['url']),
+      workflow: _str(cfg['workflow'] ?? j['workflow']),
+      track: _str(cfg['track'] ?? j['track']),
+      packageName: _str(cfg['package_name'] ?? j['package_name']),
+      buildable: b == null ? null : _bool(b),
       id: _int(j['id']) ?? 0,
       platform: _str(j['platform']) ?? 'android',
       version: _str(j['version']) ?? '',
@@ -338,6 +576,14 @@ class AppRelease {
         logCount: logCount,
         artifacts: artifacts,
         log: log ?? this.log,
+        channel: channel,
+        executor: executor,
+        codemagicBuildId: codemagicBuildId,
+        codemagicUrl: codemagicUrl,
+        workflow: workflow,
+        track: track,
+        packageName: packageName,
+        buildable: buildable,
       );
 
   /// This release with the fields of an `app_release_updated` event applied (`{id, platform, status, progress,
@@ -450,7 +696,9 @@ class BuilderStatus {
   }
 }
 
-/// What the New version form sends (POST /api/v1/admin/app-releases, without the password).
+/// What the New version form sends (POST /api/v1/admin/app-releases, without the password). D-144: the download
+/// [channel] (store | website) and the per-version overrides of the server's defaults (`config {workflow, track,
+/// package_name, store_url, branch}`) — never a secret.
 class AppReleaseDraft {
   const AppReleaseDraft({
     required this.platform,
@@ -462,8 +710,11 @@ class AppReleaseDraft {
     this.minSupported,
     this.branch = 'production',
     this.gate = 'test_first',
-    this.source = 'website',
+    this.channel = 'website',
     this.storeUrl,
+    this.workflow,
+    this.track,
+    this.packageName,
     this.autoPublish = true,
   });
 
@@ -475,32 +726,56 @@ class AppReleaseDraft {
   final String? minSupported;
   final String branch;
   final String gate;
-  final String source;
+  final String channel;
   final String? storeUrl;
+  final String? workflow, track, packageName;
   final bool autoPublish;
 
-  /// The URL field is shown: a store / custom source, and every Windows / macOS record (their file lives elsewhere).
-  static bool needsUrl(String platform, String source) =>
-      source != 'website' || platform == 'windows' || platform == 'macos';
+  bool get builds => releaseChannelBuilds(platform, channel);
 
-  /// The URL must be given (the server answers 422 `store_url_required` otherwise).
-  static bool requiresUrl(String source) => source != 'website';
+  /// The D-143 `source` this channel stands for (still sent, for a server that reads only that).
+  String get source => channel == 'store' ? (platform == 'android' ? 'google_play' : 'app_store') : 'website';
 
-  Map<String, dynamic> toJson({required String password}) => {
-        'platform': platform,
-        'version': version,
-        'build_number': ?buildNumber,
-        'notes_ar': notesAr,
-        'notes_en': notesEn,
-        'policy': policy,
-        if (minSupported != null && minSupported!.isNotEmpty) 'min_supported': minSupported,
-        if (releasePlatformBuildable(platform)) 'branch': branch,
-        'gate': releasePlatformBuildable(platform) ? gate : 'direct',
-        'source': source,
-        if (needsUrl(platform, source) && storeUrl != null && storeUrl!.isNotEmpty) 'store_url': storeUrl,
-        'auto_publish': autoPublish,
-        'password': password,
-      };
+  /// The link field is shown: a store version (the store page), and a recorded-only macOS file.
+  static bool needsUrl(String platform, String channel) =>
+      (channel == 'store' && platform != 'web') || (platform == 'macos' && !releaseChannelBuilds(platform, channel));
+
+  /// The link must be given: a store version Codemagic does not build (macOS) has nothing else to point to. A built
+  /// store version falls back to the server's default (PLAY_STORE_URL / APP_STORE_URL).
+  static bool requiresUrl(String platform, String channel) => channel == 'store' && !releaseChannelBuilds(platform, channel);
+
+  /// The Play package name / track fields are shown (Android on Google Play).
+  static bool playFields(String platform, String channel) => platform == 'android' && channel == 'store';
+
+  static String? _opt(String? v) => v == null || v.trim().isEmpty ? null : v.trim();
+
+  Map<String, dynamic> toJson({required String password}) {
+    final url = needsUrl(platform, channel) ? _opt(storeUrl) : null;
+    final play = playFields(platform, channel);
+    return {
+      'platform': platform,
+      'version': version,
+      'build_number': ?buildNumber,
+      'notes_ar': notesAr,
+      'notes_en': notesEn,
+      'policy': policy,
+      if (minSupported != null && minSupported!.isNotEmpty) 'min_supported': minSupported,
+      'channel': channel,
+      'source': source,
+      if (builds) 'branch': branch,
+      'gate': builds ? gate : 'direct',
+      'store_url': ?url,
+      'config': {
+        if (builds) 'branch': branch,
+        if (builds) 'workflow': ?_opt(workflow),
+        if (play) 'track': ?_opt(track),
+        if (play) 'package_name': ?_opt(packageName),
+        'store_url': ?url,
+      },
+      'auto_publish': autoPublish,
+      'password': password,
+    };
+  }
 }
 
 /// The form's checks before anything is sent: field → error text key (see app_releases_text.dart `releaseFieldError`).
@@ -516,9 +791,21 @@ Map<String, String> validateReleaseDraft(AppReleaseDraft d) {
       e['min_supported'] = 'min_above_version';
     }
   }
-  if (releasePlatformBuildable(d.platform) && !kReleaseBranchPattern.hasMatch(d.branch)) e['branch'] = 'branch_invalid';
-  final url = d.storeUrl ?? '';
-  if (AppReleaseDraft.requiresUrl(d.source) || (AppReleaseDraft.needsUrl(d.platform, d.source) && url.isNotEmpty)) {
+  if (d.builds && !kReleaseBranchPattern.hasMatch(d.branch)) e['branch'] = 'branch_invalid';
+  final wf = (d.workflow ?? '').trim();
+  if (d.builds && wf.isNotEmpty && !kWorkflowPattern.hasMatch(wf)) e['workflow'] = 'workflow_invalid';
+  if (AppReleaseDraft.playFields(d.platform, d.channel)) {
+    final pkg = (d.packageName ?? '').trim();
+    if (pkg.isNotEmpty && !kPackageNamePattern.hasMatch(pkg)) {
+      e['package_name'] = 'package_name_invalid';
+    } else if (pkg.startsWith('com.example.')) {
+      e['package_name'] = 'package_name_example';
+    }
+    final track = (d.track ?? '').trim();
+    if (track.isNotEmpty && !kPlayTracks.contains(track)) e['track'] = 'track_invalid';
+  }
+  final url = (d.storeUrl ?? '').trim();
+  if (AppReleaseDraft.needsUrl(d.platform, d.channel) && (url.isNotEmpty || AppReleaseDraft.requiresUrl(d.platform, d.channel))) {
     final u = Uri.tryParse(url);
     if (u == null || u.scheme != 'https' || u.host.isEmpty) e['store_url'] = 'url_https';
   }

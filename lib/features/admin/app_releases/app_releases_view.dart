@@ -137,6 +137,70 @@ class BuilderStatusBanner extends StatelessWidget {
   }
 }
 
+/// D-144: Codemagic builds every version — whether it is set up, and which channels are ready (from
+/// `GET …/config`; the env names of what is missing are listed in the New version form).
+class CodemagicStatusBanner extends StatelessWidget {
+  const CodemagicStatusBanner({super.key, required this.config});
+
+  final ReleaseConfig config;
+
+  /// Every platform + channel Codemagic builds, in the page's platform order.
+  static List<(String, String)> get builtChannels => [
+        for (final p in kReleasePlatformOrder)
+          for (final ch in releaseChannelsFor(p))
+            if (releaseChannelBuilds(p, ch)) (p, ch),
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final cm = config.codemagic;
+    final all = builtChannels;
+    final ready = [for (final (p, ch) in all) if (config.readiness(p, ch).ready) (p, ch)];
+    final col = !cm.ready ? c.danger : (ready.length == all.length ? c.success : c.warning);
+    final title = cm.ready ? t('Codemagic متصل', 'Codemagic connected') : t('Codemagic غير مُعدّ بعد', 'Codemagic is not set up yet');
+    final meta = cm.ready
+        ? t('${ready.length} من ${all.length} قنوات جاهزة للبناء', '${ready.length} of ${all.length} channels ready to build')
+        : t('لا يبدأ أي بناء حتى يُضبط: ${cm.missing.join('، ')}', 'No build can start until these are set: ${cm.missing.join(', ')}');
+    return AppCard(
+      key: const ValueKey('releases.codemagic'),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
+            child: Icon(cm.ready ? Icons.cloud_done_outlined : Icons.cloud_off_rounded, color: col, size: 22),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontFamily: AppFonts.family))),
+              ]),
+              Text(meta, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family)),
+            ]),
+          ),
+        ]),
+        if (cm.ready) ...[
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+            for (final (p, ch) in all)
+              AppBadgePill(
+                '${releasePlatformShort(p)} · ${releaseChannelName(p, ch)}',
+                color: config.readiness(p, ch).ready ? c.success : c.textLight,
+                icon: config.readiness(p, ch).ready ? Icons.check_rounded : Icons.remove_circle_outline_rounded,
+              ),
+          ]),
+        ],
+      ]),
+    );
+  }
+}
+
 /// The page body: the filters and one card per platform.
 class AppReleasesView extends StatelessWidget {
   const AppReleasesView({
@@ -312,9 +376,9 @@ class ReleaseRow extends StatelessWidget {
     final r = release;
     final col = releaseStatusColor(context, r.shownStatus);
     final meta = <String>[
-      if (releasePlatformBuildable(r.platform)) ...[releaseGateName(r.gate), if (r.branch != null) r.branch!],
+      if (r.builds) ...[releaseGateName(r.gate), if (r.branch != null) r.branch!],
       releasePolicyName(r.policy),
-      if (r.source != 'website') releaseSourceName(r.source),
+      if (r.isStore || r.source != 'website') releaseChannelName(r.platform, r.channel),
       if (r.createdAt != null) AppTime.dateTime(r.createdAt!),
     ].join(' · ');
     final notes = (AppConfig.lang == 'ar' ? r.notesAr : r.notesEn).trim();
