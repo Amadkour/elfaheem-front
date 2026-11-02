@@ -22,6 +22,7 @@ import 'package:provider/provider.dart';
 
 import '../shared/attendance/admin_data_lab_page.dart';
 import '../shared/rag/rag_admin_console.dart' show RagAdminConsole;
+import 'models/ai_models_page.dart' show AiModelsPage;
 import 'admin_admins_page.dart';
 import 'admin_auth_settings_page.dart';
 import 'admin_username_stats.dart' show AdminUsernameStatsPage, kUsernameStatsFeatureKey;
@@ -446,6 +447,20 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           colors: AdminPalette.indigo,
           featureKey: 'rag.admin',
           onTap: () => push(const RagAdminConsole()),
+        ),
+        // the model hub (D-152): the models behind the assistant, the exam grader and the paper scanner
+        AdminService(
+          labelKey: 'svc_ai_models',
+          descKey: 'svc_ai_models_d',
+          label: t('نماذج الذكاء الاصطناعي', 'AI Models'),
+          desc: t('تنزيل النماذج واختبارها وتفعيلها والرجوع عنها، النموذج الاحتياطي، حدود الموارد، وسجل التغييرات',
+              'Download, test, activate and roll back models; fallbacks, resource limits and the change log'),
+          icon: Icons.memory_rounded,
+          colors: AdminPalette.violet,
+          featureKey: 'models.admin',
+          visible: isSuper,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              settings: const RouteSettings(name: AiModelsPage.routeName), builder: (_) => const AiModelsPage())),
         ),
         AdminService(
           labelKey: 'admin_flags_title',
