@@ -23,8 +23,10 @@ class EngineExamCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final canStart = exam['can_start'] == true;
-    final open = exam['open_attempt_id'] != null;
+    // sat in class on paper (every section is a paper one): never started here — the server refuses with `paper_exam`
+    final paper = exam['paper_only'] == true;
+    final canStart = exam['can_start'] == true && !paper;
+    final open = exam['open_attempt_id'] != null && !paper;
     final used = asInt(exam['attempts_used']), allowed = asInt(exam['attempts_allowed']);
     final results = asMapList(exam['results']);
     final last = results.isEmpty ? null : results.last;
@@ -37,6 +39,8 @@ class EngineExamCard extends StatelessWidget {
       action = used == 0 ? t('ابدأ الاختبار', 'Start exam') : t('محاولة جديدة', 'New attempt');
     } else if (last != null) {
       action = last['visible'] == true ? t('عرض النتيجة', 'View result') : t('النتيجة قيد النشر', 'Result pending');
+    } else if (paper) {
+      action = paperExamLine;
     } else {
       action = status == 'closed' ? t('انتهى', 'Closed') : t('غير متاح', 'Unavailable');
     }
@@ -46,7 +50,7 @@ class EngineExamCard extends StatelessWidget {
         Container(
           width: 42, height: 42, alignment: Alignment.center,
           decoration: BoxDecoration(color: c.primary.withValues(alpha: .1), borderRadius: BorderRadius.circular(12)),
-          child: Icon(open ? Icons.play_circle_outline_rounded : Icons.fact_check_outlined, color: c.primary),
+          child: Icon(open ? Icons.play_circle_outline_rounded : (paper ? Icons.edit_note_rounded : Icons.fact_check_outlined), color: c.primary),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -55,7 +59,7 @@ class EngineExamCard extends StatelessWidget {
             const SizedBox(height: 4),
             Wrap(spacing: 10, runSpacing: 4, children: [
               if (duration != null) Text(t('$duration دقيقة', '$duration min'), style: appText(12, c: c.textMedium)),
-              Text(t('المحاولات $used/$allowed', 'Attempts $used/$allowed'), style: appText(12, c: c.textMedium)),
+              if (!paper) Text(t('المحاولات $used/$allowed', 'Attempts $used/$allowed'), style: appText(12, c: c.textMedium)),
               if (exam['starts_at'] != null) Text(AppTime.dateTime(DateTime.parse('${exam['starts_at']}Z')), style: appText(12, c: c.textMedium)),
               if (last != null && last['visible'] == true && last['percentage'] != null)
                 Text('${last['percentage']}%', style: appText(12, w: FontWeight.w700, c: last['passed'] == true ? c.success : c.warning)),
@@ -65,6 +69,7 @@ class EngineExamCard extends StatelessWidget {
             // title column 26 px wide (layout harness)
             Wrap(spacing: 6, runSpacing: 6, children: [
               AppBadgePill(action, color: canStart || open ? c.primary : c.textLight),
+              if (paper && last != null) AppBadgePill(t('اختبار ورقي', 'Paper exam'), color: c.textLight, icon: Icons.edit_note_rounded),
               if (offlineSaved) AppBadgePill(t('محفوظ للحل دون اتصال', 'Saved for offline'), color: c.success, icon: Icons.offline_pin_rounded),
             ]),
           ]),
@@ -73,6 +78,9 @@ class EngineExamCard extends StatelessWidget {
     );
   }
 }
+
+/// The calm line a paper-only exam shows instead of a Start button.
+String get paperExamLine => t('اختبار ورقي — يُؤدّى في الفصل', 'Paper exam — sat in class');
 
 class EngineExamsSection extends StatefulWidget {
   const EngineExamsSection({super.key, this.courseId, this.orgId});
@@ -134,7 +142,7 @@ class _EngineExamsSectionState extends State<EngineExamsSection> {
         return;
       }
     }
-    if (exam['can_start'] == true || exam['open_attempt_id'] != null) {
+    if (exam['paper_only'] != true && (exam['can_start'] == true || exam['open_attempt_id'] != null)) {
       String? passcode;
       if (exam['has_passcode'] == true && exam['open_attempt_id'] == null) {
         passcode = await _askPasscode();
@@ -178,7 +186,13 @@ class _EngineExamsSectionState extends State<EngineExamsSection> {
         AppSectionTitle(t('اختبارات المقرر', 'Course exams'),
             subtitle: t('اختبارات بتوقيت الخادم وحفظ تلقائي', 'Server-timed exams with autosave'),
             trailing: AppRefreshAction(onRefresh: _load, always: true, size: 20)),
-        for (final e in _items!) Padding(padding: const EdgeInsets.only(bottom: 10), child: EngineExamCard(exam: e, onOpen: () => _open(e), offlineSaved: _saved.contains(asInt(e['id'])))),
+        for (final e in _items!)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            // a paper exam without a result has nothing to open
+            child: EngineExamCard(exam: e, onOpen: e['paper_only'] == true && asMapList(e['results']).isEmpty ? null : () => _open(e),
+                offlineSaved: _saved.contains(asInt(e['id']))),
+          ),
       ]),
     );
   }
