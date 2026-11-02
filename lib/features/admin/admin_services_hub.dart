@@ -60,6 +60,7 @@ import 'enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'app_releases/app_releases_page.dart';
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -489,6 +490,20 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           icon: Icons.system_update_rounded,
           colors: AdminPalette.orange,
           onTap: () => push(const AdminVersionsPage()),
+        ),
+        // app releases from the dashboard (D-143): a build server builds the chosen branch and publishes it
+        AdminService(
+          labelKey: 'svc_app_releases',
+          descKey: 'svc_app_releases_d',
+          label: t('إصدارات التطبيق', 'App versions'),
+          desc: t('إصدار جديد لأندرويد أو الويب أو لينكس يبنيه خادم البناء وينشره، سجل البناء، والرجوع لإصدار سابق',
+              'A new Android, web or Linux version built and published by the build server, the build log, rolling back'),
+          icon: Icons.rocket_launch_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: kAppReleasesFeatureKey,
+          visible: isSuper,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => const AppReleasesPage())),
         ),
         AdminService(
           labelKey: 'terms_and_conditions',

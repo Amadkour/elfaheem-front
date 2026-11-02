@@ -2080,3 +2080,17 @@ council step; the last step's approval, or a rejection at any step, is the exist
 resubmits a rejected item (`POST …/items/{id}/resubmit`, edits allowed): the decision is cleared and a new round starts
 at the first step, the earlier rounds kept in `chain.rounds`; a staff "reopen" restarts the chain the same way. No
 chain configured = the single decision by the entity, exactly as before.
+
+## D-143 — App versions from the Super Admin dashboard: the app follows the server's release row · 2026-11-02 · accepted
+
+**Decision** (contract `docs/release/APP_RELEASES.md`; the server side is D-143 in `../back/docs/DECISIONS.md`).
+- `lib/features/admin/app_releases/` draws only what the server says: the buttons come from the release's `actions`,
+  "live" is `current: true` (a replaced live release shows "Replaced"), the build number is prefilled from
+  `next_build_number`. Creating, publishing and rolling back ask for the account password (re-auth).
+- iOS has no native build: an iOS version is a record (notes, policy, store URL) and iPhone users install the web app.
+- `GET /app/version-check` answers with `download_url` / `source` / `notes`: when `download_url` is present it wins in
+  `VersionCheckService` (store buttons, notes); an older server keeps the manifest rule.
+- A web release reloads open tabs through `app_release_live` (`lib/core/release/web_release_watch.dart`): `must` = a
+  strip with no close button, otherwise it can be closed; also offered after a rollback. Only signed-in tabs hear it
+  (the event stream exists only while signed in); the others get the new build on their next load.
+- Kill switch `admin.app_releases` (services hub tile, super admins only).

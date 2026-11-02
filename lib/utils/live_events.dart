@@ -116,6 +116,14 @@ class LiveEvents {
   static const modelChanged = 'model_changed';
   static const modelAlert = 'model_alert';
 
+  /// App releases (D-143, docs/release/APP_RELEASES.md). `app_release_updated` (super admins, stream only): a release
+  /// moved — `{id, platform, status, progress, current}`. `app_release_live` (every open stream, not replayed): a web
+  /// build went live, also after a rollback — `{platform, version, build_number, policy, must}`. App versions follows
+  /// both; an open web tab whose build differs from a live web release is offered a reload
+  /// (core/release/web_release_watch.dart).
+  static const appReleaseUpdated = 'app_release_updated';
+  static const appReleaseLive = 'app_release_live';
+
   /// Local (not from the server): fired by TopRouteObserver when the app goes online/offline.
   static const connectivity = 'connectivity_changed';
 
@@ -138,6 +146,8 @@ class LiveEvents {
     modelDownload,
     modelChanged,
     modelAlert,
+    appReleaseUpdated,
+    appReleaseLive,
   };
 
   /// The VISIBLE notifications of the same features (data["type"]) also nudge

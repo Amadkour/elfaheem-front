@@ -9,6 +9,11 @@
 /// The button opens the file for this device (Android: the APK for the phone's CPU) in the browser, which downloads
 /// it; installing it over the app keeps the data (same package, same signing key).
 ///
+/// App versions from the dashboard (D-143): `GET /app/version-check` now also names the live release's `download_url`,
+/// `source` (website | google_play | app_store | custom) and `notes` ({ar, en}). When it asks for an update AND names a
+/// link, that answer wins ([serverUpdateOffer]): the dialog shows its notes and its button opens the store or the
+/// website link. An older server (no `download_url`) or a failed call leaves the manifest rule above in charge.
+///
 /// It never delays the launch: the check runs in the background and the dialog appears when the answer arrives.
 /// Kill switch: `app.update_prompt`. The web build is always current and never checks.
 library;
@@ -28,6 +33,7 @@ import '../config/theme/theme_config_provider.dart';
 import '../design/app_notice.dart';
 import '../design/app_tokens.dart';
 import '../main.dart'; // navigatorKey
+import 'api_client.dart';
 import '../features/shared/get_app/get_app_sheet.dart' show getAppLtr;
 import 'display/app_fonts.dart';
 import 'get_app/get_app_service.dart' show fetchReleasesManifest, releasesManifestUriFor;
@@ -54,13 +60,57 @@ String? nativeReleaseKey() {
 }
 
 /// The snooze rule: a suggestion is shown unless "Later" was tapped for this very build less than [kUpdateSnooze] ago.
+/// [build] is the manifest's build number, or `v<version>` for a server offer.
 @visibleForTesting
-bool updateSnoozed(String? stored, int build, DateTime now) {
+bool updateSnoozed(String? stored, Object build, DateTime now) {
   if (stored == null) return false;
   final parts = stored.split(':');
-  if (parts.length != 2 || int.tryParse(parts[0]) != build) return false;
+  if (parts.length != 2 || parts[0] != '$build') return false;
   final at = DateTime.fromMillisecondsSinceEpoch(int.tryParse(parts[1]) ?? 0);
   return now.difference(at) < kUpdateSnooze && !at.isAfter(now.add(const Duration(days: 1)));
+}
+
+/// An update the server asks for and names the link of (D-143).
+class ServerUpdateOffer {
+  const ServerUpdateOffer({required this.force, required this.version, required this.url, this.source = 'website', this.notes = ''});
+
+  final bool force;
+  final String version;
+  final String url;
+
+  /// website | google_play | app_store | custom
+  final String source;
+  final String notes;
+}
+
+String _notesIn(Object? v, String lang) {
+  if (v is Map) {
+    final mine = '${v[lang] ?? ''}'.trim();
+    if (mine.isNotEmpty) return mine;
+    return '${v[lang == 'ar' ? 'en' : 'ar'] ?? ''}'.trim();
+  }
+  return v is String ? v.trim() : '';
+}
+
+/// The update `GET /app/version-check` asks for, when it names an https link (null: no update, an older server
+/// without `download_url`, or a link that is not https — the manifest decides then).
+@visibleForTesting
+ServerUpdateOffer? serverUpdateOffer(Map<String, dynamic> r, {required String lang}) {
+  final must = r['must_update'] == true;
+  if (!must && r['should_update'] != true) return null;
+  final url = '${r['download_url'] ?? ''}'.trim();
+  final uri = Uri.tryParse(url);
+  if (url.isEmpty || uri == null || uri.scheme != 'https' || uri.host.isEmpty) return null;
+  var notes = _notesIn(r['notes'], lang);
+  if (notes.isEmpty) notes = _notesIn(r['release_notes'], lang);
+  final source = '${r['source'] ?? ''}'.trim();
+  return ServerUpdateOffer(
+    force: must,
+    version: '${r['latest_version'] ?? r['version'] ?? ''}',
+    url: url,
+    source: source.isEmpty ? 'website' : source,
+    notes: notes,
+  );
 }
 
 class VersionCheckService {
@@ -77,24 +127,49 @@ class VersionCheckService {
   Future<void> _check(String key) async {
     final info = await PackageInfo.fromPlatform();
     final installed = int.tryParse(info.buildNumber) ?? 0;
-    final manifest = await fetchReleasesManifest(releasesManifestUriFor(AppConfig.baseUrl));
-    final release = manifest[key];
-    final need = updateNeedFor(installedBuild: installed, release: release);
-    if (need == UpdateNeed.none || release == null) return;
+    // both asked at once; either may fail on its own
+    final asked = await Future.wait<Object?>([
+      ApiClient.instance.checkVersion(version: info.version, platform: key).then<Object?>((m) => m, onError: (_) => null),
+      fetchReleasesManifest(releasesManifestUriFor(AppConfig.baseUrl)).then<Object?>((m) => m, onError: (_) => null),
+    ]);
+    final server = asked[0] is Map<String, dynamic> ? serverUpdateOffer(asked[0] as Map<String, dynamic>, lang: AppConfig.lang) : null;
     if (AppConfig.disableList.contains(kUpdatePromptKey)) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    if (need == UpdateNeed.suggest && updateSnoozed(prefs.getString(_laterKey), release.build, DateTime.now())) return;
-
-    String? arch;
-    if (key == 'android') {
-      try {
-        final abis = (await DeviceInfoPlugin().androidInfo).supportedAbis;
-        if (abis.isNotEmpty) arch = abis.first;
-      } catch (_) {}
+    final bool force;
+    final String version, url, notes, source, snoozeId;
+    var size = '';
+    if (server != null) {
+      force = server.force;
+      version = server.version;
+      url = server.url;
+      notes = server.notes;
+      source = server.source;
+      snoozeId = 'v${server.version}';
+    } else {
+      final manifest = asked[1] is ReleasesManifest ? asked[1] as ReleasesManifest : ReleasesManifest.empty;
+      final release = manifest[key];
+      final need = updateNeedFor(installedBuild: installed, release: release);
+      if (need == UpdateNeed.none || release == null) return;
+      String? arch;
+      if (key == 'android') {
+        try {
+          final abis = (await DeviceInfoPlugin().androidInfo).supportedAbis;
+          if (abis.isNotEmpty) arch = abis.first;
+        } catch (_) {}
+      }
+      final file = release.primaryFile(archHint: arch);
+      if (file == null) return;
+      force = need == UpdateNeed.force;
+      version = release.version;
+      url = file.url;
+      notes = release.notes(AppConfig.lang);
+      source = 'website';
+      size = formatReleaseSize(file.size);
+      snoozeId = '${release.build}';
     }
-    final file = release.primaryFile(archHint: arch);
-    if (file == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    if (!force && updateSnoozed(prefs.getString(_laterKey), snoozeId, DateTime.now())) return;
 
     // the first frame may not be up yet on a fast answer
     for (var i = 0; i < 20 && navigatorKey.currentContext == null; i++) {
@@ -104,15 +179,16 @@ class VersionCheckService {
     if (ctx == null || !ctx.mounted) return;
     await showDialog<void>(
       context: ctx,
-      barrierDismissible: need != UpdateNeed.force,
+      barrierDismissible: !force,
       builder: (dctx) => UpdateDialog(
-        force: need == UpdateNeed.force,
-        version: release.version,
-        size: formatReleaseSize(file.size),
-        notes: release.notes(AppConfig.lang),
-        onUpdate: () => _open(file.url),
+        force: force,
+        version: version,
+        size: size,
+        notes: notes,
+        source: source,
+        onUpdate: () => _open(url),
         onLater: () {
-          prefs.setString(_laterKey, '${release.build}:${DateTime.now().millisecondsSinceEpoch}');
+          prefs.setString(_laterKey, '$snoozeId:${DateTime.now().millisecondsSinceEpoch}');
           Navigator.of(dctx).pop();
         },
       ),
@@ -139,12 +215,16 @@ class UpdateDialog extends StatelessWidget {
     required this.onLater,
     this.size = '',
     this.notes = '',
+    this.source = 'website',
   });
 
   final bool force;
   final String version;
   final String size;
   final String notes;
+
+  /// Where the button goes: website (a file to install) | google_play | app_store | custom (D-143).
+  final String source;
   final VoidCallback onUpdate;
   final VoidCallback onLater;
 
@@ -174,8 +254,11 @@ class UpdateDialog extends StatelessWidget {
               const SizedBox(height: AppSpace.sm),
               Text('${'get_app_whats_new'.tr}: $notes', style: meta),
             ],
-            const SizedBox(height: AppSpace.sm),
-            Text('get_app_update_hint'.tr, style: meta),
+            // the "open the file to install it" hint is for a downloaded file, not a store page
+            if (source == 'website') ...[
+              const SizedBox(height: AppSpace.sm),
+              Text('get_app_update_hint'.tr, style: meta),
+            ],
           ],
         ),
         actions: [
@@ -187,8 +270,21 @@ class UpdateDialog extends StatelessWidget {
           FilledButton.icon(
             onPressed: onUpdate,
             style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onHero),
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: Text('get_app_update_now'.tr,
+            icon: Icon(
+                switch (source) {
+                  'google_play' => Icons.shop_rounded,
+                  'app_store' => Icons.storefront_rounded,
+                  'custom' => Icons.open_in_new_rounded,
+                  _ => Icons.download_rounded,
+                },
+                size: 18),
+            label: Text(
+                switch (source) {
+                  'google_play' => 'get_app_update_open_play',
+                  'app_store' => 'get_app_update_open_store',
+                  'custom' => 'get_app_update_open_link',
+                  _ => 'get_app_update_now',
+                }.tr,
                 style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
           ),
         ],

@@ -21677,6 +21677,18 @@
     "en": "Download update",
     "ar": "تنزيل التحديث"
   },
+  "get_app_update_open_play": {
+    "en": "Open Google Play",
+    "ar": "افتح Google Play"
+  },
+  "get_app_update_open_store": {
+    "en": "Open the App Store",
+    "ar": "افتح App Store"
+  },
+  "get_app_update_open_link": {
+    "en": "Open the update",
+    "ar": "افتح التحديث"
+  },
   "get_app_update_later": {
     "en": "Later",
     "ar": "لاحقًا"
