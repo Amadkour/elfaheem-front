@@ -2139,6 +2139,8 @@ macOS bundle id, the Linux GTK `APPLICATION_ID`. The iPhone app was never publis
   SampleHandler.swift (they must stay identical); the recording IPC Darwin names are `com.doubley.nextbrain.frame` /
   `.audioframe` / `.stop` / `.wants_changed` in AppDelegate.swift and the extension's DarwinNotificationCenter.swift.
   Display name and bundle name "NextBrain". `DEVELOPMENT_TEAM` (MVHKS8482X) unchanged.
+  Info.plist now carries the new client's `REVERSED_CLIENT_ID` as a URL scheme (Google sign-in through
+  `signInWithProvider` returns through it; the old Info.plist had none).
 - **macOS:** the `macos/` runner had been committed as empty files (every Xcode file 0 bytes since the first commit),
   so it was refilled from Flutter 3.47.7's `flutter create` template, then given `PRODUCT_NAME = NextBrain`,
   `PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain`, the DoubleY copyright and the network-client entitlement. Never
