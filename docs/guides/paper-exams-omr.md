@@ -52,9 +52,12 @@ The app never decides a grade; it draws what the engine answered. The engine's r
   `policy_uncertain_fixed`), so the wizard shows it as a fact, not a choice.
 - **Student ID.** Matched exactly against the audience's normalised values (`exam_engine/identities.py` over the core);
   no match, several matches, an unread ID, or a per-student QR that disagrees with the shaded ID → review.
-  Handwritten digits are read by the hub's `digits` role; a digit under `digits.min_confidence` sends the whole ID to
-  review, and with no digits reader (no hub, no active model) every handwritten ID goes to review. No digits model is
-  registered in `../back/mlkit/models.json` today.
+  Handwritten digits are read by the hub's `digits` role (`digits-cnn@v2-5c5131b9`, served through
+  `mlkit.digits.DigitReader`; a super admin activates it on the AI Models page). A handwritten ID is linked only when
+  every box is ≥ max(0.999, the model's `auto_accept`), exactly one audience member matches, and no other member's ID
+  is one digit away; otherwise review, pre-filled with the reading and the closest candidates (`identifier_unclear`,
+  `identifier_neighbour`). With no digits reader (no hub, no active model) every handwritten ID goes to review. In a
+  class with sequential numbers almost every handwritten ID is a one-tap confirm; shaded ID grids link by themselves.
 - **Form (model A / B / …).** Confirmed when at least one configured marker is read and every read marker agrees;
   two that differ, or none read → "Model could not be confirmed" and nothing on the page is graded (D-156).
 - **Handwritten answers (D-160).** Suggestions for the teacher, except a handwritten English completion that matches
