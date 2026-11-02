@@ -196,9 +196,6 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     }
   }
 
-  @visibleForTesting
-  static int get browserMenuHolds => _menuHolds;
-
   @override
   void initState() {
     super.initState();

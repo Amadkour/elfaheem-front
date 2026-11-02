@@ -102,10 +102,10 @@ OmrReviewList _writtenList(String item) {
   final all = _p('hw_items_all');
   final first = _p(item);
   final rows = [first, for (final i in all['items'] as List) if ((i as Map)['status'] == 'open' && i['id'] != first['id']) i]
-    ..sort((a, b) => ((a as Map)['id'] as int).compareTo((b as Map)['id'] as int));
+    ..sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
   final counts = <String, int>{};
   for (final i in rows) {
-    counts['${(i as Map)['kind']}'] = (counts['${i['kind']}'] ?? 0) + 1;
+    counts['${i['kind']}'] = (counts['${i['kind']}'] ?? 0) + 1;
   }
   return OmrReviewList.fromJson({'items': rows, 'total': rows.length, 'open_by_kind': counts});
 }

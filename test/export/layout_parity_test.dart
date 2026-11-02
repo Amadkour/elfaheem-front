@@ -106,9 +106,9 @@ void main() {
         ..header = LayoutBand(height: 10, elements: [LayoutElement(id: 't', kind: 'text', value: 'T: {{title}} {{date}}')]);
     }
     final out = layoutWithTitles(doc, (l) => l == 'ar' ? 'الحضور' : 'Attendance');
-    expect(out.designs['ar']!.header!.elements.single.value, 'T: الحضور {{date}}');
-    expect(out.designs['en']!.header!.elements.single.value, 'T: Attendance {{date}}');
-    expect(doc.designs['en']!.header!.elements.single.value, 'T: {{title}} {{date}}');
+    expect(out.designs['ar']!.header.elements.single.value, 'T: الحضور {{date}}');
+    expect(out.designs['en']!.header.elements.single.value, 'T: Attendance {{date}}');
+    expect(doc.designs['en']!.header.elements.single.value, 'T: {{title}} {{date}}');
   });
 
   test("a language's design copied from the other one translates the starter's own texts", () {
