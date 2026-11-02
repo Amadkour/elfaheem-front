@@ -290,7 +290,7 @@ class _TermsScreenState extends State<TermsScreen> {
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _ChipsHeader(
-                  background: c.background,
+                  background: c.pinnedBackground,
                   line: c.divider,
                   child: Padding(
                     padding: EdgeInsetsDirectional.only(start: side - 16, end: side - 16),

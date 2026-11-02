@@ -754,7 +754,7 @@ class ExamTabsDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
       Container(
-        color: context.colors.background,
+        color: context.colors.pinnedBackground,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
         child: ExamTabBar(
             controller: controller, tabs: tabs, scrollable: scrollable),

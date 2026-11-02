@@ -113,7 +113,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
               pinned: true,
               delegate: _TabsDelegate(
                 controller: _tab,
-                background: ctx.colors.background,
+                background: ctx.colors.pinnedBackground,
                 surface: ctx.colors.cardBg,
                 primary: ctx.colors.primary,
                 inactive: ctx.colors.textMedium,

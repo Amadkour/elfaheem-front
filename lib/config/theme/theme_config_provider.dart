@@ -200,6 +200,11 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       ? (_model?.darkCard.withAlpha(230) ?? AppTheme.darkBackground)
       : (_model?.background ?? AppTheme.background);
 
+  /// [background] made opaque, for a pinned header (a tab strip) that content scrolls under: in dark mode
+  /// [background] is the card tone at 90 % alpha, so cards and titles showed through the strip. Blended over the
+  /// page's base tone it looks the same as the page around it when nothing is under it.
+  Color get pinnedBackground => Color.alphaBlend(background, isDark ? cardBg2 : cardBg).withAlpha(255);
+
   Color get surface => isDark
       ? (_model?.darkSurface ?? AppTheme.darkSurface)
       : (_model?.cardBg ?? AppTheme.cardBg);
