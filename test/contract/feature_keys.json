@@ -37,6 +37,7 @@
  "analytics_hub.header",
  "analytics_hub.read_flags",
  "analytics_hub.search",
+ "app.download_banner",
  "app.update_prompt",
  "attendance",
  "attendance.action",
