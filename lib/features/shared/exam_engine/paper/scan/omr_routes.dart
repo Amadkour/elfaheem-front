@@ -1,20 +1,17 @@
-// Where the scanner's "Review" and "Results" entries lead. The two pages are built by another agent of the OMR job
-// (`OmrReviewPage(examId:)` in paper/review/omr_review_page.dart, `OmrResultsPage(examId:)` in
-// paper/review/omr_results_page.dart) and do not exist in this branch, so they are reached through this tiny
-// registry instead of an import.
-//
-// TODO(omr): the lead wires them once at merge, e.g. at the top of the review page file or in main.dart:
-//   registerOmrPages(review: (_, id) => OmrReviewPage(examId: id), results: (_, id) => OmrResultsPage(examId: id));
-// Until then the entries say "Available soon" and lead nowhere (they are not dead ends: nothing can be tapped).
+// Where the scanner's "Review" and "Results" entries lead: `OmrReviewPage(examId:)` and `OmrResultsPage(examId:)`
+// (paper/review/). Kept as a small registry so a test can swap a page out; it points at the real pages by default.
 library;
 
 import 'package:flutter/material.dart';
 
+import '../review/omr_results_page.dart';
+import '../review/omr_review_page.dart';
+
 typedef OmrExamPageBuilder = Widget Function(BuildContext context, int examId);
 
 abstract final class OmrRoutes {
-  static OmrExamPageBuilder? review;
-  static OmrExamPageBuilder? results;
+  static OmrExamPageBuilder? review = (_, id) => OmrReviewPage(examId: id);
+  static OmrExamPageBuilder? results = (_, id) => OmrResultsPage(examId: id);
 }
 
 void registerOmrPages({OmrExamPageBuilder? review, OmrExamPageBuilder? results}) {
