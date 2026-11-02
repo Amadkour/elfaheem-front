@@ -297,13 +297,12 @@ void main() {
     await tester.pump(const Duration(seconds: 40));
     expect(batchGets.length, settled);
 
+    // "Replace this page" is POST …/omr/pages/{id}/replace now (never a new upload batch): followed end to end with
+    // that run's own replies in omr_review_written_test.dart ("replace a rejected page")
     final replace = find.byKey(ValueKey('omr.replace.${(_body('batch_done')['rejected_pages'] as List).first['page_id']}'));
     await tester.ensureVisible(replace);
-    await tester.tap(replace);
-    await _frames(tester, 4);
-    expect(uploads.last, ['page7-again.jpg']);
-    expect(find.text('Replaced — needs review'), findsOneWidget, reason: 'the replacement batch finished with a review item');
-    expect(find.text('Replace this page'), findsNothing);
+    expect(replace, findsOneWidget);
+    expect(uploads, hasLength(1), reason: 'nothing else was uploaded');
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 20));

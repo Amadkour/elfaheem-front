@@ -1,0 +1,12 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/omr/pages/1/replace -> 409, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_replace.py (back worktree wt-back-omr)",
+ "_status": 409,
+ "payload": {
+  "detail": {
+   "code": "page_not_rejected",
+   "message": "يمكن استبدال الصفحات المرفوضة فقط",
+   "page_status": "processed",
+   "message_en": "Only a rejected page can be replaced."
+  }
+ }
+}

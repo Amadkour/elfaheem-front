@@ -1,0 +1,38 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/pages/2 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_replace.py (back worktree wt-back-omr); read by the recorder right after the script, as the exam's teacher",
+ "_status": 200,
+ "payload": {
+  "page": {
+   "id": 2,
+   "page_no": 1,
+   "page_label": "2",
+   "status": "replaced",
+   "file_name": "s12.png",
+   "batch_id": 1,
+   "student_id": null,
+   "attempt_id": null,
+   "codes": [
+    "blurry"
+   ],
+   "en": "Page 2 is too blurry. Please upload a clearer image of it.",
+   "ar": "الصفحة 2 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها."
+  },
+  "image_url": "/api/v1/exam/omr/images/page/2?exp=1793609566&sig=8f881f74626f84692eaee183516f3f79",
+  "size": null,
+  "overlay": [],
+  "alignment": {},
+  "answers": [],
+  "identifier": {},
+  "form": {},
+  "reading_id": 2,
+  "items": [
+   {
+    "id": 1,
+    "kind": "quality",
+    "code": "blurry",
+    "question_id": null,
+    "status": "resolved"
+   }
+  ]
+ }
+}

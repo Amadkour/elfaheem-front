@@ -2,7 +2,9 @@
 // existing scan intake (`POST …/scans` routes a bubble exam's pages to the OMR pipeline), then "X of N papers
 // processed" fed by the uploader's live event `job_updated {kind: omr_scan, id: batch}` through EventOrPoll (a slow
 // poll only as the fallback), the rejected pages with the server's own sentence ("Page 7 is too blurry. Please
-// upload a clearer image of it.") and "Replace this page". The camera's session lands on the same screen.
+// upload a clearer image of it.") and "Replace this page" (`POST …/omr/pages/{id}/replace`: one photo through the
+// capture gate, accepted or refused with the exact reason; the new page is followed by its `page_id` in the batch's
+// events, its own page state as the fallback). The camera's session lands on the same screen.
 library;
 
 import 'dart:async';
@@ -61,11 +63,26 @@ Future<void> startOmrUpload(BuildContext context,
 }
 
 class _Replacement {
-  _Replacement(this.state, {this.batchId});
-  String state; // uploading · processing · processed · review · rejected · failed
-  int? batchId;
+  _Replacement(this.state, this.row);
+  String state; // uploading · refused · processing · processed · review · rejected · failed
+
+  /// The rejected page as it was listed: an accepted replacement takes it out of the batch's `rejected_pages`, and
+  /// its row stays on screen with the outcome.
+  final OmrRejectedPage? row;
+
+  /// The new page (accepted): its `job_updated` / page state tells how the reading ended.
+  int? newPageId;
   String? text;
 }
+
+/// A page status of the new page → the replacement's state (null while it is still being read).
+String? _replacementState(String status) => switch (status) {
+      'processed' => 'processed',
+      'review' => 'review',
+      'rejected' => 'rejected',
+      'failed' || 'purged' => 'failed',
+      _ => null,
+    };
 
 class OmrScanProgressScreen extends StatefulWidget {
   const OmrScanProgressScreen({
@@ -158,11 +175,9 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
     _track();
   }
 
-  /// Batches still being read: the main one and the replacements in flight.
+  /// The batch while it is still being read (a replacement is a new page of the same batch).
   Set<String> get _open => {
-        if (_batchId != null && !_settled) '$_batchId',
-        for (final r in _replacements.values)
-          if (r.batchId != null && r.state == 'processing') '${r.batchId}',
+        if (_batchId != null && (!_settled || _replacements.values.any((r) => r.state == 'processing'))) '$_batchId',
       };
 
   void _track() {
@@ -179,6 +194,14 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       onEvent: (e) {
         // the event's own numbers at once ("13 of 40 papers processed"); the fetch right after brings the rest
         if (e.id == '$_batchId' && _progress != null && mounted) setState(() => _progress = _progress!.withEvent(e.data));
+        // a replacement's page read: its outcome at once
+        final pid = int.tryParse('${e.data['page_id'] ?? ''}');
+        final st = _replacementState('${e.data['page_status'] ?? ''}');
+        if (pid != null && st != null && mounted) {
+          for (final rep in _replacements.values) {
+            if (rep.newPageId == pid && rep.state == 'processing') setState(() => rep.state = st);
+          }
+        }
       },
       bus: widget.liveBus,
       stream: widget.liveStream,
@@ -201,65 +224,71 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       final p = OmrBatchProgress.fromJson(r.map);
       setState(() {
         _loadError = null;
-        if (p.batchId == _batchId) {
-          // a read older than the live event already shown never moves the count back
-          final cur = _progress;
-          if (cur == null || p.finished || p.done >= cur.done) _progress = p;
-          if (p.finished) _settled = true;
-        } else {
-          for (final rep in _replacements.values) {
-            if (rep.batchId == p.batchId && p.finished) _settle(rep, p);
-          }
-        }
+        // a read older than the live event already shown never moves the count back (a replacement may lower it)
+        final cur = _progress;
+        if (cur == null || p.finished || p.done >= cur.done || p.total != cur.total) _progress = p;
+        if (p.finished) _settled = true;
       });
+    }
+    // the replacements still being read: their page's own state (the fallback when no event came)
+    for (final rep in _replacements.values.where((r) => r.state == 'processing' && r.newPageId != null).toList()) {
+      final r = await _api.page(widget.examId, rep.newPageId!);
+      if (!mounted) return;
+      if (!r.ok) continue;
+      final page = r.map['page'] is Map ? Map<String, dynamic>.from(r.map['page'] as Map) : const <String, dynamic>{};
+      final st = _replacementState('${page['status'] ?? ''}');
+      if (st != null) setState(() => rep.state = st);
     }
     if (_open.isEmpty) _watch?.stop();
   }
 
-  void _settle(_Replacement rep, OmrBatchProgress p) {
-    if (p.graded > 0) {
-      rep.state = 'processed';
-    } else if (p.review > 0) {
-      rep.state = 'review';
-    } else if (p.rejected > 0) {
-      rep.state = 'rejected';
-      rep.text = p.rejectedPages.isEmpty ? null : p.rejectedPages.first.text;
-    } else if (p.failed > 0) {
-      rep.state = 'failed';
-    } else {
-      rep.state = 'processed';
-    }
-  }
-
+  /// "Replace this page": ONE photo through the capture gate on the request (`POST …/omr/pages/{id}/replace`) —
+  /// accepted (a new page of the same batch, read like any other) or refused with the exact reason, nothing stored.
   Future<void> _replace(int pageId) async {
     final files = await (widget.picker ?? omrPickFiles)(many: false);
     if (files.isEmpty || !mounted) return;
-    final problem = omrPickProblem(files);
+    final problem = omrReplaceProblem(files.first);
     if (problem != null) {
       showAppNotice(problem, error: true);
       return;
     }
-    setState(() => _replacements[pageId] = _Replacement('uploading'));
-    final r = await _api.upload(widget.examId, files.take(1).toList());
+    final row = _progress?.rejectedPages.where((p) => p.pageId == pageId).firstOrNull ?? _replacements[pageId]?.row;
+    setState(() => _replacements[pageId] = _Replacement('uploading', row));
+    final r = await _api.replacePage(widget.examId, pageId, files.first);
     if (!mounted) return;
     if (!r.ok) {
       setState(() => _replacements.remove(pageId));
       showAppNotice(omrErrorText(r), error: true);
       return;
     }
-    final u = OmrUploadReply.fromJson(r.map);
-    if (u.pages.isEmpty) {
-      setState(() => _replacements.remove(pageId));
-      showAppNotice(t('هذه الصورة مرفوعة من قبل — اختر صورة أخرى أوضح', 'This image was already uploaded — choose another, clearer one'), error: true);
+    final res = OmrReplaceResult.fromJson(r.map);
+    if (!res.accepted) {
+      setState(() => _replacements[pageId] = _Replacement('refused', row)..text = res.refusal);
       return;
     }
-    setState(() => _replacements[pageId] = _Replacement('processing', batchId: u.batchId));
+    setState(() {
+      _replacements[pageId] = _Replacement('processing', row)
+        ..newPageId = res.pageId
+        ..text = res.text;
+      if (res.progress != null) _progress = res.progress;
+      _settled = res.progress?.finished ?? false;
+    });
     if (_watch?.running ?? false) {
       _watch!.poke();
     } else {
       _watch = null;
       _track();
     }
+  }
+
+  /// The batch's rejected pages, plus the ones replaced here (gone from the server's list, kept with the outcome).
+  List<OmrRejectedPage> _rejectedRows(OmrBatchProgress p) {
+    final listed = {for (final r in p.rejectedPages) r.pageId};
+    return [
+      ...p.rejectedPages,
+      for (final e in _replacements.entries)
+        if (!listed.contains(e.key) && e.value.row != null) e.value.row!,
+    ];
   }
 
   Future<void> _more() async {
@@ -323,7 +352,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
         duplicates: _duplicates,
         camera: widget.camera || p.kind == 'camera',
         rejectedPages: [
-          for (final r in p.rejectedPages)
+          for (final r in _rejectedRows(p))
             RejectedPageRow(
               pageId: r.pageId,
               text: r.text,

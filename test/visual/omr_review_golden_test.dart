@@ -9,6 +9,11 @@
 //   unclear    a handwritten ID with one unsure digit (Example 7): crop, digits, accept / fix / choose the student
 //   form       "Model could not be confirmed" (QR B, printed A): choose the form
 //   paper      the full page with the detected answers drawn over it
+//   near       a handwritten completion close to an accepted answer (D-160): crop, blank, suggestion, accept / score / text
+//   short      a handwritten short answer: crop, suggested score, band, keywords found / missing, "never final" note
+//   pending    the same short answer after its text was fixed: the suggestion being worked out again
+//   mismatch   a sheet of another exam / version (qr_mismatch): set aside only
+//   conflict   a per-student upload whose sheet names another student (identifier_conflict)
 //   results    grades, the score distribution, per-question statistics, publish
 @Tags(['visual'])
 library;
@@ -92,6 +97,19 @@ Widget _scaffold(String title, Widget body) => Builder(
     );
 
 
+/// The written run's queue when [item] was read: that item and the ones still open at the end of the run.
+OmrReviewList _writtenList(String item) {
+  final all = _p('hw_items_all');
+  final first = _p(item);
+  final rows = [first, for (final i in all['items'] as List) if ((i as Map)['status'] == 'open' && i['id'] != first['id']) i]
+    ..sort((a, b) => ((a as Map)['id'] as int).compareTo((b as Map)['id'] as int));
+  final counts = <String, int>{};
+  for (final i in rows) {
+    counts['${(i as Map)['kind']}'] = (counts['${i['kind']}'] ?? 0) + 1;
+  }
+  return OmrReviewList.fromJson({'items': rows, 'total': rows.length, 'open_by_kind': counts});
+}
+
 OmrFixCallbacks _all() => OmrFixCallbacks(
       onChoose: (_) {},
       onBlank: () {},
@@ -103,12 +121,14 @@ OmrFixCallbacks _all() => OmrFixCallbacks(
       onDismiss: () {},
       onReplace: () {},
       onOpenPaper: () {},
+      onSetScore: (_) {},
+      onFixText: (_) {},
     );
 
 /// The queue screen as the page lays it out: the side list on wide screens, the chips + card on phones.
-Widget _queue(String itemFixture, String listFixture, String crop, {OmrResolveReply? last}) {
+Widget _queue(String itemFixture, String listFixture, String crop, {OmrResolveReply? last, OmrReviewList? queue}) {
   final item = OmrReviewItem.fromJson(_p(itemFixture));
-  final list = OmrReviewList.fromJson(_p(listFixture));
+  final list = queue ?? OmrReviewList.fromJson(_p(listFixture));
   final i = list.items.indexWhere((x) => x.id == item.id);
   return _scaffold(
     t('مراجعة الأوراق الممسوحة', 'Review scanned papers'),
@@ -263,5 +283,12 @@ void main() {
   testWidgets('unclear', (t0) => _render(t0, 'unclear', () => _queue('unclear_item_8', 'unclear_items_open', 'crop_identifier_digits')));
   testWidgets('form', (t0) => _render(t0, 'form', () => _queue('scan_item_1_form_unconfirmed', 'scan_items_open_end', 'crop_form')));
   testWidgets('paper', (t0) => _render(t0, 'paper', _paper));
+  testWidgets('near', (t0) => _render(t0, 'near', () => _queue('hw_item_4_near', '', 'hw_crop_near_4', queue: _writtenList('hw_item_4_near'))));
+  testWidgets('short', (t0) => _render(t0, 'short', () => _queue('hw_item_3_short', '', 'hw_crop_short_3', queue: _writtenList('hw_item_3_short'))));
+  testWidgets('pending', (t0) => _render(t0, 'pending',
+      () => _queue('hw_item_8_pending', '', 'hw_crop_short_8', queue: _writtenList('hw_item_8_pending'), last: OmrResolveReply.fromJson(_p('hw_resolve_8_fix_text')))));
+  testWidgets('mismatch', (t0) => _render(t0, 'mismatch', () => _queue('hard_item_2_qr_mismatch', '', 'crop_qr_mismatch',
+      queue: OmrReviewList.fromJson({'items': [_p('hard_item_2_qr_mismatch'), _p('hard_item_3_qr_forged')], 'total': 2, 'open_by_kind': {'form': 2}}))));
+  testWidgets('conflict', (t0) => _render(t0, 'conflict', () => _queue('hard_item_6_identifier_conflict', 'hard_items_exam4', 'crop_identifier_conflict')));
   testWidgets('results', (t0) => _render(t0, 'results', _results));
 }

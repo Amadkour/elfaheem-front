@@ -1,0 +1,747 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr); read by the recorder right after the script, as the exam's teacher",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "id": 1,
+    "scan_page_id": 1,
+    "attempt_id": 1,
+    "question_id": 2,
+    "kind": "completion",
+    "code": "handwriting_always_reviewed",
+    "reading": {
+     "kind": "completion",
+     "status": "suggestion",
+     "final": false,
+     "needs_review": true,
+     "max": 1.0,
+     "suggested_score": 1.0,
+     "blanks": [
+      {
+       "status": "exact",
+       "given": "القاهرة",
+       "normalised": "القاهره",
+       "matched": "القاهرة",
+       "distance": 0,
+       "budget": 0,
+       "suggested_credit": 1.0,
+       "final": false,
+       "reading": {
+        "text": "القاهرة",
+        "confidence": 0.97,
+        "engine": "paddleocr-rec-ar@pp-ocrv5-14aaedc",
+        "review": true
+       },
+       "crop": {
+        "page_id": 1,
+        "box": [
+         0.07,
+         0.4866666666666667,
+         0.8600000000000001,
+         0.20666666666666667
+        ],
+        "has_crop": true
+       },
+       "reason": "handwriting_always_reviewed",
+       "prefill": true
+      }
+     ],
+     "text": "القاهرة",
+     "texts": [
+      "القاهرة"
+     ],
+     "corrected": false,
+     "lang": "ar",
+     "points": 1.0,
+     "pending": false,
+     "en": "Arabic handwriting is always checked by the teacher",
+     "ar": "الخط العربي المكتوب باليد يراجعه المعلم دائمًا"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "accept",
+     "score": 1.0
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T08:42:25.385506",
+    "created_at": "2026-11-02T08:42:23.975224",
+    "actions": [
+     "accept",
+     "set_score",
+     "fix_text"
+    ],
+    "has_crop": false,
+    "en": "Arabic handwriting is always checked by the teacher",
+    "ar": "الخط العربي المكتوب باليد يراجعه المعلم دائمًا"
+   },
+   {
+    "id": 2,
+    "scan_page_id": 1,
+    "attempt_id": 1,
+    "question_id": 3,
+    "kind": "completion",
+    "code": "several_blanks_in_one_box",
+    "reading": {
+     "kind": "completion",
+     "status": "suggestion",
+     "final": false,
+     "needs_review": true,
+     "max": 2.0,
+     "suggested_score": 2.0,
+     "blanks": [
+      {
+       "status": "exact",
+       "given": "Cairo",
+       "normalised": "cairo",
+       "matched": "Cairo",
+       "distance": 0,
+       "budget": 0,
+       "suggested_credit": 1.0,
+       "final": false,
+       "reading": {
+        "text": "Cairo",
+        "confidence": 0.95,
+        "engine": "trocr-small-handwritten@fp32-2432e24|line",
+        "review": true
+       },
+       "crop": {
+        "page_id": 1,
+        "box": [
+         0.07,
+         0.7433333333333334,
+         0.8600000000000001,
+         0.20666666666666667
+        ],
+        "has_crop": true
+       },
+       "reason": "no_completion_rule",
+       "prefill": true
+      },
+      {
+       "status": "exact",
+       "given": "Nile",
+       "normalised": "nile",
+       "matched": "Nile",
+       "distance": 0,
+       "budget": 0,
+       "suggested_credit": 1.0,
+       "final": false,
+       "reading": {
+        "text": "Nile",
+        "confidence": 0.95,
+        "engine": "trocr-small-handwritten@fp32-2432e24|line",
+        "review": true
+       },
+       "crop": {
+        "page_id": 1,
+        "box": [
+         0.07,
+         0.7433333333333334,
+         0.8600000000000001,
+         0.20666666666666667
+        ],
+        "has_crop": true
+       },
+       "reason": "no_completion_rule",
+       "prefill": true
+      }
+     ],
+     "text": "Cairo\nNile",
+     "texts": [
+      "Cairo",
+      "Nile"
+     ],
+     "corrected": false,
+     "lang": "en",
+     "points": 2.0,
+     "pending": false,
+     "en": "Several blanks were written in one box",
+     "ar": "كُتبت عدة فراغات في مربع واحد"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "fix_text",
+     "score": 2.0,
+     "by": "match"
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T08:42:25.477630",
+    "created_at": "2026-11-02T08:42:23.978224",
+    "actions": [
+     "accept",
+     "set_score",
+     "fix_text"
+    ],
+    "has_crop": false,
+    "en": "Several blanks were written in one box",
+    "ar": "كُتبت عدة فراغات في مربع واحد"
+   },
+   {
+    "id": 3,
+    "scan_page_id": 2,
+    "attempt_id": 1,
+    "question_id": 4,
+    "kind": "short_answer",
+    "code": "short_answer",
+    "reading": {
+     "kind": "short_answer",
+     "status": "suggestion",
+     "final": false,
+     "needs_review": true,
+     "max": 5.0,
+     "thresholds": {
+      "low": 0.45,
+      "high": 0.8
+     },
+     "keyword_weight": 0.3,
+     "reading": {
+      "text": "Plants make glucose and oxygen",
+      "confidence": 0.93,
+      "engine": "trocr-small-handwritten@fp32-2432e24",
+      "review": false
+     },
+     "crop": {
+      "page_id": 2,
+      "box": [
+       0.07,
+       0.23,
+       0.8600000000000001,
+       0.33499999999999996
+      ],
+      "has_crop": true
+     },
+     "reasons": [],
+     "keywords": [
+      {
+       "term": "glucose",
+       "weight": 1.0,
+       "found": "glucose",
+       "how": "exact"
+      },
+      {
+       "term": "oxygen",
+       "weight": 1.0,
+       "found": "oxygen",
+       "how": "exact"
+      }
+     ],
+     "coverage": 1.0,
+     "raw_cosine": 0.97,
+     "similarity": 0.829,
+     "closeness": 0.88,
+     "suggested_score": 5.0,
+     "band": "full",
+     "version": "paper-sim:multilingual-e5-small@fp32-761b726|scale:2026-11-02-gold120",
+     "text": "Plants make glucose and oxygen",
+     "corrected": false,
+     "lang": "en",
+     "points": 5.0,
+     "pending": false,
+     "en": "Short answer: confirm or set the score",
+     "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "set_score",
+     "reason": "no light",
+     "score": 4.5
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T08:42:25.595647",
+    "created_at": "2026-11-02T08:42:24.366998",
+    "actions": [
+     "accept",
+     "set_score",
+     "fix_text"
+    ],
+    "has_crop": true,
+    "en": "Short answer: confirm or set the score",
+    "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها",
+    "crop_url": "/api/v1/exam/omr/images/crop/3?exp=1793609550&sig=0f9567f3cb8c1044701d2ea56a34a809"
+   },
+   {
+    "id": 4,
+    "scan_page_id": 2,
+    "attempt_id": 1,
+    "question_id": 5,
+    "kind": "completion",
+    "code": "near_match",
+    "reading": {
+     "kind": "completion",
+     "status": "suggestion",
+     "final": false,
+     "needs_review": true,
+     "max": 1.0,
+     "suggested_score": 0.5,
+     "blanks": [
+      {
+       "status": "near",
+       "given": "mitochondira",
+       "normalised": "mitochondira",
+       "matched": "mitochondria",
+       "distance": 1,
+       "budget": 2,
+       "suggested_credit": 0.5,
+       "final": false,
+       "reading": {
+        "text": "mitochondira",
+        "confidence": 0.95,
+        "engine": "trocr-small-handwritten@fp32-2432e24",
+        "review": false,
+        "check": {
+         "engine": "paddleocr-rec-en@pp-ocrv5-7b02d0a",
+         "text": "mitochondira",
+         "agree": true
+        }
+       },
+       "crop": {
+        "page_id": 2,
+        "box": [
+         0.07,
+         0.615,
+         0.8600000000000001,
+         0.33499999999999996
+        ],
+        "has_crop": true
+       },
+       "reason": "near_match",
+       "prefill": false
+      }
+     ],
+     "text": "mitochondira",
+     "texts": [
+      "mitochondira"
+     ],
+     "corrected": false,
+     "lang": "en",
+     "points": 1.0,
+     "pending": false,
+     "en": "Close to an accepted answer: confirm the suggested credit",
+     "ar": "قريبة من إجابة مقبولة: أكّد الدرجة المقترحة"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "accept",
+     "score": 0.5
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T08:42:25.639161",
+    "created_at": "2026-11-02T08:42:24.370713",
+    "actions": [
+     "accept",
+     "set_score",
+     "fix_text"
+    ],
+    "has_crop": true,
+    "en": "Close to an accepted answer: confirm the suggested credit",
+    "ar": "قريبة من إجابة مقبولة: أكّد الدرجة المقترحة",
+    "crop_url": "/api/v1/exam/omr/images/crop/4?exp=1793609550&sig=94255e62ac544efb0079527207b9a261"
+   },
+   {
+    "id": 5,
+    "scan_page_id": 3,
+    "attempt_id": 2,
+    "question_id": 1,
+    "kind": "completion",
+    "code": "blank_box",
+    "reading": {
+     "kind": "completion",
+     "status": "suggestion",
+     "final": false,
+     "needs_review": true,
+     "max": 2.0,
+     "suggested_score": 0.0,
+     "blanks": [
+      {
+       "status": "empty",
+       "given": "",
+       "normalised": "",
+       "matched": null,
+       "distance": null,
+       "budget": 0,
+       "suggested_credit": 0.0,
+       "final": false,
+       "reading": {
+        "text": "",
+        "confidence": 1.0,
+        "engine": "trocr-small-handwritten@fp32-2432e24",
+        "review": false
+       },
+       "crop": {
+        "page_id": 3,
+        "box": [
+         0.07,
+         0.23,
+         0.8600000000000001,
+         0.20666666666666667
+        ],
+        "has_crop": true
+       },
+       "reason": "blank_box",
+       "prefill": true
+      }
+     ],
+     "text": "",
+     "texts": [
+      ""
+     ],
+     "corrected": false,
+     "lang": "en",
+     "points": 2.0,
+     "pending": false,
+     "en": "The answer box looks empty",
+     "ar": "مربع الإجابة يبدو فارغًا"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "fix_text",
+     "score": 2.0,
+     "by": "match"
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T08:42:25.881439",
+    "created_at": "2026-11-02T08:42:24.786663",
+    "actions": [
+     "accept",
+     "set_score",
+     "fix_text"
+    ],
+    "has_crop": true,
+    "en": "The answer box looks empty",
+    "ar": "مربع الإجابة يبدو فارغًا",
+    "crop_url": "/api/v1/exam/omr/images/crop/5?exp=1793609550&sig=70ff5dd3e6b741ad93ff829929108215"
+   },
+   {
+    "id": 6,
+    "scan_page_id": 3,
+    "attempt_id": 2,
+    "question_id": 2,
+    "kind": "completion",
+    "code": "handwriting_always_reviewed",
+    "reading": {
+     "kind": "completion",
+     "status": "suggestion",
+     "final": false,
+     "needs_review": true,
+     "max": 1.0,
+     "suggested_score": 1.0,
+     "blanks": [
+      {
+       "status": "exact",
+       "given": "القاهره",
+       "normalised": "القاهره",
+       "matched": "القاهرة",
+       "distance": 0,
+       "budget": 0,
+       "suggested_credit": 1.0,
+       "final": false,
+       "reading": {
+        "text": "القاهره",
+        "confidence": 0.41,
+        "engine": "paddleocr-rec-ar@pp-ocrv5-14aaedc",
+        "review": true
+       },
+       "crop": {
+        "page_id": 3,
+        "box": [
+         0.07,
+         0.4866666666666667,
+         0.8600000000000001,
+         0.20666666666666667
+        ],
+        "has_crop": true
+       },
+       "reason": "handwriting_always_reviewed",
+       "prefill": true
+      }
+     ],
+     "text": "القاهره",
+     "texts": [
+      "القاهره"
+     ],
+     "corrected": false,
+     "lang": "ar",
+     "points": 1.0,
+     "pending": false,
+     "second_pass": {
+      "text": "القاهرة",
+      "engine": "fake-vl@0",
+      "ms": 0.1,
+      "agree": true,
+      "distance_to_first": 0,
+      "reading_id": 5
+     },
+     "en": "Arabic handwriting is always checked by the teacher",
+     "ar": "الخط العربي المكتوب باليد يراجعه المعلم دائمًا"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T08:42:24.789671",
+    "actions": [
+     "accept",
+     "set_score",
+     "fix_text"
+    ],
+    "has_crop": true,
+    "en": "Arabic handwriting is always checked by the teacher",
+    "ar": "الخط العربي المكتوب باليد يراجعه المعلم دائمًا",
+    "crop_url": "/api/v1/exam/omr/images/crop/6?exp=1793609550&sig=d4dad42601e6ead6e15f36f68513be14"
+   },
+   {
+    "id": 7,
+    "scan_page_id": 3,
+    "attempt_id": 2,
+    "question_id": 3,
+    "kind": "completion",
+    "code": "blank_count_mismatch",
+    "reading": {
+     "kind": "completion",
+     "status": "suggestion",
+     "final": false,
+     "needs_review": true,
+     "max": 2.0,
+     "suggested_score": 0.0,
+     "blanks": [
+      {
+       "status": "empty",
+       "given": "",
+       "normalised": "",
+       "matched": null,
+       "distance": null,
+       "budget": 0,
+       "suggested_credit": 0.0,
+       "final": false,
+       "reading": {
+        "text": "",
+        "confidence": 0.95,
+        "engine": "trocr-small-handwritten@fp32-2432e24|line",
+        "review": true
+       },
+       "crop": {
+        "page_id": 3,
+        "box": [
+         0.07,
+         0.7433333333333334,
+         0.8600000000000001,
+         0.20666666666666667
+        ],
+        "has_crop": true
+       },
+       "reason": "no_completion_rule",
+       "prefill": true
+      },
+      {
+       "status": "empty",
+       "given": "",
+       "normalised": "",
+       "matched": null,
+       "distance": null,
+       "budget": 0,
+       "suggested_credit": 0.0,
+       "final": false,
+       "reading": {
+        "text": "",
+        "confidence": 0.95,
+        "engine": "trocr-small-handwritten@fp32-2432e24|line",
+        "review": true
+       },
+       "crop": {
+        "page_id": 3,
+        "box": [
+         0.07,
+         0.7433333333333334,
+         0.8600000000000001,
+         0.20666666666666667
+        ],
+        "has_crop": true
+       },
+       "reason": "no_completion_rule",
+       "prefill": true
+      }
+     ],
+     "text": "Cairo Nile",
+     "texts": [
+      "",
+      ""
+     ],
+     "corrected": false,
+     "lang": "en",
+     "points": 2.0,
+     "pending": false,
+     "en": "The number of lines does not match the number of blanks",
+     "ar": "عدد الأسطر لا يطابق عدد الفراغات"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T08:42:24.791673",
+    "actions": [
+     "accept",
+     "set_score",
+     "fix_text"
+    ],
+    "has_crop": true,
+    "en": "The number of lines does not match the number of blanks",
+    "ar": "عدد الأسطر لا يطابق عدد الفراغات",
+    "crop_url": "/api/v1/exam/omr/images/crop/7?exp=1793609550&sig=01b0739559e2f6e534db98e1c09a1716"
+   },
+   {
+    "id": 8,
+    "scan_page_id": 4,
+    "attempt_id": 2,
+    "question_id": 4,
+    "kind": "short_answer",
+    "code": "short_answer",
+    "reading": {
+     "kind": "short_answer",
+     "status": "suggestion",
+     "final": false,
+     "needs_review": true,
+     "max": 5.0,
+     "thresholds": {
+      "low": 0.45,
+      "high": 0.8
+     },
+     "keyword_weight": 0.3,
+     "reading": {
+      "text": "Plants make glucose and oxygen using light",
+      "confidence": null,
+      "engine": "typed"
+     },
+     "crop": {
+      "page_id": 4,
+      "box": [
+       0.07,
+       0.23,
+       0.8600000000000001,
+       0.33499999999999996
+      ],
+      "has_crop": true
+     },
+     "reasons": [],
+     "keywords": [
+      {
+       "term": "glucose",
+       "weight": 1.0,
+       "found": "glucose",
+       "how": "exact"
+      },
+      {
+       "term": "oxygen",
+       "weight": 1.0,
+       "found": "oxygen",
+       "how": "exact"
+      }
+     ],
+     "coverage": 1.0,
+     "raw_cosine": 0.98,
+     "similarity": 0.886,
+     "closeness": 0.92,
+     "suggested_score": 5.0,
+     "band": "full",
+     "version": "paper-sim:multilingual-e5-small@fp32-761b726|scale:2026-11-02-gold120",
+     "text": "Plants make glucose and oxygen using light",
+     "corrected": true,
+     "lang": "en",
+     "points": 5.0,
+     "pending": false,
+     "en": "Short answer: confirm or set the score",
+     "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "accept",
+     "score": 5.0
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T08:42:25.829903",
+    "created_at": "2026-11-02T08:42:25.186046",
+    "actions": [
+     "accept",
+     "set_score",
+     "fix_text"
+    ],
+    "has_crop": true,
+    "en": "Short answer: confirm or set the score",
+    "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها",
+    "crop_url": "/api/v1/exam/omr/images/crop/8?exp=1793609550&sig=32c8ef39a7bc1d1b2b352ca5130991e6"
+   },
+   {
+    "id": 9,
+    "scan_page_id": 4,
+    "attempt_id": 2,
+    "question_id": 5,
+    "kind": "completion",
+    "code": "near_match",
+    "reading": {
+     "kind": "completion",
+     "status": "suggestion",
+     "final": false,
+     "needs_review": true,
+     "max": 1.0,
+     "suggested_score": 0.5,
+     "blanks": [
+      {
+       "status": "near",
+       "given": "mitochondira",
+       "normalised": "mitochondira",
+       "matched": "mitochondria",
+       "distance": 1,
+       "budget": 2,
+       "suggested_credit": 0.5,
+       "final": false,
+       "reading": {
+        "text": "mitochondira",
+        "confidence": null,
+        "engine": "typed"
+       },
+       "crop": {
+        "page_id": 4,
+        "box": [
+         0.07,
+         0.615,
+         0.8600000000000001,
+         0.33499999999999996
+        ],
+        "has_crop": true
+       },
+       "reason": "near_match"
+      }
+     ],
+     "text": "mitochondira",
+     "texts": [
+      "mitochondira"
+     ],
+     "corrected": true,
+     "lang": "en",
+     "points": 1.0,
+     "pending": false,
+     "en": "Close to an accepted answer: confirm the suggested credit",
+     "ar": "قريبة من إجابة مقبولة: أكّد الدرجة المقترحة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T08:42:25.188049",
+    "actions": [
+     "accept",
+     "set_score",
+     "fix_text"
+    ],
+    "has_crop": true,
+    "en": "Close to an accepted answer: confirm the suggested credit",
+    "ar": "قريبة من إجابة مقبولة: أكّد الدرجة المقترحة",
+    "crop_url": "/api/v1/exam/omr/images/crop/9?exp=1793609550&sig=634b5a880e50ad6d0dc48908f081f41a"
+   }
+  ],
+  "total": 9,
+  "open_by_kind": {
+   "completion": 3
+  }
+ }
+}

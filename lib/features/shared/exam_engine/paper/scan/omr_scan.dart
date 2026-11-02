@@ -11,6 +11,9 @@
 //   POST …/scans          files[] (≤ 50 files, PNG / JPEG / WebP / PDF, ≤ 300 pages) → {batch_id, pages, duplicates, omr}
 //   GET  …/omr/batches[/{batch_id}] → progress {total, done, graded, review, rejected, failed, pending, status, en, ar,
 //        rejected_pages[{page_id, page_no, page_label, file_name, codes, en, ar, instruction_en, instruction_ar}]}
+//   POST …/omr/pages/{page_id}/replace   multipart image (JPG / PNG / WebP) → the capture gate on the request:
+//        accepted {page_id (new), replaces, batch_id, en, ar, progress} | refused {code, en, ar, page_en, page_ar,
+//        issues}; 409 page_not_rejected / page_duplicate, 415, 413, 429, 503 omr_busy
 //   GET / POST …/omr/sheets → what will be printed / application/pdf
 //   live: job_updated {kind: omr_scan, id: batch_id, exam_id, status, done, total, page_id, page_status, en, ar}
 library;
@@ -513,6 +516,84 @@ String? omrPickProblem(List<(String, Uint8List)> files) {
   return null;
 }
 
+/// A replacement of a rejected page is ONE photo (JPG / PNG / WebP; a PDF cannot stand for one page).
+const omrReplaceExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+/// The problem with the picked replacement before anything is sent (null = fine).
+String? omrReplaceProblem((String, Uint8List) file) {
+  final (name, bytes) = file;
+  final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+  if (!omrReplaceExtensions.contains(ext)) {
+    return t('اختر صورة واحدة (JPG أو PNG أو WebP) — لا يحلّ ملف PDF محل صفحة', 'Choose one photo (JPG, PNG or WebP) — a PDF cannot replace a page');
+  }
+  if (bytes.length > OmrLimits.maxFileBytes) return omrCodeText('file_too_large');
+  return null;
+}
+
+/// `POST …/omr/pages/{page_id}/replace`: the gate's answer, on the request. Accepted → a new page in the same batch
+/// (read like any other; the old one becomes `replaced`); refused → the exact instruction, nothing stored.
+class OmrReplaceResult {
+  const OmrReplaceResult({
+    required this.accepted,
+    required this.pageId,
+    this.replaces,
+    this.batchId,
+    this.code,
+    this.en = '',
+    this.ar = '',
+    this.pageEn = '',
+    this.pageAr = '',
+    this.issues = const [],
+    this.progress,
+  });
+
+  final bool accepted;
+
+  /// Accepted: the NEW page; refused: the rejected page itself.
+  final int pageId;
+  final int? replaces;
+  final int? batchId;
+  final String? code;
+
+  /// Accepted: "Page 7 replaced. It is being read now."; refused: the instruction ("Too blurry, hold steady.").
+  final String en, ar;
+
+  /// Refused: "Page 7 is too blurry. Please upload a clearer image of it."
+  final String pageEn, pageAr;
+  final List<OmrIssue> issues;
+
+  /// Accepted: the batch's progress after the swap.
+  final OmrBatchProgress? progress;
+
+  static OmrReplaceResult fromJson(Map<String, dynamic> j) {
+    final p = asMap(j['progress']);
+    return OmrReplaceResult(
+      accepted: j['accepted'] == true,
+      pageId: asInt(j['page_id']),
+      replaces: j['replaces'] == null ? null : asInt(j['replaces']),
+      batchId: j['batch_id'] == null ? null : asInt(j['batch_id']),
+      code: j['code']?.toString(),
+      en: '${j['en'] ?? ''}',
+      ar: '${j['ar'] ?? ''}',
+      pageEn: '${j['page_en'] ?? ''}',
+      pageAr: '${j['page_ar'] ?? ''}',
+      issues: [for (final i in asMapList(j['issues'])) OmrIssue('${i['code'] ?? ''}', '${i['en'] ?? ''}', '${i['ar'] ?? ''}')],
+      progress: p.isEmpty ? null : OmrBatchProgress.fromJson(p),
+    );
+  }
+
+  String get text => _pick(ar, en);
+
+  /// Refused: the page sentence, then the instruction ("Page 2 is too blurry. … Too blurry, hold steady.").
+  String get refusal {
+    final page = _pick(pageAr, pageEn);
+    final how = text;
+    if (page.isEmpty) return how;
+    if (how.isEmpty || page.contains(how)) return page;
+    return '$page $how';
+  }
+}
+
 /// The name a photo is sent under, from its first bytes (the server sniffs the content anyway).
 String photoNameOf(Uint8List b) {
   if (b.length > 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) return 'camera.png';
@@ -554,6 +635,8 @@ String omrCodeText(String? code, [Map<String, dynamic> detail = const {}]) => sw
       'expected_invalid' => t('عدد الأوراق المتوقع بين 1 و ${OmrLimits.maxExpected}', 'The expected number of papers is 1 to ${OmrLimits.maxExpected}'),
       'forbidden' => t('ليس لديك صلاحية إدارة هذا الاختبار', 'You cannot manage this exam'),
       'no_files' => t('أرفق صورة أو ملف PDF', 'Attach an image or a PDF'),
+      'page_not_rejected' => t('يمكن استبدال الصفحات المرفوضة فقط', 'Only a rejected page can be replaced'),
+      'page_duplicate' => t('هذه الصورة مرفوعة من قبل في هذا الاختبار — اختر صورة أخرى أوضح', 'This image was already uploaded for this exam — choose another, clearer one'),
       _ => t('تعذّر إكمال الطلب', 'The request could not be completed'),
     };
 
@@ -598,6 +681,13 @@ class OmrScanApi {
   Future<EngineResult> batch(int examId, int batchId) => engineCall(() => _api.get('$_b/exams/$examId/omr/batches/$batchId'));
 
   Future<EngineResult> batches(int examId) => engineCall(() => _api.get('$_b/exams/$examId/omr/batches'));
+
+  /// A better image for a REJECTED page (multipart `image`): the gate answers on the request ([OmrReplaceResult]).
+  Future<EngineResult> replacePage(int examId, int pageId, (String, Uint8List) file) =>
+      engineCall(() => _api.postFiles('$_b/exams/$examId/omr/pages/$pageId/replace', files: [file], field: 'image'));
+
+  /// One page's state (`GET …/omr/pages/{id}` → `page.status`): how a replacement ended.
+  Future<EngineResult> page(int examId, int pageId) => engineCall(() => _api.get('$_b/exams/$examId/omr/pages/$pageId'));
 
   Future<EngineResult> sheetsInfo(int examId) => engineCall(() => _api.get('$_b/exams/$examId/omr/sheets'));
 

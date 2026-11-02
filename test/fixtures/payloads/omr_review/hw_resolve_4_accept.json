@@ -1,0 +1,97 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/4/resolve -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "_request": {
+  "action": "accept"
+ },
+ "payload": {
+  "item": {
+   "id": 4,
+   "scan_page_id": 2,
+   "attempt_id": 1,
+   "question_id": 5,
+   "kind": "completion",
+   "code": "near_match",
+   "reading": {
+    "kind": "completion",
+    "status": "suggestion",
+    "final": false,
+    "needs_review": true,
+    "max": 1.0,
+    "suggested_score": 0.5,
+    "blanks": [
+     {
+      "status": "near",
+      "given": "mitochondira",
+      "normalised": "mitochondira",
+      "matched": "mitochondria",
+      "distance": 1,
+      "budget": 2,
+      "suggested_credit": 0.5,
+      "final": false,
+      "reading": {
+       "text": "mitochondira",
+       "confidence": 0.95,
+       "engine": "trocr-small-handwritten@fp32-2432e24",
+       "review": false,
+       "check": {
+        "engine": "paddleocr-rec-en@pp-ocrv5-7b02d0a",
+        "text": "mitochondira",
+        "agree": true
+       }
+      },
+      "crop": {
+       "page_id": 2,
+       "box": [
+        0.07,
+        0.615,
+        0.8600000000000001,
+        0.33499999999999996
+       ],
+       "has_crop": true
+      },
+      "reason": "near_match",
+      "prefill": false
+     }
+    ],
+    "text": "mitochondira",
+    "texts": [
+     "mitochondira"
+    ],
+    "corrected": false,
+    "lang": "en",
+    "points": 1.0,
+    "pending": false,
+    "en": "Close to an accepted answer: confirm the suggested credit",
+    "ar": "قريبة من إجابة مقبولة: أكّد الدرجة المقترحة"
+   },
+   "status": "resolved",
+   "resolution": {
+    "action": "accept",
+    "score": 0.5
+   },
+   "resolved_by": 10,
+   "resolved_at": "2026-11-02T08:42:25.639161",
+   "created_at": "2026-11-02T08:42:24.370713",
+   "actions": [
+    "accept",
+    "set_score",
+    "fix_text"
+   ],
+   "has_crop": true,
+   "en": "Close to an accepted answer: confirm the suggested credit",
+   "ar": "قريبة من إجابة مقبولة: أكّد الدرجة المقترحة"
+  },
+  "page_status": "processed",
+  "open_items_on_page": 0,
+  "attempt": {
+   "id": 1,
+   "state": "graded",
+   "score": 10.0,
+   "max_score": 11.0,
+   "percentage": 90.91,
+   "passed": true
+  },
+  "next_item_id": 5
+ }
+}

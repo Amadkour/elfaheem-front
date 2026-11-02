@@ -1,0 +1,43 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/pages/2 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr); read by the recorder right after the script, as the exam's teacher",
+ "_status": 200,
+ "payload": {
+  "page": {
+   "id": 2,
+   "page_no": 1,
+   "page_label": null,
+   "status": "processed",
+   "file_name": "s11p2.png",
+   "batch_id": 1,
+   "student_id": 11,
+   "attempt_id": 1,
+   "codes": [],
+   "en": null,
+   "ar": null
+  },
+  "image_url": "/api/v1/exam/omr/images/page/2?exp=1793609550&sig=86fb5cc0375f38959e1d1f33e02f7dc2",
+  "size": null,
+  "overlay": [],
+  "alignment": {},
+  "answers": [],
+  "identifier": {},
+  "form": {},
+  "reading_id": null,
+  "items": [
+   {
+    "id": 3,
+    "kind": "short_answer",
+    "code": "short_answer",
+    "question_id": 4,
+    "status": "resolved"
+   },
+   {
+    "id": 4,
+    "kind": "completion",
+    "code": "near_match",
+    "question_id": 5,
+    "status": "resolved"
+   }
+  ]
+ }
+}

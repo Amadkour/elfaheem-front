@@ -3,7 +3,7 @@
 //     the engine's e2e_omr_review.py / e2e_omr_scan.py unchanged with a reply recorder around its TestClient);
 //   • over the fake backend: a "More than one answer" item fixed with one tap → the reply's line → the next item opens;
 //     an unclear mark fixed from the keyboard → the new score 5 / 11; "No student has this ID" → search the exam's
-//     students → assign → 11 / 11; publish refused with open items (409) → "Publish the graded ones" only after a
+//     audience (GET …/omr/students, masked IDs) → assign → 1 / 1, or type the number when the search is refused; publish refused with open items (409) → "Publish the graded ones" only after a
 //     confirmation, sent as `graded_only: true`;
 //   • the layout harness over the item card (every kind), the full paper overlay and the results; Flutter's
 //     accessibility guidelines over the item card.
@@ -253,50 +253,76 @@ void main() {
       await _done(tester);
     });
 
-    testWidgets('"No student has this ID": search the exam\'s students and assign one → 11 / 11', (tester) async {
+    testWidgets('"No student has this ID": search the exam\'s audience and assign one → 1 / 1', (tester) async {
+      // one engine run (e2e_omr_students.py): item 1, the audience search, the assign reply
       Map? body;
       final queries = <String>[];
       final fake = FakeApi({
-        'GET $_base/review-items': (_) => _p('scan_items_open_no_match'),
-        'GET $_base/review-items/4': (_) => _p('scan_item_4_no_match'),
-        'GET $_base/review-items/2': (_) => _p('scan_item_2_qr_forged'),
-        'GET $_base': (_) => const {'id': 1, 'course_id': 100, 'title': 'Paper quiz'},
-        // the core's GET /courses/{id}/students (services/course_service.get_enrolled_students): {items, total, …}
-        'GET /api/v1/courses/100/students': (o) {
-          queries.add('${o.queryParameters['search']}');
-          return const {
-            'items': [
-              {'id': 106, 'name': 'Student 106', 'gmail': 's106@example.com', 'username': null, 'image_url': null, 'status': 'active', 'progress_percentage': 0.0},
-            ],
-            'total': 1,
-            'avg_progress': 0.0,
-            'completed_count': 0,
-          };
+        'GET $_base/review-items': (_) {
+          // decided → the queue is empty (the run's sweep after the assign: nothing open)
+          if (body != null) return const {'items': [], 'total': 0, 'open_by_kind': {}};
+          final i = _p('aud_item_1_no_match');
+          return {'items': [i], 'total': 1, 'open_by_kind': {'identifier': 1}};
         },
-        'POST $_base/review-items/4/resolve': (o) {
+        'GET $_base/review-items/1': (_) => _p('aud_item_1_no_match'),
+        // GET /exams/{id}/omr/students?q= (services/omr_review.students): the exam's audience, IDs masked
+        'GET $_base/omr/students': (o) {
+          queries.add('${o.queryParameters['q']}');
+          final q = '${o.queryParameters['q']}';
+          return q.isEmpty ? _p('aud_all') : _p('aud_q_sara');
+        },
+        'POST $_base/review-items/1/resolve': (o) {
           body = o.data as Map;
-          return _p('scan_resolve_4_assign');
+          return _p('aud_resolve_1_assign');
         },
         'GET /api/v1/exam/omr/images/*': (_) => const FakeResponse(404, {'detail': {'code': 'image_not_found'}}),
       }, latency: const Duration(milliseconds: 20))
         ..install();
       addTearDown(fake.uninstall);
-      await pumpPage(tester, OmrReviewPage(examId: 1, initialItemId: 4, liveStream: _stream, liveBus: LiveEvents.instance, meId: 10));
+      await pumpPage(tester, OmrReviewPage(examId: 1, initialItemId: 1, liveStream: _stream, liveBus: LiveEvents.instance, meId: 10));
 
       expect(find.text('No student has this ID'), findsWidgets);
-      expect(find.text('9999999999'), findsWidgets);
+      expect(find.text('2024009999'), findsWidgets);
       expect(find.byKey(const ValueKey('omr.id.accept')), findsNothing, reason: 'accepting an unknown ID would only be refused');
       await tester.ensureVisible(find.byKey(const ValueKey('omr.id.search')));
-      await tester.enterText(find.byKey(const ValueKey('omr.id.search')), 'Stu');
+      await tester.enterText(find.byKey(const ValueKey('omr.id.search')), 'sara');
       await _frames(tester, 6);
-      expect(queries.last, 'Stu');
-      await tester.ensureVisible(find.byKey(const ValueKey('omr.student.106')));
-      await tester.tap(find.byKey(const ValueKey('omr.student.106')));
+      expect(queries.last, 'sara');
+      expect(find.textContaining('Sara Nabil'), findsWidgets);
+      await tester.ensureVisible(find.byKey(const ValueKey('omr.student.24')));
+      await tester.tap(find.byKey(const ValueKey('omr.student.24')));
       await _frames(tester, 8);
-      expect(body, {'action': 'assign', 'student_id': 106});
-      expect(find.text('New score 11 / 11 · 100%'), findsOneWidget);
-      expect(find.byKey(const ValueKey('omr.item.2')), findsOneWidget, reason: 'next_item_id 2');
-      expect(find.text("The sheet's QR code is not a valid code of this exam"), findsWidgets);
+      expect(body, {'action': 'assign', 'student_id': 24});
+      expect(find.text('New score 1 / 1 · 100%'), findsOneWidget);
+      expect(find.byKey(const ValueKey('omr.allClear')), findsOneWidget, reason: 'next_item_id null: nothing left');
+      expect(fake.calls.where((c) => c.path.contains('/courses/')), isEmpty, reason: 'the core course roster is not used any more');
+      await _done(tester);
+    });
+
+    testWidgets('the audience search refused (403): type the student\'s number instead', (tester) async {
+      Map? body;
+      final fake = FakeApi({
+        'GET $_base/review-items': (_) => {'items': [_p('aud_item_1_no_match')], 'total': 1, 'open_by_kind': {'identifier': 1}},
+        'GET $_base/review-items/1': (_) => _p('aud_item_1_no_match'),
+        'GET $_base/omr/students': (_) => FakeResponse(403, _p('aud_403')),
+        'POST $_base/review-items/1/resolve': (o) {
+          body = o.data as Map;
+          return _p('aud_resolve_1_assign');
+        },
+        'GET /api/v1/exam/omr/images/*': (_) => const FakeResponse(404, {'detail': {'code': 'image_not_found'}}),
+      }, latency: const Duration(milliseconds: 20))
+        ..install();
+      addTearDown(fake.uninstall);
+      await pumpPage(tester, OmrReviewPage(examId: 1, initialItemId: 1, liveStream: _stream, liveBus: LiveEvents.instance, meId: 10));
+      await tester.ensureVisible(find.byKey(const ValueKey('omr.id.search')));
+      await tester.enterText(find.byKey(const ValueKey('omr.id.search')), 'sa');
+      await _frames(tester, 6);
+      expect(find.byKey(const ValueKey('omr.id.typed')), findsOneWidget);
+      await tester.enterText(find.byKey(const ValueKey('omr.id.typed')), '24');
+      await tester.ensureVisible(find.byKey(const ValueKey('omr.id.assignTyped')));
+      await tester.tap(find.byKey(const ValueKey('omr.id.assignTyped')));
+      await _frames(tester, 8);
+      expect(body, {'action': 'assign', 'student_id': 24});
       await _done(tester);
     });
 

@@ -6,8 +6,12 @@
 // accepts / saves, arrows move through the queue. The full paper view draws the detected answers over the page.
 // Every decision is the server's audited `manual_changes` row (D-158) — shown as "Changed by you · 10:42".
 //
-// Live: the engine's `job_updated {kind: omr_scan, exam_id}` (after every scanned page) reloads the queue through
-// EventOrPoll; the timer is only the slow fallback. API and models: omr_review.dart; widgets: omr_review_parts.dart.
+// Handwritten answers (D-160): completion / short answer — accept the suggestion, set the score, fix the text; a
+// corrected short answer waits `pending` for the recomputed suggestion (EventOrPoll on `job_updated {kind:
+// omr_review}`, a short poll only as the fallback: the engine's recompute job sends no event of its own yet).
+// Live: the engine's `job_updated {kind: omr_scan | omr_review, exam_id}` (after every scanned page / every decision,
+// a second reviewer's too) reloads the queue through EventOrPoll; the timer is only the slow fallback. API and models:
+// omr_review.dart; widgets: omr_review_parts.dart, omr_review_written.dart.
 library;
 
 import 'dart:async';
@@ -28,6 +32,9 @@ import 'package:provider/provider.dart';
 
 import '../../../../admin/admin_common.dart' show asInt, t;
 import '../exam_setup.dart' show kExamOmrFeatureKey;
+import '../scan/omr_scan.dart' show OmrScanApi, OmrReplaceResult, omrReplaceProblem;
+import '../scan/omr_scan.dart' as scan show omrErrorText;
+import '../scan/omr_upload_screen.dart' show OmrFilePicker, omrPickFiles;
 import 'omr_results_page.dart';
 import 'omr_review.dart';
 import 'omr_review_parts.dart';
@@ -49,16 +56,20 @@ bool omrTyping() {
   return ctx.findAncestorWidgetOfExactType<EditableText>() != null;
 }
 
-/// The live watch of an exam's scans: `job_updated {kind: omr_scan, exam_id}`.
+/// The live watch of an exam's scans and review decisions: `job_updated {kind: omr_scan | omr_review, exam_id}`.
 EventOrPoll omrScanWatch(int examId, Future<void> Function() poll, {LiveStreamHandle? stream, LiveEvents? bus}) => EventOrPoll(
       poll: poll,
       every: const Duration(seconds: 20),
       fallbackEvery: const Duration(seconds: 90),
       names: const {LiveEvents.jobUpdated},
-      match: (e) => e.kind == kOmrScanEventKind && asInt(e.data['exam_id'], -1) == examId,
+      match: (e) => omrExamEvent(e, examId),
       stream: stream,
       bus: bus,
     );
+
+/// A scanned page or a review decision of [examId].
+bool omrExamEvent(LiveEvent e, int examId) =>
+    (e.kind == kOmrScanEventKind || e.kind == kOmrReviewEventKind) && asInt(e.data['exam_id'], -1) == examId;
 
 class OmrReviewPage extends StatefulWidget {
   const OmrReviewPage({super.key, required this.examId, this.initialItemId, this.api, this.liveStream, this.liveBus, this.meId});
@@ -83,6 +94,10 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
   final _keys = FocusNode(debugLabel: 'omr.review.keys');
   EventOrPoll? _watch;
 
+  /// While a corrected short answer's suggestion is recomputed: the item, re-read on the event (short poll fallback).
+  EventOrPoll? _pendingWatch;
+  int? _pendingId;
+
   OmrReviewList? _list;
   String? _filter;
   String? _error;
@@ -94,8 +109,6 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
   final Map<int, OmrReviewItem> _details = {};
   final Map<int, Uint8List?> _crops = {};
   final Set<int> _cropLoading = {};
-  int? _courseId;
-  bool _examLoaded = false;
   int _openSeq = 0;
 
   int get _examId => widget.examId;
@@ -110,6 +123,7 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
   @override
   void dispose() {
     _watch?.dispose();
+    _pendingWatch?.dispose();
     _keys.dispose();
     super.dispose();
   }
@@ -203,20 +217,43 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
     if (d != null) _loadCrop(d);
   }
 
-  Future<void> _ensureCourse() async {
-    if (_examLoaded) return;
-    _examLoaded = true;
-    final r = await _api.exam(_examId);
-    if (r.ok && r.map['course_id'] != null) _courseId = asInt(r.map['course_id']);
+  /// The exam's audience (`GET …/omr/students?q=`); null = no search here (403 / not routed): type the number.
+  Future<List<OmrStudent>?> _search(String q) async {
+    final r = await _api.audience(_examId, q);
+    if (!r.ok) return r.status == 403 || r.status == 404 || r.unavailable ? null : const [];
+    return OmrAudience.fromJson(r.map).items;
   }
 
-  Future<List<OmrStudent>?> _search(String q) async {
-    await _ensureCourse();
-    final cid = _courseId;
-    if (cid == null) return null;
-    final r = await _api.students(cid, q);
-    if (!r.ok) return r.status == 403 || r.status == 404 ? null : const [];
-    return omrStudentsFrom(r.map);
+  // ── a suggestion being recomputed ──
+
+  void _watchPending(int id) {
+    if (_pendingId == id && (_pendingWatch?.running ?? false)) return;
+    _pendingWatch?.dispose();
+    _pendingId = id;
+    _pendingWatch = EventOrPoll(
+      poll: () => _refreshPending(id),
+      every: const Duration(seconds: 3),
+      fallbackEvery: const Duration(seconds: 5),
+      names: const {LiveEvents.jobUpdated},
+      match: (e) => omrExamEvent(e, _examId),
+      stream: widget.liveStream,
+      bus: widget.liveBus,
+    )..start();
+  }
+
+  void _stopPending() {
+    _pendingWatch?.dispose();
+    _pendingWatch = null;
+    _pendingId = null;
+  }
+
+  Future<void> _refreshPending(int id) async {
+    final r = await _api.item(_examId, id);
+    if (!mounted || !r.ok) return;
+    final d = OmrReviewItem.fromJson(r.map);
+    _details[id] = d;
+    if (_item?.id == id) setState(() => _item = d);
+    if (!d.pending || !d.open) _stopPending();
   }
 
   // ── decisions ──
@@ -238,6 +275,21 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
     }
     final reply = OmrResolveReply.fromJson(r.map);
     HapticFeedback.selectionClick();
+    if (reply.stillOpen && reply.item.id == it.id) {
+      // a fixed text that matched near again, or a short answer whose suggestion is recomputed: the item stays here
+      _details.remove(it.id);
+      setState(() {
+        _last = reply;
+        _item = it.withReading(reply.item);
+      });
+      final d = await _fetchDetail(it.id);
+      if (!mounted) return;
+      if (d != null && _item?.id == it.id) setState(() => _item = d);
+      if ((d ?? reply.item).pending) _watchPending(it.id);
+      _load(silent: true);
+      return;
+    }
+    if (_pendingId == it.id) _stopPending();
     final list = _list;
     setState(() {
       _last = reply;
@@ -259,6 +311,11 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
   }
 
   void _choose(List<String> letters) => _resolve(omrResolveBody('choose', options: letters));
+  void _setScore(double v) => _resolve(omrResolveBody('set_score', score: v));
+  void _fixText(List<String> texts) {
+    final it = _item;
+    if (it != null) _resolve(omrFixTextBody(texts, blanks: it.blankCount));
+  }
   void _blank() => _resolve(omrResolveBody('blank'));
   void _toggle(String l) => setState(() => _picked = {..._picked}..toggle(l));
 
@@ -357,6 +414,10 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
         _resolve(omrResolveBody('confirm', form: forms[idx]));
         return KeyEventResult.handled;
       }
+    }
+    if (it.written && (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) && it.canAcceptSuggestion) {
+      _resolve(omrResolveBody('accept'));
+      return KeyEventResult.handled;
     }
     if (it.kind == 'identifier' && (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) && it.can('accept') &&
         it.readValue.isNotEmpty && const {'identifier_unclear', 'identifier_conflict', 'student_not_in_exam', 'attempt_in_progress'}.contains(it.code)) {
@@ -537,6 +598,8 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
         onDismiss: _dismiss,
         onReplace: _replace,
         onOpenPaper: _openPaper,
+        onSetScore: _setScore,
+        onFixText: _fixText,
       ),
     ));
     children.add(const SizedBox(height: AppSpace.sm));
@@ -566,8 +629,10 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
       children.add(Padding(
         padding: const EdgeInsets.only(top: AppSpace.xs),
         child: Text(
-            t('لوحة المفاتيح: 1–5 أو A–E لاختيار الإجابة · 0 بلا إجابة · Enter للتأكيد · الأسهم للتنقل',
-                'Keyboard: 1–5 or A–E pick the answer · 0 no answer · Enter confirms · arrows move'),
+            it.written
+                ? t('لوحة المفاتيح: Enter لقبول الدرجة المقترحة · الأسهم للتنقل', 'Keyboard: Enter accepts the suggested score · arrows move')
+                : t('لوحة المفاتيح: 1–5 أو A–E لاختيار الإجابة · 0 بلا إجابة · Enter للتأكيد · الأسهم للتنقل',
+                    'Keyboard: 1–5 or A–E pick the answer · 0 no answer · Enter confirms · arrows move'),
             style: appText(12, c: c.textLight)),
       ));
     }
@@ -583,13 +648,19 @@ extension on Set<String> {
 // ── the full paper ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /// One scanned page with the detected answers overlaid (zoom / pan). Pops with an item id when the teacher taps a
-/// question that waits for review.
+/// question or a decision that waits for review. A rejected page offers "Replace this page" (one photo through the
+/// capture gate: accepted, or refused with the exact reason). Also the scans list's view of a bubble-sheet page (the
+/// legacy `/scans/{id}/image` answers 409 `omr_page_use_review` for them).
 class OmrPaperPage extends StatefulWidget {
-  const OmrPaperPage({super.key, required this.examId, required this.pageId, this.focusN, this.api});
+  const OmrPaperPage({super.key, required this.examId, required this.pageId, this.focusN, this.api, this.scanApi, this.picker});
   final int examId;
   final int pageId;
   final int? focusN;
   final OmrReviewApi? api;
+  final OmrScanApi? scanApi;
+
+  /// Picks the replacement photo (tests hand their own).
+  final OmrFilePicker? picker;
 
   @override
   State<OmrPaperPage> createState() => _OmrPaperPageState();
@@ -597,10 +668,13 @@ class OmrPaperPage extends StatefulWidget {
 
 class _OmrPaperPageState extends State<OmrPaperPage> {
   late final OmrReviewApi _api = widget.api ?? OmrReviewApi();
+  late final OmrScanApi _scan = widget.scanApi ?? OmrScanApi();
   OmrPageView? _page;
   Uint8List? _bytes;
   bool _imageLoading = true;
   String? _error;
+  bool _replacing = false;
+  OmrReplaceResult? _replaced;
 
   @override
   void initState() {
@@ -622,6 +696,30 @@ class _OmrPaperPageState extends State<OmrPaperPage> {
     });
   }
 
+  Future<void> _replace() async {
+    final files = await (widget.picker ?? omrPickFiles)(many: false);
+    if (files.isEmpty || !mounted) return;
+    final problem = omrReplaceProblem(files.first);
+    if (problem != null) {
+      showAppNotice(problem, error: true);
+      return;
+    }
+    setState(() => _replacing = true);
+    final r = await _scan.replacePage(widget.examId, widget.pageId, files.first);
+    if (!mounted) return;
+    setState(() => _replacing = false);
+    if (!r.ok) {
+      showAppNotice(scan.omrErrorText(r), error: true);
+      return;
+    }
+    final res = OmrReplaceResult.fromJson(r.map);
+    setState(() => _replaced = res);
+    if (res.accepted) _load();
+  }
+
+  void _openNew(int pageId) => Navigator.of(context).pushReplacement(MaterialPageRoute<int>(
+      builder: (_) => OmrPaperPage(examId: widget.examId, pageId: pageId, api: widget.api, scanApi: widget.scanApi, picker: widget.picker)));
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -636,11 +734,22 @@ class _OmrPaperPageState extends State<OmrPaperPage> {
         if (p == null) return const AppListSkeleton(items: 3, withAvatar: false);
         final wide = box.maxWidth >= Breakpoints.desktop;
         final overlay = OmrPaperOverlay(page: p, bytes: _bytes, loading: _imageLoading, focusN: widget.focusN);
+        final rep = _replaced;
         final side = <Widget>[
-          if (p.problem.isNotEmpty) ...[AppBanner(icon: Icons.warning_amber_rounded, color: c.warning, text: p.problem), const SizedBox(height: AppSpace.sm)],
-          Text(t('الأسئلة كما قُرئت', 'The questions as read'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
-          const SizedBox(height: AppSpace.xs),
-          OmrPageAnswers(page: p, onItem: (id) => Navigator.of(context).pop(id)),
+          OmrPageStatusCard(
+            page: p,
+            replacing: _replacing,
+            result: rep,
+            onReplace: p.status == 'rejected' ? _replace : null,
+            onOpenNew: rep != null && rep.accepted ? () => _openNew(rep.pageId) : null,
+          ),
+          const SizedBox(height: AppSpace.sm),
+          OmrPageItemsList(page: p, onItem: (id) => Navigator.of(context).pop(id)),
+          if (p.answers.isNotEmpty) ...[
+            Text(t('الأسئلة كما قُرئت', 'The questions as read'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+            const SizedBox(height: AppSpace.xs),
+            OmrPageAnswers(page: p, onItem: (id) => Navigator.of(context).pop(id)),
+          ],
           if (p.identifierValue != null || p.formValue != null) ...[
             const SizedBox(height: AppSpace.sm),
             Text(

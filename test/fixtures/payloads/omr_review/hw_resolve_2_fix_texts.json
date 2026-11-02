@@ -1,0 +1,126 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/2/resolve -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "_request": {
+  "action": "fix_text",
+  "texts": [
+   "Cairo",
+   "Nile"
+  ]
+ },
+ "payload": {
+  "item": {
+   "id": 2,
+   "scan_page_id": 1,
+   "attempt_id": 1,
+   "question_id": 3,
+   "kind": "completion",
+   "code": "several_blanks_in_one_box",
+   "reading": {
+    "kind": "completion",
+    "status": "suggestion",
+    "final": false,
+    "needs_review": true,
+    "max": 2.0,
+    "suggested_score": 2.0,
+    "blanks": [
+     {
+      "status": "exact",
+      "given": "Cairo",
+      "normalised": "cairo",
+      "matched": "Cairo",
+      "distance": 0,
+      "budget": 0,
+      "suggested_credit": 1.0,
+      "final": false,
+      "reading": {
+       "text": "Cairo",
+       "confidence": 0.95,
+       "engine": "trocr-small-handwritten@fp32-2432e24|line",
+       "review": true
+      },
+      "crop": {
+       "page_id": 1,
+       "box": [
+        0.07,
+        0.7433333333333334,
+        0.8600000000000001,
+        0.20666666666666667
+       ],
+       "has_crop": true
+      },
+      "reason": "no_completion_rule",
+      "prefill": true
+     },
+     {
+      "status": "exact",
+      "given": "Nile",
+      "normalised": "nile",
+      "matched": "Nile",
+      "distance": 0,
+      "budget": 0,
+      "suggested_credit": 1.0,
+      "final": false,
+      "reading": {
+       "text": "Nile",
+       "confidence": 0.95,
+       "engine": "trocr-small-handwritten@fp32-2432e24|line",
+       "review": true
+      },
+      "crop": {
+       "page_id": 1,
+       "box": [
+        0.07,
+        0.7433333333333334,
+        0.8600000000000001,
+        0.20666666666666667
+       ],
+       "has_crop": true
+      },
+      "reason": "no_completion_rule",
+      "prefill": true
+     }
+    ],
+    "text": "Cairo\nNile",
+    "texts": [
+     "Cairo",
+     "Nile"
+    ],
+    "corrected": false,
+    "lang": "en",
+    "points": 2.0,
+    "pending": false,
+    "en": "Several blanks were written in one box",
+    "ar": "كُتبت عدة فراغات في مربع واحد"
+   },
+   "status": "resolved",
+   "resolution": {
+    "action": "fix_text",
+    "score": 2.0,
+    "by": "match"
+   },
+   "resolved_by": 10,
+   "resolved_at": "2026-11-02T08:42:25.477630",
+   "created_at": "2026-11-02T08:42:23.978224",
+   "actions": [
+    "accept",
+    "set_score",
+    "fix_text"
+   ],
+   "has_crop": true,
+   "en": "Several blanks were written in one box",
+   "ar": "كُتبت عدة فراغات في مربع واحد"
+  },
+  "page_status": "processed",
+  "open_items_on_page": 0,
+  "attempt": {
+   "id": 1,
+   "state": "submitted",
+   "score": null,
+   "max_score": 11.0,
+   "percentage": null,
+   "passed": null
+  },
+  "next_item_id": 3
+ }
+}

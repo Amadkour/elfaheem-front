@@ -1,0 +1,31 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/omr/pages/2/replace -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_replace.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "accepted": true,
+  "page_id": 4,
+  "replaces": 2,
+  "batch_id": 1,
+  "ms": 79.5,
+  "en": "Page 2 replaced. It is being read now.",
+  "ar": "تم استبدال الصفحة 2 وجارٍ قراءتها الآن.",
+  "progress": {
+   "batch_id": 1,
+   "exam_id": 1,
+   "kind": "omr",
+   "total": 3,
+   "done": 2,
+   "graded": 2,
+   "review": 0,
+   "rejected": 0,
+   "failed": 0,
+   "pending": 1,
+   "status": "processing",
+   "expected": null,
+   "rejected_pages": [],
+   "created_at": "2026-11-02T08:42:24.948015",
+   "en": "2 of 3 papers processed",
+   "ar": "تمت معالجة 2 من 3 ورقة"
+  }
+ }
+}

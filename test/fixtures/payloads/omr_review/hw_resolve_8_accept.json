@@ -1,0 +1,100 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/8/resolve -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "_request": {
+  "action": "accept"
+ },
+ "payload": {
+  "item": {
+   "id": 8,
+   "scan_page_id": 4,
+   "attempt_id": 2,
+   "question_id": 4,
+   "kind": "short_answer",
+   "code": "short_answer",
+   "reading": {
+    "kind": "short_answer",
+    "status": "suggestion",
+    "final": false,
+    "needs_review": true,
+    "max": 5.0,
+    "thresholds": {
+     "low": 0.45,
+     "high": 0.8
+    },
+    "keyword_weight": 0.3,
+    "reading": {
+     "text": "Plants make glucose and oxygen using light",
+     "confidence": null,
+     "engine": "typed"
+    },
+    "crop": {
+     "page_id": 4,
+     "box": [
+      0.07,
+      0.23,
+      0.8600000000000001,
+      0.33499999999999996
+     ],
+     "has_crop": true
+    },
+    "reasons": [],
+    "keywords": [
+     {
+      "term": "glucose",
+      "weight": 1.0,
+      "found": "glucose",
+      "how": "exact"
+     },
+     {
+      "term": "oxygen",
+      "weight": 1.0,
+      "found": "oxygen",
+      "how": "exact"
+     }
+    ],
+    "coverage": 1.0,
+    "raw_cosine": 0.98,
+    "similarity": 0.886,
+    "closeness": 0.92,
+    "suggested_score": 5.0,
+    "band": "full",
+    "version": "paper-sim:multilingual-e5-small@fp32-761b726|scale:2026-11-02-gold120",
+    "text": "Plants make glucose and oxygen using light",
+    "corrected": true,
+    "lang": "en",
+    "points": 5.0,
+    "pending": false,
+    "en": "Short answer: confirm or set the score",
+    "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+   },
+   "status": "resolved",
+   "resolution": {
+    "action": "accept",
+    "score": 5.0
+   },
+   "resolved_by": 10,
+   "resolved_at": "2026-11-02T08:42:25.829903",
+   "created_at": "2026-11-02T08:42:25.186046",
+   "actions": [
+    "accept",
+    "set_score",
+    "fix_text"
+   ],
+   "has_crop": true,
+   "en": "Short answer: confirm or set the score",
+   "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+  },
+  "page_status": "review",
+  "open_items_on_page": 1,
+  "attempt": {
+   "id": 2,
+   "state": "submitted",
+   "score": null,
+   "max_score": 11.0,
+   "percentage": null,
+   "passed": null
+  },
+  "next_item_id": 9
+ }
+}
