@@ -8,6 +8,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -15,6 +16,8 @@ import '../../admin/admin_common.dart' show asMapList, t;
 import 'exam_engine_api.dart' show EngineResult;
 import 'exam_paper_flow.dart';
 import 'exam_review.dart';
+import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi, kExamOmrFeatureKey;
+import 'paper/scan/omr_scan_section.dart';
 
 /// OCR words of one region; low-confidence ones are marked for the teacher (plain values, under the harness).
 class OcrWordsView extends StatelessWidget {
@@ -214,11 +217,17 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
   List<PaperProblem> _problems = const [];
   int? _lastBatch;
 
+  /// The exam's paper format (D-151): bubble / both get the bubble-sheet tools (D-154 … D-159) first.
+  ExamSetup? _setup;
+
+  bool get _omr => (_setup?.isBubble ?? false) && !AppConfig.disableList.contains(kExamOmrFeatureKey);
+
   @override
   void initState() {
     super.initState();
     _load();
     _loadRoster();
+    _loadSetup();
     if (widget.openPageId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _open(widget.openPageId!));
     }
@@ -232,6 +241,11 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
       _pages = pages;
       _batches = batchIdsOf(r.map);
     });
+  }
+
+  Future<void> _loadSetup() async {
+    final r = await ExamSetupApi().setup(widget.examId);
+    if (mounted && r.ok) setState(() => _setup = ExamSetup.fromJson(r.map));
   }
 
   Future<void> _loadRoster() async {
@@ -334,7 +348,23 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
       child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
-          PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks),
+          if (_omr) ...[
+            OmrScanSection(examId: widget.examId, examTitle: widget.examTitle, roster: _roster, onChanged: _load),
+            const SizedBox(height: 8),
+            // the written-answer tools stay reachable (QR answer sheets, mapping, marks import), folded away
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                key: const ValueKey('omr.other_tools'),
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                title: Text(t('أدوات ورقية أخرى', 'Other paper tools'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                subtitle: Text(t('أوراق الإجابة بالرمز، ملف الإسناد، استيراد الدرجات', 'QR answer sheets, mapping file, marks import'), style: appText(12, c: c.textMedium)),
+                children: [PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks)],
+              ),
+            ),
+          ] else
+            PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks),
           if (_summary != null) ...[const SizedBox(height: 4), PaperResultView(summary: _summary!, problems: _problems), const SizedBox(height: 8)],
           const SizedBox(height: 8),
           AppSectionTitle(t('الصفحات الممسوحة', 'Scanned pages')),
