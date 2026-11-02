@@ -413,7 +413,8 @@ class _Header extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: AppRadius.cardAll),
-            child: Icon(releasePlatformIcon(r.platform), color: c.primary, size: 26),
+            // the brand blue is too dark to read on the dark surface: its light shade there
+            child: Icon(releasePlatformIcon(r.platform), color: c.isDark ? c.primaryLight : c.primary, size: 26),
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
@@ -469,7 +470,7 @@ class _Header extends StatelessWidget {
               TextButton.icon(
                 key: const ValueKey('release.codemagic'),
                 onPressed: onOpenLink == null ? null : () => onOpenLink!(codemagicLink!),
-                style: TextButton.styleFrom(foregroundColor: c.primary, minimumSize: const Size(48, AppTouch.min)),
+                style: TextButton.styleFrom(foregroundColor: c.isDark ? c.primaryLight : c.primary, minimumSize: const Size(48, AppTouch.min)),
                 icon: const Icon(Icons.open_in_new_rounded, size: 18),
                 label: Text(t('البناء على Codemagic', 'The build on Codemagic'),
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
@@ -700,7 +701,7 @@ class _Artifacts extends StatelessWidget {
                     _ => Icons.insert_drive_file_outlined,
                   },
                   size: 20,
-                  color: c.primary),
+                  color: c.isDark ? c.primaryLight : c.primary),
               const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -718,7 +719,7 @@ class _Artifacts extends StatelessWidget {
                       key: ValueKey('release.download.${a.name}'),
                       tooltip: t('تنزيل', 'Download'),
                       onPressed: onDownload == null || busy != null ? null : () => onDownload!(a),
-                      icon: Icon(Icons.download_rounded, color: c.primary),
+                      icon: Icon(Icons.download_rounded, color: c.isDark ? c.primaryLight : c.primary),
                     ),
             ]),
           ),

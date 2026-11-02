@@ -211,6 +211,11 @@ Map<String, dynamic> codemagicReleaseJson({
       ),
       'channel': channel,
       'executor': 'codemagic',
+      'actions': {
+        ...(releaseJson(status: status, isLive: isLive)['actions'] as Map<String, dynamic>),
+        'rollback': isLive && channel != 'store',
+        'retry': const {'failed', 'canceled'}.contains(status),
+      },
       'buildable': true,
       'codemagic_build_id': '6727c1f0a9b8c7d6e5f4a3b2',
       'codemagic_url': 'https://codemagic.io/app/6544a1c2e8b4f0b7d1a9c3e2/build/6727c1f0a9b8c7d6e5f4a3b2',

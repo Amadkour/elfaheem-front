@@ -276,7 +276,8 @@ class GetAppBannerView extends StatelessWidget {
                                 width: 36,
                                 height: 36,
                                 decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll),
-                                child: Icon(icon, size: 20, color: c.primary),
+                                // the brand blue is too dark to read on the dark surface: its light shade there
+                                child: Icon(icon, size: 20, color: c.isDark ? c.primaryLight : c.primary),
                               ),
                             ),
                             const SizedBox(width: AppSpace.sm),
@@ -319,7 +320,7 @@ class GetAppBannerView extends StatelessWidget {
                             TextButton(
                               onPressed: onDetails,
                               style: TextButton.styleFrom(
-                                foregroundColor: c.primary,
+                                foregroundColor: c.isDark ? c.primaryLight : c.primary,
                                 minimumSize: const Size(48, 48),
                                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                               ),

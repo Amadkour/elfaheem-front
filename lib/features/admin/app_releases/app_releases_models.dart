@@ -143,7 +143,13 @@ class ReleaseReadiness {
       en.add('');
     }
     for (var i = 0; i < other.missing.length; i++) {
-      if (items.contains(other.missing[i])) continue;
+      final at = items.indexOf(other.missing[i]);
+      if (at >= 0) {
+        // the same item: keep a sentence when only one side has it (Codemagic's own block sends none)
+        if (ar[at].isEmpty && i < other.reasonsAr.length) ar[at] = other.reasonsAr[i];
+        if (en[at].isEmpty && i < other.reasonsEn.length) en[at] = other.reasonsEn[i];
+        continue;
+      }
       items.add(other.missing[i]);
       ar.add(i < other.reasonsAr.length ? other.reasonsAr[i] : '');
       en.add(i < other.reasonsEn.length ? other.reasonsEn[i] : '');
@@ -471,7 +477,8 @@ class AppRelease {
   bool get canCancel => actions?.cancel ?? const {'queued', 'building', 'testing'}.contains(status);
   bool get canRetry => actions?.retry ?? (const {'failed', 'canceled'}.contains(status) && builds);
   bool get canPublish => actions?.publish ?? status == 'ready';
-  bool get canRollback => actions?.rollback ?? current;
+  /// A store release cannot be rolled back from here (D-144: the store holds it).
+  bool get canRollback => actions?.rollback ?? (current && !isStore);
 
   /// "1.4.0 (52)"
   String get label => buildNumber == null ? version : '$version ($buildNumber)';

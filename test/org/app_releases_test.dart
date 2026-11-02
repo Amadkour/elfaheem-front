@@ -364,6 +364,9 @@ void main() {
       expect(cfg.readiness('macos', 'store').ready, isTrue, reason: 'recorded only');
       final off = ReleaseConfig.fromJson(releaseConfigJson(codemagic: false));
       expect(off.readiness('web', 'website').missing, ['CODEMAGIC_API_TOKEN'], reason: 'Codemagic itself, once');
+      expect(off.readiness('web', 'website').reasonFor('CODEMAGIC_API_TOKEN', 'en'), 'From the server: CODEMAGIC_API_TOKEN',
+          reason: "the channel's sentence fills the Codemagic block's empty one");
+      expect(AppRelease.fromJson(codemagicReleaseJson(channel: 'store', status: 'live', isLive: true)).canRollback, isFalse);
       expect(off.readiness('ios', 'website').ready, isTrue);
       expect(cfg.readiness('android', 'store').without(const {'package_name_example'}).ready, isTrue);
       expect(cfg.readiness('android', 'store').reasonFor('package_name_example', 'en'), 'From the server: package_name_example');

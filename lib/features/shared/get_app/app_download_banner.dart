@@ -287,7 +287,7 @@ class _IconWell extends StatelessWidget {
         width: s,
         height: s,
         decoration: BoxDecoration(color: small ? c.primaryTint : c.cardBg, borderRadius: BorderRadius.circular(AppRadius.chip)),
-        child: Icon(icon, size: small ? 18 : 22, color: c.primary),
+        child: Icon(icon, size: small ? 18 : 22, color: c.isDark ? c.primaryLight : c.primary),
       ),
     );
   }
@@ -418,7 +418,7 @@ class _Step extends StatelessWidget {
         const SizedBox(width: AppSpace.sm),
         Expanded(child: Padding(padding: const EdgeInsets.only(top: 4), child: Text(text, style: _row(context)))),
         const SizedBox(width: AppSpace.xs),
-        ExcludeSemantics(child: Icon(icon, size: 22, color: c.primary)),
+        ExcludeSemantics(child: Icon(icon, size: 22, color: c.isDark ? c.primaryLight : c.primary)),
       ]),
     );
   }
@@ -455,11 +455,13 @@ class _PlatformCard extends StatelessWidget {
           Row(children: [
             Expanded(
               child: Padding(
-                padding: const EdgeInsetsDirectional.only(start: 40),
-                child: Text(
-                  [appDownloadFileLabel(f), if (formatReleaseSize(f.size).isNotEmpty) getAppLtr(formatReleaseSize(f.size))].join(' · '),
-                  style: _meta(context),
-                ),
+                // under the platform's name on a wide sheet; from the edge on a phone, so "Most phones (64-bit)" keeps one line
+                padding: EdgeInsetsDirectional.only(start: MediaQuery.sizeOf(context).width < 480 ? 0 : 40),
+                // the label, then the size under it (one line joined with "·" broke in the middle on a phone)
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(appDownloadFileLabel(f), style: _row(context).copyWith(fontSize: 13.5)),
+                  if (formatReleaseSize(f.size).isNotEmpty) Text(getAppLtr(formatReleaseSize(f.size)), style: _meta(context)),
+                ]),
               ),
             ),
             // a long label (large text, a translation) shortens instead of squeezing the file name
@@ -468,7 +470,7 @@ class _PlatformCard extends StatelessWidget {
                 key: ValueKey('app_dl.file.${f.name}'),
                 onPressed: () => onDownload(f),
                 style: TextButton.styleFrom(
-                  foregroundColor: c.primary,
+                  foregroundColor: c.isDark ? c.primaryLight : c.primary,
                   minimumSize: const Size(AppTouch.min, AppTouch.min),
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
                   tapTargetSize: MaterialTapTargetSize.padded,
