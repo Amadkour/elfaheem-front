@@ -25,6 +25,7 @@
 // per scale and rebuilt on structure changes only).
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -176,19 +177,39 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
   void didUpdateWidget(covariant StudioCanvas<P> old) {
     super.didUpdateWidget(old);
     _layer = null;
+    if (old.contextMenu != widget.contextMenu) _holdBrowserMenu(widget.contextMenu);
   }
+
+  /// Canvases that own the right click (the browser's menu is off while at least one is mounted). Counted, not
+  /// toggled: a new canvas (band switch, next step, other language) mounts BEFORE the old one is disposed, so a plain
+  /// disable / enable pair would turn the browser's menu back on under the new canvas.
+  static int _menuHolds = 0;
+  bool _holdsMenu = false;
+
+  void _holdBrowserMenu(bool hold) {
+    if (!kIsWeb || hold == _holdsMenu) return;
+    _holdsMenu = hold;
+    if (hold) {
+      if (_menuHolds++ == 0) unawaited(BrowserContextMenu.disableContextMenu());
+    } else {
+      if (--_menuHolds == 0) unawaited(BrowserContextMenu.enableContextMenu());
+    }
+  }
+
+  @visibleForTesting
+  static int get browserMenuHolds => _menuHolds;
 
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_syncEditor);
-    if (kIsWeb && widget.contextMenu) BrowserContextMenu.disableContextMenu();
+    _holdBrowserMenu(widget.contextMenu);
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_syncEditor);
-    if (kIsWeb && widget.contextMenu) BrowserContextMenu.enableContextMenu();
+    _holdBrowserMenu(false);
     _closeEditor(notify: false);
     _ownFocus?.dispose();
     _marquee.dispose();

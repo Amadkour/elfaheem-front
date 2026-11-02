@@ -48,7 +48,13 @@ class LayoutFlowController extends ChangeNotifier {
   /// Saves the downloaded file (the page passes the platform saver; tests capture it).
   final Future<void> Function(Uint8List bytes, String name, String mime)? saveFile;
   final Duration autosaveDelay;
-  final List<LayoutField> fields;
+
+  /// The fields the designer picks from: the app table's columns, replaced by the server dataset's own columns
+  /// (`GET /exports/datasets/{key}/columns`) when the page exports a dataset — the keys the server renders.
+  List<LayoutField> fields;
+
+  /// True once [fields] came from the server's dataset columns.
+  bool datasetFields = false;
 
   late LayoutDocument doc;
 
@@ -68,7 +74,8 @@ class LayoutFlowController extends ChangeNotifier {
     return null;
   }
 
-  LayoutDesign _starter(String mode, String l, {int perLine = 1}) => layoutStarter(mode: mode, lang: l, fields: fields, perLine: perLine);
+  LayoutDesign _starter(String mode, String l, {int perLine = 1, LayoutPage? page}) =>
+      layoutStarter(mode: mode, lang: l, fields: fields, perLine: perLine, page: page);
 
   @override
   void dispose() {
@@ -84,18 +91,29 @@ class LayoutFlowController extends ChangeNotifier {
 
   /// Call after every change of the document: repaints and autosaves the draft.
   void changed() {
-    _previewStale = true;
+    _gen++;
+    _dirty = true;
     _notify();
     _autosave?.cancel();
     _autosave = Timer(autosaveDelay, saveDraft);
   }
+
+  /// The document's version ([changed] bumps it) and, per language, the version its preview was rendered from:
+  /// a language's preview is stale when they differ (every language's goes stale on any change).
+  int _gen = 0;
+  final Map<String, int> _previewGen = {};
+  bool previewStale(String l) => previews[l] == null || _previewGen[l] != _gen;
+
+  /// True once the person changed something since the page opened / the last template load or export: only then
+  /// is a draft worth keeping.
+  bool _dirty = false;
 
   // ── steps ───────────────────────────────────────────────────────────────────────────────────────────────────
   void goTo(int s) {
     step = s.clamp(0, stepCount - 1);
     if (step > reached) reached = step;
     _notify();
-    if (step == stepCount - 1 && (_previewStale || preview == null)) unawaited(refreshPreview());
+    if (step == stepCount - 1 && previewStale(lang)) unawaited(refreshPreview());
   }
 
   void next() => goTo(step + 1);
@@ -126,24 +144,28 @@ class LayoutFlowController extends ChangeNotifier {
     if (!doc.languages.contains(l) || l == lang) return;
     lang = l;
     _notify();
-    if (step == stepCount - 1 && previews[l] == null) unawaited(refreshPreview());
+    if (step == stepCount - 1 && previewStale(l)) unawaited(refreshPreview());
   }
 
   /// List / Table / Custom ([perLine] cards per line): every language gets the starter's items part; its page,
   /// fixed parts, watermark and frame are kept.
   void pickMode(String mode, {int perLine = 1}) {
     for (final l in doc.languages) {
-      final s = _starter(mode, l, perLine: perLine);
       final d = doc.designs[l];
+      // built on the design's own page, so the items part fills its content width
+      final s = _starter(mode, l, perLine: perLine, page: d?.page);
       if (d == null) {
         doc.designs[l] = s;
         continue;
+      }
+      if (mode == 'table' && d.page.orientation != s.page.orientation) {
+        // a wide table turns the page: the fixed parts follow the new width
+        layoutSetPage(d, (p) => p.orientation = s.page.orientation);
       }
       d.mode = s.mode;
       d.list = s.list;
       d.table = s.table;
       d.row = s.row;
-      if (mode == 'table') d.page.orientation = s.page.orientation;
       // the row's ids must not clash with the bands'
       for (final e in d.row.elements) {
         e.id = '${e.id}r';
@@ -161,8 +183,13 @@ class LayoutFlowController extends ChangeNotifier {
   }
 
   // ── the items the row preview browses ──────────────────────────────────────────────────────────────────────
+  /// The table's rows as the server gets them ([layoutRowValue]: wall-clock dates, status labels in [valueLang]), so
+  /// the row preview prints and rules exactly as the file.
   List<Map<String, Object?>> get items {
-    final rows = export.rows;
+    final l = valueLang;
+    final rows = [
+      for (final r in export.rows) {for (final e in r.entries) e.key: layoutRowValue(fieldOf(e.key), e.value, l)},
+    ];
     final sort = design.sort;
     if (sort.isEmpty) return rows;
     final s = List.of(rows);
@@ -216,15 +243,56 @@ class LayoutFlowController extends ChangeNotifier {
     }
   }
 
+  // ── the dataset's own columns ─────────────────────────────────────────────────────────────────────────────
+  /// For a dataset source, the server's columns become the fields (their keys are what the server renders). A
+  /// design made before they arrived (the starter) is rebuilt on them; a restored draft / template keeps its
+  /// design when every field it reads is still there. Older servers (no route) / errors keep the table's columns.
+  Future<void> loadDatasetFields() async {
+    final ds = export.serverDataset;
+    if (ds == null || ds.isEmpty) return;
+    final r = await api.datasetColumns(ds, {...?export.serverParams});
+    if (!r.ok || r.data!.isEmpty || _disposed) return;
+    final next = layoutFieldsOfDataset(r.data!, fields);
+    if (next.isEmpty) return;
+    final keys = {for (final f in next) f.key};
+    fields = next;
+    datasetFields = true;
+    for (final l in doc.languages) {
+      final d = doc.designs[l];
+      if (d == null) continue;
+      if (_starterDoc && !_dirty) {
+        // still the untouched starter: rebuild it on the server's fields
+        final s = _starter(d.mode, l, perLine: d.row.perLine, page: d.page);
+        d.list = s.list;
+        d.table = s.table;
+        d.row = s.row;
+      } else if (!layoutReferencedFields(d).every(keys.contains)) {
+        _datasetMismatch = true;
+      }
+    }
+    _gen++;
+    _notify();
+  }
+
+  /// True while the document is still the page's starter (no draft, template or earlier export applied).
+  bool _starterDoc = true;
+
+  /// A restored draft / template reads a field the dataset does not have (the server prints it empty).
+  bool _datasetMismatch = false;
+  bool get datasetMismatch => _datasetMismatch;
+
   // ── draft + remembered template ────────────────────────────────────────────────────────────────────────────
   Timer? _autosave;
   String get _draftKey => 'export_layout.v3.draft.$pageKey';
   String get _lastKey => 'export_layout.v3.last_tpl.$pageKey';
+  String get _lastDocKey => 'export_layout.v3.last_doc.$pageKey';
 
   /// True when [init] restored a draft.
   bool restoredDraft = false;
 
+  /// Keeps the draft — only once the person changed something (opening the page and leaving saves nothing).
   Future<void> saveDraft() async {
+    if (!_dirty) return;
     try {
       final p = await SharedPreferences.getInstance();
       await p.setString(_draftKey, jsonEncode({'doc': doc.toJson(withSource: false), 'template_id': templateId}));
@@ -248,23 +316,42 @@ class LayoutFlowController extends ChangeNotifier {
     }
   }
 
-  /// Restores the draft of this page (or opens the last template used on it), then loads templates and fonts.
+  LayoutDocument? _usable(Object? d) {
+    if (d is! Map) return null;
+    try {
+      final x = LayoutDocument.fromJson(d.map((k, v) => MapEntry('$k', v)));
+      return x.languages.isNotEmpty && x.languages.every((l) => x.designs[l] != null) ? x : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Restores the draft of this page (unsaved changes, with a notice), else opens the last template used on it, else
+  /// the design of the last export from it; then loads the dataset's columns, templates and fonts.
   Future<void> init() async {
     final draft = await _read(_draftKey);
-    final d = draft?['doc'];
-    if (d is Map) {
-      try {
-        final restored = LayoutDocument.fromJson(d.map((k, v) => MapEntry('$k', v)));
-        if (restored.languages.isNotEmpty && restored.languages.every((l) => restored.designs[l] != null)) {
-          doc = restored;
-          lang = doc.languages.contains(lang) ? lang : doc.languages.first;
-          templateId = draft?['template_id'] is num ? (draft!['template_id'] as num).toInt() : null;
-          restoredDraft = true;
-        }
-      } catch (_) {}
+    final restored = _usable(draft?['doc']);
+    if (restored != null) {
+      doc = restored;
+      lang = doc.languages.contains(lang) ? lang : doc.languages.first;
+      templateId = draft?['template_id'] is num ? (draft!['template_id'] as num).toInt() : null;
+      restoredDraft = true;
+      _starterDoc = false;
+      _dirty = true;
     }
     _notify();
     await Future.wait([loadTemplates(applyLast: !restoredDraft), loadFonts()]);
+    if (!restoredDraft && templateId == null) {
+      final last = _usable((await _read(_lastDocKey))?['doc']);
+      if (last != null && !_dirty) {
+        doc = last;
+        lang = doc.languages.contains(lang) ? lang : doc.languages.first;
+        _starterDoc = false;
+        _gen++;
+        _notify();
+      }
+    }
+    await loadDatasetFields();
   }
 
   // ── templates ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -289,7 +376,8 @@ class LayoutFlowController extends ChangeNotifier {
     _notify();
     if (applyLast) {
       final last = await _read(_lastKey);
-      final id = last?['id'] is num ? (last!['id'] as num).toInt() : r.data!.$2;
+      // the page's own memory wins (null after an export made without a template), else the server's last used
+      final id = last != null ? (last['id'] is num ? (last['id'] as num).toInt() : null) : r.data!.$2;
       if (id != null && templates.any((t) => t.id == id)) await loadTemplate(id, quiet: true);
     }
   }
@@ -306,6 +394,7 @@ class LayoutFlowController extends ChangeNotifier {
     doc = d;
     lang = doc.languages.contains(lang) ? lang : doc.languages.first;
     templateId = id;
+    _starterDoc = false;
     api.markUsed(id);
     try {
       await (await SharedPreferences.getInstance()).setString(_lastKey, jsonEncode({'id': id}));
@@ -314,7 +403,17 @@ class LayoutFlowController extends ChangeNotifier {
       // a template is a finished design: show it
       reached = stepCount - 1;
     }
-    changed();
+    // the template IS the saved state: no draft until the next edit (else "your draft is back" on every visit and
+    // the last template would never open again)
+    _gen++;
+    _autosave?.cancel();
+    _dirty = false;
+    restoredDraft = false;
+    await discardDraft();
+    if (fields.isNotEmpty && datasetFields && !doc.designs.values.every((x) => layoutReferencedFields(x).every((k) => fieldOf(k) != null))) {
+      _datasetMismatch = true;
+    }
+    _notify();
     return null;
   }
 
@@ -333,7 +432,11 @@ class LayoutFlowController extends ChangeNotifier {
   }
 
   // ── source ──────────────────────────────────────────────────────────────────────────────────────────────────
-  String? _uploadId;
+  String? _uploadId, _uploadLang;
+
+  /// The language the uploaded values (status labels) are written in: the document's first language (one upload
+  /// serves both files of a two-language export).
+  String get valueLang => doc.languages.isEmpty ? lang : doc.languages.first;
 
   /// The document's source: the page's dataset, else the table's rows uploaded once per page visit.
   Future<String?> ensureSource() async {
@@ -342,11 +445,13 @@ class LayoutFlowController extends ChangeNotifier {
       doc.source = {'dataset': ds, 'params': {...?export.serverParams}};
       return null;
     }
-    if (_uploadId == null) {
-      final r = await api.uploadRows(fields, export.rows);
+    final l = valueLang;
+    if (_uploadId == null || _uploadLang != l) {
+      final r = await api.uploadRows(fields, export.rows, lang: l);
       if (!r.ok) return r.error;
       if (r.data!.isEmpty) return AppConfig.lang == 'ar' ? 'تعذّر رفع الصفوف' : 'Could not upload the rows';
       _uploadId = r.data;
+      _uploadLang = l;
     }
     doc.source = {'rows_upload': _uploadId};
     return null;
@@ -354,7 +459,7 @@ class LayoutFlowController extends ChangeNotifier {
 
   // ── preview ─────────────────────────────────────────────────────────────────────────────────────────────────
   final Map<String, LayoutPreview?> previews = {};
-  bool previewLoading = false, previewMissing = false, _previewStale = true;
+  bool previewLoading = false, previewMissing = false;
   String? previewError;
   int previewPage = 0;
 
@@ -369,7 +474,17 @@ class LayoutFlowController extends ChangeNotifier {
   List<LayoutIssue> get issues {
     final seen = <String>{};
     return [
-      for (final i in [...?preview?.issues, ...layoutLocalIssues(design, doc.format)])
+      for (final i in [
+        ...?preview?.issues,
+        ...layoutLocalIssues(design, doc.format),
+        if (_datasetMismatch)
+          const LayoutIssue(
+            code: 'dataset_fields_missing',
+            severity: 'warning',
+            messageAr: 'يستخدم هذا التصميم حقولًا غير موجودة في بيانات هذه الصفحة: ستظهر فارغة',
+            messageEn: "This design uses fields this page's data does not have: they print empty",
+          ),
+      ])
         if (seen.add(i.key)) i,
     ];
   }
@@ -378,7 +493,7 @@ class LayoutFlowController extends ChangeNotifier {
     previewLoading = true;
     previewError = null;
     _notify();
-    final l = lang;
+    final l = lang, gen = _gen;
     final err = await ensureSource();
     if (err != null) {
       previewLoading = false;
@@ -391,7 +506,7 @@ class LayoutFlowController extends ChangeNotifier {
     if (r.ok) {
       previews[l] = r.data;
       previewPage = 0;
-      _previewStale = false;
+      _previewGen[l] = gen;
     } else {
       previewMissing = r.missing;
       previewError = r.error;
@@ -429,8 +544,9 @@ class LayoutFlowController extends ChangeNotifier {
     _notify();
     final err = await ensureSource();
     if (err != null) return _fail(err);
-    doc.name = fileName;
-    final started = await api.startRun(doc, name: fileName);
+    final title = titleIn(valueLang);
+    doc.name = title;
+    final started = await api.startRun(layoutWithTitles(doc, titleIn), name: title);
     if (!started.ok || started.data!.isEmpty) return _fail(started.error ?? '');
     if (phase == LayoutRunPhase.cancelled) {
       unawaited(api.cancel(started.data!));
@@ -479,7 +595,21 @@ class LayoutFlowController extends ChangeNotifier {
     phase = LayoutRunPhase.done;
     _notify();
     if (templateId != null) api.markUsed(templateId!);
+    await _exported();
     return true;
+  }
+
+  /// After a saved file: the design is remembered as this page's last export (opened next time when no template is)
+  /// and the draft goes — nothing is lost, and the "draft is back" notice no longer shows on every visit.
+  Future<void> _exported() async {
+    _autosave?.cancel();
+    _dirty = false;
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_lastDocKey, jsonEncode({'doc': doc.toJson(withSource: false)}));
+      await p.setString(_lastKey, jsonEncode({'id': templateId}));
+    } catch (_) {}
+    await discardDraft();
   }
 
   Future<void> cancelRun() async {

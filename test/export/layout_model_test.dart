@@ -175,7 +175,8 @@ void main() {
     test('first match wins, else when none matches', () {
       expect(layoutResolve(score, {'score': 95}).text, 'Top');
       final mid = layoutResolve(score, {'score': 75.25});
-      expect(mid.text, '75.3 pts');
+      // as the server's f"{n:,.1f}": 75.25 is exact in binary, the tie goes to the even digit
+      expect(mid.text, '75.2 pts');
       expect(layoutFormat(1234.56, LayoutBind(field: 'x', format: 'number', decimals: 1)), '1,234.6');
       expect(mid.color, '#0B5394');
       expect(mid.ruleIndex, 1);
@@ -210,7 +211,8 @@ void main() {
       expect(layoutResolve(cat, {'a': 'x', 'b': 'y'}).text, 'x - y');
       expect(layoutFormat(null, LayoutBind(field: 'x')), '—');
       expect(layoutFormat('2026-11-01T10:05:00Z', LayoutBind(field: 'x', format: 'date')), '2026-11-01');
-      expect(layoutFormat(0.5, LayoutBind(field: 'x', format: 'percent')), '0.5%');
+      // no decimals set = the server's 2
+      expect(layoutFormat(0.5, LayoutBind(field: 'x', format: 'percent')), '0.50%');
       expect(layoutFormat(1500, LayoutBind(field: 'x', format: 'currency', currency: 'EGP')), '1,500.00 EGP');
       expect(layoutFormat('ali hassan', LayoutBind(field: 'x', format: 'title')), 'Ali Hassan');
       const st = LayoutField(key: 's', labelAr: '', labelEn: '', type: 'status', statusLabels: {'en': {'paid': 'Paid'}});

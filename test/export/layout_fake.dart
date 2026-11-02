@@ -111,6 +111,20 @@ class LayoutFakeServer {
           (posted['rows'] ??= []).add(_body(o.data));
           return const {'upload_id': 'up1'};
         },
+        'GET /api/v1/exports/datasets/course.students/columns': (o) {
+          (posted['columns'] ??= []).add(o.uri.queryParameters);
+          return {
+            'key': 'course.students',
+            'title_ar': 'طلاب المقرر',
+            'title_en': 'Course students',
+            'columns': [
+              {'key': 'name', 'label_ar': 'الاسم', 'label_en': 'Name', 'type': 'text'},
+              {'key': 'username', 'label_ar': 'اسم المستخدم', 'label_en': 'Username', 'type': 'text'},
+              {'key': 'status', 'label_ar': 'الحالة', 'label_en': 'Status', 'type': 'text'},
+              {'key': 'progress', 'label_ar': 'التقدم', 'label_en': 'Progress', 'type': 'percent'},
+            ],
+          };
+        },
         'POST /api/v1/exports/layout/assets': (_) => const {'asset_id': 'a1'},
         'POST /api/v1/exports/layout/validate': (_) => const {'ok': true, 'issues': []},
         'POST /api/v1/exports/layout/preview': (o) {

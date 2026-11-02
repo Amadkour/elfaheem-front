@@ -8,9 +8,11 @@
 //                           selection: docked at the side on wide screens, a non-blocking panel under the canvas on
 //                           narrower ones (the engine's StudioDockPanel). Double click / long-press on a static text
 //                           edits it in place on the canvas (the engine's inline editor, one undo step); on a bound
-//                           field it opens the field picker. Right click: the engine's context menu (lock included).
+//                           field it focuses the field picker inside the docked panel (no sheet over the canvas).
+//                           Right click: the engine's context menu (lock included).
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -22,6 +24,9 @@ import '../studio/studio.dart';
 import 'layout_element_view.dart';
 import 'layout_model.dart';
 import 'layout_props.dart';
+
+/// The width of the docked properties panel beside the canvas.
+const double kLayoutDockWidth = 340;
 
 class LayoutElementsAdapter implements StudioAdapter<LayoutElement>, StudioLockAdapter {
   LayoutElementsAdapter(this.elements, {required this.newId});
@@ -129,6 +134,7 @@ class LayoutCanvasEditor extends StatefulWidget {
     required this.height,
     required this.rtl,
     required this.pageFont,
+    this.pageFontSize = 10,
     required this.lang,
     required this.fields,
     required this.addOptions,
@@ -149,6 +155,9 @@ class LayoutCanvasEditor extends StatefulWidget {
   final double width, height;
   final bool rtl;
   final String pageFont, lang;
+
+  /// The page's text size (pt): elements without their own size.
+  final double pageFontSize;
   final List<LayoutFieldOption> fields;
   final List<LayoutAddOption> addOptions;
   final String Function() newId;
@@ -171,6 +180,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
   late StudioController<LayoutElement> _ctl;
   String _sig = '';
   final _dockOpen = ValueNotifier<bool>(false);
+  final _fieldFocus = FocusNode(debugLabel: 'layout-field-picker');
 
   StudioPage get _page => StudioPage(widget.width, widget.height, unitPx: kMmPx);
 
@@ -237,6 +247,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
       ..removeListener(_onCtl)
       ..dispose();
     _dockOpen.dispose();
+    _fieldFocus.dispose();
     super.dispose();
   }
 
@@ -265,7 +276,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
     final e = item.payload;
     final s = e.style;
     return StudioInlineStyle(
-      style: layoutTextStyle(e, widget.pageFont, scale, layoutColor(s.color, const Color(0xFF1A1A1A))!),
+      style: layoutTextStyle(e, widget.pageFont, scale, layoutColor(s.color, const Color(0xFF1A1A1A))!, pageFontSize: widget.pageFontSize),
       textAlign: switch (s.align) {
         'center' => TextAlign.center,
         'end' => TextAlign.end,
@@ -278,36 +289,21 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
     );
   }
 
-  /// Double click on an element without in-place text: a bound field picks its field; on a phone-width editor the
-  /// docked properties open.
-  Future<void> _doubleTap(String id) async {
+  /// Double click on an element without in-place text: its properties (the docked panel opens on a phone-width
+  /// editor); on a bound field the inline field picker in that panel takes the focus — no sheet over the canvas.
+  void _doubleTap(String id) {
     final e = _ctl.itemById(id)?.payload;
     if (e == null || e.locked) return;
-    if (e.bind == null || e.computed != null) {
-      if (!widget.wide) _dockOpen.value = true;
-      return;
-    }
-    final picked = await showAppSheet<String>(
-      context,
-      (ctx) => SafeArea(
-        child: ListView(shrinkWrap: true, children: [
-          AppSheetHeader(t('اختر الحقل', 'Pick the field')),
-          for (final f in widget.fields)
-            ListTile(
-              minTileHeight: AppTouch.min,
-              title: Text(f.label),
-              trailing: f.key == e.bind!.field ? Icon(Icons.check_rounded, color: ctx.colors.primary) : null,
-              onTap: () => Navigator.of(ctx).pop(f.key),
-            ),
-        ]),
-      ),
-    );
-    if (picked != null) {
-      _ctl.record('field', () {
-        e.bind!.field = picked;
-        e.name = widget.fields.firstWhere((f) => f.key == picked).label;
-      });
-    }
+    if (_ctl.single?.id != id) _ctl.select(id);
+    if (!widget.wide) _dockOpen.value = true;
+    if (e.bind == null || e.computed != null) return;
+    // the panel is (re)built for this element on the next frame: focus its picker then
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _fieldFocus.requestFocus();
+      final at = _fieldFocus.context;
+      if (at != null && at.mounted) unawaited(Scrollable.ensureVisible(at, alignment: .2, duration: AppMotion.of(context).base));
+    });
   }
 
   Widget _addMenu(BuildContext context) => PopupMenuButton<LayoutAddOption>(
@@ -356,6 +352,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
             scale: StudioCanvas.scaleOf(context),
             rtl: widget.rtl,
             pageFont: widget.pageFont,
+            pageFontSize: widget.pageFontSize,
             lang: widget.lang,
             vars: widget.vars,
             fieldOf: widget.fieldOf,
@@ -372,6 +369,8 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
             element: sel,
             fields: widget.fields,
             upload: widget.upload,
+            pageFontSize: widget.pageFontSize,
+            fieldFocus: _fieldFocus,
             onClose: () => _ctl.clearSelection(),
           );
     final toolbar = StudioToolbar(controller: _ctl, leading: [_addMenu(context)]);
@@ -387,7 +386,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Expanded(child: canvas),
             const SizedBox(width: AppSpace.sm),
-            SizedBox(width: 340, child: panel),
+            SizedBox(width: kLayoutDockWidth, child: panel),
           ]),
         ),
       ]);

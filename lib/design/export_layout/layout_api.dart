@@ -190,24 +190,24 @@ class LayoutApi {
       );
 
   /// `POST /rows` — an app table with no server dataset: its columns (key, labels, type) and rows. → upload id.
-  Future<ExportResult<String>> uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows) => _call(
+  /// The values are what the table shows in [lang] ([layoutJsonRow]: wall-clock dates, status labels).
+  Future<ExportResult<String>> uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows, {String lang = 'ar'}) => _call(
         () => api.post('$_base/rows', body: {
           'columns': [for (final f in fields) f.toJson()],
-          'rows': [for (final r in rows) _jsonRow(r, fields)],
+          'rows': [for (final r in rows) layoutJsonRow(r, fields, lang)],
         }),
         (r) => '${_map(r)['upload_id'] ?? ''}',
       );
 
-  static Map<String, Object?> _jsonRow(Map<String, Object?> r, List<LayoutField> fields) => {
-        for (final f in fields)
-          f.key: switch (r[f.key]) {
-            final DateTime d => d.toUtc().toIso8601String(),
-            final num n => n,
-            final bool b => b,
-            null => null,
-            final v => '$v',
-          },
-      };
+  /// `GET /api/v1/exports/datasets/{key}/columns` — the dataset's columns the caller may see with [params]
+  /// (`{key, label_ar, label_en, type}`): the field keys the server renders for a dataset source.
+  Future<ExportResult<List<Map<String, dynamic>>>> datasetColumns(String key, Map<String, Object?> params) => _call(
+        () => api.get('/api/v1/exports/datasets/${Uri.encodeComponent(key)}/columns', queryParams: {
+          for (final e in params.entries)
+            if (e.value != null) e.key: e.value is List ? (e.value as List).join(',') : '${e.value}',
+        }),
+        (r) => _maps(_map(r)['columns']),
+      );
 
   /// `POST /assets` — an image (PNG / JPEG ≤ 2 MB). → asset id.
   Future<ExportResult<String>> uploadAsset(Uint8List bytes, String name) => _call(
@@ -263,6 +263,19 @@ class LayoutApi {
   void markUsed(int id) => unawaited(_call(() => api.post('$_templates/$id/used', body: const {}), (_) => true));
 }
 
+/// One uploaded row as JSON: [layoutRowValue] per field (dates as the wall clock without an offset, a status as its
+/// label in [lang]); a value that is still a DateTime (not a date field) is sent as its wall clock too.
+Map<String, Object?> layoutJsonRow(Map<String, Object?> r, List<LayoutField> fields, String lang) => {
+      for (final f in fields)
+        f.key: switch (layoutRowValue(f, r[f.key], lang)) {
+          final DateTime d => layoutRowValue(LayoutField(key: f.key, labelAr: '', labelEn: '', type: 'datetime'), d, lang),
+          final num n => n,
+          final bool b => b,
+          null => null,
+          final v => '$v',
+        },
+    };
+
 /// Bilingual text for the layout routes' error codes.
 String layoutErrorText(String? code, [String? fallback]) => switch (code) {
       'rows_too_many' => tx('lay_err_rows_many', 'Too many rows for one export (50,000 at most)', 'عدد الصفوف أكبر من المسموح (50٬000 صف كحد أقصى)'),
@@ -308,7 +321,7 @@ class LayoutRunWatch {
   }
 
   Future<ExportResult<LayoutRun>> wait(void Function(LayoutRun run) onUpdate) async {
-    final w = _watch = JobWatch(id: runId, stream: _stream);
+    final w = _watch = JobWatch(id: runId, kind: 'export', stream: _stream);
     var failures = 0;
     try {
       while (!_stopped) {

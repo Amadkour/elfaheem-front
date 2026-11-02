@@ -41,6 +41,10 @@ const double kLayoutCanvasMin = 720;
 /// Wide enough to dock the properties at the side.
 const double kLayoutDockMin = 1000;
 
+/// Widths of the option controls (steppers, pickers) and the preview's side panel.
+const double kLayoutStepperWidth = 170, kLayoutPickWidth = 180, kLayoutLabelWidth = 150, kLayoutMarginWidth = 140;
+const double kLayoutSwitchWidth = 260, kLayoutPlacementWidth = 240, kLayoutPreviewSide = 380, kLayoutPreviewHeight = 460;
+
 List<LayoutFieldOption> layoutFieldOptions(LayoutFlowController f) =>
     [for (final x in f.fields) (key: x.key, label: x.label(f.lang), numeric: x.numeric)];
 
@@ -111,7 +115,7 @@ class LayoutChoiceCard extends StatelessWidget {
                 Expanded(child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark))),
                 if (selected) Icon(Icons.check_circle_rounded, size: 20, color: c.primary),
               ]),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpace.xxs),
               Text(hint, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
             ]),
           ),
@@ -398,6 +402,7 @@ class _LayoutItemsStepState extends State<LayoutItemsStep> {
                       height: row.height,
                       rtl: d.page.rtl,
                       pageFont: d.page.font,
+                      pageFontSize: d.page.fontSize,
                       lang: f.lang,
                       fields: layoutFieldOptions(f),
                       addOptions: layoutRowAddOptions(f),
@@ -501,6 +506,7 @@ class LayoutRowPreview extends StatelessWidget {
                   scale: s,
                   rtl: d.page.rtl,
                   pageFont: d.page.font,
+                  pageFontSize: d.page.fontSize,
                   item: items[k],
                   index: k + 1,
                   lang: f.lang,
@@ -809,9 +815,9 @@ class LayoutRowOptions extends StatelessWidget {
           ),
           const SizedBox(height: AppSpace.xs),
           Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [
-            SizedBox(width: 170, child: StudioStepper(label: t('ارتفاع البطاقة (مم)', 'Card height (mm)'), value: row.height, min: 4, max: 120, step: .5, decimals: 1, onChanged: (v) => set(() => row.height = v))),
+            SizedBox(width: kLayoutStepperWidth, child: StudioStepper(label: t('ارتفاع البطاقة (مم)', 'Card height (mm)'), value: row.height, min: 4, max: 120, step: .5, decimals: 1, onChanged: (v) => set(() => row.height = v))),
             if (row.perLine > 1)
-              SizedBox(width: 170, child: StudioStepper(label: t('المسافة بين البطاقات', 'Gap (mm)'), value: row.gap, min: 0, max: 20, step: .5, decimals: 1, onChanged: (v) => set(() => row.gap = v))),
+              SizedBox(width: kLayoutStepperWidth, child: StudioStepper(label: t('المسافة بين البطاقات', 'Gap (mm)'), value: row.gap, min: 0, max: 20, step: .5, decimals: 1, onChanged: (v) => set(() => row.gap = v))),
           ]),
           AppSwitchTile(title: t('ألوان متناوبة', 'Zebra rows'), value: row.zebra != null, onChanged: (v) => set(() => row.zebra = v ? '#F7F9FB' : null)),
           AppSwitchTile(title: t('خط فاصل بين الصفوف', 'Separator line'), value: row.separator != null, onChanged: (v) => set(() => row.separator = v ? LayoutBorder(width: .3, color: '#EAECF0') : null)),
@@ -872,7 +878,7 @@ class LayoutRowOptions extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                SizedBox(width: 180, child: fieldDrop(tot.field, t('الحقل', 'Field'), (v) => set(() => tot.field = v ?? tot.field))),
+                SizedBox(width: kLayoutPickWidth, child: fieldDrop(tot.field, t('الحقل', 'Field'), (v) => set(() => tot.field = v ?? tot.field))),
                 SizedBox(
                   width: 150,
                   child: AppDropdown<String>(
@@ -882,7 +888,7 @@ class LayoutRowOptions extends StatelessWidget {
                     onChanged: (v) => set(() => tot.fn = v ?? 'sum'),
                   ),
                 ),
-                SizedBox(width: 150, child: StudioTextProp(label: t('العنوان', 'Label'), value: tot.label, onChanged: (v) => set(() => tot.label = v))),
+                SizedBox(width: kLayoutLabelWidth, child: StudioTextProp(label: t('العنوان', 'Label'), value: tot.label, onChanged: (v) => set(() => tot.label = v))),
                 IconButton(tooltip: t('حذف', 'Remove'), onPressed: () => set(() => d.totals.remove(tot)), icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
               ]),
             ),
@@ -1010,7 +1016,7 @@ class _LayoutBandsStepState extends State<LayoutBandsStep> {
       const SizedBox(height: AppSpace.sm),
       Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
         SizedBox(
-          width: 260,
+          width: kLayoutSwitchWidth,
           child: AppSwitchTile(
             key: ValueKey('layout-band-on-${slot.key}'),
             title: t('إظهار هذا الجزء', 'Show this part'),
@@ -1024,7 +1030,7 @@ class _LayoutBandsStepState extends State<LayoutBandsStep> {
         ),
         if (enabled && slot.placements.isNotEmpty)
           SizedBox(
-            width: 240,
+            width: kLayoutPlacementWidth,
             child: AppDropdown<String>(
               value: slot.placements.contains(band.placement) ? band.placement : slot.placements.first,
               decoration: InputDecoration(labelText: t('أين يظهر', 'Where it shows'), isDense: true),
@@ -1072,6 +1078,7 @@ class _LayoutBandsStepState extends State<LayoutBandsStep> {
             height: band.height,
             rtl: d.page.rtl,
             pageFont: d.page.font,
+            pageFontSize: d.page.fontSize,
             lang: f.lang,
             fields: layoutFieldOptions(f),
             addOptions: layoutBandAddOptions(f),
@@ -1116,7 +1123,7 @@ class LayoutBandSimple extends StatelessWidget {
           final s = box.maxWidth / w;
           return Directionality(
             textDirection: TextDirection.ltr,
-            child: LayoutBoxView(elements: band.elements, width: w, height: band.height, scale: s, rtl: d.page.rtl, pageFont: d.page.font, lang: f.lang, vars: f.varsFor(f.lang), fieldOf: f.fieldOf, background: band.background),
+            child: LayoutBoxView(elements: band.elements, width: w, height: band.height, scale: s, rtl: d.page.rtl, pageFont: d.page.font, pageFontSize: d.page.fontSize, lang: f.lang, vars: f.varsFor(f.lang), fieldOf: f.fieldOf, background: band.background),
           );
         }),
       ),
@@ -1186,13 +1193,13 @@ class LayoutPageOptions extends StatelessWidget {
         StudioSegmented<String>(
           segments: [for (final s in LayoutPage.sizes.keys) StudioSegment(value: s, label: s)],
           value: p.size,
-          onChanged: (v) => set(() => p.size = v),
+          onChanged: (v) => set(() => layoutSetPage(d, (p) => p.size = v)),
         ),
         const SizedBox(height: AppSpace.xs),
         StudioSegmented<String>(
           segments: [StudioSegment(value: 'portrait', label: t('طولي', 'Portrait')), StudioSegment(value: 'landscape', label: t('عرضي', 'Landscape'))],
           value: p.orientation,
-          onChanged: (v) => set(() => p.orientation = v),
+          onChanged: (v) => set(() => layoutSetPage(d, (p) => p.orientation = v)),
         ),
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [
@@ -1202,7 +1209,7 @@ class LayoutPageOptions extends StatelessWidget {
             (t('يمين', 'Right'), () => p.margins.right, (double v) => p.margins.right = v),
             (t('يسار', 'Left'), () => p.margins.left, (double v) => p.margins.left = v),
           ])
-            SizedBox(width: 140, child: StudioStepper(label: '$label (mm)', value: get(), min: 0, max: 60, step: 1, onChanged: (v) => set(() => put(v)))),
+            SizedBox(width: kLayoutMarginWidth, child: StudioStepper(label: '$label (mm)', value: get(), min: 0, max: 60, step: 1, onChanged: (v) => set(() => layoutSetPage(d, (_) => put(v))))),
         ]),
       ]),
       LayoutSection(title: t('الخط', 'Font'), children: [
@@ -1251,11 +1258,11 @@ class LayoutPreviewStep extends StatelessWidget {
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(child: pages),
           const SizedBox(width: AppSpace.md),
-          SizedBox(width: 380, child: ListView(children: [side])),
+          SizedBox(width: kLayoutPreviewSide, child: ListView(children: [side])),
         ]),
       );
     }
-    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [SizedBox(height: 460, child: pages), const SizedBox(height: AppSpace.md), side]);
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [SizedBox(height: kLayoutPreviewHeight, child: pages), const SizedBox(height: AppSpace.md), side]);
   }
 }
 
@@ -1384,7 +1391,7 @@ class LayoutExportCard extends StatelessWidget {
       if (f.busy) ...[
         const SizedBox(height: AppSpace.sm),
         ClipRRect(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadius.chipAll,
           child: LinearProgressIndicator(value: phase == LayoutRunPhase.running ? progress : null, minHeight: 6, backgroundColor: c.divider, color: c.primary),
         ),
         const SizedBox(height: AppSpace.sm),

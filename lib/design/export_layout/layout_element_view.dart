@@ -47,16 +47,14 @@ Color? layoutColor(String? hex, [Color? fallback]) {
 
 String layoutHex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
-/// The icons a rule may put before its text (`then.icon`).
+/// The icons a rule may put before its text (`then.icon`) — exactly the server's set (model.py `ICONS`): it drops
+/// any other name, so the app neither offers nor draws one.
 const kLayoutRuleIcons = <String, IconData>{
   'check': Icons.check_circle_rounded,
-  'close': Icons.cancel_rounded,
-  'warning': Icons.warning_amber_rounded,
-  'info': Icons.info_rounded,
+  'x': Icons.cancel_rounded,
+  'dot': Icons.circle,
   'star': Icons.star_rounded,
-  'flag': Icons.flag_rounded,
-  'up': Icons.arrow_upward_rounded,
-  'down': Icons.arrow_downward_rounded,
+  'warning': Icons.warning_amber_rounded,
 };
 
 /// The sample variables the canvas and the row preview show (the server fills the real ones).
@@ -75,15 +73,16 @@ Map<String, String> layoutSampleVars({required String lang, String title = '', S
       'group': lang == 'ar' ? 'المجموعة' : 'Group',
     };
 
-/// The text style of [e] at [scale] screen px per mm: the design's font (the page's when the element has none), pt → mm.
-TextStyle layoutTextStyle(LayoutElement e, String pageFont, double scale, Color color) {
+/// The text style of [e] at [scale] screen px per mm: the design's font and size (the page's [pageFont] /
+/// [pageFontSize] when the element has none), pt → mm; [bold] = a rule's override of the weight.
+TextStyle layoutTextStyle(LayoutElement e, String pageFont, double scale, Color color, {double pageFontSize = 10, bool? bold}) {
   final s = e.style;
   final family = s.font ?? pageFont;
   return TextStyle(
     fontFamily: exportFlutterFont(family),
     fontFamilyFallback: exportFlutterFallback(family),
-    fontSize: (s.size * kPtMm * scale).clamp(1.0, 400.0),
-    fontWeight: s.bold ? FontWeight.w700 : FontWeight.w400,
+    fontSize: ((s.size ?? pageFontSize) * kPtMm * scale).clamp(1.0, 400.0),
+    fontWeight: (bold ?? s.bold) ? FontWeight.w700 : FontWeight.w400,
     fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
     color: color,
     height: 1.15,
@@ -98,6 +97,7 @@ class LayoutElementView extends StatelessWidget {
     required this.scale,
     required this.rtl,
     required this.pageFont,
+    this.pageFontSize = 10,
     this.item,
     this.index = 1,
     this.lang = 'en',
@@ -112,6 +112,9 @@ class LayoutElementView extends StatelessWidget {
   final double scale;
   final bool rtl;
   final String pageFont;
+
+  /// The page's text size (pt): an element with no size of its own.
+  final double pageFontSize;
 
   /// The item to show; null = the design view (a bound field shows its name in brackets).
   final Map<String, Object?>? item;
@@ -180,7 +183,7 @@ class LayoutElementView extends StatelessWidget {
     return Opacity(opacity: r.show ? 1 : .25, child: child);
   }
 
-  TextStyle _style(Color color) => layoutTextStyle(element, pageFont, scale, color);
+  TextStyle _style(Color color, [bool? bold]) => layoutTextStyle(element, pageFont, scale, color, pageFontSize: pageFontSize, bold: bold);
 
   Widget _text(LayoutResolved r, Color color) {
     final s = element.style;
@@ -201,7 +204,7 @@ class LayoutElementView extends StatelessWidget {
       'bottom' => 1.0,
       _ => 0.0,
     };
-    final style = _style(color);
+    final style = _style(color, r.bold);
     final icon = kLayoutRuleIcons[r.icon];
     final text = Text(
       r.text,
@@ -255,7 +258,7 @@ class LayoutElementView extends StatelessWidget {
             ),
           );
     if (e.kind != 'signature') return picture;
-    final small = _style(color).copyWith(fontSize: (e.style.size * .9 * kPtMm * scale).clamp(1.0, 200.0));
+    final small = _style(color).copyWith(fontSize: ((e.style.size ?? pageFontSize) * .9 * kPtMm * scale).clamp(1.0, 200.0));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Expanded(child: picture),
       if ((e.sigName ?? '').isNotEmpty) Text(layoutFillVars(e.sigName!, vars), style: small.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip),
@@ -274,6 +277,7 @@ class LayoutBoxView extends StatelessWidget {
     required this.scale,
     required this.rtl,
     required this.pageFont,
+    this.pageFontSize = 10,
     this.item,
     this.index = 1,
     this.lang = 'en',
@@ -291,6 +295,7 @@ class LayoutBoxView extends StatelessWidget {
   final double scale;
   final bool rtl;
   final String pageFont;
+  final double pageFontSize;
   final Map<String, Object?>? item;
   final int index;
   final String lang;
@@ -326,6 +331,7 @@ class LayoutBoxView extends StatelessWidget {
                 scale: scale,
                 rtl: rtl,
                 pageFont: pageFont,
+                pageFontSize: pageFontSize,
                 item: item,
                 index: index,
                 lang: lang,

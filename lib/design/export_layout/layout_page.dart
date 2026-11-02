@@ -78,6 +78,9 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
   );
   bool _ready = false;
 
+  @visibleForTesting
+  LayoutFlowController get flow => _flow;
+
   @override
   void initState() {
     super.initState();
@@ -240,8 +243,29 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
     );
   }
 
+  /// Leaving while the file is being made: ask first; leaving cancels the export (nothing else could download it).
+  Future<void> _leaveWhileBusy() async {
+    final ok = await appConfirm(
+      context,
+      message: t('الملف قيد الإنشاء. هل تريد إلغاء التصدير والخروج؟', 'The file is still being made. Cancel the export and leave?'),
+      confirmLabel: t('إلغاء التصدير والخروج', 'Cancel and leave'),
+      danger: true,
+    );
+    if (!ok || !mounted) return;
+    unawaited(_flow.cancelRun());
+    Navigator.of(context).pop();
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PopScope(
+        canPop: !_flow.busy,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) unawaited(_leaveWhileBusy());
+        },
+        child: _page(context),
+      );
+
+  Widget _page(BuildContext context) {
     final c = context.colors;
     return BasePage(
       appBar: ScreenAppBar(

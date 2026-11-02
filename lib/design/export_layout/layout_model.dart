@@ -67,7 +67,7 @@ class LayoutBorder {
 class LayoutStyle {
   LayoutStyle({
     this.font,
-    this.size = 10,
+    this.size,
     this.weight = 400,
     this.italic = false,
     this.color = '#1A1A1A',
@@ -85,7 +85,9 @@ class LayoutStyle {
 
   /// null = the page font.
   String? font;
-  double size;
+
+  /// pt; null = the page's font size (left out of the JSON: the server then uses `page.font_size`).
+  double? size;
 
   /// 400 | 700
   int weight;
@@ -119,7 +121,8 @@ class LayoutStyle {
 
   factory LayoutStyle.fromJson(Map<String, dynamic> j) => LayoutStyle(
         font: _s(j['font']),
-        size: _d(j['size'], 10),
+        // the server reads 0 / a missing size as "the page's"
+        size: j['size'] is num && (j['size'] as num) > 0 ? (j['size'] as num).toDouble() : null,
         weight: _i(j['weight'], 400),
         italic: _b(j['italic'], false),
         color: _s(j['color']) ?? '#1A1A1A',
@@ -138,7 +141,7 @@ class LayoutStyle {
   Map<String, dynamic> toJson() => {
         ...extra,
         'font': font,
-        'size': size,
+        if (size != null) 'size': size,
         'weight': weight,
         'italic': italic,
         'color': color,
@@ -274,6 +277,9 @@ class LayoutThen {
 
   static const _known = {'show', 'text', 'color', 'bg', 'icon', 'bold'};
 
+  /// The icon names older app versions wrote, as the server's names (check · x · dot · star · warning).
+  static const _legacyIcon = {'close': 'x', 'info': 'dot'};
+
   static LayoutThen? maybe(Object? v) => v is Map ? LayoutThen.fromJson(_map(v)) : null;
 
   factory LayoutThen.fromJson(Map<String, dynamic> j) => LayoutThen(
@@ -281,7 +287,7 @@ class LayoutThen {
         text: _s(j['text']),
         color: _s(j['color']),
         bg: _s(j['bg']),
-        icon: _s(j['icon']),
+        icon: _legacyIcon[_s(j['icon'])] ?? _s(j['icon']),
         bold: j['bold'] is bool ? j['bold'] as bool : null,
         extra: _extra(j, _known),
       );
@@ -930,13 +936,18 @@ class LayoutDesign {
 
   LayoutDesign copy() => LayoutDesign.fromJson(toJson());
 
-  /// A new element id not used anywhere in the design.
+  /// The ids [newId] handed out (not in the JSON): a paste / duplicate of several elements asks for all its ids
+  /// before any of them is added.
+  final Set<String> _issued = {};
+
+  /// A new element id not used anywhere in the design and never handed out before.
   String newId([String prefix = 'e']) {
-    final used = {for (final e in allElements) e.id};
+    final used = {for (final e in allElements) e.id, ..._issued};
     var i = used.length + 1;
     while (used.contains('$prefix$i')) {
       i++;
     }
+    _issued.add('$prefix$i');
     return '$prefix$i';
   }
 }
@@ -964,7 +975,7 @@ class LayoutDocument {
   /// {dataset, params} or {rows_upload}
   Map<String, dynamic> source;
 
-  /// The file name of a run (optional).
+  /// The title of a run (optional): the server prints it as {{title}} and names the file after it.
   String? name;
   final Map<String, dynamic> extra;
 

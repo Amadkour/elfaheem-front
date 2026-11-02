@@ -88,13 +88,19 @@ List<StudioPlaceholder> layoutVariableChips() => [
 typedef LayoutAssetUploader = Future<String?> Function(Uint8List bytes, String name);
 
 class LayoutElementProps extends StatelessWidget {
-  const LayoutElementProps({super.key, required this.ctl, required this.element, required this.fields, required this.upload, this.onClose});
+  const LayoutElementProps({super.key, required this.ctl, required this.element, required this.fields, required this.upload, this.onClose, this.pageFontSize = 10, this.fieldFocus});
 
   final StudioController<LayoutElement> ctl;
   final LayoutElement element;
   final List<LayoutFieldOption> fields;
   final LayoutAssetUploader upload;
   final VoidCallback? onClose;
+
+  /// The page's text size (pt): what an element without its own size shows.
+  final double pageFontSize;
+
+  /// Focused by a double click on a bound field on the canvas: the inline field picker.
+  final FocusNode? fieldFocus;
 
   void _edit(String label, VoidCallback mutate, {bool coalesce = false}) => ctl.record(label, mutate, coalesce: coalesce);
 
@@ -151,15 +157,6 @@ class LayoutElementProps extends StatelessWidget {
         'signature' => Icons.draw_rounded,
         _ => Icons.text_fields_rounded,
       };
-
-  Widget _fieldPicker(String? value, ValueChanged<String> onChanged, {String? label}) => AppDropdown<String>(
-        value: fields.any((f) => f.key == value) ? value : null,
-        decoration: InputDecoration(labelText: label ?? t('الحقل', 'Field'), isDense: true),
-        items: [for (final f in fields) DropdownMenuItem(value: f.key, child: Text(f.label, maxLines: 1, overflow: TextOverflow.ellipsis))],
-        onChanged: (v) {
-          if (v != null) onChanged(v);
-        },
-      );
 
   List<Widget> _content(BuildContext context) {
     final e = element;
@@ -226,10 +223,15 @@ class LayoutElementProps extends StatelessWidget {
         final b = e.bind ??= LayoutBind(field: fields.isEmpty ? '' : fields.first.key);
         final numeric = const {'number', 'integer', 'percent', 'currency'}.contains(b.format);
         return [
-          _fieldPicker(b.field, (v) => _edit('field', () {
-                b.field = v;
-                e.name = fields.firstWhere((f) => f.key == v).label;
-              })),
+          LayoutInlineFieldPicker(
+            fields: fields,
+            value: b.field,
+            focusNode: fieldFocus,
+            onChanged: (v) => _edit('field', () {
+              b.field = v;
+              e.name = fields.firstWhere((f) => f.key == v).label;
+            }),
+          ),
           AppDropdown<String>(
             value: b.format,
             decoration: InputDecoration(labelText: t('طريقة العرض', 'Show as'), isDense: true),
@@ -279,7 +281,7 @@ class LayoutElementProps extends StatelessWidget {
     final s = element.style;
     return [
       Row(children: [
-        Expanded(child: StudioStepper(label: t('الحجم (pt)', 'Size (pt)'), value: s.size, min: 4, max: 96, step: .5, decimals: 1, onChanged: (v) => _edit('size', () => s.size = v, coalesce: true))),
+        Expanded(child: StudioStepper(label: t('الحجم (pt)', 'Size (pt)'), value: s.size ?? pageFontSize, min: 4, max: 96, step: .5, decimals: 1, onChanged: (v) => _edit('size', () => s.size = v, coalesce: true))),
         const SizedBox(width: AppSpace.xs),
         Expanded(
           child: StudioWeightPicker(
@@ -289,6 +291,16 @@ class LayoutElementProps extends StatelessWidget {
           ),
         ),
       ]),
+      if (s.size != null)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            key: const ValueKey('layout-size-page'),
+            onPressed: () => _edit('size', () => s.size = null),
+            icon: const Icon(Icons.format_size_rounded, size: 18),
+            label: Text(t('حجم نص الصفحة', "The page's text size")),
+          ),
+        ),
       _color(t('لون النص', 'Text colour'), s.color, (v) => _edit('colour', () => s.color = v ?? '#1A1A1A')),
       _color(t('الخلفية', 'Background'), s.bg, (v) => _edit('background', () => s.bg = v), allowNone: true),
       StudioSegmented<String>(
@@ -556,7 +568,8 @@ class _ThenEditor extends StatelessWidget {
         StudioColorField(label: t('لون النص', 'Text colour'), value: layoutColor(th.color), allowNone: true, onChanged: (c) => edit('rule colour', () => th.color = c == null ? null : layoutHex(c))),
         StudioColorField(label: t('الخلفية', 'Background'), value: layoutColor(th.bg), allowNone: true, onChanged: (c) => edit('rule background', () => th.bg = c == null ? null : layoutHex(c))),
         AppDropdown<String>(
-          value: th.icon ?? '',
+          // a name the server does not know is dropped by it: show "None"
+          value: kLayoutRuleIcons.containsKey(th.icon) ? th.icon! : '',
           decoration: InputDecoration(labelText: t('أيقونة', 'Icon'), isDense: true),
           items: [
             DropdownMenuItem(value: '', child: Text(t('بدون', 'None'))),
@@ -571,13 +584,63 @@ class _ThenEditor extends StatelessWidget {
 
   static String _iconLabel(String k) => switch (k) {
         'check' => t('صح', 'Check'),
-        'close' => t('خطأ', 'Cross'),
-        'warning' => t('تنبيه', 'Warning'),
-        'info' => t('معلومة', 'Info'),
+        'x' => t('خطأ', 'Cross'),
+        'dot' => t('نقطة', 'Dot'),
         'star' => t('نجمة', 'Star'),
-        'flag' => t('علم', 'Flag'),
-        'up' => t('أعلى', 'Up'),
-        'down' => t('أسفل', 'Down'),
+        'warning' => t('تنبيه', 'Warning'),
         _ => k,
       };
+}
+
+/// The bound field, picked inline in the properties panel (never a sheet over the canvas): a filter once there are
+/// more than [searchFrom] fields, then the fields as chips. A double click on the field on the canvas focuses it
+/// ([focusNode]: the filter, else the current field's chip).
+class LayoutInlineFieldPicker extends StatefulWidget {
+  const LayoutInlineFieldPicker({super.key, required this.fields, required this.value, required this.onChanged, this.focusNode, this.searchFrom = 6});
+
+  final List<LayoutFieldOption> fields;
+  final String? value;
+  final ValueChanged<String> onChanged;
+  final FocusNode? focusNode;
+  final int searchFrom;
+
+  @override
+  State<LayoutInlineFieldPicker> createState() => _LayoutInlineFieldPickerState();
+}
+
+class _LayoutInlineFieldPickerState extends State<LayoutInlineFieldPicker> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final search = widget.fields.length > widget.searchFrom;
+    final q = _query.toLowerCase();
+    final shown = [for (final f in widget.fields) if (q.isEmpty || f.label.toLowerCase().contains(q) || f.key.toLowerCase().contains(q)) f];
+    final current = shown.any((f) => f.key == widget.value) ? widget.value : (shown.isEmpty ? null : shown.first.key);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(t('الحقل', 'Field'), style: appText(12.5, w: FontWeight.w600, c: c.textMedium)),
+      const SizedBox(height: AppSpace.xxs),
+      if (search) ...[
+        TextField(
+          key: const ValueKey('layout-field-search'),
+          focusNode: widget.focusNode,
+          decoration: InputDecoration(isDense: true, prefixIcon: const Icon(Icons.search_rounded), hintText: t('ابحث عن حقل', 'Find a field')),
+          onChanged: (v) => setState(() => _query = v.trim()),
+        ),
+        const SizedBox(height: AppSpace.xxs),
+      ],
+      Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+        for (final f in shown)
+          ChoiceChip(
+            key: ValueKey('layout-pick-field-${f.key}'),
+            focusNode: !search && f.key == current ? widget.focusNode : null,
+            label: Text(f.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            selected: f.key == widget.value,
+            onSelected: (_) => widget.onChanged(f.key),
+          ),
+      ]),
+      if (shown.isEmpty) Text(t('لا حقل بهذا الاسم', 'No field by that name'), style: appText(12.5, c: c.textMedium)),
+    ]);
+  }
 }

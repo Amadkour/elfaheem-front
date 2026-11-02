@@ -150,6 +150,13 @@ Filled in by the server where the contract above was silent; the app should foll
 - **Excel images:** bands may hold images (anchored to their merged cell); per-item images are dropped (`image_rows`).
 - **Assets:** the uploader owns them; a design naming an asset id renders it for whoever renders that design (the id
   is a random 128-bit token), so organization templates keep their logo.
-- **Documents may carry `name`** (the run's file name). Runs: status `canceled` added; `progress` 0-100.
+- **Documents may carry `name`**: the run's title — it is `{{title}}` and the file is named `<name> <yyyy-MM-dd>.<ext>`
+  (the app sends the page title, never a file name; a two-language export replaces `{{title}}` per design before
+  sending). Runs: status `canceled` added; `progress` 0-100. While a run renders and when it ends the owner gets
+  `job_updated{kind: "export", id, status, progress}` (stream only, about once a second): the page waits on it.
+- **Unlabelled fields**: a table column / Excel list header without a `label` prints the source column's label in the
+  design's language (the dataset's or the uploaded rows' `label_ar` / `label_en`).
+- **Uploaded rows** carry what the table shows: dates as the wall clock of the platform / organization timezone
+  (ISO, no offset), status codes as their labels in the document's first language.
 - Response shapes and codes: back `FLUTTER_API_CHANGES.md` ("Export layout v3").
 - **Limits:** 2 000 characters drawn per element (then …); ≤ 10 distinct images per document; Excel custom ≤ 400 000 ÷ elements-per-card items; preview sample ≤ 200 rows, 20 s; assets ≤ 16 MP, stored ≤ 2000 px, kept while a v3 template names them (else 30 days).

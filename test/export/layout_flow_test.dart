@@ -2,6 +2,7 @@
 // rule builder, the item browser, templates (save with schema_version 3, load in one click, v2 ones left out), the
 // background run (progress → download, cancel, failure), the rows source (upload vs dataset), the local draft, and
 // the kill switch falling back to the older flow.
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_table_export.dart';
 import 'package:flutter_education_app/design/export_hub/export_flow.dart' show ExportFlowSheet;
 import 'package:flutter_education_app/design/export_layout/layout_canvas.dart';
+import 'package:flutter_education_app/design/export_layout/layout_flow_controller.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_education_app/design/export_layout/layout_page.dart';
 import 'package:flutter_education_app/design/export_layout/layout_props.dart';
@@ -225,6 +227,89 @@ void main() {
     expect(server.posted['rows'], isNull);
     final prev = server.posted['preview']!.single as Map<String, dynamic>;
     expect((prev['document'] as Map)['source'], {'dataset': 'course.students', 'params': {'course_id': 7}});
+    await close(tester);
+  });
+
+  testWidgets("a dataset page designs with the server's own columns (GET /exports/datasets/{key}/columns)", (tester) async {
+    await open(tester, step: 1, export: layoutTestExport(dataset: 'course.students'));
+    await _until(tester, () => server.posted['columns'] != null);
+    expect(server.posted['columns']!.single, {'course_id': '7'});
+    final page = tester.state(find.byType(ExportLayoutPage)) as dynamic;
+    final flow = page.flow as LayoutFlowController;
+    expect(flow.datasetFields, isTrue);
+    expect([for (final f in flow.fields) f.key], ['name', 'username', 'status', 'progress']);
+    // the app's status labels stay with the matching key; the untouched starter is rebuilt on the server's keys
+    expect(flow.fieldOf('status')!.type, 'status');
+    final keys = {for (final c in flow.design.table.columns) c.field.field};
+    expect(keys.difference({'name', 'username', 'status', 'progress'}), isEmpty);
+    expect(keys, contains('name'));
+    await close(tester);
+  });
+
+  testWidgets('previews are stale per language: a change refreshes the other tab when it is opened again', (tester) async {
+    await open(tester, step: 4);
+    await _until(tester, () => server.posted['preview'] != null);
+    final page = tester.state(find.byType(ExportLayoutPage)) as dynamic;
+    final flow = page.flow as LayoutFlowController;
+    await _until(tester, () => !flow.previewLoading);
+    expect(flow.previewStale('en'), isFalse);
+    flow.setLanguages(['ar', 'en']);
+    expect(flow.previewStale('en'), isTrue, reason: 'the document changed after the en preview');
+    flow.setTab('ar');
+    await _until(tester, () => server.posted['preview']!.length >= 2 && !flow.previewLoading);
+    expect(flow.previewStale('ar'), isFalse);
+    expect(flow.previewStale('en'), isTrue);
+    final before = server.posted['preview']!.length;
+    flow.setTab('en');
+    await _until(tester, () => server.posted['preview']!.length > before && !flow.previewLoading);
+    expect(flow.previewStale('en'), isFalse);
+    flow.design.page.fontSize = 12;
+    flow.changed();
+    expect(flow.previewStale('ar'), isTrue);
+    expect(flow.previewStale('en'), isTrue);
+    await close(tester);
+  });
+
+  testWidgets('a run sends the title (not the file name) as the document name; the draft goes after the export', (tester) async {
+    await open(tester, step: 4);
+    await _until(tester, () => server.posted['preview'] != null);
+    final page = tester.state(find.byType(ExportLayoutPage)) as dynamic;
+    final flow = page.flow as LayoutFlowController;
+    flow.changed();
+    await tester.pump(const Duration(seconds: 1));
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('export_layout.v3.draft.test.students'), isNotNull);
+    await _tap(tester, find.byKey(const ValueKey('layout-run-start')));
+    await _until(tester, () => saved.isNotEmpty, step: const Duration(milliseconds: 500));
+    final run = server.posted['runs']!.single as Map<String, dynamic>;
+    expect(run['name'], 'Students');
+    expect((run['document'] as Map)['name'], 'Students');
+    expect(prefs.getString('export_layout.v3.draft.test.students'), isNull);
+    expect(prefs.getString('export_layout.v3.last_doc.test.students'), isNotNull);
+    await close(tester);
+    // the next visit: no "draft is back", the exported design is there
+    await open(tester);
+    expect(find.textContaining('draft'), findsNothing);
+    await close(tester);
+  });
+
+  testWidgets('opening the page and leaving saves no draft; a template load clears it', (tester) async {
+    await open(tester);
+    await close(tester);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('export_layout.v3.draft.test.students'), isNull);
+    await open(tester);
+    final page = tester.state(find.byType(ExportLayoutPage)) as dynamic;
+    final flow = page.flow as LayoutFlowController;
+    flow.changed();
+    await tester.pump(const Duration(seconds: 1));
+    expect(prefs.getString('export_layout.v3.draft.test.students'), isNotNull);
+    String? err = 'pending';
+    unawaited(flow.loadTemplate(5).then((e) => err = e));
+    await _until(tester, () => err != 'pending');
+    expect(err, isNull);
+    await tester.pump(const Duration(seconds: 1));
+    expect(prefs.getString('export_layout.v3.draft.test.students'), isNull);
     await close(tester);
   });
 
