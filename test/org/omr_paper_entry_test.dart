@@ -295,7 +295,7 @@ void main() {
       await _frames(tester, 8);
 
       expect(queries, ['']);
-      expect(fake.calls.last.query['limit'], '50');
+      expect(fake.calls.last.query['limit'], '200');
       for (final n in ['Mona Adel', 'Omar Adel', 'Sara Nabil', 'منى حسن']) {
         expect(find.text(n), findsOneWidget);
       }

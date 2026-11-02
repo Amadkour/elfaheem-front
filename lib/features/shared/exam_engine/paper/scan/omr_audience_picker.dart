@@ -16,8 +16,9 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import '../../../../admin/admin_common.dart' show t;
 import '../review/omr_review.dart' show OmrAudience, OmrReviewApi, OmrStudent, omrErrorText, omrLtr;
 
-/// The most students `GET …/omr/students` answers at once (services/omr_review.students caps `limit` at 50).
-const kOmrAudiencePage = 50;
+/// The most students `GET …/omr/students` answers at once (services/omr_review.students caps `limit` at 200, the
+/// most named sheets one print takes): a whole class is listed; a larger audience is told to search.
+const kOmrAudiencePage = 200;
 
 /// "12 students selected" with the Arabic forms.
 String omrSelectedText(int n) => countText(n,
