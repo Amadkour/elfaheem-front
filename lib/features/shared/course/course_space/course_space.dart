@@ -261,7 +261,7 @@ class CourseSpace extends StatelessWidget {
             active: active?.id ?? '',
             onTab: onTab,
             extent: CourseSpaceTabBar.heightFor(context, width: width, tabs: tabs),
-            background: context.colors.background,
+            background: context.colors.pinnedBackground,
           ),
         ),
       if (active != null)
