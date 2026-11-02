@@ -18,6 +18,7 @@ import 'exam_review.dart' show ExamReviewApi;
 import 'exam_review_screen.dart' show ExamReviewScreen;
 import 'exam_taking.dart' show examCodeText;
 import 'paper/paper_exam_entry.dart' show PaperExamEntry;
+import 'paper/review/omr_review.dart' show omrLtr;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
@@ -196,7 +197,8 @@ class ResultRowCard extends StatelessWidget {
               if (row.needsReview) AppBadgePill(t('ينتظر التصحيح', 'Waiting for marking'), color: c.warning)
               else if (!row.finished) AppBadgePill(t('لم يسلّم', 'Not submitted'), color: c.textLight),
               if (row.score != null && row.maxScore != null)
-                Text('${fmtPoints(row.score!)} / ${fmtPoints(row.maxScore!)}', style: appText(12.5, c: c.textMedium)),
+                // one left-to-right run: in Arabic a bare "2 / 3" is drawn "3 / 2"
+                Text(omrLtr('${fmtPoints(row.score!)} / ${fmtPoints(row.maxScore!)}'), style: appText(12.5, c: c.textMedium)),
             ]),
           ]),
         ),
@@ -277,10 +279,9 @@ class _AttemptAnswersSheetState extends State<AttemptAnswersSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final items = _items;
-    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppSheetHeader(widget.title),
+    return AppSheetContent(title: widget.title, children: [
       if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
-      if (items == null && _error == null) const AppListSkeleton(items: 3, withAvatar: false),
+      if (items == null && _error == null) const AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.zero),
       if (items != null && items.isEmpty) AppEmpty(icon: Icons.inbox_outlined, title: t('لا توجد إجابات', 'No answers')),
       for (final it in items ?? const <Map<String, dynamic>>[])
         Padding(
@@ -320,8 +321,12 @@ class AnswerGradeCard extends StatelessWidget {
           Expanded(
             child: Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
               Text(
-                finalScore != null ? '${fmtPoints(finalScore)} / ${fmtPoints(pts)}' : (proposal != null ? t('مقترح ${fmtPoints(proposal)} / ${fmtPoints(pts)}', 'Suggested ${fmtPoints(proposal)} / ${fmtPoints(pts)}') : '— / ${fmtPoints(pts)}'),
-                style: appText(13.5, w: FontWeight.w800, c: finalScore != null ? c.primary : c.textMedium),
+                finalScore != null
+                    ? omrLtr('${fmtPoints(finalScore)} / ${fmtPoints(pts)}')
+                    : (proposal != null
+                        ? t('مقترح ${omrLtr('${fmtPoints(proposal)} / ${fmtPoints(pts)}')}', 'Suggested ${fmtPoints(proposal)} / ${fmtPoints(pts)}')
+                        : omrLtr('— / ${fmtPoints(pts)}')),
+                style: appText(13.5, w: FontWeight.w800, c: finalScore != null ? appInk(context, c.primary) : c.textMedium),
               ),
               if (waiting) AppBadgePill(t('ينتظر', 'Waiting'), color: c.warning),
             ]),
@@ -383,8 +388,7 @@ class _OfflineMarksSheetState extends State<OfflineMarksSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final students = widget.students.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
-    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppSheetHeader(t('إدخال الدرجات', 'Enter marks')),
+    return AppSheetContent(title: t('إدخال الدرجات', 'Enter marks'), children: [
       for (final s in students)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),

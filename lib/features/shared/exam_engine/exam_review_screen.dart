@@ -118,9 +118,11 @@ class ReviewAnswerCard extends StatelessWidget {
             item.proposedScore == null
                 ? t('الدرجة من ${_pts(item.points)}', 'Score out of ${_pts(item.points)}')
                 : t('الاقتراح ${_pts(item.proposedScore!)} من ${_pts(item.points)}', 'Proposed ${_pts(item.proposedScore!)} of ${_pts(item.points)}'),
-            style: appText(14, w: FontWeight.w800, c: c.primary),
+            // the tone as readable ink (a yellow primary on a white card was about 1.6:1)
+            style: appText(14, w: FontWeight.w800, c: appInk(context, c.primary)),
           ),
-          if (item.finalScore != null) Text(t('النهائية ${_pts(item.finalScore!)}', 'Final ${_pts(item.finalScore!)}'), style: appText(13, w: FontWeight.w700, c: c.success)),
+          if (item.finalScore != null)
+            Text(t('النهائية ${_pts(item.finalScore!)}', 'Final ${_pts(item.finalScore!)}'), style: appText(13, w: FontWeight.w700, c: appInk(context, c.success))),
         ]),
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
@@ -376,8 +378,10 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
 
   bool get _omrReview => OmrRoutes.review != null;
 
-  Future<void> _openSheetReview() async {
-    await openOmrReview(context, widget.examId);
+  /// The OMR review page, on [it]'s own item when given (the answer the teacher clicked, not the queue's first).
+  Future<void> _openSheetReview([ReviewItem? it]) async {
+    await openOmrReview(context, widget.examId,
+        focus: it == null ? null : (attemptId: it.attemptId, questionId: it.questionId, code: it.studentId == null ? it.studentLabel : null));
     if (mounted) _load();
   }
 
@@ -497,7 +501,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
               ReviewAnswerCard(item: it, threshold: q.threshold, studentName: reviewStudentText(it, _names), busy: _busy.contains(it.answerId),
                   onAccept: () => _accept(it), onEdit: () => _edit(it),
                   onScan: it.scanPageId == null ? null : () => _scans(pageId: it.scanPageId),
-                  onSheet: _omrReview && it.fromPaperReader ? _openSheetReview : null),
+                  onSheet: _omrReview && it.fromPaperReader ? () => _openSheetReview(it) : null),
         ]),
       ),
     );

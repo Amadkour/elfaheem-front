@@ -18,6 +18,7 @@ import 'dart:typed_data';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, t;
 import 'exam_authoring.dart' show ExamView, fmtPoints;
+import 'paper/omr_counts.dart';
 
 enum PaperTemplate { auto, classic, modern, minimal, custom }
 
@@ -137,7 +138,7 @@ class ExamPaperDoc {
       course: course.trim(),
       title: e.title.trim(),
       dateText: dateText ?? '',
-      durationText: e.durationMinutes == null ? '' : (rtl ? '${e.durationMinutes} دقيقة' : '${e.durationMinutes} minutes'),
+      durationText: e.durationMinutes == null ? '' : omrMinutesText(e.durationMinutes!, lang: rtl ? 'ar' : 'en'),
       total: v.maxScore > 0 ? v.maxScore : sections.fold(0.0, (s, x) => s + x.points),
       sections: sections,
       instructions: [for (final l in instructions) if (l.trim().isNotEmpty) l.trim()],

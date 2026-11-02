@@ -25,6 +25,7 @@ import 'package:http_parser/http_parser.dart' show MediaType;
 import '../../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../../exam_authoring.dart' show parseEngineUtc;
 import '../../exam_engine_api.dart' show EngineResult, engineCall;
+import '../omr_counts.dart';
 
 /// The kill switch of every bubble-sheet part (feature catalog `exam.omr`).
 const kOmrFeatureKey = 'exam.omr';
@@ -287,9 +288,9 @@ class OmrTemplateRow {
     final o = options;
     final labels = optionLabels.isNotEmpty ? '${optionLabels.first}–${optionLabels.last}' : null;
     if (questions == 0 && o == null) return t('لم يكتمل التعلّم بعد', 'Not learned yet');
-    final q = t('$questions سؤالًا', '$questions questions');
+    final q = omrQuestionsText(questions);
     if (o == null) return q;
-    return t('$q × $o اختيارات${labels == null ? '' : ' ($labels)'}', '$q × $o options${labels == null ? '' : ' ($labels)'}');
+    return t('$q × ${omrOptionsText(o)}${labels == null ? '' : ' ($labels)'}', '$q × $o options${labels == null ? '' : ' ($labels)'}');
   }
 
   /// "Shaded ID · 10 digits".
@@ -297,7 +298,7 @@ class OmrTemplateRow {
     final k = omrIdKindLabel(idKind);
     final d = idDigits;
     if (idKind == null || idKind == 'none' || d == null || d == 0) return k;
-    return t('$k · $d أرقام', '$k · $d digits');
+    return t('$k · ${omrDigitsText(d)}', '$k · $d digits');
   }
 }
 

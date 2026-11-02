@@ -204,26 +204,22 @@ class _OpenItemsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSheetHeader(t('لم تُنشر النتائج بعد', 'Not published yet')),
-        AppBanner(icon: Icons.rate_review_rounded, color: c.warning, text: serverText),
-        const SizedBox(height: AppSpace.md),
-        AppPrimaryButton(
-          key: const ValueKey('omr.publish.review'),
-          label: t('مراجعة العناصر ($open)', 'Review the items ($open)'),
-          icon: Icons.rate_review_rounded,
-          onPressed: () => Navigator.of(context).pop('review'),
-        ),
-        const SizedBox(height: AppSpace.sm),
-        OutlinedButton.icon(
-          key: const ValueKey('omr.publish.gradedOnly'),
-          onPressed: graded == 0 ? null : () => Navigator.of(context).pop('graded'),
-          icon: const Icon(Icons.done_all_rounded, size: 18),
-          label: Text(t('نشر المصحّح فقط ($graded)', 'Publish the graded ones ($graded)')),
-        ),
-      ]),
-    );
+    return AppSheetContent(title: t('لم تُنشر النتائج بعد', 'Not published yet'), children: [
+      AppBanner(icon: Icons.rate_review_rounded, color: c.warning, text: serverText),
+      const SizedBox(height: AppSpace.md),
+      AppPrimaryButton(
+        key: const ValueKey('omr.publish.review'),
+        label: t('مراجعة العناصر ($open)', 'Review the items ($open)'),
+        icon: Icons.rate_review_rounded,
+        onPressed: () => Navigator.of(context).pop('review'),
+      ),
+      const SizedBox(height: AppSpace.sm),
+      OutlinedButton.icon(
+        key: const ValueKey('omr.publish.gradedOnly'),
+        onPressed: graded == 0 ? null : () => Navigator.of(context).pop('graded'),
+        icon: const Icon(Icons.done_all_rounded, size: 18),
+        label: Text(t('نشر المصحّح فقط ($graded)', 'Publish the graded ones ($graded)')),
+      ),
+    ]);
   }
 }

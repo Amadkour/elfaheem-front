@@ -15,6 +15,7 @@ import '../../../../admin/admin_common.dart' show t;
 import '../scan/omr_scan.dart' show OmrReplaceResult;
 import 'omr_review.dart';
 import 'omr_review_written.dart';
+import '../omr_counts.dart';
 
 IconData omrKindIcon(String kind) => switch (kind) {
       'identifier' => Icons.badge_outlined,
@@ -252,9 +253,10 @@ class OmrReviewItemCard extends StatelessWidget {
 
   String _where() {
     final parts = <String>[
+      ?item.studentText,
       omrKindLabel(item.kind),
       if (item.kind == 'bubble' && item.n != null) t('السؤال ${item.n}', 'Question ${item.n}'),
-      if (item.question != null) t('${omrNum(item.question!.points)} درجة', '${omrNum(item.question!.points)} pts'),
+      if (item.question != null) omrPointsText(item.question!.points),
       if (item.pageLabel != null && item.kind != 'bubble') t('الصفحة ${item.pageLabel}', 'Page ${item.pageLabel}'),
     ];
     return parts.join(' · ');
@@ -310,7 +312,7 @@ class _ReadingBlock extends StatelessWidget {
           if (item.digits.any((d) => d.confidence != null)) ...[const SizedBox(height: AppSpace.xs), OmrDigitsRow(digits: item.digits)],
           if (cands.length > 1 && item.code == 'identifier_duplicate') ...[
             const SizedBox(height: AppSpace.xs),
-            Text(t('${cands.length} طلاب لديهم هذا الرقم', '${cands.length} students have this ID'), style: appText(13, c: c.textMedium)),
+            Text(t('${omrStudentsText(cands.length)} لديهم هذا الرقم', '${cands.length} students have this ID'), style: appText(13, c: c.textMedium)),
           ],
         ];
       case 'form':
@@ -719,7 +721,7 @@ class _StudentRow extends StatelessWidget {
         if ((note ?? '').isNotEmpty) note!,
         if ((student.identifier ?? '').isNotEmpty) omrLtr(student.identifier!),
         if (student.distance != null && student.distance! > 0)
-          t('يختلف في ${student.distance} خانة', '${student.distance} digit${student.distance == 1 ? '' : 's'} differ${student.distance == 1 ? 's' : ''}'),
+          t('يختلف في ${omrBoxesText(student.distance!, after: true)}', '${student.distance} digit${student.distance == 1 ? '' : 's'} differ${student.distance == 1 ? 's' : ''}'),
         if ((student.identifier ?? '').isEmpty && (student.email ?? '').isNotEmpty) student.email!,
       ].join(' · ');
 
@@ -924,6 +926,7 @@ class OmrQueueList extends StatelessWidget {
                       Text(it.reason, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
                       Text(
                           [
+                            ?it.studentText,
                             omrKindLabel(it.kind),
                             if (it.kind == 'bubble' && it.n != null) t('س${it.n}', 'Q${it.n}'),
                             if (!it.open) it.resolutionText,

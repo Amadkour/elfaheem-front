@@ -17,6 +17,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../exam_engine_api.dart';
+import 'omr_counts.dart';
 
 /// Kill switches (the server's feature catalog): the identifier step + the student's dialog; the bubble-sheet parts.
 const kExamIdentifiersFeatureKey = 'exam.identifiers';
@@ -383,9 +384,9 @@ class OmrTemplateItem {
   /// "50 questions, 4 options (A–D)".
   String get shape {
     final o = options;
-    if (o == null || o < 2 || o > 26) return t('${arNum(questions)} سؤالًا', '$questions questions');
+    if (o == null || o < 2 || o > 26) return t(omrQuestionsText(questions), '$questions questions');
     final last = String.fromCharCode(64 + o);
-    return t('${arNum(questions)} سؤالًا، $o اختيارات (A–$last)', '$questions questions, $o options (A–$last)');
+    return t('${omrQuestionsText(questions)}، ${omrOptionsText(o)} (A–$last)', '$questions questions, $o options (A–$last)');
   }
 
   List<String> get _descLines => [for (final l in (description ?? '').split(RegExp(r'\r?\n'))) if (l.trim().isNotEmpty) l.trim()];
@@ -541,8 +542,8 @@ IdZoneFit? reportZoneFit(IdentifierReport? r, IdZone? zone) => r == null || zone
 
 /// "10 shaded digits" / "10 handwritten boxes" / "printed ID" … for a sheet type's line.
 String idZoneLabel(IdZone z) => switch (z.kind) {
-      'shaded' => t('رقم الطالب: ${z.digits} أرقام بالتظليل', 'Student ID: ${z.digits} shaded digits'),
-      'handwritten' => t('رقم الطالب: ${z.digits} خانات بخط اليد', 'Student ID: ${z.digits} handwritten boxes'),
+      'shaded' => t('رقم الطالب: ${omrDigitsText(z.digits)} بالتظليل', 'Student ID: ${z.digits} shaded digits'),
+      'handwritten' => t('رقم الطالب: ${omrBoxesText(z.digits)} بخط اليد', 'Student ID: ${z.digits} handwritten boxes'),
       'printed' => t('رقم طالب مطبوع', 'Printed student ID'),
       'qr' => t('رقم الطالب برمز QR', 'Student ID as a QR code'),
       _ => t('بلا منطقة لرقم الطالب', 'No student-ID zone'),
@@ -553,21 +554,21 @@ String idZoneLabel(IdZone z) => switch (z.kind) {
 ({String title, String body, List<String> fixes}) idZoneFitTexts(IdZoneFit f, String label) {
   final n = f.zoneDigits;
   final shaded = f.zoneKind == 'shaded';
-  final zoneAr = shaded ? 'منطقة التظليل ($n أعمدة)' : 'خانات رقم الطالب ($n خانات)';
+  final zoneAr = shaded ? 'منطقة التظليل (${omrColumnsText(n)})' : 'خانات رقم الطالب (${omrBoxesText(n)})';
   final zoneEn = shaded ? 'ID grid ($n columns)' : 'ID boxes ($n boxes)';
   final need = f.reason == 'too_long' ? f.minLen : (f.longest != null && f.longest! > n ? f.longest : f.maxLen);
   final named = t('اطبع ورقة باسم كل طالب — رمز QR عليها يحدد الطالب، فلا يحتاج إلى التظليل',
       'Print a named sheet per student — its QR code identifies the student, nothing to shade');
   final other = t('عرّف الطلاب بقيمة أقصر (ارجع إلى خطوة «تحديد الطالب»)', 'Identify students by a shorter value (back to the Students step)');
   final wider = need != null && need > n
-      ? t('اختر نوع ورقة بمنطقة $need أرقام على الأقل', 'Choose a sheet type with at least $need ID digits')
+      ? t('اختر نوع ورقة بمنطقة ${omrDigitsText(need)} على الأقل', 'Choose a sheet type with at least $need ID digits')
       : t('اختر نوع ورقة آخر', 'Choose another sheet type');
   if (f.blocks) {
     final size = f.minLen == null ? '' : (f.minLen == f.maxLen || f.maxLen == null ? '${f.minLen}' : '${f.minLen}–${f.maxLen}');
     final body = f.reason == 'not_digits'
         ? t('$label ليس رقمًا، و$zoneAr تقبل الأرقام فقط. لن تُطبع أوراق فارغة لهذا الاختبار.',
             '$label is not a number, and the $zoneEn takes digits only. Blank sheets will not print for this exam.')
-        : t('$label من $size رقمًا، و$zoneAr في هذه الورقة أقصر منه، فلن يستطيع أي طالب كتابته. لن تُطبع أوراق فارغة لهذا الاختبار.',
+        : t('$label من ${_digitsRangeAr(f.minLen, f.maxLen, size)}، و$zoneAr في هذه الورقة أقصر منه، فلن يستطيع أي طالب كتابته. لن تُطبع أوراق فارغة لهذا الاختبار.',
             '$label has $size digits but this sheet\'s $zoneEn is shorter, so no student can fill it in. Blank sheets will not print for this exam.');
     return (
       title: t('$label لا يتسع في هذه الورقة', '$label does not fit this sheet'),
@@ -577,10 +578,10 @@ String idZoneLabel(IdZone z) => switch (z.kind) {
   }
   final lines = <String>[
     if (f.tooLong + f.nonDigit > 0)
-      t('${f.tooLong + f.nonDigit} من الطلاب قيمتهم أطول من $n أرقام أو فيها حروف — لن تُطابَق أوراقهم وستذهب للمراجعة.',
+      t('${f.tooLong + f.nonDigit} من الطلاب قيمتهم أطول من ${omrDigitsText(n, after: true)} أو فيها حروف — لن تُطابَق أوراقهم وستذهب للمراجعة.',
           '${f.tooLong + f.nonDigit} ${f.tooLong + f.nonDigit == 1 ? 'student has a value' : 'students have values'} longer than $n digits or with letters — their sheets will not match and go to review.'),
     if (f.reason == 'missing_may_not_fit' || (f.missing > 0 && f.tooLong + f.nonDigit == 0))
-      t('${f.missing} لم يُدخلوا قيمتهم بعد، وقد تكون أطول من $n أرقام أو فيها حروف.',
+      t('${f.missing} لم يُدخلوا قيمتهم بعد، وقد تكون أطول من ${omrDigitsText(n, after: true)} أو فيها حروف.',
           '${f.missing} ${f.missing == 1 ? 'student has' : 'students have'} not entered it yet, and it may be longer than $n digits or hold letters.'),
   ];
   return (
@@ -829,16 +830,25 @@ String identifierZoneMismatchText(Map<String, dynamic> detail) {
   final lo = detail['min_len'];
   final named = t('أو اطبع ورقة باسم كل طالب (رمز QR عليها يحدد الطالب)', 'or print a named sheet per student (its QR identifies the student)');
   if (detail['reason'] == 'not_digits') {
-    return t('معرّف الطالب ليس رقمًا ولا يُكتب في منطقة رقم الطالب ($n أرقام) — عرّف الطلاب برقم، $named',
+    return t('معرّف الطالب ليس رقمًا ولا يُكتب في منطقة رقم الطالب (${_digitsAr(n)}) — عرّف الطلاب برقم، $named',
         'The student identifier is not a number and cannot go on the $n-digit ID zone — identify students by a number, $named');
   }
-  return t('معرّف الطالب ($lo رقمًا) أطول من منطقة رقم الطالب في الورقة ($n أرقام) — اختر نوع ورقة بمنطقة $lo أرقام على الأقل، أو معرّفًا أقصر، $named',
+  return t('معرّف الطالب (${_digitsAr(lo)}) أطول من منطقة رقم الطالب في الورقة (${_digitsAr(n)}) — اختر نوع ورقة بمنطقة ${_digitsAr(lo)} على الأقل، أو معرّفًا أقصر، $named',
       'The student identifier ($lo digits) is longer than the sheet\'s ID zone ($n digits) — choose a sheet type with at least $lo ID digits, or a shorter identifier, $named');
+}
+
+/// "10 أرقام" for a server value that should be a number ("? أرقام" when it is missing).
+String _digitsAr(Object? v) => v is int ? omrDigitsText(v) : '${v ?? '?'} أرقام';
+
+/// "8–10 أرقام" / "14 رقمًا": the noun of the longest length.
+String _digitsRangeAr(int? lo, int? hi, String size) {
+  final n = hi ?? lo;
+  return n == null ? size : omrDigitsText(n).replaceFirst('$n', size);
 }
 
 String _retryText(int seconds) {
   final m = (seconds / 60).ceil().clamp(1, 60);
-  return t('أُرسل تذكير منذ قليل — يمكنك التذكير مرة أخرى بعد $m دقيقة', 'A reminder went out recently — you can remind again in $m min');
+  return t('أُرسل تذكير منذ قليل — يمكنك التذكير مرة أخرى بعد ${omrMinutesText(m, after: true)}', 'A reminder went out recently — you can remind again in $m min');
 }
 
 /// The text to show for a failed call: the mapped code, else the server's own message, else a generic line.

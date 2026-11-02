@@ -23,6 +23,7 @@ import 'omr_camera.dart';
 import 'omr_scan.dart';
 import 'omr_scan_widgets.dart';
 import 'omr_upload_screen.dart';
+import '../omr_counts.dart';
 
 class OmrScannerScreen extends StatefulWidget {
   const OmrScannerScreen({super.key, required this.examId, this.examTitle = '', this.camera, this.api, this.clock});
@@ -277,8 +278,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
 
   Future<void> _setExpected() async {
     final ctl = TextEditingController(text: _expected == null ? '' : '$_expected');
-    final v = await showAppSheet<int?>(context, (ctx) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          AppSheetHeader(t('عدد الأوراق', 'Number of papers')),
+    final v = await showAppSheet<int?>(context, (ctx) => AppSheetContent(title: t('عدد الأوراق', 'Number of papers'), children: [
           Text(t('كم ورقة ستصوّر؟ يظهر العدد في "تم التقاط الورقة 12 من 40". اختياري.', 'How many papers will you scan? It shows as "Paper 12 of 40 captured". Optional.'),
               style: appText(13.5, c: ctx.colors.textMedium, h: 1.4)),
           const SizedBox(height: AppSpace.sm),
@@ -370,7 +370,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     final res = _result;
     final countLabel = _expected != null
         ? t('$_captured من $_expected', '$_captured of $_expected')
-        : (_captured > 0 ? t('$_captured ورقة', '$_captured captured') : t('عدد الأوراق', 'Papers'));
+        : (_captured > 0 ? t(omrSheetsText(_captured), '$_captured captured') : t('عدد الأوراق', 'Papers'));
     return Scaffold(
       backgroundColor: c.charcoalDark,
       body: Stack(children: [
