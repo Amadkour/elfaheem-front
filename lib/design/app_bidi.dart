@@ -8,6 +8,13 @@
 //                             keep the page's direction).
 //   AutoDirText(text, …)     a Text with that direction and the alignment of the page's start edge, so rows still
 //                             line up in either language.
+//   autoDirOf(context, text) the same pair (direction, alignment) for a widget that is not a plain Text
+//                             (SelectableText.rich, a Wrap of words).
+//   ltrIsolate(text)         a figure that reads left to right in either language ("100%", never "%100").
+//   bidiIsolate(text)        server / user text spliced INTO a translated sentence (an error after "فشل اختبار
+//                             السلامة: "): wrapped in FIRST STRONG ISOLATE … POP DIRECTIONAL ISOLATE, so it keeps its own
+//                             order ("3.7/s is below the floor of 5.0/s", not "s is below the floor of 5.0/s/3.7") and the
+//                             sentence around it keeps the page's.
 //
 // Pure, unit-tested: test/ui/app_bidi_test.dart.
 library;
@@ -37,6 +44,21 @@ bool _strongLtr(int r) =>
     (r >= 0x3040 && r <= 0x9FFF) || //                        Kana, CJK
     (r >= 0xAC00 && r <= 0xD7AF); //                          Hangul
 
+/// [text] between U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE (empty stays empty).
+String bidiIsolate(String text) => text.isEmpty ? text : '${String.fromCharCode(0x2068)}$text${String.fromCharCode(0x2069)}';
+
+/// [text] between U+2066 LEFT-TO-RIGHT ISOLATE and U+2069 POP DIRECTIONAL ISOLATE: a figure that reads left to right
+/// in Arabic too ("100%", not "%100"), the app's percent form everywhere.
+String ltrIsolate(String text) => text.isEmpty ? text : '${String.fromCharCode(0x2066)}$text${String.fromCharCode(0x2069)}';
+
+/// The direction of [text] ([contentDirection], else the page's) and the alignment that puts it on the page's start
+/// edge.
+(TextDirection, TextAlign) autoDirOf(BuildContext context, String text) {
+  final page = Directionality.of(context);
+  final own = contentDirection(text) ?? page;
+  return (own, own == page ? TextAlign.start : TextAlign.end);
+}
+
 /// A [Text] of user-written content: its own direction ([contentDirection]), aligned to the page's start edge.
 class AutoDirText extends StatelessWidget {
   const AutoDirText(this.text, {super.key, this.style, this.maxLines, this.overflow});
@@ -48,13 +70,12 @@ class AutoDirText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final page = Directionality.of(context);
-    final own = contentDirection(text) ?? page;
+    // the page's start edge in the text's own terms: an English title in Arabic sits on the right like the rest
+    final (own, align) = autoDirOf(context, text);
     return Text(
       text,
       textDirection: own,
-      // the page's start edge in the text's own terms: an English title in Arabic sits on the right like the rest
-      textAlign: own == page ? TextAlign.start : TextAlign.end,
+      textAlign: align,
       maxLines: maxLines,
       overflow: overflow,
       style: style,

@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/engine_exams_section.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
+import 'package:flutter_education_app/features/shared/models/exam_model.dart';
+import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -77,5 +79,41 @@ void main() {
     expect(got.length, 1);
     expect(got.single.length, 3);
     expect(got.single.where((e) => e['status'] == 'published').length, 2);
+  });
+
+  // R3: on a desktop the hub's engine list stopped after two and a half rows with ~200 px empty under it (a box of a
+  // quarter of the screen with its own scroll); and the "Questions" tile said 0 for engine exams, whose list has no
+  // question figure.
+  testWidgets('teacher: the engine exams take their natural height in the hub, one scroll for the tab', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final fake = FakeApi({
+      'GET /api/v1/exam/exams': (_) => {'items': [for (var i = 1; i <= 7; i++) _exam(i, 'Engine exam $i')]},
+      'GET /api/v1/courses/1/exams/all': (_) => const <Object>[],
+      'GET /api/v1/courses/1/sessions': (_) => const {'items': <Object>[]},
+    }, latency: const Duration(milliseconds: 10))
+      ..install();
+    addTearDown(fake.uninstall);
+    await tester.pumpWidget(layoutHost(const TeacherExamHubScreen(courseId: 1, courseTitle: 'CS101'), scale: 1));
+    await frames(tester, 10);
+    // no scroll of its own inside the section: it is laid out in full, inside the tab's one scroll
+    expect(find.descendant(of: find.byType(EngineReviewSection), matching: find.byType(Scrollable)), findsNothing);
+    final tab = find.byKey(const ValueKey('teacher_exams_tab_scroll'));
+    expect(tab, findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Engine exam 7'), 200, scrollable: find.descendant(of: tab, matching: find.byType(Scrollable)).first);
+    expect(find.text('Engine exam 7'), findsOneWidget);
+    expect(find.text('2 attempts'), findsWidgets);
+    // the third tile: the engine exams' attempts (7 × 2), not "0 Questions"
+    expect(find.text('14'), findsOneWidget);
+    expect(find.text('exam_hub_attempts'), findsOneWidget); // translation keys: the test loads no translation.json
+    expect(find.text('btn_questions'), findsNothing);
+  });
+
+  test('teacher: the third figure of the hub', () {
+    final legacy = [ExamModel.fromJson(const {'id': 1, 'name': 'Old', 'course_id': 1, 'created_at': '2026-01-01T00:00:00', 'questions_count': 9})];
+    expect((examHubThirdStat(legacy, const []).value, examHubThirdStat(legacy, const []).label), ('9', 'btn_questions'));
+    final engine = [_exam(1, 'A'), {..._exam(2, 'B'), 'attempts': const {'total': 3}}, {..._exam(3, 'C'), 'attempts': null}];
+    expect((examHubThirdStat(legacy, engine).value, examHubThirdStat(legacy, engine).label), ('5', 'exam_hub_attempts'));
   });
 }
