@@ -24,6 +24,7 @@ import '../../../../admin/admin_common.dart' show t;
 import 'omr_routes.dart';
 import 'omr_scan.dart';
 import 'omr_scan_widgets.dart';
+import '../omr_counts.dart';
 
 /// Picks files: several (an upload) or one (a replacement). Tests hand their own.
 typedef OmrFilePicker = Future<List<(String, Uint8List)>> Function({bool many});
@@ -305,7 +306,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       final n = widget.files?.length ?? 0;
       return AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(t('جارٍ رفع $n ملف…', 'Uploading $n file${n == 1 ? '' : 's'}…'), style: appText(17, w: FontWeight.w800, c: c.textDark)),
+          Text(t('جارٍ رفع ${omrFilesText(n)}…', 'Uploading $n file${n == 1 ? '' : 's'}…'), style: appText(17, w: FontWeight.w800, c: c.textDark)),
           const SizedBox(height: AppSpace.xs),
           Text(t('ابقَ على هذه الصفحة حتى يكتمل الرفع', 'Stay on this page until the upload finishes'), style: appText(13, c: c.textMedium)),
           const SizedBox(height: AppSpace.md),

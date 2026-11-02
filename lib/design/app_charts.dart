@@ -153,6 +153,20 @@ double _niceMax(double v) {
   return n * e;
 }
 
+/// The value axis of [maxV] as (top, steps): four quarter steps (0 · ¼ · ½ · ¾ · max), or, for counts
+/// ([integer]), whole steps of 1 · 2 · 5 · 10 · 20 … — at most four, so 2 students read 0 · 1 · 2, never 0.5.
+(double, int) chartAxis(double maxV, {bool integer = false}) {
+  if (!integer) return (_niceMax(maxV), 4);
+  if (maxV <= 0) return (1, 1);
+  final want = maxV / 4;
+  var step = 1.0;
+  for (var e = 1.0; step < want; e *= 10) {
+    step = want <= e ? e : (want <= 2 * e ? 2 * e : (want <= 5 * e ? 5 * e : 10 * e));
+  }
+  final steps = (maxV / step).ceil();
+  return (step * steps, steps);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Legend
 // ─────────────────────────────────────────────────────────────────────────────
@@ -295,6 +309,7 @@ class AppBarChart extends StatefulWidget {
     this.title,
     this.showLegend,
     this.format = appCompactNumber,
+    this.integerAxis = false,
   });
 
   final List<AppChartSeries> series;
@@ -310,6 +325,9 @@ class AppBarChart extends StatefulWidget {
   /// Default: a legend for two or more series.
   final bool? showLegend;
   final String Function(num value) format;
+
+  /// The values are counts (students, papers): the axis ticks are whole numbers (0 · 1 · 2), never 0.3.
+  final bool integerAxis;
 
   @override
   State<AppBarChart> createState() => _AppBarChartState();
@@ -384,6 +402,7 @@ class _AppBarChartState extends State<AppBarChart> {
                             highlight: c.primary.withValues(alpha: 0.06),
                             format: widget.format,
                             textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+                            integerAxis: widget.integerAxis,
                           ),
                         ),
                       ),
@@ -460,12 +479,14 @@ class _BarPainter extends CustomPainter {
     required this.highlight,
     required this.format,
     required this.textDirection,
+    this.integerAxis = false,
   });
 
   final List<AppChartSeries> series;
   final List<String> labels;
   final List<Color> colors;
   final _BarGeometry geo;
+  final bool integerAxis;
   final int? hot;
   final Color surface, grid, ink, inkStrong, highlight;
   final String Function(num) format;
@@ -487,7 +508,7 @@ class _BarPainter extends CustomPainter {
         maxV = math.max(maxV, _value(s, i));
       }
     }
-    final top = _niceMax(maxV);
+    final (top, steps) = chartAxis(maxV, integer: integerAxis);
     final gridPaint = Paint()
       ..color = grid
       ..strokeWidth = 1;
@@ -499,10 +520,10 @@ class _BarPainter extends CustomPainter {
       canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(8)), Paint()..color = highlight);
     }
 
-    // grid + ticks: 0 · ¼ · ½ · ¾ · max
-    for (var k = 0; k <= 4; k++) {
-      final v = top * k / 4;
-      final y = geo.baseline - geo.plotH * k / 4;
+    // grid + ticks: 0 · ¼ · ½ · ¾ · max (whole steps for counts)
+    for (var k = 0; k <= steps; k++) {
+      final v = top * k / steps;
+      final y = geo.baseline - geo.plotH * k / steps;
       canvas.drawLine(Offset(geo.plotStart, y), Offset(geo.plotStart + geo.plotW, y), gridPaint);
       final tp = _text(format(v), tickStyle, maxWidth: _BarGeometry.axisW - 4);
       final x = geo.rtl ? size.width - tp.width : _BarGeometry.axisW - 4 - tp.width;
@@ -545,7 +566,8 @@ class _BarPainter extends CustomPainter {
       o.surface != surface ||
       o.grid != grid ||
       o.ink != ink ||
-      o.textDirection != textDirection;
+      o.textDirection != textDirection ||
+      o.integerAxis != integerAxis;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

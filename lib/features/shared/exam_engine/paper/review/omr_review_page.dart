@@ -71,13 +71,33 @@ EventOrPoll omrScanWatch(int examId, Future<void> Function() poll, {LiveStreamHa
 bool omrExamEvent(LiveEvent e, int examId) =>
     (e.kind == kOmrScanEventKind || e.kind == kOmrReviewEventKind) && asInt(e.data['exam_id'], -1) == examId;
 
+/// One student's answer to open first (a written answer in Review marking): its attempt and question, and under
+/// anonymous grading — where the queue hides the attempts — the student's pseudonym [code].
+typedef OmrReviewFocus = ({int attemptId, int questionId, String? code});
+
+/// The queue item of [focus] (its latest one when there are several); null when the list has none (resolved
+/// meanwhile).
+OmrReviewItem? omrFocusItem(List<OmrReviewItem> items, OmrReviewFocus? focus) {
+  if (focus == null) return null;
+  final code = focus.code;
+  return items
+      .where((i) =>
+          i.questionId == focus.questionId &&
+          (i.attemptId != null ? i.attemptId == focus.attemptId : code != null && code.isNotEmpty && i.studentCode == code))
+      .lastOrNull;
+}
+
 class OmrReviewPage extends StatefulWidget {
-  const OmrReviewPage({super.key, required this.examId, this.initialItemId, this.api, this.liveStream, this.liveBus, this.meId});
+  const OmrReviewPage({super.key, required this.examId, this.initialItemId, this.focus, this.api, this.liveStream, this.liveBus, this.meId});
 
   final int examId;
 
   /// Open this item first (a deep link, a tap on the full paper view).
   final int? initialItemId;
+
+  /// Open this student's answer first ("Review it on the paper image" in Review marking); the first item when the
+  /// queue has no item for it.
+  final OmrReviewFocus? focus;
   final OmrReviewApi? api;
   final LiveStreamHandle? liveStream;
   final LiveEvents? liveBus;
@@ -147,8 +167,11 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
       _list = list;
     });
     final cur = _item;
+    final focused = first ? omrFocusItem(list.items, widget.focus) : null;
     if (first && widget.initialItemId != null) {
       _open(widget.initialItemId!);
+    } else if (focused != null) {
+      _open(focused.id);
     } else if (cur == null || !list.items.any((i) => i.id == cur.id) && (cur.open || _filter == 'resolved')) {
       // the current item left the list (decided elsewhere / filter changed): the next one
       final next = cur == null ? null : _after(cur.id, list.items);

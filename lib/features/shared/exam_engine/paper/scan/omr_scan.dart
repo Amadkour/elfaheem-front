@@ -29,6 +29,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import '../../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../../exam_engine_api.dart';
 import '../exam_setup.dart' show identifierZoneMismatchText;
+import '../omr_counts.dart';
 
 /// The live event kind of a scan batch's progress (`job_updated`).
 const kOmrScanJobKind = 'omr_scan';
@@ -609,7 +610,7 @@ String omrCodeText(String? code, [Map<String, dynamic> detail = const {}]) => sw
       'exam_not_bubble' => t('هذا الاختبار ليس بورقة تظليل — اختر ورقة التظليل وقالبًا منشورًا في إعداد الاختبار',
           'This exam does not use a bubble sheet — choose the bubble sheet and a published template in the exam setup'),
       'template_not_found' => t('قالب ورقة التظليل غير موجود — اختر قالبًا في إعداد الاختبار', 'The exam\'s sheet template is missing — choose one in the exam setup'),
-      'template_too_small' => t('القالب فيه ${detail['template_questions'] ?? '?'} سؤالًا والاختبار ${detail['questions'] ?? '?'}',
+      'template_too_small' => t('القالب فيه ${_questionsAr(detail['template_questions'])} والاختبار فيه ${_questionsAr(detail['questions'])}',
           'The sheet holds ${detail['template_questions'] ?? '?'} questions, the exam has ${detail['questions'] ?? '?'}'),
       'question_options_exceed_sheet' => t('بعض الأسئلة فيها خيارات أكثر من فقاعات الورقة', 'Some questions have more options than the sheet has bubbles'),
       'marker_not_on_template' => t('علامة النموذج المختارة غير موجودة على هذه الورقة', 'The chosen model marker is not on this sheet'),
@@ -717,3 +718,6 @@ class OmrScanApi {
 
 /// Reads `{detail: {...}}` from a body that may be JSON text (an error answer to a bytes request).
 Map<String, dynamic> omrDetailOf(Object? body) => asMap(asMap(body)['detail']);
+
+/// "50 سؤالًا" for a server value that should be a number.
+String _questionsAr(Object? v) => v is int ? omrQuestionsText(v) : '${v ?? '?'} سؤالًا';

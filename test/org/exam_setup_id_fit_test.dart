@@ -139,7 +139,8 @@ void main() {
       AppConfig.lang = 'ar';
       final ar = idZoneFitTexts(f, 'الرقم القومي');
       expect(ar.title, 'الرقم القومي لا يتسع في هذه الورقة');
-      expect(ar.fixes.first, 'اختر نوع ورقة بمنطقة 14 أرقام على الأقل');
+      // 11+ takes the singular accusative (countText): "14 رقمًا", never "14 أرقام"
+      expect(ar.fixes.first, 'اختر نوع ورقة بمنطقة 14 رقمًا على الأقل');
       expect(ar.fixes.last, contains('اطبع ورقة باسم كل طالب'));
     });
 
