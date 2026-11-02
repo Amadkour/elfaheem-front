@@ -5,7 +5,11 @@
 //                `exam_identifiers` event live (EventOrPoll, a slow poll only as the fallback)
 //   2 Type       Online (stored; "Online exams are coming next" — the wizard stops there) or Paper
 //   3 Paper      Exam paper only · Bubble sheet only · Both together (paper only skips step 4)
-//   4 Sheet      the published bubble-sheet types; "Upload a custom layout" when the caller gives onLearnTemplate
+//   4 Sheet      the published bubble-sheet types; "Upload a custom layout" when the caller gives onLearnTemplate.
+//                Each type shows its student-ID zone; when the identifier does not fit the chosen one (a 14-digit
+//                national ID on 10 columns) a card says so under it with the fixes (IdZoneFitCard, the server's
+//                identifier_fit rule mirrored by identifierZoneFit). The same card shows on step 1 once a sheet is
+//                pinned and on step 5 from the server's answer: a teacher sees it before printing.
 //   5 Models     forms A / B / C … with their own answer keys, how they are told apart (pick two), and what a blank /
 //                a double mark means; an unclear mark always goes to review (not a choice)
 //
@@ -180,6 +184,23 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
     _enter(_step);
   }
 
+  // ── the ID-zone check ──
+
+  /// The chosen identifier's name in the current language.
+  String get _identifierLabel {
+    for (final o in _options) {
+      if (o.choice == _identifier) return o.label;
+    }
+    final r = _report;
+    return r == null || r.label.isEmpty ? t('رقم الطالب', 'The student ID') : r.label;
+  }
+
+  /// The pinned sheet's fit: the live report against its zone when both are here, else the server's answer.
+  IdZoneFit? get _pinnedFit {
+    if (!_omrOn || !_setup.isBubble || _identifier == null || _identifier != _setup.identifier) return null;
+    return reportZoneFit(_report, _setup.template?.idZone) ?? _setup.identifierFit;
+  }
+
   // ── step changes ──
 
   void _enter(SetupStep s) {
@@ -190,6 +211,7 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
       _watch?.stop();
     }
     if (s == SetupStep.template && _templates == null) _loadTemplates();
+    if (s == SetupStep.template && _identifier != null && _report == null && !_reportLoading) _loadReport(silent: true);
     if (s == SetupStep.forms && _forms == null) _loadForms();
   }
 
@@ -533,6 +555,8 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
             onRequest: _request,
             onRemind: _remind,
             live: _watch?.connected == true,
+            zoneFit: _pinnedFit,
+            identifierLabel: _identifierLabel,
           ),
         SetupStep.delivery => _onlineSaved
             ? OnlineComingNext(onPaper: () => setState(() {
@@ -545,6 +569,8 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
             templates: _templates,
             error: _templatesError,
             selectedId: _templateId,
+            fits: {for (final x in _templates ?? const <OmrTemplateItem>[]) x.id: reportZoneFit(_report, x.idZone)},
+            identifierLabel: _identifierLabel,
             onPick: (x) => setState(() => _templateId = x.id),
             onRetry: _loadTemplates,
             onLearn: widget.onLearnTemplate == null
@@ -571,6 +597,8 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
             onChoose: (f, q, v) => setState(() => q.choose(f, v)),
             onToggleMarker: _toggleMarker,
             onPolicy: (p) => setState(() => _policy = p),
+            zoneFit: _pinnedFit,
+            identifierLabel: _identifierLabel,
           ),
       };
 
@@ -802,10 +830,16 @@ class IdentifierStepBody extends StatelessWidget {
     this.onRemind,
     this.live = false,
     this.noCourse = false,
+    this.zoneFit,
+    this.identifierLabel = '',
   });
 
   /// The exam is not linked to a course: nobody to identify yet (Continue skips the step).
   final bool noCourse;
+
+  /// The identifier against the pinned bubble sheet's ID zone (shown only when it does not fit).
+  final IdZoneFit? zoneFit;
+  final String identifierLabel;
   final List<IdentifierOption> options;
   final IdentifierChoice? selected;
   final ValueChanged<IdentifierOption> onPick;
@@ -880,6 +914,10 @@ class IdentifierStepBody extends StatelessWidget {
             live: live,
           ),
           if (rep.duplicates.isNotEmpty) ...[const SizedBox(height: AppSpace.md), DuplicatesCard(report: rep)],
+        ],
+        if (zoneFit != null && (zoneFit!.blocks || zoneFit!.warns)) ...[
+          const SizedBox(height: AppSpace.md),
+          IdZoneFitCard(fit: zoneFit!, label: identifierLabel),
         ],
       ],
     ]);
@@ -1053,6 +1091,48 @@ class DuplicatesCard extends StatelessWidget {
   }
 }
 
+/// The identifier does not fit the sheet's student-ID zone: what is wrong and the ways out. Block (red): blank sheets
+/// will not print; warn (amber): some sheets will go to review.
+class IdZoneFitCard extends StatelessWidget {
+  const IdZoneFitCard({super.key, required this.fit, required this.label});
+  final IdZoneFit fit;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final col = fit.blocks ? c.danger : c.warning;
+    final tx = idZoneFitTexts(fit, label);
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: col.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: col.withValues(alpha: 0.35)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(fit.blocks ? Icons.block_rounded : Icons.warning_amber_rounded, color: col, size: 22),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(tx.title, style: appText(14, w: FontWeight.w800, c: c.textDark, h: 1.35))),
+        ]),
+        const SizedBox(height: AppSpace.xs),
+        Text(tx.body, style: appText(13, c: c.textDark, h: 1.5)),
+        const SizedBox(height: AppSpace.sm),
+        Text(t('للحل:', 'To fix it:'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+        for (final f in tx.fixes)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('•  ', style: appText(13, w: FontWeight.w700, c: col)),
+              Expanded(child: Text(f, style: appText(13, c: c.textDark, h: 1.45))),
+            ]),
+          ),
+      ]),
+    );
+  }
+}
+
 // ═══════════════════════════════════════ 2 · type ═════════════════════════════════════════════════════════════
 
 class DeliveryStepBody extends StatelessWidget {
@@ -1170,10 +1250,16 @@ class TemplateStepBody extends StatelessWidget {
     this.error,
     this.onRetry,
     this.onLearn,
+    this.fits = const {},
+    this.identifierLabel = '',
   });
 
   /// null = loading.
   final List<OmrTemplateItem>? templates;
+
+  /// {template id: does the exam's identifier fit its ID zone} (null / absent: not checked).
+  final Map<int, IdZoneFit?> fits;
+  final String identifierLabel;
   final String? error;
   final int? selectedId;
   final ValueChanged<OmrTemplateItem> onPick;
@@ -1222,10 +1308,19 @@ class TemplateStepBody extends StatelessWidget {
           key: ValueKey('setup.template.${x.id}'),
           icon: Icons.grid_on_rounded,
           title: x.name,
-          subtitle: [x.shape, ?x.description].join(' · '),
+          subtitle: [
+            x.shape,
+            if (x.idZone != null) idZoneLabel(x.idZone!),
+            if (fits[x.id]?.blocks == true) t('لا يتسع لـ$identifierLabel', 'too short for $identifierLabel'),
+            ?x.description,
+          ].join(' · '),
           selected: selectedId == x.id,
           onTap: () => onPick(x),
         ),
+        if (selectedId == x.id && (fits[x.id]?.blocks == true || fits[x.id]?.warns == true)) ...[
+          const SizedBox(height: AppSpace.xs),
+          IdZoneFitCard(key: const ValueKey('setup.idfit'), fit: fits[x.id]!, label: identifierLabel),
+        ],
         const SizedBox(height: AppSpace.sm),
       ],
       if (learn != null) Align(alignment: AlignmentDirectional.centerStart, child: learn),
@@ -1263,10 +1358,16 @@ class FormsStepBody extends StatelessWidget {
     this.onAdd,
     this.error,
     this.onRetry,
+    this.zoneFit,
+    this.identifierLabel = '',
   });
 
   /// null = loading.
   final List<ExamFormDraft>? forms;
+
+  /// The identifier against the pinned sheet's ID zone (the card shows only when it does not fit).
+  final IdZoneFit? zoneFit;
+  final String identifierLabel;
   final List<ObjectiveQuestion> questions;
   final List<String> markers;
   final OmrPolicy policy;
@@ -1295,7 +1396,13 @@ class FormsStepBody extends StatelessWidget {
     if (list == null) return const AppListSkeleton(items: 2, withAvatar: false, padding: EdgeInsets.zero);
     final many = list.length > 1;
     final choices = ['qr', 'printed', if (bubble) 'bubble'];
+    final fit = zoneFit;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (fit != null && (fit.blocks || fit.warns))
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.md),
+          child: IdZoneFitCard(fit: fit, label: identifierLabel),
+        ),
       if (questions.isEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.sm),

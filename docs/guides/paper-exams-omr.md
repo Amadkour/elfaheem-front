@@ -58,6 +58,20 @@ The app never decides a grade; it draws what the engine answered. The engine's r
   is one digit away; otherwise review, pre-filled with the reading and the closest candidates (`identifier_unclear`,
   `identifier_neighbour`). With no digits reader (no hub, no active model) every handwritten ID goes to review. In a
   class with sequential numbers almost every handwritten ID is a one-tap confirm; shaded ID grids link by themselves.
+  A shorter value on a shaded grid links whether it is shaded with blank columns around it or zero-padded
+  (`0002024003` → `2024003`: shaded readings compare digits without leading zeros, `omr_scan.match_identifier`); two
+  students whose values differ only by leading zeros → review `identifier_duplicate`.
+- **Does the identifier fit the ID zone?** Checked before printing (`omr_setup.zone_fit`, mirrored by
+  `identifierZoneFit` in `exam_setup.dart`) against the shaded columns / handwritten boxes (printed / QR zones are not
+  checked). `block` — a name or an e-mail, or the field's shortest allowed length is longer than the zone (a 14-digit
+  national ID on the built-ins' 10 columns): the setup still saves, but blank sheets are refused 409
+  `identifier_zone_mismatch` and only named sheets per student print (their signed QR identifies the student).
+  `warn` — some holders' values are too long / not digits, or missing students may still type one: printing goes on.
+  The wizard's `IdZoneFitCard` says so with the fixes under the chosen sheet type, on Students once a sheet is pinned,
+  and on Models (the server's `identifier_fit`).
+- **Requests before the type.** The wizard asks for missing values on its first step, before the exam is paper; when a
+  setup PUT changes `delivery`, the engine has the core update every pending request's `paper` flag (and give a paper
+  one without a due date the exam's start), so the student's dialog and reminders say "before exam day".
 - **Form (model A / B / …).** Confirmed when at least one configured marker is read and every read marker agrees;
   two that differ, or none read → "Model could not be confirmed" and nothing on the page is graded (D-156).
 - **Handwritten answers (D-160).** Suggestions for the teacher, except a handwritten English completion that matches
@@ -111,7 +125,8 @@ poll as the fallback.
 
 ## Tests
 
-- App: `test/org/exam_setup_model_test.dart`, `exam_setup_wizard_test.dart`, `identity_request_model_test.dart`,
+- App: `test/org/exam_setup_model_test.dart`, `exam_setup_wizard_test.dart`, `exam_setup_id_fit_test.dart` (the ID-zone
+  check over replies recorded from `e2e_omr_id_fit.py`, `test/org/fixtures/omr_id_fit_payloads.json`), `identity_request_model_test.dart`,
   `identity_request_gate_test.dart`, `omr_templates_test.dart`, `omr_template_learn_test.dart`,
   `omr_scan_model_test.dart`, `omr_scanner_test.dart`, `omr_review_test.dart`; layout `test/ui/exam_setup_layout_test.dart`,
   `omr_templates_layout_test.dart`, `omr_scan_layout_test.dart`, `models_hub_layout_test.dart`,
