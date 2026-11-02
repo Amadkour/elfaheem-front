@@ -54,7 +54,7 @@ class NotificationService {
   static final NotificationService instance = NotificationService._();
 
   /// The Web Push (VAPID) public key of the web app's Firebase project.
-  /// TODO(D-145): this is still the OLD project's (elfaheem) key. Generate the key of `nextbrain-app` in the Firebase
+  /// TODO(D-145): this is still the OLD project's (elfaheem) key. Generate the key of `nextbrain-2y` in the Firebase
   /// console (Project settings → Cloud Messaging → Web Push certificates → Generate key pair) and paste it here;
   /// until then web push tokens cannot be issued for the new project.
   static const webPushVapidKey =

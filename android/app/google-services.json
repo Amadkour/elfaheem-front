@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "645175948404",
-    "project_id": "nextbrain-app",
-    "storage_bucket": "nextbrain-app.firebasestorage.app"
+    "project_number": "647242717565",
+    "project_id": "nextbrain-2y",
+    "storage_bucket": "nextbrain-2y.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:645175948404:android:31b9d24f73512146170d21",
+        "mobilesdk_app_id": "1:647242717565:android:b49304b99ce6da89d69414",
         "android_client_info": {
           "package_name": "com.doubley.nextbrain"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD8CCG8TfPviDhEmrRLXN5nF51B1Q4WTps"
+          "current_key": "AIzaSyAmgROdQ60m6dKnRjhksVAwF4ew1UIKIn0"
         }
       ],
       "services": {

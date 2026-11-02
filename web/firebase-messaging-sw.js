@@ -7,19 +7,19 @@
 // Notes:
 //   - Web Push only works over HTTPS or http://localhost. It will silently
 //     fail on plain HTTP hosting.
-//   - The config below matches lib/firebase_options.dart (DefaultFirebaseOptions.web, project nextbrain-app, D-145).
+//   - The config below matches lib/firebase_options.dart (DefaultFirebaseOptions.web, project nextbrain-2y, D-145).
 //     If you ever rotate/regenerate Firebase config, update both places together.
 
 importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey: "AIzaSyDTb8brQXUQCPXMPMBqGhb-jzrBzfMZ6_Q",
-  appId: "1:645175948404:web:de987aa89406323c170d21",
-  messagingSenderId: "645175948404",
-  projectId: "nextbrain-app",
-  authDomain: "nextbrain-app.firebaseapp.com",
-  storageBucket: "nextbrain-app.firebasestorage.app",
+  apiKey: "AIzaSyAD0BWtCBEXdFD-5q97hgSEYTBDXmae50Y",
+  appId: "1:647242717565:web:7c22c255a55be260d69414",
+  messagingSenderId: "647242717565",
+  projectId: "nextbrain-2y",
+  authDomain: "nextbrain-2y.firebaseapp.com",
+  storageBucket: "nextbrain-2y.firebasestorage.app",
 });
 
 const messaging = firebase.messaging();

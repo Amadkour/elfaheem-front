@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Flutter education platform (VOD courses, live sessions, attendance, organizations) — product name NextBrain by DoubleY, application id `com.doubley.nextbrain` on every platform (D-145), Dart package name `flutter_education_app` (internal, never renamed), Firebase project `nextbrain-app` (the old `elfaheem` stays as the fallback for installed apps, D-145), backend at `AppConfig.baseUrl` (`https://nextbrain.site/api` unless built with `--dart-define=API_BASE_URL=…`; a release build accepts only an `https://` override, see `resolveApiBaseUrl`). Targets Android, iOS and Web (web is deployed to Firebase Hosting from `build/web`). Default UI language is Arabic (RTL); English is also supported.
+Flutter education platform (VOD courses, live sessions, attendance, organizations) — product name NextBrain by DoubleY, application id `com.doubley.nextbrain` on every platform (D-145), Dart package name `flutter_education_app` (internal, never renamed), Firebase project `nextbrain-2y` (the old `elfaheem` stays as the fallback for installed apps, D-145), backend at `AppConfig.baseUrl` (`https://nextbrain.site/api` unless built with `--dart-define=API_BASE_URL=…`; a release build accepts only an `https://` override, see `resolveApiBaseUrl`). Targets Android, iOS and Web (web is deployed to Firebase Hosting from `build/web`). Default UI language is Arabic (RTL); English is also supported.
 
 ## Commands
 

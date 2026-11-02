@@ -2153,12 +2153,12 @@ macOS bundle id, the Linux GTK `APPLICATION_ID`. The iPhone app was never publis
   ElFaheem / Al-Faheem fallbacks users could see (Remote Config default `app_name`, the sign-in brand fallback, the
   sidebar fallback, the Google role question, the Android notification channel name, the web notification title,
   two translations) say NextBrain.
-- **Firebase: a NEW project, `nextbrain-app`** (display name NextBrain, project number 645175948404). Its apps:
-  `NextBrain (Android)` `1:645175948404:android:31b9d24f73512146170d21` (com.doubley.nextbrain; the old Android
-  app's SHA-1 / SHA-256 copied onto it), `NextBrain (iOS + macOS)` `1:645175948404:ios:17694ddcf7a6de61170d21`
+- **Firebase: a NEW project, `nextbrain-2y`** (display name NextBrain, project number 647242717565). Its apps:
+  `NextBrain (Android)` `1:647242717565:android:b49304b99ce6da89d69414` (com.doubley.nextbrain; the old Android
+  app's SHA-1 / SHA-256 copied onto it), `NextBrain (iOS + macOS)` `1:647242717565:ios:9e1944ca9c37d70bd69414`
   (com.doubley.nextbrain: a bundle id is unique per project, so one Apple app serves both, and both
-  GoogleService-Info.plist files are its config), `NextBrain (Web)` `1:645175948404:web:de987aa89406323c170d21` and
-  `NextBrain (Windows)` `1:645175948404:web:eda77408d518b8d0170d21`. `lib/firebase_options.dart` now has android,
+  GoogleService-Info.plist files are its config), `NextBrain (Web)` `1:647242717565:web:7c22c255a55be260d69414` and
+  `NextBrain (Windows)` `1:647242717565:web:b5d10b704f2f574fd69414`. `lib/firebase_options.dart` now has android,
   ios, macos, web and windows blocks (Firebase starts on macOS and Windows too; Crashlytics is skipped on Windows /
   Linux, which it does not support); `firebase.json`'s flutterfire block and `web/firebase-messaging-sw.js` name the
   new project. The old project `elfaheem` stays as the fallback for the apps already installed (old Android

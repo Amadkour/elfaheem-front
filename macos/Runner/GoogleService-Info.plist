@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyAqw5yr_fU2yv_ck8Ek0ZZlN2P03eqjzaY</string>
+	<string>AIzaSyDs8opXxt573ShO8d5dVTeI4mobDTncXp8</string>
 	<key>GCM_SENDER_ID</key>
-	<string>645175948404</string>
+	<string>647242717565</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.doubley.nextbrain</string>
 	<key>PROJECT_ID</key>
-	<string>nextbrain-app</string>
+	<string>nextbrain-2y</string>
 	<key>STORAGE_BUCKET</key>
-	<string>nextbrain-app.firebasestorage.app</string>
+	<string>nextbrain-2y.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:645175948404:ios:17694ddcf7a6de61170d21</string>
+	<string>1:647242717565:ios:9e1944ca9c37d70bd69414</string>
 </dict>
 </plist>
