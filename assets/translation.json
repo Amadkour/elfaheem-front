@@ -1937,6 +1937,10 @@
     "en": "Questions",
     "ar": "الأسئلة"
   },
+  "exam_hub_attempts": {
+    "en": "Attempts",
+    "ar": "المحاولات"
+  },
   "btn_results": {
     "en": "Results",
     "ar": "النتائج"

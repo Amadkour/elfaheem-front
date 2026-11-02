@@ -21,6 +21,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../core/app_mode.dart';
+import '../../../core/plural.dart';
 import '../../../design/app_contrast.dart' show ensureContrast;
 import '../../../design/app_kit.dart';
 import '../../../design/home_kit.dart' show homeDurationText;
@@ -225,6 +226,12 @@ class _GoLiveEntryState extends State<GoLiveEntry> {
 // ─────────────────────────────────────────────────────────────────────────────
 //  Flow
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// A course's students on its card: "طالب واحد" / "طالبان" / "4 طلاب" / "12 طالبًا" (compact above 999: "1.3K طالب").
+String goLiveStudentsText(int n) => countText(n,
+        ar0: 'لا طلاب بعد', ar1: 'طالب واحد', ar2: 'طالبان', arFew: '{n} طلاب', arMany: '{n} طالبًا',
+        en0: 'No students yet', en1: '1 student', en: '{n} students')
+    .replaceFirst('$n', appCompactNumber(n));
 
 Future<GoLivePrefs> _loadPrefs(int? userId) async {
   try {
@@ -842,7 +849,7 @@ class _CourseCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     [
-                      t('{n} طالب', '{n} students').replaceAll('{n}', appCompactNumber(course.students)),
+                      goLiveStudentsText(course.students),
                       if (!course.published) t('مسودة', 'Draft'),
                     ].join(' · '),
                     maxLines: 1,

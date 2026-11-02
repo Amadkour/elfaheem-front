@@ -297,7 +297,7 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
     final c = context.colors;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: c.background,
+        color: c.pinnedBackground,
         border: overlapsContent || shrinkOffset > 0 ? Border(bottom: BorderSide(color: c.divider)) : null,
       ),
       child: Padding(

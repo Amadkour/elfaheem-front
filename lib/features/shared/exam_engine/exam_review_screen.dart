@@ -6,6 +6,8 @@
 // one is shown next to its crop.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -19,6 +21,7 @@ import 'offline/offline_exam_teacher.dart';
 import 'exam_taking.dart' show examCodeText;
 import 'exam_quick_screen.dart' show openQuickExam;
 import 'exam_results_screen.dart' show ExamResultsScreen;
+import 'paper/omr_counts.dart' show omrAttemptsText;
 import 'paper/review/omr_review.dart' show OmrAudience, OmrReviewApi;
 import 'paper/scan/omr_audience_picker.dart' show kOmrAudiencePage;
 import 'paper/scan/omr_routes.dart' show OmrRoutes, openOmrReview;
@@ -52,12 +55,32 @@ class EvidenceText extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (text.trim().isEmpty) return Text(t('— لا توجد إجابة —', '— no answer —'), style: appText(13.5, c: c.textLight));
-    return SelectableText.rich(TextSpan(style: appText(14, c: c.textDark, h: 1.5), children: [
-      for (final (s, hi) in highlightRuns(text, spans))
-        TextSpan(text: s, style: hi ? TextStyle(backgroundColor: c.primary.withValues(alpha: .16), fontWeight: FontWeight.w700) : null),
-    ]));
+    // the student's own words in their own direction: an English answer in the Arabic page ends with its full stop on
+    // the right side ("darkness.", not ". darkness")
+    final (dir, align) = autoDirOf(context, text);
+    return SelectableText.rich(
+        TextSpan(style: appText(14, c: c.textDark, h: 1.5), children: [
+          for (final (s, hi) in highlightRuns(text, spans))
+            TextSpan(text: s, style: hi ? TextStyle(backgroundColor: c.primary.withValues(alpha: .16), fontWeight: FontWeight.w700) : null),
+        ]),
+        textDirection: dir,
+        textAlign: align);
   }
 }
+
+/// "تم اعتماد 3 اقتراحات" / "Approved 3 proposals" (Arabic 1 / 2 / 3–10 / 11+ forms).
+String approvedProposalsText(int n) => countText(n,
+    ar0: 'لم يُعتمد أي اقتراح', ar1: 'تم اعتماد اقتراح واحد', ar2: 'تم اعتماد اقتراحين', arFew: 'تم اعتماد {n} اقتراحات', arMany: 'تم اعتماد {n} اقتراحًا',
+    en0: 'No proposal was approved', en1: 'Approved 1 proposal', en: 'Approved {n} proposals');
+
+/// The bulk-approval banner: how many high-confidence proposals can be approved at once.
+String approvableProposalsText(int n) => countText(n,
+    ar1: 'اقتراح واحد بثقة عالية يمكن اعتماده الآن',
+    ar2: 'اقتراحان بثقة عالية يمكن اعتمادهما دفعة واحدة',
+    arFew: '{n} اقتراحات بثقة عالية يمكن اعتمادها دفعة واحدة',
+    arMany: '{n} اقتراحًا بثقة عالية يمكن اعتمادها دفعة واحدة',
+    en1: '1 high-confidence proposal can be approved now',
+    en: '{n} high-confidence proposals can be approved at once');
 
 /// Who an answer belongs to, in words: the student's name, the pseudonym under anonymous marking, else "Student #n".
 String reviewStudentText(ReviewItem item, Map<int, String> names) {
@@ -97,7 +120,7 @@ class ReviewAnswerCard extends StatelessWidget {
           if (item.fromScan || item.fromPaperReader) AppBadgePill(t('ورقي ممسوح', 'Scanned paper'), icon: Icons.document_scanner_outlined, color: c.primary),
         ]),
         const SizedBox(height: 10),
-        Text(item.prompt, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
+        AutoDirText(item.prompt, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(12),
@@ -160,8 +183,8 @@ class _CriterionRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(cr.criterion, style: appText(13, w: FontWeight.w700, c: c.textDark)),
-            if (cr.justification.isNotEmpty) Text(cr.justification, style: appText(12.5, c: c.textMedium)),
+            AutoDirText(cr.criterion, style: appText(13, w: FontWeight.w700, c: c.textDark)),
+            if (cr.justification.isNotEmpty) AutoDirText(cr.justification, style: appText(12.5, c: c.textMedium)),
           ]),
         ),
         const SizedBox(width: 8),
@@ -429,7 +452,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
     final r = await _api.bulkApprove(widget.examId, minConfidence: q.threshold);
     if (!mounted) return;
     if (!r.ok) return appToast(examCodeText(r.code ?? r.message), error: true);
-    appToast(t('اعتُمد ${asInt(r.map['approved'])} اقتراحاً', 'Approved ${asInt(r.map['approved'])} proposals'));
+    appToast(approvedProposalsText(asInt(r.map['approved'])));
     _load();
   }
 
@@ -480,7 +503,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
               padding: const EdgeInsets.only(bottom: 10),
               child: AppBanner(
                 icon: Icons.done_all_rounded,
-                text: t('${q.approvable(q.threshold)} اقتراحاً بثقة عالية يمكن اعتمادها دفعة واحدة', '${q.approvable(q.threshold)} high-confidence proposals can be approved at once'),
+                text: approvableProposalsText(q.approvable(q.threshold)),
                 action: TextButton(onPressed: _bulk, child: Text(t('اعتماد', 'Approve'))),
               ),
             ),
@@ -567,9 +590,9 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
               IconButton(onPressed: () => _open(QuestionBankScreen(orgId: _orgId, courseId: widget.courseId)), icon: const Icon(Icons.quiz_outlined), tooltip: t('بنك الأسئلة', 'Question bank')),
               IconButton(onPressed: _quick, icon: Icon(Icons.add_circle_outline_rounded, color: c.primary), tooltip: t('اختبار جديد', 'New exam')),
             ])),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.25),
-          child: ListView(shrinkWrap: true, padding: EdgeInsets.zero, children: [
+        // every exam at its natural height: the hub scrolls them with the rest of the tab (a box of a quarter of the
+        // screen cut the list after two and a half rows, with empty space under it)
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             for (final e in _items)
               AppCard(
                 margin: const EdgeInsets.only(bottom: 10),
@@ -588,12 +611,11 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
                   ),
                   const SizedBox(width: 8),
                   if (e['status'] != 'draft')
-                    AppBadgePill(t('${asInt(asMap(e['attempts'])['total'])} محاولة', '${asInt(asMap(e['attempts'])['total'])} attempts'), color: c.textMedium),
+                    AppBadgePill(omrAttemptsText(asInt(asMap(e['attempts'])['total'])), color: c.textMedium),
                   IconButton(onPressed: () => _edit(asInt(e['id'])), icon: Icon(Icons.edit_outlined, color: c.textMedium), tooltip: t('تعديل', 'Edit')),
                 ]),
               ),
-          ]),
-        ),
+        ]),
       ]),
     );
   }

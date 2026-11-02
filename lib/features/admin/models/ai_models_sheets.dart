@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/models_hub/models_hub_api.dart';
 import '../../../core/plural.dart';
+import '../../../design/app_bidi.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_tokens.dart';
 import '../admin_common.dart' show t;
@@ -58,12 +59,21 @@ String reindexTimeText(HubReindex r) {
       return '';
     case 'this_model' when e.seconds != null:
       return t('${hubDuration(e.seconds)} (حسب آخر إعادة بناء لهذا النموذج هنا)', '${hubDuration(e.seconds)} (measured on this model\'s last rebuild here)');
+    case 'cached' when e.seconds != null:
+      return t('${hubDuration(e.seconds)} (متجهاته كلها محفوظة مسبقاً في ذاكرة المتجهات)', '${hubDuration(e.seconds)} (every vector is already in the vector cache)');
     case 'other_models' when e.lowSeconds != null && e.highSeconds != null:
+      // the hub's range: each measured model's per-item time as is and scaled by the two health-test speeds
       final lo = e.lowSeconds!, hi = e.highSeconds!;
+      final one = e.models.length == 1;
       return hubSpan(lo) == hubSpan(hi)
-          ? t('${hubDuration(lo)} (حسب نموذج آخر أُعيد البناء به هنا)', '${hubDuration(lo)} (going by another model rebuilt here)')
-          : t('بين ${hubSpan(lo)} و${hubSpan(hi)} (حسب نماذج أخرى أُعيد البناء بها هنا)',
-              'between ${hubSpan(lo)} and ${hubSpan(hi)} (going by other models rebuilt here)');
+          ? (one
+              ? t('${hubDuration(lo)} (حسب نموذج آخر أُعيد البناء به هنا)', '${hubDuration(lo)} (going by another model rebuilt here)')
+              : t('${hubDuration(lo)} (حسب نماذج أخرى أُعيد البناء بها هنا)', '${hubDuration(lo)} (going by other models rebuilt here)'))
+          : (one
+              ? t('بين ${hubSpan(lo)} و${hubSpan(hi)} (حسب نموذج آخر أُعيد البناء به هنا وسرعة اختبار كلٍّ منهما)',
+                  'between ${hubSpan(lo)} and ${hubSpan(hi)} (going by another model rebuilt here and both models\' test speeds)')
+              : t('بين ${hubSpan(lo)} و${hubSpan(hi)} (حسب نماذج أخرى أُعيد البناء بها هنا)',
+                  'between ${hubSpan(lo)} and ${hubSpan(hi)} (going by other models rebuilt here)'));
     default:
       return t('المدة غير معروفة بعد: تُقاس عند أول إعادة بناء بهذا النموذج هنا', 'time not known yet — measured on this model\'s first rebuild here');
   }
@@ -112,13 +122,13 @@ Widget _testBlock(BuildContext context, HubTest test) {
       for (final ch in test.checks)
         Padding(
           padding: const EdgeInsetsDirectional.only(start: 28, top: 2),
-          child: Text('${ch.ok ? '✓' : '✗'} ${ch.name}${ch.raw['text'] == null ? '' : ' — “${ch.raw['text']}”'}',
+          child: Text('${ch.ok ? '✓' : '✗'} ${ch.name}${ch.raw['text'] == null ? '' : ' — “${bidiIsolate('${ch.raw['text']}')}”'}',
               style: appText(12, c: ch.ok ? c.textMedium : c.danger)),
         ),
       if (test.error != null)
         Padding(
           padding: const EdgeInsetsDirectional.only(start: 28, top: 2),
-          child: Text(test.error!, style: appText(12, c: c.danger)),
+          child: AutoDirText(test.error!, style: appText(12, c: c.danger)),
         ),
     ]),
   );
@@ -218,7 +228,7 @@ class ActivateFailure extends StatelessWidget {
         Text(model, style: appText(15, w: FontWeight.w800, c: c.textDark)),
         const SizedBox(height: AppSpace.sm),
         if (message != null) ...[
-          AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: message!),
+          AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: bidiIsolate(message!)),
           const SizedBox(height: AppSpace.sm),
         ],
         for (final ch in failing)

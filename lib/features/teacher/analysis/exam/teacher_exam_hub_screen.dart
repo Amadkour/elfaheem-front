@@ -144,7 +144,7 @@ class _HubViewState extends State<_HubView>
   Widget _buildHero(TeacherExamProvider prov) {
     // the Exam Engine's exams of the course count too (the section above the legacy list reports them)
     final published = prov.exams.where((e) => e.isPublished).length + _engineExams.where((e) => e['status'] == 'published').length;
-    final questions = prov.exams.fold<int>(0, (a, e) => a + e.questionCount);
+    final third = examHubThirdStat(prov.exams, _engineExams);
     return ExamHero(
       child: Column(
         children: [
@@ -167,10 +167,10 @@ class _HubViewState extends State<_HubView>
               ),
               const SizedBox(width: 10),
               HeroStat(
-                icon: Icons.help_outline_rounded,
+                icon: third.icon,
                 color: context.colors.accent,
-                value: '$questions',
-                label: 'btn_questions'.tr,
+                value: third.value,
+                label: third.label,
               ),
             ],
           ),
@@ -184,57 +184,72 @@ class _HubViewState extends State<_HubView>
   // ══════════════════════════════════════════════════════════════════════════
 
   // Exam Engine exams (Phase 6 review) sit above the legacy list; the section hides itself when there are none.
-  Widget _buildExamsTab(TeacherExamProvider prov) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        EngineReviewSection(
-          courseId: prov.courseId,
-          onItems: (items) {
-            if (mounted) setState(() => _engineExams = items);
-          },
-        ),
-        Expanded(child: _legacyExamsTab(prov)),
-      ]);
+  // ONE scroll for the tab: the engine exams at their natural height, then the legacy ones (the engine list used to sit
+  // in a box of a quarter of the screen, cut after two and a half rows with the space under it empty).
+  Widget _buildExamsTab(TeacherExamProvider prov) => CustomScrollView(
+        key: const ValueKey('teacher_exams_tab_scroll'),
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: EngineReviewSection(
+              courseId: prov.courseId,
+              onItems: (items) {
+                if (mounted) setState(() => _engineExams = items);
+              },
+            ),
+          ),
+          _legacyExamsSliver(prov),
+          const SliverToBoxAdapter(child: SizedBox(height: 96)), // clear of the "New exam" button
+        ],
+      );
 
-  Widget _legacyExamsTab(TeacherExamProvider prov) {
+  Widget _legacyExamsSliver(TeacherExamProvider prov) {
+    Widget box(Widget child, {double top = 0}) => SliverToBoxAdapter(child: Padding(padding: EdgeInsets.only(top: top), child: child));
     if (prov.loadingExams) {
-      return const AppListSkeleton(withAvatar: false);
+      return box(const AppListSkeleton(withAvatar: false));
     }
     if (prov.examsError != null && prov.exams.isEmpty) {
-      return _ErrorView(message: prov.examsError, onRetry: prov.loadExams);
+      return box(_ErrorView(message: prov.examsError, onRetry: prov.loadExams), top: 48);
     }
     if (prov.exams.isEmpty) {
-      if (_engineExams.isNotEmpty) return const SizedBox.shrink();     // the engine section above lists them
-      return ExamEmpty(
-        icon: Icons.quiz_outlined,
-        text: '${'no_exams_yet'.tr}\n${'no_exams_empty_hint'.tr}',
+      if (_engineExams.isNotEmpty) return const SliverToBoxAdapter();     // the engine section above lists them
+      return box(
+        ExamEmpty(
+          icon: Icons.quiz_outlined,
+          text: '${'no_exams_yet'.tr}\n${'no_exams_empty_hint'.tr}',
+        ),
+        top: 48,
       );
     }
     final isWide = MediaQuery.of(context).size.width > 720;
     if (!isWide) {
-      return ListView.separated(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-        itemCount: prov.exams.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 14),
-        itemBuilder: (_, i) => _examCard(prov, prov.exams[i]),
+      return SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        sliver: SliverList.separated(
+          itemCount: prov.exams.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 14),
+          itemBuilder: (_, i) => _examCard(prov, prov.exams[i]),
+        ),
       );
     }
-    return LayoutBuilder(
-      builder: (_, box) {
-        const gap = 14.0;
-        final w = (box.maxWidth - 32 - gap) / 2;
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-          child: Wrap(
-            spacing: gap,
-            runSpacing: gap,
-            children: [
-              for (final e in prov.exams)
-                SizedBox(width: w, child: _examCard(prov, e)),
-            ],
-          ),
-        );
-      },
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      sliver: SliverToBoxAdapter(
+        child: LayoutBuilder(
+          builder: (_, box) {
+            const gap = 14.0;
+            final w = (box.maxWidth - gap) / 2;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final e in prov.exams)
+                  SizedBox(width: w, child: _examCard(prov, e)),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -2817,6 +2832,22 @@ class _Toggle extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// The hero's third figure. The legacy exams carry their question count, but the engine's exam list has no question
+/// figure at all (`GET /api/v1/exam/exams` items: the exam + `attempts`), so once the course has engine exams the tile
+/// counts their attempts — a real number — instead of showing a false "0 Questions".
+({IconData icon, String value, String label}) examHubThirdStat(List<ExamModel> legacy, List<Map<String, dynamic>> engine) {
+  if (engine.isEmpty) {
+    return (icon: Icons.help_outline_rounded, value: '${legacy.fold<int>(0, (a, e) => a + e.questionCount)}', label: 'btn_questions'.tr);
+  }
+  var attempts = 0;
+  for (final e in engine) {
+    final a = e['attempts'];
+    final n = a is Map ? a['total'] : null;
+    if (n is num) attempts += n.toInt();
+  }
+  return (icon: Icons.assignment_turned_in_outlined, value: '$attempts', label: 'exam_hub_attempts'.tr);
 }
 
 class _ErrorView extends StatelessWidget {

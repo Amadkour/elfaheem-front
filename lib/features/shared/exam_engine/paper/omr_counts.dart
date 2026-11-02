@@ -48,6 +48,11 @@ String omrAnswersText(int n, {bool after = false, String? lang}) => _n(n, after,
 String omrMinutesText(int n, {bool after = false, String? lang}) => _n(n, after, lang,
     ar1: 'دقيقة واحدة', ar2: 'دقيقتان', ar2After: 'دقيقتين', arFew: '{n} دقائق', arMany: '{n} دقيقة', en1: '1 minute', en: '{n} minutes');
 
+/// "No attempts" / "محاولة واحدة" / "محاولتان" / "3 محاولات" / "11 محاولة" — the exam lists' attempts chip.
+String omrAttemptsText(int n, {String? lang}) => countText(n,
+    ar0: 'لا محاولات', ar1: 'محاولة واحدة', ar2: 'محاولتان', arFew: '{n} محاولات', arMany: '{n} محاولة',
+    en0: 'No attempts', en1: '1 attempt', en: '{n} attempts', lang: lang);
+
 String omrOptionsText(int n, {bool after = false, String? lang}) => _n(n, after, lang,
     ar1: 'اختيار واحد', ar2: 'اختياران', ar2After: 'اختيارين', arFew: '{n} اختيارات', arMany: '{n} اختيارًا', en1: '1 option', en: '{n} options');
 
