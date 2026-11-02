@@ -1,0 +1,70 @@
+{
+ "_source": "GET /api/v1/exam/exams/4/review-items/6 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_hardening.py (back worktree wt-back-omr); read by the recorder right after the script, as the exam's teacher",
+ "_status": 200,
+ "payload": {
+  "id": 6,
+  "scan_page_id": 6,
+  "attempt_id": null,
+  "question_id": null,
+  "kind": "identifier",
+  "code": "identifier_conflict",
+  "reading": {
+   "kind": "shaded",
+   "status": "clear",
+   "value": "2024000107",
+   "reason": null,
+   "low": null,
+   "gaps": null,
+   "columns_to_check": null,
+   "uploaded_for": 106,
+   "read_student_id": 107,
+   "match": "matched",
+   "candidates": [
+    {
+     "user_id": 107,
+     "name": "Student 107"
+    }
+   ],
+   "en": "The QR code and the shaded ID name different students",
+   "ar": "رمز QR ورقم الطالب المظلّل يشيران إلى طالبين مختلفين"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T08:42:28.196493",
+  "actions": [
+   "assign",
+   "accept",
+   "fix",
+   "replace",
+   "dismiss"
+  ],
+  "has_crop": true,
+  "en": "The QR code and the shaded ID name different students",
+  "ar": "رمز QR ورقم الطالب المظلّل يشيران إلى طالبين مختلفين",
+  "crop_url": "/api/v1/exam/omr/images/crop/6?exp=1793609548&sig=07f790cb7d70fe2b800effd88a0f5d3b",
+  "system_reading": {
+   "reading_id": 6,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "identifier": {
+    "kind": "shaded",
+    "box": [
+     118,
+     263,
+     452,
+     409
+    ],
+    "status": "clear",
+    "value": "2024000107",
+    "blank_columns": []
+   }
+  },
+  "page": {
+   "id": 6,
+   "page_label": "1",
+   "status": "review",
+   "url": "/api/v1/exam/exams/4/omr/pages/6"
+  }
+ }
+}

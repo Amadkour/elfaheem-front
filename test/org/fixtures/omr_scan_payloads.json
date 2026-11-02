@@ -1,0 +1,746 @@
+{
+ "_source": "Recorded 2026-11-02 from the real routes of wt-back-omr e68cb20: tests/exam_engine/e2e_omr_scan.py and e2e_omr_review.py run unchanged with every TestClient reply recorded (scratch record_omr.py), plus extra calls on the same app at the end of e2e_omr_review (live-hint frames of the engine's own printed sheet on a grey desk, a 503 omr_busy with the semaphore held, a capture with the bottom-left mark covered, a two-photo camera session, duplicate / unsupported uploads, the exam switched to paper). events_batch = the job_updated payloads the uploader received for the 10-page PDF. Do not edit by hand; re-record after a payload change.",
+ "payloads": {
+  "sheets_info": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "template_id": 1,
+    "template_version": 1,
+    "printable": true,
+    "questions": 6,
+    "sheet_questions": 50,
+    "forms": [
+     "A",
+     "B"
+    ],
+    "sheet_forms": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "form_markers": [
+     "qr",
+     "printed"
+    ],
+    "id_kind": "shaded"
+   }
+  },
+  "sheets_not_a_student": {
+   "status": 422,
+   "headers": {},
+   "body": {
+    "detail": {
+     "code": "not_a_student",
+     "message": "طالب ليس من طلاب هذا الاختبار",
+     "student_id": 999
+    }
+   }
+  },
+  "upload_pdf": {
+   "status": 201,
+   "headers": {},
+   "body": {
+    "batch_id": 8,
+    "pages": [
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17
+    ],
+    "duplicates": 0,
+    "omr": true
+   }
+  },
+  "batch_processing": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "batch_id": 8,
+    "exam_id": 1,
+    "kind": "omr",
+    "total": 10,
+    "done": 0,
+    "graded": 0,
+    "review": 0,
+    "rejected": 0,
+    "failed": 0,
+    "pending": 10,
+    "status": "processing",
+    "expected": null,
+    "rejected_pages": [],
+    "created_at": "2026-11-02T05:30:27.390734",
+    "en": "0 of 10 papers processed",
+    "ar": "تمت معالجة 0 من 10 ورقة"
+   }
+  },
+  "batch_done": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "batch_id": 8,
+    "exam_id": 1,
+    "kind": "omr",
+    "total": 10,
+    "done": 10,
+    "graded": 9,
+    "review": 0,
+    "rejected": 1,
+    "failed": 0,
+    "pending": 0,
+    "status": "done",
+    "expected": null,
+    "rejected_pages": [
+     {
+      "page_id": 14,
+      "page_label": "7",
+      "page_no": 7,
+      "file_name": "batch.pdf",
+      "codes": [
+       "blurry"
+      ],
+      "en": "Page 7 is too blurry. Please upload a clearer image of it.",
+      "ar": "الصفحة 7 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.",
+      "instruction_en": "Too blurry, hold steady.",
+      "instruction_ar": "الصورة غير واضحة، ثبّت الهاتف."
+     }
+    ],
+    "created_at": "2026-11-02T05:30:27.390734",
+    "en": "10 of 10 papers processed",
+    "ar": "تمت معالجة 10 من 10 ورقة"
+   }
+  },
+  "events_batch": [
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "processing",
+    "done": 1,
+    "total": 10,
+    "page_id": 8,
+    "page_status": "processed",
+    "en": "1 of 10 papers processed",
+    "ar": "تمت معالجة 1 من 10 ورقة"
+   },
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "processing",
+    "done": 2,
+    "total": 10,
+    "page_id": 9,
+    "page_status": "processed",
+    "en": "2 of 10 papers processed",
+    "ar": "تمت معالجة 2 من 10 ورقة"
+   },
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "processing",
+    "done": 3,
+    "total": 10,
+    "page_id": 10,
+    "page_status": "processed",
+    "en": "3 of 10 papers processed",
+    "ar": "تمت معالجة 3 من 10 ورقة"
+   },
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "processing",
+    "done": 4,
+    "total": 10,
+    "page_id": 11,
+    "page_status": "processed",
+    "en": "4 of 10 papers processed",
+    "ar": "تمت معالجة 4 من 10 ورقة"
+   },
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "processing",
+    "done": 5,
+    "total": 10,
+    "page_id": 12,
+    "page_status": "processed",
+    "en": "5 of 10 papers processed",
+    "ar": "تمت معالجة 5 من 10 ورقة"
+   },
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "processing",
+    "done": 6,
+    "total": 10,
+    "page_id": 13,
+    "page_status": "processed",
+    "en": "6 of 10 papers processed",
+    "ar": "تمت معالجة 6 من 10 ورقة"
+   },
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "processing",
+    "done": 7,
+    "total": 10,
+    "page_id": 14,
+    "page_status": "rejected",
+    "en": "7 of 10 papers processed",
+    "ar": "تمت معالجة 7 من 10 ورقة"
+   },
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "processing",
+    "done": 8,
+    "total": 10,
+    "page_id": 15,
+    "page_status": "processed",
+    "en": "8 of 10 papers processed",
+    "ar": "تمت معالجة 8 من 10 ورقة"
+   },
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "processing",
+    "done": 9,
+    "total": 10,
+    "page_id": 16,
+    "page_status": "processed",
+    "en": "9 of 10 papers processed",
+    "ar": "تمت معالجة 9 من 10 ورقة"
+   },
+   {
+    "kind": "omr_scan",
+    "id": 8,
+    "exam_id": 1,
+    "status": "done",
+    "done": 10,
+    "total": 10,
+    "page_id": 17,
+    "page_status": "processed",
+    "en": "10 of 10 papers processed",
+    "ar": "تمت معالجة 10 من 10 ورقة"
+   }
+  ],
+  "capture_rejected_blurry": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "accepted": false,
+    "code": "blurry",
+    "en": "Too blurry, hold steady.",
+    "ar": "الصورة غير واضحة، ثبّت الهاتف.",
+    "issues": [
+     {
+      "code": "blurry",
+      "en": "Too blurry, hold steady.",
+      "ar": "الصورة غير واضحة، ثبّت الهاتف.",
+      "details": {
+       "sigma_mm": 0.837
+      }
+     }
+    ],
+    "ms": 285.9,
+    "batch_id": null
+   }
+  },
+  "capture_accepted_1_of_3": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "accepted": true,
+    "page_id": 3,
+    "batch_id": 3,
+    "captured": 1,
+    "expected": 3,
+    "en": "Paper 1 of 3 captured",
+    "ar": "تم التقاط الورقة 1 من 3",
+    "ms": 278.5
+   }
+  },
+  "batches_list": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "items": [
+     {
+      "batch_id": 2,
+      "exam_id": 1,
+      "kind": "omr",
+      "total": 1,
+      "done": 1,
+      "graded": 1,
+      "review": 0,
+      "rejected": 0,
+      "failed": 0,
+      "pending": 0,
+      "status": "done",
+      "expected": null,
+      "created_at": "2026-11-02T05:38:00.882373",
+      "en": "1 of 1 papers processed",
+      "ar": "تمت معالجة 1 من 1 ورقة"
+     },
+     {
+      "batch_id": 1,
+      "exam_id": 1,
+      "kind": "omr",
+      "total": 1,
+      "done": 1,
+      "graded": 0,
+      "review": 1,
+      "rejected": 0,
+      "failed": 0,
+      "pending": 0,
+      "status": "done",
+      "expected": null,
+      "created_at": "2026-11-02T05:37:59.588196",
+      "en": "1 of 1 papers processed",
+      "ar": "تمت معالجة 1 من 1 ورقة"
+     }
+    ]
+   }
+  },
+  "upload_single": {
+   "status": 201,
+   "headers": {},
+   "body": {
+    "batch_id": 1,
+    "pages": [
+     1
+    ],
+    "duplicates": 0,
+    "omr": true
+   }
+  },
+  "hint_ready_first": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "ok": true,
+    "code": "ready",
+    "en": "Hold still…",
+    "ar": "ثبّت الهاتف…",
+    "corners": [
+     [
+      55.0,
+      45.0
+     ],
+     [
+      483.0,
+      45.0
+     ],
+     [
+      483.0,
+      673.0
+     ],
+     [
+      55.0,
+      673.0
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 187.6,
+    "clipped": 0.0,
+    "sharpness": 1206.0,
+    "motion": null,
+    "page_fraction": 0.691,
+    "stat": "48x64:RkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZS2oOP29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbj4PaUkZGRkZS2lNn29vb29vb29vb29vb287GwsDVwsLJwdHb29vb29vb29vb29vbZ1PaUkZGRkZS2tvb29vb29vb29vb29vb29vb283Oz87b29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NjY2dna29vb29vb29vb29vb29vb29vb29vb29vb29vY0djR2NvaUkZGRkZS2tvbzMvQzMnP2NfX19fa29vb29vQ0NDT0dDZ29vbz9DQ09va19fU2tvaUkZGRkZS2tvb1dTT09PT1NXV1NPY29vb29rQ0dHOztvb29vb0Nvb0NBodG9729vaUkZGRkZS2tvby4rBqJCNiYB/ycvX29vb29rO0M7Q2tvb29vb0Nvb0NFqXHKN29vaUkZGRkZS2tvby8vLysrLy8nIgMvW29vb29rP0tLQ0tTb29vb0M/P1NNVam+O29vaUkZGRkZS2tvbzMvLy8vMzMrJyszW29vb29vb0tDP0NHQ0djKzs3OyNBtYH6V29vaUkZGRkZS2tvbgsiXssnKysjIycrW29vb29vb29bRzdHP0NfO0dLV0NPa2trb29vaUkZGRkZS2tvby8vLy8vLy8nIyozN29vb29vb29vWzMzPzNfb1tXQxs/b29vb29vaUkZGRkZS2tvby8vLy8vLy8nJysrW29vb29vb29vV1dXW1traxL+qgKbb29vb29vaUkZGRkZS2tvbycnKysrKysjHyMrW29vb29vb29vb29vb29vb2trZ19jb29vb29vaUkZGRkZS2tvby8vLy8vLzMrJysvX29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbysrKysrKy8jIycrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbycrKysrKysjHyMrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2tra2tra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbzdPT09ra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NnV2NbW1tbW1tbW2dvb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb29vb29vas8fS1dbS29vb29vb29vb2dTV0tXW0tvb29vb29vb29vaUkZGRkZS2tvb29vb29vapb/M0dTO29vb29vb29vb1NDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzchkz8/J29vb29vb29vb1M3PydDPydvb29vb29vb29vaUkZGRkZS2tvb29vb29vYz9HNl7XN29vb29vb29vb0s/SzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0NPNwMuu29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXztLO0c2F29vb29vb29vb087SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXgazKz8/J29vb29vb29vb0MzPyc/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vby9XU1tjV29vb29vb29vb29fY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vWjbHN0dHM29vb29vb29vb1M/QzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZztDM0NDM29vb29vb29vb0s7Qy9HRy9vb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dPN29vb29vb29vb2NDTzNHTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXz9PN0dPN29vb29vb29vb1c/TzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzM/Lz8/K29vb29vb29vb0c3PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HN0dHN29vb29vb29vb08/RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29va1tjU1tjU29vb29vb29vb2tbY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vVzM/Jzs/J29vb29vb29vb0cvPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vW0NPO0dPO29vb29vb29vb1tDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPN0dPM29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vUztHN0dHN29vb29vb29vb0c7RzNLRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vTzdDM0NDL29vb29vb29vb0c3Qy9DQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0NPN0dPN29vb29vb29vb19DTzdLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0tXR1NXR29vb29vb29vb1NLV0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HO0dLN29vb29vb29vb09DRzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0dPN0dPN29vb29vb29vb2tHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9LN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM7Jz8/J29vb29vb29vb0czPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vV0NPO0tPO29vb29vb29vb1NDTztLTztvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dTM29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vQz9HN0dLN29vb29vb29vb0s/RzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vY09XR1NXR29vb29vb29vb2NTU0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9PN0dTN29vb29vb29vb1NDTzdHTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vSzc/L0NDK29vb29vb29vb083PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTztHN0dHM29vb29vb29vb0c7RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NTN0dPN29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vSz9PN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM/Jzs/J29vb29vb29vb0MzPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vb2tva29vb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2lNn29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbZ1PaUkZGRkZS2oOP29vb29vb29vb29vb29HT09XR1NLW0tPb29vb29vb29vb29vbj4PaUkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZG",
+    "cv_ms": 9.19,
+    "ms": 19.45
+   }
+  },
+  "hint_ready": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "ok": true,
+    "code": "ready",
+    "en": "Hold still…",
+    "ar": "ثبّت الهاتف…",
+    "corners": [
+     [
+      55.0,
+      45.0
+     ],
+     [
+      483.0,
+      45.0
+     ],
+     [
+      483.0,
+      673.0
+     ],
+     [
+      55.0,
+      673.0
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 187.6,
+    "clipped": 0.0,
+    "sharpness": 1206.0,
+    "motion": 0.0,
+    "page_fraction": 0.691,
+    "stat": "48x64:RkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZS2oOP29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbj4PaUkZGRkZS2lNn29vb29vb29vb29vb287GwsDVwsLJwdHb29vb29vb29vb29vbZ1PaUkZGRkZS2tvb29vb29vb29vb29vb29vb283Oz87b29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NjY2dna29vb29vb29vb29vb29vb29vb29vb29vb29vY0djR2NvaUkZGRkZS2tvbzMvQzMnP2NfX19fa29vb29vQ0NDT0dDZ29vbz9DQ09va19fU2tvaUkZGRkZS2tvb1dTT09PT1NXV1NPY29vb29rQ0dHOztvb29vb0Nvb0NBodG9729vaUkZGRkZS2tvby4rBqJCNiYB/ycvX29vb29rO0M7Q2tvb29vb0Nvb0NFqXHKN29vaUkZGRkZS2tvby8vLysrLy8nIgMvW29vb29rP0tLQ0tTb29vb0M/P1NNVam+O29vaUkZGRkZS2tvbzMvLy8vMzMrJyszW29vb29vb0tDP0NHQ0djKzs3OyNBtYH6V29vaUkZGRkZS2tvbgsiXssnKysjIycrW29vb29vb29bRzdHP0NfO0dLV0NPa2trb29vaUkZGRkZS2tvby8vLy8vLy8nIyozN29vb29vb29vWzMzPzNfb1tXQxs/b29vb29vaUkZGRkZS2tvby8vLy8vLy8nJysrW29vb29vb29vV1dXW1traxL+qgKbb29vb29vaUkZGRkZS2tvbycnKysrKysjHyMrW29vb29vb29vb29vb29vb2trZ19jb29vb29vaUkZGRkZS2tvby8vLy8vLzMrJysvX29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbysrKysrKy8jIycrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbycrKysrKysjHyMrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2tra2tra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbzdPT09ra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NnV2NbW1tbW1tbW2dvb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb29vb29vas8fS1dbS29vb29vb29vb2dTV0tXW0tvb29vb29vb29vaUkZGRkZS2tvb29vb29vapb/M0dTO29vb29vb29vb1NDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzchkz8/J29vb29vb29vb1M3PydDPydvb29vb29vb29vaUkZGRkZS2tvb29vb29vYz9HNl7XN29vb29vb29vb0s/SzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0NPNwMuu29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXztLO0c2F29vb29vb29vb087SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXgazKz8/J29vb29vb29vb0MzPyc/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vby9XU1tjV29vb29vb29vb29fY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vWjbHN0dHM29vb29vb29vb1M/QzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZztDM0NDM29vb29vb29vb0s7Qy9HRy9vb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dPN29vb29vb29vb2NDTzNHTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXz9PN0dPN29vb29vb29vb1c/TzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzM/Lz8/K29vb29vb29vb0c3PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HN0dHN29vb29vb29vb08/RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29va1tjU1tjU29vb29vb29vb2tbY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vVzM/Jzs/J29vb29vb29vb0cvPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vW0NPO0dPO29vb29vb29vb1tDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPN0dPM29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vUztHN0dHN29vb29vb29vb0c7RzNLRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vTzdDM0NDL29vb29vb29vb0c3Qy9DQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0NPN0dPN29vb29vb29vb19DTzdLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0tXR1NXR29vb29vb29vb1NLV0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HO0dLN29vb29vb29vb09DRzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0dPN0dPN29vb29vb29vb2tHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9LN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM7Jz8/J29vb29vb29vb0czPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vV0NPO0tPO29vb29vb29vb1NDTztLTztvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dTM29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vQz9HN0dLN29vb29vb29vb0s/RzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vY09XR1NXR29vb29vb29vb2NTU0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9PN0dTN29vb29vb29vb1NDTzdHTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vSzc/L0NDK29vb29vb29vb083PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTztHN0dHM29vb29vb29vb0c7RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NTN0dPN29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vSz9PN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM/Jzs/J29vb29vb29vb0MzPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vb2tva29vb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2lNn29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbZ1PaUkZGRkZS2oOP29vb29vb29vb29vb29HT09XR1NLW0tPb29vb29vb29vb29vbj4PaUkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZG",
+    "cv_ms": 8.69,
+    "ms": 20.77
+   }
+  },
+  "hint_moving": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "ok": false,
+    "code": "moving",
+    "en": "Hold steady.",
+    "ar": "ثبّت الهاتف.",
+    "corners": [
+     [
+      85.0,
+      45.0
+     ],
+     [
+      513.0,
+      45.0
+     ],
+     [
+      513.0,
+      673.0
+     ],
+     [
+      85.0,
+      673.0
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 187.6,
+    "clipped": 0.0,
+    "sharpness": 1267.1,
+    "motion": 19.6,
+    "page_fraction": 0.691,
+    "stat": "48x64:RkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZ6x8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8elRkZGRkaC0Gi229vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vYbKmzRkZGRkaCySqi29vb29vb29vb29vb28fDxMPRxMLIwdnb29vb29vb29vb29vWMY6zRkZGRkaC29vb29vb29vb29vb29vb29vb2M3N0NPb29vb29vb29vb29vb29vb29uzRkZGRkaC29va2Nja2Nnb29vb29vb29vb29vb29vb29vb29vb29vb29vU09XR29uzRkZGRkaC29vXycvTycrU19fX19jb29vb29fRz9DSz9Lb29vazNDN2tvZ2dXV29uzRkZGRkaC29vY1NXV1NTT09PU1Nba29vb29fQ0tDO0tvb29vZ0dvS2alpcmqm29uzRkZGRkaC29vYyYDJhIuPkI+Sy8jb29vb29bQzs/T2tvb29vZ0dvS2alrY3Sq29uzRkZGRkaC29vYy8nJysvKysrFh8jb29vb29bQ0dPR0djb29vazc/N2qZgaG2029uzRkZGRkaC29vYy8rKy8zLy8vMy8nb29vb29vY0dDPz9HR0tfMys/OzqtyXoOy29uzRkZGRkaC29vThMh+ycrKysnLy8fb29vb29vb29LQz9DQz9fP0dTT0dXa2trb29uzRkZGRkaC29vYysnJysvLy8rLy4Db29vb29vb29rRzczOzdvZ1tLRwNjb29vb29uzRkZGRkaC29vYy8nJy8vLy8vLzMfb29vb29vb29rU1dbW1tvTxbKwZs3b29vb29uzRkZGRkaC29vYycjIycnJysrKysfb29vb29vb29vb29vb29vb2tnZ1trb29vb29uzRkZGRkaC29vYy8nJy8vLy8vMzMnb29vb29vb29vb29vb29vb29vb29vb29vb29uzRkZGRkaC29vYysnIysrKysrLy8jb29vb29vb29vb29vb29vb29vb29vb29vb29uzRkZGRkaC29vYycjIycrJysnKysfb29vb29vb29vb29vb29vb29vb29vb29vb29uzRkZGRkaC29vb2tra2tra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29uzRkZGRkaC29vXy9bR19ra2tra2tra29vb29vb29vb29vb29vb29vb29vb29vb29uzRkZGRkaC29vb2NjW2NbW1tbW1tbW29vb29vb29vb29vb29vb29vb29vb29vb29uzRkZGRkaC29vb29vb29vZotXV0dbV29vb29vb29vb2NLW1dLV1dvb29vb29vb29uzRkZGRkaC29vb29vb29vXjtLRzdPS29vb29vb29vb0c3T0c3T0dvb29vb29vb29uzRkZGRkaC29vb29vb29vUyZ+UyNHQ29vb29vb29vb0crPz8rPz9vb29vb29vb29uzRkZGRkaC29vb29vb29vVzdLRdtHS29vb29vb29vbz83R0c7S0dvb29vb29vb29uzRkZGRkaC29vb29vb29vZzNPStMXA29vb29vb29vb18zU0szT0dvb29vb29vb29uzRkZGRkaC29vb29vb29vUzNLSzLCn29vb29vb29vbz83S0c7T0dvb29vb29vb29uzRkZGRkaC29vb29vb29vUW8/Px9DP29vb29vb29vbzcnPzsnPz9vb29vb29vb29uzRkZGRkaC29vb29vb29vbxdjX1NjX29vb29vb29vb29TY19TY19vb29vb29vb29uzRkZGRkaC29vb29vb29vTbNHRy9LR29vb29vb29vb0czQ0M3R0dvb29vb29vb29uzRkZGRkaC29vb29vb29vWy9HQytLR29vb29vb29vbz8zQ0MzQ0Nvb29vb29vb29uzRkZGRkaC29vb29vb29vYzNPSy9TS29vb29vb29vb18zT0czT0dvb29vb29vb29uzRkZGRkaC29vb29vb29vVzdPTzNPS29vb29vb29vb083T0s3T0dvb29vb29vb29uzRkZGRkaC29vb29vb29vTytDQydHQ29vb29vb29vbzsrQz8rQz9vb29vb29vb29uzRkZGRkaC29vb29vb29vQzNLSzNPS29vb29vb29vb0M3R0c3R0dvb29vb29vb29uzRkZGRkaC29vb29vb29va1NfX1NjX29vb29vb29vb2dTY19TY19vb29vb29vb29uzRkZGRkaC29vb29vb29vSyNDPx9DP29vb29vb29vbzsnPzsnPztvb29vb29vb29uzRkZGRkaC29vb29vb29vUzdPSzdPS29vb29vb29vb1M7T0c7T0tvb29vb29vb29uzRkZGRkaC29vb29vb29vXzNPSy9PS29vb29vb29vb2MzT0czT0dvb29vb29vb29uzRkZGRkaC29vb29vb29vQzNHRzNLS29vb29vb29vbzc7R0c3R0dvb29vb29vb29uzRkZGRkaC29vb29vb29vQytHQytHQ29vb29vb29vbzsvQz8vQ0Nvb29vb29vb29uzRkZGRkaC29vb29vb29vWzdPSzNTS29vb29vb29vb1s3T0c3T0dvb29vb29vb29uzRkZGRkaC29vb29vb29vV0NXU0NXV29vb29vb29vb0tHV1NHV1Nvb29vb29vb29uzRkZGRkaC29vb29vb29vQzdLSzNPS29vb29vb29vb0M7R0c7S0dvb29vb29vb29uzRkZGRkaC29vb29vb29vZzNPSzNPS29vb29vb29vb2czU0szU0tvb29vb29vb29uzRkZGRkaC29vb29vb29vTzdLSzNPS29vb29vb29vb0M7S0c7T0dvb29vb29vb29uzRkZGRkaC29vb29vb29vOyM/Px9DP29vb29vb29vbzsnPzsnPz9vb29vb29vb29uzRkZGRkaC29vb29vb29vSztPSzdTT29vb29vb29vb0c7T0s7T0tvb29vb29vb29uzRkZGRkaC29vb29vb29vYy9PSzNPS29vb29vb29vb18zU0czT0dvb29vb29vb29uzRkZGRkaC29vb29vb29vNzdLSzNPS29vb29vb29vbzs3R0c3S0tvb29vb29vb29uzRkZGRkaC29vb29vb29vX0dXU0dbV29vb29vb29vb1tHV1NHV1Nvb29vb29vb29uzRkZGRkaC29vb29vb29vVzNPSzNPS29vb29vb29vb0c3T0c3T0dvb29vb29vb29uzRkZGRkaC29vb29vb29vPytDQydHR29vb29vb29vb0MrQz8vQ0Nvb29vb29vb29uzRkZGRkaC29vb29vb29vQzNHRzNLS29vb29vb29vbzc3R0c3R0dvb29vb29vb29uzRkZGRkaC29vb29vb29vYzNPSzNPS29vb29vb29vb2czT0szT0tvb29vb29vb29uzRkZGRkaC29vb29vb29vQzdLSzNPS29vb29vb29vbzs3S0c3T0dvb29vb29vb29uzRkZGRkaC29vb29vb29vOyM/Px9DP29vb29vb29vbzcjPzsnPz9vb29vb29vb29uzRkZGRkaC29vb29vb29vb29vb2tvb29vb29vb29vb29vb29vb29vb29vb29vb29uzRkZGRkaCySqi29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vWMY6zRkZGRkaC0Gi229vb29vb29vb29vb2NHS1dPS09TV0tfb29vb29vb29vb29vYbKmzRkZGRkZ6x8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8elRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZG",
+    "cv_ms": 7.07,
+    "ms": 16.99
+   }
+  },
+  "hint_too_dark": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "ok": false,
+    "code": "too_dark",
+    "en": "Too dark, move to better light.",
+    "ar": "الصورة مظلمة جدًا، انتقل إلى إضاءة أفضل.",
+    "corners": [
+     [
+      55.0,
+      45.0
+     ],
+     [
+      483.0,
+      45.0
+     ],
+     [
+      483.0,
+      673.0
+     ],
+     [
+      55.0,
+      673.0
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 27.4,
+    "clipped": 0.0,
+    "sharpness": 25.9,
+    "motion": null,
+    "page_fraction": 0.691,
+    "stat": "48x64:CgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoLHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dDAoKCgoMIBMVICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgFRMgDAoKCgoMIAwPICAgICAgICAgICAgIB4dHR0fHRwdHB8gICAgICAgICAgICAgDwwgDAoKCgoMICAgICAgICAgICAgICAgICAgIB4eHh4gICAgICAgICAgICAgICAgICAgDAoKCgoMICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgHyAfICAgDAoKCgoMICAgHh4fHh4eIB8gICAgICAgICAfHx8fHx4gICAgHx4eHyAgIB8fICAgDAoKCgoMICAgIB8fHx8fIB8gHx8gICAgICAfHx8fHyAgICAgHyAgHx4PERASICAgDAoKCgoMICAgHhQcGBUVFBMTHh4gICAgICAeHx8fICAgICAgHyAgHx8QDhEVICAgDAoKCgoMICAgHh4eHh4eHh4eEx4gICAgICAeHx8fHx8gICAgHh8fHx8MEBEVICAgDAoKCgoMICAgHh4eHh4eHh4eHh4gICAgICAgHx8fHx8fHyAeHh4eHh4QDhIWICAgDAoKCgoMICAgEx0WGh4eHh4eHh4fICAgICAgIB8fHh8eHyAeHx8fHx8gICAgICAgDAoKCgoMICAgHh4eHh4eHh4dHhQeICAgICAgICAgHh4eHh8gHx8fHR8gICAgICAgDAoKCgoMICAgHh4eHh4eHh4dHh4gICAgICAgICAfHx8fHyAgHRwZExggICAgICAgDAoKCgoMICAgHh4eHh4eHh4eHh4fICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgHh4eHh4eHh4eHh4fICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgHh4eHh4eHh4eHR4gICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgHh0eHh4eHh0eHh4gICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgHh8fHyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgICAfIB8fHx8fHx8fICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgICAgICAgGh0fHx8fICAgICAgICAgIB8fHx8fHyAgICAgICAgICAgDAoKCgoMICAgICAgICAgGBweHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh0PHh4eICAgICAgICAgHx4eHh8fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eFhoeICAgICAgICAgHx8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHB4aICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh8eHx4UICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfExkeHh4eICAgICAgICAgHx4eHh4eHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh8fHyAfICAgICAgICAgIB8gHx8gICAgICAgICAgICAgDAoKCgoMICAgICAgICAfFRoeHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh8eHx4eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh4eHh8eICAgICAgICAgHx4eHh4fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgICAfHx8fICAgICAgICAgICAgHyAgHyAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHh4eICAgICAgICAgHx4eHh4fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx8fICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx4eICAgICAgICAgHx4fHh4fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgHx8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8fHx8fICAgICAgICAgHx8fHx8fHyAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHh8eICAgICAgICAgHx4eHh8fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgHx8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgIB4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAeHx8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8fHx8fICAgICAgICAgIB8fHx8fHyAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgHx8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh4eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx8eICAgICAgICAgHh4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8fHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHh8eICAgICAgICAgHx4eHh4eHSAgICAgICAgICAgDAoKCgoMICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMIAwPICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDwwgDAoKCgoMIBMVICAgICAgICAgICAgIB4fHx8fHx8fHx8gICAgICAgICAgICAgFRMgDAoKCgoLHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dDAoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoK",
+    "cv_ms": 7.98,
+    "ms": 18.12
+   }
+  },
+  "hint_corners": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "ok": false,
+    "code": "corners",
+    "en": "Show all four corner marks.",
+    "ar": "أظهر علامات الأركان الأربعة.",
+    "corners": [],
+    "corners_found": 0,
+    "brightness": 187.7,
+    "clipped": 0.0,
+    "sharpness": 1186.1,
+    "motion": null,
+    "page_fraction": 0.0,
+    "stat": "48x64:RkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZS2oOP29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbj4PaUkZGRkZS2lNn29vb29vb29vb29vb287GwsDVwsLJwdHb29vb29vb29vb29vbZ1PaUkZGRkZS2tvb29vb29vb29vb29vb29vb283Oz87b29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NjY2dna29vb29vb29vb29vb29vb29vb29vb29vb29vY0djR2NvaUkZGRkZS2tvbzMvQzMnP2NfX19fa29vb29vQ0NDT0dDZ29vbz9DQ09va19fU2tvaUkZGRkZS2tvb1dTT09PT1NXV1NPY29vb29rQ0dHOztvb29vb0Nvb0NBodG9729vaUkZGRkZS2tvby4rBqJCNiYB/ycvX29vb29rO0M7Q2tvb29vb0Nvb0NFqXHKN29vaUkZGRkZS2tvby8vLysrLy8nIgMvW29vb29rP0tLQ0tTb29vb0M/P1NNVam+O29vaUkZGRkZS2tvbzMvLy8vMzMrJyszW29vb29vb0tDP0NHQ0djKzs3OyNBtYH6V29vaUkZGRkZS2tvbgsiXssnKysjIycrW29vb29vb29bRzdHP0NfO0dLV0NPa2trb29vaUkZGRkZS2tvby8vLy8vLy8nIyozN29vb29vb29vWzMzPzNfb1tXQxs/b29vb29vaUkZGRkZS2tvby8vLy8vLy8nJysrW29vb29vb29vV1dXW1traxL+qgKbb29vb29vaUkZGRkZS2tvbycnKysrKysjHyMrW29vb29vb29vb29vb29vb2trZ19jb29vb29vaUkZGRkZS2tvby8vLy8vLzMrJysvX29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbysrKysrKy8jIycrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbycrKysrKysjHyMrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2tra2tra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbzdPT09ra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NnV2NbW1tbW1tbW2dvb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb29vb29vas8fS1dbS29vb29vb29vb2dTV0tXW0tvb29vb29vb29vaUkZGRkZS2tvb29vb29vapb/M0dTO29vb29vb29vb1NDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzchkz8/J29vb29vb29vb1M3PydDPydvb29vb29vb29vaUkZGRkZS2tvb29vb29vYz9HNl7XN29vb29vb29vb0s/SzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0NPNwMuu29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXztLO0c2F29vb29vb29vb087SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXgazKz8/J29vb29vb29vb0MzPyc/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vby9XU1tjV29vb29vb29vb29fY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vWjbHN0dHM29vb29vb29vb1M/QzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZztDM0NDM29vb29vb29vb0s7Qy9HRy9vb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dPN29vb29vb29vb2NDTzNHTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXz9PN0dPN29vb29vb29vb1c/TzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzM/Lz8/K29vb29vb29vb0c3PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HN0dHN29vb29vb29vb08/RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29va1tjU1tjU29vb29vb29vb2tbY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vVzM/Jzs/J29vb29vb29vb0cvPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vW0NPO0dPO29vb29vb29vb1tDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPN0dPM29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vUztHN0dHN29vb29vb29vb0c7RzNLRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vTzdDM0NDL29vb29vb29vb0c3Qy9DQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0NPN0dPN29vb29vb29vb19DTzdLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0tXR1NXR29vb29vb29vb1NLV0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HO0dLN29vb29vb29vb09DRzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0dPN0dPN29vb29vb29vb2tHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9LN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM7Jz8/J29vb29vb29vb0czPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vV0NPO0tPO29vb29vb29vb1NDTztLTztvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dTM29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vQz9HN0dLN29vb29vb29vb0s/RzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vY09XR1NXR29vb29vb29vb2NTU0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9PN0dTN29vb29vb29vb1NDTzdHTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vSzc/L0NDK29vb29vb29vb083PytDQytvb29vb29vb29vaUkZGRkZS19nZ2dnZ2dnZ1dHN0dHM29vb29vb29vb0c7RzNHRzNvb29vb29vb29vaUkZGRkZS1dfX19fX19fX19bN0dPN29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS1dfX19fX19fX19TN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS1dfX19fX19fX19HJzs/J29vb29vb29vb0MzPyM/PyNvb29vb29vb29vaUkZGRkZS1dfX19fX19fX19ra29vb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS1dfX19fX19fX19rb29vb29vb29vb29vb29vb29vb29vb29vb29vbZ1PaUkZGRkZS1dfX19fX19fX19rb29vb29HT09XR1NLW0tPb29vb29vb29vb29vbj4PaUkZGRkZQwsTExMTExMTExMbHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZG",
+    "cv_ms": 8.16,
+    "ms": 19.36
+   }
+  },
+  "hint_no_sheet": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "ok": false,
+    "code": "no_sheet",
+    "en": "Fit the whole sheet inside the frame.",
+    "ar": "اجعل الورقة كاملة داخل الإطار.",
+    "corners": [],
+    "corners_found": 0,
+    "brightness": 140.0,
+    "clipped": 0.0,
+    "sharpness": 0.0,
+    "motion": null,
+    "page_fraction": 0.0,
+    "stat": "48x64:jIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyM",
+    "cv_ms": 5.46,
+    "ms": 13.86
+   }
+  },
+  "hint_blurry": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "ok": false,
+    "code": "blurry",
+    "en": "Too blurry, hold steady.",
+    "ar": "الصورة غير واضحة، ثبّت الهاتف.",
+    "corners": [
+     [
+      54.707481384277344,
+      45.71428680419922
+     ],
+     [
+      483.2463684082031,
+      45.246376037597656
+     ],
+     [
+      483.2463684082031,
+      672.7536010742188
+     ],
+     [
+      54.707481384277344,
+      672.2857055664062
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 187.7,
+    "clipped": 0.0,
+    "sharpness": 12.7,
+    "motion": null,
+    "page_fraction": 0.691,
+    "stat": "48x64:RkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZIUFFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQSEZGRkZZsbu7vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29u7uyWUZGRkZeyImT2Nvb29vb29vb29vb29rZ2dna2dnZ2drb29vb29vb29vb29vYk4nIXkZGRkZexmd119vb29vb29vb29vb29HIyMXSycbLxtLb29vb29vb29vb29vXdWfGX0ZGRkZezdHS29vb29vb29vb29vb29ra2c/Q0NHZ2trb29vb29vb29vb29vb0tHMX0ZGRkZezdvb1tXX19bY29vb29vb29vb29nZ2Nnb29vb29vb29vb29vY1NbS2NvNX0ZGRkZezdva0M7S0M3S2NjY2Nja29vb29rT0dHT0dLZ29vb0dHQ1NnOy8vK2NvNX0ZGRkZezdva1M/R0M/Pz87P0tPY29vb29nQz8/Oz9jb29va0drY0sl/fnmP1tvNX0ZGRkZezdvazaG7r5iXlpWXwsvW29vb29nPzs3P19nb29va0NnX0sZwZG6O1tvNX0ZGRkZezdvazcTIxsPCwsK/mcHW29vb29rT0tPT09Xa29vZ0NDP08ZnZWyQ19vNX0ZGRkZezdvaycrIycvKysrKwsnW29vb29va1NHPz9DQ0dfPz8/Pz8eBb4Gh19vNX0ZGRkZezdvYnb+ms8rKysrKysjV29vb29vb29fRzc/Pz9bR0dPU0dPQz9PX29vNX0ZGRkZezdvaxMjExsrKysrKyZ/G29vb29vb29vVz87Pz9fZ1NHMwMrb29vb29vNX0ZGRkZezdvazMrKysvKysrKysPT29vb29vb29vW1dXW1trZysKwj63a29vb29vNX0ZGRkZezdvazMrKysvKysrKysrW29vb29vb29vb29vb29vb2NfVz9Tb29vb29vNX0ZGRkZezdvazcvKysvLysrKysvW29vb29vb29vb29vb29vb29vb29vb29vb29vNX0ZGRkZezdvazMrKysrKysrKysrW29vb29vb29vb29vb29vb29vb29vb29vb29vNX0ZGRkZezdvazcvLy8vLy8vLy8vW29vb29vb29vb29vb29vb29vb29vb29vb29vNX0ZGRkZezdvb2NjY2NjY2NjY2Nja29vb29vb29vb29vb29vb29vb29vb29vb29vNX0ZGRkZezdva0dTU1djZ2dnZ2dnZ2tvb29vb29vb29vb29vb29vb29vb29vb29vNX0ZGRkZezdvb1dfV19jY2NjY2NjY2tvb29vb29vb29vb29vb29vb29vb29vb29vNX0ZGRkZezdvb29vb29vatcLT1NTT2tvb29vb29vb2NPV09TV09rb29vb29vb29vNX0ZGRkZezdvb29vb29vZq7jDz9HP2tvb29vb29vb1c/RztDRz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vYzsCLyc/O2dvb29vb29vb1c7QzdDQztnb29vb29vb29vNX0ZGRkZezdvb29vb29vYz8/HoLTO2tvb29vb29vb1M7RztDRztnb29vb29vb29vNX0ZGRkZezdvb29vb29vZ0NHOvL+x2Nvb29vb29vb1s/RztHRz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vXyM3O0MWY1tvb29vb29vb1c7QztDRz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vXmLDOz9DN2dvb29vb29vb087QztDQztnb29vb29vb29vNX0ZGRkZezdvb29vb29vavcfT1NXU2tvb29vb29vb2dTV1NXV1Nrb29vb29vb29vNX0ZGRkZezdvb29vb29vWnLPO0NHO2tvb29vb29vb1s7QztDQz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vZzM/Oz9DO2tvb29vb29vb1c7Qzc/Qztnb29vb29vb29vNX0ZGRkZezdvb29vb29vY0NHP0NLP2tvb29vb29vb1s/RztDRz9rb29vb29vb29vNX0ZGRkZezdvb29vb29vYz9HO0NHP2tvb29vb29vb1s/RztDRz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vXztDOz9DO2tvb29vb29vb1M7QzdDQztnb29vb29vb29vNX0ZGRkZezdvb29vb29vVztHO0NHP2tvb29vb29vb1c7RztDRztnb29vb29vb29vNX0ZGRkZezdvb29vb29vZ1NXU1NXU2tvb29vb29vb2dTV09TV09rb29vb29vb29vNX0ZGRkZezdvb29vb29vXz9DO0NDO2tvb29vb29vb1M3RztDQztnb29vb29vb29vNX0ZGRkZezdvb29vb29vXz9HO0NHP2tvb29vb29vb1s/RztDRztnb29vb29vb29vNX0ZGRkZezdvb29vb29vX0NHP0NHP2tvb29vb29vb19DRz9HRz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vWztDO0NDP2tvb29vb29vb087QztDQztnb29vb29vb29vNX0ZGRkZezdvb29vb29vVztDOz9DO2dvb29vb29vb1M3QztDQztnb29vb29vb29vNX0ZGRkZezdvb29vb29vXz9HP0NHP2tvb29vb29vb1c/RztDRz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vX0tPS09TS2tvb29vb29vb1tHT0tPT0trb29vb29vb29vNX0ZGRkZezdvb29vb29vWz9LQ0dLQ2tvb29vb29vb1tDS0NHS0Nrb29vb29vb29vNX0ZGRkZezdvb29vb29vX0NHP0NHP2tvb29vb29vb19DRz9HRz9rb29vb29vb29vNX0ZGRkZezdvb29vb29vXz9HO0NHP2tvb29vb29vb1c7RztDRztrb29vb29vb29vNX0ZGRkZezdvb29vb29vUzdDNz9DO2tvb29vb29vb1M3Qzc/Qztnb29vb29vb29vNX0ZGRkZezdvb29vb29vWztHO0NHP2tvb29vb29vb1c/RztDRz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vWz9HP0dHP2tvb29vb29vb1c/Rz9HRz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vUz9HP0dLQ2tvb29vb29vb1M/Sz9HSz9nb29vb29vb29vNX0ZGRkZezdvb29vb29vY0tTS09TS2tvb29vb29vb19LU0tPU0trb29vb29vb29vNX0ZGRkZezdvb29vb29vWz9HO0NHP2tvb29vb29vb1c/Rz9DRz9rb29vb29vb29vNX0ZGRkZezdvb29vb29vUztDNz9DO2tvb29vb29vb1c7QzdDQztnb29vb29vb29vNX0ZGRkZezdvb29vb29vVztDOz9HO2tvb29vb29vb1M7QztDRztnb29vb29vb29vNX0ZGRkZezdvb29vb29vWz9HP0NLP2tvb29vb29vb1c/Rz9HRz9rb29vb29vb29vNX0ZGRkZezdvb29vb29vUztHO0NHP2tvb29vb29vb1M7RztDRz9rb29vb29vb29vNX0ZGRkZezdvb29vb29vUztDOz9HP2tvb29vb29vb083QztDQz9nb29vb29vb29vNX0ZGRkZezdHS29vb29va2dnZ2dnZ29vb29vb29vb2tnZ2dna2dvb29vb29vb0tHMX0ZGRkZexmd119vb29vb29vb29vb29nZ2drZ2dra2trb29vb29vb29vb29vXdWfGX0ZGRkZeyImT2Nvb29vb29vb29vb2tTU1dbU1dXX1Nbb29vb29vb29vb29vYk4nIXkZGRkZZsbu7vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29u7uyWUZGRkZIUFFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQSEZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZG",
+    "cv_ms": 8.39,
+    "ms": 21.33
+   }
+  },
+  "hint_busy": {
+   "status": 503,
+   "headers": {
+    "retry-after": "1"
+   },
+   "body": {
+    "detail": {
+     "code": "omr_busy",
+     "message": "الخادم مشغول بفحص صور أخرى — أعد المحاولة بعد لحظة",
+     "message_en": "The server is checking other photos. Try again in a moment.",
+     "retry_after": 1
+    }
+   }
+  },
+  "capture_mark_missing": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "accepted": false,
+    "code": "mark_missing_bottom_left",
+    "en": "Bottom-left corner mark is not visible.",
+    "ar": "علامة الركن السفلي الأيسر غير ظاهرة.",
+    "issues": [
+     {
+      "code": "mark_missing_bottom_left",
+      "en": "Bottom-left corner mark is not visible.",
+      "ar": "علامة الركن السفلي الأيسر غير ظاهرة."
+     }
+    ],
+    "ms": 152.2,
+    "batch_id": null
+   }
+  },
+  "capture_session_1": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "accepted": true,
+    "page_id": 4,
+    "batch_id": 4,
+    "captured": 1,
+    "expected": 40,
+    "en": "Paper 1 of 40 captured",
+    "ar": "تم التقاط الورقة 1 من 40",
+    "ms": 279.2
+   }
+  },
+  "capture_session_2": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "accepted": true,
+    "page_id": 5,
+    "batch_id": 4,
+    "captured": 2,
+    "expected": 40,
+    "en": "Paper 2 of 40 captured",
+    "ar": "تم التقاط الورقة 2 من 40",
+    "ms": 264.6
+   }
+  },
+  "capture_session_duplicate": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "accepted": true,
+    "duplicate": true,
+    "page_id": 5,
+    "batch_id": 4,
+    "captured": 2,
+    "expected": 40,
+    "en": "Paper 2 of 40 captured",
+    "ar": "تم التقاط الورقة 2 من 40",
+    "ms": 250.4
+   }
+  },
+  "capture_batch_not_found": {
+   "status": 404,
+   "headers": {},
+   "body": {
+    "detail": {
+     "code": "batch_not_found",
+     "message": "دفعة التصوير غير موجودة",
+     "message_en": "This capture session was not found."
+    }
+   }
+  },
+  "upload_duplicate": {
+   "status": 201,
+   "headers": {},
+   "body": {
+    "batch_id": 5,
+    "pages": [],
+    "duplicates": 1,
+    "omr": true
+   }
+  },
+  "upload_unsupported": {
+   "status": 415,
+   "headers": {},
+   "body": {
+    "detail": {
+     "code": "unsupported_file",
+     "message": "نوع ملف غير مدعوم (PNG، JPEG، WebP، PDF)",
+     "file": "notes.txt"
+    }
+   }
+  },
+  "camera_batch_progress": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "batch_id": 4,
+    "exam_id": 1,
+    "kind": "camera",
+    "total": 2,
+    "done": 2,
+    "graded": 2,
+    "review": 0,
+    "rejected": 0,
+    "failed": 0,
+    "pending": 0,
+    "status": "done",
+    "expected": 40,
+    "rejected_pages": [],
+    "created_at": "2026-11-02T05:38:09.768746",
+    "en": "2 of 2 papers processed",
+    "ar": "تمت معالجة 2 من 2 ورقة"
+   }
+  },
+  "setup_paper": {
+   "status": 200,
+   "headers": {},
+   "body": {
+    "exam_id": 1,
+    "delivery": "paper",
+    "online_available": false,
+    "paper_format": "paper",
+    "identifier": {
+     "source": "academic_id",
+     "key": null
+    },
+    "omr_template_id": null,
+    "omr_template_version": null,
+    "template": null,
+    "omr_policy": {
+     "blank": "zero",
+     "multiple": "wrong",
+     "uncertain": "review"
+    },
+    "form_markers": [],
+    "forms": 0,
+    "paper_sections": 1,
+    "warnings": []
+   }
+  },
+  "hint_exam_not_bubble": {
+   "status": 409,
+   "headers": {},
+   "body": {
+    "detail": {
+     "code": "template_not_found",
+     "message": "القالب المحدد للاختبار غير موجود",
+     "message_en": "The exam's sheet template is missing."
+    }
+   }
+  },
+  "sheets_exam_not_bubble": {
+   "status": 409,
+   "headers": {},
+   "body": {
+    "detail": {
+     "code": "exam_not_bubble",
+     "message": "الاختبار ليس بورقة تظليل (اختر الشكل bubble أو both وقالبًا منشورًا)",
+     "message_en": "This exam does not use a bubble sheet."
+    }
+   }
+  },
+  "upload_paper_format": {
+   "status": 201,
+   "headers": {},
+   "body": {
+    "batch_id": 6,
+    "pages": [],
+    "duplicates": 1,
+    "omr": false
+   }
+  }
+ }
+}

@@ -751,6 +751,8 @@ String normalizeTemplate(List<String?> parts) {
 String serviceOf(String path) {
   if (path == '/api/v1/exam' || path.startsWith('/api/v1/exam/')) return 'exam';
   if (path == '/api/v1/rag' || path.startsWith('/api/v1/rag/')) return 'rag';
+  // the model hub (D-152, ../back modelhub/): nginx `location /api/api/v1/models/` and the exact `/api/api/v1/models`
+  if (path == '/api/v1/models' || path.startsWith('/api/v1/models/')) return 'models';
   return 'core';
 }
 

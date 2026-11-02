@@ -1,0 +1,129 @@
+{
+ "_source": {
+  "route": "GET /api/v1/exam/omr/templates/9/steps",
+  "status": 200,
+  "request": null,
+  "how": "scratch script on back tests/exam_engine/e2e_omr_fixture.py (same set-up as e2e_omr_templates.py: inline jobs, SQLite, engine-printed sheet + pen marks, 2026-11-02); reply recorded from TestClient"
+ },
+ "payload": {
+  "template_id": 9,
+  "status": "draft",
+  "learning_state": "done",
+  "error": null,
+  "preview": {
+   "ppm": 4.0,
+   "w": null,
+   "h": null,
+   "blank_url": null,
+   "filled_url": null
+  },
+  "summary": {
+   "en": "Detected 0 corner marks, 0 answer columns",
+   "ar": "تم اكتشاف 0 من علامات الأركان و0 أعمدة للإجابات"
+  },
+  "identifier": {
+   "kind": "shaded",
+   "columns": [],
+   "digits_per_column": [],
+   "boxes": []
+  },
+  "form": {
+   "markers": [],
+   "forms": [
+    "A",
+    "B",
+    "C",
+    "D"
+   ],
+   "zone": {
+    "forms": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "markers": [],
+    "qr": null,
+    "printed": null,
+    "bubbles": []
+   }
+  },
+  "warnings": [
+   {
+    "code": "marks_missing",
+    "en": "Corner marks not found: tl, tr, bl, br",
+    "ar": "لم يتم العثور على علامات الأركان: tl، tr، bl، br"
+   },
+   {
+    "code": "unassigned",
+    "en": "4 printed circles were not assigned to any zone",
+    "ar": "4 دائرة مطبوعة لم تُنسب إلى أي منطقة"
+   },
+   {
+    "code": "questions_short",
+    "en": "Found 0 questions, expected 50",
+    "ar": "تم العثور على 0 سؤالًا، والمتوقع 50"
+   },
+   {
+    "code": "preview_unavailable",
+    "en": "The blank scan could not be aligned for the step-through view",
+    "ar": "تعذّرت محاذاة الورقة الفارغة لعرض الخطوات"
+   }
+  ],
+  "questions": [],
+  "validation": {
+   "ok": false,
+   "errors": [
+    {
+     "code": "marks",
+     "en": "The template needs 4 corner marks (has 0; missing: bl, br, tl, tr)",
+     "ar": "يلزم 4 علامات للأركان (الموجود 0؛ الناقص: bl، br، tl، tr)"
+    },
+    {
+     "code": "no_questions",
+     "en": "No questions found",
+     "ar": "لا توجد أسئلة"
+    },
+    {
+     "code": "question_count",
+     "en": "0 questions, expected 50",
+     "ar": "0 سؤالًا، والمتوقع 50"
+    },
+    {
+     "code": "id_columns",
+     "en": "ID grid has 0 columns, expected 10",
+     "ar": "شبكة الرقم فيها 0 أعمدة، والمتوقع 10"
+    },
+    {
+     "code": "form_markers",
+     "en": "Several forms but no form marker (QR, printed letter or bubble row)",
+     "ar": "عدة نماذج دون علامة للنموذج"
+    }
+   ],
+   "warnings": [
+    {
+     "code": "marks_missing",
+     "en": "Corner marks not found: tl, tr, bl, br",
+     "ar": "لم يتم العثور على علامات الأركان: tl، tr، bl، br"
+    },
+    {
+     "code": "unassigned",
+     "en": "4 printed circles were not assigned to any zone",
+     "ar": "4 دائرة مطبوعة لم تُنسب إلى أي منطقة"
+    },
+    {
+     "code": "questions_short",
+     "en": "Found 0 questions, expected 50",
+     "ar": "تم العثور على 0 سؤالًا، والمتوقع 50"
+    },
+    {
+     "code": "preview_unavailable",
+     "en": "The blank scan could not be aligned for the step-through view",
+     "ar": "تعذّرت محاذاة الورقة الفارغة لعرض الخطوات"
+    }
+   ],
+   "checked_at": "2026-11-02T05:32:46.554182"
+  },
+  "unconfirmed": []
+ }
+}

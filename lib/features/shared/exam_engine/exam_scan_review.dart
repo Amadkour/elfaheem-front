@@ -1,6 +1,9 @@
 // Scanned answer sheets (Phase 6, brief §7.5): the original page side by side with what the OCR read, low-confidence
 // words marked, the transcription corrected by the teacher (graded again), and the unmatched queue for pages whose
-// QR code could not be read.
+// QR code could not be read. A bubble-sheet page (the engine answers 409 `omr_page_use_review` on its legacy image)
+// opens the OMR page view instead: its signed, access-logged image, its state, and its decisions in the review queue
+// (the student is set by the identifier item's `assign`, searched in the exam's audience).
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -8,6 +11,8 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -15,6 +20,40 @@ import '../../admin/admin_common.dart' show asMapList, t;
 import 'exam_engine_api.dart' show EngineResult;
 import 'exam_paper_flow.dart';
 import 'exam_review.dart';
+import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi, kExamOmrFeatureKey;
+import 'paper/review/omr_review_page.dart';
+import 'paper/scan/omr_scan.dart' show omrDetailOf;
+import 'paper/scan/omr_scan_section.dart';
+
+/// The legacy page image, or — for a bubble-sheet page — the engine's answer that it must be opened in the OMR page
+/// view (409 `omr_page_use_review`; the JSON body of a bytes request arrives as bytes).
+Future<({Uint8List? image, bool omr})> probeScanPage(int pageId, {ApiClient? api}) async {
+  try {
+    final b = await (api ?? ApiClient()).getBytes('/api/v1/exam/scans/$pageId/image');
+    return (image: b, omr: false);
+  } on ApiException catch (e) {
+    Object? body = e.body;
+    if (body is List<int>) {
+      try {
+        body = jsonDecode(utf8.decode(body));
+      } catch (_) {}
+    }
+    final code = omrDetailOf(body)['code']?.toString() ?? e.code;
+    return (image: null, omr: code == 'omr_page_use_review');
+  } catch (_) {
+    return (image: null, omr: false);
+  }
+}
+
+/// A page status in words: the bubble-sheet states on top of the written-answer ones.
+String scanPageStatusText(String s) => switch (s) {
+      'review' => t('تنتظر المراجعة', 'Waits for review'),
+      'rejected' => t('مرفوضة — تحتاج صورة أوضح', 'Rejected — needs a clearer image'),
+      'replaced' => t('استُبدلت بصورة أوضح', 'Replaced with a clearer image'),
+      'dismissed' => t('نُحّيت', 'Set aside'),
+      'purged' => t('حُذفت الصورة (مدة الاحتفاظ)', 'Image removed (retention)'),
+      _ => scanStatusText(s),
+    };
 
 /// OCR words of one region; low-confidence ones are marked for the teacher (plain values, under the harness).
 class OcrWordsView extends StatelessWidget {
@@ -64,8 +103,11 @@ class ScanImageView extends StatelessWidget {
 }
 
 class ScanPageScreen extends StatefulWidget {
-  const ScanPageScreen({super.key, required this.pageId, this.roster = const []});
+  const ScanPageScreen({super.key, required this.pageId, this.roster = const [], this.initialImage});
   final int pageId;
+
+  /// The page image when the caller already fetched it.
+  final Uint8List? initialImage;
 
   /// Students the exam knows (empty: the picker falls back to a typed id).
   final List<int> roster;
@@ -87,6 +129,7 @@ class _ScanPageScreenState extends State<ScanPageScreen> {
   @override
   void initState() {
     super.initState();
+    _image = widget.initialImage;
     _load();
   }
 
@@ -214,11 +257,17 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
   List<PaperProblem> _problems = const [];
   int? _lastBatch;
 
+  /// The exam's paper format (D-151): bubble / both get the bubble-sheet tools (D-154 … D-159) first.
+  ExamSetup? _setup;
+
+  bool get _omr => (_setup?.isBubble ?? false) && !AppConfig.disableList.contains(kExamOmrFeatureKey);
+
   @override
   void initState() {
     super.initState();
     _load();
     _loadRoster();
+    _loadSetup();
     if (widget.openPageId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _open(widget.openPageId!));
     }
@@ -232,6 +281,11 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
       _pages = pages;
       _batches = batchIdsOf(r.map);
     });
+  }
+
+  Future<void> _loadSetup() async {
+    final r = await ExamSetupApi().setup(widget.examId);
+    if (mounted && r.ok) setState(() => _setup = ExamSetup.fromJson(r.map));
   }
 
   Future<void> _loadRoster() async {
@@ -320,7 +374,24 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
   }
 
   Future<void> _open(int id) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScanPageScreen(pageId: id, roster: _roster)));
+    final nav = Navigator.of(context);
+    if (_setup?.isBubble ?? false) {
+      // a bubble-sheet page: the engine says so on the legacy image (409 omr_page_use_review)
+      final probe = await probeScanPage(id);
+      if (!mounted) return;
+      if (probe.omr) {
+        final itemId = await nav.push<int>(MaterialPageRoute(builder: (_) => OmrPaperPage(examId: widget.examId, pageId: id)));
+        if (itemId != null && mounted) {
+          await nav.push(MaterialPageRoute<void>(builder: (_) => OmrReviewPage(examId: widget.examId, initialItemId: itemId)));
+        }
+        if (mounted) _load();
+        return;
+      }
+      await nav.push(MaterialPageRoute(builder: (_) => ScanPageScreen(pageId: id, roster: _roster, initialImage: probe.image)));
+      if (mounted) _load();
+      return;
+    }
+    await nav.push(MaterialPageRoute(builder: (_) => ScanPageScreen(pageId: id, roster: _roster)));
     if (mounted) _load();
   }
 
@@ -334,7 +405,23 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
       child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
-          PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks),
+          if (_omr) ...[
+            OmrScanSection(examId: widget.examId, examTitle: widget.examTitle, roster: _roster, onChanged: _load),
+            const SizedBox(height: 8),
+            // the written-answer tools stay reachable (QR answer sheets, mapping, marks import), folded away
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                key: const ValueKey('omr.other_tools'),
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                title: Text(t('أدوات ورقية أخرى', 'Other paper tools'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                subtitle: Text(t('أوراق الإجابة بالرمز، ملف الإسناد، استيراد الدرجات', 'QR answer sheets, mapping file, marks import'), style: appText(12, c: c.textMedium)),
+                children: [PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks)],
+              ),
+            ),
+          ] else
+            PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks),
           if (_summary != null) ...[const SizedBox(height: 4), PaperResultView(summary: _summary!, problems: _problems), const SizedBox(height: 8)],
           const SizedBox(height: 8),
           AppSectionTitle(t('الصفحات الممسوحة', 'Scanned pages')),
@@ -349,7 +436,8 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
                 const SizedBox(width: 12),
                 Expanded(child: Text(p.fileName ?? '#${p.id}', style: appText(13.5, w: FontWeight.w700, c: c.textDark), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 const SizedBox(width: 8),
-                AppBadgePill(scanStatusText(p.status), color: p.unmatched ? c.warning : c.textMedium),
+                AppBadgePill(scanPageStatusText(p.status),
+                    color: p.unmatched || p.status == 'review' ? c.warning : (p.status == 'rejected' ? c.danger : c.textMedium)),
               ]),
             ),
         ]),

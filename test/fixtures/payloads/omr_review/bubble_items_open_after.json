@@ -1,0 +1,82 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items?status=open -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "id": 1,
+    "scan_page_id": 1,
+    "attempt_id": 1,
+    "question_id": 3,
+    "kind": "bubble",
+    "code": "blank",
+    "reading": {
+     "n": 3,
+     "state": "blank",
+     "selected": [],
+     "fills": {
+      "A": -0.0,
+      "B": 0.001,
+      "C": -0.0,
+      "D": 0.001
+     },
+     "type": "mcq_single",
+     "en": "No answer was shaded",
+     "ar": "لم تُظلَّل أي إجابة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:37:21.057479",
+    "actions": [
+     "choose",
+     "blank"
+    ],
+    "has_crop": true,
+    "en": "No answer was shaded",
+    "ar": "لم تُظلَّل أي إجابة",
+    "crop_url": "/api/v1/exam/omr/images/crop/1?exp=1793598450&sig=4495c43e567bf32a83adb98210670ba4"
+   },
+   {
+    "id": 3,
+    "scan_page_id": 1,
+    "attempt_id": 1,
+    "question_id": 5,
+    "kind": "bubble",
+    "code": "uncertain",
+    "reading": {
+     "n": 5,
+     "state": "uncertain",
+     "selected": [],
+     "fills": {
+      "A": 0.419,
+      "B": 0.001,
+      "C": 0.0,
+      "D": 0.001
+     },
+     "type": "mcq_single",
+     "en": "The mark is unclear",
+     "ar": "التظليل غير واضح"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:37:21.076696",
+    "actions": [
+     "choose",
+     "blank"
+    ],
+    "has_crop": true,
+    "en": "The mark is unclear",
+    "ar": "التظليل غير واضح",
+    "crop_url": "/api/v1/exam/omr/images/crop/3?exp=1793598450&sig=5c07c67e5660a7018e18656d9dbe2a7f"
+   }
+  ],
+  "total": 2,
+  "open_by_kind": {
+   "bubble": 2
+  }
+ }
+}

@@ -1,0 +1,210 @@
+{
+ "_source": {
+  "route": "GET /api/v1/models/audit",
+  "status": 200,
+  "how": "modelhub e2e scaffolding, MODELHUB_INLINE=0, a slow local file server"
+ },
+ "payload": {
+  "audit": [
+   {
+    "id": 15,
+    "actor": null,
+    "action": "health_test",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "ok": true,
+     "stage": null,
+     "error": null
+    },
+    "detail": null,
+    "at": "2026-11-02T03:18:22.020739"
+   },
+   {
+    "id": 14,
+    "actor": null,
+    "action": "activate_request",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "stage": "testing"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:18:21.995242"
+   },
+   {
+    "id": 13,
+    "actor": null,
+    "action": "download_done",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "download_id": 1
+    },
+    "detail": null,
+    "at": "2026-11-02T03:18:21.951552"
+   },
+   {
+    "id": 12,
+    "actor": 1,
+    "action": "download_resume",
+    "role": null,
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "download_id": 1
+    },
+    "detail": null,
+    "at": "2026-11-02T03:18:21.639317"
+   },
+   {
+    "id": 11,
+    "actor": 1,
+    "action": "download_pause",
+    "role": null,
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "download_id": 1
+    },
+    "detail": null,
+    "at": "2026-11-02T03:18:21.306420"
+   },
+   {
+    "id": 10,
+    "actor": 1,
+    "action": "download",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "download_id": 1
+    },
+    "detail": null,
+    "at": "2026-11-02T03:18:16.454517"
+   },
+   {
+    "id": 9,
+    "actor": 1,
+    "action": "activate_request",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "stage": "downloading"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:18:16.439615"
+   },
+   {
+    "id": 8,
+    "actor": 1,
+    "action": "add",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "ref": "gen-next@v1",
+     "source": "url",
+     "provider": "onnx-genai"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:18:16.398045"
+   },
+   {
+    "id": 7,
+    "actor": null,
+    "action": "seed_active",
+    "role": "handwriting_en",
+    "model_id": 13,
+    "old": null,
+    "new": {
+     "active": "trocr-small-handwritten@fp32-2432e24"
+    },
+    "detail": "the environment's choice",
+    "at": "2026-11-02T03:18:16.156701"
+   },
+   {
+    "id": 6,
+    "actor": null,
+    "action": "seed_active",
+    "role": "ocr_rec_en",
+    "model_id": 11,
+    "old": null,
+    "new": {
+     "active": "paddleocr-rec-en@pp-ocrv5-7b02d0a"
+    },
+    "detail": "the environment's choice",
+    "at": "2026-11-02T03:18:16.156701"
+   },
+   {
+    "id": 5,
+    "actor": null,
+    "action": "seed_active",
+    "role": "ocr_rec_ar",
+    "model_id": 14,
+    "old": null,
+    "new": {
+     "active": "paddleocr-rec-ar@pp-ocrv5-14aaedc"
+    },
+    "detail": "the environment's choice",
+    "at": "2026-11-02T03:18:16.156701"
+   },
+   {
+    "id": 4,
+    "actor": null,
+    "action": "seed_active",
+    "role": "ocr_det",
+    "model_id": 9,
+    "old": null,
+    "new": {
+     "active": "paddleocr-det@pp-ocrv3-7b02d0a"
+    },
+    "detail": "the environment's choice",
+    "at": "2026-11-02T03:18:16.156701"
+   },
+   {
+    "id": 3,
+    "actor": null,
+    "action": "seed_active",
+    "role": "generation",
+    "model_id": 17,
+    "old": null,
+    "new": {
+     "active": "qwen3-1.7b@int4-3231b52"
+    },
+    "detail": "the environment's choice",
+    "at": "2026-11-02T03:18:16.156701"
+   },
+   {
+    "id": 2,
+    "actor": null,
+    "action": "seed_active",
+    "role": "reranker",
+    "model_id": 15,
+    "old": null,
+    "new": {
+     "active": "mmarco-mMiniLMv2-L12-H384-v1@int8-1427fd6"
+    },
+    "detail": "the environment's choice",
+    "at": "2026-11-02T03:18:16.156701"
+   },
+   {
+    "id": 1,
+    "actor": null,
+    "action": "seed_active",
+    "role": "embedding",
+    "model_id": 1,
+    "old": null,
+    "new": {
+     "active": "multilingual-e5-small@int8-761b726"
+    },
+    "detail": "the environment's choice",
+    "at": "2026-11-02T03:18:16.156701"
+   }
+  ]
+ }
+}

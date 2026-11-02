@@ -1,0 +1,281 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/pages/3 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "page": {
+   "id": 3,
+   "page_no": 1,
+   "page_label": "1",
+   "status": "review",
+   "file_name": "s104.png",
+   "batch_id": 3,
+   "student_id": null,
+   "attempt_id": null,
+   "codes": [],
+   "en": null,
+   "ar": null
+  },
+  "image_url": "/api/v1/exam/omr/images/page/3?exp=1793598396&sig=e3ebf7db4715851a596bbb48244cb4d0",
+  "size": [
+   1654,
+   2339
+  ],
+  "overlay": [
+   {
+    "label": "D",
+    "cx": 566.6,
+    "cy": 818.6,
+    "r": 18.1,
+    "n": 1,
+    "mark": "filled",
+    "state": "clear"
+   },
+   {
+    "label": "C",
+    "cx": 507.3,
+    "cy": 872.1,
+    "r": 18.1,
+    "n": 2,
+    "mark": "filled",
+    "state": "clear"
+   },
+   {
+    "label": "B",
+    "cx": 448.2,
+    "cy": 925.7,
+    "r": 18.1,
+    "n": 3,
+    "mark": "filled",
+    "state": "clear"
+   },
+   {
+    "label": "A",
+    "cx": 389.1,
+    "cy": 979.2,
+    "r": 18.1,
+    "n": 4,
+    "mark": "filled",
+    "state": "clear"
+   },
+   {
+    "label": "B",
+    "cx": 448.5,
+    "cy": 1032.8,
+    "r": 18.1,
+    "n": 5,
+    "mark": "filled",
+    "state": "clear"
+   },
+   {
+    "label": "B",
+    "cx": 448.5,
+    "cy": 1102.1,
+    "r": 18.1,
+    "n": 6,
+    "mark": "filled",
+    "state": "clear"
+   },
+   {
+    "label": "2",
+    "cx": 145.3,
+    "cy": 369.7,
+    "r": 15.0,
+    "id_column": 0,
+    "mark": "filled"
+   },
+   {
+    "label": "0",
+    "cx": 189.4,
+    "cy": 291.0,
+    "r": 15.0,
+    "id_column": 1,
+    "mark": "filled"
+   },
+   {
+    "label": "2",
+    "cx": 233.4,
+    "cy": 369.7,
+    "r": 15.0,
+    "id_column": 2,
+    "mark": "filled"
+   },
+   {
+    "label": "4",
+    "cx": 277.5,
+    "cy": 448.5,
+    "r": 15.0,
+    "id_column": 3,
+    "mark": "filled"
+   },
+   {
+    "label": "0",
+    "cx": 321.7,
+    "cy": 291.0,
+    "r": 15.0,
+    "id_column": 4,
+    "mark": "filled"
+   },
+   {
+    "label": "0",
+    "cx": 365.8,
+    "cy": 291.0,
+    "r": 15.0,
+    "id_column": 5,
+    "mark": "filled"
+   },
+   {
+    "label": "0",
+    "cx": 409.9,
+    "cy": 291.0,
+    "r": 15.0,
+    "id_column": 6,
+    "mark": "filled"
+   },
+   {
+    "label": "1",
+    "cx": 453.9,
+    "cy": 330.4,
+    "r": 15.0,
+    "id_column": 7,
+    "mark": "filled"
+   },
+   {
+    "label": "0",
+    "cx": 498.1,
+    "cy": 291.0,
+    "r": 15.0,
+    "id_column": 8,
+    "mark": "filled"
+   },
+   {
+    "label": "4",
+    "cx": 542.2,
+    "cy": 448.5,
+    "r": 15.0,
+    "id_column": 9,
+    "mark": "filled"
+   }
+  ],
+  "alignment": {
+   "marks": [
+    [
+     78.1,
+     78.0
+    ],
+    [
+     1574.9,
+     78.0
+    ],
+    [
+     1574.9,
+     2260.0
+    ],
+    [
+     78.1,
+     2260.0
+    ]
+   ],
+   "rotation": 0,
+   "residual_mm": 0.077,
+   "ppm": 7.877
+  },
+  "answers": [
+   {
+    "question_id": 1,
+    "n": 1,
+    "state": "clear",
+    "selected": [
+     "D"
+    ],
+    "box": null,
+    "final_score": null,
+    "review_state": null
+   },
+   {
+    "question_id": 2,
+    "n": 2,
+    "state": "clear",
+    "selected": [
+     "C"
+    ],
+    "box": null,
+    "final_score": null,
+    "review_state": null
+   },
+   {
+    "question_id": 3,
+    "n": 3,
+    "state": "clear",
+    "selected": [
+     "B"
+    ],
+    "box": null,
+    "final_score": null,
+    "review_state": null
+   },
+   {
+    "question_id": 4,
+    "n": 4,
+    "state": "clear",
+    "selected": [
+     "A"
+    ],
+    "box": null,
+    "final_score": null,
+    "review_state": null
+   },
+   {
+    "question_id": 5,
+    "n": 5,
+    "state": "clear",
+    "selected": [
+     "B"
+    ],
+    "box": null,
+    "final_score": null,
+    "review_state": null
+   },
+   {
+    "question_id": 6,
+    "n": 6,
+    "state": "clear",
+    "selected": [
+     "B"
+    ],
+    "box": null,
+    "final_score": null,
+    "review_state": null
+   }
+  ],
+  "identifier": {
+   "kind": "shaded",
+   "box": [
+    118,
+    263,
+    452,
+    409
+   ],
+   "status": "clear",
+   "value": "2024000104",
+   "blank_columns": []
+  },
+  "form": {
+   "status": "confirmed",
+   "value": "B",
+   "confirmed_by": [
+    "printed",
+    "qr"
+   ]
+  },
+  "reading_id": 3,
+  "items": [
+   {
+    "id": 2,
+    "kind": "form",
+    "code": "qr_forged",
+    "question_id": null,
+    "status": "open"
+   }
+  ]
+ }
+}

@@ -1,0 +1,42 @@
+{
+ "_source": "POST /api/v1/exam/exams/2/review-items/1/resolve -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_hardening.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "_request": {
+  "action": "dismiss"
+ },
+ "payload": {
+  "item": {
+   "id": 1,
+   "scan_page_id": 1,
+   "attempt_id": null,
+   "question_id": null,
+   "kind": "form",
+   "code": "qr_mismatch",
+   "reading": {
+    "signed": true,
+    "exam_ok": false,
+    "template_ok": true,
+    "reason": "other_exam",
+    "en": "This sheet belongs to another exam / version",
+    "ar": "هذه الورقة تخص اختبارًا آخر / إصدارًا آخر"
+   },
+   "status": "resolved",
+   "resolution": {
+    "action": "dismiss"
+   },
+   "resolved_by": 10,
+   "resolved_at": "2026-11-02T08:42:26.125014",
+   "created_at": "2026-11-02T08:42:25.030581",
+   "actions": [
+    "dismiss"
+   ],
+   "has_crop": true,
+   "en": "This sheet belongs to another exam / version",
+   "ar": "هذه الورقة تخص اختبارًا آخر / إصدارًا آخر"
+  },
+  "page_status": "dismissed",
+  "open_items_on_page": 0,
+  "attempt": null,
+  "next_item_id": null
+ }
+}

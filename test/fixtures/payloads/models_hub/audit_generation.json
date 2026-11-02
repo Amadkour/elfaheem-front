@@ -1,0 +1,565 @@
+{
+ "_source": {
+  "route": "GET /api/v1/models/audit",
+  "status": 200,
+  "request": null,
+  "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline), reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "audit": [
+   {
+    "id": 46,
+    "actor": null,
+    "action": "fallback",
+    "role": "generation",
+    "model_id": null,
+    "old": {
+     "active": "gen-broken@v1"
+    },
+    "new": {
+     "served_by": "gen-later@v1"
+    },
+    "detail": "load: ForcedFailure: gen-broken@v1: forced load failure (test)",
+    "at": "2026-11-02T03:05:36.358189"
+   },
+   {
+    "id": 45,
+    "actor": 1,
+    "action": "set_fallback",
+    "role": "generation",
+    "model_id": 29,
+    "old": {
+     "fallback_id": null
+    },
+    "new": {
+     "fallback_id": 29
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:35.731785"
+   },
+   {
+    "id": 44,
+    "actor": null,
+    "action": "download_done",
+    "role": "generation",
+    "model_id": 30,
+    "old": null,
+    "new": {
+     "download_id": 8
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:35.683613"
+   },
+   {
+    "id": 43,
+    "actor": 1,
+    "action": "download",
+    "role": "generation",
+    "model_id": 30,
+    "old": null,
+    "new": {
+     "download_id": 8
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:35.359918"
+   },
+   {
+    "id": 42,
+    "actor": 1,
+    "action": "add",
+    "role": "generation",
+    "model_id": 30,
+    "old": null,
+    "new": {
+     "ref": "gen-broken@v1",
+     "source": "url",
+     "provider": "onnx-genai"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:35.141850"
+   },
+   {
+    "id": 41,
+    "actor": 1,
+    "action": "delete",
+    "role": "generation",
+    "model_id": 26,
+    "old": {
+     "ref": "gen-slow@v1"
+    },
+    "new": {
+     "freed_bytes": 600000
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:35.104136"
+   },
+   {
+    "id": 40,
+    "actor": 1,
+    "action": "rollback",
+    "role": "generation",
+    "model_id": 23,
+    "old": {
+     "active_id": 29
+    },
+    "new": {
+     "active_id": 23,
+     "ref": "gen-good@v1"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:33.761687"
+   },
+   {
+    "id": 39,
+    "actor": 1,
+    "action": "activate",
+    "role": "generation",
+    "model_id": 29,
+    "old": {
+     "active_id": 23
+    },
+    "new": {
+     "active_id": 29,
+     "ref": "gen-later@v1"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:33.441343"
+   },
+   {
+    "id": 38,
+    "actor": null,
+    "action": "health_test",
+    "role": "generation",
+    "model_id": 29,
+    "old": null,
+    "new": {
+     "ok": true,
+     "stage": null,
+     "error": null
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:32.957262"
+   },
+   {
+    "id": 37,
+    "actor": null,
+    "action": "activate_request",
+    "role": "generation",
+    "model_id": 29,
+    "old": null,
+    "new": {
+     "stage": "testing"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:32.943665"
+   },
+   {
+    "id": 36,
+    "actor": null,
+    "action": "download_done",
+    "role": "generation",
+    "model_id": 29,
+    "old": null,
+    "new": {
+     "download_id": 7
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:32.932822"
+   },
+   {
+    "id": 35,
+    "actor": 1,
+    "action": "download",
+    "role": "generation",
+    "model_id": 29,
+    "old": null,
+    "new": {
+     "download_id": 7
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:32.682006"
+   },
+   {
+    "id": 34,
+    "actor": 1,
+    "action": "activate_request",
+    "role": "generation",
+    "model_id": 29,
+    "old": null,
+    "new": {
+     "stage": "downloading"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:32.668879"
+   },
+   {
+    "id": 33,
+    "actor": 1,
+    "action": "add",
+    "role": "generation",
+    "model_id": 29,
+    "old": null,
+    "new": {
+     "ref": "gen-later@v1",
+     "source": "url",
+     "provider": "onnx-genai"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:32.630046"
+   },
+   {
+    "id": 32,
+    "actor": 1,
+    "action": "activate_cancel",
+    "role": "generation",
+    "model_id": null,
+    "old": {
+     "model_id": 28,
+     "ref": "gen-wrong@v1",
+     "stage": "failed",
+     "at": "2026-11-02T03:05:31.348524",
+     "checks": [
+      {
+       "name": "ram",
+       "estimate_mb": 100,
+       "limit_mb": 0,
+       "ok": true,
+       "available_mb": 7553
+      },
+      {
+       "name": "cpu",
+       "provider": "onnx-genai",
+       "ok": true,
+       "needs": [],
+       "problems": []
+      }
+     ],
+     "test": {
+      "speed": 500.0,
+      "checks": [
+       {
+        "name": "says_ok",
+        "ok": false,
+        "text": "NO"
+       }
+      ],
+      "ok": false,
+      "load_ms": 0,
+      "ms": 0,
+      "rss_mb": 130,
+      "stage": "answer",
+      "error": "the model answered the known sample wrong",
+      "at": "2026-11-02T03:05:31.361545"
+     },
+     "reason": "health_test_failed"
+    },
+    "new": null,
+    "detail": null,
+    "at": "2026-11-02T03:05:32.196068"
+   },
+   {
+    "id": 31,
+    "actor": null,
+    "action": "health_test",
+    "role": "generation",
+    "model_id": 28,
+    "old": null,
+    "new": {
+     "ok": false,
+     "stage": "answer",
+     "error": "the model answered the known sample wrong"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:31.364070"
+   },
+   {
+    "id": 30,
+    "actor": 1,
+    "action": "activate_request",
+    "role": "generation",
+    "model_id": 28,
+    "old": null,
+    "new": {
+     "stage": "testing"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:31.349524"
+   },
+   {
+    "id": 29,
+    "actor": null,
+    "action": "download_done",
+    "role": "generation",
+    "model_id": 28,
+    "old": null,
+    "new": {
+     "download_id": 6
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:31.285635"
+   },
+   {
+    "id": 28,
+    "actor": 1,
+    "action": "download",
+    "role": "generation",
+    "model_id": 28,
+    "old": null,
+    "new": {
+     "download_id": 6
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:30.775219"
+   },
+   {
+    "id": 27,
+    "actor": 1,
+    "action": "add",
+    "role": "generation",
+    "model_id": 28,
+    "old": null,
+    "new": {
+     "ref": "gen-wrong@v1",
+     "source": "url",
+     "provider": "onnx-genai"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:30.714075"
+   },
+   {
+    "id": 26,
+    "actor": 1,
+    "action": "activate",
+    "role": "generation",
+    "model_id": 23,
+    "old": {
+     "active_id": 17
+    },
+    "new": {
+     "active_id": 23,
+     "ref": "gen-good@v1"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:30.128512"
+   },
+   {
+    "id": 25,
+    "actor": null,
+    "action": "health_test",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "ok": true,
+     "stage": null,
+     "error": null
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:29.726179"
+   },
+   {
+    "id": 24,
+    "actor": 1,
+    "action": "activate_request",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "stage": "testing"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:29.705933"
+   },
+   {
+    "id": 22,
+    "actor": 1,
+    "action": "download",
+    "role": "generation",
+    "model_id": 27,
+    "old": null,
+    "new": {
+     "download_id": 5
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:26.744136"
+   },
+   {
+    "id": 21,
+    "actor": 1,
+    "action": "add",
+    "role": "generation",
+    "model_id": 27,
+    "old": null,
+    "new": {
+     "ref": "gen-cancel@v1",
+     "source": "url",
+     "provider": "onnx-genai"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:26.696308"
+   },
+   {
+    "id": 20,
+    "actor": null,
+    "action": "download_done",
+    "role": "generation",
+    "model_id": 26,
+    "old": null,
+    "new": {
+     "download_id": 4
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:26.003052"
+   },
+   {
+    "id": 17,
+    "actor": 1,
+    "action": "download",
+    "role": "generation",
+    "model_id": 26,
+    "old": null,
+    "new": {
+     "download_id": 4
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:23.018105"
+   },
+   {
+    "id": 16,
+    "actor": 1,
+    "action": "add",
+    "role": "generation",
+    "model_id": 26,
+    "old": null,
+    "new": {
+     "ref": "gen-slow@v1",
+     "source": "url",
+     "provider": "onnx-genai"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:22.967855"
+   },
+   {
+    "id": 15,
+    "actor": null,
+    "action": "download_done",
+    "role": "generation",
+    "model_id": 25,
+    "old": null,
+    "new": {
+     "download_id": 3
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:22.313764"
+   },
+   {
+    "id": 14,
+    "actor": 1,
+    "action": "add",
+    "role": "generation",
+    "model_id": 25,
+    "old": null,
+    "new": {
+     "ref": "gen-crash@v1",
+     "source": "url",
+     "provider": "onnx-genai"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:20.609728"
+   },
+   {
+    "id": 13,
+    "actor": null,
+    "action": "download_failed",
+    "role": "generation",
+    "model_id": 24,
+    "old": null,
+    "new": null,
+    "detail": "sha256 mismatch: checksum mismatch (58af6432881a… is not 000000000000…): the file was discarded",
+    "at": "2026-11-02T03:05:18.384165"
+   },
+   {
+    "id": 12,
+    "actor": 1,
+    "action": "download",
+    "role": "generation",
+    "model_id": 24,
+    "old": null,
+    "new": {
+     "download_id": 2
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:17.780875"
+   },
+   {
+    "id": 11,
+    "actor": 1,
+    "action": "add",
+    "role": "generation",
+    "model_id": 24,
+    "old": null,
+    "new": {
+     "ref": "gen-tampered@v1",
+     "source": "url",
+     "provider": "onnx-genai"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:17.730211"
+   },
+   {
+    "id": 10,
+    "actor": null,
+    "action": "download_done",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "download_id": 1
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:17.226169"
+   },
+   {
+    "id": 9,
+    "actor": 1,
+    "action": "download",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "download_id": 1
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:16.629657"
+   },
+   {
+    "id": 8,
+    "actor": 1,
+    "action": "add",
+    "role": "generation",
+    "model_id": 23,
+    "old": null,
+    "new": {
+     "ref": "gen-good@v1",
+     "source": "url",
+     "provider": "onnx-genai"
+    },
+    "detail": null,
+    "at": "2026-11-02T03:05:16.578864"
+   },
+   {
+    "id": 3,
+    "actor": null,
+    "action": "seed_active",
+    "role": "generation",
+    "model_id": 17,
+    "old": null,
+    "new": {
+     "active": "qwen3-1.7b@int4-3231b52"
+    },
+    "detail": "the environment's choice",
+    "at": "2026-11-02T03:05:13.174066"
+   }
+  ]
+ }
+}

@@ -1,0 +1,78 @@
+{
+ "_source": "GET /api/v1/exam/exams/3/review-items/5 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_hardening.py (back worktree wt-back-omr); read by the recorder right after the script, as the exam's teacher",
+ "_status": 200,
+ "payload": {
+  "id": 5,
+  "scan_page_id": 5,
+  "attempt_id": 1,
+  "question_id": 7,
+  "kind": "bubble",
+  "code": "key_missing",
+  "reading": {
+   "n": 3,
+   "state": "clear",
+   "selected": [
+    "C"
+   ],
+   "fills": {
+    "A": -0.0,
+    "B": 0.001,
+    "C": 0.902,
+    "D": 0.001
+   },
+   "type": "mcq_single",
+   "en": "This form's answer key has no answer for this question",
+   "ar": "مفتاح هذا النموذج لا يحوي إجابة هذا السؤال"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T08:42:27.691934",
+  "actions": [
+   "choose",
+   "blank"
+  ],
+  "has_crop": true,
+  "en": "This form's answer key has no answer for this question",
+  "ar": "مفتاح هذا النموذج لا يحوي إجابة هذا السؤال",
+  "crop_url": "/api/v1/exam/omr/images/crop/5?exp=1793609548&sig=112a6d0f78d4c6faa3a9c6a3cec435c1",
+  "system_reading": {
+   "reading_id": 5,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "answer": {
+    "n": 3,
+    "state": "clear",
+    "selected": [
+     "C"
+    ],
+    "fills": {
+     "A": -0.0,
+     "B": 0.001,
+     "C": 0.902,
+     "D": 0.001
+    },
+    "margin": 0.029,
+    "box": null
+   }
+  },
+  "question": {
+   "n": 3,
+   "question_id": 7,
+   "type": "mcq_single",
+   "points": 2.0,
+   "letters": [
+    "A",
+    "B",
+    "C",
+    "D"
+   ]
+  },
+  "page": {
+   "id": 5,
+   "page_label": "1",
+   "status": "review",
+   "url": "/api/v1/exam/exams/3/omr/pages/5"
+  }
+ }
+}

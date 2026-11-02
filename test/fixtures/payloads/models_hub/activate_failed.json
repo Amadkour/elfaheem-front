@@ -1,0 +1,51 @@
+{
+ "_source": {
+  "route": "POST /api/v1/models/28/activate",
+  "status": 200,
+  "request": {},
+  "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline), reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "stage": "failed",
+  "pending": {
+   "model_id": 28,
+   "ref": "gen-wrong@v1",
+   "stage": "failed",
+   "at": "2026-11-02T03:05:31.348524",
+   "checks": [
+    {
+     "name": "ram",
+     "estimate_mb": 100,
+     "limit_mb": 0,
+     "ok": true,
+     "available_mb": 7553
+    },
+    {
+     "name": "cpu",
+     "provider": "onnx-genai",
+     "ok": true,
+     "needs": [],
+     "problems": []
+    }
+   ],
+   "test": {
+    "speed": 500.0,
+    "checks": [
+     {
+      "name": "says_ok",
+      "ok": false,
+      "text": "NO"
+     }
+    ],
+    "ok": false,
+    "load_ms": 0,
+    "ms": 0,
+    "rss_mb": 130,
+    "stage": "answer",
+    "error": "the model answered the known sample wrong",
+    "at": "2026-11-02T03:05:31.361545"
+   },
+   "reason": "health_test_failed"
+  }
+ }
+}

@@ -1,0 +1,73 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/8/resolve -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "_request": {
+  "action": "fix_text",
+  "text": "Plants make glucose and oxygen using light"
+ },
+ "payload": {
+  "item": {
+   "id": 8,
+   "scan_page_id": 4,
+   "attempt_id": 2,
+   "question_id": 4,
+   "kind": "short_answer",
+   "code": "short_answer",
+   "reading": {
+    "kind": "short_answer",
+    "status": "suggestion",
+    "final": false,
+    "needs_review": true,
+    "max": 5.0,
+    "suggested_score": null,
+    "reading": {
+     "text": "Plants make glucose and oxygen using light"
+    },
+    "crop": {
+     "page_id": 4,
+     "box": [
+      0.07,
+      0.23,
+      0.8600000000000001,
+      0.33499999999999996
+     ],
+     "has_crop": true
+    },
+    "reasons": [
+     "suggestion_pending"
+    ],
+    "text": "Plants make glucose and oxygen using light",
+    "corrected": true,
+    "lang": "en",
+    "points": 5.0,
+    "pending": true,
+    "en": "Short answer: confirm or set the score",
+    "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+   },
+   "status": "open",
+   "resolution": {},
+   "resolved_by": null,
+   "resolved_at": null,
+   "created_at": "2026-11-02T08:42:25.186046",
+   "actions": [
+    "accept",
+    "set_score",
+    "fix_text"
+   ],
+   "has_crop": true,
+   "en": "Short answer: confirm or set the score",
+   "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+  },
+  "page_status": "review",
+  "open_items_on_page": 2,
+  "attempt": {
+   "id": 2,
+   "state": "submitted",
+   "score": null,
+   "max_score": 11.0,
+   "percentage": null,
+   "passed": null
+  },
+  "next_item_id": 9
+ }
+}

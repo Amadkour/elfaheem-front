@@ -1,0 +1,18 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/2/resolve -> 422, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr)",
+ "_status": 422,
+ "_request": {
+  "action": "fix_text",
+  "texts": [
+   "Cairo"
+  ]
+ },
+ "payload": {
+  "detail": {
+   "code": "texts_required",
+   "message": "اكتب النص الصحيح (2 فراغ)",
+   "blanks": 2,
+   "message_en": "Type the corrected text (2 blanks)."
+  }
+ }
+}

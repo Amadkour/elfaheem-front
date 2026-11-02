@@ -1,0 +1,275 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/results -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "exam_id": 1,
+  "title": "Outcomes quiz",
+  "students": [
+   {
+    "attempt_id": 1,
+    "student_id": 11,
+    "student_code": null,
+    "name": "Student 11",
+    "state": "submitted",
+    "score": null,
+    "max_score": 11.0,
+    "percentage": null,
+    "passed": null,
+    "form": null,
+    "open_review": 2,
+    "graded": false,
+    "correct": 3,
+    "answered": 4
+   },
+   {
+    "attempt_id": 2,
+    "student_id": 12,
+    "student_code": null,
+    "name": "Student 12",
+    "state": "graded",
+    "score": 5.0,
+    "max_score": 11.0,
+    "percentage": 45.45,
+    "passed": false,
+    "form": null,
+    "open_review": 0,
+    "graded": true,
+    "correct": 3,
+    "answered": 4
+   },
+   {
+    "attempt_id": 3,
+    "student_id": 14,
+    "student_code": null,
+    "name": "Student 14",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": null,
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   }
+  ],
+  "questions": [
+   {
+    "n": 1,
+    "question_id": 1,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 3,
+    "correct": 3,
+    "difficulty": 1.0,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 3,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "-": {
+      "A": 3
+     }
+    }
+   },
+   {
+    "n": 2,
+    "question_id": 2,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 3,
+    "correct": 1,
+    "difficulty": 0.3333,
+    "most_chosen_wrong": "A",
+    "most_chosen_wrong_count": 2,
+    "distribution": {
+     "A": 2,
+     "B": 1,
+     "C": 0,
+     "D": 0,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "-": {
+      "A": 2,
+      "B": 1
+     }
+    }
+   },
+   {
+    "n": 3,
+    "question_id": 3,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 3,
+    "correct": 1,
+    "difficulty": 0.3333,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 0,
+     "B": 0,
+     "C": 1,
+     "D": 0,
+     "blank": 2,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "-": {
+      "blank": 2,
+      "C": 1
+     }
+    }
+   },
+   {
+    "n": 4,
+    "question_id": 4,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 3,
+    "correct": 2,
+    "difficulty": 0.6667,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 0,
+     "B": 0,
+     "C": 0,
+     "D": 2,
+     "blank": 0,
+     "multiple": 1,
+     "pending": 0
+    },
+    "by_form": {
+     "-": {
+      "D": 2,
+      "multiple": 1
+     }
+    }
+   },
+   {
+    "n": 5,
+    "question_id": 5,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 2,
+    "correct": 2,
+    "difficulty": 1.0,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 2,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 1
+    },
+    "by_form": {
+     "-": {
+      "pending": 1,
+      "A": 2
+     }
+    }
+   },
+   {
+    "n": 6,
+    "question_id": 6,
+    "type": "true_false",
+    "points": 1.0,
+    "scored": 3,
+    "correct": 3,
+    "difficulty": 1.0,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 3,
+     "B": 0,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "-": {
+      "A": 3
+     }
+    }
+   }
+  ],
+  "distribution": [
+   {
+    "from": 0,
+    "to": 10,
+    "count": 0
+   },
+   {
+    "from": 10,
+    "to": 20,
+    "count": 0
+   },
+   {
+    "from": 20,
+    "to": 30,
+    "count": 0
+   },
+   {
+    "from": 30,
+    "to": 40,
+    "count": 0
+   },
+   {
+    "from": 40,
+    "to": 50,
+    "count": 1
+   },
+   {
+    "from": 50,
+    "to": 60,
+    "count": 0
+   },
+   {
+    "from": 60,
+    "to": 70,
+    "count": 0
+   },
+   {
+    "from": 70,
+    "to": 80,
+    "count": 0
+   },
+   {
+    "from": 80,
+    "to": 90,
+    "count": 0
+   },
+   {
+    "from": 90,
+    "to": 100,
+    "count": 1
+   }
+  ],
+  "summary": {
+   "students": 3,
+   "graded": 2,
+   "open_review_items": 2,
+   "mean_percentage": 72.72,
+   "max_percentage": 100.0,
+   "min_percentage": 45.45,
+   "passed": 1
+  },
+  "published_at": "2026-11-02T05:37:23.315041",
+  "anonymous": false
+ }
+}

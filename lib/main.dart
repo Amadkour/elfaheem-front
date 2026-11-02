@@ -57,6 +57,7 @@ import 'features/shared/exports/export_schedules_page.dart';
 import 'features/shared/exports/exports_center_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
+import 'features/admin/models/model_download_bar.dart' show ModelDownloadsHost;
 import 'features/shared/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
 import 'features/shared/get_app/get_app_banner.dart' show GetAppBanner;
 import 'features/shared/session/video/vod_listen_layer.dart' show VodListenLayer;
@@ -619,6 +620,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
             // banners, pages, the live room) is laid out below it (session/video/vod_listen_layer.dart)
             child: VodListenLayer(
             navigatorKey: navigatorKey,
+            // the super admin's floating model-download bar (D-152): above every page, so it stays while moving around
+            // the app; a tap opens AI Models (admin/models/model_download_bar.dart)
+            child: ModelDownloadsHost(
+            navigatorKey: navigatorKey,
             // the floating app assistant: a bubble above every signed-in screen (rag/app_assistant.dart)
             child: AppAssistantHost(
             navigatorKey: navigatorKey,
@@ -645,7 +650,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          )))))),
+          ))))))),
         ),
       ),
     ));

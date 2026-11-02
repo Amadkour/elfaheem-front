@@ -1,0 +1,57 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/4/resolve -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "item": {
+   "id": 4,
+   "scan_page_id": 2,
+   "attempt_id": 2,
+   "question_id": 5,
+   "kind": "bubble",
+   "code": "uncertain",
+   "reading": {
+    "n": 5,
+    "state": "uncertain",
+    "selected": [],
+    "fills": {
+     "A": 0.419,
+     "B": 0.001,
+     "C": 0.0,
+     "D": 0.001
+    },
+    "type": "mcq_single",
+    "en": "The mark is unclear",
+    "ar": "التظليل غير واضح"
+   },
+   "status": "resolved",
+   "resolution": {
+    "action": "choose",
+    "options": [
+     "A"
+    ],
+    "reason": "half fill = A"
+   },
+   "resolved_by": 10,
+   "resolved_at": "2026-11-02T05:37:22.655608",
+   "created_at": "2026-11-02T05:37:21.907701",
+   "actions": [
+    "choose",
+    "blank"
+   ],
+   "has_crop": true,
+   "en": "The mark is unclear",
+   "ar": "التظليل غير واضح"
+  },
+  "page_status": "processed",
+  "open_items_on_page": 0,
+  "attempt": {
+   "id": 2,
+   "state": "graded",
+   "score": 5.0,
+   "max_score": 11.0,
+   "percentage": 45.45,
+   "passed": false
+  },
+  "next_item_id": 1
+ }
+}

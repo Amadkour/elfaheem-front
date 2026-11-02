@@ -1,0 +1,71 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items/5 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "id": 5,
+  "scan_page_id": 6,
+  "attempt_id": null,
+  "question_id": null,
+  "kind": "identifier",
+  "code": "identifier_duplicate",
+  "reading": {
+   "kind": "shaded",
+   "status": "clear",
+   "value": "2024000301",
+   "reason": null,
+   "low": null,
+   "gaps": null,
+   "columns_to_check": null,
+   "candidates": [
+    {
+     "user_id": 301,
+     "name": "Student 301"
+    },
+    {
+     "user_id": 302,
+     "name": "Student 302"
+    }
+   ],
+   "en": "More than one student has this ID",
+   "ar": "أكثر من طالب لديهم هذا الرقم"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T05:36:17.574789",
+  "actions": [
+   "assign",
+   "accept",
+   "fix",
+   "replace",
+   "dismiss"
+  ],
+  "has_crop": true,
+  "en": "More than one student has this ID",
+  "ar": "أكثر من طالب لديهم هذا الرقم",
+  "crop_url": "/api/v1/exam/omr/images/crop/5?exp=1793598396&sig=398f25976ce889ecf008660021afa1c0",
+  "system_reading": {
+   "reading_id": 6,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "identifier": {
+    "kind": "shaded",
+    "box": [
+     118,
+     263,
+     452,
+     409
+    ],
+    "status": "clear",
+    "value": "2024000301",
+    "blank_columns": []
+   }
+  },
+  "page": {
+   "id": 6,
+   "page_label": "1",
+   "status": "review",
+   "url": "/api/v1/exam/exams/1/omr/pages/6"
+  }
+ }
+}

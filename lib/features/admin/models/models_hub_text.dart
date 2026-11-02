@@ -1,0 +1,194 @@
+// lib/features/admin/models/models_hub_text.dart
+//
+// The words of the AI Models page and the floating download bar (D-152), Arabic + English through `t(ar, en)`:
+// role names, statuses, sources, providers, audit actions, and the byte / speed / time-left labels.
+library;
+
+import '../../../config/app_config.dart';
+import '../../../core/models_hub/models_hub_api.dart';
+import '../admin_common.dart' show t;
+
+/// The page's kill switch (../back services/feature_catalog.py).
+const kModelsAdminFeatureKey = 'models.admin';
+
+String hubRoleName(String role) => switch (role) {
+      'embedding' => t('التضمين', 'Embedding'),
+      'generation' => t('التوليد', 'Generation'),
+      'reranker' => t('إعادة الترتيب', 'Re-ranker'),
+      'nli' => t('الاستدلال اللغوي (NLI)', 'NLI'),
+      'ocr_det' => t('OCR · كشف النص', 'OCR · text detection'),
+      'ocr_rec_ar' => t('OCR · قراءة العربية', 'OCR · Arabic reading'),
+      'ocr_rec_en' => t('OCR · قراءة الإنجليزية', 'OCR · English reading'),
+      'handwriting_en' => t('خط اليد (إنجليزي)', 'Handwriting (English)'),
+      'digits' => t('الأرقام', 'Digits'),
+      'vision_language' => t('الرؤية واللغة', 'Vision-language'),
+      _ => role,
+    };
+
+String hubRoleHint(String role) => switch (role) {
+      'embedding' => t('يحوّل النصوص إلى متجهات لفهرس المستندات والتصحيح', 'Turns text into vectors for the document index and grading'),
+      'generation' => t('يكتب إجابات المساعد والأسئلة المولّدة', 'Writes the assistant’s answers and generated questions'),
+      'reranker' => t('يرتّب المقاطع الأقرب للسؤال', 'Orders the passages closest to a question'),
+      'nli' => t('يتحقق من أن الإجابة تستند إلى المصدر', 'Checks that an answer follows from its source'),
+      'ocr_det' => t('جزء من محرك OCR: يجد أسطر النص في الصورة', 'Part of the OCR engine: finds the text lines in an image'),
+      'ocr_rec_ar' => t('جزء من محرك OCR: يقرأ الأسطر العربية', 'Part of the OCR engine: reads Arabic lines'),
+      'ocr_rec_en' => t('جزء من محرك OCR: يقرأ الأسطر الإنجليزية', 'Part of the OCR engine: reads English lines'),
+      'handwriting_en' => t('يقرأ الإجابات المكتوبة بخط اليد', 'Reads handwritten answers'),
+      'digits' => t('يقرأ الأرقام المكتوبة في أوراق الإجابة', 'Reads handwritten digits on answer sheets'),
+      'vision_language' => t('يصف الصور ويقرأ الحالات الصعبة', 'Describes images and reads the hard cases'),
+      _ => '',
+    };
+
+String hubStatusLabel(String status) => switch (status) {
+      'not_downloaded' => t('غير مُنزّل', 'Not downloaded'),
+      'downloading' => t('جارٍ التنزيل', 'Downloading'),
+      'paused' => t('متوقف مؤقتاً', 'Paused'),
+      'ready' => t('جاهز', 'Ready'),
+      'active' => t('مُفعّل', 'Active'),
+      'failed' => t('فشل', 'Failed'),
+      _ => status,
+    };
+
+String hubSourceLabel(String source) => switch (source) {
+      'registry' => t('السجل', 'Registry'),
+      'hf' => 'Hugging Face',
+      'ollama' => 'Ollama',
+      'url' => t('رابط', 'URL'),
+      _ => source,
+    };
+
+String hubPriorityLabel(String p) => switch (p) {
+      'interactive' => t('تفاعلي (أعلى)', 'Interactive (highest)'),
+      'batch' => t('دفعات', 'Batch'),
+      'grading' => t('التصحيح (أدنى)', 'Grading (lowest)'),
+      _ => p,
+    };
+
+/// What a pending activation is doing now.
+String hubStageLabel(String stage) => switch (stage) {
+      'downloading' => t('جارٍ تنزيل النموذج الجديد', 'Downloading the new model'),
+      'testing' => t('جارٍ اختبار السلامة', 'Running the health test'),
+      'ready_to_confirm' => t('اجتاز الاختبار — بانتظار تأكيدك', 'Passed the health test — waiting for you to confirm'),
+      'failed' => t('لم يجتز الفحص', 'Did not pass the checks'),
+      'reindex_later' => t('بانتظار إعادة بناء فهرس المستندات', 'Waiting for the document index rebuild'),
+      'reindexing' => t('جارٍ إعادة بناء فهرس المستندات', 'Rebuilding the document index'),
+      'reindex_failed' => t('فشلت إعادة بناء الفهرس', 'The index rebuild failed'),
+      _ => stage,
+    };
+
+String hubAuditAction(String action) => switch (action) {
+      'seed_active' => t('ضُبط من إعدادات الخادم', 'Set from the server settings'),
+      'add' => t('أُضيف إلى المكتبة', 'Added to the library'),
+      'download' => t('بدأ التنزيل', 'Download started'),
+      'download_pause' => t('أُوقف التنزيل مؤقتاً', 'Download paused'),
+      'download_resume' => t('استُؤنف التنزيل', 'Download resumed'),
+      'download_cancel' => t('أُلغي التنزيل', 'Download cancelled'),
+      'download_done' => t('اكتمل التنزيل', 'Download finished'),
+      'download_failed' => t('فشل التنزيل', 'Download failed'),
+      'activate_request' => t('طُلب التفعيل', 'Activation requested'),
+      'activate_checks_failed' => t('لم يجتز فحوص التفعيل', 'Activation checks failed'),
+      'health_test_request' => t('طُلب اختبار السلامة', 'Health test requested'),
+      'health_test' => t('اختبار السلامة', 'Health test'),
+      'activate' => t('فُعّل', 'Activated'),
+      'activate_cancel' => t('أُلغي التفعيل المعلّق', 'Pending activation cancelled'),
+      'rollback' => t('رجوع إلى النموذج السابق', 'Rolled back'),
+      'set_fallback' => t('تغيّر النموذج الاحتياطي', 'Fallback changed'),
+      'set_limits' => t('تغيّرت حدود الموارد', 'Resource limits changed'),
+      'delete' => t('حُذف', 'Deleted'),
+      'fallback' => t('خدم النموذج الاحتياطي', 'The fallback served'),
+      'reindex_later' => t('إعادة الفهرسة لاحقاً', 'Re-index later'),
+      'reindex_start' => t('بدأت إعادة الفهرسة', 'Re-index started'),
+      'drop_vectors' => t('حُذفت المتجهات القديمة', 'Old vectors dropped'),
+      _ => action,
+    };
+
+/// A number with a Latin unit ("296 MB", "18%") kept in reading order inside an Arabic sentence: wrapped in a
+/// left-to-right isolate (U+2066 … U+2069) in Arabic, as is in English.
+String hubLtr(String s) =>
+    AppConfig.lang == 'ar' && s.isNotEmpty ? '${String.fromCharCode(0x2066)}$s${String.fromCharCode(0x2069)}' : s;
+
+/// "1.4 GB" / "523 MB" / "16 KB" (decimal units, as the server counts them).
+String hubBytes(int bytes) {
+  if (bytes <= 0) return '—';
+  const k = 1000;
+  if (bytes >= k * k * k) return hubLtr('${(bytes / (k * k * k)).toStringAsFixed(bytes >= 10 * k * k * k ? 0 : 1)} GB');
+  if (bytes >= k * k) return hubLtr('${(bytes / (k * k)).toStringAsFixed(bytes >= 100 * k * k ? 0 : 1)} MB');
+  return hubLtr('${(bytes / k).ceil()} KB');
+}
+
+/// "523 MB" / "2.1 GB" from megabytes.
+String hubMb(int mb) => mb <= 0 ? '—' : hubLtr(mb >= 1000 ? '${(mb / 1000).toStringAsFixed(1)} GB' : '$mb MB');
+
+/// "12 MB/s" (empty while nothing was measured).
+String hubSpeed(double bps) {
+  if (bps <= 0) return '';
+  if (bps >= 1e6) return hubLtr('${(bps / 1e6).toStringAsFixed(bps >= 1e7 ? 0 : 1)} MB/s');
+  return hubLtr('${(bps / 1e3).ceil()} KB/s');
+}
+
+/// "2 min left" / "35 s left" / "1 h 5 min left".
+String hubEta(int? seconds) {
+  if (seconds == null || seconds < 0) return '';
+  if (seconds < 60) return t('بقي $seconds ث', '$seconds s left');
+  final m = (seconds / 60).ceil();
+  if (m < 60) return t('بقي $m د', '$m min left');
+  final h = m ~/ 60, r = m % 60;
+  return r == 0 ? t('بقي $h س', '$h h left') : t('بقي $h س $r د', '$h h $r min left');
+}
+
+/// "about 3 min" for an estimate in seconds.
+String hubDuration(int? seconds) {
+  if (seconds == null) return t('غير معروف', 'unknown');
+  if (seconds < 60) return t('نحو $seconds ث', 'about $seconds s');
+  final m = (seconds / 60).ceil();
+  if (m < 60) return t('نحو $m د', 'about $m min');
+  final h = m ~/ 60, r = m % 60;
+  return r == 0 ? t('نحو $h س', 'about $h h') : t('نحو $h س $r د', 'about $h h $r min');
+}
+
+/// The download's one line: "Downloading… 43% · 12 MB/s · 2 min left" / "Paused · 43%" / "Waiting to start…".
+String hubDownloadLine(HubDownload d) {
+  final pct = d.fraction == null ? '' : hubLtr('${(d.fraction! * 100).floor()}%');
+  if (d.paused) return [t('متوقف مؤقتاً', 'Paused'), if (pct.isNotEmpty) pct].join(' · ');
+  if (d.status == 'queued') return [t('بانتظار البدء…', 'Waiting to start…'), if (pct.isNotEmpty && d.bytesDone > 0) pct].join(' · ');
+  final rest = [if (pct.isNotEmpty) pct, if (hubSpeed(d.speedBps).isNotEmpty) hubSpeed(d.speedBps), if (hubEta(d.etaS).isNotEmpty) hubEta(d.etaS)];
+  return [t('جارٍ التنزيل…', 'Downloading…'), if (rest.isNotEmpty) rest.join(' · ')].join(' ');
+}
+
+/// The model's short name for a download (its ref without the version when the row is not known).
+String hubDownloadName(HubDownload d, [HubModel? m]) {
+  if (m != null) return m.name;
+  final r = d.ref ?? '';
+  final at = r.indexOf('@');
+  return at > 0 ? r.substring(0, at) : (r.isEmpty ? t('نموذج', 'Model') : r);
+}
+
+/// Who made an audit row: "You", "User #12", or "The model server" (actor null).
+String hubActor(int? actor, int? me) {
+  if (actor == null) return t('خادم النماذج', 'The model server');
+  if (actor == me) return t('أنت', 'You');
+  return t('المستخدم #$actor', 'User #$actor');
+}
+
+/// The one-line result of a health test: "Passed · 10.4 / s · loaded in 3.8 s · 523 MB".
+String hubTestLine(HubTest test) {
+  final parts = <String>[
+    test.ok ? t('نجح', 'Passed') : t('فشل', 'Failed'),
+    if (test.speed != null && test.speed! > 0) '${test.speed!.toStringAsFixed(test.speed! >= 100 ? 0 : 1)} ${t('/ث', '/ s')}',
+    if (test.loadMs != null && test.loadMs! > 0) t('التحميل ${(test.loadMs! / 1000).toStringAsFixed(1)} ث', 'loaded in ${(test.loadMs! / 1000).toStringAsFixed(1)} s'),
+    if (test.rssMb != null && test.rssMb! > 0) hubMb(test.rssMb!),
+  ];
+  return parts.join(' · ');
+}
+
+/// Why a check failed, from its fields (the server's `reason` when it gives one).
+String hubCheckLine(HubCheck c) {
+  final name = switch (c.name) {
+    'ram' => t('الذاكرة', 'Memory'),
+    'cpu' => t('المعالج', 'Processor'),
+    'files' => t('الملفات', 'Files'),
+    _ => c.name,
+  };
+  final why = c.reason ?? (c.raw['problems'] is List && (c.raw['problems'] as List).isNotEmpty ? (c.raw['problems'] as List).join(', ') : null);
+  return why == null ? name : '$name: $why';
+}

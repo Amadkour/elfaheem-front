@@ -15,6 +15,8 @@ import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t
 import 'exam_authoring.dart';
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'offline/offline_exam_teacher.dart';
+import 'paper/exam_setup_wizard.dart' show openExamSetupWizard;
+import 'paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
 
 /// Text controllers for dynamic rows, created on first use and disposed with the state. Rows are keyed by their
 /// stable uid, so a removed row's controller is simply never asked for again.
@@ -1663,6 +1665,8 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
         appBar: AppBar(
           title: Text(v?.exam.title.isNotEmpty == true ? v!.exam.title : t('تحرير الاختبار', 'Edit exam'), maxLines: 1, overflow: TextOverflow.ellipsis),
           actions: [
+            if (v != null && v.exam.courseId != null)
+              IconButton(onPressed: () => openExamSetupWizard(context, examId: v.exam.id!, onLearnTemplate: () => openOmrTemplateLearn(context).then((_) {})), icon: const Icon(Icons.fact_check_outlined), tooltip: t('إعداد الاختبار الورقي', 'Paper exam setup')),
             if (v != null && v.questionCount > 0)
               IconButton(
                   onPressed: () => openExamPaper(context, examId: v.exam.id!),

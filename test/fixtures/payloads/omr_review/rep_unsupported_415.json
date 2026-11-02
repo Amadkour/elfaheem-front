@@ -1,0 +1,11 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/omr/pages/2/replace -> 415, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_replace.py (back worktree wt-back-omr)",
+ "_status": 415,
+ "payload": {
+  "detail": {
+   "code": "unsupported_file",
+   "message": "أرسل صورة (JPEG أو PNG أو WebP)",
+   "message_en": "Send an image (JPEG, PNG or WebP)."
+  }
+ }
+}

@@ -1,0 +1,434 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/results -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "exam_id": 1,
+  "title": "Forms midterm",
+  "students": [
+   {
+    "attempt_id": 1,
+    "student_id": 101,
+    "student_code": null,
+    "name": "Student 101",
+    "state": "graded",
+    "score": 9.0,
+    "max_score": 11.0,
+    "percentage": 81.82,
+    "passed": true,
+    "form": "B",
+    "open_review": 0,
+    "graded": true,
+    "correct": 5,
+    "answered": 6
+   },
+   {
+    "attempt_id": 2,
+    "student_id": 102,
+    "student_code": null,
+    "name": "Student 102",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "B",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 3,
+    "student_id": 106,
+    "student_code": null,
+    "name": "Student 106",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "B",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 4,
+    "student_id": 201,
+    "student_code": null,
+    "name": "Student 201",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "A",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 5,
+    "student_id": 202,
+    "student_code": null,
+    "name": "Student 202",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "A",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 6,
+    "student_id": 203,
+    "student_code": null,
+    "name": "Student 203",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "A",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 7,
+    "student_id": 204,
+    "student_code": null,
+    "name": "Student 204",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "A",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 8,
+    "student_id": 205,
+    "student_code": null,
+    "name": "Student 205",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "A",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 9,
+    "student_id": 206,
+    "student_code": null,
+    "name": "Student 206",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "A",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 10,
+    "student_id": 208,
+    "student_code": null,
+    "name": "Student 208",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "A",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 11,
+    "student_id": 209,
+    "student_code": null,
+    "name": "Student 209",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "A",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   },
+   {
+    "attempt_id": 12,
+    "student_id": 210,
+    "student_code": null,
+    "name": "Student 210",
+    "state": "graded",
+    "score": 11.0,
+    "max_score": 11.0,
+    "percentage": 100.0,
+    "passed": true,
+    "form": "A",
+    "open_review": 0,
+    "graded": true,
+    "correct": 6,
+    "answered": 6
+   }
+  ],
+  "questions": [
+   {
+    "n": 1,
+    "question_id": 1,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 12,
+    "correct": 11,
+    "difficulty": 0.9167,
+    "most_chosen_wrong": "A",
+    "most_chosen_wrong_count": 1,
+    "distribution": {
+     "A": 10,
+     "B": 0,
+     "C": 0,
+     "D": 2,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "B": {
+      "A": 1,
+      "D": 2
+     },
+     "A": {
+      "A": 9
+     }
+    }
+   },
+   {
+    "n": 2,
+    "question_id": 2,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 12,
+    "correct": 12,
+    "difficulty": 1.0,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 0,
+     "B": 9,
+     "C": 3,
+     "D": 0,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "B": {
+      "C": 3
+     },
+     "A": {
+      "B": 9
+     }
+    }
+   },
+   {
+    "n": 3,
+    "question_id": 3,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 12,
+    "correct": 12,
+    "difficulty": 1.0,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 0,
+     "B": 3,
+     "C": 9,
+     "D": 0,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "B": {
+      "B": 3
+     },
+     "A": {
+      "C": 9
+     }
+    }
+   },
+   {
+    "n": 4,
+    "question_id": 4,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 12,
+    "correct": 12,
+    "difficulty": 1.0,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 3,
+     "B": 0,
+     "C": 0,
+     "D": 9,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "B": {
+      "A": 3
+     },
+     "A": {
+      "D": 9
+     }
+    }
+   },
+   {
+    "n": 5,
+    "question_id": 5,
+    "type": "mcq_single",
+    "points": 2.0,
+    "scored": 12,
+    "correct": 12,
+    "difficulty": 1.0,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 9,
+     "B": 3,
+     "C": 0,
+     "D": 0,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "B": {
+      "B": 3
+     },
+     "A": {
+      "A": 9
+     }
+    }
+   },
+   {
+    "n": 6,
+    "question_id": 6,
+    "type": "true_false",
+    "points": 1.0,
+    "scored": 12,
+    "correct": 12,
+    "difficulty": 1.0,
+    "most_chosen_wrong": null,
+    "most_chosen_wrong_count": 0,
+    "distribution": {
+     "A": 9,
+     "B": 3,
+     "blank": 0,
+     "multiple": 0,
+     "pending": 0
+    },
+    "by_form": {
+     "B": {
+      "B": 3
+     },
+     "A": {
+      "A": 9
+     }
+    }
+   }
+  ],
+  "distribution": [
+   {
+    "from": 0,
+    "to": 10,
+    "count": 0
+   },
+   {
+    "from": 10,
+    "to": 20,
+    "count": 0
+   },
+   {
+    "from": 20,
+    "to": 30,
+    "count": 0
+   },
+   {
+    "from": 30,
+    "to": 40,
+    "count": 0
+   },
+   {
+    "from": 40,
+    "to": 50,
+    "count": 0
+   },
+   {
+    "from": 50,
+    "to": 60,
+    "count": 0
+   },
+   {
+    "from": 60,
+    "to": 70,
+    "count": 0
+   },
+   {
+    "from": 70,
+    "to": 80,
+    "count": 0
+   },
+   {
+    "from": 80,
+    "to": 90,
+    "count": 1
+   },
+   {
+    "from": 90,
+    "to": 100,
+    "count": 11
+   }
+  ],
+  "summary": {
+   "students": 12,
+   "graded": 12,
+   "open_review_items": 4,
+   "mean_percentage": 98.48,
+   "max_percentage": 100.0,
+   "min_percentage": 81.82,
+   "passed": 12
+  },
+  "published_at": null,
+  "anonymous": false
+ }
+}

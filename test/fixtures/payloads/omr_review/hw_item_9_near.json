@@ -1,0 +1,148 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items/9 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr); read by the recorder right after the script, as the exam's teacher",
+ "_status": 200,
+ "payload": {
+  "id": 9,
+  "scan_page_id": 4,
+  "attempt_id": 2,
+  "question_id": 5,
+  "kind": "completion",
+  "code": "near_match",
+  "reading": {
+   "kind": "completion",
+   "status": "suggestion",
+   "final": false,
+   "needs_review": true,
+   "max": 1.0,
+   "suggested_score": 0.5,
+   "blanks": [
+    {
+     "status": "near",
+     "given": "mitochondira",
+     "normalised": "mitochondira",
+     "matched": "mitochondria",
+     "distance": 1,
+     "budget": 2,
+     "suggested_credit": 0.5,
+     "final": false,
+     "reading": {
+      "text": "mitochondira",
+      "confidence": null,
+      "engine": "typed"
+     },
+     "crop": {
+      "page_id": 4,
+      "box": [
+       0.07,
+       0.615,
+       0.8600000000000001,
+       0.33499999999999996
+      ],
+      "has_crop": true
+     },
+     "reason": "near_match"
+    }
+   ],
+   "text": "mitochondira",
+   "texts": [
+    "mitochondira"
+   ],
+   "corrected": true,
+   "lang": "en",
+   "points": 1.0,
+   "pending": false,
+   "en": "Close to an accepted answer: confirm the suggested credit",
+   "ar": "قريبة من إجابة مقبولة: أكّد الدرجة المقترحة"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T08:42:25.188049",
+  "actions": [
+   "accept",
+   "set_score",
+   "fix_text"
+  ],
+  "has_crop": true,
+  "en": "Close to an accepted answer: confirm the suggested credit",
+  "ar": "قريبة من إجابة مقبولة: أكّد الدرجة المقترحة",
+  "crop_url": "/api/v1/exam/omr/images/crop/9?exp=1793609550&sig=634b5a880e50ad6d0dc48908f081f41a",
+  "system_reading": {
+   "reading_id": 4,
+   "unit": "word",
+   "lang": "en",
+   "reading": {
+    "text": "nucleus",
+    "confidence": 0.97,
+    "engine": "trocr-small-handwritten@fp32-2432e24",
+    "review": false,
+    "reasons": [],
+    "blank": false,
+    "lang": "en",
+    "unit": "word",
+    "threshold": 0.916,
+    "lines": 1,
+    "check": {
+     "engine": "paddleocr-rec-en@pp-ocrv5-7b02d0a",
+     "text": "nucleus",
+     "agree": true
+    },
+    "words": [],
+    "ms": 37.6
+   },
+   "blanks": [
+    {
+     "text": "nucleus",
+     "confidence": 0.97,
+     "engine": "trocr-small-handwritten@fp32-2432e24",
+     "review": false,
+     "reasons": [],
+     "blank": false,
+     "lang": "en",
+     "unit": "word",
+     "threshold": 0.916,
+     "lines": 1,
+     "check": {
+      "engine": "paddleocr-rec-en@pp-ocrv5-7b02d0a",
+      "text": "nucleus",
+      "agree": true
+     },
+     "words": [],
+     "ms": 37.6
+    }
+   ],
+   "box": [
+    0.07,
+    0.615,
+    0.8600000000000001,
+    0.33499999999999996
+   ]
+  },
+  "question": {
+   "question_id": 5,
+   "type": "fill_blank",
+   "points": 1.0,
+   "lang": "en",
+   "step": 0.5,
+   "blanks": 1,
+   "key": {
+    "blanks": [
+     [
+      "mitochondria"
+     ]
+    ],
+    "match": {
+     "spelling": true,
+     "near_credit": 0.5
+    }
+   }
+  },
+  "page": {
+   "id": 4,
+   "page_label": null,
+   "status": "review",
+   "url": "/api/v1/exam/exams/1/omr/pages/4"
+  }
+ }
+}

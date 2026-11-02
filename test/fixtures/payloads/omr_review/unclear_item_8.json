@@ -1,0 +1,181 @@
+{
+ "_source": "GET /api/v1/exam/exams/2/review-items/8 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "id": 8,
+  "scan_page_id": 19,
+  "attempt_id": null,
+  "question_id": null,
+  "kind": "identifier",
+  "code": "identifier_unclear",
+  "reading": {
+   "kind": "handwritten",
+   "status": "review",
+   "value": "2024000109",
+   "reason": "low_confidence",
+   "low": [
+    3
+   ],
+   "gaps": [],
+   "columns_to_check": null,
+   "digits": [
+    {
+     "index": 0,
+     "digit": "2",
+     "confidence": 0.99
+    },
+    {
+     "index": 1,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 2,
+     "digit": "2",
+     "confidence": 0.99
+    },
+    {
+     "index": 3,
+     "digit": "4",
+     "confidence": 0.42
+    },
+    {
+     "index": 4,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 5,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 6,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 7,
+     "digit": "1",
+     "confidence": 0.99
+    },
+    {
+     "index": 8,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 9,
+     "digit": "9",
+     "confidence": 0.99
+    }
+   ],
+   "en": "The student ID could not be read with confidence",
+   "ar": "تعذّرت قراءة رقم الطالب بثقة"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T05:36:35.387353",
+  "actions": [
+   "assign",
+   "accept",
+   "fix",
+   "replace",
+   "dismiss"
+  ],
+  "has_crop": true,
+  "en": "The student ID could not be read with confidence",
+  "ar": "تعذّرت قراءة رقم الطالب بثقة",
+  "crop_url": "/api/v1/exam/omr/images/crop/8?exp=1793598397&sig=23e5a0cde83a7e4d9a80d84efd7bf47b",
+  "system_reading": {
+   "reading_id": 19,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "identifier": {
+    "kind": "handwritten",
+    "boxes": [
+     {
+      "index": 0,
+      "written": true,
+      "digit": "2",
+      "confidence": 0.99
+     },
+     {
+      "index": 1,
+      "written": true,
+      "digit": "0",
+      "confidence": 0.99
+     },
+     {
+      "index": 2,
+      "written": true,
+      "digit": "2",
+      "confidence": 0.99
+     },
+     {
+      "index": 3,
+      "written": true,
+      "digit": "4",
+      "confidence": 0.42
+     },
+     {
+      "index": 4,
+      "written": true,
+      "digit": "0",
+      "confidence": 0.99
+     },
+     {
+      "index": 5,
+      "written": true,
+      "digit": "0",
+      "confidence": 0.99
+     },
+     {
+      "index": 6,
+      "written": true,
+      "digit": "0",
+      "confidence": 0.99
+     },
+     {
+      "index": 7,
+      "written": true,
+      "digit": "1",
+      "confidence": 0.99
+     },
+     {
+      "index": 8,
+      "written": true,
+      "digit": "0",
+      "confidence": 0.99
+     },
+     {
+      "index": 9,
+      "written": true,
+      "digit": "9",
+      "confidence": 0.99
+     }
+    ],
+    "box": [
+     117,
+     219,
+     639,
+     88
+    ],
+    "status": "review",
+    "value": "2024000109",
+    "reason": "low_confidence",
+    "low": [
+     3
+    ],
+    "gaps": []
+   }
+  },
+  "page": {
+   "id": 19,
+   "page_label": "1",
+   "status": "review",
+   "url": "/api/v1/exam/exams/2/omr/pages/19"
+  }
+ }
+}
