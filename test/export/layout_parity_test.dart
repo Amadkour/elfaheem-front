@@ -111,6 +111,16 @@ void main() {
     expect(doc.designs['en']!.header!.elements.single.value, 'T: {{title}} {{date}}');
   });
 
+  test("a language's design copied from the other one translates the starter's own texts", () {
+    const fields = [LayoutField(key: 'name', labelAr: 'الاسم', labelEn: 'Name')];
+    final ar = layoutStarter(mode: 'table', lang: 'ar', fields: fields);
+    final en = layoutCopyForLang(ar, 'en', fields);
+    final values = [for (final e in en.allElements) e.value ?? ''];
+    expect(values.where((v) => v.contains('العدد')), isEmpty);
+    expect(values, contains('Items: {{total}}'));
+    expect(en.page.rtl, isFalse);
+  });
+
   test('a size left to the page is not sent (the server then uses page.font_size)', () {
     final s = LayoutStyle();
     expect(s.toJson().containsKey('size'), isFalse);

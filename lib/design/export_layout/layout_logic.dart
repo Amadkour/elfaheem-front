@@ -410,15 +410,33 @@ LayoutDesign layoutMirror(LayoutDesign d) {
 }
 
 /// [src] (the other language's design) as a start for [lang]: a copy, mirrored when the direction differs, with the
-/// static labels that name a field and the list / table headings switched to [lang]'s names.
+/// static labels that name a field, the starters' own texts ("العدد: {{total}}" → "Items: {{total}}") and element
+/// names, and the list / table headings switched to [lang]'s names.
 LayoutDesign layoutCopyForLang(LayoutDesign src, String lang, List<LayoutField> fields) {
   final d = src.copy();
   if (d.page.rtl != (lang == 'ar')) layoutMirror(d);
   final other = lang == 'ar' ? 'en' : 'ar';
   final byOtherLabel = {for (final f in fields) f.label(other): f};
+  // the starters are built with the same ids in both languages: element by element, their texts translate
+  final texts = <String, String>{}, names = <String, String>{};
+  for (final mode in const ['list', 'table', 'custom']) {
+    final a = layoutStarter(mode: mode, lang: other, fields: fields), b = layoutStarter(mode: mode, lang: lang, fields: fields);
+    final byId = {for (final e in b.allElements) e.id: e};
+    for (final e in a.allElements) {
+      final t = byId[e.id];
+      if (t == null) continue;
+      if (e.value != null && t.value != null && e.value != t.value) texts[e.value!] = t.value!;
+      if (e.name != null && t.name != null && e.name != t.name) names[e.name!] = t.name!;
+    }
+  }
   for (final e in d.allElements) {
     final f = e.kind == 'text' && e.bind == null ? byOtherLabel[e.value] : null;
-    if (f != null) e.value = f.label(lang);
+    if (f != null) {
+      e.value = f.label(lang);
+    } else if (e.bind == null && texts[e.value] != null) {
+      e.value = texts[e.value];
+    }
+    if (names[e.name] != null) e.name = names[e.name];
   }
   final byKey = {for (final f in fields) f.key: f};
   for (final b in [...d.list.fields, for (final c in d.table.columns) c.field]) {
