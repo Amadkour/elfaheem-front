@@ -2139,13 +2139,10 @@ macOS bundle id, the Linux GTK `APPLICATION_ID`. The iPhone app was never publis
   SampleHandler.swift (they must stay identical); the recording IPC Darwin names are `com.doubley.nextbrain.frame` /
   `.audioframe` / `.stop` / `.wants_changed` in AppDelegate.swift and the extension's DarwinNotificationCenter.swift.
   Display name and bundle name "NextBrain". `DEVELOPMENT_TEAM` (MVHKS8482X) unchanged.
-  Info.plist now carries the new client's `REVERSED_CLIENT_ID` as a URL scheme (Google sign-in through
-  `signInWithProvider` returns through it; the old Info.plist had none).
 - **macOS:** the `macos/` runner had been committed as empty files (every Xcode file 0 bytes since the first commit),
   so it was refilled from Flutter 3.47.7's `flutter create` template, then given `PRODUCT_NAME = NextBrain`,
   `PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain`, the DoubleY copyright and the network-client entitlement. Never
-  built (no Mac here); `DefaultFirebaseOptions` still has no macOS / Windows / Linux block, so Firebase stays off there
-  as before.
+  built (no Mac here).
 - **Windows:** binary `nextbrain.exe` (`BINARY_NAME`), window title "NextBrain", Runner.rc CompanyName "DoubleY",
   ProductName / FileDescription "NextBrain", copyright DoubleY. **Linux:** `APPLICATION_ID com.doubley.nextbrain`, the
   .deb's desktop entry `com.doubley.nextbrain.desktop` with `StartupWMClass=com.doubley.nextbrain`, maintainer DoubleY.
@@ -2156,17 +2153,28 @@ macOS bundle id, the Linux GTK `APPLICATION_ID`. The iPhone app was never publis
   ElFaheem / Al-Faheem fallbacks users could see (Remote Config default `app_name`, the sign-in brand fallback, the
   sidebar fallback, the Google role question, the Android notification channel name, the web notification title,
   two translations) say NextBrain.
-- **Firebase (project id stays `elfaheem`):** new apps `NextBrain (Android)` `1:520907928286:android:4806ebf35b912c5a77884f`
-  (com.doubley.nextbrain, the old app's SHA-1 / SHA-256 copied) and `NextBrain (iOS)`
-  `1:520907928286:ios:4da3fb02e605cfe677884f` (com.doubley.nextbrain). A bundle id is unique per Firebase project, so
-  that one Apple app serves iOS AND macOS (both GoogleService-Info.plist files are its config). The web app is
-  unchanged. `google-services.json` holds both Android clients (the plugin picks the one matching the package). The
-  old apps stay registered: old Android installs keep receiving pushes until their users move.
+- **Firebase: a NEW project, `nextbrain-app`** (display name NextBrain, project number 645175948404). Its apps:
+  `NextBrain (Android)` `1:645175948404:android:31b9d24f73512146170d21` (com.doubley.nextbrain; the old Android
+  app's SHA-1 / SHA-256 copied onto it), `NextBrain (iOS + macOS)` `1:645175948404:ios:17694ddcf7a6de61170d21`
+  (com.doubley.nextbrain: a bundle id is unique per project, so one Apple app serves both, and both
+  GoogleService-Info.plist files are its config), `NextBrain (Web)` `1:645175948404:web:de987aa89406323c170d21` and
+  `NextBrain (Windows)` `1:645175948404:web:eda77408d518b8d0170d21`. `lib/firebase_options.dart` now has android,
+  ios, macos, web and windows blocks (Firebase starts on macOS and Windows too; Crashlytics is skipped on Windows /
+  Linux, which it does not support); `firebase.json`'s flutterfire block and `web/firebase-messaging-sw.js` name the
+  new project. The old project `elfaheem` stays as the fallback for the apps already installed (old Android
+  installs keep their pushes; the backend accepts both projects during the move). Its NextBrain apps, registered
+  there first (`1:520907928286:android:4806ebf35b912c5a77884f`, `1:520907928286:ios:4da3fb02e605cfe677884f`), are
+  unused and harmless. Hosting (`.firebaserc`, the `hosting` block) is unchanged.
+- **Owed in the new project's console:** the Web Push certificate (Cloud Messaging → Web Push certificates →
+  Generate key pair) for `NotificationService.webPushVapidKey`, which still holds the old project's key; Google
+  sign-in enabled under Authentication (then re-download GoogleService-Info.plist, which gains `CLIENT_ID` /
+  `REVERSED_CLIENT_ID`, and add the reversed id as a URL scheme in ios/Runner/Info.plist), plus whatever else the
+  old project had switched on (Remote Config, Crashlytics, the APNs key for iOS push).
 
 **Not changed, on purpose.** The Dart package name `flutter_education_app` (pubspec `name:`): it is internal, never
 shown, and renaming it rewrites every `package:` import in thousands of files and breaks every other open branch. The
-Firebase project id `elfaheem`. The signing key. Internal names users never see and that would break compatibility:
-the Android notification channel id `elfaheem_main` (the server's pushes name it), the attendance relay service id
+signing key. Internal names users never see and that would break compatibility: the Android notification channel id
+`elfaheem_main` (internal; it must match the backend, whose pushes name it), the attendance relay service id
 `com.elfaheem.attendance.relay` (older app versions must still find a relay), the envelope-encryption HKDF labels
 `elfaheem-envelope-*` (the server must match), the flutter-webrtc fork's `ElFaheem*` classes, the web recorder's
 `_ElFaheemCompositor*` globals, and the Dart class `ElFaheemApp`.

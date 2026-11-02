@@ -53,6 +53,13 @@ class NotificationService {
 
   static final NotificationService instance = NotificationService._();
 
+  /// The Web Push (VAPID) public key of the web app's Firebase project.
+  /// TODO(D-145): this is still the OLD project's (elfaheem) key. Generate the key of `nextbrain-app` in the Firebase
+  /// console (Project settings → Cloud Messaging → Web Push certificates → Generate key pair) and paste it here;
+  /// until then web push tokens cannot be issued for the new project.
+  static const webPushVapidKey =
+      'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0';
+
   final FlutterLocalNotificationsPlugin _plugin =
   FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
@@ -193,10 +200,7 @@ class NotificationService {
       String? token;
 
       if (kIsWeb) {
-        token = await _fcm.getToken(
-          vapidKey:
-          'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
-        );
+        token = await _fcm.getToken(vapidKey: webPushVapidKey);
       } else {
         token = await _fcm.getToken();
       }

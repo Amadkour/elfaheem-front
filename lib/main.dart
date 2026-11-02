@@ -266,6 +266,8 @@ Future<T?> _safe<T>(
 Future<void> _initCrashlytics() async {
   // Firebase failed or timed out → skip instead of throwing.
   if (Firebase.apps.isEmpty) return;
+  // Firebase now starts on Windows too (D-145), but Crashlytics has no Windows / Linux plugin.
+  if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux) return;
 
   // Disable in debug so your dashboard stays clean during development
   await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(

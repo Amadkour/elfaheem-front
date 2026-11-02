@@ -1,95 +1,26 @@
 {
   "project_info": {
-    "project_number": "520907928286",
-    "project_id": "elfaheem",
-    "storage_bucket": "elfaheem.firebasestorage.app"
+    "project_number": "645175948404",
+    "project_id": "nextbrain-app",
+    "storage_bucket": "nextbrain-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:520907928286:android:4806ebf35b912c5a77884f",
+        "mobilesdk_app_id": "1:645175948404:android:31b9d24f73512146170d21",
         "android_client_info": {
           "package_name": "com.doubley.nextbrain"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "520907928286-l9app72nh675ah14keqd2r0442ti7l9c.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.doubley.nextbrain",
-            "certificate_hash": "b35c6129d222dfce26e9329aa038639f27d2d2ac"
-          }
-        },
-        {
-          "client_id": "520907928286-5cb5e75qfavb9csifiiqndgck1aivk5h.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBjtZYFJ5j6JhvppWAuqpuQxa7B1Ka09wg"
+          "current_key": "AIzaSyD8CCG8TfPviDhEmrRLXN5nF51B1Q4WTps"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "520907928286-5cb5e75qfavb9csifiiqndgck1aivk5h.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "520907928286-0neqahb0nvc7776ap5j3rmptq1fe5b4d.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.flutterEducationApp"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:520907928286:android:c262d4fcaa8a4a4277884f",
-        "android_client_info": {
-          "package_name": "com.example.flutter_education_app"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "520907928286-f2nihv8cbg2ilea2f0t3hqm5rpkvjv24.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.flutter_education_app",
-            "certificate_hash": "b35c6129d222dfce26e9329aa038639f27d2d2ac"
-          }
-        },
-        {
-          "client_id": "520907928286-5cb5e75qfavb9csifiiqndgck1aivk5h.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBjtZYFJ5j6JhvppWAuqpuQxa7B1Ka09wg"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "520907928286-5cb5e75qfavb9csifiiqndgck1aivk5h.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "520907928286-0neqahb0nvc7776ap5j3rmptq1fe5b4d.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.flutterEducationApp"
-              }
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

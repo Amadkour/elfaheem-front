@@ -2,24 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CLIENT_ID</key>
-	<string>520907928286-s4btpcd6lfq1mv3hbvqp2mmh2fe8r3i2.apps.googleusercontent.com</string>
-	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.520907928286-s4btpcd6lfq1mv3hbvqp2mmh2fe8r3i2</string>
-	<key>ANDROID_CLIENT_ID</key>
-	<string>520907928286-f2nihv8cbg2ilea2f0t3hqm5rpkvjv24.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyDp7KmV-jpsMbE74KLHm3K6VSYr05pu5Dw</string>
+	<string>AIzaSyAqw5yr_fU2yv_ck8Ek0ZZlN2P03eqjzaY</string>
 	<key>GCM_SENDER_ID</key>
-	<string>520907928286</string>
+	<string>645175948404</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.doubley.nextbrain</string>
 	<key>PROJECT_ID</key>
-	<string>elfaheem</string>
+	<string>nextbrain-app</string>
 	<key>STORAGE_BUCKET</key>
-	<string>elfaheem.firebasestorage.app</string>
+	<string>nextbrain-app.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -31,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:520907928286:ios:4da3fb02e605cfe677884f</string>
+	<string>1:645175948404:ios:17694ddcf7a6de61170d21</string>
 </dict>
 </plist>
