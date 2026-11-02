@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/core/release/web_release_watch.dart';
 import 'package:flutter_education_app/core/version_check_service.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppPrimaryButton;
 import 'package:flutter_education_app/features/admin/app_releases/app_release_detail.dart';
 import 'package:flutter_education_app/features/admin/app_releases/app_release_form.dart';
 import 'package:flutter_education_app/features/admin/app_releases/app_releases_models.dart';
@@ -108,6 +109,7 @@ void main() {
     testWidgets('prefills from the live one + 1, asks the password and sends it', (tester) async {
       Map<String, dynamic>? sent;
       final fake = FakeApi({
+        'GET $_b/config': (_) => releaseConfigJson(),
         'POST $_b': (o) {
           sent = _body(o.data);
           return FakeResponse(201, releaseJson(id: 12, status: 'queued'));
@@ -145,6 +147,8 @@ void main() {
       expect(sent!['gate'], 'direct');
       expect(sent!['branch'], 'production');
       expect(sent!['source'], 'website');
+      expect(sent!['channel'], 'website');
+      expect(sent!['config'], {'branch': 'production', 'workflow': 'android-website'});
       expect(sent!['auto_publish'], isTrue);
       expect(sent!['notes_en'], 'Faster lessons');
       expect(result, isA<AppRelease>());
@@ -154,23 +158,26 @@ void main() {
     });
 
     testWidgets('its own checks send nothing; a dismissed password sends nothing', (tester) async {
-      final fake = FakeApi({'POST $_b': (_) => FakeResponse(201, releaseJson())}, latency: const Duration(milliseconds: 20))..install();
+      final fake = FakeApi({'GET $_b/config': (_) => releaseConfigJson(notReady: const {}), 'POST $_b': (_) => FakeResponse(201, releaseJson())},
+          latency: const Duration(milliseconds: 20))
+        ..install();
       addTearDown(fake.uninstall);
       await _pump(tester, NewAppReleasePage(latest: latest, askPassword: (_) async => null));
+      await _tapKey(tester, 'release.channel.store');
       await tester.enterText(find.byKey(const ValueKey('release.version')), '1.4');
       await tester.enterText(find.byKey(const ValueKey('release.branch')), 'bad branch!');
-      await _tapKey(tester, 'release.source.google_play');
+      await tester.enterText(find.byKey(const ValueKey('release.store_url')), 'http://play.google.com/x');
       await _tapKey(tester, 'release.submit');
       expect(find.text(releaseFieldError('version_format')), findsOneWidget);
       expect(find.text(releaseFieldError('branch_invalid')), findsOneWidget);
       expect(find.text(releaseFieldError('url_https')), findsOneWidget);
-      expect(fake.calls, isEmpty);
+      expect(fake.calls.where((c) => c.method == 'POST'), isEmpty);
 
       await tester.enterText(find.byKey(const ValueKey('release.version')), '1.4.1');
       await tester.enterText(find.byKey(const ValueKey('release.branch')), 'production');
       await tester.enterText(find.byKey(const ValueKey('release.store_url')), 'https://play.google.com/store/apps/details?id=x');
       await _tapKey(tester, 'release.submit');
-      expect(fake.calls, isEmpty, reason: 'the password sheet was dismissed');
+      expect(fake.calls.where((c) => c.method == 'POST'), isEmpty, reason: 'the password sheet was dismissed');
       await tester.pump(const Duration(seconds: 5));
       await _end(tester);
     });
@@ -184,6 +191,7 @@ void main() {
     ]) {
       testWidgets('the server refuses: $code', (tester) async {
         final fake = FakeApi({
+          'GET $_b/config': (_) => releaseConfigJson(),
           'POST $_b': (_) => FakeResponse(status, {
                 'detail': {'code': code, 'message': 'refused: $code'},
               }),
@@ -207,6 +215,192 @@ void main() {
         await _end(tester);
       });
     }
+  });
+
+  group('Codemagic channels (D-144)', () {
+    AppPrimaryButton submit(WidgetTester tester) => tester.widget<AppPrimaryButton>(find.byKey(const ValueKey('release.submit')));
+
+    testWidgets('a channel that is not set up: Create is off and the box lists what is missing; nothing is sent', (tester) async {
+      final fake = FakeApi({
+        'GET $_b/config': (_) => releaseConfigJson(),
+        'POST $_b': (_) => FakeResponse(201, releaseJson()),
+      }, latency: const Duration(milliseconds: 20))
+        ..install();
+      addTearDown(fake.uninstall);
+      await _pump(tester, NewAppReleasePage(latest: latest, askPassword: (_) async => 'pw'));
+      expect(submit(tester).onPressed, isNotNull, reason: 'Android on our website is ready');
+      expect(find.textContaining('Ready: Codemagic builds Android'), findsOneWidget);
+
+      await _tapKey(tester, 'release.channel.store');
+      expect(submit(tester).onPressed, isNull, reason: 'the package name is still com.example.*');
+      expect(find.byKey(const ValueKey('release.readiness.missing.package_name_example')), findsOneWidget);
+      expect(find.text('From the server: package_name_example'), findsOneWidget, reason: "the server's own line");
+      expect(find.byKey(const ValueKey('release.store_note')), findsOneWidget, reason: 'the store review note');
+      expect(find.byKey(const ValueKey('release.submit.hint')), findsOneWidget);
+      // prefilled from the server's defaults, editable
+      expect(tester.widget<TextField>(find.byKey(const ValueKey('release.workflow'))).controller!.text, 'android-store');
+      expect(tester.widget<TextField>(find.byKey(const ValueKey('release.package_name'))).controller!.text, 'com.example.flutter_education_app');
+      await _tapKey(tester, 'release.submit');
+      expect(fake.calls.where((c) => c.method == 'POST'), isEmpty);
+
+      // the iPhone store: the env names are shown for the owner
+      await _tapKey(tester, 'release.platform.ios');
+      await _tapKey(tester, 'release.channel.store');
+      expect(find.text('APP_STORE_APP_ID'), findsOneWidget);
+      expect(submit(tester).onPressed, isNull);
+      // the iPhone web app is recorded only: always possible
+      await _tapKey(tester, 'release.channel.website');
+      expect(submit(tester).onPressed, isNotNull);
+      await _end(tester);
+    });
+
+    testWidgets('a real package name typed for this version covers package_name_example; the config is sent', (tester) async {
+      Map<String, dynamic>? sent;
+      final fake = FakeApi({
+        'GET $_b/config': (_) => releaseConfigJson(),
+        'POST $_b': (o) {
+          sent = _body(o.data);
+          return FakeResponse(201, codemagicReleaseJson(id: 31, channel: 'store', status: 'queued'));
+        },
+      }, latency: const Duration(milliseconds: 20))
+        ..install();
+      addTearDown(fake.uninstall);
+      await _pump(tester, NewAppReleasePage(latest: latest, askPassword: (_) async => 'pw'));
+      await _tapKey(tester, 'release.channel.store');
+      expect(submit(tester).onPressed, isNull);
+      await tester.enterText(find.byKey(const ValueKey('release.package_name')), 'site.nextbrain.app');
+      await _frames(tester, 3);
+      expect(submit(tester).onPressed, isNotNull, reason: 'the server re-checks with the same override');
+      await tester.enterText(find.byKey(const ValueKey('release.store_url')), 'https://play.google.com/store/apps/details?id=site.nextbrain.app');
+      await _tapKey(tester, 'release.submit');
+      await _frames(tester, 10);
+      expect(sent, isNotNull);
+      expect(sent!['channel'], 'store');
+      expect(sent!['source'], 'google_play');
+      expect(sent!['config'], {
+        'branch': 'production',
+        'workflow': 'android-store',
+        'track': 'internal',
+        'package_name': 'site.nextbrain.app',
+        'store_url': 'https://play.google.com/store/apps/details?id=site.nextbrain.app',
+      });
+      expect(sent!.containsKey('password'), isTrue);
+      await tester.pump(const Duration(seconds: 5));
+      await _end(tester);
+    });
+
+    testWidgets('the server refuses with channel_not_configured: its list lands in the box, Create goes off', (tester) async {
+      final fake = FakeApi({
+        'GET $_b/config': (_) => releaseConfigJson(notReady: const {}),
+        'POST $_b': (_) => FakeResponse(400, {
+              'detail': {
+                'code': 'channel_not_configured',
+                'message': 'هذه القناة غير جاهزة على الخادم بعد',
+                'message_en': 'This channel is not configured on the server yet',
+                'missing': ['APP_RELEASE_UPLOAD_SECRET'],
+                'reasons_ar': ['مفتاح الرفع ناقص'],
+                'reasons_en': ['upload key missing'],
+              },
+            }),
+      }, latency: const Duration(milliseconds: 20))
+        ..install();
+      addTearDown(fake.uninstall);
+      await _pump(tester, NewAppReleasePage(latest: latest, askPassword: (_) async => 'pw'));
+      expect(submit(tester).onPressed, isNotNull);
+      await _tapKey(tester, 'release.submit');
+      await _frames(tester, 10);
+      expect(fake.calls.where((c) => c.method == 'POST'), hasLength(1));
+      expect(find.byKey(const ValueKey('release.readiness.missing.APP_RELEASE_UPLOAD_SECRET')), findsOneWidget);
+      expect(find.text('APP_RELEASE_UPLOAD_SECRET'), findsOneWidget);
+      expect(find.text('upload key missing'), findsOneWidget, reason: 'the refusal brings its own lines');
+      expect(submit(tester).onPressed, isNull, reason: 'a stale form cannot slip through twice');
+      expect(find.byType(NewAppReleasePage), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await _end(tester);
+    });
+
+    testWidgets('the setup cannot be read: Create is off for a built channel until Retry works', (tester) async {
+      var fail = true;
+      final fake = FakeApi({
+        'GET $_b/config': (_) => fail ? FakeResponse(503, {'detail': 'busy'}) : releaseConfigJson(notReady: const {}),
+      }, latency: const Duration(milliseconds: 20))
+        ..install();
+      addTearDown(fake.uninstall);
+      await _pump(tester, NewAppReleasePage(latest: latest, askPassword: (_) async => 'pw'));
+      expect(submit(tester).onPressed, isNull);
+      expect(find.byKey(const ValueKey('release.readiness.retry')), findsOneWidget);
+      fail = false;
+      await _tapKey(tester, 'release.readiness.retry');
+      await _frames(tester, 4);
+      expect(submit(tester).onPressed, isNotNull);
+      await _end(tester);
+    });
+
+    test('channels, the old source, the defaults and the form checks', () {
+      expect(releaseChannelsFor('android'), ['website', 'store']);
+      expect(releaseChannelsFor('web'), ['website']);
+      expect(releaseChannelsFor('windows'), ['website', 'store']);
+      expect(releaseChannelBuilds('windows', 'store'), isFalse, reason: 'the Microsoft Store is recorded only in phase 1');
+      expect(releaseChannelBuilds('ios', 'website'), isFalse, reason: 'the iPhone web app is recorded only');
+      expect(releaseChannelBuilds('windows', 'website'), isTrue);
+      expect(releaseChannelBuilds('macos', 'store'), isFalse);
+      expect(AppRelease.fromJson(releaseJson(source: 'google_play')).channel, 'store', reason: 'an older reply: the source decides');
+      expect(AppRelease.fromJson(releaseJson(source: 'custom')).channel, 'website');
+      final r = AppRelease.fromJson(codemagicReleaseJson(channel: 'store'));
+      expect(r.isStore, isTrue);
+      expect(r.viaCodemagic, isTrue);
+      expect(r.workflow, 'android-store');
+      expect(r.codemagicLink(), startsWith('https://codemagic.io/app/'));
+      final legacy = AppRelease.fromJson({...releaseJson(), 'codemagic_build_id': 'b1', 'executor': 'codemagic'});
+      expect(legacy.codemagicLink(appId: 'a1'), 'https://codemagic.io/app/a1/build/b1');
+
+      final cfg = ReleaseConfig.fromJson(releaseConfigJson());
+      expect(cfg.appId, '6544a1c2e8b4f0b7d1a9c3e2');
+      expect(cfg.defaultsFor('android', 'store').workflow, 'android-store');
+      expect(cfg.defaultsFor('android', 'website').workflow, 'android-website');
+      expect(cfg.defaultsFor('android', 'store').track, 'internal');
+      expect(cfg.readiness('android', 'website').ready, isTrue);
+      expect(cfg.readiness('android', 'store').missing, ['package_name_example']);
+      expect(cfg.readiness('macos', 'store').ready, isTrue, reason: 'recorded only');
+      final off = ReleaseConfig.fromJson(releaseConfigJson(codemagic: false));
+      expect(off.readiness('web', 'website').missing, ['CODEMAGIC_API_TOKEN'], reason: 'Codemagic itself, once');
+      expect(off.readiness('web', 'website').reasonFor('CODEMAGIC_API_TOKEN', 'en'), 'From the server: CODEMAGIC_API_TOKEN',
+          reason: "the channel's sentence fills the Codemagic block's empty one");
+      expect(AppRelease.fromJson(codemagicReleaseJson(channel: 'store', status: 'live', isLive: true)).canRollback, isFalse);
+      expect(off.readiness('ios', 'website').ready, isTrue);
+      expect(cfg.readiness('android', 'store').without(const {'package_name_example'}).ready, isTrue);
+      expect(cfg.readiness('android', 'store').reasonFor('package_name_example', 'en'), 'From the server: package_name_example');
+
+      AppReleaseDraft d({String channel = 'store', String? pkg, String? url, String? wf}) =>
+          AppReleaseDraft(platform: 'android', version: '1.4.1', channel: channel, packageName: pkg, storeUrl: url, workflow: wf);
+      expect(validateReleaseDraft(d(pkg: 'com.example.app'))['package_name'], 'package_name_example');
+      expect(validateReleaseDraft(d(pkg: 'not a package'))['package_name'], 'package_name_invalid');
+      expect(validateReleaseDraft(d(url: 'http://play'))['store_url'], 'url_https');
+      expect(validateReleaseDraft(d(wf: 'bad workflow!'))['workflow'], 'workflow_invalid');
+      expect(validateReleaseDraft(d()), isEmpty, reason: 'a built store version falls back to the server URL');
+      expect(validateReleaseDraft(AppReleaseDraft(platform: 'macos', version: '1.0.0', channel: 'store'))['store_url'], 'url_https');
+      final json = d(channel: 'website', pkg: 'x.y', url: 'https://ignored').toJson(password: 'pw');
+      expect(json['channel'], 'website');
+      expect(json['config'], {'branch': 'production'}, reason: 'no Play fields and no store link on the website channel');
+      expect(json.containsKey('store_url'), isFalse);
+      final ios = AppReleaseDraft(platform: 'ios', version: '1.0.0').toJson(password: 'pw');
+      expect(ios['gate'], 'direct', reason: 'the iPhone web app is not built');
+      expect(ios['config'], isEmpty);
+    });
+
+    test('the version check reads the channel and a server path', () {
+      final store = serverUpdateOffer({'should_update': true, 'latest_version': '1.4.1', 'channel': 'store', 'download_url': 'https://play.google.com/x'},
+          lang: 'en', platform: 'android')!;
+      expect(store.source, 'google_play');
+      expect(serverUpdateOffer({'should_update': true, 'channel': 'store', 'download_url': 'https://apps.apple.com/x'}, lang: 'en', platform: 'ios')!.source,
+          'app_store');
+      final site = serverUpdateOffer({'must_update': true, 'channel': 'website', 'source': 'website', 'download_url': '/api/v1/app/downloads/android/x-universal.apk'},
+          lang: 'en', platform: 'android', apiBase: 'https://nextbrain.site/api')!;
+      expect(site.source, 'website');
+      expect(site.url, 'https://nextbrain.site/api/api/v1/app/downloads/android/x-universal.apk');
+      expect(updateSourceOf({'source': 'custom', 'channel': 'website'}), 'custom');
+      expect(updateSourceOf({}), 'website', reason: 'nothing said: the old behaviour');
+    });
   });
 
   group('Release page', () {

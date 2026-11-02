@@ -1,5 +1,7 @@
 # App releases from the Super Admin dashboard (D-143) — shared contract
 
+> **Superseded build path (D-144, 2026-11-02):** Codemagic builds every version and each version has a channel (store | website): see `docs/release/APP_RELEASES_CODEMAGIC.md`. The page, statuses and actions below stay; the build agent (`tools/builder/`) is kept but is no longer the build path.
+
 The super admin creates a version; a SEPARATE BUILD SERVER builds it from the chosen branch and publishes it.
 Production never runs builds and never holds the Android signing key.
 

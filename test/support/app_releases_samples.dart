@@ -113,3 +113,170 @@ Map<String, dynamic> builderJson({bool online = true, bool busy = true}) => {
     };
 
 List<AppRelease> sampleReleases() => ReleasePage.fromJson(releasesListJson()).items;
+
+// ── D-144 (Codemagic): the config answer, Codemagic releases and the public downloads, shaped as the backend's
+// services/app_release_codemagic.py builds them (config_payload, the release dict, downloads()). ──
+
+/// `GET /api/v1/admin/app-releases/config`. [notReady] maps a `platform:channel` to what it misses; [codemagic]
+/// false makes every built channel miss the API token.
+Map<String, dynamic> releaseConfigJson({
+  bool codemagic = true,
+  Map<String, List<String>> notReady = const {
+    'android:store': ['package_name_example'],
+    'ios:store': ['APP_STORE_APP_ID', 'IOS_BUNDLE_ID'],
+  },
+  String packageName = 'com.example.flutter_education_app',
+}) {
+  const pairs = {
+    'android:store': true,
+    'android:website': true,
+    'ios:store': true,
+    'ios:website': false,
+    'web:website': true,
+    'linux:website': true,
+    'windows:website': true,
+    'windows:store': false,
+    'macos:store': false,
+    'macos:website': false,
+  };
+  final cm = codemagic ? <String>[] : ['CODEMAGIC_API_TOKEN'];
+  String reason(String m, bool ar) => ar ? 'سبب من الخادم: $m' : 'From the server: $m';
+  Map<String, dynamic> channel(String key, bool built) {
+    final missing = [if (built) ...cm, ...?notReady[key]];
+    return {
+      'ready': missing.isEmpty,
+      'missing': missing,
+      'reasons_ar': [for (final m in missing) reason(m, true)],
+      'reasons_en': [for (final m in missing) reason(m, false)],
+      'build': built ? 'codemagic' : 'record',
+    };
+  }
+
+  return {
+    'codemagic': {'ready': codemagic, 'missing': cm, 'app_id': '6544a1c2e8b4f0b7d1a9c3e2', 'build_url_base': null},
+    'channels': {for (final e in pairs.entries) e.key: channel(e.key, e.value)},
+    'platforms': {
+      'android': ['store', 'website'],
+      'ios': ['store', 'website'],
+      'web': ['website'],
+      'linux': ['website'],
+      'windows': ['store', 'website'],
+      'macos': ['store', 'website'],
+    },
+    'defaults': {
+      'android': {
+        'branch': 'production',
+        'workflows': {'store': 'android-store', 'website': 'android-website'},
+        'track': 'internal',
+        'package_name': packageName,
+        'store_url': 'https://play.google.com/store/apps/details?id=$packageName',
+        'tracks': ['internal', 'alpha', 'beta', 'production'],
+      },
+      'ios': {'branch': 'production', 'workflows': {'store': 'ios-store'}, 'bundle_id': 'com.softkour.alfaheem', 'app_store_app_id': '', 'store_url': ''},
+      'web': {'branch': 'production', 'workflows': {'website': 'web-website'}},
+      'linux': {'branch': 'production', 'workflows': {'website': 'linux-website'}},
+      'windows': {'branch': 'production', 'workflows': {'website': 'windows-website'}},
+      'macos': {'branch': 'production', 'workflows': <String, String>{}},
+    },
+    'secrets': {
+      'CODEMAGIC_API_TOKEN': {'set': codemagic},
+      'APP_RELEASE_UPLOAD_SECRET': {'set': true},
+    },
+  };
+}
+
+/// A Codemagic release (the D-143 [releaseJson] plus channel / executor / build id / config).
+Map<String, dynamic> codemagicReleaseJson({
+  int id = 21,
+  String platform = 'android',
+  String channel = 'website',
+  String status = 'building',
+  bool isLive = false,
+  double? progress,
+  List<Map<String, dynamic>> artifacts = const [],
+  List<Map<String, dynamic>> log = const [],
+  Map<String, dynamic> config = const {},
+}) =>
+    {
+      ...releaseJson(
+        id: id,
+        platform: platform,
+        status: status,
+        isLive: isLive,
+        progress: progress,
+        artifacts: artifacts,
+        log: log,
+        source: channel == 'store' ? (platform == 'android' ? 'google_play' : 'app_store') : 'website',
+        storeUrl: channel == 'store' ? 'https://play.google.com/store/apps/details?id=site.nextbrain.app' : null,
+      ),
+      'channel': channel,
+      'executor': 'codemagic',
+      'actions': {
+        ...(releaseJson(status: status, isLive: isLive)['actions'] as Map<String, dynamic>),
+        'rollback': isLive && channel != 'store',
+        'retry': const {'failed', 'canceled'}.contains(status),
+      },
+      'buildable': true,
+      'codemagic_build_id': '6727c1f0a9b8c7d6e5f4a3b2',
+      'codemagic_url': 'https://codemagic.io/app/6544a1c2e8b4f0b7d1a9c3e2/build/6727c1f0a9b8c7d6e5f4a3b2',
+      'config': {'workflow': channel == 'store' ? 'android-store' : 'android-website', ...config},
+      'upload_done': status == 'ready' || status == 'live',
+    };
+
+/// The website channel's files of an Android release (names as codemagic.yaml writes them).
+const codemagicApkArtifacts = [
+  {'name': 'NextBrain-1.4.1-53-arm64-v8a.apk', 'size': 48700000, 'sha256': '9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c', 'kind': 'apk', 'abi': 'arm64-v8a'},
+  {'name': 'NextBrain-1.4.1-53-armeabi-v7a.apk', 'size': 44100000, 'sha256': 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2', 'kind': 'apk', 'abi': 'armeabi-v7a'},
+  {'name': 'NextBrain-1.4.1-53-universal.apk', 'size': 96300000, 'sha256': 'f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1', 'kind': 'apk', 'abi': 'universal'},
+];
+
+/// `GET /api/v1/app/downloads` (services/app_release_codemagic.py downloads()).
+List<Map<String, dynamic>> downloadsJson({String androidVersion = '1.4.1', int androidBuild = 53}) {
+  const base = 'https://nextbrain.site/api/api/v1/app/downloads';
+  Map<String, dynamic> file(String platform, String name, int size, String kind, {String? abi, bool primary = false}) => {
+        'name': name,
+        'size': size,
+        'sha256': 'f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1',
+        'kind': kind,
+        'url': '$base/$platform/$name',
+        'primary': primary,
+        'abi': ?abi,
+      };
+  return [
+    {
+      'platform': 'android',
+      'version': androidVersion,
+      'build_number': androidBuild,
+      'notes_ar': 'تشغيل أسرع للدروس وإصلاح تنبيهات الحضور.',
+      'notes_en': 'Faster lessons and fixed attendance alerts.',
+      'policy': 'recommended',
+      'released_at': '2026-11-02T11:28:02',
+      'files': [
+        file('android', 'NextBrain-$androidVersion-$androidBuild-arm64-v8a.apk', 48700000, 'apk', abi: 'arm64-v8a'),
+        file('android', 'NextBrain-$androidVersion-$androidBuild-armeabi-v7a.apk', 44100000, 'apk', abi: 'armeabi-v7a'),
+        file('android', 'NextBrain-$androidVersion-$androidBuild-universal.apk', 96300000, 'apk', abi: 'universal', primary: true),
+      ],
+    },
+    {
+      'platform': 'windows',
+      'version': '1.4.1',
+      'build_number': 53,
+      'notes_ar': '',
+      'notes_en': '',
+      'policy': 'optional',
+      'files': [file('windows', 'NextBrain-1.4.1-53-windows-x64.zip', 61200000, 'zip', primary: true)],
+    },
+    {
+      'platform': 'linux',
+      'version': '1.4.0',
+      'build_number': 52,
+      'notes_ar': '',
+      'notes_en': '',
+      'policy': 'optional',
+      'files': [
+        file('linux', 'NextBrain-1.4.0-52-x64.deb', 38800000, 'deb', primary: true),
+        file('linux', 'NextBrain-1.4.0-52-x64.tar.gz', 40100000, 'tar'),
+      ],
+    },
+  ];
+}
