@@ -9,7 +9,7 @@
   "disk": {
    "total_mb": 513691,
    "free_mb": 108962,
-   "models_dir": "C:\\Users\\ahmed\\AppData\\Local\\Temp\\modelhub_e2e_pr531tur\\models"
+   "models_dir": "/srv/nextbrain/models"
   },
   "ram": {
    "total_mb": 34186,
