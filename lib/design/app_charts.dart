@@ -28,6 +28,7 @@ import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -641,7 +642,8 @@ class AppDonut extends StatelessWidget {
     final entries = [
       for (var i = 0; i < parts.length; i++)
         AppLegendEntry(
-          total > 0 ? '${parts[i].label} · ${(parts[i].value / total * 100).round()}%' : parts[i].label,
+          // the percent reads left to right in Arabic too ("ناجح · 100%", not "%100"), as everywhere else in the app
+          total > 0 ? '${parts[i].label} · ${ltrIsolate('${(parts[i].value / total * 100).round()}%')}' : parts[i].label,
           colors[i],
         ),
     ];

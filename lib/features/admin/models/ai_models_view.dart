@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/models_hub/models_hub_api.dart';
+import '../../../design/app_bidi.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_tokens.dart';
 import '../admin_common.dart' show t;
@@ -125,13 +126,15 @@ class AiModelsView extends StatelessWidget {
   String _alertText(HubAlert a) {
     final role = a.role == null ? '' : '${hubRoleName(a.role!)}: ';
     final d = a.detail;
-    final err = d['error'] == null ? '' : ' (${d['error']})';
+    // the refs and the server's error keep their own (English) order inside the Arabic sentence
+    String ref(Object? v) => bidiIsolate('${v ?? ''}');
+    final err = d['error'] == null ? '' : ' (${bidiIsolate('${d['error']}')})';
     return switch (a.kind) {
       'model_fallback' => role +
-          t('يعمل النموذج الاحتياطي ${d['fallback'] ?? ''} لأن ${d['active'] ?? ''} تعذّر$err',
-              'the fallback ${d['fallback'] ?? ''} is serving because ${d['active'] ?? ''} failed$err'),
-      'health_failed' => role + t('فشل اختبار السلامة لـ ${d['ref'] ?? ''}$err', 'the health test of ${d['ref'] ?? ''} failed$err'),
-      'download_failed' => t('فشل تنزيل ${d['ref'] ?? ''}$err', 'The download of ${d['ref'] ?? ''} failed$err'),
+          t('يعمل النموذج الاحتياطي ${ref(d['fallback'])} لأن ${ref(d['active'])} تعذّر$err',
+              'the fallback ${ref(d['fallback'])} is serving because ${ref(d['active'])} failed$err'),
+      'health_failed' => role + t('فشل اختبار السلامة لـ ${ref(d['ref'])}$err', 'the health test of ${ref(d['ref'])} failed$err'),
+      'download_failed' => t('فشل تنزيل ${ref(d['ref'])}$err', 'The download of ${ref(d['ref'])} failed$err'),
       _ => '$role${a.key}',
     };
   }
@@ -299,7 +302,7 @@ class _PendingStrip extends StatelessWidget {
       if (p.stage == 'downloading' || p.stage == 'testing')
         t('${role.activeModel?.name ?? role.active ?? 'النموذج الحالي'} يبقى مُفعّلاً حتى تؤكد.',
             '${role.activeModel?.name ?? role.active ?? 'The current model'} stays active until you confirm.'),
-      if (p.failed) _failureText(p, role),
+      if (p.failed) failureText(p, role),
       if (p.stage == 'reindexing' && p.reindex?.total != null && p.reindex!.total! > 0)
         t('${p.reindex!.done ?? 0} من ${p.reindex!.total}', '${p.reindex!.done ?? 0} of ${p.reindex!.total}'),
     ];
@@ -350,16 +353,19 @@ class _PendingStrip extends StatelessWidget {
 }
 
 /// Why an activation stopped, in words (the test's error, the failing checks, or the stage).
-String _failureText(HubPending p, HubRole role) {
+String failureText(HubPending p, HubRole role) {
   final keep = t('${role.activeModel?.name ?? role.active ?? 'النموذج الحالي'} يبقى مُفعّلاً.',
       '${role.activeModel?.name ?? role.active ?? 'The current model'} stays active.');
-  final failing = p.checks.where((c) => !c.ok).map(hubCheckLine).join('; ');
+  final failing = bidiIsolate(p.checks.where((c) => !c.ok).map(hubCheckLine).join('; '));
+  // the server's English error keeps its own order inside the Arabic sentence (not "s is below the floor of 5.0/s/3.7")
+  final testErr = p.test?.error == null ? null : bidiIsolate(p.test!.error!);
+  final indexErr = p.reindex?.error == null ? null : bidiIsolate(p.reindex!.error!);
   final why = switch (p.reason) {
     'checks_failed' => t('لا يناسب هذا الخادم: $failing', 'It does not fit this server: $failing'),
     'health_test_crashed' => t('تعطّل اختبار السلامة.', 'The health test crashed.'),
-    _ when p.stage == 'reindex_failed' => t('تعذّرت إعادة بناء الفهرس${p.reindex?.error == null ? '' : ': ${p.reindex!.error}'}',
-        'The index could not be rebuilt${p.reindex?.error == null ? '' : ': ${p.reindex!.error}'}'),
-    _ => t('فشل اختبار السلامة${p.test?.error == null ? '' : ': ${p.test!.error}'}', 'The health test failed${p.test?.error == null ? '' : ': ${p.test!.error}'}'),
+    _ when p.stage == 'reindex_failed' => t('تعذّرت إعادة بناء الفهرس${indexErr == null ? '' : ': $indexErr'}',
+        'The index could not be rebuilt${indexErr == null ? '' : ': $indexErr'}'),
+    _ => t('فشل اختبار السلامة${testErr == null ? '' : ': $testErr'}', 'The health test failed${testErr == null ? '' : ': $testErr'}'),
   };
   return '$why $keep';
 }
@@ -494,7 +500,7 @@ class _StatusCell extends StatelessWidget {
         Text(hubDownloadLine(d), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
       ] else if (model.status == 'failed' && model.error != null) ...[
         const SizedBox(height: 2),
-        Text(model.error!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11, c: context.colors.danger)),
+        AutoDirText(model.error!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11, c: context.colors.danger)),
       ],
     ]);
   }
@@ -681,7 +687,7 @@ class AiModelsHistory extends StatelessWidget {
       'rollback' => n['ref'] ?? n['active'],
       'set_fallback' => '${o['fallback_id'] == null ? '—' : ref(o['fallback_id'])} → ${n['fallback_id'] == null ? '—' : ref(n['fallback_id'])}',
       'set_limits' => [for (final e in n.entries) if (!e.key.startsWith('_') && o[e.key] != e.value) '${e.key}: ${o[e.key] ?? '—'} → ${e.value}'].join(', '),
-      'health_test' => n['ok'] == true ? t('نجح', 'passed') : '${t('فشل', 'failed')}${n['error'] == null ? '' : ': ${n['error']}'}',
+      'health_test' => n['ok'] == true ? t('نجح', 'passed') : '${t('فشل', 'failed')}${n['error'] == null ? '' : ': ${bidiIsolate('${n['error']}')}'}',
       'delete' => n['freed_bytes'] is num ? t('حُرّر ${hubBytes((n['freed_bytes'] as num).toInt())}', 'freed ${hubBytes((n['freed_bytes'] as num).toInt())}') : null,
       'fallback' => '${o['active'] ?? ''} → ${n['served_by'] ?? ''}',
       _ => null,

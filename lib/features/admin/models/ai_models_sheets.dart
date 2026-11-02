@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/models_hub/models_hub_api.dart';
 import '../../../core/plural.dart';
+import '../../../design/app_bidi.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_tokens.dart';
 import '../admin_common.dart' show t;
@@ -112,13 +113,13 @@ Widget _testBlock(BuildContext context, HubTest test) {
       for (final ch in test.checks)
         Padding(
           padding: const EdgeInsetsDirectional.only(start: 28, top: 2),
-          child: Text('${ch.ok ? '✓' : '✗'} ${ch.name}${ch.raw['text'] == null ? '' : ' — “${ch.raw['text']}”'}',
+          child: Text('${ch.ok ? '✓' : '✗'} ${ch.name}${ch.raw['text'] == null ? '' : ' — “${bidiIsolate('${ch.raw['text']}')}”'}',
               style: appText(12, c: ch.ok ? c.textMedium : c.danger)),
         ),
       if (test.error != null)
         Padding(
           padding: const EdgeInsetsDirectional.only(start: 28, top: 2),
-          child: Text(test.error!, style: appText(12, c: c.danger)),
+          child: AutoDirText(test.error!, style: appText(12, c: c.danger)),
         ),
     ]),
   );
@@ -218,7 +219,7 @@ class ActivateFailure extends StatelessWidget {
         Text(model, style: appText(15, w: FontWeight.w800, c: c.textDark)),
         const SizedBox(height: AppSpace.sm),
         if (message != null) ...[
-          AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: message!),
+          AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: bidiIsolate(message!)),
           const SizedBox(height: AppSpace.sm),
         ],
         for (final ch in failing)

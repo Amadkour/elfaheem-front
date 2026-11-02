@@ -6,6 +6,7 @@ library;
 
 import '../../../config/app_config.dart';
 import '../../../core/models_hub/models_hub_api.dart';
+import '../../../design/app_bidi.dart';
 import '../admin_common.dart' show t;
 
 /// The page's kill switch (../back services/feature_catalog.py).
@@ -199,5 +200,5 @@ String hubCheckLine(HubCheck c) {
     _ => c.name,
   };
   final why = c.reason ?? (c.raw['problems'] is List && (c.raw['problems'] as List).isNotEmpty ? (c.raw['problems'] as List).join(', ') : null);
-  return why == null ? name : '$name: $why';
+  return why == null ? name : '$name: ${bidiIsolate(why)}';
 }

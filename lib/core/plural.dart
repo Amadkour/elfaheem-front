@@ -5,7 +5,8 @@
 //
 // `{n}` in a form is replaced by the number. Arabic picks: 1 → ar1, 2 → ar2 (else arFew), n % 100 in 3..10 → arFew,
 // anything else (0, 11–99, 100, …) → arMany (else ar1, the singular form Arabic uses after those numbers).
-// English: 1 → en1, else en.
+// English: 1 → en1, else en. [ar0] / [en0]: an optional form for 0 ("لا محاولات" / "No attempts"), where Arabic's
+// "0 محاولة" reads as a figure, not a sentence; without them 0 takes arMany / en like any other number.
 
 import 'package:flutter_education_app/config/app_config.dart';
 
@@ -28,11 +29,15 @@ String countText(
   String? arMany,
   required String en1,
   required String en,
+  String? ar0,
+  String? en0,
   String? lang,
 }) {
   final ar = (lang ?? AppConfig.lang) == 'ar';
   final String form;
-  if (ar) {
+  if (n == 0 && (ar ? ar0 : en0) != null) {
+    form = (ar ? ar0 : en0)!;
+  } else if (ar) {
     form = switch (arabicPluralForm(n)) {
       'one' => ar1,
       'two' => ar2 ?? arFew,

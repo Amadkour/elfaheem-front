@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
@@ -865,7 +866,7 @@ class OmrResolvedNote extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(item.resolutionText, style: appText(15, w: FontWeight.w700, c: c.textDark)),
           Text(omrChangedBy(item.resolvedBy, item.resolvedAt, meId: meId), key: const ValueKey('omr.item.changedBy'), style: appText(12.5, c: c.textMedium)),
-          if (reason.isNotEmpty) Text(reason, style: appText(12.5, c: c.textMedium)),
+          if (reason.isNotEmpty) AutoDirText(reason, style: appText(12.5, c: c.textMedium)),
         ]),
       ),
     ]);
@@ -1290,7 +1291,7 @@ class OmrChangesList extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(ch.summary, style: appText(14, w: FontWeight.w600, c: c.textDark)),
                 Text(omrChangedBy(ch.actorId, ch.at, meId: meId), style: appText(12.5, c: c.textMedium)),
-                if ((ch.reason ?? '').isNotEmpty) Text(ch.reason!, style: appText(12.5, c: c.textMedium)),
+                if ((ch.reason ?? '').isNotEmpty) AutoDirText(ch.reason!, style: appText(12.5, c: c.textMedium)),
               ]),
             ),
           ]),

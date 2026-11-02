@@ -13,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -64,8 +65,13 @@ class OcrWordsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    if (region.words.isEmpty) return Text(region.text.isEmpty ? t('— لم يُقرأ نص —', '— no text read —') : region.text, style: appText(13.5, c: c.textMedium));
-    return Wrap(spacing: 4, runSpacing: 4, children: [
+    if (region.words.isEmpty) {
+      if (region.text.isEmpty) return Text(t('— لم يُقرأ نص —', '— no text read —'), style: appText(13.5, c: c.textMedium));
+      return AutoDirText(region.text, style: appText(13.5, c: c.textMedium));
+    }
+    // the words run in the reading's own direction: English handwriting in the Arabic page is not laid out backwards
+    final dir = contentDirection(region.words.map((w) => w.text).join(' ')) ?? Directionality.of(context);
+    return Wrap(spacing: 4, runSpacing: 4, textDirection: dir, children: [
       for (final w in region.words)
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),

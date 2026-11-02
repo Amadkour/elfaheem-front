@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
@@ -245,7 +246,7 @@ class _ShortSuggestion extends StatelessWidget {
       ],
       if (model != null) ...[
         const SizedBox(height: AppSpace.xs),
-        Text(t('الإجابة النموذجية: $model', 'Model answer: $model'), style: appText(12.5, c: c.textMedium, h: 1.35)),
+        Text(t('الإجابة النموذجية: ${bidiIsolate(model)}', 'Model answer: ${bidiIsolate(model)}'), style: appText(12.5, c: c.textMedium, h: 1.35)),
       ],
     ]);
   }
