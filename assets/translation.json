@@ -21701,6 +21701,18 @@
     "en": "After the download, open the file to install it over the current app. Your data stays.",
     "ar": "بعد التنزيل افتح الملف لتثبيته فوق التطبيق الحالي، وتبقى بياناتك كما هي."
   },
+  "app_dl_other_downloads": {
+    "en": "Other downloads",
+    "ar": "تنزيلات أخرى"
+  },
+  "app_dl_browse_title": {
+    "en": "Get the NextBrain app",
+    "ar": "حمّل تطبيق NextBrain"
+  },
+  "app_dl_see_downloads": {
+    "en": "See downloads",
+    "ar": "عرض التنزيلات"
+  },
   "instructor_courses_more": {
     "en": "Show more courses",
     "ar": "عرض المزيد من الكورسات"

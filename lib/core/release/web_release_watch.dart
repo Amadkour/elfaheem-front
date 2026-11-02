@@ -206,7 +206,7 @@ class WebReleaseStrip extends StatelessWidget {
     final meta = must
         ? (ar ? 'أعد تحميل الصفحة لمتابعة العمل على الإصدار $version' : 'Reload the page to keep working on version $version')
         : (ar ? 'أعد التحميل متى شئت للحصول على الإصدار $version' : 'Reload when convenient to get version $version');
-    final col = must ? c.warning : c.primary;
+    final col = must ? c.warning : (c.isDark ? c.primaryLight : c.primary);
     return Semantics(
       container: true,
       liveRegion: true,
@@ -266,11 +266,22 @@ class WebReleaseStrip extends StatelessWidget {
                     ),
                   ),
                   if (onDismiss != null)
-                    IconButton(
-                      key: const ValueKey('web_release.dismiss'),
-                      tooltip: ar ? 'لاحقاً' : 'Later',
-                      onPressed: onDismiss,
-                      icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20),
+                    // no Tooltip / IconButton tooltip: the strip sits above the Navigator (main.dart), where there is
+                    // no Overlay to draw one — a tooltip threw there as soon as a recommended update arrived
+                    Semantics(
+                      button: true,
+                      label: ar ? 'لاحقاً' : 'Later',
+                      excludeSemantics: true,
+                      child: InkResponse(
+                        key: const ValueKey('web_release.dismiss'),
+                        onTap: onDismiss,
+                        radius: 22,
+                        child: SizedBox(
+                          width: AppTouch.min,
+                          height: AppTouch.min,
+                          child: Icon(Icons.close_rounded, color: c.textMedium, size: 20),
+                        ),
+                      ),
                     )
                   else
                     const SizedBox(width: AppSpace.sm),

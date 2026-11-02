@@ -2094,3 +2094,30 @@ chain configured = the single decision by the entity, exactly as before.
   strip with no close button, otherwise it can be closed; also offered after a rollback. Only signed-in tabs hear it
   (the event stream exists only while signed in); the others get the new build on their next load.
 - Kill switch `admin.app_releases` (services hub tile, super admins only).
+
+## D-144 — App versions through Codemagic: a channel per version, Codemagic builds everything · 2026-11-02 · accepted
+
+**Decision** (contract `docs/release/APP_RELEASES_CODEMAGIC.md`; the server side is D-144 in `../back/docs/DECISIONS.md`).
+Supersedes the build-server part of D-143: every version has a download channel, `store` (Codemagic builds it and
+hands it to Google Play / App Store Connect) or `website` (Codemagic builds it and uploads the files to our server,
+which keeps them in MinIO), and Codemagic runs every build. The D-143 page, statuses and actions stay.
+- `codemagic.yaml` holds six workflows (`android-store`, `android-website`, `ios-store`, `web-website`,
+  `linux-website`, `windows-website`); our server starts them through the Codemagic API with the `NB_*` variables.
+  Android, web and iOS run on `mac_mini_m2` (Codemagic's free minutes), Linux on `linux_x2`, Windows on `windows_x2`
+  (both need billing). Android website = three APKs built with `--target-platform` (same versionCode, D-137), not the
+  contract's `--split-per-abi`. The Play track comes from `GOOGLE_PLAY_TRACK` (Codemagic's documented override for API
+  builds), set from `NB_PLAY_TRACK` in a step.
+- The New version form offers only the valid platform × channel pairs, prefills the editable settings from the
+  server's defaults (workflow, Play track + package name, store link, branch; never a secret) and keeps Create OFF while
+  the pair is not ready — the server's `missing` list (its own lines, the env names shown for the owner), a 400
+  `channel_not_configured`, or a setup that could not be read. A value typed for this version covers what the server's
+  re-check covers too (a real package name, a workflow id, a known track).
+- The website channel's files are offered by `AppDownloadBanner` above every web page (sign-in included), under the
+  D-143 reload strip, which keeps the top spot; one offer per device, closed per browser per version, kill switch
+  `app.download_banner`. While anything is published there the D-137 "Get the app" strip steps aside (one offer).
+- The applicationId stays `com.example.flutter_education_app` in phase 1: Google Play refuses it, so the
+  `android:store` pair stays not ready until the owner picks a real id (a new Firebase Android client, everyone
+  reinstalls); `NB_PACKAGE_NAME` is recorded, not applied to the build.
+
+**Not verified.** No Codemagic build has run yet (no account set up): the Windows image's shell / Git bash path, the
+`linux_x2` apt packages, `GOOGLE_PLAY_TRACK` being honoured, the `ios-store` signing and App Store submission.

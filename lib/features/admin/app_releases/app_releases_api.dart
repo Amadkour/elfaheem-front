@@ -15,6 +15,12 @@
 //                                                                         token_rotated_at, configured}
 //   POST   /api/v1/admin/app-releases/builder/token {password}          {token} — shown once
 //
+// D-144 (docs/release/APP_RELEASES_CODEMAGIC.md): Codemagic builds every version.
+//   GET    /api/v1/admin/app-releases/config                            {codemagic {ready, missing}, channels {"android:store":
+//                                                                         {ready, missing}}, defaults {android: {workflow, …}}}
+//   POST   /api/v1/admin/app-releases gains channel (store | website) + config {workflow, track, package_name, store_url,
+//          branch}; 400 channel_not_configured {missing} when the chosen channel is not set up.
+//
 // As built: ../back docs/app_releases.md. Errors are `{"detail": {code, message (ar), message_en, …extra}}`
 // ([ReleaseFailure.from]; a bare `{"detail": "<code>"}` is read too).
 library;
@@ -105,6 +111,9 @@ class AppReleasesApi {
 
   Future<Uint8List> artifact(int id, String name) =>
       _call(() => _api.getBytes('$base/$id/artifacts/${Uri.encodeComponent(name)}'));
+
+  /// D-144: the Codemagic setup, per-channel readiness and the form's defaults (never a secret: `set` flags only).
+  Future<ReleaseConfig> config() => _call(() async => ReleaseConfig.fromJson(await _api.get('$base/config')));
 
   Future<BuilderStatus> builderStatus() => _call(() async => BuilderStatus.fromJson(await _api.get('$base/builder/status')));
 
