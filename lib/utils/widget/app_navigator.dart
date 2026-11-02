@@ -34,6 +34,9 @@ import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
 import '../../features/shared/points/points_api.dart' show kPointsFeatureKey, pointsModuleFor;
 import '../../features/shared/points/points_wallet_page.dart' show PointsWalletPage;
 import '../../features/shared/rag/rag_admin_links.dart' show openRagAdminModule;
+import '../../features/shared/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
+import '../../features/shared/exam_engine/paper/exam_setup_wizard.dart' show openExamIdentifiersFromLink;
+import '../../features/shared/exam_engine/paper/exam_setup.dart' show examIdFromRef;
 
 class AppNavigator {
   AppNavigator._();
@@ -132,6 +135,10 @@ class AppNavigator {
       case 'subscription':
         await nav.pushNamed('/subscription');
         return;
+      case 'identity_requests': // a teacher needs an exam identifier → the student's dialog (D-150)
+        return openIdentityRequestsFromLink(root);
+      case 'exam_identifiers': // a duplicate identifier → the exam's setup on its students step
+        return openExamIdentifiersFromLink(nav, targetId);
       case 'calendar': // meeting invitation / answer → the calendar on that meeting
         await nav.pushNamed('/calendar', arguments: targetId);
         return;
@@ -273,7 +280,7 @@ class AppNavigator {
     final module = data['module']?.toString() ??
         (profile ? 'course_profile' : (timetable ? 'org_timetable' : pointsModuleFor(data['type']?.toString())));
     final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}');
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}') ?? examIdFromRef(data['exam_ref']);
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) {
