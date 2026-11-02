@@ -230,18 +230,18 @@ void main() {
     expect(range.estimate!.basis, 'other_models');
     expect(range.estimate!.models, ['emb-part@v1']);
     expect((range.estimate!.lowSeconds, range.estimate!.highSeconds, range.estimatedSeconds), (615, 615, null));
-    expect(reindexTimeText(range), 'about 11 min (going by another model rebuilt here)');
+    expect(reindexTimeText(range), 'about 10 min (going by another model rebuilt here)'); // 615 s: to the nearest minute
     expect(reindexTimeText(HubReindex(estimate: const HubEstimate(basis: 'other_models', lowSeconds: 19, highSeconds: 145))),
-        'between 19 s and 3 min (going by other models rebuilt here)');
+        'between 20 s and 2 min (going by other models rebuilt here)');
 
     final measured = HubStep.fromJson(hub('embedding_activate_estimate_measured')).pending!.reindex!;
     expect(measured.estimate!.basis, 'this_model');
     expect((measured.estimatedSeconds, measured.estimate!.measuredItems, measured.estimate!.measuredSeconds), (615, 200, 100.0));
-    expect(reindexEstimateText(measured), '1230 items (1200 chunks + 30 saved answers) · about 11 min (measured on this model\'s last rebuild here)');
+    expect(reindexEstimateText(measured), '1230 items (1200 chunks + 30 saved answers) · about 10 min (measured on this model\'s last rebuild here)');
 
     AppConfig.lang = 'ar';
     expect(reindexEstimateText(part), 'يلزم بناء 200 عنصرًا من أصل 1230 (200 مقطعًا + 0 إجابة محفوظة) · المدة غير معروفة بعد: تُقاس عند أول إعادة بناء بهذا النموذج هنا');
-    expect(reindexTimeText(measured), 'نحو 11 د (حسب آخر إعادة بناء لهذا النموذج هنا)');
+    expect(reindexTimeText(measured), 'نحو 10 د (حسب آخر إعادة بناء لهذا النموذج هنا)');
   });
 
   test('errors: the server\'s own words by language, and the extra fields', () {

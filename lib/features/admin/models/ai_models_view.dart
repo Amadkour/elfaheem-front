@@ -196,13 +196,13 @@ class HubRoleCard extends StatelessWidget {
         const SizedBox(height: AppSpace.sm),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           if (r.active != null)
-            AppBadgePill('${t('المُفعّل', 'Active')}: ${r.activeModel?.name ?? r.active}', color: c.success, icon: Icons.check_circle_rounded)
+            AppBadgePill('${t('المُفعّل', 'Active')}: ${hubModelLabel(r.activeModel, role: r, ref: r.active)}', color: c.success, icon: Icons.check_circle_rounded)
           else
             AppBadgePill(t('لا نموذج مُفعّل', 'No active model'), color: c.textLight, icon: Icons.radio_button_unchecked_rounded),
           if (r.fallback != null)
-            AppBadgePill('${t('الاحتياطي', 'Fallback')}: ${r.byId(r.fallbackId)?.name ?? r.fallback}', color: c.primary, icon: Icons.shield_outlined),
+            AppBadgePill('${t('الاحتياطي', 'Fallback')}: ${hubModelLabel(r.byId(r.fallbackId), role: r, ref: r.fallback)}', color: c.primary, icon: Icons.shield_outlined),
           if (r.previous != null)
-            AppBadgePill('${t('السابق', 'Previous')}: ${r.previousModel?.name ?? r.previous}', color: c.textMedium, icon: Icons.history_rounded),
+            AppBadgePill('${t('السابق', 'Previous')}: ${hubModelLabel(r.previousModel, role: r, ref: r.previous)}', color: c.textMedium, icon: Icons.history_rounded),
           AppBadgePill(
             '${l.threads == 1 ? t('خيط واحد', '1 thread') : t('${l.threads} خيوط', '${l.threads} threads')} · ${t('${l.maxConcurrency} في آنٍ واحد', '${l.maxConcurrency} at a time')} · ${hubPriorityLabel(l.priority)}',
             color: c.textMedium,
@@ -295,13 +295,13 @@ class _PendingStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = role.pending!;
-    final name = role.byId(p.modelId)?.name ?? p.ref;
+    final name = hubModelLabel(role.byId(p.modelId), role: role, ref: p.ref);
+    final current = role.active == null ? null : hubModelLabel(role.activeModel, role: role, ref: role.active);
     final color = p.failed ? c.danger : (p.readyToConfirm ? c.success : c.primary);
     final lines = <String>[
       '$name — ${hubStageLabel(p.stage)}',
       if (p.stage == 'downloading' || p.stage == 'testing')
-        t('${role.activeModel?.name ?? role.active ?? 'النموذج الحالي'} يبقى مُفعّلاً حتى تؤكد.',
-            '${role.activeModel?.name ?? role.active ?? 'The current model'} stays active until you confirm.'),
+        t('${current ?? 'النموذج الحالي'} يبقى مُفعّلاً حتى تؤكد.', '${current ?? 'The current model'} stays active until you confirm.'),
       if (p.failed) failureText(p, role),
       if (p.stage == 'reindexing' && p.reindex?.total != null && p.reindex!.total! > 0)
         t('${p.reindex!.done ?? 0} من ${p.reindex!.total}', '${p.reindex!.done ?? 0} of ${p.reindex!.total}'),
@@ -354,8 +354,8 @@ class _PendingStrip extends StatelessWidget {
 
 /// Why an activation stopped, in words (the test's error, the failing checks, or the stage).
 String failureText(HubPending p, HubRole role) {
-  final keep = t('${role.activeModel?.name ?? role.active ?? 'النموذج الحالي'} يبقى مُفعّلاً.',
-      '${role.activeModel?.name ?? role.active ?? 'The current model'} stays active.');
+  final current = role.active == null ? null : hubModelLabel(role.activeModel, role: role, ref: role.active);
+  final keep = t('${current ?? 'النموذج الحالي'} يبقى مُفعّلاً.', '${current ?? 'The current model'} stays active.');
   final failing = bidiIsolate(p.checks.where((c) => !c.ok).map(hubCheckLine).join('; '));
   // the server's English error keeps its own order inside the Arabic sentence (not "s is below the floor of 5.0/s/3.7")
   final testErr = p.test?.error == null ? null : bidiIsolate(p.test!.error!);
@@ -506,7 +506,9 @@ class _StatusCell extends StatelessWidget {
   }
 }
 
-String _diskRam(HubModel m) => '${m.diskBytes > 0 ? hubBytes(m.diskBytes) : '—'} / ${hubMb(m.ramMb)}';
+/// "487 MB / 1.1 GB": each size one unbreakable left-to-right unit (in Arabic the disk stays on the right, under its
+/// header; a narrow column breaks only after the slash, never between "1.1" and "GB").
+String _diskRam(HubModel m) => '${hubSizeUnit(m.diskBytes > 0 ? hubBytes(m.diskBytes) : '—')} / ${hubSizeUnit(hubMb(m.ramMb))}';
 
 String _lastTest(HubModel m) {
   final x = m.lastTest;

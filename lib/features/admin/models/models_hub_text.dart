@@ -137,23 +137,58 @@ String hubEta(int? seconds) {
   return r == 0 ? t('بقي $h س', '$h h left') : t('بقي $h س $r د', '$h h $r min left');
 }
 
-/// "about 3 min" for an estimate in seconds.
-String hubDuration(int? seconds) {
-  if (seconds == null) return t('غير معروف', 'unknown');
-  if (seconds < 60) return t('نحو $seconds ث', 'about $seconds s');
-  final m = (seconds / 60).ceil();
-  if (m < 60) return t('نحو $m د', 'about $m min');
-  final h = m ~/ 60, r = m % 60;
-  return r == 0 ? t('نحو $h س', 'about $h h') : t('نحو $h س $r د', 'about $h h $r min');
-}
-
-/// "45 s" / "3 min" / "1 h 5 min": a duration without "about" (the ends of a range).
-String hubSpan(int seconds) {
-  if (seconds < 60) return t('$seconds ث', '$seconds s');
-  final m = (seconds / 60).ceil();
+/// An estimate rounded the way a person says it: under 10 s as is, under a minute to 5 s, under 90 s to 10 s, then to
+/// the nearest minute (128 s is "2 min", not the "3 min" rounding up gave), and past an hour hours + minutes.
+String _roundedSpan(int seconds) {
+  final s = seconds < 0 ? 0 : seconds;
+  if (s < 10) return t('${s < 1 ? 1 : s} ث', '${s < 1 ? 1 : s} s');
+  if (s < 60) return t('${(s / 5).round() * 5} ث', '${(s / 5).round() * 5} s');
+  if (s < 90) return t('${(s / 10).round() * 10} ث', '${(s / 10).round() * 10} s');
+  final m = (s / 60).round();
   if (m < 60) return t('$m د', '$m min');
   final h = m ~/ 60, r = m % 60;
   return r == 0 ? t('$h س', '$h h') : t('$h س $r د', '$h h $r min');
+}
+
+/// "about 2 min" for an estimate in seconds (rounded as [_roundedSpan]).
+String hubDuration(int? seconds) {
+  if (seconds == null) return t('غير معروف', 'unknown');
+  return t('نحو ${_roundedSpan(seconds)}', 'about ${_roundedSpan(seconds)}');
+}
+
+/// "45 s" / "2 min" / "1 h 5 min": a duration without "about" (the ends of a range), rounded as [_roundedSpan].
+String hubSpan(int seconds) => _roundedSpan(seconds);
+
+/// A size kept as one unbreakable left-to-right unit ("1.1 GB", never "1.1" on one line and "GB" on the next, and
+/// never "GB 1.1" in Arabic): the space becomes a no-break space, the whole a left-to-right isolate.
+String hubSizeUnit(String size) => size == '—' ? size : ltrIsolate(size.replaceAll(' ', '\u00A0'));
+
+/// The variant of a model ("int8", "fp32", "v1"): its version without the trailing commit hash ("int8-2c4055b" ->
+/// "int8"), else the first word of its quantisation.
+String hubVariant(String version, [String? quantization]) {
+  final v = version.replaceFirst(RegExp(r'-[0-9a-f]{7,}$'), '');
+  if (v.isNotEmpty) return v;
+  final q = (quantization ?? '').trim();
+  return q.isEmpty ? '' : q.split(RegExp(r'[\s(]')).first;
+}
+
+/// A ref ("multilingual-e5-small@int8-761b726") as the page names it: "multilingual-e5-small · int8".
+String hubRefLabel(String ref) {
+  final at = ref.indexOf('@');
+  if (at <= 0) return ref;
+  final v = hubVariant(ref.substring(at + 1));
+  return v.isEmpty ? ref.substring(0, at) : hubLtr('${ref.substring(0, at)} · $v');
+}
+
+/// A model's name as the page shows it: with its variant ("multilingual-e5-small · int8") when another model of
+/// [role] shares the name (int8 and fp32 builds of one model), so "Active" and "Previous" can be told apart. A model
+/// the library lacks is named from its [ref].
+String hubModelLabel(HubModel? m, {HubRole? role, String? ref}) {
+  if (m == null) return ref == null || ref.isEmpty ? '' : hubRefLabel(ref);
+  final twin = role != null && role.models.any((o) => o.id != m.id && o.name == m.name);
+  if (!twin) return m.name;
+  final v = hubVariant(m.version, m.quantization);
+  return v.isEmpty ? m.name : hubLtr('${m.name} · $v');
 }
 
 /// The download's one line: "Downloading… 43% · 12 MB/s · 2 min left" / "Paused · 43%" / "Waiting to start…".

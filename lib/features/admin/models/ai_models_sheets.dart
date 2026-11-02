@@ -59,12 +59,21 @@ String reindexTimeText(HubReindex r) {
       return '';
     case 'this_model' when e.seconds != null:
       return t('${hubDuration(e.seconds)} (حسب آخر إعادة بناء لهذا النموذج هنا)', '${hubDuration(e.seconds)} (measured on this model\'s last rebuild here)');
+    case 'cached' when e.seconds != null:
+      return t('${hubDuration(e.seconds)} (متجهاته كلها محفوظة مسبقاً في ذاكرة المتجهات)', '${hubDuration(e.seconds)} (every vector is already in the vector cache)');
     case 'other_models' when e.lowSeconds != null && e.highSeconds != null:
+      // the hub's range: each measured model's per-item time as is and scaled by the two health-test speeds
       final lo = e.lowSeconds!, hi = e.highSeconds!;
+      final one = e.models.length == 1;
       return hubSpan(lo) == hubSpan(hi)
-          ? t('${hubDuration(lo)} (حسب نموذج آخر أُعيد البناء به هنا)', '${hubDuration(lo)} (going by another model rebuilt here)')
-          : t('بين ${hubSpan(lo)} و${hubSpan(hi)} (حسب نماذج أخرى أُعيد البناء بها هنا)',
-              'between ${hubSpan(lo)} and ${hubSpan(hi)} (going by other models rebuilt here)');
+          ? (one
+              ? t('${hubDuration(lo)} (حسب نموذج آخر أُعيد البناء به هنا)', '${hubDuration(lo)} (going by another model rebuilt here)')
+              : t('${hubDuration(lo)} (حسب نماذج أخرى أُعيد البناء بها هنا)', '${hubDuration(lo)} (going by other models rebuilt here)'))
+          : (one
+              ? t('بين ${hubSpan(lo)} و${hubSpan(hi)} (حسب نموذج آخر أُعيد البناء به هنا وسرعة اختبار كلٍّ منهما)',
+                  'between ${hubSpan(lo)} and ${hubSpan(hi)} (going by another model rebuilt here and both models\' test speeds)')
+              : t('بين ${hubSpan(lo)} و${hubSpan(hi)} (حسب نماذج أخرى أُعيد البناء بها هنا)',
+                  'between ${hubSpan(lo)} and ${hubSpan(hi)} (going by other models rebuilt here)'));
     default:
       return t('المدة غير معروفة بعد: تُقاس عند أول إعادة بناء بهذا النموذج هنا', 'time not known yet — measured on this model\'s first rebuild here');
   }
