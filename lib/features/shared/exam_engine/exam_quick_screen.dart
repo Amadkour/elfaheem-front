@@ -108,8 +108,7 @@ class SlotExamSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final e = exam;
-    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppSheetHeader(courseName),
+    return AppSheetContent(title: courseName, children: [
       if (when != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(when!, style: appText(13, c: c.textMedium))),
       if (e == null) ...[
         AppBanner(icon: Icons.edit_note_rounded, text: t('لم يُنشأ الاختبار بعد. تنشئه الآن؟', 'The exam isn\'t created yet. Create it now?')),

@@ -113,6 +113,10 @@ class HubTest {
 }
 
 /// The embedding switch's estimate (`pending.reindex`, and the extra fields of 409 `reindex_choice_required`).
+///
+/// `missing_chunks` / `missing_qa` are what the new model's vectors still lack in the RAG index (a model the index used
+/// before kept its vectors), [items] their sum; `vectors_ready` = every vector is already built, so the switch is a
+/// plain one (B6 round 2). An older hub without them: everything counts as missing.
 class HubReindex {
   const HubReindex({
     this.known = true,
@@ -120,13 +124,18 @@ class HubReindex {
     this.required = false,
     this.chunks = 0,
     this.qa = 0,
+    int? missingChunks,
+    int? missingQa,
+    this.vectorsReady = false,
     this.ratePerS,
     this.estimatedSeconds,
+    this.estimate,
     this.done,
     this.total,
     this.progressStatus,
     this.error,
-  });
+  })  : missingChunks = missingChunks ?? chunks,
+        missingQa = missingQa ?? qa;
 
   static HubReindex? fromJson(Object? v) {
     if (v is! Map) return null;
@@ -138,8 +147,12 @@ class HubReindex {
       required: j['reindex_required'] == true,
       chunks: _int(j['chunks']),
       qa: _int(j['qa']),
+      missingChunks: _intOrNull(j['missing_chunks']),
+      missingQa: _intOrNull(j['missing_qa']),
+      vectorsReady: j['vectors_ready'] == true,
       ratePerS: _dbl(j['rate_per_s']),
       estimatedSeconds: _intOrNull(j['estimated_seconds']),
+      estimate: HubEstimate.fromJson(j['estimate']),
       done: _intOrNull(p['done']),
       total: _intOrNull(p['total']),
       progressStatus: _str(p['status']),
@@ -151,11 +164,62 @@ class HubReindex {
   final String? current;
   final bool required;
   final int chunks, qa;
+
+  /// What a rebuild still has to embed.
+  final int missingChunks, missingQa;
+  int get items => missingChunks + missingQa;
+
+  /// Documents are indexed and every vector of the new model is already there: activating switches at once.
+  final bool vectorsReady;
+
+  /// The health test's speed (short sentences — not a rebuild speed; never shown as a time).
   final double? ratePerS;
+
+  /// Set only when this model's own rebuild was measured on this server.
   final int? estimatedSeconds;
+  final HubEstimate? estimate;
   final int? done, total;
   final String? progressStatus;
   final String? error;
+}
+
+/// How long a rebuild takes, from MEASURED rebuilds only (`pending.reindex.estimate`): basis `this_model` gives
+/// [seconds]; `other_models` a range [lowSeconds]..[highSeconds] (other embedders measured here, [models]); `none` no
+/// number; `nothing_to_build` 0.
+class HubEstimate {
+  const HubEstimate({
+    required this.basis,
+    this.seconds,
+    this.lowSeconds,
+    this.highSeconds,
+    this.models = const [],
+    this.measuredItems,
+    this.measuredSeconds,
+  });
+
+  static HubEstimate? fromJson(Object? v) {
+    if (v is! Map) return null;
+    final j = Map<String, dynamic>.from(v);
+    final m = _map(j['measured']);
+    final models = j['models'];
+    return HubEstimate(
+      basis: _str(j['basis']) ?? 'none',
+      seconds: _intOrNull(j['seconds']),
+      lowSeconds: _intOrNull(j['low_seconds']),
+      highSeconds: _intOrNull(j['high_seconds']),
+      models: models is List ? [for (final x in models) '$x'] : const [],
+      measuredItems: _intOrNull(m['items']),
+      measuredSeconds: _dbl(m['seconds']),
+    );
+  }
+
+  final String basis;
+  final int? seconds, lowSeconds, highSeconds;
+  final List<String> models;
+
+  /// This model's last measured rebuild (basis `this_model`).
+  final int? measuredItems;
+  final double? measuredSeconds;
 }
 
 /// An activation in progress (`pending`): downloading → testing → ready_to_confirm | failed; embedding only:

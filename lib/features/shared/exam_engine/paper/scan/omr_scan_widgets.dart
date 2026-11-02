@@ -17,6 +17,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import '../../../../admin/admin_common.dart' show t;
 import 'omr_camera.dart' show OmrCameraIssue;
 import 'omr_scan.dart' show OmrHintTone;
+import '../omr_counts.dart';
 
 /// A4 portrait: width / height of the guide.
 const kSheetAspect = 210 / 297;
@@ -749,7 +750,7 @@ class ScanProgressView extends StatelessWidget {
           if (duplicates > 0) ...[
             const SizedBox(height: AppSpace.sm),
             Text(
-              t('$duplicates صفحة مرفوعة من قبل وتم تخطيها', '$duplicates page${duplicates == 1 ? ' was' : 's were'} already uploaded and skipped'),
+              t('${omrPagesText(duplicates)} مرفوعة من قبل وتم تخطيها', '$duplicates page${duplicates == 1 ? ' was' : 's were'} already uploaded and skipped'),
               style: appText(13, c: c.textMedium),
             ),
           ],

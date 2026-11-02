@@ -20,6 +20,8 @@
 //   on/off toggle    → AppSwitch / AppSwitchTile (the ONLY switch look in the app — never Switch/SwitchListTile)
 //   any time / date  → AppTime.time / date / dateTime (UTC instant) · AppTime.clock("HH:MM") (12h/24h + timezone)
 //   sheet / confirm  → showAppSheet / appConfirm       status        → AppBadgePill
+//   sheet content    → AppSheetContent(title:, children: […])  (header + side-padded, scrolling body; showAppSheet
+//                      itself draws no padding)
 //   table export     → showAppExportSheet(context, AppTableExport(...))  (Excel · Word · PDF + column picker)
 //   wide table/grid  → AppHScroll(child: …)  (draggable scrollbar · mouse drag · shift+wheel)
 //   pull-to-refresh  → AppRefresh(onRefresh: provider.load, child: ListView(…)) + AppRefreshAction(onRefresh: …)
@@ -39,6 +41,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_tokens.dart';
 import '../features/admin/admin_common.dart' as admin;
 import '../features/org/org_ui.dart' as org;
 import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
@@ -104,6 +107,40 @@ Future<bool> appConfirm(BuildContext context, {required String message, bool dan
 void appToast(String message, {bool error = false}) => admin.toast(message, error: error);
 
 typedef AppSheetHeader = admin.SheetHeader;
+
+/// A sheet's whole content: its [AppSheetHeader] and a body with the kit's side padding (in line with the header's
+/// title) that scrolls when it is taller than the sheet. `showAppSheet` draws no padding of its own — a body put
+/// straight under the header touches the sheet's edges — so a sheet is `showAppSheet(context, (_) =>
+/// AppSheetContent(title: …, children: […]))`. Pumped on its own (a layout test, unbounded height) the body simply
+/// takes its height.
+class AppSheetContent extends StatelessWidget {
+  const AppSheetContent({super.key, required this.title, required this.children, this.headerTrailing});
+
+  final String title;
+  final List<Widget> children;
+  final Widget? headerTrailing;
+
+  /// The body's padding: the header title's start inset on both sides, a section gap under the last widget.
+  static const EdgeInsets padding = EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, AppSpace.lg);
+
+  @override
+  Widget build(BuildContext context) {
+    final body = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+    return LayoutBuilder(builder: (context, box) {
+      final header = AppSheetHeader(title, trailing: headerTrailing);
+      if (!box.maxHeight.isFinite) {
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          header,
+          Padding(padding: padding, child: body),
+        ]);
+      }
+      return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        header,
+        Flexible(child: SingleChildScrollView(padding: padding, child: body)),
+      ]);
+    });
+  }
+}
 
 // ── New: list skeleton (premium loading for any list / feed / grid page) ───
 /// The calm shape of a list while it loads — the page does not jump when data arrives. Shrink-wrapped, so it also

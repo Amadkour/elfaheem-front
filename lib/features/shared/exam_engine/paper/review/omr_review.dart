@@ -299,6 +299,8 @@ class OmrReviewItem {
     this.question,
     this.pageLabel,
     this.pageStatus,
+    this.studentName,
+    this.studentCode,
   });
 
   final int id;
@@ -325,8 +327,24 @@ class OmrReviewItem {
   final String? pageLabel;
   final String? pageStatus;
 
+  /// Whose paper it is (`student {id, name}`): the name, or the pseudonym (`{code}`) under anonymous grading; both
+  /// null while the page is not matched to a student, and on an identifier item.
+  final String? studentName;
+  final String? studentCode;
+
+  /// The student in words for the queue and the card; null when the server names nobody.
+  String? get studentText {
+    final n = studentName?.trim() ?? '';
+    if (n.isNotEmpty) return n;
+    final code = studentCode?.trim() ?? '';
+    return code.isEmpty ? null : code;
+  }
+
   factory OmrReviewItem.fromJson(Map<String, dynamic> m) {
     final page = asMap(m['page']);
+    final student = asMap(m['student']);
+    final sid = _intOrNull(student['id']);
+    final sname = '${student['name'] ?? ''}'.trim();
     return OmrReviewItem(
       id: asInt(m['id']),
       kind: '${m['kind'] ?? ''}',
@@ -349,6 +367,9 @@ class OmrReviewItem {
       question: OmrQuestionRef.fromJson(m['question']),
       pageLabel: page['page_label']?.toString(),
       pageStatus: page['status']?.toString(),
+      // a roster without the name still says which student: "Student #12"
+      studentName: sname.isNotEmpty ? sname : (sid == null ? null : t('الطالب #$sid', 'Student #$sid')),
+      studentCode: student['code']?.toString(),
     );
   }
 
@@ -378,6 +399,9 @@ class OmrReviewItem {
         question: question,
         pageLabel: pageLabel,
         pageStatus: pageStatus,
+        // the decision reply's item does not name the student: keep the list's / detail's
+        studentName: r.studentName ?? studentName,
+        studentCode: r.studentCode ?? studentCode,
       );
 
   /// Why the item is here, in the app's language (the server's own sentence; two codes get a sharper one).

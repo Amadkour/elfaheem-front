@@ -1,6 +1,6 @@
 {
  "_source": {
-  "route": "POST /api/v1/models/36/activate",
+  "route": "POST /api/v1/models/38/activate",
   "status": 200,
   "request": {},
   "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline), reply recorded by wrapping TestClient.request"
@@ -8,17 +8,17 @@
  "payload": {
   "stage": "ready_to_confirm",
   "pending": {
-   "model_id": 36,
+   "model_id": 38,
    "ref": "emb-new@v1",
    "stage": "ready_to_confirm",
-   "at": "2026-11-02T03:05:48.604164",
+   "at": "2026-11-02T16:45:05.543508",
    "checks": [
     {
      "name": "ram",
      "estimate_mb": 100,
      "limit_mb": 0,
      "ok": true,
-     "available_mb": 7914
+     "available_mb": 8441
     },
     {
      "name": "cpu",
@@ -30,7 +30,7 @@
    ],
    "test": {
     "dim": 384,
-    "speed": 1293.7,
+    "speed": 1587.55,
     "checks": [
      {
       "name": "paraphrase_en",
@@ -47,18 +47,27 @@
     ],
     "ok": true,
     "load_ms": 0,
-    "ms": 26,
-    "rss_mb": 150,
-    "at": "2026-11-02T03:05:48.640492"
+    "ms": 21,
+    "rss_mb": 152,
+    "at": "2026-11-02T16:45:05.572832"
    },
    "reindex": {
     "known": true,
     "current": "emb-base@v1",
-    "reindex_required": true,
     "chunks": 1200,
     "qa": 30,
-    "rate_per_s": 1293.7,
-    "estimated_seconds": 1
+    "missing_chunks": 1200,
+    "missing_qa": 30,
+    "items": 1230,
+    "reindex_required": true,
+    "vectors_ready": false,
+    "estimated_seconds": null,
+    "estimate": {
+     "basis": "none",
+     "seconds": null,
+     "items": 1230
+    },
+    "rate_per_s": 1587.55
    }
   }
  }

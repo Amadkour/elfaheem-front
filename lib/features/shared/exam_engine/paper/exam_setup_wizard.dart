@@ -33,6 +33,7 @@ import '../../../admin/admin_common.dart' show asInt, asMapList, t;
 import '../exam_authoring.dart' show parseEngineUtc;
 import '../exam_authoring_screen.dart' show pickEngineDateTime;
 import 'exam_setup.dart';
+import 'omr_counts.dart';
 
 /// Opens the wizard; true when it was finished (or the choice of Online was saved).
 Future<bool?> openExamSetupWizard(BuildContext context,
@@ -320,7 +321,7 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
       if (r.ok) {
         final n = asInt(r.map['created']) + asInt(r.map['reopened']);
         _requestNote = n > 0
-            ? t('أُرسل الطلب إلى $n طالب', 'Request sent to $n ${n == 1 ? 'student' : 'students'}')
+            ? t('أُرسل الطلب إلى ${omrStudentsText(n, after: true)}', 'Request sent to $n ${n == 1 ? 'student' : 'students'}')
             : t('الطلب مُرسل بالفعل — يمكنك إرسال تذكير', 'Already asked — you can send a reminder');
       } else {
         _requestNote = null;
@@ -338,7 +339,7 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
       _reminding = false;
       if (r.ok) {
         final n = asInt(r.map['reminded']);
-        _requestNote = t('أُرسل التذكير إلى $n طالب', 'Reminder sent to $n ${n == 1 ? 'student' : 'students'}');
+        _requestNote = t('أُرسل التذكير إلى ${omrStudentsText(n, after: true)}', 'Reminder sent to $n ${n == 1 ? 'student' : 'students'}');
       } else {
         _error = setupErrorText(r);
       }
@@ -1023,7 +1024,7 @@ class _AudienceCheckCardState extends State<AudienceCheckCard> {
                   : const Icon(Icons.send_rounded, size: 18),
               label: Text(pending > 0
                   ? t('اطلبها من الطلاب الناقصين مرة أخرى', 'Ask the missing students again')
-                  : t('اطلبها من $missing طالب', 'Ask the $missing ${missing == 1 ? 'student' : 'students'}')),
+                  : t('اطلبها من ${omrStudentsText(missing, after: true)}', 'Ask the $missing ${missing == 1 ? 'student' : 'students'}')),
             ),
             if (pending > 0)
               Padding(
@@ -1073,7 +1074,7 @@ class DuplicatesCard extends StatelessWidget {
           Icon(Icons.warning_amber_rounded, color: c.danger, size: 22),
           const SizedBox(width: AppSpace.xs),
           Expanded(
-            child: Text(t('$n طلاب يتشاركون نفس ${report.label}', '$n students share the same ${report.label}'),
+            child: Text(t('${omrStudentsText(n)} يتشاركون نفس ${report.label}', '$n students share the same ${report.label}'),
                 style: appText(14, w: FontWeight.w800, c: c.textDark)),
           ),
         ]),
@@ -1504,7 +1505,7 @@ class _FormKeyCardState extends State<FormKeyCard> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(t('النموذج ${f.code}', 'Model ${f.code}'), style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
                   if (qs.isNotEmpty)
-                    Text(t('$set من ${qs.length} إجابة محددة', '$set of ${qs.length} answers set'),
+                    Text(t('$set من ${omrAnswersText(qs.length, after: true)} محددة', '$set of ${qs.length} answers set'),
                         style: appText(12, c: set == qs.length ? c.success : c.warning)),
                 ]),
               ),

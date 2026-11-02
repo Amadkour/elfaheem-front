@@ -477,8 +477,7 @@ class _BatchSheetState extends State<_BatchSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      AppSheetHeader(t('ملف الإسناد', 'Mapping file')),
+    return AppSheetContent(title: t('ملف الإسناد', 'Mapping file'), children: [
       AppBanner(icon: Icons.info_outline_rounded, text: t('الأعمدة: student_id, file_name وسؤال اختياري question_id', 'Columns: student_id, file_name and an optional question_id')),
       const SizedBox(height: 10),
       if (widget.batches.isNotEmpty)
@@ -569,8 +568,7 @@ class _SheetsSheetState extends State<_SheetsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      AppSheetHeader(t('أوراق الإجابة', 'Answer sheets')),
+    return AppSheetContent(title: t('أوراق الإجابة', 'Answer sheets'), children: [
       SheetsOptionsView(
         roster: const [], selected: _selected, idsController: _ids, blankController: _blank, busy: _busy,
         onToggle: (_) {},

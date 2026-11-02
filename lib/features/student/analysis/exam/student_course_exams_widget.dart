@@ -159,10 +159,17 @@ class StudentCourseExamsWidget extends StatefulWidget {
 }
 
 class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
+  int _engineExams = 0;                  // shown by the Exam Engine section above: then no "no exams" line below
+
   @override
   Widget build(BuildContext context) => Column(mainAxisSize: MainAxisSize.min, children: [
         // Exam Engine exams of the course (Phase 5, D-018); renders nothing while the engine is not deployed
-        EngineExamsSection(courseId: int.tryParse(widget.courseId)),
+        EngineExamsSection(
+          courseId: int.tryParse(widget.courseId),
+          onCount: (n) {
+            if (mounted && n != _engineExams) setState(() => _engineExams = n);
+          },
+        ),
         _legacy(context),
       ]);
 
@@ -192,6 +199,7 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
     }
 
     if (exams.isEmpty) {
+      if (_engineExams > 0) return const SizedBox.shrink();
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         child: ExamCard(

@@ -206,8 +206,7 @@ class PaperExamReadyBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppSheetHeader(t('الاختبار الورقي جاهز', 'The paper exam is ready')),
+    return AppSheetContent(title: t('الاختبار الورقي جاهز', 'The paper exam is ready'), children: [
       AppBanner(icon: Icons.task_alt_rounded, color: c.success, text: paperFormatText(paperFormat)),
       const SizedBox(height: AppSpace.sm),
       Text(

@@ -163,4 +163,33 @@ void main() {
       'results': [{'visible': true, 'percentage': 72.5, 'passed': true}],
     }));
   });
+  // R2 of the OMR e2e run: a paper-only exam offered "Start exam" and the start answered 428 consent_required. The
+  // server now marks it `paper_only` (can_start false) and refuses the start with 409 `paper_exam`.
+  testWidgets('a paper-only exam shows a calm paper line, never Start', (tester) async {
+    AppConfig.lang = 'en';
+    expect(examCodeText('paper_exam'), contains('paper exam'));
+    AppConfig.lang = 'ar';
+    expect(examCodeText('paper_exam'), contains('ورقي'));
+    AppConfig.lang = 'en';
+    Map<String, dynamic> paper({List<Map<String, dynamic>> results = const [], bool canStart = true}) => {
+          'title': 'CS101 Handwritten paper-only (B4)', 'duration_minutes': 30, 'attempts_used': results.length, 'attempts_allowed': 1,
+          'can_start': canStart, 'open_attempt_id': null, 'status': 'published', 'paper_only': true, 'results': results,
+        };
+    // even an older list that still says can_start: the paper flag wins
+    await tester.pumpWidget(layoutHost(EngineExamCard(exam: paper(), onOpen: null)));
+    expect(find.text('Paper exam — sat in class'), findsOneWidget);
+    expect(find.text('Start exam'), findsNothing);
+    expect(find.textContaining('Attempts'), findsNothing);
+    await tester.pumpWidget(layoutHost(EngineExamCard(exam: paper(canStart: false, results: [{'visible': true, 'percentage': 100.0, 'passed': true}]), onOpen: () {})));
+    expect(find.text('View result'), findsOneWidget);
+    expect(find.text('Paper exam'), findsOneWidget);
+    expect(find.text('Start exam'), findsNothing);
+    // an online exam is unchanged
+    await tester.pumpWidget(layoutHost(EngineExamCard(exam: {...paper(), 'paper_only': false}, onOpen: () {})));
+    expect(find.text('Start exam'), findsOneWidget);
+    AppConfig.lang = 'ar';
+    await expectNoLayoutErrors(tester, () => EngineExamCard(exam: paper(), onOpen: null));
+    await expectNoLayoutErrors(tester, () => EngineExamCard(exam: paper(results: [{'visible': false}]), onOpen: () {}));
+    AppConfig.lang = 'en';
+  });
 }

@@ -41,6 +41,7 @@ import '../../exam_engine_api.dart' show EngineResult;
 import '../exam_setup_wizard.dart' show SetupChoiceTile, SetupProgress;
 import 'omr_sheet_overlay.dart';
 import 'omr_templates.dart';
+import '../omr_counts.dart';
 
 /// Picks one file: (name, bytes), or null when the person cancelled. [camera]: a photo (phones only).
 typedef LearnFilePicker = Future<(String, Uint8List)?> Function({required bool camera});
@@ -477,7 +478,7 @@ class _OmrTemplateLearnPageState extends State<OmrTemplateLearnPage> {
     final ns = s.clearUnconfirmed;
     if (ns.isEmpty) return;
     final ok = await appConfirm(context,
-        message: t('تأكيد ${ns.length} سؤالًا قُرئ في كل منها تظليل واحد واضح دون مشكلات؟ تبقى الأسئلة الأخرى لمراجعتك.',
+        message: t('تأكيد ${omrQuestionsText(ns.length)} قُرئ في كل منها تظليل واحد واضح دون مشكلات؟ تبقى الأسئلة الأخرى لمراجعتك.',
             'Confirm the ${ns.length} questions that each read as one clear mark with no problem? The others stay for you to check.'),
         confirmLabel: t('تأكيد', 'Confirm'));
     if (!ok || !mounted) return;
@@ -489,7 +490,7 @@ class _OmrTemplateLearnPageState extends State<OmrTemplateLearnPage> {
       _busy = false;
       _steps = TemplateSteps.fromJson(r.map);
     });
-    showAppNotice(t('تم تأكيد ${ns.length} سؤالًا', '${ns.length} questions confirmed'));
+    showAppNotice(t('تم تأكيد ${omrQuestionsText(ns.length)}', '${ns.length} questions confirmed'));
   }
 
   void _startEdit() {
@@ -1476,7 +1477,7 @@ class LearnResultBody extends StatelessWidget {
           : (s?.summary ?? t('اكتمل التعلّم', 'Learning finished')),
       subtitle: blocked
           ? t('لم نستطع رسم الفقاعات على الورقة. اتبع الإرشاد ثم ارفعها مرة أخرى.', 'We could not place the bubbles on the sheet. Follow the advice below, then upload it again.')
-          : t('${s?.questions.length ?? 0} سؤالًا. ستراجع الآن كل سؤال على الورقة: ما اكتشفناه، وما ظُلّل في النموذج.',
+          : t('${omrQuestionsText(s?.questions.length ?? 0)}. ستراجع الآن كل سؤال على الورقة: ما اكتشفناه، وما ظُلّل في النموذج.',
               '${s?.questions.length ?? 0} questions. Now check each one on the sheet: what we found, and what the sample shows.'),
       error: error,
       backLabel: t('رجوع', 'Back'),
@@ -1500,7 +1501,7 @@ class LearnResultBody extends StatelessWidget {
               ],
               if (!blocked)
                 Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-                  FactChip(icon: Icons.format_list_numbered_rounded, label: t('${s.questions.length} سؤالًا', '${s.questions.length} questions')),
+                  FactChip(icon: Icons.format_list_numbered_rounded, label: omrQuestionsText(s.questions.length)),
                   if (s.identifier.present) FactChip(icon: Icons.badge_outlined, label: omrIdKindLabel(s.identifier.kind)),
                   if (s.form.forms.isNotEmpty) FactChip(icon: Icons.layers_outlined, label: t('النماذج ${s.form.forms.join('، ')}', 'Models ${s.form.forms.join(', ')}')),
                 ]),

@@ -1,0 +1,34 @@
+{
+ "_source": {
+  "route": "POST /api/v1/models/44/activate",
+  "status": 409,
+  "request": {
+   "confirm": true
+  },
+  "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline), reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "detail": {
+   "code": "reindex_choice_required",
+   "message": "تغيير نموذج التضمين يعيد بناء فهرس المستندات. اختر الآن أو لاحقاً",
+   "message_en": "Changing the embedding model re-builds the document index. Choose now or later.",
+   "chunks": 1200,
+   "qa": 30,
+   "missing_chunks": 200,
+   "missing_qa": 0,
+   "items": 200,
+   "vectors_ready": false,
+   "estimated_seconds": null,
+   "estimate": {
+    "basis": "none",
+    "seconds": null,
+    "items": 200
+   },
+   "reindex_required": true,
+   "choices": [
+    "now",
+    "later"
+   ]
+  }
+ }
+}

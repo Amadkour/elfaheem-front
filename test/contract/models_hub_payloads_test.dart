@@ -179,8 +179,12 @@ void main() {
     expect(r.required, isTrue);
     expect(r.chunks, 1200);
     expect(r.qa, 30);
-    expect(r.estimatedSeconds, 1);
-    expect(reindexEstimateText(r), '1230 items (1200 chunks + 30 saved answers) · about 1 s');
+    expect(r.items, 1230);
+    expect(r.vectorsReady, isFalse);
+    // nothing measured on this server: no number (the health test's speed is no rebuild speed, B6 round 2)
+    expect(r.estimatedSeconds, isNull);
+    expect(r.estimate!.basis, 'none');
+    expect(reindexEstimateText(r), '1230 items (1200 chunks + 30 saved answers) · time not known yet — measured on this model\'s first rebuild here');
 
     final f = failure('reindex_choice_required');
     expect(f.status, 409);
@@ -200,6 +204,44 @@ void main() {
     expect(ov.pending!.reindex!.total, 1230);
     expect(ov.pending!.reindex!.done, 0);
     expect(HubOverview.fromJson(hub('overview_reindex_later')).role('embedding')!.pending!.stage, 'reindex_later');
+  });
+
+  test('embedding (B6 round 2): vectors already built, partly built, and estimates only from measured rebuilds', () {
+    final ready = HubStep.fromJson(hub('embedding_activate_vectors_ready')).pending!.reindex!;
+    expect(ready.required, isFalse);
+    expect(ready.vectorsReady, isTrue);
+    expect(ready.items, 0);
+    expect(vectorsReadyText(ready),
+        'This model\'s vectors are already built for every document (1200 chunks + 30 saved answers), so activating switches the index at once — no rebuild.');
+    expect(HubOverview.fromJson(hub('overview_vectors_ready')).role('embedding')!.pending!.reindex!.vectorsReady, isTrue);
+    final done = HubStep.fromJson(hub('activate_vectors_ready_confirm'));
+    expect(done.stage, 'active');
+    expect(done.active, 'emb-kept@v1');
+
+    final part = HubStep.fromJson(hub('embedding_activate_partial')).pending!.reindex!;
+    expect((part.missingChunks, part.missingQa, part.items, part.required), (200, 0, 200, true));
+    expect(reindexEstimateText(part),
+        '200 items of 1230 still need vectors (200 chunks + 0 saved answers) · time not known yet — measured on this model\'s first rebuild here');
+    final f = failure('reindex_choice_partial');
+    expect(f.reindex!.items, 200);
+    expect(f.reindex!.missingChunks, 200);
+
+    final range = HubStep.fromJson(hub('embedding_activate_estimate_range')).pending!.reindex!;
+    expect(range.estimate!.basis, 'other_models');
+    expect(range.estimate!.models, ['emb-part@v1']);
+    expect((range.estimate!.lowSeconds, range.estimate!.highSeconds, range.estimatedSeconds), (615, 615, null));
+    expect(reindexTimeText(range), 'about 11 min (going by another model rebuilt here)');
+    expect(reindexTimeText(HubReindex(estimate: const HubEstimate(basis: 'other_models', lowSeconds: 19, highSeconds: 145))),
+        'between 19 s and 3 min (going by other models rebuilt here)');
+
+    final measured = HubStep.fromJson(hub('embedding_activate_estimate_measured')).pending!.reindex!;
+    expect(measured.estimate!.basis, 'this_model');
+    expect((measured.estimatedSeconds, measured.estimate!.measuredItems, measured.estimate!.measuredSeconds), (615, 200, 100.0));
+    expect(reindexEstimateText(measured), '1230 items (1200 chunks + 30 saved answers) · about 11 min (measured on this model\'s last rebuild here)');
+
+    AppConfig.lang = 'ar';
+    expect(reindexEstimateText(part), 'يلزم بناء 200 عنصرًا من أصل 1230 (200 مقطعًا + 0 إجابة محفوظة) · المدة غير معروفة بعد: تُقاس عند أول إعادة بناء بهذا النموذج هنا');
+    expect(reindexTimeText(measured), 'نحو 11 د (حسب آخر إعادة بناء لهذا النموذج هنا)');
   });
 
   test('errors: the server\'s own words by language, and the extra fields', () {

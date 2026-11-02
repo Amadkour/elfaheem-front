@@ -24,6 +24,7 @@ import 'exam_paper.dart';
 import 'exam_paper_docx.dart';
 import 'exam_paper_pdf.dart';
 import 'exam_quick.dart' show paperFileOf;
+import 'paper/omr_counts.dart';
 
 const _kTemplate = 'exam_paper.template', _kInstitution = 'exam_paper.institution', _kCustom = 'exam_paper.custom', _kCustomName = 'exam_paper.custom_name';
 const _maxCustomBytes = 1500000;
@@ -97,7 +98,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
       text: defaultPaperInstructions(
               rtl: AppConfig.lang == 'ar',
               questions: widget.view.questionCount,
-              duration: widget.view.exam.durationMinutes == null ? '' : t('${widget.view.exam.durationMinutes} دقيقة', '${widget.view.exam.durationMinutes} minutes'))
+              duration: widget.view.exam.durationMinutes == null ? '' : omrMinutesText(widget.view.exam.durationMinutes!))
           .join('\n'));
 
   @override
@@ -214,8 +215,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final resolved = resolvePaperTemplate(_tpl, highStakes: widget.view.exam.highStakes);
-    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppSheetHeader(t('ورقة الامتحان للطباعة', 'Printable exam paper')),
+    return AppSheetContent(title: t('ورقة الامتحان للطباعة', 'Printable exam paper'), children: [
       Text(t('اختر التصميم', 'Pick a design'), style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
       const SizedBox(height: 8),
       Wrap(spacing: 10, runSpacing: 10, children: [

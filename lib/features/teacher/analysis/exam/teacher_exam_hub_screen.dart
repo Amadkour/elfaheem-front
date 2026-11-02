@@ -69,6 +69,7 @@ class _HubView extends StatefulWidget {
 class _HubViewState extends State<_HubView>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  List<Map<String, dynamic>> _engineExams = const [];      // the Exam Engine section's exams (counted in the header)
 
   @override
   void initState() {
@@ -141,7 +142,8 @@ class _HubViewState extends State<_HubView>
 
   // ── Hero ────────────────────────────────────────────────────────────────────
   Widget _buildHero(TeacherExamProvider prov) {
-    final published = prov.exams.where((e) => e.isPublished).length;
+    // the Exam Engine's exams of the course count too (the section above the legacy list reports them)
+    final published = prov.exams.where((e) => e.isPublished).length + _engineExams.where((e) => e['status'] == 'published').length;
     final questions = prov.exams.fold<int>(0, (a, e) => a + e.questionCount);
     return ExamHero(
       child: Column(
@@ -153,7 +155,7 @@ class _HubViewState extends State<_HubView>
               HeroStat(
                 icon: Icons.quiz_rounded,
                 color: context.colors.heroTint(context.colors.primaryLight, 0.5),
-                value: '${prov.exams.length}',
+                value: '${prov.exams.length + _engineExams.length}',
                 label: 'tab_exams'.tr,
               ),
               const SizedBox(width: 10),
@@ -183,7 +185,12 @@ class _HubViewState extends State<_HubView>
 
   // Exam Engine exams (Phase 6 review) sit above the legacy list; the section hides itself when there are none.
   Widget _buildExamsTab(TeacherExamProvider prov) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        EngineReviewSection(courseId: prov.courseId),
+        EngineReviewSection(
+          courseId: prov.courseId,
+          onItems: (items) {
+            if (mounted) setState(() => _engineExams = items);
+          },
+        ),
         Expanded(child: _legacyExamsTab(prov)),
       ]);
 
@@ -195,6 +202,7 @@ class _HubViewState extends State<_HubView>
       return _ErrorView(message: prov.examsError, onRetry: prov.loadExams);
     }
     if (prov.exams.isEmpty) {
+      if (_engineExams.isNotEmpty) return const SizedBox.shrink();     // the engine section above lists them
       return ExamEmpty(
         icon: Icons.quiz_outlined,
         text: '${'no_exams_yet'.tr}\n${'no_exams_empty_hint'.tr}',

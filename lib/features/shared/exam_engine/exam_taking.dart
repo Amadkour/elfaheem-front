@@ -212,6 +212,7 @@ String examCodeText(String code) => switch (code) {
       'consent_changed' => t('تغيّر نص الإقرار — اقرأ النسخة الجديدة ثم اقبلها', 'The consent text changed — read the new version and accept it'),
       'bad_passcode' => t('رمز الدخول غير صحيح', 'Wrong passcode'),
       'platform_not_allowed' => t('هذا الاختبار غير متاح على هذه المنصة', 'This exam is not available on this platform'),
+      'paper_exam' => t('هذا اختبار ورقي يُؤدّى في الفصل، ولا يُبدأ من التطبيق', 'This is a paper exam, sat in class — it is not started in the app'),
       'not_a_student' => t('هذا الاختبار ليس لك', 'This exam is not for you'),
       'exam_not_open' => t('الاختبار غير متاح الآن', 'The exam is not open now'),
       'exam_not_started' => t('لم يبدأ الاختبار بعد', 'The exam has not started yet'),

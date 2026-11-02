@@ -178,10 +178,14 @@ Future<bool> confirm(
         scrollable: true,
         insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        icon: ServiceIcon(
-          icon: danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
-          colors: danger ? AdminPalette.rose : AdminPalette.blue,
-          size: 54,
+        // centred: a scrollable dialog stretches its icon slot, which drew the badge as a full-width bar; the theme's
+        // primary (AdminPalette.blue is the success gradient, off-theme in most palettes)
+        icon: Center(
+          child: ServiceIcon(
+            icon: danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
+            colors: danger ? AdminPalette.rose : [c.primaryLight, c.primary],
+            size: 54,
+          ),
         ),
         content: Text(message,
             textAlign: TextAlign.center,

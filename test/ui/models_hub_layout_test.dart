@@ -52,6 +52,8 @@ void main() {
     'overview_gen_failed',
     'overview_emb_ready',
     'overview_reindexing',
+    'overview_reindex_later',
+    'overview_vectors_ready',
     'overview',
   ]) {
     testWidgets('AiModelsView $name', (tester) async {
@@ -93,6 +95,19 @@ void main() {
     await expectNoLayoutErrors(tester, () => _sheet(ActivatePrompt(role: 'generation', model: 'gen-good', current: 'qwen3-1.7b', test: gen.test)));
     await expectNoLayoutErrors(
         tester, () => _sheet(ActivatePrompt(role: 'embedding', model: 'emb-new', current: 'emb-base', test: emb.test, reindex: emb.reindex)));
+  });
+
+  testWidgets('ActivatePrompt, embedding (B6 round 2): vectors built, partly built, a measured time, a range', (tester) async {
+    for (final name in const [
+      'embedding_activate_vectors_ready',
+      'embedding_activate_partial',
+      'embedding_activate_estimate_measured',
+      'embedding_activate_estimate_range',
+    ]) {
+      final p = HubStep.fromJson(hub(name)).pending!;
+      await expectNoLayoutErrors(
+          tester, () => _sheet(ActivatePrompt(role: 'embedding', model: p.ref, current: 'multilingual-e5-small', test: p.test, reindex: p.reindex)));
+    }
   });
 
   testWidgets('ActivateFailure, LimitsSheet, AddModelSheet', (tester) async {

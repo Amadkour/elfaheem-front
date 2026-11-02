@@ -19,6 +19,7 @@ import '../../../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.ht
 import '../review/omr_review.dart' show OmrReviewApi;
 import 'omr_audience_picker.dart';
 import 'omr_scan.dart';
+import '../omr_counts.dart';
 
 Future<void> showOmrSheetsSheet(BuildContext context, {required int examId, OmrScanApi? api}) =>
     showAppSheet<void>(context, (_) => OmrSheetsSheet(examId: examId, api: api));
@@ -67,7 +68,7 @@ class OmrSheetsOptionsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final summary = t('${info.questions} سؤالًا على ورقة من ${info.sheetQuestions} سؤالًا · ${omrIdKindText(info.idKind)}',
+    final summary = t('${omrQuestionsText(info.questions)} على ورقة من ${omrQuestionsText(info.sheetQuestions, after: true)} · ${omrIdKindText(info.idKind)}',
         '${info.questions} questions on a ${info.sheetQuestions}-question sheet · ${omrIdKindText(info.idKind)}');
     if (!info.printable) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
@@ -229,9 +230,8 @@ class _OmrSheetsSheetState extends State<OmrSheetsSheet> {
   @override
   Widget build(BuildContext context) {
     final info = _info;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      AppSheetHeader(t('طباعة أوراق التظليل', 'Print bubble sheets')),
-      if (info == null && _loadError == null) const AppListSkeleton(items: 2),
+    return AppSheetContent(title: t('طباعة أوراق التظليل', 'Print bubble sheets'), children: [
+      if (info == null && _loadError == null) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
       if (_loadError != null) AppBanner(icon: Icons.error_outline_rounded, text: _loadError!, color: context.colors.danger),
       if (info != null)
         OmrSheetsOptionsView(

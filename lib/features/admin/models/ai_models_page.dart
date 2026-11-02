@@ -370,8 +370,12 @@ class AiModelsPageState extends State<AiModelsPage> {
       });
 
   Future<void> _reindexNow(HubRole r) => _guard(null, () async {
-        await _api.reindexEmbedding();
-        showAppNotice(t('بدأت إعادة بناء فهرس المستندات في الخلفية', 'The document index rebuild started in the background'));
+        final step = await _api.reindexEmbedding();
+        // `active`: RAG already answered with the model, or every vector of it was built (B6 round 2): no rebuild ran
+        final name = _modelName(r.byId(r.pending?.modelId), step.active ?? r.pending?.ref ?? '');
+        showAppNotice(step.stage == 'active'
+            ? t('$name مُفعّل الآن لدور ${hubRoleName(r.role)} دون إعادة بناء.', '$name is now active for ${hubRoleName(r.role)} — no rebuild was needed.')
+            : t('بدأت إعادة بناء فهرس المستندات في الخلفية', 'The document index rebuild started in the background'));
         await _load(silent: true);
       });
 

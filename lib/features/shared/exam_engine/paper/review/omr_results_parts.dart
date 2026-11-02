@@ -136,6 +136,7 @@ class OmrDistributionCard extends StatelessWidget {
           height: 170,
           labels: [for (final b in bins) narrow ? '${b.from}' : omrLtr('${b.from}–${b.to}')],
           series: [AppChartSeries(t('الطلاب', 'Students'), [for (final b in bins) b.count.toDouble()], color: c.primary)],
+          integerAxis: true,
         );
     final donut = AppDonut(
       title: t('النتيجة', 'Outcome'),
@@ -265,7 +266,7 @@ class OmrGradesView extends StatelessWidget {
                         td(Text(s.formText, style: cell)),
                         td(Text(_score(s), textAlign: TextAlign.end, style: cell)),
                         td(Text(_pct(s.percentage), textAlign: TextAlign.end, style: appText(14, w: FontWeight.w700, c: appScoreColor(context, s.percentage)))),
-                        td(Text('${s.correct} / ${s.answered}', textAlign: TextAlign.end, style: cell)),
+                        td(Text(omrLtr('${s.correct} / ${s.answered}'), textAlign: TextAlign.end, style: cell)),
                         td(Align(alignment: AlignmentDirectional.centerStart, child: AppBadgePill(_statusText(s), color: _statusColor(context, s)))),
                       ]),
               ],
