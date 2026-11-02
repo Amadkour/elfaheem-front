@@ -1,0 +1,12 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/4/resolve -> 422, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 422,
+ "payload": {
+  "detail": {
+   "code": "not_a_student",
+   "message": "طالب ليس من طلاب هذا الاختبار",
+   "student_id": 999,
+   "message_en": "This student is not in the exam."
+  }
+ }
+}

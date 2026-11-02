@@ -1,0 +1,95 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items?status=resolved -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "id": 2,
+    "scan_page_id": 1,
+    "attempt_id": 1,
+    "question_id": 4,
+    "kind": "bubble",
+    "code": "multiple",
+    "reading": {
+     "n": 4,
+     "state": "multiple",
+     "selected": [
+      "A",
+      "D"
+     ],
+     "fills": {
+      "A": 0.902,
+      "B": 0.002,
+      "C": 0.001,
+      "D": 0.902
+     },
+     "type": "mcq_single",
+     "en": "More than one answer was shaded",
+     "ar": "ظُلِّلت أكثر من إجابة"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "choose",
+     "options": [
+      "D"
+     ]
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T05:37:29.894897",
+    "created_at": "2026-11-02T05:37:21.066493",
+    "actions": [
+     "choose",
+     "blank"
+    ],
+    "has_crop": true,
+    "en": "More than one answer was shaded",
+    "ar": "ظُلِّلت أكثر من إجابة",
+    "crop_url": "/api/v1/exam/omr/images/crop/2?exp=1793598450&sig=1e1d36f47011c4bc583241b7adc6da91"
+   },
+   {
+    "id": 4,
+    "scan_page_id": 2,
+    "attempt_id": 2,
+    "question_id": 5,
+    "kind": "bubble",
+    "code": "uncertain",
+    "reading": {
+     "n": 5,
+     "state": "uncertain",
+     "selected": [],
+     "fills": {
+      "A": 0.419,
+      "B": 0.001,
+      "C": 0.0,
+      "D": 0.001
+     },
+     "type": "mcq_single",
+     "en": "The mark is unclear",
+     "ar": "التظليل غير واضح"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "choose",
+     "options": [
+      "A"
+     ],
+     "reason": "half fill = A"
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T05:37:22.655608",
+    "created_at": "2026-11-02T05:37:21.907701",
+    "actions": [
+     "choose",
+     "blank"
+    ],
+    "has_crop": false,
+    "en": "The mark is unclear",
+    "ar": "التظليل غير واضح"
+   }
+  ],
+  "total": 2,
+  "open_by_kind": {
+   "bubble": 2
+  }
+ }
+}

@@ -1,0 +1,130 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items?status=resolved -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "id": 1,
+    "scan_page_id": 2,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "form",
+    "code": "form_unconfirmed",
+    "reading": {
+     "markers": {
+      "qr": "B",
+      "printed": "A"
+     },
+     "configured": [
+      "qr",
+      "printed"
+     ],
+     "forms": [
+      "A",
+      "B"
+     ],
+     "reason": "markers_disagree",
+     "read": {
+      "qr": "B",
+      "printed": "A"
+     },
+     "en": "Model could not be confirmed",
+     "ar": "تعذّر تأكيد النموذج"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "confirm",
+     "form": "B"
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T05:36:12.502181",
+    "created_at": "2026-11-02T05:36:11.990707",
+    "actions": [
+     "confirm",
+     "dismiss"
+    ],
+    "has_crop": true,
+    "en": "Model could not be confirmed",
+    "ar": "تعذّر تأكيد النموذج",
+    "crop_url": "/api/v1/exam/omr/images/crop/1?exp=1793598397&sig=df170eb4cc994ca6d0a3f6fdccf9eba8"
+   },
+   {
+    "id": 4,
+    "scan_page_id": 5,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_no_match",
+    "reading": {
+     "kind": "shaded",
+     "status": "clear",
+     "value": "9999999999",
+     "reason": null,
+     "low": null,
+     "gaps": null,
+     "columns_to_check": null,
+     "candidates": [],
+     "en": "No student has this ID",
+     "ar": "لا يوجد طالب بهذا الرقم"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "assign",
+     "student_id": 106
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T05:36:16.575032",
+    "created_at": "2026-11-02T05:36:16.133834",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": true,
+    "en": "No student has this ID",
+    "ar": "لا يوجد طالب بهذا الرقم",
+    "crop_url": "/api/v1/exam/omr/images/crop/4?exp=1793598397&sig=ccae42e18326bf7ab55b5c5d217a7491"
+   },
+   {
+    "id": 6,
+    "scan_page_id": 7,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "student_already_scanned",
+    "reading": {
+     "student_id": 101,
+     "other_scan_page_id": 1,
+     "en": "This student already has a graded sheet",
+     "ar": "لهذا الطالب ورقة مصححة بالفعل"
+    },
+    "status": "resolved",
+    "resolution": {
+     "action": "replace"
+    },
+    "resolved_by": 10,
+    "resolved_at": "2026-11-02T05:36:18.598374",
+    "created_at": "2026-11-02T05:36:18.347445",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": true,
+    "en": "This student already has a graded sheet",
+    "ar": "لهذا الطالب ورقة مصححة بالفعل",
+    "crop_url": "/api/v1/exam/omr/images/crop/6?exp=1793598397&sig=edfd6f5af0bf7fe6d9a1869d23d5459c"
+   }
+  ],
+  "total": 3,
+  "open_by_kind": {
+   "form": 2,
+   "identifier": 1,
+   "quality": 1
+  }
+ }
+}

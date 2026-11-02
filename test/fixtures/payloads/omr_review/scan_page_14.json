@@ -1,0 +1,38 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/pages/14 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "page": {
+   "id": 14,
+   "page_no": 7,
+   "page_label": "7",
+   "status": "rejected",
+   "file_name": "batch.pdf",
+   "batch_id": 8,
+   "student_id": null,
+   "attempt_id": null,
+   "codes": [
+    "blurry"
+   ],
+   "en": "Page 7 is too blurry. Please upload a clearer image of it.",
+   "ar": "الصفحة 7 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها."
+  },
+  "image_url": "/api/v1/exam/omr/images/page/14?exp=1793598396&sig=4e98b3a62513a1fbd2476f8e305a3939",
+  "size": null,
+  "overlay": [],
+  "alignment": {},
+  "answers": [],
+  "identifier": {},
+  "form": {},
+  "reading_id": 14,
+  "items": [
+   {
+    "id": 7,
+    "kind": "quality",
+    "code": "blurry",
+    "question_id": null,
+    "status": "open"
+   }
+  ]
+ }
+}

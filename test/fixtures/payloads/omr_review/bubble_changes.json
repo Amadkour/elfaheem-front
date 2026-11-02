@@ -1,0 +1,51 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/changes -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "id": 2,
+    "entity": "answer",
+    "entity_id": 4,
+    "field": "marks",
+    "old": {
+     "state": "multiple",
+     "selected": [
+      "A",
+      "D"
+     ],
+     "n": 4
+    },
+    "new": {
+     "action": "choose",
+     "options": [
+      "D"
+     ]
+    },
+    "actor_id": 10,
+    "reason": null,
+    "at": "2026-11-02T05:37:29.896413"
+   },
+   {
+    "id": 1,
+    "entity": "answer",
+    "entity_id": 11,
+    "field": "marks",
+    "old": {
+     "state": "uncertain",
+     "selected": [],
+     "n": 5
+    },
+    "new": {
+     "action": "choose",
+     "options": [
+      "A"
+     ]
+    },
+    "actor_id": 10,
+    "reason": "half fill = A",
+    "at": "2026-11-02T05:37:22.657698"
+   }
+  ]
+ }
+}
