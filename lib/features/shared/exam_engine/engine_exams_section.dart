@@ -83,9 +83,13 @@ class EngineExamCard extends StatelessWidget {
 String get paperExamLine => t('اختبار ورقي — يُؤدّى في الفصل', 'Paper exam — sat in class');
 
 class EngineExamsSection extends StatefulWidget {
-  const EngineExamsSection({super.key, this.courseId, this.orgId});
+  const EngineExamsSection({super.key, this.courseId, this.orgId, this.onCount});
   final int? courseId;
   final int? orgId;
+
+  /// How many engine exams the section shows once loaded (0 when hidden): the host drops its own "no exams" line
+  /// when there are some (the student's course Exams tab said "No exams for this course yet" under five exams).
+  final ValueChanged<int>? onCount;
 
   @override
   State<EngineExamsSection> createState() => _EngineExamsSectionState();
@@ -117,6 +121,7 @@ class _EngineExamsSectionState extends State<EngineExamsSection> {
       _items = asMapList(r.map['items']);
       _hidden = _items!.isEmpty;
     });
+    widget.onCount?.call(r.ok ? _items!.length : 0);
     if (r.ok) _warmOffline();
   }
 
