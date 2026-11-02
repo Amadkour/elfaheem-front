@@ -44,7 +44,7 @@ class _Srv {
   }
 
   Future<void> stop() async {
-    for (final r in open) {
+    for (final r in List.of(open)) {               // a reconnect during the awaits adds to `open`
       try {
         await r.close();
       } catch (_) {}
