@@ -20,6 +20,36 @@ void main() {
     expect(MappingResult.fromJson({'assigned': 7, 'errors': []}).assigned, 7);
   });
 
+  // R2 of the OMR e2e run: the server sends `pages` as the LIST of the new page ids (exam_engine/services/scans.py);
+  // reading it as a number said "0 pages uploaded (batch #8)" after two images went up.
+  test('upload result: pages as the list of page ids (the real server shape) or a number', () {
+    final real = ScanUploadResult.fromJson({'batch_id': 8, 'pages': [41, 42], 'duplicates': 0, 'omr': false});
+    expect((real.batchId, real.pages, real.duplicates), (8, 2, 0));
+    expect(real.summary, '2 pages uploaded (batch #8)');
+    expect(ScanUploadResult.fromJson({'batch_id': 3, 'pages': [9], 'duplicates': 1}).summary,
+        '1 page uploaded, 1 duplicate skipped (batch #3)');
+    expect(ScanUploadResult.fromJson({'batch_id': 3, 'pages': 5, 'duplicates': 0}).pages, 5);
+    expect(ScanUploadResult.fromJson({'batch_id': 3}).pages, 0);
+    AppConfig.lang = 'ar';
+    expect(real.summary, 'رُفعت صفحتان (الدفعة #8)');
+    expect(ScanUploadResult.fromJson({'batch_id': 8, 'pages': [1, 2, 3, 4], 'duplicates': 2}).summary,
+        'رُفعت 4 صفحات وتجاهلنا صفحتين مكررتين (الدفعة #8)');
+    expect(ScanUploadResult.fromJson({'batch_id': 8, 'pages': List.generate(12, (i) => i), 'duplicates': 0}).summary,
+        'رُفعت 12 صفحة (الدفعة #8)');
+    expect(ScanUploadResult.fromJson({'batch_id': 8, 'pages': [1], 'duplicates': 0}).summary, 'رُفعت صفحة واحدة (الدفعة #8)');
+  });
+
+  test('marks / mapping summaries use the Arabic count forms', () {
+    expect(MarksImportResult.fromJson({'saved': 1, 'attempts': 1}).summary, '1 mark saved for 1 student');
+    expect(MarksImportResult.fromJson({'saved': 5, 'attempts': 2}).summary, '5 marks saved for 2 students');
+    expect(MappingResult.fromJson({'assigned': 1}).summary, '1 page assigned');
+    AppConfig.lang = 'ar';
+    expect(MarksImportResult.fromJson({'saved': 5, 'attempts': 2}).summary, 'حُفظت 5 درجات لطالبين');
+    expect(MarksImportResult.fromJson({'saved': 24, 'attempts': 12}).summary, 'حُفظت 24 درجة لـ 12 طالبًا');
+    expect(MappingResult.fromJson({'assigned': 3}).summary, 'أُسندت 3 صفحات');
+    expect(MappingResult.fromJson({'assigned': 2}).summary, 'أُسندت صفحتان');
+  });
+
   test('problem rows read as text in both languages', () {
     final p = parseProblems([
       {'row': 3, 'code': 'score_out_of_range', 'max': 4.0},

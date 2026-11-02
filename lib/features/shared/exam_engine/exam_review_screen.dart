@@ -507,8 +507,12 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
 /// The engine exams a teacher manages for a course, with how many answers wait for them. Hidden when the engine is
 /// not deployed or the course has no engine exams, so the legacy hub stays as it was.
 class EngineReviewSection extends StatefulWidget {
-  const EngineReviewSection({super.key, required this.courseId});
+  const EngineReviewSection({super.key, required this.courseId, this.onItems});
   final int courseId;
+
+  /// The engine exams once loaded: the exam hub counts them in its header and drops its legacy "No exams yet" when
+  /// there are some (it showed 0 / 0 / 0 and "No exams yet" under a list of exams).
+  final ValueChanged<List<Map<String, dynamic>>>? onItems;
 
   @override
   State<EngineReviewSection> createState() => _EngineReviewSectionState();
@@ -535,6 +539,7 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
       _orgId = s.orgId;
       _items = asMapList(s.list.map['items']);
     });
+    widget.onItems?.call(_items);
   }
 
   void _open(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)).then((_) => _load());

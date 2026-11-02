@@ -6,6 +6,7 @@
 // Server contract: ../back/exam_engine/routers/scans.py and grading.py (FLUTTER_API_CHANGES · phase 6).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMapList, t;
@@ -76,16 +77,28 @@ String paperFailText(String? code, String message) {
   return message.isNotEmpty ? message : t('تعذر تنفيذ الطلب', 'The request failed');
 }
 
-/// `{batch_id, pages, duplicates}` of the scan upload.
+/// A count the server sends either as a number or as the list it counts (`pages` of the scan upload is the list of
+/// the new page ids: exam_engine/services/scans.py).
+int countOf(Object? v) => v is List ? v.length : asInt(v);
+
+/// `{batch_id, pages, duplicates}` of the scan upload; `pages` is the list of the new page ids (an older server sent
+/// the number — both are read).
 class ScanUploadResult {
   const ScanUploadResult({required this.batchId, required this.pages, required this.duplicates});
   final int batchId, pages, duplicates;
   factory ScanUploadResult.fromJson(Map<String, dynamic> j) =>
-      ScanUploadResult(batchId: asInt(j['batch_id']), pages: asInt(j['pages']), duplicates: asInt(j['duplicates']));
+      ScanUploadResult(batchId: asInt(j['batch_id']), pages: countOf(j['pages']), duplicates: countOf(j['duplicates']));
 
-  String get summary => duplicates > 0
-      ? t('رُفعت $pages صفحة وتجاهلنا $duplicates مكررة (الدفعة #$batchId)', '$pages pages uploaded, $duplicates duplicates skipped (batch #$batchId)')
-      : t('رُفعت $pages صفحة (الدفعة #$batchId)', '$pages pages uploaded (batch #$batchId)');
+  String get summary {
+    final up = countText(pages,
+        ar1: 'رُفعت صفحة واحدة', ar2: 'رُفعت صفحتان', arFew: 'رُفعت {n} صفحات', arMany: 'رُفعت {n} صفحة',
+        en1: '1 page uploaded', en: '{n} pages uploaded');
+    if (duplicates <= 0) return t('$up (الدفعة #$batchId)', '$up (batch #$batchId)');
+    final dup = countText(duplicates,
+        ar1: 'صفحة مكررة', ar2: 'صفحتين مكررتين', arFew: '{n} صفحات مكررة', arMany: '{n} صفحة مكررة',
+        en1: '1 duplicate skipped', en: '{n} duplicates skipped');
+    return t('$up وتجاهلنا $dup (الدفعة #$batchId)', '$up, $dup (batch #$batchId)');
+  }
 }
 
 /// `{saved, errors[], attempts}` of the marks entry / import.
@@ -95,7 +108,15 @@ class MarksImportResult {
   final List<PaperProblem> problems;
   factory MarksImportResult.fromJson(Map<String, dynamic> j) =>
       MarksImportResult(saved: asInt(j['saved']), attempts: asInt(j['attempts']), problems: parseProblems(j['errors']));
-  String get summary => t('حُفظت $saved درجة لـ $attempts طالباً', '$saved marks saved for $attempts students');
+  String get summary {
+    final marks = countText(saved,
+        ar1: 'حُفظت درجة واحدة', ar2: 'حُفظت درجتان', arFew: 'حُفظت {n} درجات', arMany: 'حُفظت {n} درجة',
+        en1: '1 mark saved', en: '{n} marks saved');
+    final who = countText(attempts,
+        ar1: 'لطالب واحد', ar2: 'لطالبين', arFew: 'لـ {n} طلاب', arMany: 'لـ {n} طالبًا',
+        en1: 'for 1 student', en: 'for {n} students');
+    return '$marks $who';
+  }
 }
 
 /// `{assigned, errors[]}` of the mapping file.
@@ -104,7 +125,9 @@ class MappingResult {
   final int assigned;
   final List<PaperProblem> problems;
   factory MappingResult.fromJson(Map<String, dynamic> j) => MappingResult(assigned: asInt(j['assigned']), problems: parseProblems(j['errors']));
-  String get summary => t('أُسندت $assigned صفحة', '$assigned pages assigned');
+  String get summary => countText(assigned,
+      ar1: 'أُسندت صفحة واحدة', ar2: 'أُسندت صفحتان', arFew: 'أُسندت {n} صفحات', arMany: 'أُسندت {n} صفحة',
+      en1: '1 page assigned', en: '{n} pages assigned');
 }
 
 /// Student ids typed as "12, 15 ٣٢\n40" (Arabic digits too); bad tokens are dropped, duplicates removed, order kept.
