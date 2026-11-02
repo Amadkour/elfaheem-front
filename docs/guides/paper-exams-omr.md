@@ -74,11 +74,18 @@ The app never decides a grade; it draws what the engine answered. The engine's r
   dlo 0.02, cmin 0.75), the printed form letter (`printed`: min score 0.544, min margin 0.242), the quality gate
   (`quality`, each edge the midpoint between the good and the bad population, listed in `_gate_tuning`), the camera
   hints (`live`) and `digits`. Tuned by `bench/omr/run.py --tune` on a tuning split for zero wrong auto-grades with a
-  ±0.05 margin, then reported by `--report` on a separate split: per `bench/omr/README.md` (2026-11-02), 0 wrong of
-  30 967 auto-graded questions, 13.98 % sent to review overall (6.6 – 8.2 % on ordinary scans and photos), 270 of 270
-  bad images rejected, 0 of 480 good ones refused. The set is SYNTHETIC (rendered sheets, simulated marks and capture):
-  re-tune on photographed sheets before trusting the review rate in the field. `live` and `digits` are not tuned
-  (no camera-frame or handwriting data).
+  ±0.05 margin, then reported by `--report` on a separate split: per `bench/omr/README.md` (2026-11-02, 810 sheets
+  with the two framing conditions), 0 wrong of 35 125 auto-graded questions, 13.27 % sent to review overall (6.6 –
+  8.2 % on ordinary scans and photos), 270 of 270 bad images rejected, 0 of 540 good ones refused. The set is
+  SYNTHETIC (rendered sheets, simulated marks and capture): re-tune on photographed sheets before trusting the review
+  rate in the field. `live` and `digits` are not tuned (no camera-frame or handwriting data).
+- **Camera framing (bug B5, 2026-11-02).** The live hint works in any frame orientation: the server sizes the app's
+  frame (long side 640, unchanged) by its SHORT side, so a sheet held upright in front of a 16:9 web camera is found
+  (it used to answer "Fit the whole sheet inside the frame" with the whole sheet in view). "Move closer" is judged on
+  how far the corner marks span the frame along its tighter axis (`page_fill`), and the capture says "Move closer"
+  only when moving closer can reach the resolution, else "Resolution too low". With a 1920 x 1080 camera and the
+  sheet upright, the sheet must fill at least ~84 % of the frame's height to pass the capture gate (3.05 px/mm).
+  Numbers: `bench/omr/README.md` "Live hint"; tests `../back/tests/omr/live_hint_camera_unit.py` (the e2e camera frames).
 - `../back/mlkit/ocr/handwriting_thresholds.json` — handwriting acceptance per language / engine / unit and
   `completion_final` (the D-160 rule above), calibrated on the datasets' validation split and reported on test by
   `bench/handwriting` (its README holds the numbers).
