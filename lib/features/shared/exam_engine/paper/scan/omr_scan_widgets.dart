@@ -663,10 +663,12 @@ class RejectedPageRow {
   final String instruction;
   final String? fileName;
 
-  /// null · uploading · processing · processed · review · rejected · failed.
+  /// null · uploading · refused (the gate said no: nothing stored) · processing · processed · review · rejected ·
+  /// failed.
   final String? replacement;
 
-  /// The replacement's own rejection sentence (when it was refused too).
+  /// What the server said about the replacement: "Page 7 replaced. It is being read now.", or the gate's exact
+  /// reason ("Page 7 is too blurry. … Too blurry, hold steady.").
   final String? replacementText;
 }
 
@@ -797,8 +799,9 @@ class _RejectedTile extends StatelessWidget {
     final c = context.colors;
     final rep = row.replacement;
     final (Color? pillColor, String? pill) = switch (rep) {
-      'uploading' => (c.primary, t('يُرفع البديل…', 'Uploading the new image…')),
-      'processing' => (c.primary, t('يُقرأ البديل…', 'Reading the new image…')),
+      'uploading' => (c.primary, t('يُفحص البديل…', 'Checking the new image…')),
+      'refused' => (c.danger, t('رُفضت الصورة البديلة', 'The new image was refused')),
+      'processing' => (c.primary, t('قُبلت — يُقرأ البديل…', 'Accepted — reading the new image…')),
       'processed' => (c.success, t('استُبدلت وصُححت', 'Replaced and graded')),
       'review' => (c.warning, t('استُبدلت — تحتاج مراجعة', 'Replaced — needs review')),
       'rejected' => (c.danger, t('رُفض البديل أيضًا', 'The new image was refused too')),
@@ -829,7 +832,12 @@ class _RejectedTile extends StatelessWidget {
               ],
               if (row.replacementText != null && row.replacementText!.isNotEmpty) ...[
                 const SizedBox(height: AppSpace.xxs),
-                Text(row.replacementText!, style: appText(13, c: c.danger, h: 1.35)),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(row.replacementText!,
+                      key: ValueKey('omr.replace.result.${row.pageId}'),
+                      style: appText(13, c: const {'refused', 'rejected', 'failed'}.contains(rep) ? c.danger : c.textMedium, h: 1.35)),
+                ),
               ],
             ]),
           ),

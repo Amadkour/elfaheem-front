@@ -275,6 +275,34 @@ void main() {
             ));
       }));
 
+  // "Replace this page" on e2e_omr_replace.py's own replies: the batch with page 2 rejected, the gate refusing the
+  // first photo with its exact reason (test/fixtures/payloads/omr_review/rep_*)
+  testWidgets('replace', (t0) => _render(t0, 'replace', () {
+        Map<String, dynamic> rep(String n) => Map<String, dynamic>.from(
+            (jsonDecode(File('test/fixtures/payloads/omr_review/$n.json').readAsStringSync()) as Map)['payload'] as Map);
+        final p = OmrBatchProgress.fromJson(rep('rep_batch_before'));
+        final no = OmrReplaceResult.fromJson(rep('rep_gate_rejected'));
+        return _page(
+            t('معالجة الأوراق', 'Processing papers'),
+            ScanProgressView(
+              headline: p.text,
+              done: p.done,
+              total: p.total,
+              finished: p.finished,
+              graded: p.graded,
+              review: p.review,
+              rejected: p.rejected,
+              rejectedPages: [
+                for (final r in p.rejectedPages)
+                  RejectedPageRow(
+                      pageId: r.pageId, text: r.text, instruction: r.instruction, fileName: r.fileName, replacement: 'refused', replacementText: no.refusal),
+              ],
+              onReplace: (_) {},
+              onResults: () {},
+              onMore: () {},
+            ));
+      }));
+
   testWidgets('tools', (t0) => _render(t0, 'tools', () {
         final info = OmrSheetsInfo.fromJson(_body('sheets_info'));
         final copies = TextEditingController(text: '20'), ids = TextEditingController();

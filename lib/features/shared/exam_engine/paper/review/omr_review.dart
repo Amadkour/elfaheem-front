@@ -11,9 +11,14 @@
 //                                                                              attempt | null, next_item_id}
 //   GET  /api/v1/exam/exams/{id}/omr/pages/{page}                             the page: signed image URL + overlay
 //   GET  /api/v1/exam/exams/{id}/omr/changes                                  the append-only manual changes
+//   GET  /api/v1/exam/exams/{id}/omr/students?q=&limit=20                      the exam's audience, for "assign"
 //   GET  /api/v1/exam/exams/{id}/omr/results · POST …/omr/results/publish {graded_only?}
 //   GET  /api/v1/exam/omr/images/{crop|page}/{id}?exp=&sig=                   the image (token + signature, audited)
-// Rules: exam_engine/services/omr_review.py, omr_results.py, omr_scan.page_view (the code wins over the notes).
+// Handwritten answers (D-160): kinds `completion` and `short_answer` — accept the suggested score, set the score
+// (0 … points, step 0.5) or fix the recognised text (the server matches it again; a short answer's suggestion is then
+// `pending` until a worker recomputed it). Nothing handwritten is final here without a teacher's action.
+// Live: `job_updated {kind: omr_review, exam_id, item_id, status, open_count}` after every decision.
+// Rules: exam_engine/services/omr_review.py, omr_written.py, omr_results.py, omr_scan.page_view (the code wins).
 // Every reply above is recorded from the real engine in test/fixtures/payloads/omr_review/.
 library;
 
@@ -29,6 +34,9 @@ import '../../exam_engine_api.dart';
 
 /// The live event the engine sends the uploader after every scanned page: `job_updated {kind: omr_scan, exam_id, …}`.
 const kOmrScanEventKind = 'omr_scan';
+
+/// The live event after every review decision: `job_updated {kind: omr_review, exam_id, item_id, status, open_count}`.
+const kOmrReviewEventKind = 'omr_review';
 
 // ── small parsers ───────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -57,13 +65,18 @@ String omrNum(num? v) {
 
 // ── review items ────────────────────────────────────────────────────────────────────────────────────────────────
 
-/// The kinds of the queue, in the order the filter shows them (`handwriting` arrives with the handwriting wave).
-const kOmrKinds = ['identifier', 'form', 'bubble', 'handwriting', 'quality'];
+/// The kinds of the queue, in the order the filter shows them.
+const kOmrKinds = ['identifier', 'form', 'bubble', 'completion', 'short_answer', 'quality'];
+
+/// The handwritten kinds (D-160): never final without a teacher's accept / set score.
+const kOmrWrittenKinds = {'completion', 'short_answer'};
 
 String omrKindLabel(String kind) => switch (kind) {
       'identifier' => t('رقم الطالب', 'Student ID'),
       'form' => t('النموذج', 'Form'),
       'bubble' => t('الإجابات', 'Answers'),
+      'completion' => t('أكمل الفراغ', 'Completion'),
+      'short_answer' => t('إجابة قصيرة', 'Short answer'),
       'handwriting' => t('الكتابة اليدوية', 'Handwriting'),
       'quality' => t('جودة الصورة', 'Image quality'),
       _ => kind,
@@ -82,29 +95,180 @@ class OmrDigit {
 
 /// A student the item may belong to (a duplicate value's candidates, a search hit).
 class OmrStudent {
-  const OmrStudent(this.id, this.name, {this.email});
+  const OmrStudent(this.id, this.name, {this.email, this.identifier, this.distance});
   final int id;
   final String name;
   final String? email;
 
-  String get label => name.trim().isEmpty ? '#$id' : name;
+  /// The exam identifier, masked by the server except its last 4 characters ("••••••0121").
+  final String? identifier;
+
+  /// How many characters differ from the reading (a closest candidate), when the server says so.
+  final int? distance;
+
+  String get label => name.trim().isEmpty ? t('الطالب #$id', 'Student #$id') : name;
+
+  /// A candidate / search row, whatever the server calls the id (`user_id` | `student_id` | `id`); null without one.
+  static OmrStudent? fromJson(Map<String, dynamic> m) {
+    final id = _intOrNull(m['user_id'] ?? m['student_id'] ?? m['id']);
+    if (id == null) return null;
+    final ident = m['identifier'] ?? m['value'];
+    return OmrStudent(id, '${m['name'] ?? ''}',
+        email: m['gmail']?.toString() ?? m['email']?.toString(),
+        identifier: ident == null || '$ident'.isEmpty ? null : '$ident',
+        distance: _intOrNull(m['distance']));
+  }
+}
+
+/// `GET …/omr/students`: the exam's audience matching a search (a part of the name, or 3+ characters of the ID).
+class OmrAudience {
+  const OmrAudience({this.items = const [], this.total = 0, this.source, this.labelEn, this.labelAr});
+  final List<OmrStudent> items;
+  final int total;
+
+  /// The exam identifier's source (`academic_id`, `national_id`, …; `name` when the exam has none).
+  final String? source;
+  final String? labelEn, labelAr;
+
+  factory OmrAudience.fromJson(Map<String, dynamic> m) {
+    final l = asMap(m['label']);
+    return OmrAudience(
+      items: [for (final x in asMapList(m['items'])) ?OmrStudent.fromJson(x)],
+      total: asInt(m['total']),
+      source: m['source']?.toString(),
+      labelEn: l['en']?.toString(),
+      labelAr: l['ar']?.toString(),
+    );
+  }
+
+  /// "Academic ID" in the app's language (null when the exam identifies students by name).
+  String? get label {
+    final s = AppConfig.lang == 'ar' ? (labelAr ?? labelEn) : (labelEn ?? labelAr);
+    return s == null || s.isEmpty ? null : s;
+  }
+}
+
+/// One blank of a handwritten completion as the engine read and matched it (D-160).
+class OmrBlank {
+  const OmrBlank({
+    required this.index,
+    required this.status,
+    this.given = '',
+    this.matched,
+    this.distance,
+    this.suggestedCredit,
+    this.isFinal = false,
+    this.reason,
+    this.prefill = false,
+    this.confidence,
+    this.engine,
+    this.checkText,
+    this.checkAgree,
+  });
+
+  final int index;
+
+  /// exact | near | none | empty.
+  final String status;
+
+  /// What the reader read (or the teacher typed).
+  final String given;
+
+  /// The accepted answer it matched (exact / near).
+  final String? matched;
+  final int? distance;
+
+  /// Share of the blank's points suggested (0 … 1).
+  final double? suggestedCredit;
+  final bool isFinal;
+  final String? reason;
+
+  /// true = the suggestion is shown pre-filled: one tap confirms it.
+  final bool prefill;
+  final double? confidence;
+  final String? engine;
+
+  /// The second reader's text and whether it agreed.
+  final String? checkText;
+  final bool? checkAgree;
+
+  factory OmrBlank.fromJson(int i, Map<String, dynamic> m) {
+    final r = asMap(m['reading']);
+    final check = asMap(r['check']);
+    return OmrBlank(
+      index: i,
+      status: '${m['status'] ?? ''}',
+      given: '${m['given'] ?? r['text'] ?? ''}',
+      matched: m['matched']?.toString(),
+      distance: _intOrNull(m['distance']),
+      suggestedCredit: _dbl(m['suggested_credit']),
+      isFinal: m['final'] == true,
+      reason: m['reason']?.toString(),
+      prefill: m['prefill'] == true,
+      confidence: _dbl(r['confidence']),
+      engine: r['engine']?.toString(),
+      checkText: check.isEmpty ? null : check['text']?.toString(),
+      checkAgree: check['agree'] is bool ? check['agree'] as bool : null,
+    );
+  }
+}
+
+/// A short answer's keyword (D-160): found (the words that matched, exact or near) or missing.
+class OmrKeyword {
+  const OmrKeyword(this.term, {this.found = const [], this.how, this.weight});
+  final String term;
+  final List<String> found;
+
+  /// exact | near | null (missing).
+  final String? how;
+  final double? weight;
+
+  bool get hit => found.isNotEmpty || how != null;
 }
 
 /// `question {n, question_id, type, points, letters}` of a bubble item's detail.
 class OmrQuestionRef {
-  const OmrQuestionRef({required this.n, required this.questionId, required this.type, required this.points, required this.letters});
+  const OmrQuestionRef(
+      {required this.n, required this.questionId, required this.type, required this.points, required this.letters, this.step, this.blanks, this.lang, this.key = const {}});
   final int n;
   final int questionId;
   final String type;
   final double points;
   final List<String> letters;
 
+  /// Handwritten questions: the score step (0.5), the number of blanks, the answer language, the key (accepted
+  /// answers, or the model answer + keywords).
+  final double? step;
+  final int? blanks;
+  final String? lang;
+  final Map<String, dynamic> key;
+
   static OmrQuestionRef? fromJson(Object? v) {
     final m = asMap(v);
     if (m.isEmpty) return null;
     return OmrQuestionRef(
-        n: asInt(m['n']), questionId: asInt(m['question_id']), type: '${m['type'] ?? ''}', points: _dbl(m['points']) ?? 0, letters: _strs(m['letters']));
+        n: asInt(m['n']),
+        questionId: asInt(m['question_id']),
+        type: '${m['type'] ?? ''}',
+        points: _dbl(m['points']) ?? 0,
+        letters: _strs(m['letters']),
+        step: _dbl(m['step']),
+        blanks: _intOrNull(m['blanks']),
+        lang: m['lang']?.toString(),
+        key: asMap(m['key']));
   }
+
+  /// A short answer's model answer (the key), when the server sends it.
+  String? get modelAnswer {
+    final v = key['model'];
+    return v == null || '$v'.trim().isEmpty ? null : '$v';
+  }
+
+  /// The accepted answers of each blank of a completion.
+  List<List<String>> get acceptedBlanks => [
+        for (final b in (key['blanks'] is List ? key['blanks'] as List : const []))
+          b is List ? [for (final x in b) '$x'] : ['$b'],
+      ];
 }
 
 /// A review item (list row or detail). [reading] is what the system read, [en] / [ar] why the item is here.
@@ -186,11 +350,55 @@ class OmrReviewItem {
 
   bool get open => status == 'open';
 
-  /// Why the item is here, in the app's language (the server's own sentence).
+  /// This detail with a decision reply's item on top (its reading, code, state), keeping what only the detail has
+  /// (the question, the system reading, the signed crop) until the fresh detail arrives.
+  OmrReviewItem withReading(OmrReviewItem r) => OmrReviewItem(
+        id: id,
+        kind: kind,
+        code: r.code.isEmpty ? code : r.code,
+        status: r.status,
+        scanPageId: scanPageId,
+        attemptId: r.attemptId ?? attemptId,
+        questionId: questionId,
+        reading: r.reading.isEmpty ? reading : r.reading,
+        resolution: r.resolution,
+        resolvedBy: r.resolvedBy,
+        resolvedAt: r.resolvedAt,
+        createdAt: createdAt,
+        actions: r.actions.isEmpty ? actions : r.actions,
+        hasCrop: hasCrop,
+        cropUrl: cropUrl,
+        en: r.en.isEmpty ? en : r.en,
+        ar: r.ar.isEmpty ? ar : r.ar,
+        systemReading: systemReading,
+        question: question,
+        pageLabel: pageLabel,
+        pageStatus: pageStatus,
+      );
+
+  /// Why the item is here, in the app's language (the server's own sentence; two codes get a sharper one).
   String get reason {
+    if (code == 'qr_mismatch') return omrCodeText(code);
+    if (code == 'identifier_conflict' && uploadedFor != null) {
+      return t('رُفعت هذه الورقة لطالب، لكنها تحمل رقم طالب آخر', 'This page was uploaded for one student, but the sheet names another');
+    }
     final s = AppConfig.lang == 'ar' ? ar : en;
     return s.isNotEmpty ? s : omrCodeText(code);
   }
+
+  /// A second line that says what to do about it (which exam / version, the key to fix).
+  String? get detail => switch (code) {
+        'qr_mismatch' => '${reading['reason'] ?? ''}' == 'other_version'
+            ? t('طُبعت لإصدار آخر من ورقة هذا الاختبار، فقُرئت فقاعاتها بتخطيط مختلف. ارفعها في الاختبار الصحيح أو اطبع الأوراق من جديد.',
+                "It was printed for another version of this exam's sheet, so its bubbles were read with a different layout. Upload it into the right exam, or print the sheets again.")
+            : t('رمز QR فيها موقَّع لاختبار آخر. ارفعها في ذلك الاختبار؛ هنا لا يمكن إلا تنحيتها.',
+                'Its QR code is signed for another exam. Upload it into that exam; here it can only be set aside.'),
+        'qr_forged' => t('توقيع رمز QR غير صالح، فقد تكون الورقة منسوخة أو معدّلة. افحص الورقة قبل أن تختار نموذجها.',
+            "The QR code's signature is not valid: the sheet may be copied or altered. Check the paper before you choose its form."),
+        'key_missing' => t('أضف إجابة هذا السؤال إلى مفتاح النموذج (إعداد الاختبار الورقي ← النماذج)؛ تُصحَّح الأوراق فور الحفظ.',
+            "Add this question's answer to the form's key (Paper exam setup → Models); the sheets are graded again as soon as you save."),
+        _ => null,
+      };
 
   bool can(String action) => actions.contains(action);
 
@@ -226,7 +434,83 @@ class OmrReviewItem {
     return [for (var i = 0; i < v.length; i++) OmrDigit(i, v[i], null, low: low.contains(i))];
   }
 
-  List<OmrStudent> get candidates => [for (final c in asMapList(reading['candidates'])) OmrStudent(asInt(c['user_id']), '${c['name'] ?? ''}')];
+  /// The students the reading may name (a duplicate value, the closest identifiers); empty when the server sends none.
+  List<OmrStudent> get candidates => [for (final c in asMapList(reading['candidates'])) ?OmrStudent.fromJson(c)];
+
+  /// identifier_conflict: the student the page was uploaded for, and whom the sheet names (shaded ID / signed QR).
+  int? get uploadedFor => _intOrNull(reading['uploaded_for']);
+  int? get sheetStudentId => _intOrNull(reading['read_student_id']) ?? _intOrNull(reading['qr_student_id']);
+
+  // handwriting (D-160)
+  bool get written => kOmrWrittenKinds.contains(kind);
+
+  /// What the reader read, or the teacher's corrected text ("\n" between blanks).
+  String get writtenText => '${reading['text'] ?? asMap(reading['reading'])['text'] ?? ''}';
+
+  /// One text per blank (completion), else the one text.
+  List<String> get texts {
+    final x = _strs(reading['texts']);
+    if (x.isNotEmpty) return x;
+    final b = blanks;
+    if (b.isNotEmpty) return [for (final v in b) v.given];
+    return [writtenText];
+  }
+
+  List<OmrBlank> get blanks => [for (final (i, b) in asMapList(reading['blanks']).indexed) OmrBlank.fromJson(i, b)];
+
+  /// How many texts a fix takes: the question's blanks, else the reading's.
+  int get blankCount {
+    if (kind != 'completion') return 1;
+    final q = question?.blanks;
+    if (q != null && q > 0) return q;
+    final b = asMapList(reading['blanks']).length;
+    return b > 0 ? b : 1;
+  }
+
+  /// The suggested score (null = no suggestion: the teacher sets the score).
+  double? get suggestedScore => _dbl(reading['suggested_score']);
+
+  /// The question's points on this paper.
+  double get maxPoints => _dbl(reading['max']) ?? _dbl(reading['points']) ?? question?.points ?? 0;
+  double get scoreStep => question?.step ?? 0.5;
+
+  /// A short answer's suggestion is being recomputed after a fix: "accept" is refused until it lands.
+  bool get pending => reading['pending'] == true;
+  bool get corrected => reading['corrected'] == true;
+  String? get lang => reading['lang']?.toString() ?? question?.lang;
+
+  /// full | partial | zero | empty | null.
+  String? get band => reading['band']?.toString();
+
+  /// 0 … 1, rescaled by the engine.
+  double? get similarity => _dbl(reading['similarity']);
+  List<OmrKeyword> get keywords => [
+        for (final k in asMapList(reading['keywords']))
+          OmrKeyword('${k['term'] ?? ''}',
+              found: k['found'] is List ? _strs(k['found']) : (k['found'] == null || '${k['found']}'.isEmpty ? const [] : ['${k['found']}']),
+              how: k['how']?.toString(),
+              weight: _dbl(k['weight'])),
+      ];
+
+  /// The keywords not found (the server's own list when sent, else the ones without a hit).
+  List<String> get missingKeywords {
+    final m = _strs(reading['missing_keywords']);
+    return m.isNotEmpty ? m : [for (final k in keywords) if (!k.hit) k.term];
+  }
+
+  List<String> get reasons => _strs(reading['reasons']);
+
+  /// The reader's confidence of a short answer; null for typed text.
+  double? get readConfidence => _dbl(asMap(reading['reading'])['confidence']);
+
+  /// The optional second reading (Arabic, low confidence; it never changes a score).
+  String? get secondPassText {
+    final v = asMap(reading['second_pass'])['text']?.toString();
+    return v == null || v.trim().isEmpty ? null : v;
+  }
+
+  /// One tap accepts the suggestion: the server has one and is not recomputing it.
+  bool get canAcceptSuggestion => written && can('accept') && !pending && suggestedScore != null;
 
   // form
   /// The exam's forms as the reading lists them (`forms: ["A", "B"]`).
@@ -245,6 +529,12 @@ class OmrReviewItem {
     return switch (a) {
       'choose' => _strs(r['options']).join(', '),
       'blank' => t('بلا إجابة', 'No answer'),
+      'accept' when written => t('قُبلت الدرجة المقترحة ${omrNum(_dbl(r['score']))}', 'Accepted the suggested ${omrNum(_dbl(r['score']))}'),
+      'set_score' => t('الدرجة ${omrNum(_dbl(r['score']))}', 'Score ${omrNum(_dbl(r['score']))}'),
+      'fix_text' when r['score'] != null => t('صُحّح النص · الدرجة ${omrNum(_dbl(r['score']))}', 'Text fixed · score ${omrNum(_dbl(r['score']))}'),
+      'fix_text' => t('صُحّح النص', 'Text fixed'),
+      'superseded' => t('طابقت إجابة مقبولة', 'Matched an accepted answer'),
+      'replaced' => t('استُبدلت الصفحة بصورة أوضح', 'The page was replaced with a clearer image'),
       'assign' || 'accept' || 'fix' => r['value'] != null ? t('الرقم ${r['value']}', 'ID ${r['value']}') : t('الطالب #${r['student_id']}', 'Student #${r['student_id']}'),
       'replace' => t('استُبدلت الورقة المصححة', 'Replaced the graded sheet'),
       'confirm' => t('النموذج ${r['form']}', 'Form ${r['form']}'),
@@ -318,8 +608,16 @@ class OmrResolveReply {
         nextItemId: _intOrNull(m['next_item_id']),
       );
 
+  /// The decided item is still open: a fixed text that matched near again, or a short answer being recomputed.
+  bool get stillOpen => item.open;
+
   /// The one line shown after the fix: the new score, or what still waits on this paper.
   String get summary {
+    if (item.open && item.written) {
+      return item.pending
+          ? t('حُفظ النص · تُحسب الدرجة المقترحة من جديد', 'Text saved · the suggestion is being worked out again')
+          : t('حُفظ النص وطوبق من جديد · أكّد الاقتراح الجديد أو حدّد الدرجة', 'Text saved and matched again · confirm the new suggestion or set the score');
+    }
     final a = attempt;
     if (a != null && a.graded) {
       final pct = a.percentage == null ? '' : ' · ${omrNum(a.percentage)}%';
@@ -335,14 +633,45 @@ class OmrResolveReply {
 }
 
 /// The body of a decision (only the keys the action takes).
-Map<String, dynamic> omrResolveBody(String action, {int? studentId, String? value, String? form, List<String>? options, String? reason}) => {
+Map<String, dynamic> omrResolveBody(String action,
+        {int? studentId, String? value, String? form, List<String>? options, double? score, String? text, List<String>? texts, String? reason}) =>
+    {
       'action': action,
       'student_id': ?studentId,
       'value': ?value,
       'form': ?form,
       'options': ?options,
+      'score': ?score,
+      'text': ?text,
+      'texts': ?texts,
       if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
     };
+
+/// `fix_text` of a handwritten item: one text, or one per blank when the question has several.
+Map<String, dynamic> omrFixTextBody(List<String> texts, {required int blanks}) => blanks > 1
+    ? omrResolveBody('fix_text', texts: [for (final x in texts) x.trim()])
+    : omrResolveBody('fix_text', text: (texts.isEmpty ? '' : texts.first).trim());
+
+/// The scores a teacher may set: 0 … [max] in steps of [step] (the full points always included).
+List<double> omrScoreSteps(double max, {double step = 0.5}) {
+  if (max <= 0 || step <= 0) return const [0];
+  final out = <double>[];
+  for (var i = 0; i * step < max - 1e-9; i++) {
+    out.add(double.parse((i * step).toStringAsFixed(4)));
+  }
+  out.add(max);
+  return out;
+}
+
+/// The nearest allowed score to [v] (0 … [max]).
+double omrSnapScore(double v, double max, {double step = 0.5}) {
+  final steps = omrScoreSteps(max, step: step);
+  var best = steps.first;
+  for (final s in steps) {
+    if ((s - v).abs() < (best - v).abs()) best = s;
+  }
+  return best;
+}
 
 // ── the full page ───────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -503,6 +832,14 @@ class OmrChange {
   String get summary {
     final o = asMap(old), n = asMap(next);
     switch (entity) {
+      case 'answer' when field == 'score':
+        final was = o['suggested'] == null ? t('بلا اقتراح', 'no suggestion') : t('مقترح ${omrNum(_dbl(o['suggested']))}', 'suggested ${omrNum(_dbl(o['suggested']))}');
+        return t('إجابة مكتوبة: $was ← ${omrNum(_dbl(n['score']))}', 'Written answer: $was → ${omrNum(_dbl(n['score']))}');
+      case 'answer' when field == 'text':
+        final now = n['text'] is List ? _strs(n['text']).join(' · ') : '${n['text'] ?? ''}';
+        return t('إجابة مكتوبة: صُحّح النص ← «$now»', 'Written answer: text corrected → "$now"');
+      case 'scan_page':
+        return t('استُبدلت صفحة مرفوضة بصورة أوضح', 'A rejected page was replaced with a clearer image');
       case 'answer':
         final was = '${o['state'] ?? ''}';
         final now = n['blank'] == true ? t('بلا إجابة', 'no answer') : _strs(n['options']).join(', ');
@@ -743,6 +1080,18 @@ String omrCodeText(String code) => switch (code) {
       'form_unconfirmed' => t('تعذّر تأكيد النموذج', 'Model could not be confirmed'),
       'form_unknown' => t('الورقة تحمل نموذجًا غير موجود في هذا الاختبار', 'The sheet names a form this exam does not have'),
       'qr_forged' => t('رمز QR في الورقة ليس رمزًا صالحًا لهذا الاختبار', "The sheet's QR code is not a valid code of this exam"),
+      'qr_mismatch' => t('هذه الورقة تخص اختبارًا آخر أو إصدارًا آخر', 'This sheet belongs to another exam or version'),
+      'key_missing' => t('مفتاح هذا النموذج لا يحوي إجابة هذا السؤال', "This form's answer key has no answer for this question"),
+      'near_match' => t('قريبة من إجابة مقبولة: أكّد الدرجة المقترحة', 'Close to an accepted answer: confirm the suggested credit'),
+      'low_confidence' => t('تعذّرت قراءة الخط بثقة', 'The handwriting could not be read with confidence'),
+      'checker_disagrees' => t('القارئان لم يقرآ النص نفسه', 'The two readers did not read the same text'),
+      'blank_box' => t('مربع الإجابة يبدو فارغًا', 'The answer box looks empty'),
+      'outcome_not_final' => t('لم تطابق أي إجابة مقبولة: أكّد الدرجة', 'No accepted answer matched: confirm the score'),
+      'handwriting_always_reviewed' => t('الخط العربي المكتوب باليد يراجعه المعلم دائمًا', 'Arabic handwriting is always checked by the teacher'),
+      'no_completion_rule' => t('الإجابات المكتوبة بخط اليد يراجعها المعلم', 'Handwriting is checked by the teacher'),
+      'several_blanks_in_one_box' => t('كُتبت عدة فراغات في مربع واحد', 'Several blanks were written in one box'),
+      'blank_count_mismatch' => t('عدد الأسطر لا يطابق عدد الفراغات', 'The number of lines does not match the number of blanks'),
+      'short_answer' => t('إجابة قصيرة: أكّد الدرجة أو عدّلها', 'Short answer: confirm or set the score'),
       'uncertain' => t('التظليل غير واضح', 'The mark is unclear'),
       'blank' => t('لم تُظلَّل أي إجابة', 'No answer was shaded'),
       'multiple' => t('ظُلِّلت أكثر من إجابة', 'More than one answer was shaded'),
@@ -760,6 +1109,13 @@ String omrErrorText(EngineResult r) {
     'page_gone' => t('الصفحة الممسوحة لم تعد متاحة', 'The scanned page is no longer available.'),
     'not_a_student' => t('طالب ليس من طلاب هذا الاختبار', 'This student is not in the exam.'),
     'review_items_open' => t('ما زالت هناك عناصر تنتظر المراجعة', 'Some items still need review.'),
+    'score_required' => t('أدخل الدرجة', 'Enter the score.'),
+    'score_invalid' => t('الدرجة من 0 إلى الدرجة الكاملة بخطوة 0.5', 'The score is 0 to the full points in steps of 0.5.'),
+    'texts_required' => t('اكتب النص الصحيح لكل فراغ', 'Type the corrected text of every blank.'),
+    'no_suggestion' => t('لا توجد درجة مقترحة — أدخل الدرجة', 'There is no suggested score: enter the score.'),
+    'suggestion_pending' => t('الاقتراح يُحسب الآن — أعد المحاولة بعد لحظة', 'The suggestion is being recomputed. Try again in a moment.'),
+    'question_not_in_exam' => t('السؤال لم يعد في الاختبار', 'The question is no longer in the exam.'),
+    'action_invalid' => t('هذا الإجراء غير متاح لهذا العنصر', 'That action is not available for this item.'),
     'forbidden' || 'org_forbidden' => t('ليست لديك صلاحية على هذا الاختبار', 'You do not have access to this exam.'),
     _ => '',
   };
@@ -787,12 +1143,10 @@ class OmrReviewApi {
   Future<EngineResult> publish(int examId, {bool gradedOnly = false}) =>
       engineCall(() => _api.post('$_b/exams/$examId/omr/results/publish', body: {'graded_only': gradedOnly}));
 
-  /// The exam (title, course) for the student search.
-  Future<EngineResult> exam(int examId) => engineCall(() => _api.get('$_b/exams/$examId'));
-
-  /// The course's students matching [search] (the core; the course's teacher and admins).
-  Future<EngineResult> students(int courseId, String search) =>
-      engineCall(() => _api.get('/api/v1/courses/$courseId/students', queryParams: {'search': search, 'limit': 20}));
+  /// The exam's audience matching [q] (a part of the name, or 3+ characters of the identifier; empty = A-Z):
+  /// `{items: [{student_id, name, identifier (masked), has_identifier}], total, source, label}` — the exam's managers.
+  Future<EngineResult> audience(int examId, String q, {int limit = 20}) =>
+      engineCall(() => _api.get('$_b/exams/$examId/omr/students', queryParams: {'q': q, 'limit': limit}));
 
   /// A signed crop / page image (`/api/v1/exam/omr/images/{crop|page}/{id}?exp=&sig=`); null when it cannot be read.
   Future<Uint8List?> image(String? signedUrl) async {
@@ -807,12 +1161,6 @@ class OmrReviewApi {
       return null;
     }
   }
-}
-
-/// Students from `GET /api/v1/courses/{id}/students` (`{items: [{id, name, gmail}]}`).
-List<OmrStudent> omrStudentsFrom(Map<String, dynamic> m) {
-  final rows = m['items'] is List ? asMapList(m['items']) : asMapList(m['value']);
-  return [for (final s in rows) OmrStudent(asInt(s['id']), '${s['name'] ?? ''}', email: s['gmail']?.toString())];
 }
 
 // ── export (Export Studio) ──────────────────────────────────────────────────────────────────────────────────────

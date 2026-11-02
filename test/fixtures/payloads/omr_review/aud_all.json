@@ -1,0 +1,38 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/students -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_students.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "student_id": 21,
+    "name": "Mona Adel",
+    "identifier": "••••••0121",
+    "has_identifier": true
+   },
+   {
+    "student_id": 22,
+    "name": "Omar Adel",
+    "identifier": "••••••0122",
+    "has_identifier": true
+   },
+   {
+    "student_id": 24,
+    "name": "Sara Nabil",
+    "identifier": null,
+    "has_identifier": false
+   },
+   {
+    "student_id": 23,
+    "name": "منى حسن",
+    "identifier": "••••••٠١٢٣",
+    "has_identifier": true
+   }
+  ],
+  "total": 4,
+  "source": "academic_id",
+  "label": {
+   "en": "Academic ID",
+   "ar": "الرقم الأكاديمي"
+  }
+ }
+}

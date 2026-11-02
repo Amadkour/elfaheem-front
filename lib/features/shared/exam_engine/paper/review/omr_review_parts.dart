@@ -12,13 +12,16 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../../../admin/admin_common.dart' show t;
+import '../scan/omr_scan.dart' show OmrReplaceResult;
 import 'omr_review.dart';
+import 'omr_review_written.dart';
 
 IconData omrKindIcon(String kind) => switch (kind) {
       'identifier' => Icons.badge_outlined,
       'form' => Icons.qr_code_2_rounded,
       'bubble' => Icons.radio_button_checked_rounded,
-      'handwriting' => Icons.draw_outlined,
+      'handwriting' || 'completion' => Icons.draw_outlined,
+      'short_answer' => Icons.notes_rounded,
       'quality' => Icons.image_search_rounded,
       _ => Icons.help_outline_rounded,
     };
@@ -126,6 +129,8 @@ class OmrFixCallbacks {
     this.onDismiss,
     this.onReplace,
     this.onOpenPaper,
+    this.onSetScore,
+    this.onFixText,
   });
 
   final ValueChanged<List<String>>? onChoose;
@@ -140,6 +145,10 @@ class OmrFixCallbacks {
   final VoidCallback? onDismiss;
   final VoidCallback? onReplace;
   final VoidCallback? onOpenPaper;
+
+  /// Handwritten answers: set the score (0 … points, step 0.5) / fix the recognised text (one text per blank).
+  final ValueChanged<double>? onSetScore;
+  final ValueChanged<List<String>>? onFixText;
 }
 
 /// One review item: the crop next to the system's reading, why it is here, and its one-click fix.
@@ -187,6 +196,10 @@ class OmrReviewItemCard extends StatelessWidget {
           Text(item.reason, key: const ValueKey('omr.item.reason'), style: appText(16, w: FontWeight.w700, c: c.textDark)),
           const SizedBox(height: 2),
           Text(_where(), style: appText(12.5, c: c.textMedium)),
+          if (item.detail != null && item.open) ...[
+            const SizedBox(height: AppSpace.xxs),
+            Text(item.detail!, key: const ValueKey('omr.item.detail'), style: appText(13, c: c.textDark, h: 1.35)),
+          ],
         ]),
       ),
       if (position != null) ...[const SizedBox(width: AppSpace.xs), AppBadgePill(position!, color: c.textMedium)],
@@ -248,11 +261,18 @@ class OmrReviewItemCard extends StatelessWidget {
   }
 
   Widget _fixFor(BuildContext context) => switch (item.kind) {
+        'bubble' when item.code == 'key_missing' => const OmrKeyMissingFix(),
         'bubble' => OmrBubbleFix(item: item, picked: picked, onToggle: onToggle, onChoose: fix.onChoose, onBlank: fix.onBlank),
         'identifier' => OmrIdentifierFix(key: ValueKey('omr.idfix.${item.id}'), item: item, fix: fix),
         'form' => OmrFormFix(item: item, onConfirm: fix.onConfirmForm, onDismiss: fix.onDismiss),
-        // TODO(omr): handwriting items (agent F, wave 3) have no actions on the server yet; until they do, a kind the
-        // app does not know gets the reason, the crop and "set aside" only.
+        'completion' || 'short_answer' => OmrWrittenFix(
+            // a fresh reading (matched again / recomputed) starts a fresh form
+            key: ValueKey('omr.wfix.${item.id}.${item.writtenText.hashCode}.${item.pending}.${item.suggestedScore}'),
+            item: item,
+            onAccept: fix.onAccept,
+            onSetScore: fix.onSetScore,
+            onFixText: fix.onFixText),
+        // a kind the app does not know yet: the reason, the crop and "set aside" when the server allows it
         _ => OmrDismissFix(item: item, onDismiss: fix.onDismiss),
       };
 }
@@ -269,6 +289,8 @@ class _ReadingBlock extends StatelessWidget {
     final title = Text(t('ما قرأه النظام', 'What the system read'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium));
     final List<Widget> body;
     switch (item.kind) {
+      case 'completion' || 'short_answer':
+        body = [OmrWrittenReading(item: item)];
       case 'bubble':
         final fills = item.fills;
         body = [
@@ -286,7 +308,7 @@ class _ReadingBlock extends StatelessWidget {
           else
             Text(t('لم يُقرأ رقم', 'No number read'), style: appText(15, w: FontWeight.w600, c: c.textDark)),
           if (item.digits.any((d) => d.confidence != null)) ...[const SizedBox(height: AppSpace.xs), OmrDigitsRow(digits: item.digits)],
-          if (cands.isNotEmpty) ...[
+          if (cands.length > 1 && item.code == 'identifier_duplicate') ...[
             const SizedBox(height: AppSpace.xs),
             Text(t('${cands.length} طلاب لديهم هذا الرقم', '${cands.length} students have this ID'), style: appText(13, c: c.textMedium)),
           ],
@@ -498,7 +520,45 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
   bool _noSearch = false;
   int _seq = 0;
 
-  static const _noAccept = {'identifier_no_match', 'identifier_duplicate', 'identifier_blank', 'identifier_missing', 'identifier_not_set'};
+  /// Names of the students a conflict names (the audience's first page; else "#id").
+  final Map<int, OmrStudent> _known = {};
+
+  static const _noAccept = {'identifier_no_match', 'identifier_duplicate', 'identifier_blank', 'identifier_missing', 'identifier_not_set', 'identifier_conflict'};
+
+  @override
+  void initState() {
+    super.initState();
+    for (final c in widget.item.candidates) {
+      _known[c.id] = c;
+    }
+    final s = widget.fix.onSearch;
+    if (widget.item.code == 'identifier_conflict' && s != null) {
+      s('').then((r) {
+        if (!mounted || r == null) return;
+        setState(() {
+          for (final x in r) {
+            _known.putIfAbsent(x.id, () => x);
+          }
+        });
+      });
+    }
+  }
+
+  /// identifier_conflict: the students the page points at, each with why (uploaded for · shaded ID · QR code).
+  List<(OmrStudent, String)> _conflictChoices() {
+    final it = widget.item;
+    final out = <(OmrStudent, String)>[];
+    final seen = <int>{};
+    void add(int? id, String why) {
+      if (id == null || !seen.add(id)) return;
+      out.add((_known[id] ?? OmrStudent(id, ''), why));
+    }
+
+    add(it.uploadedFor, t('رُفعت الورقة باسمه', 'The page was uploaded for this student'));
+    add(int.tryParse('${it.reading['read_student_id'] ?? ''}'), t('رقمه مظلّل على الورقة: ${it.readValue}', "The sheet shows this student's ID: ${it.readValue}"));
+    add(int.tryParse('${it.reading['qr_student_id'] ?? ''}'), t('رمز QR في الورقة يحمل اسمه', "The sheet's QR code names this student"));
+    return out;
+  }
 
   @override
   void dispose() {
@@ -527,10 +587,17 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
     final c = context.colors;
     final it = widget.item;
     final f = widget.fix;
-    final cands = it.candidates;
+    final conflict = it.code == 'identifier_conflict' ? _conflictChoices() : const <(OmrStudent, String)>[];
+    final cands = conflict.isNotEmpty ? const <OmrStudent>[] : it.candidates;
     final canAccept = it.can('accept') && it.readValue.isNotEmpty && !_noAccept.contains(it.code);
     final section = appText(13, w: FontWeight.w700, c: c.textMedium);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (conflict.isNotEmpty && it.can('assign') && f.onAssign != null) ...[
+        Text(t('لمن هذه الورقة؟', 'Whose sheet is this?'), style: section),
+        const SizedBox(height: AppSpace.xs),
+        for (final (s, why) in conflict) _StudentRow(student: s, note: why, onTap: () => f.onAssign!(s)),
+        const SizedBox(height: AppSpace.md),
+      ],
       if (canAccept) ...[
         FilledButton.icon(
           key: const ValueKey('omr.id.accept'),
@@ -550,7 +617,7 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
         const SizedBox(height: AppSpace.md),
       ],
       if (cands.isNotEmpty && it.can('assign')) ...[
-        Text(t('لمن هذه الورقة؟', 'Whose sheet is this?'), style: section),
+        Text(cands.length == 1 ? t('هل هي ورقة هذا الطالب؟', "Is it this student's sheet?") : t('لمن هذه الورقة؟', 'Whose sheet is this?'), style: section),
         const SizedBox(height: AppSpace.xs),
         for (final s in cands) _StudentRow(student: s, onTap: f.onAssign == null ? null : () => f.onAssign!(s)),
         const SizedBox(height: AppSpace.md),
@@ -593,7 +660,7 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search_rounded),
-              hintText: t('ابحث بالاسم أو البريد', 'Search by name or email'),
+              hintText: t('ابحث بالاسم أو برقم الطالب', 'Search by name or student ID'),
             ),
           )
         else
@@ -640,16 +707,28 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
 }
 
 class _StudentRow extends StatelessWidget {
-  const _StudentRow({required this.student, required this.onTap});
+  const _StudentRow({required this.student, required this.onTap, this.note});
   final OmrStudent student;
   final VoidCallback? onTap;
+
+  /// Why this student is offered (a conflict's "uploaded for" / "shaded ID").
+  final String? note;
+
+  /// The second line: why, the masked ID (left to right), how close it is, else the e-mail.
+  String get _sub => [
+        if ((note ?? '').isNotEmpty) note!,
+        if ((student.identifier ?? '').isNotEmpty) omrLtr(student.identifier!),
+        if (student.distance != null && student.distance! > 0)
+          t('يختلف في ${student.distance} خانة', '${student.distance} digit${student.distance == 1 ? '' : 's'} differ${student.distance == 1 ? 's' : ''}'),
+        if ((student.identifier ?? '').isEmpty && (student.email ?? '').isNotEmpty) student.email!,
+      ].join(' · ');
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Semantics(
       button: true,
-      label: t('عيّن الورقة إلى ${student.label}', 'Assign the sheet to ${student.label}'),
+      label: t('عيّن الورقة إلى ${student.label}${_sub.isEmpty ? '' : '، $_sub'}', 'Assign the sheet to ${student.label}${_sub.isEmpty ? '' : ', $_sub'}'),
       excludeSemantics: true,
       child: InkWell(
         key: ValueKey('omr.student.${student.id}'),
@@ -665,8 +744,7 @@ class _StudentRow extends StatelessWidget {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                   Text(student.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
-                  if ((student.email ?? '').isNotEmpty)
-                    Text(student.email!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+                  if (_sub.isNotEmpty) Text(_sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
                 ]),
               ),
               Icon(Icons.person_add_alt_1_rounded, size: 20, color: c.primary),
@@ -689,19 +767,25 @@ class OmrFormFix extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final forms = item.forms.isNotEmpty ? item.forms : ({...item.markersRead.values}.toList()..sort());
+    // another exam's / version's sheet: its bubbles were read with THIS sheet's layout — it can only be set aside
+    final confirm = item.can('confirm') && onConfirm != null;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(t('ما نموذج هذه الورقة؟', 'Which form is this sheet?'), style: appText(14, w: FontWeight.w600, c: c.textDark)),
-      const SizedBox(height: AppSpace.sm),
-      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-        for (final (i, f) in forms.indexed)
-          OmrOptionButton(
-            key: ValueKey('omr.form.$f'),
-            label: f,
-            hint: '${i + 1}',
-            semantics: t('النموذج $f', 'Form $f'),
-            onTap: onConfirm == null ? null : () => onConfirm!(f),
-          ),
-      ]),
+      if (!confirm)
+        Text(t('لا تُصحَّح هذه الورقة هنا', 'This sheet is not graded here'), key: const ValueKey('omr.form.noConfirm'), style: appText(14, w: FontWeight.w600, c: c.textDark))
+      else ...[
+        Text(t('ما نموذج هذه الورقة؟', 'Which form is this sheet?'), style: appText(14, w: FontWeight.w600, c: c.textDark)),
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          for (final (i, f) in forms.indexed)
+            OmrOptionButton(
+              key: ValueKey('omr.form.$f'),
+              label: f,
+              hint: '${i + 1}',
+              semantics: t('النموذج $f', 'Form $f'),
+              onTap: onConfirm == null ? null : () => onConfirm!(f),
+            ),
+        ]),
+      ],
       if (item.can('dismiss')) ...[
         const SizedBox(height: AppSpace.sm),
         TextButton.icon(
@@ -711,6 +795,29 @@ class OmrFormFix extends StatelessWidget {
           label: Text(t('تنحية الورقة (لا تُصحَّح)', 'Set the paper aside (not graded)')),
         ),
       ],
+    ]);
+  }
+}
+
+/// A form key without this question (several forms): no answer chosen here can be graded — the key is fixed in the
+/// exam setup, and the sheets are graded again at once (the server's manual change).
+class OmrKeyMissingFix extends StatelessWidget {
+  const OmrKeyMissingFix({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(Icons.key_off_rounded, color: c.warning, size: 22),
+      const SizedBox(width: AppSpace.xs),
+      Expanded(
+        child: Text(
+          t('لا قرار هنا: الإجابة المظلّلة مقروءة بوضوح، لكن لا يوجد مفتاح يُصحَّح به هذا السؤال لهذا النموذج.',
+              'Nothing to decide here: the shaded answer is read clearly, but this form has no key to grade the question with.'),
+          key: const ValueKey('omr.keyMissing'),
+          style: appText(14, c: c.textDark, h: 1.35),
+        ),
+      ),
     ]);
   }
 }
@@ -985,6 +1092,135 @@ class OmrOverlayPainter extends CustomPainter {
   @override
   bool shouldRepaint(OmrOverlayPainter old) =>
       old.page != page || old.focusN != focusN || old.clear != clear || old.flagged != flagged || old.other != other;
+}
+
+/// The page's state in words, and for a rejected page "Replace this page" with the gate's answer (accepted → open
+/// the new page; refused → the exact reason, nothing stored).
+class OmrPageStatusCard extends StatelessWidget {
+  const OmrPageStatusCard({super.key, required this.page, this.replacing = false, this.result, this.onReplace, this.onOpenNew});
+  final OmrPageView page;
+  final bool replacing;
+  final OmrReplaceResult? result;
+  final VoidCallback? onReplace;
+  final VoidCallback? onOpenNew;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final res = result;
+    final (Color color, IconData icon, String text) = switch (page.status) {
+      'rejected' => (c.danger, Icons.image_not_supported_outlined,
+          page.problem.isNotEmpty ? page.problem : t('رُفضت صورة هذه الصفحة ولم تُصحَّح', 'This page was refused and not graded')),
+      'replaced' => (c.primary, Icons.find_replace_rounded, t('استُبدلت هذه الصفحة بصورة أوضح', 'This page was replaced with a clearer image')),
+      'review' => (c.warning, Icons.rate_review_outlined, t('تنتظر قرارك قبل حساب الدرجة', 'Waits for your decision before it is scored')),
+      'processed' => (c.success, Icons.check_circle_outline_rounded, t('قُرئت وصُححت', 'Read and graded')),
+      'dismissed' => (c.textMedium, Icons.do_not_disturb_on_outlined, t('نُحّيت — لا تُصحَّح', 'Set aside — not graded')),
+      'purged' => (c.textMedium, Icons.auto_delete_outlined, t('حُذفت الصورة بعد مدة الاحتفاظ', 'The image was removed after the retention period')),
+      'failed' => (c.danger, Icons.error_outline_rounded, t('تعذّرت قراءة هذه الصفحة', 'This page could not be read')),
+      _ => (c.primary, Icons.hourglass_top_rounded, t('تُقرأ الآن', 'Being read now')),
+    };
+    return AppCard(
+      key: const ValueKey('omr.page.status'),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, color: color),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(child: Text(text, style: appText(14.5, w: FontWeight.w700, c: c.textDark, h: 1.35))),
+        ]),
+        if (res != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          Semantics(
+            liveRegion: true,
+            child: AppBanner(
+              key: const ValueKey('omr.page.replaceResult'),
+              icon: res.accepted ? Icons.check_circle_outline_rounded : Icons.block_rounded,
+              color: res.accepted ? c.success : c.danger,
+              text: res.accepted ? res.text : res.refusal,
+            ),
+          ),
+          if (res.accepted && onOpenNew != null) ...[
+            const SizedBox(height: AppSpace.xs),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                key: const ValueKey('omr.page.openNew'),
+                onPressed: onOpenNew,
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: Text(t('افتح الصفحة الجديدة', 'Open the new page')),
+              ),
+            ),
+          ],
+        ],
+        if (onReplace != null && !(res?.accepted ?? false)) ...[
+          const SizedBox(height: AppSpace.sm),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: replacing
+                ? Row(mainAxisSize: MainAxisSize.min, children: [
+                    const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(width: AppSpace.xs),
+                    Text(t('تُفحص الصورة…', 'Checking the photo…'), style: appText(13.5, c: c.textMedium)),
+                  ])
+                : FilledButton.tonalIcon(
+                    key: const ValueKey('omr.page.replace'),
+                    style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                    onPressed: onReplace,
+                    icon: const Icon(Icons.find_replace_rounded),
+                    label: Text(t('استبدال هذه الصفحة', 'Replace this page')),
+                  ),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+/// The page's decisions that are not one question's bubbles (student ID, form, handwriting, image quality): one tap
+/// opens the item in the review queue.
+class OmrPageItemsList extends StatelessWidget {
+  const OmrPageItemsList({super.key, required this.page, this.onItem});
+  final OmrPageView page;
+  final ValueChanged<int>? onItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final open = [for (final i in page.items) if (i.status == 'open' && i.kind != 'bubble') i];
+    if (open.isEmpty) return const SizedBox.shrink();
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(t('ينتظر قرارك', 'Waiting for your decision'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+      const SizedBox(height: AppSpace.xs),
+      for (final i in open)
+        Semantics(
+          button: onItem != null,
+          label: '${omrKindLabel(i.kind)}: ${omrCodeText(i.code)}',
+          excludeSemantics: true,
+          child: InkWell(
+            key: ValueKey('omr.page.item.${i.id}'),
+            onTap: onItem == null ? null : () => onItem!(i.id),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+                child: Row(children: [
+                  Icon(omrKindIcon(i.kind), size: 20, color: c.warning),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Text(omrCodeText(i.code), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
+                      Text(omrKindLabel(i.kind), style: appText(12, c: c.textMedium)),
+                    ]),
+                  ),
+                  if (onItem != null) Icon(Icons.chevron_right_rounded, color: c.textMedium),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      const SizedBox(height: AppSpace.sm),
+    ]);
+  }
 }
 
 /// The page's questions as read, under the image: "Q4 · multiple · A, D · waiting".

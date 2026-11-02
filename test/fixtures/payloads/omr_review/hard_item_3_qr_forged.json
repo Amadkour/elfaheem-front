@@ -1,0 +1,74 @@
+{
+ "_source": "GET /api/v1/exam/exams/2/review-items/3 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_hardening.py (back worktree wt-back-omr); read by the recorder right after the script, as the exam's teacher",
+ "_status": 200,
+ "payload": {
+  "id": 3,
+  "scan_page_id": 3,
+  "attempt_id": null,
+  "question_id": null,
+  "kind": "form",
+  "code": "qr_forged",
+  "reading": {
+   "signed": false,
+   "exam_ok": false,
+   "template_ok": false,
+   "reason": "qr_forged",
+   "en": "The sheet's QR code is not a valid code of this exam",
+   "ar": "رمز QR في الورقة ليس رمزًا صالحًا لهذا الاختبار"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T08:42:26.870830",
+  "actions": [
+   "confirm",
+   "dismiss"
+  ],
+  "has_crop": true,
+  "en": "The sheet's QR code is not a valid code of this exam",
+  "ar": "رمز QR في الورقة ليس رمزًا صالحًا لهذا الاختبار",
+  "crop_url": "/api/v1/exam/omr/images/crop/3?exp=1793609548&sig=e747b498d1ee721e07c7b6076170167a",
+  "system_reading": {
+   "reading_id": 3,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "form": {
+    "status": "unconfirmed",
+    "value": null,
+    "reason": "marker_unread",
+    "unread": [
+     "qr"
+    ],
+    "markers": {
+     "qr": {
+      "value": null,
+      "payload": "NBO1|t=1|v=1|x=2|h=AAAAAAAAAAAAAAAA",
+      "status": "no_form"
+     }
+    },
+    "en": "Model could not be confirmed",
+    "ar": "تعذّر تأكيد النموذج",
+    "box": [
+     1133,
+     204,
+     419,
+     206
+    ],
+    "qr_check": {
+     "present": true,
+     "signed": false,
+     "exam_ok": false,
+     "template_ok": false,
+     "form": null,
+     "student_id": null
+    }
+   }
+  },
+  "page": {
+   "id": 3,
+   "page_label": "1",
+   "status": "review",
+   "url": "/api/v1/exam/exams/2/omr/pages/3"
+  }
+ }
+}
