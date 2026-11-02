@@ -395,7 +395,7 @@ class WideShell extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : 'Al-Faheem',
+                                  AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : 'NextBrain',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(

@@ -501,7 +501,7 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
               controller: _package,
               onChanged: _rebuild,
               label: t('اسم الحزمة', 'Package name'),
-              hint: 'site.nextbrain.app',
+              hint: 'com.doubley.nextbrain',
               helper: t('يُسجَّل مع الإصدار؛ تغيير معرّف التطبيق قرار منفصل', 'Recorded with the version; changing the app id is a separate decision'),
               ltr: true,
               error: _errors['package_name'],

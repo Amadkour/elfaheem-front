@@ -66,7 +66,7 @@ class NotificationService {
   // ── Android channel ───────────────────────────────────────────────────────
   static const _channel = AndroidNotificationChannel(
     'elfaheem_main',
-    'ElFaheem Notifications',
+    'NextBrain Notifications',
     description: 'Course updates, payments, and reminders',
     importance: Importance.max,
   );
@@ -79,7 +79,7 @@ class NotificationService {
   static NotificationDetails _withGenerateAction() => NotificationDetails(
         android: AndroidNotificationDetails(
           'elfaheem_main',
-          'ElFaheem Notifications',
+          'NextBrain Notifications',
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
@@ -91,7 +91,7 @@ class NotificationService {
   static const _notifDetails = NotificationDetails(
     android: AndroidNotificationDetails(
       'elfaheem_main',
-      'ElFaheem Notifications',
+      'NextBrain Notifications',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,

@@ -9506,8 +9506,8 @@
     "ar": "أدر حسابك والمظهر والإعدادات من هنا."
   },
   "guest_promo_title": {
-    "en": "Join Al-Faheem",
-    "ar": "انضم إلى الفهيم"
+    "en": "Join NextBrain",
+    "ar": "انضم إلى NextBrain"
   },
   "guest_promo_sub": {
     "en": "Create a free account to enroll, track progress and join live sessions.",
@@ -9658,8 +9658,8 @@
     "ar": "مشاركة"
   },
   "pl_share_text": {
-    "en": "My ElFaheem parent link code:",
-    "ar": "كود ربط ولي الأمر في الفهيم:"
+    "en": "My NextBrain parent link code:",
+    "ar": "كود ربط ولي الأمر في NextBrain:"
   },
   "pl_code_hidden": {
     "en": "A code is active but is shown only once. Create a new one to see it.",
@@ -12360,6 +12360,10 @@
   "about_retry": {
     "ar": "حاول مرة أخرى",
     "en": "Try again"
+  },
+  "about_developed_by": {
+    "ar": "تطوير DoubleY",
+    "en": "Developed by DoubleY"
   },
   "about_version": {
     "ar": "الإصدار",

@@ -50,7 +50,7 @@ messaging.onBackgroundMessage((payload) => {
   // A data-only push (silent event) shows nothing.
   if (!payload.notification) return;
 
-  const title = payload.notification.title || "ElFaheem";
+  const title = payload.notification.title || "NextBrain";
   const body = payload.notification.body || "";
 
   self.registration.showNotification(title, {

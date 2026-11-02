@@ -488,6 +488,10 @@ class _AboutScreenState extends State<AboutScreen> {
                 if (name.isNotEmpty)
                   Text('© ${DateTime.now().year} $name',
                       textAlign: TextAlign.center, style: appText(12.5, w: FontWeight.w500, c: c.textLight, h: 1.4)),
+                // D-145: the developer, under the copyright line
+                Text('about_developed_by'.tr,
+                    key: const ValueKey('about.developer'),
+                    textAlign: TextAlign.center, style: appText(12.5, w: FontWeight.w500, c: c.textLight, h: 1.4)),
               ],
             );
           });
