@@ -26,6 +26,7 @@ import '../../features/admin/admin_common.dart' show t;
 import '../app_kit.dart';
 import '../app_notice.dart';
 import '../app_tokens.dart';
+import '../export/export_studio_model.dart' show exportLtr;
 import '../export_hub/export_flow_parts.dart' show ExportFormatCard;
 import '../studio/studio.dart';
 import 'layout_canvas.dart';
@@ -1381,10 +1382,10 @@ class LayoutExportCard extends StatelessWidget {
       LayoutRunPhase.preparing => t('يجهّز التصدير…', 'Preparing the export…'),
       LayoutRunPhase.running => '${t('يُنشئ الملف', 'Creating the file')} · ${run?.progress ?? 0}%${run?.rows == null ? '' : ' · ${run!.rows} ${t('عنصر', 'items')}'}',
       LayoutRunPhase.downloading => t('يُنزّل الملف…', 'Downloading the file…'),
-      LayoutRunPhase.done => '${t('تم الحفظ', 'Saved')}: ${f.savedName ?? ''}',
+      LayoutRunPhase.done => '${t('تم الحفظ', 'Saved')}: ${exportLtr(f.savedName ?? '')}',
       LayoutRunPhase.failed => f.runError ?? '',
       LayoutRunPhase.cancelled => t('أُلغي التصدير', 'The export was cancelled'),
-      LayoutRunPhase.idle => '${f.fileName} · ${f.export.rows.length} ${t('عنصر', 'items')}',
+      LayoutRunPhase.idle => '${exportLtr(f.fileName)} · ${f.export.rows.length} ${t('عنصر', 'items')}',
     };
     return LayoutSection(title: t('التصدير', 'Export'), children: [
       Text(status, key: const ValueKey('layout-run-status'), style: appText(13, w: FontWeight.w500, c: phase == LayoutRunPhase.failed ? c.danger : c.textDark)),

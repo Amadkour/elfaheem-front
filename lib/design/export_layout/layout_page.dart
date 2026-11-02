@@ -25,6 +25,7 @@ import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library
 import '../app_kit.dart';
 import '../app_notice.dart';
 import '../app_tokens.dart';
+import '../export/export_studio_model.dart' show exportLtr;
 import '../export_hub/export_flow_parts.dart' show ExportFlowStepper;
 import 'layout_api.dart';
 import 'layout_flow_controller.dart';
@@ -73,7 +74,7 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
         await saver.dlSaveBytes(bytes, name, mime);
       }
       widget.onFileSaved?.call();
-      showAppNotice('${t('تم الحفظ', 'Saved')}: $name');
+      showAppNotice('${t('تم الحفظ', 'Saved')}: ${exportLtr(name)}');  // the file name reads left to right
     },
   );
   bool _ready = false;

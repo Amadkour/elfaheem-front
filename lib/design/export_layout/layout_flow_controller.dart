@@ -254,7 +254,6 @@ class LayoutFlowController extends ChangeNotifier {
     if (!r.ok || r.data!.isEmpty || _disposed) return;
     final next = layoutFieldsOfDataset(r.data!, fields);
     if (next.isEmpty) return;
-    final keys = {for (final f in next) f.key};
     fields = next;
     datasetFields = true;
     for (final l in doc.languages) {
@@ -266,8 +265,6 @@ class LayoutFlowController extends ChangeNotifier {
         d.list = s.list;
         d.table = s.table;
         d.row = s.row;
-      } else if (!layoutReferencedFields(d).every(keys.contains)) {
-        _datasetMismatch = true;
       }
     }
     _gen++;
@@ -277,9 +274,9 @@ class LayoutFlowController extends ChangeNotifier {
   /// True while the document is still the page's starter (no draft, template or earlier export applied).
   bool _starterDoc = true;
 
-  /// A restored draft / template reads a field the dataset does not have (the server prints it empty).
-  bool _datasetMismatch = false;
-  bool get datasetMismatch => _datasetMismatch;
+  /// The design being shown reads a field the dataset does not have (the server prints it empty) — checked on the
+  /// current design, so picking another starter or field clears it.
+  bool get datasetMismatch => datasetFields && !layoutReferencedFields(design).every((k) => fieldOf(k) != null);
 
   // ── draft + remembered template ────────────────────────────────────────────────────────────────────────────
   Timer? _autosave;
@@ -410,9 +407,6 @@ class LayoutFlowController extends ChangeNotifier {
     _dirty = false;
     restoredDraft = false;
     await discardDraft();
-    if (fields.isNotEmpty && datasetFields && !doc.designs.values.every((x) => layoutReferencedFields(x).every((k) => fieldOf(k) != null))) {
-      _datasetMismatch = true;
-    }
     _notify();
     return null;
   }
@@ -477,7 +471,7 @@ class LayoutFlowController extends ChangeNotifier {
       for (final i in [
         ...?preview?.issues,
         ...layoutLocalIssues(design, doc.format),
-        if (_datasetMismatch)
+        if (datasetMismatch)
           const LayoutIssue(
             code: 'dataset_fields_missing',
             severity: 'warning',
