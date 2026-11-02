@@ -3,9 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>520907928286-254vko0lkdpq2gq29bqapdt8mlobt9rf.apps.googleusercontent.com</string>
+	<string>520907928286-s4btpcd6lfq1mv3hbvqp2mmh2fe8r3i2.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.520907928286-254vko0lkdpq2gq29bqapdt8mlobt9rf</string>
+	<string>com.googleusercontent.apps.520907928286-s4btpcd6lfq1mv3hbvqp2mmh2fe8r3i2</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>520907928286-f2nihv8cbg2ilea2f0t3hqm5rpkvjv24.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyDp7KmV-jpsMbE74KLHm3K6VSYr05pu5Dw</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.softkour.elfaheem</string>
+	<string>com.doubley.nextbrain</string>
 	<key>PROJECT_ID</key>
 	<string>elfaheem</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:520907928286:ios:6ef4f92e5dbb854577884f</string>
+	<string>1:520907928286:ios:4da3fb02e605cfe677884f</string>
 </dict>
 </plist>

@@ -58,7 +58,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBjtZYFJ5j6JhvppWAuqpuQxa7B1Ka09wg',
-    appId: '1:520907928286:android:c262d4fcaa8a4a4277884f',
+    appId: '1:520907928286:android:4806ebf35b912c5a77884f',
     messagingSenderId: '520907928286',
     projectId: 'elfaheem',
     storageBucket: 'elfaheem.firebasestorage.app',
@@ -66,10 +66,10 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDp7KmV-jpsMbE74KLHm3K6VSYr05pu5Dw',
-    appId: '1:520907928286:ios:0d8cb6a92aa79d6b77884f',
+    appId: '1:520907928286:ios:4da3fb02e605cfe677884f',
     messagingSenderId: '520907928286',
     projectId: 'elfaheem',
     storageBucket: 'elfaheem.firebasestorage.app',
-    iosBundleId: 'com.example.flutterEducationApp',
+    iosBundleId: 'com.doubley.nextbrain',
   );
 }
