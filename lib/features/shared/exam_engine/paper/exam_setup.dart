@@ -5,6 +5,11 @@
 // sends), GET …/identifiers (the audience check, never a value), POST …/identifiers/request {due_at?},
 // POST …/identifiers/remind, GET / PUT …/forms (a PUT replaces the list), GET /api/v1/exam/omr/templates; the core's
 // GET /api/v1/identity-fields lists the platform's custom fields. Rules: exam_engine/services/omr_setup.py.
+//
+// The ID-zone check (`identifierZoneFit`, the server's `zone_fit` — keep them the same): a shaded grid / handwritten
+// boxes hold N digits; `block` when no value the identifier allows can go there (a name or an e-mail, or its shortest
+// allowed length > N — the server then refuses BLANK sheets, 409 identifier_zone_mismatch; a named sheet per student
+// still prints), `warn` when some values do not fit or missing students may type one that will not.
 library;
 
 import 'package:flutter_education_app/config/app_config.dart';
@@ -80,11 +85,14 @@ class IdentifierChoice {
 }
 
 class SetupTemplateRef {
-  const SetupTemplateRef({required this.id, required this.version, required this.name, required this.status});
+  const SetupTemplateRef({required this.id, required this.version, required this.name, required this.status, this.idZone});
   final int id;
   final int version;
   final String name;
   final String status;
+
+  /// The sheet's student-ID zone (null from an older server).
+  final IdZone? idZone;
 }
 
 /// `GET /exams/{id}/setup`.
@@ -103,6 +111,7 @@ class ExamSetup {
     this.forms = 0,
     this.paperSections = 0,
     this.warnings = const [],
+    this.identifierFit,
   });
 
   final int examId;
@@ -125,6 +134,9 @@ class ExamSetup {
   final int paperSections;
   final List<String> warnings;
 
+  /// Does the identifier fit the pinned bubble sheet's ID zone (the server's answer; null: nothing to check).
+  final IdZoneFit? identifierFit;
+
   static ExamSetup fromJson(Map<String, dynamic> j) {
     final tpl = j['template'];
     return ExamSetup(
@@ -136,13 +148,19 @@ class ExamSetup {
       templateId: j['omr_template_id'] == null ? null : asInt(j['omr_template_id']),
       templateVersion: j['omr_template_version'] == null ? null : asInt(j['omr_template_version']),
       template: tpl is Map
-          ? SetupTemplateRef(id: asInt(tpl['id']), version: asInt(tpl['version'], 1), name: '${tpl['name'] ?? ''}', status: '${tpl['status'] ?? ''}')
+          ? SetupTemplateRef(
+              id: asInt(tpl['id']),
+              version: asInt(tpl['version'], 1),
+              name: '${tpl['name'] ?? ''}',
+              status: '${tpl['status'] ?? ''}',
+              idZone: tpl['id_zone'] is Map ? IdZone.fromJson(asMap(tpl['id_zone'])) : null)
           : null,
       policy: OmrPolicy.fromJson(j['omr_policy']),
       markers: [for (final m in (j['form_markers'] as List?) ?? const []) '$m'],
       forms: asInt(j['forms']),
       paperSections: asInt(j['paper_sections']),
       warnings: [for (final w in (j['warnings'] as List?) ?? const []) '$w'],
+      identifierFit: j['identifier_fit'] is Map ? IdZoneFit.fromJson(asMap(j['identifier_fit'])) : null,
     );
   }
 
@@ -258,6 +276,10 @@ class IdentifierReport {
     this.duplicates = const [],
     this.pending,
     this.done,
+    this.minLen,
+    this.maxLen,
+    this.valueLengths = const {},
+    this.nonDigit = 0,
   });
 
   final String source;
@@ -277,6 +299,14 @@ class IdentifierReport {
   final int? pending;
   final int? done;
 
+  /// The field's allowed lengths (null from an older server or when the field has none).
+  final int? minLen;
+  final int? maxLen;
+
+  /// {length: students} of the values that are plain digits, and how many values are not — counts, never a value.
+  final Map<int, int> valueLengths;
+  final int nonDigit;
+
   static IdentifierReport fromJson(Map<String, dynamic> j) {
     final req = j['requests'];
     return IdentifierReport(
@@ -295,6 +325,13 @@ class IdentifierReport {
       ],
       pending: req is Map ? asInt(req['pending']) : null,
       done: req is Map ? asInt(req['done']) : null,
+      minLen: j['min_len'] is num ? (j['min_len'] as num).toInt() : null,
+      maxLen: j['max_len'] is num ? (j['max_len'] as num).toInt() : null,
+      valueLengths: {
+        for (final e in asMap(j['value_lengths']).entries)
+          if (int.tryParse(e.key) != null) int.parse(e.key): asInt(e.value),
+      },
+      nonDigit: asInt(j['non_digit']),
     );
   }
 
@@ -315,7 +352,8 @@ String arNum(int n) => '$n';
 
 /// A row of `GET /omr/templates`: one VERSION of a bubble-sheet layout.
 class OmrTemplateItem {
-  const OmrTemplateItem({required this.id, required this.version, required this.name, this.description, this.status = 'published', this.questions = 0, this.options});
+  const OmrTemplateItem(
+      {required this.id, required this.version, required this.name, this.description, this.status = 'published', this.questions = 0, this.options, this.idZone});
   final int id;
   final int version;
   final String name;
@@ -326,6 +364,9 @@ class OmrTemplateItem {
   /// Choices per question. TODO(omr): the template list does not send it yet (only `questions`); shown when present.
   final int? options;
 
+  /// The student-ID zone (`id_kind` + `id_digits` of the library row; null when the server does not send it).
+  final IdZone? idZone;
+
   static OmrTemplateItem fromJson(Map<String, dynamic> j) => OmrTemplateItem(
         id: asInt(j['id']),
         version: asInt(j['version'], 1),
@@ -334,6 +375,7 @@ class OmrTemplateItem {
         status: '${j['status'] ?? ''}',
         questions: asInt(j['questions']),
         options: j['options'] is num ? (j['options'] as num).toInt() : null,
+        idZone: j['id_kind'] == null ? null : IdZone('${j['id_kind']}', j['id_digits'] is num ? (j['id_digits'] as num).toInt() : 0),
       );
 
   bool get published => status == 'published';
@@ -349,6 +391,181 @@ class OmrTemplateItem {
 
 /// The templates an exam can use: published only (a teacher's own drafts are listed by the server too).
 List<OmrTemplateItem> choosableTemplates(List<OmrTemplateItem> all) => [for (final x in all) if (x.published) x];
+
+// ── does the identifier fit the sheet's ID zone? ───────────────────────────────────────────────────────────────
+
+/// A sheet's student-ID zone: shaded columns / handwritten boxes hold [digits] digits; printed / qr / none are not
+/// checked (no fixed width, or no zone at all).
+class IdZone {
+  const IdZone(this.kind, this.digits);
+  final String kind;
+  final int digits;
+
+  static IdZone fromJson(Map<String, dynamic> j) => IdZone('${j['kind'] ?? 'none'}', asInt(j['digits']));
+
+  bool get checked => (kind == 'shaded' || kind == 'handwritten') && digits > 0;
+
+  @override
+  bool operator ==(Object other) => other is IdZone && other.kind == kind && other.digits == digits;
+
+  @override
+  int get hashCode => Object.hash(kind, digits);
+}
+
+/// The answer of the check: block | warn | ok, why (too_long | not_digits | values | missing_may_not_fit), and the
+/// numbers behind it.
+class IdZoneFit {
+  const IdZoneFit({
+    required this.status,
+    this.reason,
+    required this.zoneKind,
+    required this.zoneDigits,
+    this.kind = 'text',
+    this.minLen,
+    this.maxLen,
+    this.tooLong = 0,
+    this.nonDigit = 0,
+    this.missing = 0,
+    this.longest,
+  });
+
+  final String status;
+  final String? reason;
+  final String zoneKind;
+  final int zoneDigits;
+  final String kind;
+  final int? minLen;
+  final int? maxLen;
+
+  /// Students whose value is longer than the zone / is not only digits / have no value yet.
+  final int tooLong;
+  final int nonDigit;
+  final int missing;
+
+  /// The longest digits value held (null: none).
+  final int? longest;
+
+  static IdZoneFit fromJson(Map<String, dynamic> j) {
+    int? n(Object? v) => v is num ? v.toInt() : null;
+    return IdZoneFit(
+      status: '${j['status'] ?? 'ok'}',
+      reason: j['reason'] == null ? null : '${j['reason']}',
+      zoneKind: '${j['zone_kind'] ?? ''}',
+      zoneDigits: asInt(j['zone_digits']),
+      kind: '${j['kind'] ?? 'text'}',
+      minLen: n(j['min_len']),
+      maxLen: n(j['max_len']),
+      tooLong: asInt(j['too_long']),
+      nonDigit: asInt(j['non_digit']),
+      missing: asInt(j['missing']),
+      longest: n(j['longest']),
+    );
+  }
+
+  bool get blocks => status == 'block';
+  bool get warns => status == 'warn';
+}
+
+/// The server's `zone_fit` (exam_engine/services/omr_setup.py), for a template the teacher is looking at before it is
+/// saved. Null when the zone is not a digit zone.
+IdZoneFit? identifierZoneFit({
+  required String source,
+  required String kind,
+  int? minLen,
+  int? maxLen,
+  Map<int, int> lengths = const {},
+  int nonDigit = 0,
+  int missing = 0,
+  required IdZone zone,
+}) {
+  if (!zone.checked) return null;
+  final cap = zone.digits;
+  final lo = minLen != null && minLen > 0 ? minLen : null;
+  final hi = maxLen != null && maxLen > 0 ? maxLen : null;
+  final tooLong = lengths.entries.where((e) => e.key > cap).fold<int>(0, (s, e) => s + e.value);
+  final longest = lengths.isEmpty ? null : lengths.keys.reduce((a, b) => a > b ? a : b);
+  IdZoneFit fit(String status, String? reason) => IdZoneFit(
+      status: status,
+      reason: reason,
+      zoneKind: zone.kind,
+      zoneDigits: cap,
+      kind: kind,
+      minLen: lo,
+      maxLen: hi,
+      tooLong: tooLong,
+      nonDigit: nonDigit,
+      missing: missing,
+      longest: longest);
+  if (source == 'name' || kind == 'email') return fit('block', 'not_digits');
+  if (lo != null && lo > cap) return fit('block', 'too_long');
+  if (tooLong > 0 || nonDigit > 0) return fit('warn', 'values');
+  if (missing > 0 && ((hi != null && hi > cap) || kind != 'digits')) return fit('warn', 'missing_may_not_fit');
+  return fit('ok', null);
+}
+
+/// The check for [zone] from the audience report (null when either is missing or the zone is not checked).
+IdZoneFit? reportZoneFit(IdentifierReport? r, IdZone? zone) => r == null || zone == null
+    ? null
+    : identifierZoneFit(
+        source: r.source,
+        kind: r.kind ?? 'text',
+        minLen: r.minLen,
+        maxLen: r.maxLen,
+        lengths: r.valueLengths,
+        nonDigit: r.nonDigit,
+        missing: r.missingCount,
+        zone: zone);
+
+/// "10 shaded digits" / "10 handwritten boxes" / "printed ID" … for a sheet type's line.
+String idZoneLabel(IdZone z) => switch (z.kind) {
+      'shaded' => t('رقم الطالب: ${z.digits} أرقام بالتظليل', 'Student ID: ${z.digits} shaded digits'),
+      'handwritten' => t('رقم الطالب: ${z.digits} خانات بخط اليد', 'Student ID: ${z.digits} handwritten boxes'),
+      'printed' => t('رقم طالب مطبوع', 'Printed student ID'),
+      'qr' => t('رقم الطالب برمز QR', 'Student ID as a QR code'),
+      _ => t('بلا منطقة لرقم الطالب', 'No student-ID zone'),
+    };
+
+/// The card's words: a title, what is wrong, and the ways out (in order: another sheet type, another identifier,
+/// named sheets). [label] is the identifier's name in the current language.
+({String title, String body, List<String> fixes}) idZoneFitTexts(IdZoneFit f, String label) {
+  final n = f.zoneDigits;
+  final shaded = f.zoneKind == 'shaded';
+  final zoneAr = shaded ? 'منطقة التظليل ($n أعمدة)' : 'خانات رقم الطالب ($n خانات)';
+  final zoneEn = shaded ? 'ID grid ($n columns)' : 'ID boxes ($n boxes)';
+  final need = f.reason == 'too_long' ? f.minLen : (f.longest != null && f.longest! > n ? f.longest : f.maxLen);
+  final named = t('اطبع ورقة باسم كل طالب — رمز QR عليها يحدد الطالب، فلا يحتاج إلى التظليل',
+      'Print a named sheet per student — its QR code identifies the student, nothing to shade');
+  final other = t('عرّف الطلاب بقيمة أقصر (ارجع إلى خطوة «تحديد الطالب»)', 'Identify students by a shorter value (back to the Students step)');
+  final wider = need != null && need > n
+      ? t('اختر نوع ورقة بمنطقة $need أرقام على الأقل', 'Choose a sheet type with at least $need ID digits')
+      : t('اختر نوع ورقة آخر', 'Choose another sheet type');
+  if (f.blocks) {
+    final size = f.minLen == null ? '' : (f.minLen == f.maxLen || f.maxLen == null ? '${f.minLen}' : '${f.minLen}–${f.maxLen}');
+    final body = f.reason == 'not_digits'
+        ? t('$label ليس رقمًا، و$zoneAr تقبل الأرقام فقط. لن تُطبع أوراق فارغة لهذا الاختبار.',
+            '$label is not a number, and the $zoneEn takes digits only. Blank sheets will not print for this exam.')
+        : t('$label من $size رقمًا، و$zoneAr في هذه الورقة أقصر منه، فلن يستطيع أي طالب كتابته. لن تُطبع أوراق فارغة لهذا الاختبار.',
+            '$label has $size digits but this sheet\'s $zoneEn is shorter, so no student can fill it in. Blank sheets will not print for this exam.');
+    return (
+      title: t('$label لا يتسع في هذه الورقة', '$label does not fit this sheet'),
+      body: body,
+      fixes: [if (f.reason == 'too_long') wider, other, named],
+    );
+  }
+  final lines = <String>[
+    if (f.tooLong + f.nonDigit > 0)
+      t('${f.tooLong + f.nonDigit} من الطلاب قيمتهم أطول من $n أرقام أو فيها حروف — لن تُطابَق أوراقهم وستذهب للمراجعة.',
+          '${f.tooLong + f.nonDigit} ${f.tooLong + f.nonDigit == 1 ? 'student has a value' : 'students have values'} longer than $n digits or with letters — their sheets will not match and go to review.'),
+    if (f.reason == 'missing_may_not_fit' || (f.missing > 0 && f.tooLong + f.nonDigit == 0))
+      t('${f.missing} لم يُدخلوا قيمتهم بعد، وقد تكون أطول من $n أرقام أو فيها حروف.',
+          '${f.missing} ${f.missing == 1 ? 'student has' : 'students have'} not entered it yet, and it may be longer than $n digits or hold letters.'),
+  ];
+  return (
+    title: t('قد لا يتسع $label في هذه الورقة', '$label may not fit this sheet'),
+    body: lines.join(' '),
+    fixes: [wider, other, named],
+  );
+}
 
 // ── forms (models A / B / C …) ──────────────────────────────────────────────────────────────────────────────────
 
@@ -565,6 +782,7 @@ String setupCodeText(String? code, [Map<String, dynamic> detail = const {}]) => 
       'datalab_column_unsupported' => t('يُقرأ المعرّف من عمود تكتبه أنت فقط، لا من عمود محسوب', 'Only a column you type in can identify students, not a calculated one'),
       'identifiers_need_course' => t('اربط الاختبار بمقرر أولًا لنعرف طلابه (من محرر الاختبار)', 'Link the exam to a course first so we know its students (in the exam editor)'),
       'identifier_not_set' => t('اختر طريقة التعرف على الطالب أولًا', 'Choose how to identify students first'),
+      'identifier_zone_mismatch' => identifierZoneMismatchText(detail),
       'identifier_not_collectable' => t('هذه القيمة لا تُطلب من الطلاب — أكملها في جدول بيانات المقرر', 'Students cannot be asked for this one — fill it in the course\'s Data Lab sheet'),
       'identities_unavailable' => t('تعذّر الوصول إلى بيانات الطلاب الآن — أعد المحاولة بعد قليل', 'Student details are unreachable right now — try again in a moment'),
       'due_at_invalid' => t('تاريخ التسليم غير صالح — اختر تاريخًا آخر', 'That due date is not valid — pick another date'),
@@ -581,6 +799,19 @@ String setupCodeText(String? code, [Map<String, dynamic> detail = const {}]) => 
       'teachers_only' => t('مكتبة أوراق التظليل للمعلمين والإدارة', 'The bubble-sheet library is for teachers and staff'),
       _ => '',
     };
+
+/// 409 identifier_zone_mismatch (printing blank sheets): what is wrong and the three ways out.
+String identifierZoneMismatchText(Map<String, dynamic> detail) {
+  final n = detail['zone_digits'] ?? '?';
+  final lo = detail['min_len'];
+  final named = t('أو اطبع ورقة باسم كل طالب (رمز QR عليها يحدد الطالب)', 'or print a named sheet per student (its QR identifies the student)');
+  if (detail['reason'] == 'not_digits') {
+    return t('معرّف الطالب ليس رقمًا ولا يُكتب في منطقة رقم الطالب ($n أرقام) — عرّف الطلاب برقم، $named',
+        'The student identifier is not a number and cannot go on the $n-digit ID zone — identify students by a number, $named');
+  }
+  return t('معرّف الطالب ($lo رقمًا) أطول من منطقة رقم الطالب في الورقة ($n أرقام) — اختر نوع ورقة بمنطقة $lo أرقام على الأقل، أو معرّفًا أقصر، $named',
+      'The student identifier ($lo digits) is longer than the sheet\'s ID zone ($n digits) — choose a sheet type with at least $lo ID digits, or a shorter identifier, $named');
+}
 
 String _retryText(int seconds) {
   final m = (seconds / 60).ceil().clamp(1, 60);
