@@ -2,7 +2,7 @@
  "_source": {
   "route": "GET /api/v1/models",
   "status": 200,
-  "after": "POST /api/v1/models/36/download -> 202",
+  "after": "POST /api/v1/models/38/download -> 202",
   "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline); GET /api/v1/models recorded right after the change"
  },
  "payload": {
@@ -10,7 +10,7 @@
    {
     "role": "embedding",
     "active": "emb-base@v1",
-    "active_id": 34,
+    "active_id": 36,
     "previous": "multilingual-e5-small@int8-761b726",
     "previous_id": 1,
     "fallback": null,
@@ -25,14 +25,14 @@
     },
     "models": [
      {
-      "id": 35,
+      "id": 37,
       "role": "embedding",
       "name": "emb-768",
       "version": "v1",
       "ref": "emb-768@v1",
       "provider": "onnx",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/emb-768",
+      "repo": "http://127.0.0.1:58645/emb-768",
       "revision": null,
       "license": null,
       "size_bytes": 2048,
@@ -52,28 +52,28 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:35:23.961552",
+      "added_at": "2026-11-02T16:45:05.093940",
       "deletable": true
      },
      {
-      "id": 34,
+      "id": 36,
       "role": "embedding",
       "name": "emb-base",
       "version": "v1",
       "ref": "emb-base@v1",
       "provider": "onnx",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/emb-base",
+      "repo": "http://127.0.0.1:58645/emb-base",
       "revision": null,
       "license": null,
       "size_bytes": 2048,
       "disk_bytes": 2048,
-      "ram_mb": 153,
+      "ram_mb": 151,
       "status": "active",
       "error": null,
       "last_test": {
        "dim": 384,
-       "speed": 1196.73,
+       "speed": 1671.72,
        "checks": [
         {
          "name": "paraphrase_en",
@@ -90,9 +90,9 @@
        ],
        "ok": true,
        "load_ms": 0,
-       "ms": 28,
-       "rss_mb": 153,
-       "at": "2026-11-02T03:35:22.885151"
+       "ms": 20,
+       "rss_mb": 151,
+       "at": "2026-11-02T16:45:04.970261"
       },
       "used_as": [
        "active"
@@ -107,18 +107,18 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:35:20.658828",
+      "added_at": "2026-11-02T16:45:04.638492",
       "deletable": false
      },
      {
-      "id": 36,
+      "id": 38,
       "role": "embedding",
       "name": "emb-new",
       "version": "v1",
       "ref": "emb-new@v1",
       "provider": "onnx",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/emb-new",
+      "repo": "http://127.0.0.1:58645/emb-new",
       "revision": null,
       "license": null,
       "size_bytes": 2048,
@@ -138,7 +138,7 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:35:25.594188",
+      "added_at": "2026-11-02T16:45:05.274053",
       "deletable": true
      },
      {
@@ -173,7 +173,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:32.972765",
+      "added_at": "2026-11-02T16:44:50.190267",
       "deletable": false
      },
      {
@@ -208,7 +208,7 @@
       },
       "pinned": true,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:32.831527",
+      "added_at": "2026-11-02T16:44:50.171450",
       "deletable": false
      },
      {
@@ -245,7 +245,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:32.819985",
+      "added_at": "2026-11-02T16:44:50.156685",
       "deletable": false
      },
      {
@@ -280,7 +280,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:32.964844",
+      "added_at": "2026-11-02T16:44:50.181445",
       "deletable": false
      },
      {
@@ -315,7 +315,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:32.893930",
+      "added_at": "2026-11-02T16:44:50.177604",
       "deletable": false
      }
     ]
@@ -323,11 +323,11 @@
    {
     "role": "generation",
     "active": "gen-good@v1",
-    "active_id": 23,
+    "active_id": 25,
     "previous": "gen-later@v1",
-    "previous_id": 29,
+    "previous_id": 31,
     "fallback": "gen-later@v1",
-    "fallback_id": 29,
+    "fallback_id": 31,
     "pending": null,
     "limits": {
      "threads": 1,
@@ -338,14 +338,14 @@
     },
     "models": [
      {
-      "id": 30,
+      "id": 32,
       "role": "generation",
       "name": "gen-broken",
       "version": "v1",
       "ref": "gen-broken@v1",
       "provider": "onnx-genai",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/gen-broken",
+      "repo": "http://127.0.0.1:58645/gen-broken",
       "revision": null,
       "license": null,
       "size_bytes": 2048,
@@ -365,18 +365,18 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:35:05.877212",
+      "added_at": "2026-11-02T16:44:59.854809",
       "deletable": true
      },
      {
-      "id": 27,
+      "id": 29,
       "role": "generation",
       "name": "gen-cancel",
       "version": "v1",
       "ref": "gen-cancel@v1",
       "provider": "onnx-genai",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/gen-cancel",
+      "repo": "http://127.0.0.1:58645/gen-cancel",
       "revision": null,
       "license": null,
       "size_bytes": 600000,
@@ -396,18 +396,18 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:34:51.677290",
+      "added_at": "2026-11-02T16:44:57.199712",
       "deletable": false
      },
      {
-      "id": 25,
+      "id": 27,
       "role": "generation",
       "name": "gen-crash",
       "version": "v1",
       "ref": "gen-crash@v1",
       "provider": "onnx-genai",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/gen-crash",
+      "repo": "http://127.0.0.1:58645/gen-crash",
       "revision": null,
       "license": null,
       "size_bytes": 400000,
@@ -427,18 +427,18 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:34:46.241996",
+      "added_at": "2026-11-02T16:44:53.732962",
       "deletable": true
      },
      {
-      "id": 31,
+      "id": 33,
       "role": "generation",
       "name": "gen-erring",
       "version": "v1",
       "ref": "gen-erring@v1",
       "provider": "onnx-genai",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/gen-erring",
+      "repo": "http://127.0.0.1:58645/gen-erring",
       "revision": null,
       "license": null,
       "size_bytes": 2048,
@@ -458,23 +458,23 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:35:08.054218",
+      "added_at": "2026-11-02T16:45:00.143894",
       "deletable": true
      },
      {
-      "id": 23,
+      "id": 25,
       "role": "generation",
       "name": "gen-good",
       "version": "v1",
       "ref": "gen-good@v1",
       "provider": "onnx-genai",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/gen-good",
+      "repo": "http://127.0.0.1:58645/gen-good",
       "revision": null,
       "license": null,
       "size_bytes": 300000,
       "disk_bytes": 300000,
-      "ram_mb": 132,
+      "ram_mb": 131,
       "status": "active",
       "error": null,
       "last_test": {
@@ -489,8 +489,8 @@
        "ok": true,
        "load_ms": 0,
        "ms": 0,
-       "rss_mb": 132,
-       "at": "2026-11-02T03:34:55.891838"
+       "rss_mb": 131,
+       "at": "2026-11-02T16:44:58.569872"
       },
       "used_as": [
        "active"
@@ -505,23 +505,23 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:34:39.446604",
+      "added_at": "2026-11-02T16:44:51.678156",
       "deletable": false
      },
      {
-      "id": 29,
+      "id": 31,
       "role": "generation",
       "name": "gen-later",
       "version": "v1",
       "ref": "gen-later@v1",
       "provider": "onnx-genai",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/gen-later",
+      "repo": "http://127.0.0.1:58645/gen-later",
       "revision": null,
       "license": null,
       "size_bytes": 8192,
       "disk_bytes": 8192,
-      "ram_mb": 133,
+      "ram_mb": 132,
       "status": "ready",
       "error": null,
       "last_test": {
@@ -536,8 +536,8 @@
        "ok": true,
        "load_ms": 0,
        "ms": 0,
-       "rss_mb": 133,
-       "at": "2026-11-02T03:35:01.559791"
+       "rss_mb": 132,
+       "at": "2026-11-02T16:44:59.321215"
       },
       "used_as": [
        "previous",
@@ -553,18 +553,18 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:35:00.530800",
+      "added_at": "2026-11-02T16:44:59.167947",
       "deletable": false
      },
      {
-      "id": 32,
+      "id": 34,
       "role": "generation",
       "name": "gen-slowcall",
       "version": "v1",
       "ref": "gen-slowcall@v1",
       "provider": "onnx-genai",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/gen-slowcall",
+      "repo": "http://127.0.0.1:58645/gen-slowcall",
       "revision": null,
       "license": null,
       "size_bytes": 2048,
@@ -584,18 +584,18 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:35:12.133683",
+      "added_at": "2026-11-02T16:45:01.076050",
       "deletable": true
      },
      {
-      "id": 24,
+      "id": 26,
       "role": "generation",
       "name": "gen-tampered",
       "version": "v1",
       "ref": "gen-tampered@v1",
       "provider": "onnx-genai",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/gen-tampered",
+      "repo": "http://127.0.0.1:58645/gen-tampered",
       "revision": null,
       "license": null,
       "size_bytes": 50000,
@@ -615,18 +615,18 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:34:42.181094",
+      "added_at": "2026-11-02T16:44:52.114588",
       "deletable": false
      },
      {
-      "id": 28,
+      "id": 30,
       "role": "generation",
       "name": "gen-wrong",
       "version": "v1",
       "ref": "gen-wrong@v1",
       "provider": "onnx-genai",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/gen-wrong",
+      "repo": "http://127.0.0.1:58645/gen-wrong",
       "revision": null,
       "license": null,
       "size_bytes": 2048,
@@ -649,7 +649,7 @@
        "rss_mb": 132,
        "stage": "answer",
        "error": "the model answered the known sample wrong",
-       "at": "2026-11-02T03:34:58.728271"
+       "at": "2026-11-02T16:44:58.951483"
       },
       "used_as": [],
       "quantization": null,
@@ -662,7 +662,7 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:34:57.565335",
+      "added_at": "2026-11-02T16:44:58.787259",
       "deletable": true
      },
      {
@@ -713,7 +713,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.297212",
+      "added_at": "2026-11-02T16:44:50.260056",
       "deletable": false
      },
      {
@@ -744,7 +744,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.303100",
+      "added_at": "2026-11-02T16:44:50.265691",
       "deletable": false
      },
      {
@@ -775,7 +775,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.309816",
+      "added_at": "2026-11-02T16:44:50.269863",
       "deletable": false
      },
      {
@@ -826,7 +826,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.286540",
+      "added_at": "2026-11-02T16:44:50.254544",
       "deletable": false
      },
      {
@@ -857,7 +857,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.314392",
+      "added_at": "2026-11-02T16:44:50.274525",
       "deletable": false
      },
      {
@@ -888,7 +888,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.318784",
+      "added_at": "2026-11-02T16:44:50.278613",
       "deletable": false
      }
     ]
@@ -942,7 +942,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.160913",
+      "added_at": "2026-11-02T16:44:50.250011",
       "deletable": false
      },
      {
@@ -979,7 +979,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.156911",
+      "added_at": "2026-11-02T16:44:50.240659",
       "deletable": false
      }
     ]
@@ -1033,7 +1033,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:32.984295",
+      "added_at": "2026-11-02T16:44:50.199556",
       "deletable": false
      },
      {
@@ -1068,7 +1068,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:32.977294",
+      "added_at": "2026-11-02T16:44:50.194878",
       "deletable": false
      },
      {
@@ -1103,7 +1103,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:32.968768",
+      "added_at": "2026-11-02T16:44:50.186101",
       "deletable": false
      }
     ]
@@ -1155,7 +1155,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.133998",
+      "added_at": "2026-11-02T16:44:50.204721",
       "deletable": false
      }
     ]
@@ -1209,7 +1209,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.138534",
+      "added_at": "2026-11-02T16:44:50.210880",
       "deletable": false
      },
      {
@@ -1246,7 +1246,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.153369",
+      "added_at": "2026-11-02T16:44:50.235716",
       "deletable": false
      }
     ]
@@ -1302,7 +1302,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.142544",
+      "added_at": "2026-11-02T16:44:50.221795",
       "deletable": false
      }
     ]
@@ -1362,7 +1362,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.149094",
+      "added_at": "2026-11-02T16:44:50.231215",
       "deletable": false
      },
      {
@@ -1401,7 +1401,7 @@
       },
       "pinned": false,
       "added_by": null,
-      "added_at": "2026-11-02T03:34:33.145057",
+      "added_at": "2026-11-02T16:44:50.226405",
       "deletable": false
      }
     ]
@@ -1424,14 +1424,14 @@
     },
     "models": [
      {
-      "id": 33,
+      "id": 35,
       "role": "digits",
       "name": "digits-cnn",
       "version": "v1",
       "ref": "digits-cnn@v1",
       "provider": "onnx",
       "source": "url",
-      "repo": "http://127.0.0.1:51810/digits-cnn",
+      "repo": "http://127.0.0.1:58645/digits-cnn",
       "revision": null,
       "license": null,
       "size_bytes": 2048,
@@ -1451,8 +1451,47 @@
       },
       "pinned": false,
       "added_by": 1,
-      "added_at": "2026-11-02T03:35:18.330055",
+      "added_at": "2026-11-02T16:45:04.407154",
       "deletable": true
+     },
+     {
+      "id": 24,
+      "role": "digits",
+      "name": "digits-cnn",
+      "version": "v2-5c5131b9",
+      "ref": "digits-cnn@v2-5c5131b9",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "local:mlops/learning/train_digits.py",
+      "revision": null,
+      "license": "trained here on MNIST train (card: MIT) + MADBase train (card: publicly available for research, no SPDX licence); see the manifest's data block",
+      "size_bytes": 371124,
+      "disk_bytes": 0,
+      "ram_mb": 100,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "quantization": "int8 static QDQ, per-channel (onnxruntime.quantization)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "digits-cnn/v2-5c5131b9/model.onnx",
+        "bytes": 297407
+       },
+       "manifest": {
+        "path": "digits-cnn/v2-5c5131b9/manifest.json",
+        "bytes": 8050
+       },
+       "samples": {
+        "path": "digits-cnn/v2-5c5131b9/samples.npz",
+        "bytes": 65667
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-02T16:44:50.289599",
+      "deletable": false
      }
     ]
    },
@@ -1472,7 +1511,43 @@
      "idle_unload_s": 600,
      "ram_mb": 0
     },
-    "models": []
+    "models": [
+     {
+      "id": 23,
+      "role": "vision_language",
+      "name": "qwen2.5-vl-3b-instruct",
+      "version": "q4_k_m-5037fcf",
+      "ref": "qwen2.5-vl-3b-instruct@q4_k_m-5037fcf",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:ggml-org/Qwen2.5-VL-3B-Instruct-GGUF",
+      "revision": "5037fcf163dd95d1e41d1974465f0898ed108ca2",
+      "license": "Apache-2.0",
+      "size_bytes": 2774658784,
+      "disk_bytes": 0,
+      "ram_mb": 6481,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "quantization": "GGUF Q4_K_M text model + Q8_0 vision projector (ggml-org build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen2.5-vl-3b/gguf/Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
+        "bytes": 1929901056
+       },
+       "mmproj": {
+        "path": "qwen2.5-vl-3b/gguf/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf",
+        "bytes": 844757728
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-02T16:44:50.284072",
+      "deletable": false
+     }
+    ]
    }
   ]
  }

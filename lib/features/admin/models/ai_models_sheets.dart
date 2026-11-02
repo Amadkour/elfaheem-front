@@ -2,7 +2,8 @@
 //
 // The AI Models page's sheets (D-152), all opened with showAppSheet:
 //   ActivatePrompt   "Activate this model for <Role>?" with the health test's result; for Embedding the index
-//                    warning, the server's estimate (chunks, time) and Rebuild now / Later (example 9)
+//                    warning, the server's estimate (what is missing, the measured time) and Rebuild now / Later
+//                    (example 9), or "already built" and a plain Activate when every vector exists (B6 round 2)
 //   ActivateFailure  why an activation stopped (failed checks or health test) — the old model keeps serving
 //   LimitsSheet      a role's threads, RAM, max concurrency, priority, idle unload
 //   AddModelSheet    a registry entry, a Hugging Face repo + files, an Ollama name, or a file URL + sha256
@@ -12,6 +13,7 @@ import 'package:flutter/material.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/models_hub/models_hub_api.dart';
+import '../../../core/plural.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_tokens.dart';
 import '../admin_common.dart' show t;
@@ -20,17 +22,57 @@ import 'models_hub_text.dart';
 /// What the person chose in [ActivatePrompt].
 enum ActivateChoice { cancel, activate, reindexNow, reindexLater }
 
-/// The embedding warning (example 9), one place for the prompt and the tests.
-String embeddingWarningText() => t(
-    'هذا يغيّر طريقة فهرسة المستندات. يجب إعادة بناء فهرس المستندات (RAG). إعادة البناء الآن في الخلفية أم لاحقاً؟',
-    'This changes how documents are indexed. The RAG index must be rebuilt. Rebuild now in the background or later?');
+/// The embedding warning (example 9), one place for the prompt and the tests. [partial]: some of the new model's
+/// vectors are already built (it was used before), only the rest is built.
+String embeddingWarningText({bool partial = false}) => partial
+    ? t('هذا يغيّر طريقة فهرسة المستندات. بعض متجهات هذا النموذج مبنية مسبقاً ويجب بناء الباقي. البناء الآن في الخلفية أم لاحقاً؟',
+        'This changes how documents are indexed. Part of this model\'s vectors are already built; the rest must be built. Build them now in the background or later?')
+    : t('هذا يغيّر طريقة فهرسة المستندات. يجب إعادة بناء فهرس المستندات (RAG). إعادة البناء الآن في الخلفية أم لاحقاً؟',
+        'This changes how documents are indexed. The RAG index must be rebuilt. Rebuild now in the background or later?');
 
-/// "1,230 items (1,200 chunks + 30 answers) · about 3 min".
+String _items(int n) => countText(n, ar1: 'عنصر واحد', ar2: 'عنصران', arFew: '{n} عناصر', arMany: '{n} عنصرًا', en1: '1 item', en: '{n} items');
+String _chunks(int n) => countText(n, ar1: 'مقطع واحد', ar2: 'مقطعان', arFew: '{n} مقاطع', arMany: '{n} مقطعًا', en1: '1 chunk', en: '{n} chunks');
+String _answers(int n) => countText(n,
+    ar1: 'إجابة محفوظة واحدة', ar2: 'إجابتان محفوظتان', arFew: '{n} إجابات محفوظة', arMany: '{n} إجابة محفوظة', en1: '1 saved answer', en: '{n} saved answers');
+
+/// What a rebuild embeds and how long it takes: "1230 items (1200 chunks + 30 saved answers) · about 3 min (…)", or
+/// for a model whose vectors are partly built "200 items of 1230 still need vectors (200 chunks + 0 saved answers) · …".
 String reindexEstimateText(HubReindex r) {
   final total = r.chunks + r.qa;
-  return t('$total عنصر (${r.chunks} مقطع + ${r.qa} إجابة محفوظة) · ${hubDuration(r.estimatedSeconds)}',
-      '$total items (${r.chunks} chunks + ${r.qa} saved answers) · ${hubDuration(r.estimatedSeconds)}');
+  final parts = '${_chunks(r.missingChunks)} + ${_answers(r.missingQa)}';
+  final what = r.items < total
+      ? t('يلزم بناء ${_items(r.items)} من أصل $total ($parts)', '${_items(r.items)} of $total still need vectors ($parts)')
+      : '${_items(total)} ($parts)';
+  final time = reindexTimeText(r);
+  return time.isEmpty ? what : '$what · $time';
 }
+
+/// The rebuild time, from measured rebuilds only (the hub's `estimate`, B6 round 2): this model's own last rebuild → a
+/// figure; only other models measured here → their range; nothing measured → no number. A hub without `estimate`
+/// (older) → its `estimated_seconds`.
+String reindexTimeText(HubReindex r) {
+  final e = r.estimate;
+  if (e == null) return hubDuration(r.estimatedSeconds);
+  switch (e.basis) {
+    case 'nothing_to_build':
+      return '';
+    case 'this_model' when e.seconds != null:
+      return t('${hubDuration(e.seconds)} (حسب آخر إعادة بناء لهذا النموذج هنا)', '${hubDuration(e.seconds)} (measured on this model\'s last rebuild here)');
+    case 'other_models' when e.lowSeconds != null && e.highSeconds != null:
+      final lo = e.lowSeconds!, hi = e.highSeconds!;
+      return hubSpan(lo) == hubSpan(hi)
+          ? t('${hubDuration(lo)} (حسب نموذج آخر أُعيد البناء به هنا)', '${hubDuration(lo)} (going by another model rebuilt here)')
+          : t('بين ${hubSpan(lo)} و${hubSpan(hi)} (حسب نماذج أخرى أُعيد البناء بها هنا)',
+              'between ${hubSpan(lo)} and ${hubSpan(hi)} (going by other models rebuilt here)');
+    default:
+      return t('المدة غير معروفة بعد: تُقاس عند أول إعادة بناء بهذا النموذج هنا', 'time not known yet — measured on this model\'s first rebuild here');
+  }
+}
+
+/// Every vector of the new embedder is already built (B6 round 2): the switch needs no rebuild.
+String vectorsReadyText(HubReindex r) => t(
+    'متجهات هذا النموذج مبنية مسبقاً لكل المستندات (${_chunks(r.chunks)} + ${_answers(r.qa)})، فالتفعيل يبدّل الفهرس فوراً دون إعادة بناء.',
+    'This model\'s vectors are already built for every document (${_chunks(r.chunks)} + ${_answers(r.qa)}), so activating switches the index at once — no rebuild.');
 
 Widget _sheetBody(BuildContext context, {required String title, required List<Widget> children, required List<Widget> buttons}) {
   return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -98,6 +140,9 @@ class ActivatePrompt extends StatelessWidget {
 
   bool get _rebuild => role == 'embedding' && (reindex?.required ?? false);
 
+  /// Embedding: the new model's vectors are all built already — a plain switch, no warning.
+  bool get _ready => role == 'embedding' && !_rebuild && (reindex?.vectorsReady ?? false);
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -119,7 +164,7 @@ class ActivatePrompt extends StatelessWidget {
             key: const ValueKey('embedding_warning'),
             icon: Icons.warning_amber_rounded,
             color: c.warning,
-            text: embeddingWarningText(),
+            text: embeddingWarningText(partial: reindex!.items < reindex!.chunks + reindex!.qa),
           ),
           const SizedBox(height: AppSpace.xs),
           Text(reindexEstimateText(reindex!), key: const ValueKey('reindex_estimate'), style: appText(12, w: FontWeight.w600, c: c.textMedium)),
@@ -128,6 +173,9 @@ class ActivatePrompt extends StatelessWidget {
               t('يبقى البحث على النموذج الحالي حتى تكتمل المتجهات الجديدة، ثم يتحوّل الفهرس دفعة واحدة.',
                   'Search keeps the current model until the new vectors are all built; then the index switches at once.'),
               style: AppType.meta(context)),
+        ] else if (_ready) ...[
+          const SizedBox(height: AppSpace.sm),
+          AppBanner(key: const ValueKey('vectors_ready'), icon: Icons.check_circle_outline_rounded, color: c.success, text: vectorsReadyText(reindex!)),
         ] else if (role == 'embedding' && reindex != null && !reindex!.known) ...[
           const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.info_outline_rounded, text: t('تعذّر سؤال فهرس المستندات عن حجمه الآن.', 'The document index could not be asked for its size now.')),

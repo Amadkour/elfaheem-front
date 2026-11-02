@@ -136,7 +136,7 @@ void main() {
     final bodies = <Object?>[];
     final (_, dl) = await backend(tester, {
       'GET /api/v1/models': (_) => hub(['overview_before_emb_activate', 'overview_emb_ready', 'overview_reindex_later'][stage]),
-      'POST /api/v1/models/36/activate': (o) {
+      'POST /api/v1/models/38/activate': (o) {
         bodies.add(o.data);
         final confirm = o.data is Map && (o.data as Map)['confirm'] == true;
         stage = confirm ? 2 : 1;
@@ -145,7 +145,7 @@ void main() {
     });
     await tester.pumpWidget(_app(AiModelsPage(downloads: dl, stream: _stream())));
     await _settle(tester);
-    final activate = find.byKey(const ValueKey('activate_36'));
+    final activate = find.byKey(const ValueKey('activate_38'));
     await _reveal(tester, activate);
     await tester.tap(activate);
     await _settle(tester);
@@ -154,13 +154,64 @@ void main() {
     expect(find.byKey(const ValueKey('embedding_warning')), findsOneWidget);
     expect(find.text('This changes how documents are indexed. The RAG index must be rebuilt. Rebuild now in the background or later?'),
         findsOneWidget);
-    expect(find.text('1230 items (1200 chunks + 30 saved answers) · about 1 s'), findsOneWidget);
+    expect(find.text('1230 items (1200 chunks + 30 saved answers) · time not known yet — measured on this model\'s first rebuild here'),
+        findsOneWidget);
     expect(find.byKey(const ValueKey('reindex_now')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('reindex_later')));
     await _settle(tester);
     expect(bodies, [<String, dynamic>{}, {'confirm': true, 'reindex': 'later'}]);
     expect(find.textContaining('The switch waits for the index rebuild'), findsOneWidget);
+    await finish(tester, dl);
+  });
+
+  testWidgets('embedding, vectors already built (B6 round 2): no rebuild warning, a plain Activate switches at once', (tester) async {
+    var stage = 0;
+    final bodies = <Object?>[];
+    final (api, dl) = await backend(tester, {
+      'GET /api/v1/models': (_) => hub(['overview_before_kept_activate', 'overview_vectors_ready', 'overview_vectors_ready'][stage]),
+      'POST /api/v1/models/43/activate': (o) {
+        bodies.add(o.data);
+        final confirm = o.data is Map && (o.data as Map)['confirm'] == true;
+        stage = confirm ? 2 : 1;
+        return hub(confirm ? 'activate_vectors_ready_confirm' : 'embedding_activate_vectors_ready');
+      },
+    });
+    await tester.pumpWidget(_app(AiModelsPage(downloads: dl, stream: _stream())));
+    await _settle(tester);
+    final activate = find.byKey(const ValueKey('activate_43'));
+    await _reveal(tester, activate);
+    await tester.tap(activate);
+    await _settle(tester);
+
+    expect(find.text('Activate this model for Embedding?'), findsOneWidget);
+    expect(find.byKey(const ValueKey('embedding_warning')), findsNothing);
+    expect(find.byKey(const ValueKey('reindex_now')), findsNothing);
+    expect(find.byKey(const ValueKey('vectors_ready')), findsOneWidget);
+    expect(find.textContaining('already built for every document (1200 chunks + 30 saved answers)'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('confirm_activate')));
+    await _settle(tester);
+    expect(bodies, [<String, dynamic>{}, {'confirm': true}]);
+    expect(find.textContaining('emb-kept is now active for Embedding'), findsOneWidget);
+    expect(api.unmatched, isEmpty);
+    await finish(tester, dl);
+  });
+
+  testWidgets('a waiting switch whose vectors turned out built: Rebuild now answers active, and the notice says no rebuild ran', (tester) async {
+    final (api, dl) = await backend(tester, {
+      'GET /api/v1/models': (_) => hub('overview_reindex_later'),
+      'POST /api/v1/models/roles/embedding/reindex': (_) => hub('activate_vectors_ready_confirm'),
+    });
+    await tester.pumpWidget(_app(AiModelsPage(downloads: dl, stream: _stream())));
+    await _settle(tester);
+    final rebuild = find.text('Rebuild now');
+    await _reveal(tester, rebuild);
+    await tester.tap(rebuild);
+    await _settle(tester);
+    expect(find.text('emb-new is now active for Embedding — no rebuild was needed.'), findsOneWidget);
+    expect(find.textContaining('rebuild started in the background'), findsNothing);
+    expect(api.unmatched, isEmpty);
     await finish(tester, dl);
   });
 

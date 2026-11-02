@@ -1,6 +1,6 @@
 {
  "_source": {
-  "route": "POST /api/v1/models/36/activate",
+  "route": "POST /api/v1/models/38/activate",
   "status": 409,
   "request": {
    "confirm": true
@@ -12,10 +12,19 @@
    "code": "reindex_choice_required",
    "message": "تغيير نموذج التضمين يعيد بناء فهرس المستندات. اختر الآن أو لاحقاً",
    "message_en": "Changing the embedding model re-builds the document index. Choose now or later.",
-   "reindex_required": true,
    "chunks": 1200,
    "qa": 30,
-   "estimated_seconds": 1,
+   "missing_chunks": 1200,
+   "missing_qa": 30,
+   "items": 1230,
+   "vectors_ready": false,
+   "estimated_seconds": null,
+   "estimate": {
+    "basis": "none",
+    "seconds": null,
+    "items": 1230
+   },
+   "reindex_required": true,
    "choices": [
     "now",
     "later"

@@ -146,6 +146,15 @@ String hubDuration(int? seconds) {
   return r == 0 ? t('نحو $h س', 'about $h h') : t('نحو $h س $r د', 'about $h h $r min');
 }
 
+/// "45 s" / "3 min" / "1 h 5 min": a duration without "about" (the ends of a range).
+String hubSpan(int seconds) {
+  if (seconds < 60) return t('$seconds ث', '$seconds s');
+  final m = (seconds / 60).ceil();
+  if (m < 60) return t('$m د', '$m min');
+  final h = m ~/ 60, r = m % 60;
+  return r == 0 ? t('$h س', '$h h') : t('$h س $r د', '$h h $r min');
+}
+
 /// The download's one line: "Downloading… 43% · 12 MB/s · 2 min left" / "Paused · 43%" / "Waiting to start…".
 String hubDownloadLine(HubDownload d) {
   final pct = d.fraction == null ? '' : hubLtr('${(d.fraction! * 100).floor()}%');

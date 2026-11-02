@@ -337,7 +337,10 @@ class _PendingStrip extends StatelessWidget {
             button(t('مراجعة وتفعيل', 'Review and activate'), () => actions.onReview!(role), primary: true, key: ValueKey('review_${role.role}')),
           if (p.stage == 'reindex_later' || p.stage == 'reindex_failed')
             if (actions.onReindexNow != null)
-              button(t('إعادة البناء الآن', 'Rebuild now'), () => actions.onReindexNow!(role), primary: true),
+              button(
+                  (p.reindex?.vectorsReady ?? false) ? t('التبديل الآن', 'Switch now') : t('إعادة البناء الآن', 'Rebuild now'),
+                  () => actions.onReindexNow!(role),
+                  primary: true),
           if (p.stage != 'reindexing' && actions.onCancelPending != null)
             button(p.failed ? t('تجاهل', 'Dismiss') : t('إلغاء التفعيل', 'Cancel activation'), () => actions.onCancelPending!(role)),
         ]),
