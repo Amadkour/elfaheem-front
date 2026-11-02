@@ -120,13 +120,13 @@ void main() {
     // ignore: avoid_print
     expect(find.text('Activate this model for Generation?'), findsOneWidget);
     expect(find.textContaining('Health test: Passed · 500 / s · '), findsOneWidget);
-    expect(find.text('Active now: qwen3-1.7b — kept so you can roll back.'), findsOneWidget);
+    expect(find.text('Active now: qwen3-1.7b · int4 — kept so you can roll back.'), findsOneWidget); // its q4 / q5 builds share the name
     expect(find.byKey(const ValueKey('embedding_warning')), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('confirm_activate')));
     await _settle(tester);
     expect(bodies, [<String, dynamic>{}, {'confirm': true}]);
-    expect(find.text('gen-good is now active for Generation — qwen3-1.7b is kept for rollback.'), findsOneWidget);
+    expect(find.text('gen-good is now active for Generation — qwen3-1.7b · int4 is kept for rollback.'), findsOneWidget);
     expect(api.unmatched, isEmpty);
     await finish(tester, dl);
   });

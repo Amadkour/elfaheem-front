@@ -31,7 +31,11 @@ import 'ai_models_sheets.dart';
 import 'ai_models_view.dart';
 import 'models_hub_text.dart';
 
-String _modelName(HubModel? m, String fallback) => m?.name ?? fallback;
+/// The model's name with its variant when another model of the role shares the name (models_hub_text.hubModelLabel).
+String _modelName(HubModel? m, String fallback, [HubRole? r]) => hubModelLabel(m, role: r, ref: fallback);
+
+/// The role's active model as the page names it (null when none is active).
+String? _activeName(HubRole? r) => r?.active == null ? null : hubModelLabel(r!.activeModel, role: r, ref: r.active);
 
 /// The signed-in user's id (null without the auth provider, e.g. a widget test of the page alone).
 int? _me(BuildContext context) {
@@ -197,7 +201,7 @@ class AiModelsPageState extends State<AiModelsPage> {
 
   Future<void> _activate(HubModel m) async {
     final r = _ov?.role(m.role);
-    final current = r?.activeModel?.name ?? r?.active;
+    final current = _activeName(r);
     setState(() => _busy.add(m.id));
     try {
       _requested.add(m.id);
@@ -260,8 +264,8 @@ class AiModelsPageState extends State<AiModelsPage> {
           context,
           (_) => ActivatePrompt(
             role: r.role,
-            model: _modelName(m, p.ref),
-            current: r.activeModel?.name ?? r.active,
+            model: _modelName(m, p.ref, r),
+            current: _activeName(r),
             test: p.test,
             reindex: estimate,
           ),
@@ -283,7 +287,7 @@ class AiModelsPageState extends State<AiModelsPage> {
 
   /// The switch; returns the server's estimate when it asks for the index choice first.
   Future<HubReindex?> _confirm(HubRole r, HubPending p, String? reindex) async {
-    final name = _modelName(r.byId(p.modelId), p.ref);
+    final name = _modelName(r.byId(p.modelId), p.ref, r);
     setState(() => _busy.add(p.modelId));
     try {
       final step = await _api.activate(p.modelId, confirm: true, reindex: reindex);
@@ -291,8 +295,8 @@ class AiModelsPageState extends State<AiModelsPage> {
         case 'active':
           showAppNotice(r.active == null
               ? t('$name مُفعّل الآن لدور ${hubRoleName(r.role)}', '$name is now active for ${hubRoleName(r.role)}')
-              : t('$name مُفعّل الآن لدور ${hubRoleName(r.role)} — ${r.activeModel?.name ?? r.active} محفوظ للرجوع.',
-                  '$name is now active for ${hubRoleName(r.role)} — ${r.activeModel?.name ?? r.active} is kept for rollback.'));
+              : t('$name مُفعّل الآن لدور ${hubRoleName(r.role)} — ${_activeName(r)} محفوظ للرجوع.',
+                  '$name is now active for ${hubRoleName(r.role)} — ${_activeName(r)} is kept for rollback.'));
         case 'reindexing':
           showAppNotice(t('تُبنى متجهات المستندات في الخلفية؛ يبقى البحث على النموذج الحالي حتى تكتمل.',
               'The document vectors are being rebuilt in the background; search keeps the current model until they are done.'));
@@ -317,8 +321,8 @@ class AiModelsPageState extends State<AiModelsPage> {
       context,
       (_) => ActivateFailure(
         role: r.role,
-        model: _modelName(r.byId(p.modelId), p.ref),
-        current: r.activeModel?.name ?? r.active,
+        model: _modelName(r.byId(p.modelId), p.ref, r),
+        current: _activeName(r),
         test: p.test,
         checks: p.checks,
       ),
@@ -358,11 +362,26 @@ class AiModelsPageState extends State<AiModelsPage> {
         await _load(silent: true);
       });
 
-  Future<void> _rollback(HubRole r) => _guard(null, () async {
-        final s = await _api.rollback(r.role);
-        showAppNotice(t('عاد دور ${hubRoleName(r.role)} إلى ${s.active ?? r.previous}', '${hubRoleName(r.role)} is back on ${s.active ?? r.previous}'));
-        await _load(silent: true);
-      });
+  /// Back to the role's previous model, after a confirm that says what switches from → to and what it costs: an
+  /// embedder goes back to the vectors the index kept for it (no rebuild; refused when they were dropped).
+  Future<void> _rollback(HubRole r) async {
+    final from = _activeName(r) ?? t('لا شيء', 'nothing');
+    final to = hubModelLabel(r.previousModel, role: r, ref: r.previous);
+    final cost = r.role == 'embedding'
+        ? t('يعود فهرس المستندات فوراً إلى المتجهات المحفوظة لهذا النموذج، دون إعادة بناء. إن كانت متجهاته قد حُذفت يُرفض الرجوع، وعندها فعّله من جديد مع إعادة البناء.',
+            'The document index switches back at once to the vectors it kept for that model — no rebuild. If its vectors were dropped, the rollback is refused; activate it again with a rebuild instead.')
+        : t('لا تلزم إعادة بناء: يخدم النموذج السابق فوراً.', 'No rebuild is needed: the previous model serves at once.');
+    final ok = await appConfirm(context,
+        confirmLabel: t('رجوع', 'Roll back'),
+        message: t('رجوع دور ${hubRoleName(r.role)} من $from إلى $to؟\n$cost', 'Roll ${hubRoleName(r.role)} back from $from to $to?\n$cost'));
+    if (!ok || !mounted) return;
+    await _guard(null, () async {
+      final s = await _api.rollback(r.role);
+      final now = s.active == null || s.active == r.previous ? to : hubRefLabel(s.active!);
+      showAppNotice(t('عاد دور ${hubRoleName(r.role)} إلى $now', '${hubRoleName(r.role)} is back on $now'));
+      await _load(silent: true);
+    });
+  }
 
   Future<void> _cancelPending(HubRole r) => _guard(null, () async {
         await _api.cancelPending(r.role);
