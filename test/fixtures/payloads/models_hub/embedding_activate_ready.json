@@ -1,0 +1,65 @@
+{
+ "_source": {
+  "route": "POST /api/v1/models/36/activate",
+  "status": 200,
+  "request": {},
+  "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline), reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "stage": "ready_to_confirm",
+  "pending": {
+   "model_id": 36,
+   "ref": "emb-new@v1",
+   "stage": "ready_to_confirm",
+   "at": "2026-11-02T03:05:48.604164",
+   "checks": [
+    {
+     "name": "ram",
+     "estimate_mb": 100,
+     "limit_mb": 0,
+     "ok": true,
+     "available_mb": 7914
+    },
+    {
+     "name": "cpu",
+     "provider": "onnx",
+     "ok": true,
+     "needs": [],
+     "problems": []
+    }
+   ],
+   "test": {
+    "dim": 384,
+    "speed": 1293.7,
+    "checks": [
+     {
+      "name": "paraphrase_en",
+      "ok": true,
+      "close": 0.3536,
+      "far": 0.0
+     },
+     {
+      "name": "paraphrase_ar",
+      "ok": true,
+      "close": 0.3651,
+      "far": 0.0
+     }
+    ],
+    "ok": true,
+    "load_ms": 0,
+    "ms": 26,
+    "rss_mb": 150,
+    "at": "2026-11-02T03:05:48.640492"
+   },
+   "reindex": {
+    "known": true,
+    "current": "emb-base@v1",
+    "reindex_required": true,
+    "chunks": 1200,
+    "qa": 30,
+    "rate_per_s": 1293.7,
+    "estimated_seconds": 1
+   }
+  }
+ }
+}

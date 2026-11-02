@@ -1,0 +1,33 @@
+{
+ "_source": {
+  "route": "GET /api/v1/models/system",
+  "status": 200,
+  "how": "modelhub e2e scaffolding, MODELHUB_INLINE=0, a slow local file server"
+ },
+ "payload": {
+  "cpu_count": 12,
+  "disk": {
+   "total_mb": 513691,
+   "free_mb": 108962,
+   "models_dir": "/srv/nextbrain/models"
+  },
+  "ram": {
+   "total_mb": 34186,
+   "available_mb": 5971
+  },
+  "providers": {
+   "onnx": "available",
+   "onnx-genai": "available",
+   "llamacpp": "available",
+   "ollama": "OLLAMA_URL is not set",
+   "http": "external HTTP models are off (MODELHUB_HTTP_ALLOW=1 opts in)"
+  },
+  "cpu_flags": [
+   "avx2"
+  ],
+  "loaded": [],
+  "failed": {},
+  "queue": {},
+  "rss_mb": 133
+ }
+}

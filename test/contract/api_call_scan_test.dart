@@ -145,6 +145,9 @@ f(ApiClient api, OrgSession s) => api.get('${s.base}/rooms');'''), ['GET /api/v1
     test('paths go to the service nginx sends them to', () {
       expect(serviceOf('/api/v1/exam/questions'), 'exam');
       expect(serviceOf('/api/v1/rag/ask'), 'rag');
+      expect(serviceOf('/api/v1/models'), 'models');
+      expect(serviceOf('/api/v1/models/12/activate'), 'models');
+      expect(serviceOf('/api/v1/models-legacy'), 'core');
       expect(serviceOf('/api/v1/exams/1'), 'core');
       expect(serviceOf('/api/v1/auth/login'), 'core');
     });

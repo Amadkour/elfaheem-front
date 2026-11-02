@@ -1,0 +1,10 @@
+{
+ "_source": {
+  "route": "GET /api/v1/models/alerts",
+  "status": 200,
+  "how": "modelhub e2e scaffolding, MODELHUB_INLINE=0, a slow local file server"
+ },
+ "payload": {
+  "alerts": []
+ }
+}

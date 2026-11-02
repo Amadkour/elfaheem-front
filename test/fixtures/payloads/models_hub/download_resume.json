@@ -1,0 +1,30 @@
+{
+ "_source": {
+  "route": "POST /api/v1/models/downloads/1/resume",
+  "status": 200,
+  "how": "modelhub e2e scaffolding, MODELHUB_INLINE=0, a slow local file server"
+ },
+ "payload": {
+  "id": 1,
+  "model_id": 23,
+  "ref": "gen-next@v1",
+  "role": "generation",
+  "status": "queued",
+  "bytes_done": 1081344,
+  "bytes_total": 6000000,
+  "percent": 18.0,
+  "speed_bps": 0.0,
+  "eta_s": null,
+  "error": null,
+  "files": {
+   "model": {
+    "done": 1081344,
+    "total": 6000000,
+    "status": "running"
+   }
+  },
+  "activate_after": true,
+  "created_at": "2026-11-02T03:18:16.451191",
+  "finished_at": null
+ }
+}

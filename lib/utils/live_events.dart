@@ -106,6 +106,16 @@ class LiveEvents {
   /// `{org_id}`. The organization dashboard reloads `/org/mine?members=1` and re-derives its sections (D-103).
   static const orgAccessChanged = 'org_access_changed';
 
+  /// The model hub (D-152, ../back modelhub/events.py), to every platform admin through the core's
+  /// `/internal/v1/live/platform-admins`: a download moved (the whole `Download` row: `{id, model_id, ref, role,
+  /// status, bytes_done, bytes_total, percent, speed_bps, eta_s, …}`, at most every second while it runs and on every
+  /// status change); an activation stage / rollback / fallback changed `{role, action, ref, pending}`; an alert
+  /// opened `{key, role, detail}`. The floating download bar and the AI Models page follow them
+  /// (lib/core/models_hub/).
+  static const modelDownload = 'model_download';
+  static const modelChanged = 'model_changed';
+  static const modelAlert = 'model_alert';
+
   /// Local (not from the server): fired by TopRouteObserver when the app goes online/offline.
   static const connectivity = 'connectivity_changed';
 
@@ -125,6 +135,9 @@ class LiveEvents {
     quizStarted,
     attendanceRosterUpdated,
     orgAccessChanged,
+    modelDownload,
+    modelChanged,
+    modelAlert,
   };
 
   /// The VISIBLE notifications of the same features (data["type"]) also nudge

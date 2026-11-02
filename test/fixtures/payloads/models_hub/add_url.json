@@ -1,0 +1,48 @@
+{
+ "_source": {
+  "route": "POST /api/v1/models",
+  "status": 201,
+  "request": {
+   "source": "url",
+   "role": "generation",
+   "name": "gen-good",
+   "version": "v1",
+   "url": "http://127.0.0.1:62658/gen-good",
+   "sha256": "fa518da9999a8061be6220ff0636a3be6f007da65483a473c8eeb449916e379b",
+   "bytes": 300000,
+   "meta": {}
+  },
+  "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline), reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "id": 23,
+  "role": "generation",
+  "name": "gen-good",
+  "version": "v1",
+  "ref": "gen-good@v1",
+  "provider": "onnx-genai",
+  "source": "url",
+  "repo": "http://127.0.0.1:62658/gen-good",
+  "revision": null,
+  "license": null,
+  "size_bytes": 300000,
+  "disk_bytes": 0,
+  "ram_mb": 100,
+  "status": "not_downloaded",
+  "error": null,
+  "last_test": null,
+  "used_as": [],
+  "quantization": null,
+  "dim": null,
+  "files": {
+   "model": {
+    "path": "gen-good/gen-good",
+    "bytes": 300000
+   }
+  },
+  "pinned": false,
+  "added_by": 1,
+  "added_at": "2026-11-02T03:05:16.576776",
+  "deletable": false
+ }
+}
