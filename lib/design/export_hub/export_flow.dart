@@ -51,12 +51,15 @@ import 'export_flow_build.dart';
 import 'export_flow_parts.dart';
 import 'export_sheet_studio.dart';
 import 'export_themes.dart';
+import '../export_layout/layout_page.dart' show openExportLayout, exportLayoutEnabled;
 
 const kExportStudioKey = 'export.studio';
 
 /// Opens the flow for [export]. True when at least one file was produced.
 Future<bool> showExportFlow(BuildContext context, AppTableExport export, {List<AppExportFormat> formats = AppExportFormat.values, ExportStudioApi? api}) async {
   export.brandColor ??= (context.colors.primary.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase();
+  // the v3 page (D-142: server-rendered files and preview) unless its kill switch is on
+  if (exportLayoutEnabled) return openExportLayout(context, export, formats: formats);
   final size = MediaQuery.sizeOf(context);
   if (size.width >= 980) {
     final done = await showDialog<bool>(

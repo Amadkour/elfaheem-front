@@ -405,21 +405,15 @@ class _BlockContent extends StatelessWidget {
 //  Page preview (presentational)
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// The designed page at any width: the paper, the margin guide, header / footer, frame, watermark and every block
-/// at its fractions. Interactive when [onSelect] is given (tap, drag to move, corner handle to resize — kept for
-/// older callers; the designer itself uses the studio engine); read-only otherwise (the flow's live preview).
-/// [content] applies the flow's choices to the table (columns, labels, rules, numerals).
+/// The designed page at any width, read-only: the paper, the margin guide, header / footer, frame, watermark and
+/// every block at its fractions (the flow's live preview, thumbnails). Editing happens on the studio engine
+/// ([ExportDesignerPage]: StudioCanvas + ExportStudioAdapter). [content] applies the flow's choices to the table
+/// (columns, labels, rules, numerals).
 class ExportPagePreview extends StatelessWidget {
   const ExportPagePreview({
     super.key,
     required this.design,
     required this.dataset,
-    this.selectedId,
-    this.onSelect,
-    this.onMove,
-    this.onResize,
-    this.onDragStart,
-    this.onDragEnd,
     this.maxWidth = 620,
     this.images,
     this.content,
@@ -427,19 +421,11 @@ class ExportPagePreview extends StatelessWidget {
 
   final ExportDesign design;
   final ExportDataset dataset;
-  final String? selectedId;
-  final ValueChanged<String?>? onSelect;
-
-  /// Deltas as fractions of the content box.
-  final void Function(ExportBlock b, double dx, double dy)? onMove, onResize;
-  final VoidCallback? onDragStart, onDragEnd;
   final double maxWidth;
 
   /// Image bytes by URL (uploaded this session); the rest load from the network.
   final Map<String, Uint8List>? images;
   final ExportContent? content;
-
-  bool get interactive => onSelect != null;
 
   @override
   Widget build(BuildContext context) {
@@ -463,85 +449,33 @@ class ExportPagePreview extends StatelessWidget {
             return Semantics(
               label: t('معاينة الصفحة', 'Page preview'),
               image: true,
-              child: GestureDetector(
-                onTap: onSelect == null ? null : () => onSelect!(null),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _paper,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: const Color(0x1A1E293B)),
-                    boxShadow: [BoxShadow(color: c.textDark.withValues(alpha: .10), blurRadius: 16, offset: const Offset(0, 6))],
-                  ),
-                  child: Stack(clipBehavior: Clip.hardEdge, children: [
-                    Positioned.fill(child: _PaperDecor(design: d, values: values, scale: scale, content: content, images: images)),
-                    for (final b in d.blocks)
-                      Positioned(
-                        left: ml + b.x * cw,
-                        top: mt + b.y * ch,
-                        width: b.w * cw,
-                        height: b.h * ch,
-                        child: _PreviewBlock(preview: this, block: b, values: values, scale: scale, cw: cw, ch: ch),
-                      ),
-                  ]),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _paper,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0x1A1E293B)),
+                  boxShadow: [BoxShadow(color: c.textDark.withValues(alpha: .10), blurRadius: 16, offset: const Offset(0, 6))],
                 ),
+                child: Stack(clipBehavior: Clip.hardEdge, children: [
+                  Positioned.fill(child: _PaperDecor(design: d, values: values, scale: scale, content: content, images: images)),
+                  for (final b in d.blocks)
+                    Positioned(
+                      left: ml + b.x * cw,
+                      top: mt + b.y * ch,
+                      width: b.w * cw,
+                      height: b.h * ch,
+                      child: IgnorePointer(
+                        child: _BlockContent(
+                            design: d, dataset: dataset, block: b, values: values, scale: scale, images: images, content: content, placeholders: false),
+                      ),
+                    ),
+                ]),
               ),
             );
           }),
         ),
       ),
       ),
-    );
-  }
-}
-
-class _PreviewBlock extends StatelessWidget {
-  const _PreviewBlock({required this.preview, required this.block, required this.values, required this.scale, required this.cw, required this.ch});
-  final ExportPagePreview preview;
-  final ExportBlock block;
-  final Map<String, String> values;
-  final double scale, cw, ch;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final b = block;
-    final sel = b.id == preview.selectedId;
-    final content = _BlockContent(
-        design: preview.design, dataset: preview.dataset, block: b, values: values, scale: scale, images: preview.images, content: preview.content, placeholders: preview.interactive);
-    if (!preview.interactive) return IgnorePointer(child: content);
-    final body = Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: sel ? c.primary : Colors.transparent, width: sel ? 1.4 : 1),
-        color: sel ? c.primary.withValues(alpha: .05) : null,
-      ),
-      child: Stack(clipBehavior: Clip.none, children: [
-        Positioned.fill(child: content),
-        if (sel && preview.onResize != null)
-          PositionedDirectional(
-            end: -7,
-            bottom: -7,
-            child: GestureDetector(
-              onPanStart: (_) => preview.onDragStart?.call(),
-              onPanUpdate: (e) => preview.onResize!(b, e.delta.dx / cw, e.delta.dy / ch),
-              onPanEnd: (_) => preview.onDragEnd?.call(),
-              child: Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle, border: Border.all(color: _paper, width: 2)),
-              ),
-            ),
-          ),
-      ]),
-    );
-    return GestureDetector(
-      onTap: () => preview.onSelect!(b.id),
-      onPanStart: (_) {
-        preview.onSelect!(b.id);
-        preview.onDragStart?.call();
-      },
-      onPanUpdate: preview.onMove == null ? null : (e) => preview.onMove!(b, e.delta.dx / cw, e.delta.dy / ch),
-      onPanEnd: (_) => preview.onDragEnd?.call(),
-      child: body,
     );
   }
 }
@@ -786,6 +720,27 @@ Size exportStudioGrid(ExportDesign d) {
   return Size(w * .02, h * .02);
 }
 
+/// The canvas's in-place editor over text block [b] at [scale] px / mm: the block's font, size, weight, colour,
+/// alignment, the page's direction and the block's background (the same numbers as _BlockContent).
+StudioInlineStyle exportInlineStyle(ExportDesign d, ExportBlock b, double scale) {
+  final dir = d.rtl ? TextDirection.rtl : TextDirection.ltr;
+  return StudioInlineStyle(
+    style: TextStyle(
+      fontFamily: exportFlutterFont(b.font.family.isEmpty ? d.fontFamily : b.font.family),
+      fontFamilyFallback: exportFlutterFallback(b.font.family.isEmpty ? d.fontFamily : b.font.family),
+      fontSize: (b.font.size * .3528 * scale).clamp(2.0, 120.0),
+      color: exportColor(b.font.color.isEmpty ? d.fontColor : b.font.color),
+      height: d.lineSpacing,
+      fontWeight: b.font.bold ? FontWeight.w800 : FontWeight.w500,
+    ),
+    textAlign: switch (b.align) { 'center' => TextAlign.center, 'end' => TextAlign.end, _ => TextAlign.start },
+    textDirection: dir,
+    multiline: true,
+    padding: b.background.isEmpty ? EdgeInsets.zero : EdgeInsets.symmetric(horizontal: 1.6 * scale, vertical: .8 * scale),
+    background: b.background.isEmpty ? null : exportColor(b.background),
+  );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Designer page
 // ═════════════════════════════════════════════════════════════════════════════
@@ -846,9 +801,13 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
     minSize: const Size(4, 2),
     nudgeStep: 1,
     nudgeBigStep: 5,
+    pasteOffset: const Offset(4, 4), // mm
   );
   final _images = <String, Uint8List>{};
   final _focus = FocusNode(debugLabel: 'export-studio');
+
+  /// Below 900 px: the properties panel docked under the page (open / folded), never a modal sheet.
+  final _dockOpen = ValueNotifier<bool>(false);
   String _tab = 'page';
   bool _busy = false;
 
@@ -880,6 +839,7 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
     _ctl.dispose();
     _name.dispose();
     _focus.dispose();
+    _dockOpen.dispose();
     AppAssistant.release();
     super.dispose();
   }
@@ -991,6 +951,11 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
             autofocus: wide,
             paperInsets: EdgeInsets.fromLTRB(_d.page.left, _d.page.top, _d.page.right, _d.page.bottom),
             paperBuilder: (context, scale) => _PaperDecor(design: _d, values: _previewValues(_d, _data, widget.content), scale: scale, content: widget.content, images: _images),
+            // double click (long-press on touch) on a text block edits it on the page; right click = the context menu
+            inlineText: (item) => item.payload.kind == 'text' ? item.payload.text : null,
+            inlineStyle: (context, item, scale) => exportInlineStyle(_d, item.payload, scale),
+            onInlineCommit: (item, text) => item.payload.text = text,
+            onItemDoubleTap: wide ? null : (_) => _dockOpen.value = true,
             itemBuilder: (context, item, selected) => _BlockContent(
               design: _d,
               dataset: _data,
@@ -1023,22 +988,28 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
               ),
             ]);
           }
+          final b = _block;
+          final multi = _ctl.selection.length > 1;
           return Column(children: [
             toolbar,
-            Expanded(child: canvas),
-            Container(
-              decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
-              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
-              child: SafeArea(
-                top: false,
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-                    AppPill(icon: Icons.tune_rounded, label: _block == null ? t('الصفحة', 'Page') : t('العنصر المحدد', 'Selected element'), onTap: () => _openPanelSheet(context)),
-                    AppPill(icon: Icons.table_chart_outlined, label: t('الجدول', 'Table'), onTap: () => _openPanelSheet(context, tab: 'table')),
-                  ]),
-                  const SizedBox(height: AppSpace.xs),
-                  _saveRow(context),
-                ]),
+            Expanded(child: ClipRect(child: canvas)),
+            StudioDockPanel(
+              controller: _ctl,
+              open: _dockOpen,
+              maxHeight: box.maxHeight,
+              semanticLabel: t('خصائص التصميم', 'Design properties'),
+              title: b != null
+                  ? (exportBlockLabels()[b.kind] ?? b.kind)
+                  : (multi ? '${_ctl.selection.length} ${t('عناصر محددة', 'selected')}' : t('الصفحة', 'Page')),
+              icon: b != null ? _kindIcon(b.kind) : Icons.description_outlined,
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md),
+                child: _panel(context),
+              ),
+              footer: Container(
+                decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider))),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
+                child: SafeArea(top: false, child: _saveRow(context)),
               ),
             ),
           ]);
@@ -1066,29 +1037,17 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
     });
   }
 
-  Future<void> _openPanelSheet(BuildContext context, {String? tab}) async {
-    setState(() => _tab = tab ?? (_block == null ? 'page' : 'element'));
-    await showAppSheet<void>(
-      context,
-      (ctx) => ListenableBuilder(
-        listenable: _ctl,
-        builder: (ctx, _) => StatefulBuilder(
-          builder: (ctx, set) => Column(mainAxisSize: MainAxisSize.min, children: [
-            SheetHeader(t('خصائص التصميم', 'Design properties')),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
-                child: _panel(ctx, refresh: () => set(() {})),
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
+  static IconData _kindIcon(String kind) => switch (kind) {
+        'text' => Icons.text_fields_rounded,
+        'logo' => Icons.image_outlined,
+        'signature' => Icons.draw_outlined,
+        'line' => Icons.horizontal_rule_rounded,
+        'table' => Icons.table_chart_outlined,
+        _ => Icons.view_agenda_outlined,
+      };
 
   // ── panel
-  Widget _panel(BuildContext context, {VoidCallback? refresh}) {
+  Widget _panel(BuildContext context) {
     final tabs = [
       ('element', Icons.crop_square_rounded, t('العنصر', 'Element')),
       ('page', Icons.description_outlined, t('الصفحة', 'Page')),
@@ -1100,10 +1059,7 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
       StudioSegmented<String>(
         segments: [for (final (id, icon, label) in tabs) StudioSegment(value: id, label: label, icon: tabs.length > 3 ? icon : null)],
         value: tab,
-        onChanged: (v) {
-          setState(() => _tab = v);
-          refresh?.call();
-        },
+        onChanged: (v) => setState(() => _tab = v),
       ),
       const SizedBox(height: AppSpace.xs),
       switch (tab) {

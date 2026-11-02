@@ -18493,6 +18493,30 @@
     "en": "Delete",
     "ar": "حذف"
   },
+  "studio_edit_text": {
+    "en": "Edit text",
+    "ar": "تعديل النص"
+  },
+  "studio_cut": {
+    "en": "Cut",
+    "ar": "قص"
+  },
+  "studio_copy": {
+    "en": "Copy",
+    "ar": "نسخ"
+  },
+  "studio_paste": {
+    "en": "Paste",
+    "ar": "لصق"
+  },
+  "studio_lock": {
+    "en": "Lock",
+    "ar": "قفل"
+  },
+  "studio_unlock": {
+    "en": "Unlock",
+    "ar": "إلغاء القفل"
+  },
   "studio_duplicate": {
     "en": "Duplicate",
     "ar": "تكرار"

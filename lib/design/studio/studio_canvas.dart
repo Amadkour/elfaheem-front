@@ -6,10 +6,14 @@
 //   pointer       press an item and drag = move (shift: one axis) · a handle = resize (shift: keep the ratio) ·
 //                 tap = select (shift / ctrl / ⌘: add or remove) · tap the empty page = deselect ·
 //                 mouse drag on empty space = marquee · touch drag on empty space / wheel = pan ·
-//                 ctrl + wheel / pinch = zoom
+//                 ctrl + wheel / pinch = zoom · double click (or long-press on touch) on a text item = edit it in
+//                 place (inlineText) · right click (or long-press on touch, non-text items) = context menu
 //   keyboard      arrows nudge (shift ×10) · Delete / Backspace · Ctrl/⌘+Z undo · Shift+Ctrl/⌘+Z or Ctrl+Y redo ·
-//                 Ctrl/⌘+D duplicate · Ctrl/⌘+A select all · Esc deselect. Only while the canvas has focus, and
-//                 never while a text field has it.
+//                 Ctrl/⌘+D duplicate · Ctrl/⌘+A select all · Ctrl/⌘+C / X / V copy, cut, paste · Esc deselect.
+//                 Only while the canvas has focus, and never while a text field has it.
+//   in-place edit the editor sits exactly over the item (the host's StudioInlineStyle: font, size, alignment,
+//                 direction); Enter confirms (Shift+Enter = new line when multiline), a click outside confirms,
+//                 Esc cancels; the change is ONE undo step (StudioController.commitText).
 //
 // Hit-testing is done here, once, on the controller's geometry: item widgets sit under IgnorePointer, so a
 // host's content can never steal a drag. Handles keep a 48 px target on touch (AppTouch.min), pushed outward so
@@ -21,6 +25,7 @@
 // per scale and rebuilt on structure changes only).
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -31,6 +36,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import '../app_keyboard.dart' show AppKeyboard;
 import '../app_tokens.dart';
 import 'studio_controller.dart';
 import 'studio_model.dart';
@@ -57,6 +63,10 @@ class StudioCanvas<P> extends StatefulWidget {
     this.paperInsets = EdgeInsets.zero,
     this.paperBuilder,
     this.overlayBuilder,
+    this.inlineText,
+    this.inlineStyle,
+    this.onInlineCommit,
+    this.contextMenu = true,
   });
 
   final StudioController<P> controller;
@@ -88,6 +98,23 @@ class StudioCanvas<P> extends StatefulWidget {
 
   /// Drawn over the page background and under the items (a watermark), at the page's size.
   final Widget Function(BuildContext context, double scale)? overlayBuilder;
+
+  /// The text an item can edit in place, or null when it has none (an image, a line). With [onInlineCommit], a
+  /// double click (long-press on touch) on such an item opens the editor; other items keep [onItemDoubleTap].
+  final String? Function(StudioItem<P> item)? inlineText;
+
+  /// How the editor looks over [item] at [scale] screen pixels per page unit; null = the theme's body text.
+  final StudioInlineStyle? Function(BuildContext context, StudioItem<P> item, double scale)? inlineStyle;
+
+  /// Stores the edited text in the host's model. Runs inside [StudioController.commitText] (one undo step), only
+  /// when the text changed.
+  final void Function(StudioItem<P> item, String text)? onInlineCommit;
+
+  /// Right click / long-press shows Cut, Copy, Paste, Duplicate, Delete, the z order and Lock (when the adapter
+  /// can lock). False for a read-only design.
+  final bool contextMenu;
+
+  bool get canEditText => inlineText != null && onInlineCommit != null;
 
   /// Screen pixels per page unit for the item being built.
   static double scaleOf(BuildContext context) =>
@@ -123,6 +150,14 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
   final _marquee = ValueNotifier<Rect?>(null);
   final _cursor = ValueNotifier<MouseCursor>(SystemMouseCursors.basic);
 
+  // the in-place editor
+  final _editingId = ValueNotifier<String?>(null);
+  TextEditingController? _editText;
+  FocusNode? _editFocus;
+  String _editOriginal = '';
+  bool Function(KeyDownEvent e)? _prevClaim;
+  bool _claimed = false;
+
   Widget? _layer, _overlay;
   double? _layerScale;
 
@@ -142,17 +177,326 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
   void didUpdateWidget(covariant StudioCanvas<P> old) {
     super.didUpdateWidget(old);
     _layer = null;
+    if (old.contextMenu != widget.contextMenu) _holdBrowserMenu(widget.contextMenu);
+  }
+
+  /// Canvases that own the right click (the browser's menu is off while at least one is mounted). Counted, not
+  /// toggled: a new canvas (band switch, next step, other language) mounts BEFORE the old one is disposed, so a plain
+  /// disable / enable pair would turn the browser's menu back on under the new canvas.
+  static int _menuHolds = 0;
+  bool _holdsMenu = false;
+
+  void _holdBrowserMenu(bool hold) {
+    if (!kIsWeb || hold == _holdsMenu) return;
+    _holdsMenu = hold;
+    if (hold) {
+      if (_menuHolds++ == 0) unawaited(BrowserContextMenu.disableContextMenu());
+    } else {
+      if (--_menuHolds == 0) unawaited(BrowserContextMenu.enableContextMenu());
+    }
+  }
+
+  @visibleForTesting
+  static int get browserMenuHolds => _menuHolds;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_syncEditor);
+    _holdBrowserMenu(widget.contextMenu);
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_syncEditor);
+    _holdBrowserMenu(false);
+    _closeEditor(notify: false);
     _ownFocus?.dispose();
     _marquee.dispose();
     _cursor.dispose();
+    _editingId.dispose();
     super.dispose();
   }
 
   StudioController<P> get _ctl => widget.controller;
+
+  // ── In-place text editor ─────────────────────────────────────────────────────────────────────────────────
+  /// Opens / closes the editor when the controller's [StudioController.editingId] changes.
+  void _syncEditor() {
+    final id = _ctl.editingId;
+    if (id == _editingId.value) return;
+    if (id == null) {
+      _closeEditor();
+      return;
+    }
+    final it = _ctl.itemById(id);
+    final text = it == null || !widget.canEditText ? null : widget.inlineText!(it);
+    if (text == null) {
+      // nothing to edit here: hand the controller back its idle state after this notification
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _ctl.editingId == id) _ctl.endTextEdit();
+      });
+      return;
+    }
+    _closeEditor(notify: false);
+    _editOriginal = text;
+    _editText = TextEditingController(text: text)..selection = TextSelection(baseOffset: 0, extentOffset: text.length);
+    _editFocus = FocusNode(debugLabel: 'studio-inline', onKeyEvent: (node, e) {
+      if (e is! KeyDownEvent) return KeyEventResult.ignored;
+      return _editorKey(e) ? KeyEventResult.handled : KeyEventResult.ignored;
+    });
+    // the app-wide keyboard (Enter → next field, Esc → unfocus) runs before the focus tree: claim its keys
+    _prevClaim = AppKeyboard.keyClaim;
+    _claimed = true;
+    AppKeyboard.keyClaim = _editorKey;
+    if (mounted) setState(() => _layer = null);
+    _editingId.value = id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _editFocus != null) _editFocus!.requestFocus();
+    });
+  }
+
+  void _closeEditor({bool notify = true}) {
+    if (_claimed) {
+      if (AppKeyboard.keyClaim == _editorKey) AppKeyboard.keyClaim = _prevClaim;
+      _claimed = false;
+      _prevClaim = null;
+    }
+    final t = _editText, f = _editFocus;
+    _editText = null;
+    _editFocus = null;
+    if (t != null || f != null) {
+      // after this frame: the field may still be mounted while it is torn down
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        t?.dispose();
+        f?.dispose();
+      });
+    }
+    if (!notify) {
+      _editingId.value = null;
+      return;
+    }
+    if (_editingId.value != null) {
+      _editingId.value = null;
+      if (mounted) setState(() => _layer = null);
+    }
+  }
+
+  /// Enter confirms, Shift+Enter is a new line in a multiline item, Esc cancels.
+  bool _editorKey(KeyDownEvent e) {
+    final id = _editingId.value;
+    if (id == null) return false;
+    final key = e.logicalKey;
+    if (key == LogicalKeyboardKey.escape) {
+      _cancelEdit();
+      return true;
+    }
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+      if (HardwareKeyboard.instance.isShiftPressed) {
+        final it = _ctl.itemById(id);
+        final st = it == null ? null : widget.inlineStyle?.call(context, it, _scale);
+        if (st?.multiline ?? false) {
+          final t = _editText!;
+          final sel = t.selection.isValid ? t.selection : TextSelection.collapsed(offset: t.text.length);
+          t.value = t.value.copyWith(
+            text: t.text.replaceRange(sel.start, sel.end, '\n'),
+            selection: TextSelection.collapsed(offset: sel.start + 1),
+            composing: TextRange.empty,
+          );
+          return true;
+        }
+      }
+      _commitEdit();
+      return true;
+    }
+    return false;
+  }
+
+  void _commitEdit() {
+    final id = _editingId.value, t = _editText;
+    if (id == null || t == null) return;
+    final text = t.text;
+    final changed = text != _editOriginal;
+    _closeEditor();
+    if (changed && widget.onInlineCommit != null) {
+      _ctl.commitText(id, text, widget.onInlineCommit!);
+    } else {
+      _ctl.endTextEdit();
+    }
+    if (mounted) _focus.requestFocus();
+  }
+
+  void _cancelEdit() {
+    if (_editingId.value == null) return;
+    _closeEditor();
+    _ctl.endTextEdit();
+    if (mounted) _focus.requestFocus();
+  }
+
+  /// Opens the editor on [id] when its item has text to edit; false otherwise.
+  bool _tryEdit(String id) {
+    if (!widget.canEditText) return false;
+    final it = _ctl.itemById(id);
+    if (it == null || it.locked || !it.visible || widget.inlineText!(it) == null) return false;
+    return _ctl.startTextEdit(id);
+  }
+
+  Widget _editor(BuildContext context, Offset origin, double scale) {
+    final id = _editingId.value;
+    final it = id == null ? null : _ctl.itemById(id);
+    final t = _editText, f = _editFocus;
+    if (it == null || t == null || f == null) return const SizedBox.shrink();
+    final c = context.colors;
+    final theme = Theme.of(context);
+    final st = widget.inlineStyle?.call(context, it, scale) ??
+        StudioInlineStyle(style: (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(fontSize: 14));
+    final r = _ctl.rectOf(it.id) ?? it.rect;
+    final w = math.max(r.width * scale, 48.0);
+    final h = math.max(r.height * scale, 1.0);
+    final style = st.style.copyWith(inherit: true);
+    Widget field = TextField(
+      key: const ValueKey('studio-inline-editor'),
+      controller: t,
+      focusNode: f,
+      style: style,
+      textAlign: st.textAlign,
+      textDirection: st.textDirection,
+      maxLines: st.multiline ? null : 1,
+      minLines: 1,
+      keyboardType: st.multiline ? TextInputType.multiline : TextInputType.text,
+      textInputAction: st.multiline ? TextInputAction.newline : TextInputAction.done,
+      cursorColor: c.primary,
+      decoration: const InputDecoration.collapsed(hintText: null).copyWith(isDense: true, contentPadding: EdgeInsets.zero),
+      onSubmitted: (_) => _commitEdit(),
+      onTapOutside: (_) => _commitEdit(),
+    );
+    field = Container(
+      constraints: BoxConstraints(minHeight: h),
+      padding: st.padding,
+      decoration: BoxDecoration(
+        color: st.background ?? widget.pageColor,
+        border: Border.all(color: c.primary, width: 1.5),
+        boxShadow: AppShadow.card(context),
+      ),
+      alignment: switch (st.textAlign) {
+        TextAlign.center => Alignment.center,
+        _ => AlignmentDirectional.centerStart,
+      },
+      child: Material(type: MaterialType.transparency, child: field),
+    );
+    if (it.rotation != 0) field = Transform.rotate(angle: it.rotation * math.pi / 180, child: field);
+    return Positioned(
+      left: origin.dx + r.left * scale - (w - r.width * scale) / 2,
+      top: origin.dy + r.top * scale,
+      width: w,
+      child: Semantics(textField: true, label: translate('studio_edit_text'), child: field),
+    );
+  }
+
+  // ── Context menu ─────────────────────────────────────────────────────────────────────────────────────────
+  Future<void> _showMenu(Offset global, String? id) async {
+    if (!widget.contextMenu) return;
+    if (id != null && !_ctl.isSelected(id)) _ctl.select(id);
+    if (id == null && !_ctl.canPaste) return;
+    final overlay = Overlay.maybeOf(context)?.context.findRenderObject() as RenderBox?;
+    if (overlay == null) return;
+    final c = context.colors;
+    final sel = _ctl.selection.isNotEmpty;
+    final locked = _ctl.selectionLocked;
+    final editable = _ctl.hasEditableSelection;
+    final single = _ctl.single;
+    final canText = single != null && !single.locked && widget.canEditText && widget.inlineText!(single) != null;
+    final mod = defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.iOS ? '⌘' : 'Ctrl+';
+    PopupMenuEntry<_Cmd> item(_Cmd cmd, IconData icon, String key, {bool enabled = true, String? keys, bool danger = false}) =>
+        PopupMenuItem<_Cmd>(
+          value: cmd,
+          enabled: enabled,
+          height: AppTouch.min,
+          child: Row(children: [
+            Icon(icon, size: 18, color: !enabled ? c.textLight : (danger ? c.danger : c.textMedium)),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(translate(key), maxLines: 1, overflow: TextOverflow.ellipsis)),
+            if (keys != null && !_touch) ...[
+              const SizedBox(width: AppSpace.md),
+              Text(keys, textDirection: TextDirection.ltr, style: TextStyle(fontSize: 12, color: c.textLight)),
+            ],
+          ]),
+        );
+    final cmd = await showMenu<_Cmd>(
+      context: context,
+      position: RelativeRect.fromRect(Rect.fromLTWH(global.dx, global.dy, 1, 1), Offset.zero & overlay.size),
+      items: [
+        if (canText) ...[item(_Cmd.editText, Icons.edit_rounded, 'studio_edit_text'), const PopupMenuDivider()],
+        if (sel) ...[
+          item(_Cmd.cut, Icons.content_cut_rounded, 'studio_cut', enabled: editable, keys: '${mod}X'),
+          item(_Cmd.copy, Icons.copy_rounded, 'studio_copy', keys: '${mod}C'),
+        ],
+        item(_Cmd.paste, Icons.content_paste_rounded, 'studio_paste', enabled: _ctl.canPaste, keys: '${mod}V'),
+        if (sel) ...[
+          item(_Cmd.duplicate, Icons.control_point_duplicate_rounded, 'studio_duplicate', keys: '${mod}D'),
+          item(_Cmd.delete, Icons.delete_outline_rounded, 'studio_delete', enabled: editable, keys: 'Del', danger: true),
+          const PopupMenuDivider(),
+          item(_Cmd.forward, Icons.flip_to_front_rounded, 'studio_bring_forward'),
+          item(_Cmd.backward, Icons.flip_to_back_rounded, 'studio_send_backward'),
+          item(_Cmd.front, Icons.vertical_align_top_rounded, 'studio_bring_front'),
+          item(_Cmd.back, Icons.vertical_align_bottom_rounded, 'studio_send_back'),
+          if (_ctl.canLock) ...[
+            const PopupMenuDivider(),
+            locked
+                ? item(_Cmd.lock, Icons.lock_open_rounded, 'studio_unlock')
+                : item(_Cmd.lock, Icons.lock_outline_rounded, 'studio_lock'),
+          ],
+        ],
+      ],
+    );
+    if (!mounted || cmd == null) return;
+    _run(cmd);
+  }
+
+  void _run(_Cmd cmd) {
+    switch (cmd) {
+      case _Cmd.editText:
+        final s = _ctl.single;
+        if (s != null) _tryEdit(s.id);
+      case _Cmd.cut:
+        _ctl.cut();
+      case _Cmd.copy:
+        _ctl.copy();
+      case _Cmd.paste:
+        _ctl.paste();
+      case _Cmd.duplicate:
+        _ctl.duplicate();
+      case _Cmd.delete:
+        _ctl.deleteSelection();
+      case _Cmd.forward:
+        _ctl.bringForward();
+      case _Cmd.backward:
+        _ctl.sendBackward();
+      case _Cmd.front:
+        _ctl.bringToFront();
+      case _Cmd.back:
+        _ctl.sendToBack();
+      case _Cmd.lock:
+        _ctl.toggleLock();
+    }
+    if (cmd != _Cmd.editText) _focus.requestFocus();
+  }
+
+  void _onSecondaryTapUp(TapUpDetails d) {
+    if (_editingId.value != null) return;
+    final (_, id) = _hit(d.localPosition);
+    _showMenu(d.globalPosition, id);
+  }
+
+  void _onLongPressStart(LongPressStartDetails d) {
+    if (_editingId.value != null) return;
+    _ctl.cancelGesture();
+    _mode = _Mode.none;
+    final (h, id) = _hit(d.localPosition);
+    if (h != null) return;
+    if (id != null && _tryEdit(id)) return;
+    _showMenu(d.globalPosition, id);
+  }
 
   Offset _clampOrigin(Offset o, Size page) {
     double axis(double v, double view, double size) {
@@ -234,6 +578,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
             background: widget.pageBackground,
             overlay: widget.overlayBuilder,
             decorate: !hasPaper,
+            hidden: _editingId,
           );
           final theme = Theme.of(context);
           _overlay = CustomPaint(
@@ -303,17 +648,29 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
                 ),
               ),
             ),
+          if (_editingId.value != null) _editor(context, origin, scale),
         ]);
       }),
     );
 
-    final gestures = GestureDetector(
+    final gestures = RawGestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapUp: _onTapUp,
-      onScaleStart: _onScaleStart,
-      onScaleUpdate: _onScaleUpdate,
-      onScaleEnd: _onScaleEnd,
-      child: ColoredBox(color: c.background, child: SizedBox.expand(child: canvas)),
+      gestures: {
+        // touch only: a held mouse button must still drag
+        LongPressGestureRecognizer: GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+          () => LongPressGestureRecognizer(supportedDevices: const {PointerDeviceKind.touch, PointerDeviceKind.stylus}),
+          (r) => r.onLongPressStart = _onLongPressStart,
+        ),
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: _onTapUp,
+        onSecondaryTapUp: widget.contextMenu ? _onSecondaryTapUp : null,
+        onScaleStart: _onScaleStart,
+        onScaleUpdate: _onScaleUpdate,
+        onScaleEnd: _onScaleEnd,
+        child: ColoredBox(color: c.background, child: SizedBox.expand(child: canvas)),
+      ),
     );
 
     return Focus(
@@ -406,11 +763,14 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     final dbl = id == _lastTapId && now.difference(_lastTapAt) < kDoubleTapTimeout;
     _lastTapId = id;
     _lastTapAt = now;
-    if (dbl && widget.onItemDoubleTap != null) {
+    if (dbl) {
       _lastTapId = null;
-      _ctl.select(id);
-      widget.onItemDoubleTap!(id);
-      return;
+      if (_tryEdit(id)) return;
+      if (widget.onItemDoubleTap != null) {
+        _ctl.select(id);
+        widget.onItemDoubleTap!(id);
+        return;
+      }
     }
     _ctl.select(id, additive: _additive);
   }
@@ -524,6 +884,15 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
         _ctl.duplicate();
       } else if (letter(LogicalKeyboardKey.keyA, PhysicalKeyboardKey.keyA)) {
         _ctl.selectAll();
+      } else if (letter(LogicalKeyboardKey.keyC, PhysicalKeyboardKey.keyC)) {
+        if (_ctl.selection.isEmpty) return KeyEventResult.ignored;
+        _ctl.copy();
+      } else if (letter(LogicalKeyboardKey.keyX, PhysicalKeyboardKey.keyX)) {
+        if (_ctl.selection.isEmpty) return KeyEventResult.ignored;
+        _ctl.cut();
+      } else if (letter(LogicalKeyboardKey.keyV, PhysicalKeyboardKey.keyV)) {
+        if (!_ctl.canPaste) return KeyEventResult.ignored;
+        _ctl.paste();
       } else {
         return KeyEventResult.ignored;
       }
@@ -541,6 +910,9 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
       if (!hasSel) return KeyEventResult.ignored;
       _ctl.nudge(dx, dy, big: shift);
       return KeyEventResult.handled;
+    }
+    if ((key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.f2) && _ctl.single != null) {
+      return _tryEdit(_ctl.single!.id) ? KeyEventResult.handled : KeyEventResult.ignored;
     }
     if (key == LogicalKeyboardKey.delete || key == LogicalKeyboardKey.backspace) {
       if (!hasSel) return KeyEventResult.ignored;
@@ -615,11 +987,15 @@ class _StudioPageLayer<P> extends StatelessWidget {
     this.background,
     this.overlay,
     this.decorate = true,
+    this.hidden,
   });
 
   final StudioController<P> controller;
   final double scale;
   final StudioItemBuilder<P> builder;
+
+  /// The item being edited in place: drawn invisible (the editor stands in for it).
+  final ValueListenable<String?>? hidden;
   final Color paper;
   final Widget? background;
   final Widget Function(BuildContext context, double scale)? overlay;
@@ -633,7 +1009,7 @@ class _StudioPageLayer<P> extends StatelessWidget {
     return _StudioScale(
       scale: scale,
       child: ListenableBuilder(
-        listenable: controller,
+        listenable: hidden == null ? controller : Listenable.merge([controller, hidden]),
         builder: (context, _) => DecoratedBox(
           decoration: decorate ? BoxDecoration(color: paper, boxShadow: shadow) : const BoxDecoration(),
           child: ClipRect(
@@ -661,6 +1037,7 @@ class _StudioPageLayer<P> extends StatelessWidget {
                     selected: controller.isSelected(it.id),
                     scale: scale,
                     builder: builder,
+                    hidden: hidden?.value == it.id,
                   ),
             ]),
           ),
@@ -678,6 +1055,7 @@ class _ItemView<P> extends StatelessWidget {
     required this.selected,
     required this.scale,
     required this.builder,
+    this.hidden = false,
   });
 
   final StudioController<P> controller;
@@ -685,6 +1063,7 @@ class _ItemView<P> extends StatelessWidget {
   final bool selected;
   final double scale;
   final StudioItemBuilder<P> builder;
+  final bool hidden;
 
   Widget _positioned(Rect r, Widget child) => Positioned(
         left: r.left * scale,
@@ -696,7 +1075,8 @@ class _ItemView<P> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = IgnorePointer(child: RepaintBoundary(child: builder(context, item, selected)));
+    Widget child = IgnorePointer(child: RepaintBoundary(child: builder(context, item, selected)));
+    if (hidden) child = Opacity(opacity: 0, child: child);
     // Only a selected item can move: the others never listen to the live signal.
     if (!selected) return _positioned(item.rect, child);
     return ListenableBuilder(
@@ -1038,3 +1418,6 @@ class _RulerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _RulerPainter old) => true;
 }
+
+/// The context menu's commands.
+enum _Cmd { editText, cut, copy, paste, duplicate, delete, forward, backward, front, back, lock }

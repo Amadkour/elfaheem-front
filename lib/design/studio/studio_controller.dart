@@ -2,7 +2,7 @@
 //
 // The studio's brain, pure (no widgets, unit-tested in test/export/studio_controller_test.dart): selection,
 // move / resize gestures with smart guides and grid snapping, align / distribute, nudge, duplicate, delete,
-// z order, undo / redo and zoom. Every change goes through the host's [StudioAdapter]; the controller only keeps
+// z order, copy / cut / paste (an internal clipboard), lock / unlock, the in-place text edit, undo / redo and zoom. Every change goes through the host's [StudioAdapter]; the controller only keeps
 // the selection, the live rects of a gesture in progress and the history.
 //
 // Two listenables, so a drag stays at 60 fps:
@@ -30,6 +30,7 @@ class StudioController<P> extends ChangeNotifier {
     this.nudgeBigStep = 10,
     this.historyLimit = 60,
     this.coalesceWindow = const Duration(seconds: 1),
+    this.pasteOffset,
     DateTime Function()? clock,
   })  : _page = page,
         _snap = snapEnabled,
@@ -56,6 +57,10 @@ class StudioController<P> extends ChangeNotifier {
 
   /// Steps recorded with `coalesce: true` under the same label within this window become one step.
   Duration coalesceWindow;
+
+  /// How far each paste lands from the copied items (page units); null = ([nudgeBigStep], [nudgeBigStep]). The
+  /// export page passes 4 mm.
+  Offset? pasteOffset;
   final DateTime Function() _clock;
 
   StudioPage _page;
@@ -102,6 +107,7 @@ class StudioController<P> extends ChangeNotifier {
   void refresh() {
     _items = adapter.readItems();
     _selection.removeWhere((id) => itemById(id) == null);
+    if (_editing != null && itemById(_editing!) == null) _editing = null;
     notifyListeners();
   }
 
@@ -591,6 +597,119 @@ class StudioController<P> extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Clipboard (internal, per controller) ────────────────────────────────────────────────────────────────
+  List<StudioItem<P>> _clipboard = const [];
+  int _pastes = 0;
+
+  /// Something was copied or cut.
+  bool get canPaste => _clipboard.isNotEmpty;
+
+  /// The number of items on the clipboard.
+  int get clipboardLength => _clipboard.length;
+
+  /// Copies the selection (locked items too). The payloads are copied now ([StudioAdapter.cloneItem]), so a later
+  /// edit of the original never changes what is pasted.
+  void copy() {
+    final its = [for (final i in _items) if (_selection.contains(i.id)) i];
+    if (its.isEmpty) return;
+    _clipboard = List.unmodifiable([for (final i in its) adapter.cloneItem(i)]);
+    _pastes = 0;
+    notifyListeners();
+  }
+
+  /// Copies the selection and deletes what is not locked; the first paste lands where the items were.
+  void cut() {
+    final its = [for (final i in _items) if (_selection.contains(i.id)) i];
+    if (its.isEmpty) return;
+    copy();
+    _pastes = -1;
+    deleteSelection();
+  }
+
+  /// Adds copies of the clipboard on top, each paste [pasteOffset] further from the copied items, unlocked, and
+  /// selects them. One undo step.
+  void paste() {
+    if (_clipboard.isEmpty) return;
+    _pastes++;
+    final step = pasteOffset ?? Offset(nudgeBigStep, nudgeBigStep);
+    var d = step * _pastes.toDouble();
+    if (clampToPage) {
+      final b = _bounds(_clipboard.map((i) => i.rect))!.shift(d);
+      d += Offset(_clampShift(b.left, b.right, _page.width), _clampShift(b.top, b.bottom, _page.height));
+    }
+    final copies = [
+      for (final i in _clipboard) adapter.cloneItem(i).copyWith(rect: i.rect.shift(d), locked: false, visible: true),
+    ];
+    record('paste', () => adapter.addItems(copies));
+    _selection
+      ..clear()
+      ..addAll([for (final c in copies) if (itemById(c.id) != null) c.id]);
+    notifyListeners();
+  }
+
+  // ── Lock ─────────────────────────────────────────────────────────────────────────────────────────────────
+  /// The adapter can lock items ([StudioLockAdapter]) and the selection is not empty.
+  bool get canLock {
+    final Object a = adapter;
+    return a is StudioLockAdapter && a.canLock && _selection.isNotEmpty;
+  }
+
+  /// Every selected item is locked.
+  bool get selectionLocked {
+    final its = [for (final i in _items) if (_selection.contains(i.id)) i];
+    return its.isNotEmpty && its.every((i) => i.locked);
+  }
+
+  /// Locks or unlocks the selection (one undo step). Locked items stay selectable (their properties can be
+  /// edited) but never move, resize, nudge, align or get deleted from the canvas.
+  void setLocked(bool locked) {
+    if (!canLock) return;
+    final ids = {for (final i in _items) if (_selection.contains(i.id) && i.locked != locked) i.id};
+    if (ids.isEmpty) return;
+    record(locked ? 'lock' : 'unlock', () => (adapter as StudioLockAdapter).setLocked(ids, locked));
+  }
+
+  void toggleLock() => setLocked(!selectionLocked);
+
+  // ── In-place text edit ──────────────────────────────────────────────────────────────────────────────────
+  String? _editing;
+
+  /// The item whose text is being edited on the canvas, or null.
+  String? get editingId => _editing;
+
+  /// Asks the canvas to open its in-place editor on [id] (a double click does the same). False when the item is
+  /// unknown, hidden or locked; the canvas closes it again when its `inlineText` has no text for the item.
+  bool startTextEdit(String id) {
+    final it = itemById(id);
+    if (it == null || !it.visible || it.locked) return false;
+    cancelGesture();
+    _editing = id;
+    _selection
+      ..clear()
+      ..add(id);
+    notifyListeners();
+    return true;
+  }
+
+  /// Closes the editor without a change.
+  void endTextEdit() {
+    if (_editing == null) return;
+    _editing = null;
+    notifyListeners();
+  }
+
+  /// Writes the edited [text] through the host's [apply] as ONE undo step (labelled 'text') and closes the editor.
+  /// [apply] may record on its own: a [record] inside a [record] is part of the outer step.
+  void commitText(String id, String text, void Function(StudioItem<P> item, String text) apply) {
+    final it = itemById(id);
+    _editing = null;
+    if (it == null || it.locked) {
+      notifyListeners();
+      return;
+    }
+    record('text', () => apply(it, text));
+  }
+
   void bringForward() => _arrange((ids, sel) {
         for (var i = ids.length - 2; i >= 0; i--) {
           if (sel.contains(ids[i]) && !sel.contains(ids[i + 1])) {
@@ -647,11 +766,21 @@ class StudioController<P> extends ChangeNotifier {
   /// Runs a host change of its own model as ONE undo step: `controller.record('font', () => model.font = f)`.
   /// With [coalesce], a step with the same label recorded within [coalesceWindow] (and the same selection)
   /// merges into the previous one: a slider dragged through 40 values is one undo.
+  /// A [record] inside another one (a host helper that records on its own) runs as part of the outer step.
   void record(String label, VoidCallback mutate, {bool coalesce = false}) {
+    if (_recording > 0) {
+      mutate();
+      return;
+    }
     if (_gesture != null) cancelGesture();
     final before = adapter.snapshot();
     final selBefore = Set.of(_selection);
-    mutate();
+    _recording++;
+    try {
+      mutate();
+    } finally {
+      _recording--;
+    }
     final after = adapter.snapshot();
     final now = _clock();
     final last = _undo.isEmpty ? null : _undo.last;
@@ -670,6 +799,8 @@ class StudioController<P> extends ChangeNotifier {
     _redo.clear();
     refresh();
   }
+
+  int _recording = 0;
 
   bool get canUndo => _undo.isNotEmpty;
   bool get canRedo => _redo.isNotEmpty;
