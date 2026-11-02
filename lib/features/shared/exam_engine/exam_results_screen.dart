@@ -1,6 +1,8 @@
 // An exam's results for the teacher: every student's attempt (name from the course roster), what waits for marking,
 // each answer with its grade and a "change" that overrides it (POST /answers/{id}/mark — objective answers too),
-// offline marks typed per student, and "publish results" when students see them only once published.
+// offline marks typed per student, and "publish results" when students see them only once published. A paper exam
+// (delivery paper, any paper_format) always shows its "Paper exam" card on top (`PaperExamEntry`): print, scan /
+// upload, review and results stay reachable before the first scan and after the last paper is graded.
 // Students see only their own result (exam_result_screen.dart, from the student exam list).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -15,6 +17,7 @@ import 'exam_quick.dart';
 import 'exam_review.dart' show ExamReviewApi;
 import 'exam_review_screen.dart' show ExamReviewScreen;
 import 'exam_taking.dart' show examCodeText;
+import 'paper/paper_exam_entry.dart' show PaperExamEntry;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
@@ -131,6 +134,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
           if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
+          PaperExamEntry(examId: widget.examId, examTitle: widget.examTitle, onChanged: _load, margin: const EdgeInsets.only(bottom: 12)),
           if (rows == null && _error == null) const AppListSkeleton(items: 5),
           if (rows != null) ...[
             AppGrid(children: [

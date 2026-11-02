@@ -1307,12 +1307,11 @@ class TemplateStepBody extends StatelessWidget {
         SetupChoiceTile(
           key: ValueKey('setup.template.${x.id}'),
           icon: Icons.grid_on_rounded,
-          title: x.name,
+          title: x.title,
           subtitle: [
-            x.shape,
+            ?x.subtitle,
             if (x.idZone != null) idZoneLabel(x.idZone!),
             if (fits[x.id]?.blocks == true) t('لا يتسع لـ$identifierLabel', 'too short for $identifierLabel'),
-            ?x.description,
           ].join(' · '),
           selected: selectedId == x.id,
           onTap: () => onPick(x),

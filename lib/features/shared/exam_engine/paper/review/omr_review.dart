@@ -122,9 +122,12 @@ class OmrStudent {
 
 /// `GET …/omr/students`: the exam's audience matching a search (a part of the name, or 3+ characters of the ID).
 class OmrAudience {
-  const OmrAudience({this.items = const [], this.total = 0, this.source, this.labelEn, this.labelAr});
+  const OmrAudience({this.items = const [], this.total = 0, this.source, this.labelEn, this.labelAr, this.reason});
   final List<OmrStudent> items;
   final int total;
+
+  /// Why the list is empty when the server says so (`no_course`: the exam is linked to no course).
+  final String? reason;
 
   /// The exam identifier's source (`academic_id`, `national_id`, …; `name` when the exam has none).
   final String? source;
@@ -138,6 +141,7 @@ class OmrAudience {
       source: m['source']?.toString(),
       labelEn: l['en']?.toString(),
       labelAr: l['ar']?.toString(),
+      reason: m['reason']?.toString(),
     );
   }
 

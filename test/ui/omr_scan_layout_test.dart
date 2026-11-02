@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review.dart' show OmrStudent;
+import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_audience_picker.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_camera.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan_widgets.dart';
@@ -107,9 +109,25 @@ void main() {
 
   testWidgets('OmrToolsPanel and the sheets options', (tester) async {
     const info = OmrSheetsInfo(printable: true, questions: 6, sheetQuestions: 50, forms: ['A', 'B', 'C', 'D'], sheetForms: ['A', 'B', 'C', 'D'], idKind: 'shaded');
-    final copies = TextEditingController(text: '30'), ids = TextEditingController(text: '12, 15, 40');
+    final copies = TextEditingController(text: '30'), query = TextEditingController();
     addTearDown(copies.dispose);
-    addTearDown(ids.dispose);
+    addTearDown(query.dispose);
+    // the exam's audience as GET …/omr/students answers it (names, IDs masked except the last 4)
+    final students = [
+      for (var i = 0; i < 40; i++)
+        OmrStudent(101 + i, i.isEven ? 'عبد الرحمن محمد عبد العزيز الشناوي $i' : 'Alexandra Konstantinopoulou-Smith $i', identifier: i % 3 == 0 ? null : '••••••${1000 + i}'),
+    ];
+    Widget picker() => OmrAudiencePickerBody(
+          queryController: query,
+          onQuery: (_) {},
+          students: students,
+          total: 120,
+          selected: const {101, 102},
+          onToggle: (_) {},
+          onSelectAll: () {},
+          onClear: () {},
+          identifierLabel: t('الرقم الأكاديمي', 'Academic ID'),
+        );
     for (final named in [false, true]) {
       await expectNoLayoutErrors(
           tester,
@@ -125,10 +143,7 @@ void main() {
                   forms: const {'A', 'B'},
                   onForm: (_) {},
                   copiesController: copies,
-                  idsController: ids,
-                  roster: [for (var i = 101; i < 141; i++) i],
-                  selected: const {101, 102},
-                  onToggle: (_) {},
+                  students: picker(),
                   onDownload: () {},
                   onShare: () {},
                   error: named ? t('طالب ليس من طلاب هذا الاختبار (#999)', 'Not a student of this exam (#999)') : null,
@@ -140,10 +155,7 @@ void main() {
                   forms: const {},
                   onForm: (_) {},
                   copiesController: copies,
-                  idsController: ids,
-                  roster: const [],
-                  selected: const {},
-                  onToggle: (_) {},
+                  students: const SizedBox.shrink(),
                   onDownload: () {},
                   onShare: () {},
                 ),

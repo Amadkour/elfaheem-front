@@ -874,8 +874,11 @@ class OmrToolEntry {
 }
 
 class OmrToolsPanel extends StatelessWidget {
-  const OmrToolsPanel({super.key, required this.entries, this.busy});
+  const OmrToolsPanel({super.key, required this.entries, this.busy, this.title, this.subtitle});
   final List<OmrToolEntry> entries;
+
+  /// The heading (default: "Bubble sheet" and its one-line how-to).
+  final String? title, subtitle;
 
   /// The entry whose action is running.
   final String? busy;
@@ -884,7 +887,8 @@ class OmrToolsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppSectionTitle(t('ورقة التظليل', 'Bubble sheet'), subtitle: t('اطبع الأوراق، ثم صوّرها أو ارفعها — تُصحَّح تلقائيًا', 'Print the sheets, then scan or upload them — they are graded for you')),
+      AppSectionTitle(title ?? t('ورقة التظليل', 'Bubble sheet'),
+          subtitle: subtitle ?? t('اطبع الأوراق، ثم صوّرها أو ارفعها — تُصحَّح تلقائيًا', 'Print the sheets, then scan or upload them — they are graded for you')),
       for (final e in entries)
         Opacity(
           opacity: e.onTap == null && busy != e.id ? .6 : 1,
@@ -899,7 +903,7 @@ class OmrToolsPanel extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
-                  child: Icon(e.icon, color: c.primary),
+                  child: Icon(e.icon, color: appInk(context, c.primary)),
                 ),
                 const SizedBox(width: AppSpace.sm),
                 Expanded(

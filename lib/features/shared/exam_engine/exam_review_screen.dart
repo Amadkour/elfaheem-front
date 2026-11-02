@@ -1,6 +1,9 @@
 // Teacher review of Exam Engine answers (Phase 6, brief §7.4): lowest confidence first, the proposal with its
 // per-criterion justification and the evidence highlighted in the student's own words, one-action accept or edit,
 // bulk approval of high-confidence proposals, the grading policy. Scanned answers open the page side by side.
+// Students are named (the exam's audience, `GET …/omr/students`, then the course roster for anyone not listed), never
+// "#10"; answers read from a paper exam's scans (bubble marks, handwriting) lead to the OMR review page, where each
+// one is shown next to its crop.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -8,7 +11,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import 'exam_review.dart';
-import 'exam_authoring.dart' show ExamAuthoringApi, examStatusLabel;
+import 'exam_authoring.dart' show ExamAuthoringApi, ExamView, examStatusLabel;
 import 'exam_authoring_screen.dart' show ExamEditorScreen, QuestionBankScreen;
 import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
 import 'exam_scan_review.dart';
@@ -16,6 +19,9 @@ import 'offline/offline_exam_teacher.dart';
 import 'exam_taking.dart' show examCodeText;
 import 'exam_quick_screen.dart' show openQuickExam;
 import 'exam_results_screen.dart' show ExamResultsScreen;
+import 'paper/review/omr_review.dart' show OmrAudience, OmrReviewApi;
+import 'paper/scan/omr_audience_picker.dart' show kOmrAudiencePage;
+import 'paper/scan/omr_routes.dart' show OmrRoutes, openOmrReview;
 
 String _pts(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(v * 2 == (v * 2).roundToDouble() ? 1 : 2);
 
@@ -53,12 +59,27 @@ class EvidenceText extends StatelessWidget {
   }
 }
 
+/// Who an answer belongs to, in words: the student's name, the pseudonym under anonymous marking, else "Student #n".
+String reviewStudentText(ReviewItem item, Map<int, String> names) {
+  final id = item.studentId;
+  if (id == null) return item.studentLabel;
+  final n = names[id]?.trim() ?? '';
+  return n.isNotEmpty ? n : t('طالب #$id', 'Student #$id');
+}
+
 /// Plain-values card of one answer to review (under the layout harness).
 class ReviewAnswerCard extends StatelessWidget {
-  const ReviewAnswerCard({super.key, required this.item, required this.threshold, this.onAccept, this.onEdit, this.onScan, this.busy = false});
+  const ReviewAnswerCard({super.key, required this.item, required this.threshold, this.studentName, this.onAccept, this.onEdit, this.onScan, this.onSheet,
+      this.busy = false});
   final ReviewItem item;
   final double threshold;
+
+  /// The student in words ([reviewStudentText]); the item's own label when null.
+  final String? studentName;
   final VoidCallback? onAccept, onEdit, onScan;
+
+  /// An answer read from a paper exam's scan: its review next to the crop (the OMR review page).
+  final VoidCallback? onSheet;
   final bool busy;
 
   @override
@@ -69,10 +90,11 @@ class ReviewAnswerCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          AppBadgePill(item.studentLabel, icon: Icons.person_outline_rounded, color: c.textMedium),
+          AppBadgePill(studentName ?? item.studentLabel, icon: Icons.person_outline_rounded, color: c.textMedium),
           AppBadgePill(reviewStateText(item.reviewState), color: item.isOpen ? c.warning : c.success),
-          ConfidencePill(confidence: item.confidence, threshold: threshold, abstain: item.abstain),
-          if (item.fromScan) AppBadgePill(t('ورقي ممسوح', 'Scanned paper'), icon: Icons.document_scanner_outlined, color: c.primary),
+          // "No proposal" only when there is none: a suggestion without a confidence figure shows no pill at all
+          if (item.confidence != null || !item.hasProposal) ConfidencePill(confidence: item.confidence, threshold: threshold, abstain: item.abstain),
+          if (item.fromScan || item.fromPaperReader) AppBadgePill(t('ورقي ممسوح', 'Scanned paper'), icon: Icons.document_scanner_outlined, color: c.primary),
         ]),
         const SizedBox(height: 10),
         Text(item.prompt, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
@@ -107,6 +129,12 @@ class ReviewAnswerCard extends StatelessWidget {
           OutlinedButton.icon(onPressed: busy ? null : onEdit, icon: const Icon(Icons.edit_note_rounded, size: 18), label: Text(t('تعديل الدرجة', 'Edit score'))),
           if (item.fromScan && item.scanPageId != null)
             TextButton.icon(onPressed: onScan, icon: const Icon(Icons.image_search_rounded, size: 18), label: Text(t('الورقة الأصلية', 'Original page'))),
+          if (item.fromPaperReader && onSheet != null)
+            TextButton.icon(
+                key: ValueKey('review.sheet.${item.answerId}'),
+                onPressed: onSheet,
+                icon: const Icon(Icons.crop_rounded, size: 18),
+                label: Text(t('راجعها على صورة الورقة', 'Review it on the paper image'))),
         ]),
       ]),
     );
@@ -303,10 +331,54 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
   String? _error;
   final Set<int> _busy = {};
 
+  /// student id → name (the exam's audience, then the course roster for anyone it did not list).
+  final Map<int, String> _names = {};
+  bool _audienceTried = false, _rosterTried = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  Future<void> _loadNames(List<ReviewItem> items) async {
+    final want = {for (final it in items) ?it.studentId}..removeAll(_names.keys);
+    if (want.isEmpty) return;
+    if (!_audienceTried) {
+      _audienceTried = true;
+      final r = await OmrReviewApi().audience(widget.examId, '', limit: kOmrAudiencePage);
+      if (r.ok) {
+        for (final s in OmrAudience.fromJson(r.map).items) {
+          if (s.name.trim().isNotEmpty) _names[s.id] = s.name;
+        }
+      }
+      want.removeAll(_names.keys);
+    }
+    if (want.isNotEmpty && !_rosterTried) {
+      // a class larger than one audience page: the course roster has everyone
+      _rosterTried = true;
+      final api = ExamAuthoringApi();
+      final ex = await api.exam(widget.examId);
+      final courseId = ex.ok ? ExamView.fromJson(ex.map).exam.courseId : null;
+      if (courseId != null) {
+        final r = await api.courseStudents(courseId);
+        if (r.ok) {
+          final list = r.map['value'] is List ? asMapList(r.map['value']) : asMapList(r.map['items']);
+          for (final s in list) {
+            final name = '${s['name'] ?? ''}'.trim();
+            if (name.isNotEmpty) _names.putIfAbsent(asInt(s['id']), () => name);
+          }
+        }
+      }
+    }
+    if (mounted) setState(() {});
+  }
+
+  bool get _omrReview => OmrRoutes.review != null;
+
+  Future<void> _openSheetReview() async {
+    await openOmrReview(context, widget.examId);
+    if (mounted) _load();
   }
 
   Future<void> _load() async {
@@ -316,6 +388,8 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
       _error = r.ok ? null : r.message;
       if (r.ok) _queue = ReviewQueue.fromJson(r.map);
     });
+    final q = _queue;
+    if (r.ok && q != null) _loadNames(q.items);
   }
 
   Future<void> _accept(ReviewItem it) async {
@@ -406,11 +480,24 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
                 action: TextButton(onPressed: _bulk, child: Text(t('اعتماد', 'Approve'))),
               ),
             ),
+          if (q != null && _omrReview && q.items.any((it) => it.fromPaperReader))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: AppBanner(
+                key: const ValueKey('review.sheetBanner'),
+                icon: Icons.document_scanner_outlined,
+                text: t('بعض هذه الإجابات قُرئت من أوراق ممسوحة. راجعها بجوار صورة كل إجابة من الورقة.',
+                    'Some of these answers were read from scanned papers. Review them next to the image of each answer.'),
+                action: TextButton(onPressed: _openSheetReview, child: Text(t('افتح', 'Open'))),
+              ),
+            ),
           if (q != null && q.items.isEmpty) AppEmpty(icon: Icons.task_alt_rounded, title: t('لا توجد إجابات تنتظر التصحيح', 'Nothing waits for marking')),
           if (q != null)
             for (final it in q.items)
-              ReviewAnswerCard(item: it, threshold: q.threshold, busy: _busy.contains(it.answerId), onAccept: () => _accept(it), onEdit: () => _edit(it),
-                  onScan: it.scanPageId == null ? null : () => _scans(pageId: it.scanPageId)),
+              ReviewAnswerCard(item: it, threshold: q.threshold, studentName: reviewStudentText(it, _names), busy: _busy.contains(it.answerId),
+                  onAccept: () => _accept(it), onEdit: () => _edit(it),
+                  onScan: it.scanPageId == null ? null : () => _scans(pageId: it.scanPageId),
+                  onSheet: _omrReview && it.fromPaperReader ? _openSheetReview : null),
         ]),
       ),
     );

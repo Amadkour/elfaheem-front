@@ -8,6 +8,15 @@ import '../../admin/admin_common.dart' show asInt, asMapList, t;
 import 'exam_insights.dart';
 import 'exam_insights_screen.dart' show StudentAppealSheet;
 
+/// The attempt's state in the result header: graded once marked (a paper exam's attempt is "submitted" by the scan),
+/// else submitted — automatically when the time ran out.
+String resultStateText(String state, {bool needsReview = false}) => switch (state) {
+      'graded' => t('تم التصحيح', 'Graded'),
+      _ when needsReview => t('تم التسليم · ينتظر التصحيح', 'Submitted · waiting for marking'),
+      'auto_submitted' => t('سُلّمت تلقائياً عند انتهاء الوقت', 'Submitted automatically when time ran out'),
+      _ => t('تم التسليم', 'Submitted'),
+    };
+
 /// Plain-values body for the harness.
 class ExamResultBody extends StatelessWidget {
   const ExamResultBody({super.key, required this.result, required this.examTitle, this.appeals = const {}, this.onAppeal});
@@ -32,7 +41,7 @@ class ExamResultBody extends StatelessWidget {
     return ListView(padding: const EdgeInsets.all(16), children: [
       AppHero(
         title: examTitle,
-        subtitle: state == 'auto_submitted' ? t('سُلّمت تلقائياً عند انتهاء الوقت', 'Submitted automatically when time ran out') : t('تم التسليم', 'Submitted'),
+        subtitle: resultStateText(state, needsReview: needsReview),
         icon: Icons.task_alt_rounded,
       ),
       const SizedBox(height: 12),
