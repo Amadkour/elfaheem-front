@@ -1,0 +1,11 @@
+{
+ "_source": {
+  "route": "GET /api/v1/exam/admin/omr/settings",
+  "status": 200,
+  "request": null,
+  "how": "scratch script on back tests/exam_engine/e2e_omr_fixture.py (same set-up as e2e_omr_templates.py: inline jobs, SQLite, engine-printed sheet + pen marks, 2026-11-02); reply recorded from TestClient"
+ },
+ "payload": {
+  "require_approval": true
+ }
+}

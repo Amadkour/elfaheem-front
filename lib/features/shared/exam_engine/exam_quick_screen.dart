@@ -27,6 +27,7 @@ import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
 import 'exam_results_screen.dart';
 import 'paper/exam_setup_wizard.dart' show openExamSetupWizard;
+import 'paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
 
 const _numKeyboard = TextInputType.numberWithOptions(decimal: true);
 const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
@@ -37,7 +38,7 @@ Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, Qui
     DateTime? startsAt, DateTime? endsAt, String course = ''}) async {
   final q = QuickExam(kind: kind, courseId: courseId, orgId: orgId, scheduleSlotId: scheduleSlotId, title: title, startsAt: startsAt, endsAt: endsAt);
   final id = await Navigator.of(context).push<int>(MaterialPageRoute(builder: (_) => QuickExamScreen(exam: q)));
-  if (id != null && q.mode == QuickMode.offline && q.courseId != null && context.mounted) await openExamSetupWizard(context, examId: id, initialDelivery: 'paper');
+  if (id != null && q.mode == QuickMode.offline && q.courseId != null && context.mounted) await openExamSetupWizard(context, examId: id, initialDelivery: 'paper', onLearnTemplate: () => openOmrTemplateLearn(context));
   if (id != null && q.mode == QuickMode.offline && !q.isFile && context.mounted) await openExamPaper(context, examId: id, course: course);
   return id;
 }

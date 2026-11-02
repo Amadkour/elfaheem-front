@@ -23,6 +23,7 @@ import 'package:provider/provider.dart';
 import '../shared/attendance/admin_data_lab_page.dart';
 import '../shared/rag/rag_admin_console.dart' show RagAdminConsole;
 import 'models/ai_models_page.dart' show AiModelsPage;
+import '../shared/exam_engine/paper/templates/omr_template_library.dart' show openOmrTemplateLibrary;
 import 'admin_admins_page.dart';
 import 'admin_auth_settings_page.dart';
 import 'admin_username_stats.dart' show AdminUsernameStatsPage, kUsernameStatsFeatureKey;
@@ -461,6 +462,19 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           visible: isSuper,
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
               settings: const RouteSettings(name: AiModelsPage.routeName), builder: (_) => const AiModelsPage())),
+        ),
+        // paper exams (D-155): the global library of bubble-sheet types, learned sheets, approvals
+        AdminService(
+          labelKey: 'svc_omr_templates',
+          descKey: 'svc_omr_templates_d',
+          label: t('أنواع أوراق التظليل', 'Bubble sheet types'),
+          desc: t('مكتبة أوراق التظليل وإصداراتها، تعليم المنصة ورقة جديدة، واعتماد أوراق المعلمين',
+              'The bubble sheet library and its versions, teaching the platform a new sheet, approving the sheets teachers send'),
+          icon: Icons.grid_on_rounded,
+          colors: AdminPalette.teal,
+          featureKey: 'exam.omr',
+          visible: isSuper,
+          onTap: () => openOmrTemplateLibrary(context),
         ),
         AdminService(
           labelKey: 'admin_flags_title',

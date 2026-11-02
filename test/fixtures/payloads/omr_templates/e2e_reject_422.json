@@ -1,0 +1,16 @@
+{
+ "_source": {
+  "route": "POST /api/v1/exam/omr/templates/8/reject",
+  "status": 422,
+  "request": {
+   "reason": ""
+  },
+  "how": "back tests/exam_engine/e2e_omr_templates.py run unchanged (inline jobs, SQLite, 2026-11-02); reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "detail": {
+   "code": "reason_required",
+   "message": "اكتب سبب الرفض"
+  }
+ }
+}
