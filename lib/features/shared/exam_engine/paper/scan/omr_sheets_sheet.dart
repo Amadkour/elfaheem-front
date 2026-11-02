@@ -2,6 +2,8 @@
 // copies or one named sheet per student (the forms cycle), as a PDF (`POST …/omr/sheets`) saved or shared with the
 // same helpers the table exports use (data_lab_saver: a browser download on the web, Downloads on desktop, the share
 // sheet on phones). Only the built-in sheets are printable: a learned template is the school's own printed sheet.
+// The named sheets are chosen by name from the exam's audience (`OmrAudiencePicker`, `GET …/omr/students`), never
+// typed as raw ids.
 library;
 
 import 'dart:typed_data';
@@ -14,11 +16,12 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../../../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../../../teacher/data_lab/data_lab_saver_web.dart' as saver;
-import '../../exam_paper_flow.dart' show parseStudentIds;
+import '../review/omr_review.dart' show OmrReviewApi;
+import 'omr_audience_picker.dart';
 import 'omr_scan.dart';
 
-Future<void> showOmrSheetsSheet(BuildContext context, {required int examId, List<int> roster = const [], OmrScanApi? api}) =>
-    showAppSheet<void>(context, (_) => OmrSheetsSheet(examId: examId, roster: roster, api: api));
+Future<void> showOmrSheetsSheet(BuildContext context, {required int examId, OmrScanApi? api}) =>
+    showAppSheet<void>(context, (_) => OmrSheetsSheet(examId: examId, api: api));
 
 String omrIdKindText(String kind) => switch (kind) {
       'shaded' => t('رقم الطالب بالتظليل', 'shaded student ID'),
@@ -38,10 +41,7 @@ class OmrSheetsOptionsView extends StatelessWidget {
     required this.forms,
     required this.onForm,
     required this.copiesController,
-    required this.idsController,
-    required this.roster,
-    required this.selected,
-    required this.onToggle,
+    required this.students,
     required this.onDownload,
     required this.onShare,
     this.busy = false,
@@ -56,10 +56,9 @@ class OmrSheetsOptionsView extends StatelessWidget {
   final Set<String> forms;
   final ValueChanged<String> onForm;
   final TextEditingController copiesController;
-  final TextEditingController idsController;
-  final List<int> roster;
-  final Set<int> selected;
-  final ValueChanged<int> onToggle;
+
+  /// The students to name (an `OmrAudiencePicker`, or its body under the harness), shown for named sheets.
+  final Widget students;
   final VoidCallback onDownload;
   final VoidCallback onShare;
   final bool busy;
@@ -100,16 +99,8 @@ class OmrSheetsOptionsView extends StatelessWidget {
       if (!named)
         AppField(controller: copiesController, label: t('عدد النسخ لكل نموذج', 'Copies of each model'), keyboard: TextInputType.number, ltr: true)
       else ...[
-        if (roster.isNotEmpty) ...[
-          Text(t('طلاب الاختبار', 'Students of the exam'), style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-          const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-            for (final id in roster) AppChoiceChip(label: '#$id', selected: selected.contains(id), onTap: () => onToggle(id)),
-          ]),
-          const SizedBox(height: AppSpace.sm),
-        ],
-        AppField(controller: idsController, label: t('أرقام الطلاب', 'Student ids'), hint: '12, 15, 40', ltr: true, maxLines: 2),
-        const SizedBox(height: AppSpace.xxs),
+        students,
+        const SizedBox(height: AppSpace.xs),
         Text(t('حتى ${OmrLimits.maxStudentSheets} ورقة في المرة', 'Up to ${OmrLimits.maxStudentSheets} sheets at a time'), style: appText(12.5, c: c.textMedium)),
       ],
       if (error != null) ...[
@@ -130,10 +121,10 @@ class OmrSheetsOptionsView extends StatelessWidget {
 }
 
 class OmrSheetsSheet extends StatefulWidget {
-  const OmrSheetsSheet({super.key, required this.examId, this.roster = const [], this.api});
+  const OmrSheetsSheet({super.key, required this.examId, this.api, this.audienceApi});
   final int examId;
-  final List<int> roster;
   final OmrScanApi? api;
+  final OmrReviewApi? audienceApi;
 
   @override
   State<OmrSheetsSheet> createState() => _OmrSheetsSheetState();
@@ -142,8 +133,7 @@ class OmrSheetsSheet extends StatefulWidget {
 class _OmrSheetsSheetState extends State<OmrSheetsSheet> {
   late final OmrScanApi _api = widget.api ?? OmrScanApi();
   final _copies = TextEditingController(text: '1');
-  final _ids = TextEditingController();
-  final Set<int> _selected = {};
+  Set<int> _selected = {};
   final Set<String> _forms = {};
   OmrSheetsInfo? _info;
   String? _loadError;
@@ -160,7 +150,6 @@ class _OmrSheetsSheetState extends State<OmrSheetsSheet> {
   @override
   void dispose() {
     _copies.dispose();
-    _ids.dispose();
     super.dispose();
   }
 
@@ -180,10 +169,10 @@ class _OmrSheetsSheetState extends State<OmrSheetsSheet> {
   }
 
   Future<Uint8List?> _make() async {
-    final ids = _named ? ({..._selected, ...parseStudentIds(_ids.text)}.toList()..sort()) : <int>[];
+    final ids = _named ? (_selected.toList()..sort()) : <int>[];
     final copies = int.tryParse(_copies.text.trim()) ?? 0;
     if (_named && ids.isEmpty) {
-      setState(() => _error = t('اختر الطلاب أو اكتب أرقامهم', 'Choose the students or type their ids'));
+      setState(() => _error = t('اختر طالبًا واحدًا على الأقل', 'Choose at least one student'));
       return null;
     }
     if (_named && ids.length > OmrLimits.maxStudentSheets) {
@@ -255,10 +244,15 @@ class _OmrSheetsSheetState extends State<OmrSheetsSheet> {
           forms: _forms,
           onForm: (f) => setState(() => _forms.contains(f) ? _forms.remove(f) : _forms.add(f)),
           copiesController: _copies,
-          idsController: _ids,
-          roster: widget.roster,
-          selected: _selected,
-          onToggle: (id) => setState(() => _selected.contains(id) ? _selected.remove(id) : _selected.add(id)),
+          students: OmrAudiencePicker(
+            examId: widget.examId,
+            api: widget.audienceApi,
+            selected: _selected,
+            onChanged: (s) => setState(() {
+              _selected = s;
+              _error = null;
+            }),
+          ),
           onDownload: _download,
           onShare: _share,
           busy: _busy,

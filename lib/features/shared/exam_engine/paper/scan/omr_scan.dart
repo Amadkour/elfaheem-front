@@ -28,6 +28,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../../exam_engine_api.dart';
+import '../exam_setup.dart' show identifierZoneMismatchText;
 
 /// The live event kind of a scan batch's progress (`job_updated`).
 const kOmrScanJobKind = 'omr_scan';
@@ -617,6 +618,7 @@ String omrCodeText(String? code, [Map<String, dynamic> detail = const {}]) => sw
       'template_not_printable' => t('قالب مخصص: اطبع ورقتك الأصلية — يطبع النظام الأوراق المدمجة فقط',
           'A learned template is your own printed sheet: the app prints built-in sheets only'),
       'form_unknown' => t('نموذج ليس في الاختبار أو على الورقة', 'A model that is not in the exam or on the sheet'),
+      'identifier_zone_mismatch' => identifierZoneMismatchText(detail),
       'not_a_student' => t('طالب ليس من طلاب هذا الاختبار${detail['student_id'] == null ? '' : ' (#${detail['student_id']})'}',
           'Not a student of this exam${detail['student_id'] == null ? '' : ' (#${detail['student_id']})'}'),
       'too_many_sheets' => t('عدد كبير من الأوراق في مرة واحدة — حتى ${OmrLimits.maxStudentSheets} ورقة باسم الطالب',

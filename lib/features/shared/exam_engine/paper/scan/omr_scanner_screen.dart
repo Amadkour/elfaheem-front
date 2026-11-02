@@ -221,7 +221,8 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
       showAppNotice(t('تعذّر التقاط الصورة — حاول مرة أخرى', 'The photo could not be taken — try again'), error: true);
       return;
     }
-    final r = await _api.capture(widget.examId, photo, batchId: _batchId, expected: _batchId == null ? _expected : null);
+    // the count goes with every photo: changed mid-session, the server keeps the new one (its answer used to put the old back)
+    final r = await _api.capture(widget.examId, photo, batchId: _batchId, expected: _expected);
     if (!mounted) return;
     if (!r.ok) return _captureFailed(r);
     final res = OmrCaptureResult.fromJson(r.map);

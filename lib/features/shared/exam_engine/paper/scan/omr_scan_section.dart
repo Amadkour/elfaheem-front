@@ -1,6 +1,8 @@
 // The bubble-sheet part of the exam's scans screen (exam_scan_review.dart): Print bubble sheets · Scan with camera ·
 // Upload images / PDF · Review · Results, and the latest batches with their "X of N papers processed" (tap → the
 // progress screen). Shown for an exam whose paper_format is bubble / both, behind the kill switch `exam.omr`.
+// With [OmrScanSection.bubble] false (an "Exam paper only" exam: handwritten answers on the engine's printed sheets)
+// it keeps only Review and Results: the written answers are reviewed on the same page, each next to its crop (D-160).
 library;
 
 import 'package:flutter/material.dart';
@@ -17,10 +19,12 @@ import 'omr_sheets_sheet.dart';
 import 'omr_upload_screen.dart';
 
 class OmrScanSection extends StatefulWidget {
-  const OmrScanSection({super.key, required this.examId, this.examTitle = '', this.roster = const [], this.api, this.onChanged});
+  const OmrScanSection({super.key, required this.examId, this.examTitle = '', this.bubble = true, this.api, this.onChanged});
   final int examId;
   final String examTitle;
-  final List<int> roster;
+
+  /// A bubble-sheet exam (bubble / both): print, camera, upload and the batches; false = Review and Results only.
+  final bool bubble;
   final OmrScanApi? api;
 
   /// Called after a scan / upload screen closes (the caller reloads its page list).
@@ -37,7 +41,7 @@ class _OmrScanSectionState extends State<OmrScanSection> {
   @override
   void initState() {
     super.initState();
-    _load();
+    if (widget.bubble) _load();
   }
 
   Future<void> _load() async {
@@ -58,33 +62,37 @@ class _OmrScanSectionState extends State<OmrScanSection> {
     final c = context.colors;
     final soon = t('تتوفر قريبًا', 'Available soon');
     final entries = [
-      OmrToolEntry(
-        id: 'print',
-        icon: Icons.print_outlined,
-        title: t('طباعة أوراق التظليل', 'Print bubble sheets'),
-        subtitle: t('PDF لكل نموذج، أو ورقة باسم كل طالب', 'A PDF per model, or a named sheet per student'),
-        onTap: () => showOmrSheetsSheet(context, examId: widget.examId, roster: widget.roster, api: widget.api),
-      ),
-      OmrToolEntry(
-        id: 'camera',
-        icon: Icons.document_scanner_outlined,
-        title: t('التصوير بالكاميرا', 'Scan with camera'),
-        subtitle: t('التقاط تلقائي عند ثبات الورقة ووضوحها', 'Captures by itself when the sheet is steady and sharp'),
-        onTap: () => _after(Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => OmrScannerScreen(examId: widget.examId, examTitle: widget.examTitle, api: widget.api)))),
-      ),
-      OmrToolEntry(
-        id: 'upload',
-        icon: Icons.upload_file_rounded,
-        title: t('رفع صور أو PDF', 'Upload images / PDF'),
-        subtitle: t('عدة صور أو ملفات PDF دفعة واحدة', 'Many images or PDFs at once'),
-        onTap: () => _after(startOmrUpload(context, examId: widget.examId, examTitle: widget.examTitle, api: widget.api)),
-      ),
+      if (widget.bubble) ...[
+        OmrToolEntry(
+          id: 'print',
+          icon: Icons.print_outlined,
+          title: t('طباعة أوراق التظليل', 'Print bubble sheets'),
+          subtitle: t('PDF لكل نموذج، أو ورقة باسم كل طالب', 'A PDF per model, or a named sheet per student'),
+          onTap: () => showOmrSheetsSheet(context, examId: widget.examId, api: widget.api),
+        ),
+        OmrToolEntry(
+          id: 'camera',
+          icon: Icons.document_scanner_outlined,
+          title: t('التصوير بالكاميرا', 'Scan with camera'),
+          subtitle: t('التقاط تلقائي عند ثبات الورقة ووضوحها', 'Captures by itself when the sheet is steady and sharp'),
+          onTap: () => _after(Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => OmrScannerScreen(examId: widget.examId, examTitle: widget.examTitle, api: widget.api)))),
+        ),
+        OmrToolEntry(
+          id: 'upload',
+          icon: Icons.upload_file_rounded,
+          title: t('رفع صور أو PDF', 'Upload images / PDF'),
+          subtitle: t('عدة صور أو ملفات PDF دفعة واحدة', 'Many images or PDFs at once'),
+          onTap: () => _after(startOmrUpload(context, examId: widget.examId, examTitle: widget.examTitle, api: widget.api)),
+        ),
+      ],
       OmrToolEntry(
         id: 'review',
         icon: Icons.rate_review_outlined,
         title: t('المراجعة', 'Review'),
-        subtitle: t('الحالات غير الواضحة: رقم الطالب، النموذج، التظليل', 'Unclear cases: student ID, model, marks'),
+        subtitle: widget.bubble
+            ? t('الحالات غير الواضحة: رقم الطالب، النموذج، التظليل', 'Unclear cases: student ID, model, marks')
+            : t('كل إجابة مكتوبة بجوار صورتها من الورقة: اقبل الدرجة أو عدّلها', 'Each written answer next to its image from the paper: accept or change the score'),
         onTap: OmrRoutes.review == null ? null : () => _after(openOmrReview(context, widget.examId)),
         note: OmrRoutes.review == null ? soon : null,
       ),
@@ -98,7 +106,14 @@ class _OmrScanSectionState extends State<OmrScanSection> {
       ),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      OmrToolsPanel(entries: entries),
+      if (widget.bubble)
+        OmrToolsPanel(entries: entries)
+      else
+        OmrToolsPanel(
+          entries: entries,
+          title: t('الإجابات المكتوبة', 'Written answers'),
+          subtitle: t('راجع ما قرأه النظام من أوراق الطلاب، ثم انشر النتائج', "Review what the system read from the students' papers, then publish the results"),
+        ),
       if (_batches.isNotEmpty) ...[
         const SizedBox(height: AppSpace.sm),
         AppSectionTitle(t('آخر الدفعات', 'Latest batches')),

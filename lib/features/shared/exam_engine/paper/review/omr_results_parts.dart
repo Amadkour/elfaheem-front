@@ -6,11 +6,83 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import 'omr_review.dart';
+
+// ── counts in words (Arabic 1 / 2 / 3–10 / 11+ forms) ──
+
+/// The results page's banner: "3 items wait for your decision — …".
+String omrItemsWaitText(int n) => countText(n,
+    ar1: 'عنصر واحد ينتظر قرارك — لا تُحسب الدرجة قبل مراجعته',
+    ar2: 'عنصران ينتظران قرارك — لا تُحسب الدرجة قبل مراجعتهما',
+    arFew: '{n} عناصر تنتظر قرارك — لا تُحسب الدرجة قبل مراجعتها',
+    arMany: '{n} عنصرًا ينتظر قرارك — لا تُحسب الدرجة قبل مراجعتها',
+    en1: '1 item waits for your decision — a paper is not scored until it is resolved',
+    en: '{n} items wait for your decision — a paper is not scored until they are resolved');
+
+/// The publish card's note while items are open.
+String omrItemsStillWaitText(int n) => countText(n,
+    ar1: 'عنصر واحد ينتظر المراجعة — راجعه قبل النشر أو انشر المصحّح فقط',
+    ar2: 'عنصران ينتظران المراجعة — راجعهما قبل النشر أو انشر المصحّح فقط',
+    arFew: '{n} عناصر تنتظر المراجعة — راجعها قبل النشر أو انشر المصحّح فقط',
+    arMany: '{n} عنصرًا ينتظر المراجعة — راجعها قبل النشر أو انشر المصحّح فقط',
+    en1: '1 item still waits for review — resolve it first, or publish the graded ones only',
+    en: '{n} items still wait for review — resolve them first, or publish the graded ones only');
+
+/// "12 papers".
+String omrPapersText(int n) => countText(n, ar1: 'ورقة واحدة', ar2: 'ورقتان', arFew: '{n} أوراق', arMany: '{n} ورقة', en1: '1 paper', en: '{n} papers');
+
+/// After a full publish: "Results published · 12 students can see theirs".
+String omrPublishedText(int students) => countText(students,
+    ar1: 'نُشرت النتائج · يراها طالب واحد',
+    ar2: 'نُشرت النتائج · يراها طالبان',
+    arFew: 'نُشرت النتائج · يراها {n} طلاب',
+    arMany: 'نُشرت النتائج · يراها {n} طالبًا',
+    en1: 'Results published · 1 student can see theirs',
+    en: 'Results published · {n} students can see theirs');
+
+/// After "publish the graded ones": "4 graded results published · 1 item still waits for review".
+String omrGradedOnlyText(int visible, int open) {
+  final a = countText(visible,
+      ar1: 'نُشرت نتيجة مصحّحة واحدة',
+      ar2: 'نُشرت نتيجتان مصحّحتان',
+      arFew: 'نُشرت {n} نتائج مصحّحة',
+      arMany: 'نُشرت {n} نتيجة مصحّحة',
+      en1: '1 graded result published',
+      en: '{n} graded results published');
+  if (open <= 0) return a;
+  final b = countText(open,
+      ar1: 'عنصر واحد ما زال ينتظر المراجعة',
+      ar2: 'عنصران ما زالا ينتظران المراجعة',
+      arFew: '{n} عناصر ما زالت تنتظر المراجعة',
+      arMany: '{n} عنصرًا ما زال ينتظر المراجعة',
+      en1: '1 item still waits for review',
+      en: '{n} items still wait for review');
+  return '$a · $b';
+}
+
+/// The confirmation before "publish the graded ones".
+String omrGradedOnlyConfirm(int graded, int waiting) {
+  final a = countText(graded,
+      ar1: 'تُنشر ورقة مصحّحة واحدة فقط.',
+      ar2: 'تُنشر ورقتان مصحّحتان فقط.',
+      arFew: 'تُنشر {n} أوراق مصحّحة فقط.',
+      arMany: 'تُنشر {n} ورقة مصحّحة فقط.',
+      en1: 'Only the 1 graded paper is published.',
+      en: 'Only the {n} graded papers are published.');
+  final b = countText(waiting,
+      ar1: 'تبقى ورقة واحدة قيد المراجعة مخفية عن صاحبها حتى تراجعها وتنشر مرة أخرى.',
+      ar2: 'تبقى ورقتان قيد المراجعة مخفيتين عن صاحبيهما حتى تراجعهما وتنشر مرة أخرى.',
+      arFew: 'تبقى {n} أوراق قيد المراجعة مخفية عن أصحابها حتى تراجعها وتنشر مرة أخرى.',
+      arMany: 'تبقى {n} ورقة قيد المراجعة مخفية عن أصحابها حتى تراجعها وتنشر مرة أخرى.',
+      en1: 'The 1 paper still in review stays hidden from its student until you resolve it and publish again.',
+      en: 'The {n} papers still in review stay hidden from their students until you resolve them and publish again.');
+  return '$a ${waiting > 0 ? '$b ' : ''}${t('متابعة؟', 'Continue?')}';
+}
 
 String _pct(double? v) => v == null ? '—' : omrLtr('${omrNum(v)}%');
 String _score(OmrStudentResult s) => s.score == null ? '—' : omrLtr('${omrNum(s.score)} / ${omrNum(s.maxScore)}');
@@ -318,7 +390,7 @@ class OmrPublishCard extends StatelessWidget {
     final note = published
         ? t('نُشرت ${AppTime.dateTime(r.publishedAt!)} · يرى كل طالب نتيجته فقط', 'Published ${AppTime.dateTime(r.publishedAt!)} · each student sees only their own result')
         : (r.openReviewItems > 0
-            ? t('${r.openReviewItems} عنصر ينتظر المراجعة — راجعها قبل النشر أو انشر المصحّح فقط', '${r.openReviewItems} items still wait for review — resolve them first, or publish the graded ones only')
+            ? omrItemsStillWaitText(r.openReviewItems)
             : t('كل الأوراق مصحّحة. عند النشر يرى كل طالب نتيجته فقط.', 'Every paper is graded. Once published, each student sees only their own result.'));
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

@@ -226,9 +226,12 @@ class PaperResultView extends StatelessWidget {
 class SheetsOptionsView extends StatelessWidget {
   const SheetsOptionsView({
     super.key, required this.roster, required this.selected, required this.onToggle, required this.idsController, required this.blankController,
-    required this.onSubmit, required this.onShare, this.busy = false,
+    required this.onSubmit, required this.onShare, this.busy = false, this.students,
   });
   final List<int> roster;
+
+  /// The students chosen by name (an `OmrAudiencePicker`); replaces the id chips and the typed ids when given.
+  final Widget? students;
   final Set<int> selected;
   final ValueChanged<int> onToggle;
   final TextEditingController idsController, blankController;
@@ -238,15 +241,20 @@ class SheetsOptionsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      if (roster.isNotEmpty) ...[
+      if (students != null) ...[
+        students!,
+        const SizedBox(height: 12),
+      ] else if (roster.isNotEmpty) ...[
         AppSectionTitle(t('طلاب الاختبار', 'Students of the exam')),
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final id in roster) AppChoiceChip(label: '#$id', selected: selected.contains(id), onTap: () => onToggle(id)),
         ]),
         const SizedBox(height: 12),
       ],
-      AppField(controller: idsController, label: t('أرقام طلاب إضافية', 'More student ids'), hint: '12, 15, 40', ltr: true, maxLines: 2),
-      const SizedBox(height: 10),
+      if (students == null) ...[
+        AppField(controller: idsController, label: t('أرقام طلاب إضافية', 'More student ids'), hint: '12, 15, 40', ltr: true, maxLines: 2),
+        const SizedBox(height: 10),
+      ],
       AppField(controller: blankController, label: t('عدد الأوراق الفارغة', 'Blank sheets'), keyboard: TextInputType.number, ltr: true),
       const SizedBox(height: 12),
       AppPrimaryButton(label: t('تنزيل PDF', 'Download PDF'), icon: Icons.download_rounded, onPressed: busy ? null : onSubmit, busy: busy),
