@@ -165,6 +165,7 @@ void main() {
     expect(find.text('Paper 2 of 40 captured'), findsOneWidget);
     expect(find.text('2 of 40'), findsOneWidget);
     expect(s.captureFields.last['batch_id'], '${_body('capture_session_1')['batch_id']}', reason: 'the same camera session');
+    expect(s.captureFields.last['expected'], '40', reason: 'the count goes with every photo (a changed count sticks)');
     expect(find.text('Finish (2)'), findsOneWidget);
     expect(fake.unmatched, isEmpty);
     expect(tester.takeException(), isNull);
