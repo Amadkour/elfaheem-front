@@ -6,6 +6,7 @@ import 'package:flutter_education_app/features/shared/calendar/schedule_page.dar
 import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/features/teacher/data_lab/data_lab_gate.dart';
+import 'package:flutter_education_app/features/shared/identity/identity_request_gate.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
@@ -149,7 +150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: DataLabGate(
-        child: LayoutBuilder(
+        child: IdentityRequestGate(child: LayoutBuilder(
           builder: (context, constraints) {
             final unread = context.watch<NotificationsProvider>().unreadCount;
             return AppShell(
@@ -162,7 +163,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               unreadCount: unread,
             );
           },
-        ),
+        )),
       ),
     );
   }
