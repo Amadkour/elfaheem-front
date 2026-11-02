@@ -38,7 +38,7 @@ Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, Qui
     DateTime? startsAt, DateTime? endsAt, String course = ''}) async {
   final q = QuickExam(kind: kind, courseId: courseId, orgId: orgId, scheduleSlotId: scheduleSlotId, title: title, startsAt: startsAt, endsAt: endsAt);
   final id = await Navigator.of(context).push<int>(MaterialPageRoute(builder: (_) => QuickExamScreen(exam: q)));
-  if (id != null && q.mode == QuickMode.offline && q.courseId != null && context.mounted) await openExamSetupWizard(context, examId: id, initialDelivery: 'paper', onLearnTemplate: () => openOmrTemplateLearn(context));
+  if (id != null && q.mode == QuickMode.offline && q.courseId != null && context.mounted) await openExamSetupWizard(context, examId: id, initialDelivery: 'paper', onLearnTemplate: () => openOmrTemplateLearn(context).then((_) {}));
   if (id != null && q.mode == QuickMode.offline && !q.isFile && context.mounted) await openExamPaper(context, examId: id, course: course);
   return id;
 }

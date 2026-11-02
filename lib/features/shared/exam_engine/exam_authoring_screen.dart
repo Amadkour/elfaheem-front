@@ -1666,7 +1666,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
           title: Text(v?.exam.title.isNotEmpty == true ? v!.exam.title : t('تحرير الاختبار', 'Edit exam'), maxLines: 1, overflow: TextOverflow.ellipsis),
           actions: [
             if (v != null && v.exam.courseId != null)
-              IconButton(onPressed: () => openExamSetupWizard(context, examId: v.exam.id!, onLearnTemplate: () => openOmrTemplateLearn(context)), icon: const Icon(Icons.fact_check_outlined), tooltip: t('إعداد الاختبار الورقي', 'Paper exam setup')),
+              IconButton(onPressed: () => openExamSetupWizard(context, examId: v.exam.id!, onLearnTemplate: () => openOmrTemplateLearn(context).then((_) {})), icon: const Icon(Icons.fact_check_outlined), tooltip: t('إعداد الاختبار الورقي', 'Paper exam setup')),
             if (v != null && v.questionCount > 0)
               IconButton(
                   onPressed: () => openExamPaper(context, examId: v.exam.id!),

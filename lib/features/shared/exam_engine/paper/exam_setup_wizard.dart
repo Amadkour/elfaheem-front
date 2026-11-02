@@ -32,7 +32,7 @@ import 'exam_setup.dart';
 
 /// Opens the wizard; true when it was finished (or the choice of Online was saved).
 Future<bool?> openExamSetupWizard(BuildContext context,
-        {required int examId, String? initialDelivery, SetupStep? initialStep, VoidCallback? onLearnTemplate}) =>
+        {required int examId, String? initialDelivery, SetupStep? initialStep, Future<void> Function()? onLearnTemplate}) =>
     Navigator.of(context).push<bool>(MaterialPageRoute(
       settings: const RouteSettings(name: '/exam-setup'),
       builder: (_) => ExamSetupWizard(examId: examId, initialDelivery: initialDelivery, initialStep: initialStep, onLearnTemplate: onLearnTemplate),
@@ -67,7 +67,8 @@ class ExamSetupWizard extends StatefulWidget {
   final SetupStep? initialStep;
 
   /// The template-learning screen (a later wave). The "Upload a custom layout" entry shows only when given.
-  final VoidCallback? onLearnTemplate;
+  /// Opens the template-learning flow; the sheet list reloads when it returns (a type may have been published).
+  final Future<void> Function()? onLearnTemplate;
   final ExamSetupApi? api;
   final LiveStreamHandle? liveStream;
   final LiveEvents? liveBus;
@@ -546,7 +547,12 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
             selectedId: _templateId,
             onPick: (x) => setState(() => _templateId = x.id),
             onRetry: _loadTemplates,
-            onLearn: widget.onLearnTemplate,
+            onLearn: widget.onLearnTemplate == null
+                ? null
+                : () async {
+                    await widget.onLearnTemplate!();
+                    if (mounted) _loadTemplates();
+                  },
             onPaperOnly: () => setState(() {
               _format = 'paper';
               _step = SetupStep.format;
