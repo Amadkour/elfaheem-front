@@ -1,0 +1,42 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/batches -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "batch_id": 2,
+    "exam_id": 1,
+    "kind": "omr",
+    "total": 1,
+    "done": 1,
+    "graded": 1,
+    "review": 0,
+    "rejected": 0,
+    "failed": 0,
+    "pending": 0,
+    "status": "done",
+    "expected": null,
+    "created_at": "2026-11-02T05:37:21.359446",
+    "en": "1 of 1 papers processed",
+    "ar": "تمت معالجة 1 من 1 ورقة"
+   },
+   {
+    "batch_id": 1,
+    "exam_id": 1,
+    "kind": "omr",
+    "total": 1,
+    "done": 1,
+    "graded": 0,
+    "review": 1,
+    "rejected": 0,
+    "failed": 0,
+    "pending": 0,
+    "status": "done",
+    "expected": null,
+    "created_at": "2026-11-02T05:37:20.279770",
+    "en": "1 of 1 papers processed",
+    "ar": "تمت معالجة 1 من 1 ورقة"
+   }
+  ]
+ }
+}

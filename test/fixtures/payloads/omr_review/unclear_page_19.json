@@ -1,0 +1,184 @@
+{
+ "_source": "GET /api/v1/exam/exams/2/omr/pages/19 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "page": {
+   "id": 19,
+   "page_no": 1,
+   "page_label": "1",
+   "status": "review",
+   "file_name": "hw2.png",
+   "batch_id": 10,
+   "student_id": null,
+   "attempt_id": null,
+   "codes": [],
+   "en": null,
+   "ar": null
+  },
+  "image_url": "/api/v1/exam/omr/images/page/19?exp=1793598397&sig=7b5e68e4297c9c63d8403d91514f6652",
+  "size": [
+   1654,
+   2339
+  ],
+  "overlay": [
+   {
+    "label": "A",
+    "cx": 389.4,
+    "cy": 818.6,
+    "r": 18.1,
+    "n": 1,
+    "mark": "filled",
+    "state": "clear"
+   },
+   {
+    "label": "B",
+    "cx": 448.5,
+    "cy": 872.1,
+    "r": 18.1,
+    "n": 2,
+    "mark": "filled",
+    "state": "clear"
+   }
+  ],
+  "alignment": {
+   "marks": [
+    [
+     78.1,
+     78.0
+    ],
+    [
+     1574.9,
+     78.0
+    ],
+    [
+     1574.9,
+     2260.0
+    ],
+    [
+     78.1,
+     2260.0
+    ]
+   ],
+   "rotation": 0,
+   "residual_mm": 0.077,
+   "ppm": 7.877
+  },
+  "answers": [
+   {
+    "question_id": 7,
+    "n": 1,
+    "state": "clear",
+    "selected": [
+     "A"
+    ],
+    "box": null,
+    "final_score": null,
+    "review_state": null
+   },
+   {
+    "question_id": 8,
+    "n": 2,
+    "state": "clear",
+    "selected": [
+     "B"
+    ],
+    "box": null,
+    "final_score": null,
+    "review_state": null
+   }
+  ],
+  "identifier": {
+   "kind": "handwritten",
+   "boxes": [
+    {
+     "index": 0,
+     "written": true,
+     "digit": "2",
+     "confidence": 0.99
+    },
+    {
+     "index": 1,
+     "written": true,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 2,
+     "written": true,
+     "digit": "2",
+     "confidence": 0.99
+    },
+    {
+     "index": 3,
+     "written": true,
+     "digit": "4",
+     "confidence": 0.42
+    },
+    {
+     "index": 4,
+     "written": true,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 5,
+     "written": true,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 6,
+     "written": true,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 7,
+     "written": true,
+     "digit": "1",
+     "confidence": 0.99
+    },
+    {
+     "index": 8,
+     "written": true,
+     "digit": "0",
+     "confidence": 0.99
+    },
+    {
+     "index": 9,
+     "written": true,
+     "digit": "9",
+     "confidence": 0.99
+    }
+   ],
+   "box": [
+    117,
+    219,
+    639,
+    88
+   ],
+   "status": "review",
+   "value": "2024000109",
+   "reason": "low_confidence",
+   "low": [
+    3
+   ],
+   "gaps": []
+  },
+  "form": {
+   "status": "unconfirmed",
+   "value": null,
+   "reason": "marker_unread"
+  },
+  "reading_id": 19,
+  "items": [
+   {
+    "id": 8,
+    "kind": "identifier",
+    "code": "identifier_unclear",
+    "question_id": null,
+    "status": "open"
+   }
+  ]
+ }
+}

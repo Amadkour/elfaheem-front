@@ -1,0 +1,79 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items/4 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "id": 4,
+  "scan_page_id": 2,
+  "attempt_id": 2,
+  "question_id": 5,
+  "kind": "bubble",
+  "code": "uncertain",
+  "reading": {
+   "n": 5,
+   "state": "uncertain",
+   "selected": [],
+   "fills": {
+    "A": 0.419,
+    "B": 0.001,
+    "C": 0.0,
+    "D": 0.001
+   },
+   "type": "mcq_single",
+   "en": "The mark is unclear",
+   "ar": "التظليل غير واضح"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T05:37:21.907701",
+  "actions": [
+   "choose",
+   "blank"
+  ],
+  "has_crop": true,
+  "en": "The mark is unclear",
+  "ar": "التظليل غير واضح",
+  "crop_url": "/api/v1/exam/omr/images/crop/4?exp=1793598442&sig=6e45f78305b12dc08298ac2fb01ec491",
+  "system_reading": {
+   "reading_id": 2,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "answer": {
+    "n": 5,
+    "state": "uncertain",
+    "selected": [],
+    "fills": {
+     "A": 0.419,
+     "B": 0.001,
+     "C": 0.0,
+     "D": 0.001
+    },
+    "margin": 0.029,
+    "box": [
+     355,
+     998,
+     246,
+     69
+    ]
+   }
+  },
+  "question": {
+   "n": 5,
+   "question_id": 5,
+   "type": "mcq_single",
+   "points": 2.0,
+   "letters": [
+    "A",
+    "B",
+    "C",
+    "D"
+   ]
+  },
+  "page": {
+   "id": 2,
+   "page_label": "1",
+   "status": "review",
+   "url": "/api/v1/exam/exams/1/omr/pages/2"
+  }
+ }
+}

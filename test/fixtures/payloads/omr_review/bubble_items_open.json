@@ -1,0 +1,155 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items?status=open -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "id": 1,
+    "scan_page_id": 1,
+    "attempt_id": 1,
+    "question_id": 3,
+    "kind": "bubble",
+    "code": "blank",
+    "reading": {
+     "n": 3,
+     "state": "blank",
+     "selected": [],
+     "fills": {
+      "A": -0.0,
+      "B": 0.001,
+      "C": -0.0,
+      "D": 0.001
+     },
+     "type": "mcq_single",
+     "en": "No answer was shaded",
+     "ar": "لم تُظلَّل أي إجابة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:37:21.057479",
+    "actions": [
+     "choose",
+     "blank"
+    ],
+    "has_crop": true,
+    "en": "No answer was shaded",
+    "ar": "لم تُظلَّل أي إجابة",
+    "crop_url": "/api/v1/exam/omr/images/crop/1?exp=1793598442&sig=e9cbfcbb15041d06f34c25208cf97266"
+   },
+   {
+    "id": 2,
+    "scan_page_id": 1,
+    "attempt_id": 1,
+    "question_id": 4,
+    "kind": "bubble",
+    "code": "multiple",
+    "reading": {
+     "n": 4,
+     "state": "multiple",
+     "selected": [
+      "A",
+      "D"
+     ],
+     "fills": {
+      "A": 0.902,
+      "B": 0.002,
+      "C": 0.001,
+      "D": 0.902
+     },
+     "type": "mcq_single",
+     "en": "More than one answer was shaded",
+     "ar": "ظُلِّلت أكثر من إجابة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:37:21.066493",
+    "actions": [
+     "choose",
+     "blank"
+    ],
+    "has_crop": true,
+    "en": "More than one answer was shaded",
+    "ar": "ظُلِّلت أكثر من إجابة",
+    "crop_url": "/api/v1/exam/omr/images/crop/2?exp=1793598442&sig=7ee2de191c029efdd5f66091dae83bc8"
+   },
+   {
+    "id": 3,
+    "scan_page_id": 1,
+    "attempt_id": 1,
+    "question_id": 5,
+    "kind": "bubble",
+    "code": "uncertain",
+    "reading": {
+     "n": 5,
+     "state": "uncertain",
+     "selected": [],
+     "fills": {
+      "A": 0.419,
+      "B": 0.001,
+      "C": 0.0,
+      "D": 0.001
+     },
+     "type": "mcq_single",
+     "en": "The mark is unclear",
+     "ar": "التظليل غير واضح"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:37:21.076696",
+    "actions": [
+     "choose",
+     "blank"
+    ],
+    "has_crop": true,
+    "en": "The mark is unclear",
+    "ar": "التظليل غير واضح",
+    "crop_url": "/api/v1/exam/omr/images/crop/3?exp=1793598442&sig=cada90c25a252a377a90c79c206c3b12"
+   },
+   {
+    "id": 4,
+    "scan_page_id": 2,
+    "attempt_id": 2,
+    "question_id": 5,
+    "kind": "bubble",
+    "code": "uncertain",
+    "reading": {
+     "n": 5,
+     "state": "uncertain",
+     "selected": [],
+     "fills": {
+      "A": 0.419,
+      "B": 0.001,
+      "C": 0.0,
+      "D": 0.001
+     },
+     "type": "mcq_single",
+     "en": "The mark is unclear",
+     "ar": "التظليل غير واضح"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:37:21.907701",
+    "actions": [
+     "choose",
+     "blank"
+    ],
+    "has_crop": true,
+    "en": "The mark is unclear",
+    "ar": "التظليل غير واضح",
+    "crop_url": "/api/v1/exam/omr/images/crop/4?exp=1793598442&sig=6e45f78305b12dc08298ac2fb01ec491"
+   }
+  ],
+  "total": 4,
+  "open_by_kind": {
+   "bubble": 4
+  }
+ }
+}
