@@ -107,3 +107,33 @@ that is not ready and lists what is missing, bilingual. `POST /` re-checks and a
 ## Kill switches
 `admin.app_releases` (exists), `app.download_banner` (new) → back `services/feature_catalog.py`, the features guide,
 regenerate the contract snapshots.
+
+## As built (front, `feature/app-releases-codemagic`)
+- `codemagic.yaml` (repo root): the six workflows; shared steps as YAML anchors under `definitions`. Every workflow
+  checks `NB_BUILD_NAME` / `NB_BUILD_NUMBER`, runs the gate when `NB_GATE=test_first` (`flutter analyze
+  --no-fatal-infos --fatal-warnings`, then the CI suites without `live_events_soak_test`, then `test/perf -j 1`), builds
+  with `--build-name` / `--build-number`, obfuscated with `--split-debug-info` (not web), and keeps the symbols as a
+  Codemagic artifact `build/debug-info-<version>+<build>-<platform>.zip`. Android signing: keystore reference
+  `android_signing` exported as `ANDROID_KEYSTORE_PATH` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` /
+  `ANDROID_KEY_PASSWORD` (what `android/app/build.gradle.kts` reads). Store release notes: `release_notes.json`
+  (`en-US` + `ar`, or `ar-SA` for the App Store) from `NB_NOTES_EN` / `NB_NOTES_AR`. File names:
+  `NextBrain-<v>-<b>-{arm64-v8a,armeabi-v7a,universal}.apk`, `NextBrain-<v>-<b>-web.zip`, `NextBrain-<v>-<b>-x64.{deb,tar.gz}`,
+  `NextBrain-<v>-<b>-windows-x64.zip`.
+- What the owner sets in Codemagic: the keystore `android_signing`; group `play_store` with
+  `GCLOUD_SERVICE_ACCOUNT_CREDENTIALS`; (iOS later) the App Store Connect API key integration named `app_store` and group
+  `app_store`; billing for `linux_x2` / `windows_x2`; the API token + application id go to the server's env.
+- `scripts/release/upload_artifacts.sh <dir>`: `PUT …/upload/<id>/<name>` per file (`Authorization: Upload …` from a
+  0600 header file, `X-Sha256`, streamed with `-T`), 5 tries on 5xx / network errors, a 4xx stops; then `POST …/done`
+  with `{files: [{name, size, sha256}]}`. Checked against a local fake server (retry, sha, wrong token).
+  `scripts/release/package_linux.sh` = build_linux.sh's packaging without the publishing.
+- `lib/features/admin/app_releases/`: models `ReleaseConfig` / `ReleaseReadiness` / `ReleaseChannelDefaults`, the
+  draft's `channel` + `config`, `AppRelease.channel / executor / codemagicBuildId / codemagicUrl / workflow / track /
+  packageName`; the form (`ReleaseReadinessBox`), the release page (channel, settings, the Codemagic link, files, store
+  note), the list's `CodemagicStatusBanner` (the D-143 build server strip only for a server without `/config`).
+- `lib/core/release/app_downloads.dart` (list, offer rules, `AppDownloadsService`) and
+  `lib/features/shared/get_app/app_download_banner.dart` (`AppDownloadBanner` in `main.dart`'s builder between
+  `WebReleaseBanner` and `GetAppBanner`; `AppDownloadsSheetBody`). The strip reuses D-137's `GetAppBannerView`.
+- `VersionCheckService`: `channel: store` → the store button (Google Play on Android, else the App Store); a
+  `download_url` path is read against the API base.
+- Tests: `test/org/app_releases_test.dart` (group "Codemagic channels"), `test/ui/app_releases_layout_test.dart`,
+  `test/ui/app_download_banner_test.dart`; renders `test/visual/app_releases_codemagic_golden_test.dart`.
