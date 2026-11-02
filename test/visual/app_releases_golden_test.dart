@@ -184,7 +184,7 @@ void main() {
             id: 12,
             status: 'ready',
             source: 'google_play',
-            storeUrl: 'https://play.google.com/store/apps/details?id=com.nextbrain.app',
+            storeUrl: 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain',
             autoPublish: false,
             progress: 100,
             log: sampleLog(30),

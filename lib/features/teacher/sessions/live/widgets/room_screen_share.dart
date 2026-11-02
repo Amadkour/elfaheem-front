@@ -708,7 +708,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   //     → AppDelegate rotates chunk + resumes in-app RPScreenRecorder video
 
   static const _ssChannel = MethodChannel(
-    'com.example.flutter_education_app/screen_share',
+    'com.doubley.nextbrain/screen_share',
   );
 
   bool _isBroadcastActive = false;

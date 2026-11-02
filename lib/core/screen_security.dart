@@ -29,7 +29,7 @@ class ScreenSecurity {
 
   static final ScreenSecurity instance = ScreenSecurity._();
 
-  static const _channel = MethodChannel('com.example.flutter_education_app/share_window');
+  static const _channel = MethodChannel('com.doubley.nextbrain/share_window');
 
   final Set<Object> _owners = <Object>{};
   bool _sharing = false;

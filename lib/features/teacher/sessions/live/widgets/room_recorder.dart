@@ -79,10 +79,10 @@
 //   bool get isPaused => _isPaused;
 //
 //   static const _recChannel = MethodChannel(
-//     'com.example.flutter_education_app/native_recorder',
+//     'com.doubley.nextbrain/native_recorder',
 //   );
 //   static const _recEventChannel = EventChannel(
-//     'com.example.flutter_education_app/rec_events',
+//     'com.doubley.nextbrain/rec_events',
 //   );
 //
 //   StreamSubscription<dynamic>? _recEventSub;

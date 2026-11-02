@@ -84,7 +84,7 @@ VodMediaCommand? vodMediaCommandOf(String? s) => switch (s) {
 class VodMediaControls {
   VodMediaControls._();
 
-  static const _ch = MethodChannel('com.example.flutter_education_app/vod_media');
+  static const _ch = MethodChannel('com.doubley.nextbrain/vod_media');
 
   static bool get supported =>
       !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);

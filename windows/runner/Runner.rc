@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "flutter_education_app" "\0"
+            VALUE "CompanyName", "DoubleY" "\0"
+            VALUE "FileDescription", "NextBrain" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "flutter_education_app" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "flutter_education_app.exe" "\0"
-            VALUE "ProductName", "flutter_education_app" "\0"
+            VALUE "InternalName", "nextbrain" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 DoubleY. All rights reserved." "\0"
+            VALUE "OriginalFilename", "nextbrain.exe" "\0"
+            VALUE "ProductName", "NextBrain" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

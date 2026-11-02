@@ -8,7 +8,7 @@ useDefault = true
 [[allowlists]]
 # Firebase client configuration. These "AIza…" keys identify the Firebase project to Google and ship inside every
 # app and web build; they are not secrets (https://firebase.google.com/docs/projects/api-keys). Access is guarded by
-# Firebase security rules and the keys' API / app restrictions in the Google Cloud console. Only these three files and
+# Firebase security rules and the keys' API / app restrictions in the Google Cloud console. Only these files and
 # only an AIza-shaped value (gcp-api-key, and generic-api-key which reports the same `apiKey:` value once the first is
 # allowlisted): an AIza key anywhere else, or any other value in these files, still fails the scan.
 description = "Firebase client API keys in the generated Firebase config files"
@@ -19,6 +19,10 @@ paths = [
   '''(^|/)lib/firebase_options\.dart$''',
   '''(^|/)android/app/google-services\.json$''',
   '''(^|/)web/firebase-messaging-sw\.js$''',
+  # the Apple apps' GoogleService-Info.plist (iOS and macOS share one Firebase app, com.doubley.nextbrain, D-145):
+  # the same public client key as firebase_options.dart's ios block, downloaded by `firebase apps:sdkconfig IOS`
+  '''(^|/)ios/Runner/GoogleService-Info\.plist$''',
+  '''(^|/)macos/Runner/GoogleService-Info\.plist$''',
 ]
 
 [[allowlists]]

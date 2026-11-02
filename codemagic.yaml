@@ -99,11 +99,11 @@ definitions:
 
 workflows:
   # ── Android → Google Play ────────────────────────────────────────────────────────────────────────────────────
-  # PACKAGE NAME: the applicationId is still com.example.flutter_education_app (android/app/build.gradle.kts), and
-  # Google Play refuses every com.example.* package. Our server keeps this channel "not ready" (PLAY_PACKAGE_NAME,
-  # package_name_example) until the owner picks a real id. NB_PACKAGE_NAME is NOT applied to the build in phase 1:
-  # changing the applicationId makes a different app (a new Firebase Android client / google-services.json, and
-  # everyone reinstalls), so it is the owner's decision and a code change, not a build option.
+  # PACKAGE NAME: the applicationId is com.doubley.nextbrain (android/app/build.gradle.kts, D-145; it was
+  # com.example.flutter_education_app, which Google Play refuses). The server's PLAY_PACKAGE_NAME must say the same,
+  # or it keeps this channel "not ready". NB_PACKAGE_NAME is NOT applied to the build: changing the applicationId
+  # makes a different app (a new Firebase Android client / google-services.json, and everyone reinstalls), so it is
+  # a code change, not a build option.
   android-store:
     name: Android → Google Play
     labels:
@@ -234,7 +234,7 @@ workflows:
         NB_NOTES_AR_LOCALE: ar-SA
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.softkour.alfaheem # = IOS_BUNDLE_ID on the server
+        bundle_identifier: com.doubley.nextbrain # = IOS_BUNDLE_ID on the server
     scripts:
       - *check_vars
       - name: Code signing settings on the Xcode project
