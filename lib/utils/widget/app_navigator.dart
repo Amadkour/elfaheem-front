@@ -37,6 +37,8 @@ import '../../features/shared/rag/rag_admin_links.dart' show openRagAdminModule;
 import '../../features/shared/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
 import '../../features/shared/exam_engine/paper/exam_setup_wizard.dart' show openExamIdentifiersFromLink;
 import '../../features/shared/exam_engine/paper/exam_setup.dart' show examIdFromRef;
+import '../../features/admin/app_releases/app_release_detail.dart' show AppReleaseDetailPage;
+import '../../features/admin/app_releases/app_releases_page.dart' show AppReleasesPage, kAppReleasesFeatureKey;
 
 class AppNavigator {
   AppNavigator._();
@@ -78,7 +80,8 @@ class AppNavigator {
   /// points (top-up approved / rejected → the wallet) | live_plan (plan bought / free time over → the wallet with
   /// the live-meeting plan sheet open, live-rooms-spec §8 – §9; also live_plan_expiring · live_plan_renewed ·
   /// live_plan_renew_failed, Part 3 §15) | rag_learning · rag_alerts (platform admins only: the assistant's Learning
-  /// page / the console's Alerts tab, `rag_admin_links.dart`; anyone else the notifications list)
+  /// page / the console's Alerts tab, `rag_admin_links.dart`; anyone else the notifications list) | app_release ·
+  /// app_releases (super admins only, D-143: [targetId] = the release → its page, else App versions)
   static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind}) async {
     final root = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
@@ -124,6 +127,17 @@ class AppNavigator {
               builder: (_) => ChangeNotifierProvider<ComplaintProvider>(create: (_) => ComplaintProvider(), child: const ComplaintsScreen())));
         } else {
           await openComplaintsHub(nav);
+        }
+        return;
+      case 'app_release': // App versions (D-143): a build finished / failed → that release; super admins only
+      case 'app_releases':
+        if (ctx.read<MyAuthProvider>().currentUser?.role != 'super-admin' || AppConfig.disableList.contains(kAppReleasesFeatureKey)) {
+          await nav.pushNamed('/notifications');
+        } else if (targetId != null) {
+          await nav.push(MaterialPageRoute(
+              settings: RouteSettings(name: '${AppReleasesPage.routeName}/$targetId'), builder: (_) => AppReleaseDetailPage(id: targetId)));
+        } else {
+          await nav.push(MaterialPageRoute(settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => const AppReleasesPage()));
         }
         return;
       case 'notifications':

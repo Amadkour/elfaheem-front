@@ -58,6 +58,7 @@ import 'features/shared/exports/exports_center_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
 import 'features/admin/models/model_download_bar.dart' show ModelDownloadsHost;
+import 'core/release/web_release_watch.dart' show WebReleaseBanner;
 import 'features/shared/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
 import 'features/shared/get_app/get_app_banner.dart' show GetAppBanner;
 import 'features/shared/session/video/vod_listen_layer.dart' show VodListenLayer;
@@ -645,7 +646,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                     ],
                     useShortestSide: true,
                     // the live room above the Navigator: full-screen, or a box while moving around the app
-                    child: LiveRoomLayer(child: GetAppBanner(child: child!)), // web: "Get the app" strip above the role homes
+                    // web: "Get the app" strip above the role homes; above it "A new version is live — Reload" (D-143)
+                    child: LiveRoomLayer(child: WebReleaseBanner(child: GetAppBanner(child: child!))),
                   ),
                 ),
               ),
