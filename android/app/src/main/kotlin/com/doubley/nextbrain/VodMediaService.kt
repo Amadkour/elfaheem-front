@@ -1,4 +1,4 @@
-package com.example.flutter_education_app
+package com.doubley.nextbrain
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VodMediaService — a course lecture playing as sound (the listen bar, D-104)
@@ -44,11 +44,11 @@ class VodMediaService : Service() {
     companion object {
         private const val TAG = "VodMediaService"
 
-        const val CH_VOD_MEDIA = "com.example.flutter_education_app/vod_media"
+        const val CH_VOD_MEDIA = "com.doubley.nextbrain/vod_media"
         private const val CHANNEL_ID = "vod_listen_channel"
         private const val NOTIFICATION_ID = 1003 // 1001 ScreenCaptureService, 1002 LiveCallService
 
-        private const val ACTION_CMD = "com.example.flutter_education_app.VOD_CMD"
+        private const val ACTION_CMD = "com.doubley.nextbrain.VOD_CMD"
         private const val EXTRA_CMD = "cmd"
 
         // What Dart last said (read by the service on every refresh).
@@ -222,7 +222,7 @@ class VodMediaService : Service() {
         if (on) {
             if (wake == null) {
                 wake = (getSystemService(Context.POWER_SERVICE) as PowerManager)
-                        .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "elfaheem:vod_listen").apply {
+                        .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "nextbrain:vod_listen").apply {
                             setReferenceCounted(false)
                         }
             }
@@ -232,7 +232,7 @@ class VodMediaService : Service() {
                 val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                     WifiManager.WIFI_MODE_FULL_LOW_LATENCY else WifiManager.WIFI_MODE_FULL_HIGH_PERF
                 wifi = (applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager)
-                        .createWifiLock(mode, "elfaheem:vod_listen").apply { setReferenceCounted(false) }
+                        .createWifiLock(mode, "nextbrain:vod_listen").apply { setReferenceCounted(false) }
             }
             if (wifi?.isHeld == false) wifi?.acquire()
         } else {

@@ -605,7 +605,7 @@ void main() {
     });
 
     testWidgets('the bar starts the OS controls, obeys their commands and stops them on close', (tester) async {
-      const ch = MethodChannel('com.example.flutter_education_app/vod_media');
+      const ch = MethodChannel('com.doubley.nextbrain/vod_media');
       final calls = <String>[];
       final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
       messenger.setMockMethodCallHandler(ch, (c) async {

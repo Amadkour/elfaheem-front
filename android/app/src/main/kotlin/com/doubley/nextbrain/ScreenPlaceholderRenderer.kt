@@ -1,4 +1,4 @@
-package com.example.flutter_education_app
+package com.doubley.nextbrain
 
 import android.graphics.Bitmap
 import android.graphics.SurfaceTexture

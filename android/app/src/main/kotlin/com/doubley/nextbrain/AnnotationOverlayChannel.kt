@@ -1,4 +1,4 @@
-package com.example.flutter_education_app
+package com.doubley.nextbrain
 
 import android.app.Activity
 import android.app.Application
@@ -14,7 +14,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * `com.example.flutter_education_app/annotation_overlay` (android_overlay.dart): arm / disarm the
+ * `com.doubley.nextbrain/annotation_overlay` (android_overlay.dart): arm / disarm the
  * whole-screen annotation overlay ([AnnotationOverlay]) and its "Display over other apps" permission.
  *
  *   isPermitted        → Settings.canDrawOverlays
@@ -38,7 +38,7 @@ class AnnotationOverlayChannel private constructor(private val activity: Activit
 
     companion object {
         private const val TAG = "AnnotationOverlay"
-        const val CHANNEL = "com.example.flutter_education_app/annotation_overlay"
+        const val CHANNEL = "com.doubley.nextbrain/annotation_overlay"
 
         @Volatile private var instance: AnnotationOverlayChannel? = null
 

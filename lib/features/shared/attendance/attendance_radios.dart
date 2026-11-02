@@ -49,7 +49,7 @@ enum RadioKind { gps, wifi, bluetooth }
 class AttendanceRadios {
   AttendanceRadios._();
 
-  static const _ch = MethodChannel('com.example.flutter_education_app/radios');
+  static const _ch = MethodChannel('com.doubley.nextbrain/radios');
   static int? _sdk;
 
   static bool get _android => !kIsWeb && Platform.isAndroid;
