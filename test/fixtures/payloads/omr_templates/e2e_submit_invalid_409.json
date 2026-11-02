@@ -1,0 +1,85 @@
+{
+ "_source": {
+  "route": "POST /api/v1/exam/omr/templates/5/submit",
+  "status": 409,
+  "request": null,
+  "how": "back tests/exam_engine/e2e_omr_templates.py run unchanged (inline jobs, SQLite, 2026-11-02); reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "detail": {
+   "code": "template_invalid",
+   "message": "القالب لم يجتز الفحص — صحّح المشكلات وأكّد كل الأسئلة",
+   "validation": {
+    "ok": false,
+    "errors": [
+     {
+      "code": "questions_unconfirmed",
+      "en": "50 question(s) not confirmed yet",
+      "ar": "50 سؤال لم يُؤكَّد بعد",
+      "numbers": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15,
+       16,
+       17,
+       18,
+       19,
+       20,
+       21,
+       22,
+       23,
+       24,
+       25,
+       26,
+       27,
+       28,
+       29,
+       30,
+       31,
+       32,
+       33,
+       34,
+       35,
+       36,
+       37,
+       38,
+       39,
+       40,
+       41,
+       42,
+       43,
+       44,
+       45,
+       46,
+       47,
+       48,
+       49,
+       50
+      ]
+     }
+    ],
+    "warnings": [
+     {
+      "code": "unassigned",
+      "en": "3 printed circles were not assigned to any zone",
+      "ar": "3 دائرة مطبوعة لم تُنسب إلى أي منطقة"
+     }
+    ],
+    "checked_at": "2026-11-02T05:30:49.983362"
+   },
+   "message_en": "The template has problems: fix them and confirm every question first."
+  }
+ }
+}

@@ -1,0 +1,39 @@
+{
+ "_source": {
+  "route": "GET /api/v1/exam/omr/templates/5/steps",
+  "status": 200,
+  "request": null,
+  "how": "scratch script on back tests/exam_engine/e2e_omr_fixture.py (same set-up as e2e_omr_templates.py: inline jobs, SQLite, engine-printed sheet + pen marks, 2026-11-02); reply recorded from TestClient"
+ },
+ "payload": {
+  "template_id": 5,
+  "status": "draft",
+  "learning_state": "queued",
+  "error": null,
+  "preview": {
+   "ppm": 4.0,
+   "w": null,
+   "h": null,
+   "blank_url": null,
+   "filled_url": null
+  },
+  "summary": null,
+  "identifier": {
+   "kind": null,
+   "columns": [],
+   "boxes": []
+  },
+  "form": {
+   "zone": {}
+  },
+  "warnings": [],
+  "questions": [],
+  "validation": {
+   "ok": false,
+   "errors": [],
+   "warnings": [],
+   "pending": "learning"
+  },
+  "unconfirmed": []
+ }
+}
