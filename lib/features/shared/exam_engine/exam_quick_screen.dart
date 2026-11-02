@@ -26,19 +26,38 @@ import 'exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, QuickGenera
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
 import 'exam_results_screen.dart';
+import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi;
 import 'paper/exam_setup_wizard.dart' show openExamSetupWizard;
+import 'paper/paper_exam_entry.dart' show isPaperExam, showPaperExamReady;
 import 'paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
 
 const _numKeyboard = TextInputType.numberWithOptions(decimal: true);
 const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
 
 /// Opens the quick builder; returns the created exam's id (null when the creator left without creating).
-/// An offline exam with in-app questions goes straight on to its printable paper.
+/// An offline exam with in-app questions goes straight on to its printable paper. When the paper setup was finished,
+/// the builder ends on "The paper exam is ready" instead: the paper section (print, scan, review, results) or the
+/// printable paper, from one sheet.
 Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, QuickKind kind = QuickKind.quiz, int? scheduleSlotId, String? title,
     DateTime? startsAt, DateTime? endsAt, String course = ''}) async {
   final q = QuickExam(kind: kind, courseId: courseId, orgId: orgId, scheduleSlotId: scheduleSlotId, title: title, startsAt: startsAt, endsAt: endsAt);
   final id = await Navigator.of(context).push<int>(MaterialPageRoute(builder: (_) => QuickExamScreen(exam: q)));
-  if (id != null && q.mode == QuickMode.offline && q.courseId != null && context.mounted) await openExamSetupWizard(context, examId: id, initialDelivery: 'paper', onLearnTemplate: () => openOmrTemplateLearn(context).then((_) {}));
+  var setUp = false;
+  if (id != null && q.mode == QuickMode.offline && q.courseId != null && context.mounted) {
+    setUp = await openExamSetupWizard(context, examId: id, initialDelivery: 'paper', onLearnTemplate: () => openOmrTemplateLearn(context).then((_) {})) == true;
+  }
+  if (id != null && setUp && context.mounted) {
+    final r = await ExamSetupApi().setup(id);
+    final s = r.ok ? ExamSetup.fromJson(r.map) : null;
+    if (isPaperExam(s) && context.mounted) {
+      await showPaperExamReady(context,
+          examId: id,
+          examTitle: q.title,
+          paperFormat: s!.paperFormat,
+          onExamPaper: q.isFile ? null : () => openExamPaper(context, examId: id, course: course));
+      return id;
+    }
+  }
   if (id != null && q.mode == QuickMode.offline && !q.isFile && context.mounted) await openExamPaper(context, examId: id, course: course);
   return id;
 }

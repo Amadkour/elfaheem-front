@@ -305,7 +305,7 @@ void main() {
 
   testWidgets('tools', (t0) => _render(t0, 'tools', () {
         final info = OmrSheetsInfo.fromJson(_body('sheets_info'));
-        final copies = TextEditingController(text: '20'), ids = TextEditingController();
+        final copies = TextEditingController(text: '20');
         return _page(
             t('الأوراق الممسوحة', 'Scanned pages'),
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -327,10 +327,7 @@ void main() {
                 forms: {...info.forms},
                 onForm: (_) {},
                 copiesController: copies,
-                idsController: ids,
-                roster: const [],
-                selected: const {},
-                onToggle: (_) {},
+                students: const SizedBox.shrink(),
                 onDownload: () {},
                 onShare: () {},
               ),

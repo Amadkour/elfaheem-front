@@ -89,7 +89,7 @@ class _OmrResultsPageState extends State<OmrResultsPage> {
     setState(() => _publishing = false);
     if (r.ok) {
       final p = OmrPublishReply.fromJson(r.map);
-      showAppNotice(t('نُشرت النتائج · يراها ${p.visibleAttempts} طالب', 'Results published · ${p.visibleAttempts} students can see theirs'));
+      showAppNotice(omrPublishedText(p.visibleAttempts));
       return _load(silent: true);
     }
     if (r.code != 'review_items_open') {
@@ -102,9 +102,7 @@ class _OmrResultsPageState extends State<OmrResultsPage> {
     if (choice == 'review') return _openReview();
     final graded = _r?.graded ?? 0, waiting = _r?.inReview ?? 0;
     final sure = await appConfirm(context,
-        message: t(
-            'يُنشر $graded ورقة مصحّحة فقط. تبقى $waiting ورقة قيد المراجعة مخفية عن أصحابها حتى تراجعها وتنشر مرة أخرى. متابعة؟',
-            'Only the $graded graded papers are published. The $waiting papers still in review stay hidden from their students until you resolve them and publish again. Continue?'),
+        message: omrGradedOnlyConfirm(graded, waiting),
         confirmLabel: t('نشر المصحّح فقط', 'Publish the graded ones'));
     if (!sure || !mounted) return;
     setState(() => _publishing = true);
@@ -116,8 +114,7 @@ class _OmrResultsPageState extends State<OmrResultsPage> {
       return;
     }
     final p = OmrPublishReply.fromJson(g.map);
-    showAppNotice(t('نُشرت ${p.visibleAttempts} نتيجة مصحّحة · ${p.openReviewItems} عنصر ما زال ينتظر المراجعة',
-        '${p.visibleAttempts} graded results published · ${p.openReviewItems} items still wait for review'));
+    showAppNotice(omrGradedOnlyText(p.visibleAttempts, p.openReviewItems));
     _load(silent: true);
   }
 
@@ -171,7 +168,7 @@ class _OmrResultsPageState extends State<OmrResultsPage> {
         AppBanner(
           icon: Icons.rate_review_rounded,
           color: c.warning,
-          text: t('${r.openReviewItems} عنصر ينتظر قرارك — لا تُحسب الدرجة قبل مراجعته', '${r.openReviewItems} items wait for your decision — a paper is not scored until they are resolved'),
+          text: omrItemsWaitText(r.openReviewItems),
           action: TextButton(key: const ValueKey('omr.results.review'), onPressed: _openReview, child: Text(t('مراجعة', 'Review'))),
         ),
       ],
@@ -181,7 +178,7 @@ class _OmrResultsPageState extends State<OmrResultsPage> {
       OmrDistributionCard(results: r),
       const SizedBox(height: AppSpace.lg),
       AppSectionTitle(t('الدرجات', 'Grades'),
-          subtitle: t('${r.students.length} ورقة', '${r.students.length} papers'),
+          subtitle: omrPapersText(r.students.length),
           trailing: r.students.isEmpty
               ? null
               : TextButton.icon(onPressed: _export, icon: const Icon(Icons.file_download_outlined, size: 18), label: Text(t('تصدير', 'Export')))),

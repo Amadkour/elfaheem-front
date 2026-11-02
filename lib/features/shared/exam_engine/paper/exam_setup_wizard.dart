@@ -1221,8 +1221,8 @@ class TemplateStepBody extends StatelessWidget {
         SetupChoiceTile(
           key: ValueKey('setup.template.${x.id}'),
           icon: Icons.grid_on_rounded,
-          title: x.name,
-          subtitle: [x.shape, ?x.description].join(' · '),
+          title: x.title,
+          subtitle: x.subtitle,
           selected: selectedId == x.id,
           onTap: () => onPick(x),
         ),

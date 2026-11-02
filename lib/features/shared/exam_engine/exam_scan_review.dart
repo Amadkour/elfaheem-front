@@ -22,6 +22,7 @@ import 'exam_paper_flow.dart';
 import 'exam_review.dart';
 import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi, kExamOmrFeatureKey;
 import 'paper/review/omr_review_page.dart';
+import 'paper/scan/omr_audience_picker.dart';
 import 'paper/scan/omr_scan.dart' show omrDetailOf;
 import 'paper/scan/omr_scan_section.dart';
 
@@ -260,7 +261,11 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
   /// The exam's paper format (D-151): bubble / both get the bubble-sheet tools (D-154 … D-159) first.
   ExamSetup? _setup;
 
-  bool get _omr => (_setup?.isBubble ?? false) && !AppConfig.disableList.contains(kExamOmrFeatureKey);
+  bool get _omrOn => !AppConfig.disableList.contains(kExamOmrFeatureKey);
+  bool get _omr => (_setup?.isBubble ?? false) && _omrOn;
+
+  /// "Exam paper only" (D-160): the written answers are reviewed on the OMR review page, each next to its crop.
+  bool get _written => _setup?.delivery == 'paper' && _setup?.paperFormat == 'paper' && _omrOn;
 
   @override
   void initState() {
@@ -370,7 +375,7 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
   }
 
   Future<void> _sheets() async {
-    await showAppSheet<void>(context, (_) => _SheetsSheet(examId: widget.examId, roster: _roster, api: _api));
+    await showAppSheet<void>(context, (_) => _SheetsSheet(examId: widget.examId, api: _api));
   }
 
   Future<void> _open(int id) async {
@@ -406,7 +411,7 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           if (_omr) ...[
-            OmrScanSection(examId: widget.examId, examTitle: widget.examTitle, roster: _roster, onChanged: _load),
+            OmrScanSection(examId: widget.examId, examTitle: widget.examTitle, onChanged: _load),
             const SizedBox(height: 8),
             // the written-answer tools stay reachable (QR answer sheets, mapping, marks import), folded away
             Theme(
@@ -420,8 +425,13 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
                 children: [PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks)],
               ),
             ),
-          ] else
+          ] else ...[
             PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks),
+            if (_written) ...[
+              const SizedBox(height: 8),
+              OmrScanSection(key: const ValueKey('omr.written'), examId: widget.examId, examTitle: widget.examTitle, bubble: false, onChanged: _load),
+            ],
+          ],
           if (_summary != null) ...[const SizedBox(height: 4), PaperResultView(summary: _summary!, problems: _problems), const SizedBox(height: 8)],
           const SizedBox(height: 8),
           AppSectionTitle(t('الصفحات الممسوحة', 'Scanned pages')),
@@ -492,11 +502,10 @@ class _BatchSheetState extends State<_BatchSheet> {
   }
 }
 
-/// Answer sheets: roster chips + typed ids + blank count, then save or share the PDF.
+/// Answer sheets: the exam's students chosen by name (`OmrAudiencePicker`) + a blank count, then save or share the PDF.
 class _SheetsSheet extends StatefulWidget {
-  const _SheetsSheet({required this.examId, required this.roster, required this.api});
+  const _SheetsSheet({required this.examId, required this.api});
   final int examId;
-  final List<int> roster;
   final ExamReviewApi api;
 
   @override
@@ -506,7 +515,7 @@ class _SheetsSheet extends StatefulWidget {
 class _SheetsSheetState extends State<_SheetsSheet> {
   final _ids = TextEditingController();
   final _blank = TextEditingController(text: '0');
-  final Set<int> _selected = {};
+  Set<int> _selected = {};
   bool _busy = false;
 
   @override
@@ -563,8 +572,9 @@ class _SheetsSheetState extends State<_SheetsSheet> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       AppSheetHeader(t('أوراق الإجابة', 'Answer sheets')),
       SheetsOptionsView(
-        roster: widget.roster, selected: _selected, idsController: _ids, blankController: _blank, busy: _busy,
-        onToggle: (id) => setState(() => _selected.contains(id) ? _selected.remove(id) : _selected.add(id)),
+        roster: const [], selected: _selected, idsController: _ids, blankController: _blank, busy: _busy,
+        onToggle: (_) {},
+        students: OmrAudiencePicker(examId: widget.examId, selected: _selected, onChanged: (s) => setState(() => _selected = s)),
         onSubmit: _download, onShare: _share,
       ),
     ]);

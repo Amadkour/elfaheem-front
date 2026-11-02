@@ -60,8 +60,12 @@ class ReviewItem {
   ReviewItem({required this.answerId, required this.attemptId, required this.questionId, required this.type, required this.studentLabel,
       required this.prompt, required this.answerText, required this.source, this.scanPageId, this.ocrConfidence, required this.points,
       required this.scale, required this.reviewState, this.proposedScore, this.confidence, required this.abstain, this.finalScore,
-      this.criteria = const [], this.rubric = const [], this.modelAnswer = '', this.flags = const [], this.marks = const [], this.graderVersion});
+      this.criteria = const [], this.rubric = const [], this.modelAnswer = '', this.flags = const [], this.marks = const [], this.graderVersion,
+      this.studentId});
   final int answerId, attemptId, questionId;
+
+  /// null under anonymous marking ([studentLabel] is then the pseudonym `S-…`).
+  final int? studentId;
   final String type, studentLabel, prompt, answerText, source;
   final int? scanPageId;
   final double? ocrConfidence;
@@ -79,6 +83,10 @@ class ReviewItem {
   bool get isOpen => const {'needs_review', 'queued', 'proposed', 'second_pending', 'moderation'}.contains(reviewState);
   bool get hasProposal => proposedScore != null;
   bool get fromScan => source == 'ocr' || source == 'ocr_corrected';
+
+  /// Read from a scanned paper by the paper-exam reader (bubble marks or handwriting, D-154 / D-160): its review,
+  /// with the crop of the answer, is the OMR review page.
+  bool get fromPaperReader => source == 'handwriting' || source == 'omr';
 
   factory ReviewItem.fromJson(Map<String, dynamic> j) {
     final ans = asMap(j['answer']);
@@ -98,7 +106,7 @@ class ReviewItem {
       criteria: [for (final c in asMapList(prop['criteria'])) ReviewCriterion.fromJson(c)], rubric: rubric,
       modelAnswer: '${key['model'] ?? ''}', flags: [for (final f in (prop['flags'] as List? ?? const [])) '$f'],
       marks: [for (final m in asMapList(j['marks'])) ReviewMark('${m['role']}', _d(m['score']) ?? 0, asInt(m['reviewer_id']), m['accepted_proposal'] == true)],
-      graderVersion: j['grader_version']?.toString());
+      graderVersion: j['grader_version']?.toString(), studentId: sid == null ? null : asInt(sid));
   }
 }
 

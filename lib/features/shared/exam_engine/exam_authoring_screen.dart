@@ -15,7 +15,9 @@ import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t
 import 'exam_authoring.dart';
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'offline/offline_exam_teacher.dart';
+import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi;
 import 'paper/exam_setup_wizard.dart' show openExamSetupWizard;
+import 'paper/paper_exam_entry.dart' show PaperExamEntry, isPaperExam, openPaperSection;
 import 'paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
 
 /// Text controllers for dynamic rows, created on first use and disposed with the state. Rows are keyed by their
@@ -1390,6 +1392,9 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
   ExamAction? _busyAction;
   String? _publishError;
 
+  /// The paper setup (`GET …/setup`): a paper exam gets its "Paper exam" entry (app bar + the Settings and Publish tabs).
+  ExamSetup? _paper;
+
   @override
   void initState() {
     super.initState();
@@ -1433,8 +1438,29 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     if (r.ok && side) {
       _loadAccommodations();
       _loadConsents();
+      _loadPaper();
     }
   }
+
+  Future<void> _loadPaper() async {
+    final id = _examId;
+    if (id == null) return;
+    final r = await ExamSetupApi().setup(id);
+    if (mounted && r.ok) setState(() => _paper = ExamSetup.fromJson(r.map));
+  }
+
+  Future<void> _openSetup() async {
+    await openExamSetupWizard(context, examId: _view!.exam.id!, onLearnTemplate: () => openOmrTemplateLearn(context).then((_) {}));
+    if (mounted) _loadPaper();
+  }
+
+  Widget _paperEntry(ExamView v) => PaperExamEntry(
+      key: ValueKey('paper.entry.${_paper?.paperFormat}'),
+      examId: v.exam.id!,
+      examTitle: v.exam.title,
+      setup: _paper,
+      onSetup: v.exam.courseId == null ? null : _openSetup,
+      margin: const EdgeInsets.only(bottom: 12));
 
   Future<void> _loadAccommodations() async {
     final id = _examId;
@@ -1666,7 +1692,13 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
           title: Text(v?.exam.title.isNotEmpty == true ? v!.exam.title : t('تحرير الاختبار', 'Edit exam'), maxLines: 1, overflow: TextOverflow.ellipsis),
           actions: [
             if (v != null && v.exam.courseId != null)
-              IconButton(onPressed: () => openExamSetupWizard(context, examId: v.exam.id!, onLearnTemplate: () => openOmrTemplateLearn(context).then((_) {})), icon: const Icon(Icons.fact_check_outlined), tooltip: t('إعداد الاختبار الورقي', 'Paper exam setup')),
+              IconButton(onPressed: _openSetup, icon: const Icon(Icons.fact_check_outlined), tooltip: t('إعداد الاختبار الورقي', 'Paper exam setup')),
+            if (v != null && isPaperExam(_paper))
+              IconButton(
+                  key: const ValueKey('exam.paperSection'),
+                  onPressed: () => openPaperSection(context, examId: v.exam.id!, examTitle: v.exam.title),
+                  icon: const Icon(Icons.document_scanner_outlined),
+                  tooltip: t('الاختبار الورقي: الطباعة والتصوير والمراجعة والنتائج', 'Paper exam: print, scan, review and results')),
             if (v != null && v.questionCount > 0)
               IconButton(
                   onPressed: () => openExamPaper(context, examId: v.exam.id!),
@@ -1689,7 +1721,10 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
             : TabBarView(children: [
                 SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  child: ExamSettingsForm(key: ValueKey('settings.$_settingsGen'), draft: w, onSave: _saveSettings),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    if (isPaperExam(_paper)) _paperEntry(v),
+                    ExamSettingsForm(key: ValueKey('settings.$_settingsGen'), draft: w, onSave: _saveSettings),
+                  ]),
                 ),
                 AppRefresh(
                   onRefresh: () => _load(side: false),
@@ -1715,6 +1750,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                   AccommodationsPanel(items: _accommodations, error: _accError, onAdd: _addAccommodation, onRevoke: _revokeAccommodation),
                 ]),
                 ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+                  if (isPaperExam(_paper)) _paperEntry(v),
                   if (v.exam.id != null) OfflineExamEntryTile(examId: v.exam.id!, title: v.exam.title),
                   ExamPublishPanel(view: v, onAction: _action, busy: _busyAction, error: _publishError),
                 ]),

@@ -345,6 +345,29 @@ class OmrTemplateItem {
     final last = String.fromCharCode(64 + o);
     return t('${arNum(questions)} سؤالًا، $o اختيارات (A–$last)', '$questions questions, $o options (A–$last)');
   }
+
+  List<String> get _descLines => [for (final l in (description ?? '').split(RegExp(r'\r?\n'))) if (l.trim().isNotEmpty) l.trim()];
+
+  /// A built-in type's description is its name in both languages (English line, Arabic line; services/omr_templates.py).
+  bool get _bilingualName => _descLines.length == 2 && _descLines.first == name.trim();
+
+  /// The name in the app's language.
+  String get title => _bilingualName && AppConfig.lang == 'ar' ? _descLines[1] : name;
+
+  /// The line under [title], without repeating it: the shape when the name does not already give the number of
+  /// questions, then the description unless it is only the name again. Null when nothing is left.
+  String? get subtitle {
+    final head = title;
+    final parts = [
+      // a built-in name already says "100 questions …" / "100 سؤال …"; "Bubble 40" does not
+      if (!head.replaceAll('–', '-').contains(shape.replaceAll('–', '-')) && !head.contains('$questions questions') && !head.contains('${arNum(questions)} سؤال'))
+        shape,
+      if (!_bilingualName)
+        for (final l in _descLines)
+          if (l != name.trim() && l != head.trim()) l,
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
 }
 
 /// The templates an exam can use: published only (a teacher's own drafts are listed by the server too).
