@@ -142,8 +142,8 @@ String releaseChannelHint(String platform, String channel) => switch ((platform,
       ('ios', 'store') => t('يبنيه Codemagic ويرسله إلى App Store Connect (يحتاج حساب أبل للمطورين)', 'Codemagic builds it and sends it to App Store Connect (needs an Apple Developer account)'),
       ('ios', _) => t('أبل لا تسمح بالتثبيت إلا من App Store، فيثبّت مستخدمو الآيفون تطبيق الويب: يُسجَّل ما الجديد وسياسة التحديث فقط',
           'Apple allows installs from the App Store only, so iPhone users install the web app: this records the notes and the update policy'),
-      ('web', _) => t('يبنيه Codemagic ويرفعه، فيحل محل الموقع الحالي دفعة واحدة وتبقى النسخة السابقة للرجوع',
-          'Codemagic builds and uploads it; it replaces the served site at once and the previous one is kept for rollback'),
+      ('web', _) => t('يُبنى ويُرفع، فيحل محل الموقع الحالي دفعة واحدة وتبقى النسخة السابقة للرجوع',
+          'Built and uploaded; it replaces the served site at once and the previous one is kept for rollback'),
       ('linux', _) => t('حزم ‎.deb و ‎.tar.gz على خادمنا', '.deb and .tar.gz packages on our server'),
       ('windows', 'store') => t('يُسجَّل رابط Microsoft Store فقط (الرفع إلى المتجر ليس في هذه المرحلة)', 'Records the Microsoft Store link only (no store upload in this phase)'),
       ('windows', _) => t('ملف zip لتطبيق ويندوز على خادمنا', 'A zip of the Windows app on our server'),
@@ -151,6 +151,16 @@ String releaseChannelHint(String platform, String channel) => switch ((platform,
       ('macos', _) => t('يُسجَّل رابط الملف فقط (لا يُبنى تطبيق ماك هنا)', 'Records the file link only (no Mac app is built here)'),
       _ => '',
     };
+
+/// D-146: the executor's name on the form and the release page.
+String releaseExecutorName(String executor) => executor == 'runner' ? t('جهازي (مجاني)', 'My computer (free)') : 'Codemagic';
+
+/// One line under an executor card.
+String releaseExecutorHint(String executor) => executor == 'runner'
+    ? t('مشغّل البناء على حاسوبك يبني نفس خطوات codemagic.yaml ويرفع الملفات — دون أي تكلفة. ويندوز يبني ويندوز وأندرويد والويب، ولينكس (أو WSL) يبني لينكس وأندرويد والويب.',
+        'The build runner on your computer runs the same codemagic.yaml steps and uploads the files — at no cost. Windows builds Windows, Android and web; Linux (or WSL) builds Linux, Android and web.')
+    : t('أجهزة Codemagic السحابية. أندرويد والويب ضمن دقائقها المجانية، ولينكس وويندوز يحتاجان خطة مدفوعة. الرفع إلى Google Play و App Store من هنا فقط.',
+        "Codemagic's cloud machines. Android and web fit its free minutes; Linux and Windows need a paid plan. Google Play and App Store uploads happen only here.");
 
 /// The store's own review still decides (Play production, the App Store): the build is "submitted", not out.
 String releaseStoreReviewNote(String platform) => platform == 'android'
@@ -171,6 +181,8 @@ String releaseTrackName(String track) => switch (track) {
 /// itself is drawn next to it (the owner sets it in .env.production).
 String releaseMissingText(String item) => switch (item) {
       'CODEMAGIC_API_TOKEN' => t('مفتاح Codemagic API غير مضبوط على الخادم', 'The Codemagic API token is not set on the server'),
+      'runner_channel' => t('جهازك لا يبني هذه القناة: الرفع إلى Google Play / App Store يتم عبر Codemagic فقط',
+          'Your own runner does not build this channel: store uploads go through Codemagic only'),
       'CODEMAGIC_APP_ID' => t('معرّف تطبيق Codemagic غير مضبوط', 'The Codemagic application id is not set'),
       'APP_RELEASE_UPLOAD_SECRET' => t('مفتاح توقيع رفع الملفات غير مضبوط (يلزم لقناة الموقع)', 'The upload signing secret is not set (the website channel needs it)'),
       'PLAY_PACKAGE_NAME' => t('اسم حزمة أندرويد على Google Play غير مضبوط', 'The Android package name for Google Play is not set'),
@@ -249,7 +261,12 @@ String releaseErrorText(String? code, String fallback, {Map<String, dynamic> ext
       _ when code != null && code.startsWith('codemagic_build_not_found') =>
         t('لم يعد Codemagic يعرف هذا البناء', 'Codemagic no longer knows this build'),
       _ when code != null && code.startsWith('upload_missing') =>
-        t('انتهى البناء على Codemagic لكن رفع الملفات إلى خادمنا لم يكتمل', 'The Codemagic build finished but the upload to our server did not complete'),
+        t('انتهى البناء لكن رفع الملفات إلى خادمنا لم يكتمل', 'The build finished but the upload to our server did not complete'),
+      _ when code != null && code.startsWith('runner_lost') => t('توقف مشغّل البناء عن الإبلاغ (الحاسوب مطفأ أو نائم أو بلا إنترنت؟) — شغّله ثم اضغط «أعد المحاولة»',
+          'Your build runner stopped reporting (computer off, asleep or offline?) — start it, then press Retry'),
+      _ when code != null && code.startsWith('runner: signing_key_missing') => t('لا يجد مشغّل البناء مفتاح توقيع أندرويد: اضبط NB_KEY_PROPERTIES (tools/runner/README.md)',
+          'Your build runner has no Android release key: set NB_KEY_PROPERTIES (tools/runner/README.md)'),
+      _ when code != null && code.startsWith('runner:') => t('مشغّل البناء: ${_after(code)}', 'Build runner: ${_after(code)}'),
       _ when code != null && code.startsWith('codemagic:') => t('Codemagic: ${_after(code)}', 'Codemagic: ${_after(code)}'),
       _ => (code != null && code.startsWith('artifacts_missing')) ? t('انتهى البناء دون كل الملفات المطلوبة: ${code.split(':').skip(1).join(':').trim()}', 'The build ended without every required file: ${code.split(':').skip(1).join(':').trim()}') : fallback,
     };
