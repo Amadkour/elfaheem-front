@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionService, OrgTabRequest;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
@@ -76,8 +77,11 @@ Future<void> leaveToPersonal(BuildContext context) async {
 
 /// Opens the organization dashboard on [orgId] from a personal home (D-103): remembered as the last organization,
 /// selected in [OrgSession] (at once, or as soon as `/org/mine` lists it) and '/org_dashboard' pushed on top.
-Future<void> openOrgDashboard(BuildContext context, int orgId) async {
+/// [section] (+ [sub]) opens it on that section / sub-page, e.g. `academics` · `courses` (the dashboard consumes
+/// the request once its organizations are loaded, as for an attention item).
+Future<void> openOrgDashboard(BuildContext context, int orgId, {String? section, String? sub}) async {
   final nav = Navigator.of(context, rootNavigator: true);
+  if (section != null) AttentionService.instance.orgTabRequest.value = OrgTabRequest(orgId, section, sub);
   OrgSession? session;
   try {
     session = context.read<OrgSession>();

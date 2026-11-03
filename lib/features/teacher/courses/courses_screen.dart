@@ -24,9 +24,10 @@ import 'course_form_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_infinite_scroll.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show appConfirm, appText;
+import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, AppSheetHeader, appConfirm, appText, showAppSheet;
 import 'package:flutter_education_app/core/app_mode.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show contextSwitchVisible, showContextSwitcherSheet;
+import 'package:flutter_education_app/core/plural.dart' show countText;
+import 'package:flutter_education_app/design/context_switcher.dart' show contextSwitchVisible, openOrgDashboard, showContextSwitcherSheet;
 import 'package:flutter_education_app/features/shared/course/course_list_card.dart';
 import 'package:flutter_education_app/features/shared/course/course_price_tag.dart' show coursePriceLabel;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
@@ -186,6 +187,9 @@ class _ScopeHeader extends StatelessWidget {
       if (scope.isAll || (!ctl.available && p.elsewhereCount == 0)) {
         return const SizedBox.shrink();
       }
+      // "+N in your organizations" leads to those courses: the organization's Courses page, where its teacher opens
+      // each course (Exams, attendance, tools) — not the dashboard's home, where they could not be found
+      final holding = scope.isPersonal ? orgsHoldingCourses(p.scopes) : const <CourseScopeCount>[];
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
         child: CourseScopeBanner(
@@ -194,10 +198,43 @@ class _ScopeHeader extends StatelessWidget {
           count: p.scopes.isEmpty ? null : countFor(p.scopes, scope),
           elsewhere: p.elsewhereCount,
           onSwitch: contextSwitchVisible(ctl) ? () => showContextSwitcherSheet(context) : null,
+          onShowElsewhere: holding.isEmpty ? null : () => openOrgCoursesOf(context, holding),
         ),
       );
     },
   );
+}
+
+/// Opens the Courses page of the organization holding [holding]'s courses (the organization dashboard on
+/// Academics · Courses); with several organizations, a sheet asks which one first.
+Future<void> openOrgCoursesOf(BuildContext context, List<CourseScopeCount> holding) async {
+  Future<void> open(int orgId) => openOrgDashboard(context, orgId, section: 'academics', sub: 'courses');
+  if (holding.length == 1) return open(holding.first.org!.id);
+  await showAppSheet<void>(context, (ctx) {
+    final c = ctx.colors;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppSheetHeader('ctx_organizations'.tr),
+        for (final h in holding)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: AppActionCard(
+              key: ValueKey('course_scope.org.${h.org!.id}'),
+              icon: Icons.account_balance_rounded,
+              color: h.org!.argb != null ? Color(h.org!.argb!) : c.primary,
+              title: h.org!.name,
+              subtitle: countText(h.count, ar1: 'كورس واحد', ar2: 'كورسان', arFew: '{n} كورسات', arMany: '{n} كورسًا',
+                  en1: '1 course', en: '{n} courses'),
+              onTap: () {
+                Navigator.pop(ctx);
+                open(h.org!.id);
+              },
+            ),
+          ),
+      ]),
+    );
+  });
 }
 
 /// Progress card (same widget the admin lists use). With "All" it reads
