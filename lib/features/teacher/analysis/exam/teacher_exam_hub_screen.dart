@@ -2834,12 +2834,14 @@ class _Toggle extends StatelessWidget {
   );
 }
 
-/// The hero's third figure. The legacy exams carry their question count, but the engine's exam list has no question
-/// figure at all (`GET /api/v1/exam/exams` items: the exam + `attempts`), so once the course has engine exams the tile
-/// counts their attempts — a real number — instead of showing a false "0 Questions".
+/// The hero's third figure: the course's questions, legacy + engine (`GET /api/v1/exam/exams` items carry
+/// `question_count` since round 3 of the paper-exam e2e). An older engine without that figure leaves the tile on the
+/// engine exams' attempts — a real number — rather than a false "0 Questions".
 ({IconData icon, String value, String label}) examHubThirdStat(List<ExamModel> legacy, List<Map<String, dynamic>> engine) {
-  if (engine.isEmpty) {
-    return (icon: Icons.help_outline_rounded, value: '${legacy.fold<int>(0, (a, e) => a + e.questionCount)}', label: 'btn_questions'.tr);
+  final legacyQuestions = legacy.fold<int>(0, (a, e) => a + e.questionCount);
+  if (engine.every((e) => e['question_count'] is num)) {
+    final engineQuestions = engine.fold<int>(0, (a, e) => a + (e['question_count'] as num).toInt());
+    return (icon: Icons.help_outline_rounded, value: '${legacyQuestions + engineQuestions}', label: 'btn_questions'.tr);
   }
   var attempts = 0;
   for (final e in engine) {

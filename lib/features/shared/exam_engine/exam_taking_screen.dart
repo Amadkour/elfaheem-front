@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,7 +46,8 @@ Future<void> openEngineExam(BuildContext context, Map<String, dynamic> exam, {St
             })));
         return;
       }
-      appToast(examCodeText(r.code ?? '') == (r.code ?? '') ? r.message : examCodeText(r.code ?? ''), error: true);
+      // never a silent tap: when it opens, the app's text for the code, or the server's own words (round 3 e2e)
+      showAppNotice(examRefusalText(r.code, r.message, r.detail), error: true);
       return;
     }
     // the sitting is full-screen: on the root navigator, above any tab bar (D-081)

@@ -4,6 +4,8 @@
 // widget tree; `ExamTakingScreen` drives these pieces.
 import 'dart:convert';
 
+import 'package:flutter_education_app/core/app_time.dart';
+
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 
 /// The authoritative timer: the server tells `remaining_seconds` at `server_time`; we count down from that instant
@@ -239,6 +241,61 @@ String examCodeText(String code) => switch (code) {
       'org_inactive' => t('المؤسسة غير مفعّلة حالياً', 'This organization is deactivated'),
       _ => code,
     };
+
+/// A server instant ("2026-11-05T09:00:00", naive UTC, or with `Z` / an offset) → UTC; null when missing or bad.
+DateTime? examParseUtc(Object? v) {
+  final s = v == null ? '' : '$v'.trim();
+  if (s.isEmpty) return null;
+  final zoned = RegExp(r'(Z|[+-]\d\d:?\d\d)$').hasMatch(s);
+  return DateTime.tryParse(zoned ? s : '${s}Z')?.toUtc();
+}
+
+/// When an engine exam opens, while it has not opened yet; null once it is open or when it has no window. From the
+/// list's `start_block` (`exam_not_started` + `opens_at`, round 3 of the paper-exam e2e: an exam opening in two days
+/// offered "Start exam" and the tap answered 409); a server without `start_block` is judged by `starts_at` against
+/// [now] (default: the device clock), so an older server never offers a Start before the window either.
+DateTime? examOpensAt(Map<String, dynamic> exam, {DateTime? now}) {
+  final block = exam['start_block'];
+  if (block is Map) {
+    if (block['code'] != 'exam_not_started') return null;
+    return examParseUtc(block['opens_at'] ?? exam['opens_at'] ?? exam['starts_at']);
+  }
+  if (exam.containsKey('start_block')) return null;          // a server that says why, and says nothing blocks it
+  final at = examParseUtc(exam['starts_at']);
+  return at != null && at.isAfter(now ?? DateTime.now().toUtc()) ? at : null;
+}
+
+/// "Opens Thu 5 Nov, 11:00 AM" in the platform / organization zone and clock (AppTime).
+String examOpensText(DateTime utc) {
+  final day = AppTime.date(utc, pattern: 'EEE d MMM'), time = AppTime.time(utc);
+  return t('يفتح $day، $time', 'Opens $day, $time');
+}
+
+/// What a refused start says on screen — never nothing: when the exam opens (`exam_not_started`), the app's text for
+/// a known code, else the server's own message (its English one in English).
+String examRefusalText(String? code, String message, [Map<String, dynamic> detail = const {}]) {
+  final c = code ?? '';
+  if (c == 'exam_not_started') {
+    final at = examParseUtc(detail['opens_at'] ?? detail['starts_at']);
+    if (at != null) return examOpensText(at);
+  }
+  final known = examCodeText(c);
+  if (c.isNotEmpty && known != c) return known;
+  final en = '${detail['message_en'] ?? ''}'.trim();
+  final text = t(message, en.isEmpty ? message : en).trim();
+  return text.isNotEmpty ? text : t('تعذّر بدء الاختبار الآن', 'The exam cannot be started now');
+}
+
+/// Why the list does not offer a start for [exam] (null when it does, or when there is no reason to give): when it
+/// opens, or the server's `start_block`.
+String? examStartBlockText(Map<String, dynamic> exam, {DateTime? now}) {
+  final opens = examOpensAt(exam, now: now);
+  if (opens != null) return examOpensText(opens);
+  final block = exam['start_block'];
+  if (block is! Map) return null;
+  final b = asMap(block);
+  return examRefusalText('${b['code'] ?? ''}', '${b['message'] ?? ''}', b);
+}
 
 /// The visible monitoring indicator text, from the accepted consent's `requires`.
 String? monitoringText(Map<String, dynamic> requires) {
