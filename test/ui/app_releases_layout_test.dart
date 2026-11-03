@@ -117,6 +117,32 @@ void main() {
     );
   });
 
+  testWidgets('D-146: the runner card (on, off, never) and the form on My computer with no runner on', (tester) async {
+    final on = ReleaseConfig.fromJson(releaseConfigJson(codemagic: false, runner: true, runners: [
+      runnerJson(name: 'a-very-long-office-computer-name', busy: 9),
+      runnerJson(name: 'wsl', os: 'linux', platforms: const ['linux', 'android', 'web'], online: false),
+    ]));
+    await expectNoLayoutErrors(
+      tester,
+      () => SingleChildScrollView(
+          child: Column(children: [
+        RunnerStatusCard(runners: on.runners, onNewToken: () {}),
+        const SizedBox(height: 8),
+        RunnerStatusCard(runners: ReleaseRunners.fromJson({'items': [runnerJson(online: false)], 'token_set': true}), onNewToken: () {}),
+        const SizedBox(height: 8),
+        const RunnerStatusCard(runners: ReleaseRunners(), onNewToken: null),
+        const SizedBox(height: 8),
+        CodemagicStatusBanner(config: on, optional: true),
+      ])),
+    );
+    for (final p in const ['windows', 'android']) {
+      await expectNoLayoutErrors(
+        tester,
+        () => NewAppReleasePage(latest: latest, initialPlatform: p, config: ReleaseConfig.fromJson(releaseConfigJson(codemagic: false, runner: true)), askPassword: (_) async => null),
+      );
+    }
+  });
+
   testWidgets('detail: a Codemagic store release and a website release with its files', (tester) async {
     final store = AppRelease.fromJson(codemagicReleaseJson(channel: 'store', status: 'live', isLive: true, progress: 100, config: {'track': 'production', 'package_name': 'com.doubley.nextbrain'}));
     final site = AppRelease.fromJson(codemagicReleaseJson(status: 'uploading', progress: 92, artifacts: codemagicApkArtifacts, log: sampleLog(8)));

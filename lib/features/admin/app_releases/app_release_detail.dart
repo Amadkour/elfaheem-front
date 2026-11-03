@@ -308,7 +308,7 @@ class ReleaseDetailView extends StatelessWidget {
           onOpenLink: onOpenLink,
         ),
         const SizedBox(height: AppSpace.md),
-        if (release.builds) ReleaseLogCard(lines: release.log, running: release.active, codemagic: release.viaCodemagic),
+        if (release.builds) ReleaseLogCard(lines: release.log, running: release.active, codemagic: release.viaCodemagic, runner: release.viaRunner),
       ];
       final side = [
         _Facts(release: release),
@@ -368,7 +368,9 @@ class _Header extends StatelessWidget {
     final stepText = r.step ??
         (r.active && r.log.isNotEmpty ? r.log.last.text : null) ??
         switch (r.status) {
-          'queued' => r.viaCodemagic ? t('في طابور Codemagic', 'Waiting in the Codemagic queue') : t('ينتظر خادم البناء', 'Waiting for the build server'),
+          'queued' => r.viaRunner
+              ? t('ينتظر مشغّل البناء على حاسوبك', 'Waiting for the build runner on your computer')
+              : (r.viaCodemagic ? t('في طابور Codemagic', 'Waiting in the Codemagic queue') : t('ينتظر خادم البناء', 'Waiting for the build server')),
           'building' || 'testing' || 'uploading' => releaseStatusName(r.status),
           'ready' => r.autoPublish && (r.viaCodemagic || r.source != 'google_play') ? t('يُنشر الآن', 'Publishing') : t('جاهز — اضغط «انشره الآن»', 'Ready — press Make live'),
           'live' when !r.current => t('استبدله إصدار أحدث', 'A newer version replaced it'),
@@ -484,13 +486,16 @@ class _Header extends StatelessWidget {
 
 /// The build server's log, newest at the bottom; it follows new lines while the reader is at the bottom.
 class ReleaseLogCard extends StatefulWidget {
-  const ReleaseLogCard({super.key, required this.lines, this.running = false, this.codemagic = false});
+  const ReleaseLogCard({super.key, required this.lines, this.running = false, this.codemagic = false, this.runner = false});
 
   final List<ReleaseLogLine> lines;
   final bool running;
 
   /// Built on Codemagic: the steps arrive from its status sync (the full log is on the build's page).
   final bool codemagic;
+
+  /// Built by your own runner (D-146): its full log arrives here.
+  final bool runner;
 
   @override
   State<ReleaseLogCard> createState() => _ReleaseLogCardState();
@@ -566,7 +571,9 @@ class _ReleaseLogCardState extends State<ReleaseLogCard> {
                     padding: const EdgeInsets.all(AppSpace.md),
                     child: Text(
                         widget.running
-                            ? (widget.codemagic ? t('ينتظر أول خطوة من Codemagic…', 'Waiting for the first step from Codemagic…') : t('ينتظر أول سطر من خادم البناء…', 'Waiting for the first line from the build server…'))
+                            ? (widget.runner
+                                ? t('ينتظر أول سطر من مشغّل البناء…', 'Waiting for the first line from the build runner…')
+                                : (widget.codemagic ? t('ينتظر أول خطوة من Codemagic…', 'Waiting for the first step from Codemagic…') : t('ينتظر أول سطر من خادم البناء…', 'Waiting for the first line from the build server…')))
                             : t('لا سجل', 'No log'),
                         textAlign: TextAlign.center, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family)),
                   ),
@@ -685,7 +692,7 @@ class _Artifacts extends StatelessWidget {
     return AppCard(
       key: const ValueKey('release.artifacts'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(release.channel == 'website' && release.viaCodemagic ? t('الملفات على خادمنا', 'Files on our server') : t('الملفات', 'Files'),
+        Text(release.channel == 'website' && (release.viaCodemagic || release.viaRunner) ? t('الملفات على خادمنا', 'Files on our server') : t('الملفات', 'Files'),
             style: AppType.section(context).copyWith(fontFamily: AppFonts.family)),
         const SizedBox(height: AppSpace.xs),
         for (final a in release.artifacts)

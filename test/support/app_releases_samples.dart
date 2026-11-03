@@ -126,6 +126,8 @@ Map<String, dynamic> releaseConfigJson({
     'ios:store': ['APP_STORE_APP_ID', 'IOS_BUNDLE_ID'],
   },
   String packageName = 'com.example.flutter_education_app',
+  bool runner = false,
+  List<Map<String, dynamic>> runners = const [],
 }) {
   const pairs = {
     'android:store': true,
@@ -152,7 +154,27 @@ Map<String, dynamic> releaseConfigJson({
     };
   }
 
+  // D-146: the runner builds the website channels without Codemagic; a store channel is not its
+  Map<String, dynamic> runnerChannel(String key, bool built) {
+    final store = key.endsWith(':store') && built;
+    final missing = [if (store) 'runner_channel'];
+    return {
+      'ready': missing.isEmpty,
+      'missing': missing,
+      'reasons_ar': [for (final m in missing) reason(m, true)],
+      'reasons_en': [for (final m in missing) reason(m, false)],
+      'build': built ? 'codemagic' : 'record',
+    };
+  }
+
   return {
+    if (runner) 'default_executor': 'runner',
+    if (runner)
+      'executors': {
+        'codemagic': {'ready': codemagic, 'missing': cm, 'channels': {for (final e in pairs.entries) e.key: channel(e.key, e.value)}},
+        'runner': {'ready': true, 'missing': <String>[], 'channels': {for (final e in pairs.entries) e.key: runnerChannel(e.key, e.value)}},
+      },
+    if (runner) 'runners': {'items': runners, 'online': runners.where((r) => r['online'] == true).length, 'token_set': runners.isNotEmpty},
     'codemagic': {'ready': codemagic, 'missing': cm, 'app_id': '6544a1c2e8b4f0b7d1a9c3e2', 'build_url_base': null},
     'channels': {for (final e in pairs.entries) e.key: channel(e.key, e.value)},
     'platforms': {
@@ -280,3 +302,8 @@ List<Map<String, dynamic>> downloadsJson({String androidVersion = '1.4.1', int a
     },
   ];
 }
+
+/// A runner machine as `config.runners.items[]` sends it (D-146).
+Map<String, dynamic> runnerJson({String name = 'office-pc', String os = 'windows', List<String> platforms = const ['android', 'web', 'windows'],
+        bool online = true, int? busy}) =>
+    {'name': name, 'os': os, 'platforms': platforms, 'version': '1.0.0', 'last_seen': '2026-11-03T16:00:00', 'online': online, 'busy_release_id': busy};
