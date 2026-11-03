@@ -18,6 +18,9 @@ library;
 /// The layout schema this app writes.
 const kLayoutSchemaVersion = 4;
 
+/// The schemas this app reads (a v3 template is a v4 one that uses none of the new keys).
+const kLayoutSchemaVersions = {3, 4};
+
 /// The variables any text may hold (the server fills them in).
 const kLayoutVariables = ['date', 'exporter', 'org_name', 'total', 'page', 'pages', 'title', 'filters', 'group'];
 

@@ -233,7 +233,7 @@ class LayoutApi {
         () => api.get(_templates, queryParams: {'page_key': exportPageKey(pageKey), 'org_id': ?orgId}),
         (r) {
           final m = _map(r);
-          final items = [for (final j in _maps(m['items'])) if ((LayoutTemplate.versionOf(j) ?? 3) == kLayoutSchemaVersion) LayoutTemplate.fromJson(j)];
+          final items = [for (final j in _maps(m['items'])) if (kLayoutSchemaVersions.contains(LayoutTemplate.versionOf(j) ?? 3)) LayoutTemplate.fromJson(j)];
           final last = m['last_used_id'];
           return (items, last is num ? last.toInt() : null);
         },

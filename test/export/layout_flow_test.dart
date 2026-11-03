@@ -177,7 +177,7 @@ void main() {
     ctl.dispose();
   });
 
-  testWidgets('templates: v3 ones listed (v2 left out), one click opens, save sends schema_version 3 without the source', (tester) async {
+  testWidgets('templates: v3 ones listed (v2 left out), one click opens, save sends schema_version 4 without the source', (tester) async {
     await open(tester, step: 1);
     expect(find.byKey(const ValueKey('layout-tpl-5')), findsOneWidget);
     expect(find.byKey(const ValueKey('layout-tpl-6')), findsNothing);
@@ -195,10 +195,10 @@ void main() {
     await _tap(tester, find.byKey(const ValueKey('layout-template-save')));
     await _settle(tester);
     final body = server.posted['templates']!.single as Map<String, dynamic>;
-    expect(body['schema_version'], 3);
+    expect(body['schema_version'], 4);
     expect(body['name'], 'My roster');
     expect(body['page_key'], isNotEmpty);
-    expect((body['design'] as Map)['schema_version'], 3);
+    expect((body['design'] as Map)['schema_version'], 4);
     expect((body['design'] as Map).containsKey('source'), isFalse);
     expect(body['lang'], 'en');
     final prefs = await SharedPreferences.getInstance();
@@ -326,7 +326,7 @@ void main() {
     expect(saved.single.$2, greaterThan(0));
     expect(find.textContaining('Saved'), findsWidgets);
     final run = server.posted['runs']!.single as Map<String, dynamic>;
-    expect((run['document'] as Map)['schema_version'], 3);
+    expect((run['document'] as Map)['schema_version'], 4);
     expect(server.runPolls, 3);
     await close(tester);
   });
