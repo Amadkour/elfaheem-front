@@ -46,7 +46,7 @@ jobs:
           echo "$sum  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
       - name: the current tree (allowlist with reasons in .gitleaks.toml)
-        run: '"$RUNNER_TEMP/gitleaks" dir . --config .gitleaks.toml --redact --no-banner --exit-code 1'
+        run: '"$RUNNER_TEMP/gitleaks" dir . --config .gitleaks.toml --redact --verbose --no-banner --exit-code 1'
       # Not the full history: it holds a known leaked key the owner must rotate (docs/DECISIONS.md in the backend).
       - name: the new commits
         env:
@@ -58,4 +58,4 @@ jobs:
           elif [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then range="$BEFORE..HEAD"
           else range="HEAD --not origin/production"; fi            # a new branch: what it adds over production
           echo "scanning commits: $range"
-          "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --redact --no-banner --exit-code 1 --log-opts="$range"
+          "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --redact --verbose --no-banner --exit-code 1 --log-opts="$range"

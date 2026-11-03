@@ -70,6 +70,14 @@ final _guidelines = <(String, AccessibilityGuideline)>[
 final _blocked = <(String, String, bool Function(String label), String)>[
   // none open: the last ones (the theme's text / outlined buttons, AppPill / AppChoiceChip, the live queue's
   // "Enter room") were fixed
+  //
+  // Linux only (CI), not a widget fault: the hero's app name is white on the brand primary (about 9:1, and it passes
+  // on Windows). The check takes the most frequent colour on each side of the average lightness; the test font
+  // draws the name as solid boxes, and over the dithered gradient Linux's most frequent "dark" pixel is the boxes'
+  // anti-aliased edge (171, 176, 208), not the background: 2.13:1. Still checked on every other platform.
+  if (Platform.isLinux)
+    for (final c in const ['login', 'register', 'verify', 'login_biometric'])
+      (c, 'text contrast', (l) => l == 'NextBrain', 'Linux: the test font edge on the hero gradient, not the colours'),
 ];
 
 /// The app's real theme (light or dark) and locale (main.dart: `appLocale`, core/app_locale.dart) around [child],
