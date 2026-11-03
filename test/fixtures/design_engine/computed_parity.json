@@ -1,0 +1,453 @@
+{
+ "specs": [
+  {
+   "key": "calc.result",
+   "label_ar": "",
+   "label_en": "",
+   "type": "text",
+   "cases": [
+    {
+     "when": {
+      "match": "all",
+      "items": [
+       {
+        "field": "score",
+        "op": ">=",
+        "value": 50
+       },
+       {
+        "field": "status",
+        "op": "!=",
+        "value": "absent"
+       }
+      ]
+     },
+     "value": {
+      "text": "ناجح"
+     }
+    },
+    {
+     "when": {
+      "match": "all",
+      "items": [
+       {
+        "field": "status",
+        "op": "=",
+        "value": "absent"
+       }
+      ]
+     },
+     "value": {
+      "text": "غائب"
+     }
+    }
+   ],
+   "else": {
+    "text": "راسب"
+   }
+  },
+  {
+   "key": "calc.full_name",
+   "label_ar": "",
+   "label_en": "",
+   "type": "text",
+   "cases": [],
+   "else": {
+    "concat": [
+     {
+      "field": "first"
+     },
+     {
+      "field": "last"
+     }
+    ],
+    "sep": " "
+   }
+  },
+  {
+   "key": "calc.pct",
+   "label_ar": "",
+   "label_en": "",
+   "type": "number",
+   "cases": [],
+   "else": {
+    "math": "round",
+    "args": [
+     {
+      "math": "percent",
+      "args": [
+       {
+        "field": "score"
+       },
+       {
+        "field": "max"
+       }
+      ]
+     },
+     {
+      "number": 1
+     }
+    ]
+   }
+  },
+  {
+   "key": "calc.grade",
+   "label_ar": "",
+   "label_en": "",
+   "type": "text",
+   "cases": [
+    {
+     "when": {
+      "match": "all",
+      "items": [
+       {
+        "field": "calc.pct",
+        "op": ">=",
+        "value": 90
+       }
+      ]
+     },
+     "value": {
+      "text": "A"
+     }
+    },
+    {
+     "when": {
+      "match": "all",
+      "items": [
+       {
+        "field": "calc.pct",
+        "op": ">=",
+        "value": 75
+       }
+      ]
+     },
+     "value": {
+      "text": "B"
+     }
+    },
+    {
+     "when": {
+      "match": "all",
+      "items": [
+       {
+        "field": "calc.pct",
+        "op": "not_empty",
+        "value": null
+       }
+      ]
+     },
+     "value": {
+      "text": "C"
+     }
+    }
+   ],
+   "else": {
+    "text": "—"
+   }
+  },
+  {
+   "key": "calc.vip",
+   "label_ar": "",
+   "label_en": "",
+   "type": "text",
+   "cases": [
+    {
+     "when": {
+      "match": "any",
+      "items": [
+       {
+        "field": "name",
+        "op": "contains",
+        "value": "أحمد"
+       },
+       {
+        "match": "all",
+        "items": [
+         {
+          "field": "city",
+          "op": "in",
+          "value": [
+           "Cairo",
+           "Giza"
+          ]
+         },
+         {
+          "field": "email",
+          "op": "ends_with",
+          "value": "@nb.edu"
+         }
+        ]
+       }
+      ]
+     },
+     "value": {
+      "concat": [
+       {
+        "text": "VIP"
+       },
+       {
+        "field": "city"
+       }
+      ],
+      "sep": ": "
+     }
+    }
+   ],
+   "else": null
+  },
+  {
+   "key": "calc.math",
+   "label_ar": "",
+   "label_en": "",
+   "type": "number",
+   "cases": [],
+   "else": {
+    "math": "-",
+    "args": [
+     {
+      "math": "*",
+      "args": [
+       {
+        "field": "score"
+       },
+       {
+        "number": 2
+       }
+      ]
+     },
+     {
+      "math": "max",
+      "args": [
+       {
+        "field": "a"
+       },
+       {
+        "field": "b"
+       }
+      ]
+     },
+     {
+      "math": "abs",
+      "args": [
+       {
+        "field": "neg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "key": "calc.div",
+   "label_ar": "",
+   "label_en": "",
+   "type": "number",
+   "cases": [],
+   "else": {
+    "math": "/",
+    "args": [
+     {
+      "field": "score"
+     },
+     {
+      "field": "zero"
+     }
+    ]
+   }
+  },
+  {
+   "key": "calc.date_check",
+   "label_ar": "",
+   "label_en": "",
+   "type": "text",
+   "cases": [
+    {
+     "when": {
+      "match": "all",
+      "items": [
+       {
+        "field": "joined",
+        "op": "<",
+        "value": "2026-01-01"
+       }
+      ]
+     },
+     "value": {
+      "text": "old"
+     }
+    },
+    {
+     "when": {
+      "match": "all",
+      "items": [
+       {
+        "field": "joined",
+        "op": "starts_with",
+        "value": "2026"
+       }
+      ]
+     },
+     "value": {
+      "text": "new"
+     }
+    }
+   ],
+   "else": {
+    "text": "?"
+   }
+  },
+  {
+   "key": "calc.always",
+   "label_ar": "",
+   "label_en": "",
+   "type": "text",
+   "cases": [
+    {
+     "when": {
+      "match": "all",
+      "items": []
+     },
+     "value": {
+      "field": "calc.result"
+     }
+    }
+   ],
+   "else": null
+  }
+ ],
+ "rows": [
+  {
+   "first": "أحمد",
+   "last": "علي",
+   "name": "أَحْمَد علي",
+   "score": "92",
+   "max": 100,
+   "status": "present",
+   "city": "Cairo",
+   "email": "a@nb.edu",
+   "a": 3,
+   "b": "7",
+   "neg": -4,
+   "zero": 0,
+   "joined": "2025-12-31"
+  },
+  {
+   "first": "Sara",
+   "last": "",
+   "name": "Sara",
+   "score": 40,
+   "max": 50,
+   "status": "present",
+   "city": "Giza",
+   "email": "s@x.com",
+   "a": null,
+   "b": 1,
+   "neg": "2",
+   "zero": "0",
+   "joined": "2026-03-02T10:00:00"
+  },
+  {
+   "first": "",
+   "last": "Omar",
+   "name": "Omar",
+   "score": null,
+   "max": 100,
+   "status": "absent",
+   "city": "Alex",
+   "email": "",
+   "a": 1,
+   "b": 2,
+   "neg": 0,
+   "zero": 5,
+   "joined": ""
+  },
+  {
+   "first": "Mona",
+   "last": "Hassan",
+   "name": "MONA",
+   "score": "٧٥",
+   "max": "100",
+   "status": "Present",
+   "city": "giza",
+   "email": "M@NB.EDU",
+   "a": "1,000",
+   "b": 2.5,
+   "neg": -0.5,
+   "zero": 2,
+   "joined": "2026-1-5"
+  },
+  {
+   "first": "Ali",
+   "last": "Z",
+   "name": "علي",
+   "score": 49.99,
+   "max": 0,
+   "status": null,
+   "city": null,
+   "email": null,
+   "a": "x",
+   "b": 1,
+   "neg": 1,
+   "zero": null,
+   "joined": null
+  }
+ ],
+ "answers": [
+  {
+   "calc.result": "ناجح",
+   "calc.full_name": "أحمد علي",
+   "calc.pct": 92,
+   "calc.grade": "A",
+   "calc.vip": "VIP: Cairo",
+   "calc.math": 173,
+   "calc.div": null,
+   "calc.date_check": "old",
+   "calc.always": "ناجح"
+  },
+  {
+   "calc.result": "راسب",
+   "calc.full_name": "Sara",
+   "calc.pct": 80,
+   "calc.grade": "B",
+   "calc.vip": null,
+   "calc.math": null,
+   "calc.div": null,
+   "calc.date_check": "new",
+   "calc.always": "راسب"
+  },
+  {
+   "calc.result": "غائب",
+   "calc.full_name": "Omar",
+   "calc.pct": null,
+   "calc.grade": "—",
+   "calc.vip": null,
+   "calc.math": null,
+   "calc.div": null,
+   "calc.date_check": "?",
+   "calc.always": "غائب"
+  },
+  {
+   "calc.result": "ناجح",
+   "calc.full_name": "Mona Hassan",
+   "calc.pct": 75,
+   "calc.grade": "B",
+   "calc.vip": "VIP: giza",
+   "calc.math": -850.5,
+   "calc.div": 37.5,
+   "calc.date_check": "new",
+   "calc.always": "ناجح"
+  },
+  {
+   "calc.result": "راسب",
+   "calc.full_name": "Ali Z",
+   "calc.pct": null,
+   "calc.grade": "—",
+   "calc.vip": null,
+   "calc.math": null,
+   "calc.div": null,
+   "calc.date_check": "?",
+   "calc.always": "راسب"
+  }
+ ]
+}
