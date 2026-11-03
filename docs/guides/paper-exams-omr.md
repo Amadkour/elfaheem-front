@@ -45,6 +45,28 @@ Pattern (as in the rest of the folder): a pure, unit-tested file per part (`exam
 calls) next to screens whose bodies are plain-value widgets the layout harness pumps. The camera is `OmrCamera`
 (`scan/omr_camera.dart`): flutter_webrtc on Android / iOS, `package:web` getUserMedia on the web — no camera package.
 
+### Smart photos and print modes (the app side)
+
+- Live hints: `blocking: false` on a `live-hint` answer ("Add a little more light", "Hold steady") is drawn as a soft
+  tip (`OmrHintTone.gentle`), and such a frame may still be captured by itself (`OmrLiveHint.capturable`: `ready`, or
+  non-blocking and not a scene-changing code — no sheet / corners / moving / move closer never capture). An older
+  server (no `blocking`) captures on `ready` only.
+- The camera asks for an `ideal` 1920 × 1080 stream (what the phone gives, no high-resolution mode); the native
+  capture (Android q100 JPEG, iOS PNG) is re-encoded as a JPEG q90, long side ≤ 2560, unless it is already a JPEG
+  ≤ 1.5 MB (`omrPhotoPlan` / `omrUploadPhoto`); the browser's canvas JPEG goes as it is.
+- Every page's `result` (capture, batch `pages` / `rejected_pages`, page, replace) is `OmrPageResult`; the widgets are
+  in `scan/omr_paper_result.dart`: the camera card says "Read successfully" / "Read with 3 questions to review" /
+  "Read in part — …" (+ Retake and Carry on: a suggestion, the shutter stays) / "Couldn't read this paper" (+ reason,
+  tip, the blocking Retake), with a thumbnail of `preview_url` (loaded by `OmrScanApi.image`, the signed-image call)
+  that opens `showOmrPreview` (Retake there; "Replace this page" for a rejected upload). The progress screen lists the
+  papers worth a look first and folds those read successfully.
+- Print (`scan/omr_sheets_sheet.dart`): only the `modes` the describe lists (Pre-filled · Name only · Blank, one line
+  each; Pre-filled missing → one line why: `prefilled_reason`, else from the ID kind), order By name / By student
+  number, an Index page switch (on). The ids go as chosen (the server sorts). `mode` / `order` / `index` are sent only
+  to a server that listed `modes` (an older one refuses unknown fields). Fixtures:
+  `test/org/fixtures/omr_smart_payloads.json` (the contract's fields on recorded replies); tests
+  `test/org/omr_smart_photos_test.dart`.
+
 ## Getting the pages in: camera, gallery, files, a scanner's folder
 
 Both paper kinds take pages the same way: bubble sheets ("Upload papers" in `OmrScanSection`, and "Upload more" /

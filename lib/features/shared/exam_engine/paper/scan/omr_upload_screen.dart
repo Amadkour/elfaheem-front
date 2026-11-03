@@ -8,6 +8,9 @@
 // Where the pages come from is ONE sheet (scan_sources.dart: camera, gallery, files, a scanner's folder); a pick is
 // shown first ("12 files found · 9 images · 3 PDFs · 2 skipped"), then sent in parts that join one batch
 // (scan_files.dart ScanUploader: "Uploading 3 of 12 files", a failed part does not stop the rest, Retry).
+// Smart photos: each paper read shows its own result (the batch's `pages[].result`: read successfully / N questions
+// to review / read in part + a suggested retake / couldn't read + reason + tip) with a preview of the improved photo
+// (`preview_url` through the signed-image call); a rejected page's preview offers "Replace this page".
 library;
 
 import 'dart:async';
@@ -23,6 +26,7 @@ import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../../admin/admin_common.dart' show t;
+import 'omr_paper_result.dart';
 import 'omr_routes.dart';
 import 'omr_scan.dart';
 import 'omr_scan_widgets.dart';
@@ -304,7 +308,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
     }
     final res = OmrReplaceResult.fromJson(r.map);
     if (!res.accepted) {
-      setState(() => _replacements[pageId] = _Replacement('refused', row)..text = res.refusal);
+      setState(() => _replacements[pageId] = _Replacement('refused', row)..text = [res.refusal, ...?res.result?.tipTexts.where((x) => !res.refusal.contains(x)).take(1)].join(' '));
       return;
     }
     setState(() {
@@ -320,6 +324,35 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       _watch = null;
       _track();
     }
+  }
+
+  /// The papers of the batch that were read (each with its result), "Paper n" in the batch's order (every photo is its
+  /// own page 1), with the file name (and the page of a PDF) for an upload; the rejected ones are listed apart (with
+  /// Replace).
+  List<OmrPaperRow> _paperRows(OmrBatchProgress p, {required bool camera}) {
+    final rejected = {for (final r in p.rejectedPages) r.pageId, ..._replacements.keys};
+    String? file(OmrBatchPage pg) {
+      final f = pg.fileName;
+      if (camera || f == null || f.isEmpty) return null;
+      return f.toLowerCase().endsWith('.pdf') && pg.label.isNotEmpty ? '$f #${pg.label}' : f;
+    }
+
+    return [
+      for (final (i, pg) in p.pages.indexed)
+        if (pg.result != null && pg.result!.tier != OmrTier.reject && !rejected.contains(pg.pageId))
+          OmrPaperRow(pageId: pg.pageId, label: t('الورقة ${i + 1}', 'Paper ${i + 1}'), fileName: file(pg), result: pg.result!),
+    ];
+  }
+
+  /// The improved photo of a page; a rejected one can be replaced from there.
+  Future<void> _preview(int pageId, OmrPageResult result) async {
+    final canReplace = _progress?.rejectedPages.any((p) => p.pageId == pageId) ?? false;
+    final again = await showOmrPreview(context,
+        result: result,
+        load: () => _api.image(result.previewUrl),
+        retake: canReplace && _replacements[pageId] == null,
+        retakeLabel: t('استبدال هذه الصفحة', 'Replace this page'));
+    if (again && mounted) await _replace(pageId);
   }
 
   /// The batch's rejected pages, plus the ones replaced here (gone from the server's list, kept with the outcome).
@@ -397,6 +430,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
     }
     final review = OmrRoutes.review == null ? null : () => openOmrReview(context, widget.examId);
     final results = OmrRoutes.results == null ? null : () => openOmrResults(context, widget.examId);
+    final camera = widget.camera || p.kind == 'camera';
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       ...head,
       if (_nothingNew) ...[
@@ -413,7 +447,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
         rejected: p.rejected,
         failed: p.failed,
         duplicates: _duplicates,
-        camera: widget.camera || p.kind == 'camera',
+        camera: camera,
         rejectedPages: [
           for (final r in _rejectedRows(p))
             RejectedPageRow(
@@ -423,9 +457,12 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
               fileName: r.fileName,
               replacement: _replacements[r.pageId]?.state,
               replacementText: _replacements[r.pageId]?.text,
+              result: r.result,
             ),
         ],
+        papers: _paperRows(p, camera: camera),
         onReplace: _replace,
+        onPreview: _preview,
         onReview: review,
         onResults: results,
         onMore: _more,

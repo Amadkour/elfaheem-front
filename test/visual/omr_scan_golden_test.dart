@@ -10,6 +10,10 @@
 //   blocked    the camera blocked: the fix and "Upload images or PDFs instead"
 //   progress   Example 5 done: "10 of 10 papers processed", page 7 rejected with its sentence + Replace
 //   tools      the exam's bubble-sheet entries + the print options
+//   smart_*    smart photos (test/org/fixtures/omr_smart_payloads.json): gentle (a soft "Add a little more light"),
+//              flags / retake / reject (the real screen after a capture, the improved photo's thumbnail), preview,
+//              batch (every tier), print (the modes, Pre-filled chosen) and print_nopre (Pre-filled missing + why).
+//              OMR_PREVIEW_IMAGE=<a jpg / png> stands for the server's improved image (else the painted sheet).
 // The screen's replies are the recorded ones (test/org/fixtures/omr_scan_payloads.json).
 @Tags(['visual'])
 library;
@@ -17,6 +21,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,6 +29,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review.dart' show OmrStudent;
+import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_audience_picker.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_paper_result.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_camera.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan_widgets.dart';
@@ -64,6 +72,19 @@ Map<String, dynamic> _body(String name) => Map<String, dynamic>.from((_all[name]
 Object? _reply(String name) {
   final p = _all[name] as Map;
   return p['status'] == 200 ? p['body'] : FakeResponse(p['status'] as int, p['body']);
+}
+
+final _smartAll = (jsonDecode(File('test/org/fixtures/omr_smart_payloads.json').readAsStringSync()) as Map)['payloads'] as Map;
+Map<String, dynamic> _sm(String name) => Map<String, dynamic>.from((_smartAll[name] as Map)['body'] as Map);
+Object? _anyReply(String name) => _smartAll.containsKey(name) ? _sm(name) : _reply(name);
+
+/// The server's improved image stand-in (decoded once in real async time before the frames).
+Uint8List? _improved;
+
+/// The engine API with the signed-image call answered by [_improved] (the fake backend answers JSON only).
+class _ImageApi extends OmrScanApi {
+  @override
+  Future<Uint8List?> image(String? signedUrl) async => _improved;
 }
 
 final _shot = GlobalKey();
@@ -173,16 +194,16 @@ class _PhotoCamera implements OmrCamera {
 FakeApi? _fake;
 
 /// The scanner screen over the fake backend, after [pump] of real time.
-Widget _scanner(List<String> hints, List<String> captures, {OmrCameraIssue? issue, bool cover = false}) {
+Widget _scanner(List<String> hints, List<String> captures, {OmrCameraIssue? issue, bool cover = false, bool smart = false}) {
   final h = [...hints], c = [...captures];
   var calls = 0;
   _fake?.uninstall();
   _fake = FakeApi({
     'POST /api/v1/exam/exams/1/omr/live-hint': (_) {
       calls++;
-      return _reply(h.length > 1 ? h.removeAt(0) : h.first);
+      return _anyReply(h.length > 1 ? h.removeAt(0) : h.first);
     },
-    'POST /api/v1/exam/exams/1/omr/capture': (_) => _reply(c.length > 1 ? c.removeAt(0) : c.first),
+    'POST /api/v1/exam/exams/1/omr/capture': (_) => _anyReply(c.length > 1 ? c.removeAt(0) : c.first),
   }, latency: const Duration(milliseconds: 20))
     ..install();
   return OmrScannerScreen(
@@ -190,6 +211,7 @@ Widget _scanner(List<String> hints, List<String> captures, {OmrCameraIssue? issu
     examTitle: t('اختبار الفيزياء — الفصل 10 ب', 'Physics quiz — class 10B'),
     camera: () => _PhotoCamera(issue: issue, coverBottomLeft: cover),
     clock: () => DateTime(2026, 11, 2).add(Duration(milliseconds: 420 * calls)),
+    api: smart ? _ImageApi() : null,
   );
 }
 
@@ -217,6 +239,10 @@ Future<void> _render(WidgetTester tester, String name, Widget Function() build, 
           await tester.pumpWidget(const SizedBox());
           await tester.pump(const Duration(seconds: 1));
           await tester.pumpWidget(_host(build(), dark: dark));
+          final im = _improved;
+          if (im != null) {
+            await tester.runAsync(() => precacheImage(MemoryImage(im), tester.element(find.byKey(_shot))));
+          }
           for (var i = 0; i < frames; i++) {
             await tester.pump(const Duration(milliseconds: 100));
           }
@@ -237,6 +263,24 @@ Future<void> _render(WidgetTester tester, String name, Widget Function() build, 
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
   }
+}
+
+/// The improved-image stand-in: OMR_PREVIEW_IMAGE, else the painted sheet as a PNG.
+Future<void> _loadImproved(WidgetTester tester) async {
+  if (_improved != null) return;
+  final path = Platform.environment['OMR_PREVIEW_IMAGE'];
+  if (path != null && path.isNotEmpty && File(path).existsSync()) {
+    _improved = File(path).readAsBytesSync();
+    return;
+  }
+  await tester.runAsync(() async {
+    const size = Size(620, 877);
+    final rec = ui.PictureRecorder();
+    _SheetPhoto().paint(Canvas(rec), size);
+    final im = await rec.endRecording().toImage(size.width.toInt(), size.height.toInt());
+    final png = await im.toByteData(format: ui.ImageByteFormat.png);
+    _improved = png!.buffer.asUint8List();
+  });
 }
 
 void main() {
@@ -322,8 +366,8 @@ void main() {
               const SizedBox(height: 16),
               OmrSheetsOptionsView(
                 info: info,
-                named: false,
-                onNamed: (_) {},
+                mode: OmrPrintMode.blank,
+                onMode: (_) {},
                 forms: {...info.forms},
                 onForm: (_) {},
                 copiesController: copies,
@@ -333,4 +377,88 @@ void main() {
               ),
             ]));
       }));
+
+  // ── smart photos ──────────────────────────────────────────────────────────────────────────────────────────────
+  testWidgets('smart_gentle', (t0) => _render(t0, 'smart_gentle', () => _scanner(['hint_gentle'], ['capture_accept'], smart: true), frames: 6));
+  for (final (name, capture) in const [('smart_flags', 'capture_flags'), ('smart_retake', 'capture_retake'), ('smart_reject', 'capture_reject')]) {
+    testWidgets(name, (t0) async {
+      await _loadImproved(t0);
+      await _render(t0, name, () => _scanner(['hint_ready_first', 'hint_ready_smart'], [capture], smart: true), frames: 17);
+    });
+  }
+  testWidgets('smart_preview', (t0) async {
+    await _loadImproved(t0);
+    await _render(
+        t0,
+        'smart_preview',
+        () => _page(t('الصورة بعد التحسين', 'The improved photo'),
+            OmrPreviewView(result: OmrCaptureResult.fromJson(_sm('capture_retake')).result!, bytes: _improved, onRetake: () {}, onClose: () {})));
+  });
+  testWidgets('smart_batch', (t0) => _render(t0, 'smart_batch', () {
+        final p = OmrBatchProgress.fromJson(_sm('batch_smart'));
+        return _page(
+            t('معالجة الأوراق', 'Processing papers'),
+            ScanProgressView(
+              headline: p.text,
+              done: p.done,
+              total: p.total,
+              finished: p.finished,
+              graded: p.graded,
+              review: p.review,
+              rejected: p.rejected,
+              rejectedPages: [
+                for (final r in p.rejectedPages) RejectedPageRow(pageId: r.pageId, text: r.text, instruction: r.instruction, fileName: r.fileName, result: r.result),
+              ],
+              papers: [
+                for (final (i, pg) in p.pages.indexed)
+                  if (pg.result!.tier != OmrTier.reject)
+                    OmrPaperRow(pageId: pg.pageId, label: t('الورقة ${i + 1}', 'Paper ${i + 1}'), fileName: '${pg.fileName} #${pg.label}', result: pg.result!),
+              ],
+              onReplace: (_) {},
+              onPreview: (_, _) {},
+              onReview: () {},
+              onResults: () {},
+              onMore: () {},
+            ));
+      }));
+  for (final (name, describe, mode) in const [
+    ('smart_print', 'sheets_info_modes', OmrPrintMode.prefilled),
+    ('smart_print_nopre', 'sheets_info_no_prefilled', OmrPrintMode.named),
+  ]) {
+    testWidgets(name, (t0) => _render(t0, name, () {
+          final copies = TextEditingController(text: '20'), query = TextEditingController();
+          final students = [
+            OmrStudent(21, t('منى عادل', 'Mona Adel'), identifier: '••••••4521'),
+            OmrStudent(22, t('عمر عادل', 'Omar Adel'), identifier: '••••••4522'),
+            OmrStudent(23, t('سارة نبيل', 'Sara Nabil'), identifier: '••••••4523'),
+          ];
+          return _page(
+              t('طباعة أوراق التظليل', 'Print bubble sheets'),
+              OmrSheetsOptionsView(
+                info: OmrSheetsInfo.fromJson(_sm(describe)),
+                mode: mode,
+                onMode: (_) {},
+                order: OmrPrintOrder.name,
+                onOrder: (_) {},
+                index: true,
+                onIndex: (_) {},
+                forms: const {'A', 'B'},
+                onForm: (_) {},
+                copiesController: copies,
+                students: OmrAudiencePickerBody(
+                  queryController: query,
+                  onQuery: (_) {},
+                  students: students,
+                  total: 3,
+                  selected: const {21, 22, 23},
+                  onToggle: (_) {},
+                  onSelectAll: () {},
+                  onClear: () {},
+                  identifierLabel: t('الرقم الأكاديمي', 'Academic ID'),
+                ),
+                onDownload: () {},
+                onShare: () {},
+              ));
+        }));
+  }
 }

@@ -102,8 +102,13 @@ class _NativeCamera implements OmrCamera {
     return downscaleToJpeg(full, maxSide: maxSide, quality: quality);
   }
 
+  /// The frame, as a JPEG of a sensible size (omr_camera.dart [omrUploadPhoto]: iOS hands a PNG, Android a q100 JPEG).
   @override
-  Future<Uint8List?> photo() => _capture();
+  Future<Uint8List?> photo() async {
+    final full = await _capture();
+    if (full == null || full.isEmpty) return full;
+    return omrUploadPhoto(full);
+  }
 
   @override
   bool get canTorch => _canTorch;
