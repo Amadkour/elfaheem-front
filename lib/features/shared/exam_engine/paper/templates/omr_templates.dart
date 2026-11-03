@@ -903,8 +903,11 @@ class OmrTemplatesApi {
   /// A published / retired version → version n + 1 as a draft (201).
   Future<EngineResult> newVersion(int id) => engineCall(() => _api.post('$_b/omr/templates/$id/versions'));
   Future<EngineResult> settings() => engineCall(() => _api.get('$_b/admin/omr/settings'));
-  Future<EngineResult> putSettings({required bool requireApproval}) =>
-      engineCall(() => _api.put('$_b/admin/omr/settings', body: {'require_approval': requireApproval}));
+  /// Sends only what is given; the server keeps the other setting (`smart_photos`: D-163, OFF = the old reader).
+  Future<EngineResult> putSettings({bool? requireApproval, bool? smartPhotos}) => engineCall(() => _api.put('$_b/admin/omr/settings', body: {
+        if (requireApproval != null) 'require_approval': requireApproval,
+        if (smartPhotos != null) 'smart_photos': smartPhotos,
+      }));
 
   /// preview · blank_preview · filled_preview (PNG); null when it is not there (yet).
   Future<Uint8List?> image(int id, String kind) async {
