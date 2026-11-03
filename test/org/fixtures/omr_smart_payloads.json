@@ -683,6 +683,60 @@
      }
     ]
    }
+  },
+  "replace_retake_accepted": {
+   "status": 200,
+   "body": {
+    "accepted": true,
+    "page_id": 5,
+    "replaces": 4,
+    "batch_id": 4,
+    "ms": 79.5,
+    "en": "Page 1 replaced. It is being read now.",
+    "ar": "تم استبدال الصفحة 1 وجارٍ قراءتها الآن.",
+    "progress": {
+     "batch_id": 1,
+     "exam_id": 1,
+     "kind": "omr",
+     "total": 3,
+     "done": 2,
+     "graded": 2,
+     "review": 0,
+     "rejected": 0,
+     "failed": 0,
+     "pending": 1,
+     "status": "processing",
+     "expected": null,
+     "rejected_pages": [],
+     "created_at": "2026-11-02T08:42:24.948015",
+     "en": "2 of 3 papers processed",
+     "ar": "تمت معالجة 2 من 3 ورقة"
+    },
+    "result": {
+     "tier": "accept",
+     "review_count": 0,
+     "message": {
+      "ar": "قُرئت الورقة.",
+      "en": "The paper was read."
+     },
+     "tips": [],
+     "preview_url": "/api/v1/exam/omr/images/preview/5?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+     "applied": [
+      "direct",
+      "perspective"
+     ]
+    }
+   }
+  },
+  "replace_page_reviewed_409": {
+   "status": 409,
+   "body": {
+    "detail": {
+     "code": "page_reviewed",
+     "message": "راجعت أسئلة هذه الورقة من قبل، فلن تُستبدل.",
+     "message_en": "You already reviewed questions on this paper, so it is not replaced."
+    }
+   }
   }
  }
 }

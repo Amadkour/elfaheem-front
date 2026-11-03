@@ -5,7 +5,11 @@
 // Smart photos: a hint with `blocking: false` ("Add a little more light") is a soft tip and the frame may still be
 // captured; the capture's `result` speaks per paper ("Read successfully" / "Read with 3 questions to review" / "Read
 // in part" + a Retake that is only a suggestion / "Couldn't read" + reason + tip), with a thumbnail of the improved
-// photo (its `preview_url` through the signed-image call) that opens the preview with Retake.
+// photo (its `preview_url` through the signed-image call) that opens the preview with Retake. Retake of a paper read
+// in part (or a rejected one the server kept) sends the next shot to `POST …/omr/pages/{page_id}/replace`: the new
+// photo supersedes the partial read (a new capture would be the same student twice). 409 (`page_reviewed`: the teacher
+// already resolved items on it; an older server's `page_not_rejected`) keeps the page: its sentence, then the shot
+// goes on as a new paper only if the teacher says so.
 // The manual shutter always works; torch / switch where the camera has them; a dead camera shows the fix and a way
 // out (upload instead). Phones and browsers (omr_camera.dart).
 library;
@@ -77,13 +81,19 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
   bool _previewLoading = false;
   bool _previewOpen = false;
 
+  /// Retake chosen on a paper the server kept: the next shot replaces this page (null: a new paper).
+  int? _replaceTarget;
+
+  /// A question is open over the camera (send a refused retake as a new paper?): the hints wait.
+  bool _asking = false;
+
   int? _batchId;
   int? _expected;
   int _captured = 0;
   bool _auto = true;
   bool _paused = false;
 
-  bool get _holding => _capturing || _paused || _previewOpen || (_result?.blocks ?? false) || _setupProblem != null;
+  bool get _holding => _capturing || _paused || _previewOpen || _asking || (_result?.blocks ?? false) || _setupProblem != null;
 
   @override
   void initState() {
@@ -242,11 +252,66 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
       showAppNotice(t('تعذّر التقاط الصورة — حاول مرة أخرى', 'The photo could not be taken — try again'), error: true);
       return;
     }
+    final target = _replaceTarget;
+    if (target != null) return _replaceShot(target, photo);
+    await _captureShot(photo);
+  }
+
+  /// A new paper: `POST …/omr/capture`.
+  Future<void> _captureShot(Uint8List photo) async {
     // the count goes with every photo: changed mid-session, the server keeps the new one (its answer used to put the old back)
     final r = await _api.capture(widget.examId, photo, batchId: _batchId, expected: _expected);
     if (!mounted) return;
     if (!r.ok) return _captureFailed(r);
-    final res = OmrCaptureResult.fromJson(r.map);
+    _show(OmrCaptureResult.fromJson(r.map));
+  }
+
+  /// The retake of a kept paper: `POST …/omr/pages/{page_id}/replace` — the answer's result is shown like a capture's
+  /// (the count does not move: it is the same paper).
+  Future<void> _replaceShot(int pageId, Uint8List photo) async {
+    final r = await _api.replacePage(widget.examId, pageId, (photoNameOf(photo), photo));
+    if (!mounted) return;
+    if (!r.ok) {
+      if (r.status == 409) return _replaceRefused(r, photo);
+      return _captureFailed(r); // busy / network: the retake stays aimed at the same page
+    }
+    final rep = OmrReplaceResult.fromJson(r.map);
+    if (rep.accepted) _replaceTarget = null; // the new page is that paper now
+    _show(OmrCaptureResult(
+      accepted: rep.accepted,
+      code: rep.code,
+      en: rep.accepted ? rep.en : (rep.pageEn.isNotEmpty ? rep.pageEn : rep.en),
+      ar: rep.accepted ? rep.ar : (rep.pageAr.isNotEmpty ? rep.pageAr : rep.ar),
+      pageId: rep.pageId,
+      batchId: rep.batchId ?? _batchId,
+      captured: _captured,
+      expected: _expected,
+      issues: rep.issues,
+      result: rep.result,
+    ));
+  }
+
+  /// 409 on a retake: the page stays as it is (the server's sentence); the photo becomes a new paper only on request.
+  Future<void> _replaceRefused(EngineResult r, Uint8List photo) async {
+    setState(() {
+      _replaceTarget = null;
+      _capturing = false;
+      _asking = true;
+    });
+    showAppNotice(omrErrorText(r), error: true);
+    final asNew = await appConfirm(context,
+        message: t('الورقة السابقة تبقى كما هي. هل تُرسل هذه الصورة كورقة جديدة؟', 'The earlier paper stays as it is. Send this photo as a new paper?'),
+        confirmLabel: t('إرسالها كورقة جديدة', 'Send as a new paper'));
+    if (!mounted) return;
+    setState(() {
+      _asking = false;
+      _capturing = asNew;
+    });
+    // declined: the camera waits for the next sheet (the gate stays disarmed until the scene changes)
+    if (asNew) await _captureShot(photo);
+  }
+
+  void _show(OmrCaptureResult res) {
     final url = res.result?.previewUrl;
     setState(() {
       _capturing = false;
@@ -254,7 +319,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
       _previewLoading = url != null;
       if (res.accepted) {
         _batchId = res.batchId ?? _batchId;
-        _captured = res.captured;
+        if (res.captured > 0) _captured = res.captured;
         _expected = res.expected ?? _expected;
       }
     });
@@ -311,15 +376,22 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     if (_setupProblem == null) showAppNotice(omrErrorText(r), error: true);
   }
 
+  /// Retake: a paper the server kept (read in part, or a rejected one it stored) is replaced by the next shot; a photo
+  /// that stored nothing is simply taken again.
   void _retake() {
     _hideResult?.cancel();
     _gate.reset();
+    final res = _result, tier = res?.result?.tier, pid = res?.pageId;
     setState(() {
+      if (pid != null && (tier == OmrTier.retake || tier == OmrTier.reject)) _replaceTarget = pid;
       _result = null;
       _previewBytes = null;
       _previewLoading = false;
     });
   }
+
+  /// "Cancel" on the retake pill: the next shot is a new paper again.
+  void _cancelRetake() => setState(() => _replaceTarget = null);
 
   Future<void> _toggleTorch() async {
     final cam = _cam;
@@ -386,6 +458,9 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     }
     if (_note != null) return (_note!, OmrHintTone.warn, Icons.cloud_queue_rounded);
     final h = _hint;
+    if (_replaceTarget != null && (h == null || h.text.isEmpty || h.code == 'ready')) {
+      return (t('صوّر الورقة نفسها مرة أخرى', 'Take the same paper again'), OmrHintTone.neutral, Icons.autorenew_rounded);
+    }
     if (h == null || h.text.isEmpty) return (t('وجّه الكاميرا إلى ورقة التظليل', 'Point the camera at the bubble sheet'), OmrHintTone.neutral, null);
     return (h.text, omrHintTone(h.code, blocking: h.blocking), null);
   }
@@ -487,6 +562,11 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
                     previewLoading: _previewLoading,
                     onPreview: res.result?.previewUrl == null ? null : _openPreview,
                   ),
+                ),
+              if (res == null && _replaceTarget != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                  child: RetakeTargetPill(onCancel: _cancelRetake),
                 ),
               if (res == null || !res.blocks)
                 ScannerControls(

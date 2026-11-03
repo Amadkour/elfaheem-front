@@ -17,7 +17,8 @@
 //        pages?[{page_id, page_no, page_label, file_name, status, result?}]}
 //   POST …/omr/pages/{page_id}/replace   multipart image (JPG / PNG / WebP) → the capture gate on the request:
 //        accepted {page_id (new), replaces, batch_id, en, ar, progress} | refused {code, en, ar, page_en, page_ar,
-//        issues}; 409 page_not_rejected / page_duplicate, 415, 413, 429, 503 omr_busy
+//        issues}; 409 page_not_rejected / page_duplicate / page_reviewed, 415, 413, 429, 503 omr_busy. Smart photos: a
+//        page read in part (`result.tier: retake`) may be replaced too (the camera's Retake, the batch's preview)
 //   GET / POST …/omr/sheets → what will be printed (+ `modes` on a server with print modes) / application/pdf
 //        (body: forms?, copies, student_ids?, + mode / order / index only when the describe listed `modes`)
 //   live: job_updated {kind: omr_scan, id: batch_id, exam_id, status, done, total, page_id, page_status, en, ar}
@@ -916,6 +917,7 @@ String omrCodeText(String? code, [Map<String, dynamic> detail = const {}]) => sw
       'forbidden' => t('ليس لديك صلاحية إدارة هذا الاختبار', 'You cannot manage this exam'),
       'no_files' => t('أرفق صورة أو ملف PDF', 'Attach an image or a PDF'),
       'page_not_rejected' => t('يمكن استبدال الصفحات المرفوضة فقط', 'Only a rejected page can be replaced'),
+      'page_reviewed' => t('راجعت هذه الورقة من قبل — لن تُستبدل', 'You already reviewed this paper — it is not replaced'),
       'page_duplicate' => t('هذه الصورة مرفوعة من قبل في هذا الاختبار — اختر صورة أخرى أوضح', 'This image was already uploaded for this exam — choose another, clearer one'),
       _ => t('تعذّر إكمال الطلب', 'The request could not be completed'),
     };

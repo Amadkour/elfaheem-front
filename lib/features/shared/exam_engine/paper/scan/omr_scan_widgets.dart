@@ -662,6 +662,41 @@ class CaptureResultCard extends StatelessWidget {
   }
 }
 
+/// "The next photo replaces the earlier one · Cancel": shown while a Retake is aimed at a kept paper.
+class RetakeTargetPill extends StatelessWidget {
+  const RetakeTargetPill({super.key, required this.onCancel});
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Center(
+      child: Material(
+        key: const ValueKey('omr.retake.target'),
+        color: c.heroShade.withValues(alpha: .78),
+        borderRadius: BorderRadius.circular(AppRadius.hero),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.sm),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.autorenew_rounded, color: c.warning, size: 18),
+            const SizedBox(width: AppSpace.xs),
+            Flexible(
+              child: Text(t('الصورة التالية تحلّ محل السابقة', 'The next photo replaces the earlier one'),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.onHero)),
+            ),
+            TextButton(
+              key: const ValueKey('omr.retake.cancel'),
+              style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: c.onHero),
+              onPressed: onCancel,
+              child: Text(t('إلغاء', 'Cancel'), style: appText(13, w: FontWeight.w800, c: c.onHero)),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 // ── camera problems ─────────────────────────────────────────────────────────────────────────────────────────────
 
 class CameraProblemView extends StatelessWidget {

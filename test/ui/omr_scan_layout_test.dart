@@ -171,6 +171,10 @@ void main() {
               ]));
     }
   });
+  testWidgets('smart photos: the retake pill (the next photo replaces the earlier one · Cancel)', (tester) async {
+    await expectNoLayoutErrors(tester, () => _camera(Align(alignment: Alignment.bottomCenter, child: RetakeTargetPill(onCancel: () {}))));
+  });
+
   testWidgets('smart photos: the gentle hint', (tester) async {
     await expectNoLayoutErrors(
         tester,

@@ -311,6 +311,8 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       setState(() => _replacements[pageId] = _Replacement('refused', row)..text = [res.refusal, ...?res.result?.tipTexts.where((x) => !res.refusal.contains(x)).take(1)].join(' '));
       return;
     }
+    // a page read in part has no rejected row to carry the outcome: say it here
+    if (row == null && res.text.isNotEmpty) showAppNotice(res.text);
     setState(() {
       _replacements[pageId] = _Replacement('processing', row)
         ..newPageId = res.pageId
@@ -344,9 +346,10 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
     ];
   }
 
-  /// The improved photo of a page; a rejected one can be replaced from there.
+  /// The improved photo of a page; a rejected one, or one read in part (`retake`: the server lets a better photo
+  /// supersede the partial read), can be replaced from there.
   Future<void> _preview(int pageId, OmrPageResult result) async {
-    final canReplace = _progress?.rejectedPages.any((p) => p.pageId == pageId) ?? false;
+    final canReplace = (_progress?.rejectedPages.any((p) => p.pageId == pageId) ?? false) || result.tier == OmrTier.retake;
     final again = await showOmrPreview(context,
         result: result,
         load: () => _api.image(result.previewUrl),

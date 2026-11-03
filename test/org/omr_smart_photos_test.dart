@@ -8,6 +8,10 @@
 //   • the batch: the papers worth a look first, those read successfully folded, a rejected page's tips + preview with
 //     "Replace this page"
 //   • print: only the modes the server lists, each with its line, Pre-filled replaced by its reason; the body sent
+//   • retake by replace: Retake on a paper read in part sends the next shot to …/omr/pages/{id}/replace (not a new
+//     capture) and shows that answer's result; 409 page_reviewed keeps the page, says the server's sentence and sends
+//     the photo as a new paper only when the teacher asks; Cancel aims the next shot at a new paper again; the batch's
+//     preview offers "Replace this page" on a retake row
 // Replies: test/org/fixtures/omr_smart_payloads.json (the contract's fields on top of recorded replies).
 import 'dart:convert';
 import 'dart:io';
@@ -17,6 +21,7 @@ import 'package:dio/dio.dart' show FormData, RequestOptions;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/design/app_notice.dart' show appNoticeTopOverlay;
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_camera.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_paper_result.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart';
@@ -36,7 +41,11 @@ final _rec = (jsonDecode(File('test/org/fixtures/omr_scan_payloads.json').readAs
 
 Map<String, dynamic> _s(String name) => Map<String, dynamic>.from((_smart[name] as Map)['body'] as Map);
 Map<String, dynamic> _r(String name) => Map<String, dynamic>.from((_rec[name] as Map)['body'] as Map);
-Object? _reply(String name) => _smart.containsKey(name) ? _s(name) : _r(name);
+Object? _reply(String name) {
+  if (!_smart.containsKey(name)) return _r(name);
+  final status = ((_smart[name] as Map)['status'] as int?) ?? 200;
+  return status == 200 ? _s(name) : FakeResponse(status, _s(name));
+}
 
 const _e = '/api/v1/exam/exams/1';
 
@@ -89,6 +98,15 @@ Future<void> _phone(WidgetTester tester, Widget w, {double width = 390}) async {
   await tester.pumpWidget(layoutHost(w, scale: 1, scaffold: false));
   await _frames(tester, 3);
 }
+
+/// Notices (showAppNotice) drawn in the test app's own Navigator overlay (the app's navigatorKey is not mounted here).
+void _notices(WidgetTester tester) {
+  appNoticeTopOverlay = () => tester.state<NavigatorState>(find.byType(Navigator).first).overlay;
+  addTearDown(() => appNoticeTopOverlay = null);
+}
+
+/// The confirm dialog's Cancel (its label is a translation key the test does not load).
+final _dialogCancel = find.descendant(of: find.byType(AlertDialog), matching: find.byType(OutlinedButton));
 
 final _connected = ValueNotifier<bool>(true);
 final _stream = LiveStreamHandle(connected: _connected, bind: () {}, release: () {});
@@ -253,7 +271,13 @@ void main() {
   });
 
   group('scanner', () {
-    Future<(FakeApi, List<String>, _Cam)> open(WidgetTester tester, List<String> hints, List<String> captures) async {
+    final replaces = <String>[];
+    var captureCalls = 0;
+
+    Future<(FakeApi, List<String>, _Cam)> open(WidgetTester tester, List<String> hints, List<String> captures, {List<String> replies = const []}) async {
+      replaces.clear();
+      captureCalls = 0;
+      final rp = [...replies];
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -267,7 +291,13 @@ void main() {
         },
         'POST $_e/omr/capture': (RequestOptions o) {
           expect(o.data, isA<FormData>());
+          captureCalls++;
           return _reply(c.length > 1 ? c.removeAt(0) : c.first);
+        },
+        'POST $_e/omr/pages/*': (RequestOptions o) {
+          replaces.add(_path(o));
+          expect((o.data as FormData).files.single.key, 'image');
+          return _reply(rp.length > 1 ? rp.removeAt(0) : rp.first);
         },
         'GET /api/v1/exam/omr/images/*': (RequestOptions o) {
           images.add('${_path(o)}?${o.uri.query}');
@@ -282,6 +312,7 @@ void main() {
           scale: 1,
           scaffold: false));
       await _frames(tester, 2);
+      _notices(tester);
       return (fake, images, cam);
     }
 
@@ -323,7 +354,8 @@ void main() {
     });
 
     testWidgets('preview from the thumbnail; Retake there re-arms the camera', (tester) async {
-      final (_, images, cam) = await open(tester, ['hint_ready_first', 'hint_ready_smart'], ['capture_retake', 'capture_accept']);
+      final (_, images, cam) =
+          await open(tester, ['hint_ready_first', 'hint_ready_smart'], ['capture_retake', 'capture_accept'], replies: ['replace_retake_accepted']);
       await _frames(tester, 17);
       expect(cam.photos, 1);
       await tester.tap(find.byKey(const ValueKey('omr.preview.thumb')));
@@ -342,7 +374,8 @@ void main() {
       await _frames(tester, 16);
       expect(cam.photos, 2);
       expect(find.text('Read successfully'), findsOneWidget);
-      expect(find.text('Paper 1 of 40 captured'), findsOneWidget, reason: 'the server\'s count under the tier');
+      expect(replaces, ['$_e/omr/pages/4/replace'], reason: 'the retake replaced the page read in part');
+      expect(find.text('Page 1 replaced. It is being read now.'), findsOneWidget, reason: 'the server\'s sentence under the tier');
       expect(tester.takeException(), isNull);
       await _done(tester);
     });
@@ -363,6 +396,88 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('omr.retake')));
       await _frames(tester, 2);
       expect(find.text("Couldn't read this paper"), findsNothing);
+      await _done(tester);
+    });
+
+    testWidgets('Retake on a paper read in part replaces that page: the next shot goes to …/replace, its result shows',
+        (tester) async {
+      final (fake, _, cam) =
+          await open(tester, ['hint_ready_first', 'hint_ready_smart'], ['capture_retake'], replies: ['replace_retake_accepted']);
+      await _frames(tester, 17);
+      expect((cam.photos, captureCalls), (1, 1));
+      await tester.tap(find.byKey(const ValueKey('omr.retake.soft')));
+      await _frames(tester, 1);
+      expect(find.byKey(const ValueKey('omr.retake.target')), findsOneWidget, reason: 'says the next photo replaces the earlier one');
+      await _frames(tester, 16);
+      expect(cam.photos, 2);
+      expect(captureCalls, 1, reason: 'not a new capture (that would be the same student twice)');
+      expect(replaces, ['$_e/omr/pages/4/replace'], reason: 'the page the capture answered with');
+      expect(find.text('Read successfully'), findsOneWidget, reason: 'the replace answer\'s result');
+      expect(find.text('Page 1 replaced. It is being read now.'), findsOneWidget);
+      expect(find.text('1 of 40'), findsOneWidget, reason: 'the same paper: the count does not move');
+      expect(find.byKey(const ValueKey('omr.retake.target')), findsNothing);
+
+      // the next sheet is a new paper again
+      await _frames(tester, 30);
+      expect(replaces, hasLength(1));
+      expect(fake.unmatched, isEmpty);
+      expect(tester.takeException(), isNull);
+      await _done(tester);
+    });
+
+    testWidgets('Retake from the preview replaces too; Cancel aims the next shot at a new paper', (tester) async {
+      final (_, _, cam) = await open(tester, ['hint_ready_first', 'hint_ready_smart'], ['capture_retake', 'capture_accept'], replies: ['replace_retake_accepted']);
+      await _frames(tester, 17);
+      await tester.tap(find.byKey(const ValueKey('omr.preview.thumb')));
+      await _frames(tester, 6);
+      final retake = find.byKey(const ValueKey('omr.preview.retake'));
+      await tester.ensureVisible(retake);
+      await tester.pump();
+      await tester.tap(retake);
+      await _frames(tester, 2);
+      expect(find.byKey(const ValueKey('omr.retake.target')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('omr.retake.cancel')));
+      await _frames(tester, 16);
+      expect(cam.photos, 2);
+      expect(replaces, isEmpty, reason: 'cancelled: a new paper');
+      expect(captureCalls, 2);
+      await _done(tester);
+    });
+
+    for (final asNew in [false, true]) {
+      testWidgets('409 page_reviewed keeps the page, says why; a new paper only when asked (${asNew ? 'yes' : 'no'})', (tester) async {
+        final (_, _, cam) =
+            await open(tester, ['hint_ready_first', 'hint_ready_smart'], ['capture_retake', 'capture_accept'], replies: ['replace_page_reviewed_409']);
+        await _frames(tester, 17);
+        await tester.tap(find.byKey(const ValueKey('omr.retake.soft')));
+        await _frames(tester, 16);
+        expect(cam.photos, 2);
+        expect(replaces, ['$_e/omr/pages/4/replace']);
+        expect(find.text('You already reviewed questions on this paper, so it is not replaced.'), findsOneWidget, reason: 'the server\'s sentence');
+        expect(find.text('The earlier paper stays as it is. Send this photo as a new paper?'), findsOneWidget);
+        expect(captureCalls, 1);
+        final before = cam.photos;
+        await _frames(tester, 10);
+        expect(cam.photos, before, reason: 'nothing more is taken while the question is open');
+        await tester.tap(asNew ? find.text('Send as a new paper') : _dialogCancel);
+        await _frames(tester, 4);
+        expect(captureCalls, asNew ? 2 : 1);
+        expect(replaces, hasLength(1), reason: 'the page is kept');
+        if (asNew) expect(find.text('Read successfully'), findsOneWidget);
+        expect(find.byKey(const ValueKey('omr.retake.target')), findsNothing);
+        await _done(tester);
+      });
+    }
+
+    testWidgets('Arabic: the server\'s 409 sentence', (tester) async {
+      AppConfig.lang = 'ar';
+      await open(tester, ['hint_ready_first', 'hint_ready_smart'], ['capture_retake'], replies: ['replace_page_reviewed_409']);
+      await _frames(tester, 17);
+      await tester.tap(find.byKey(const ValueKey('omr.retake.soft')));
+      await _frames(tester, 16);
+      expect(find.text('راجعت أسئلة هذه الورقة من قبل، فلن تُستبدل.'), findsOneWidget);
+      await tester.tap(_dialogCancel);
+      await _frames(tester, 2);
       await _done(tester);
     });
   });
@@ -465,6 +580,65 @@ void main() {
       expect(replaced, ['$_e/omr/pages/14/replace']);
       expect(fake.unmatched, isEmpty);
       expect(tester.takeException(), isNull);
+      await _done(tester);
+    });
+
+    testWidgets('a retake row\'s preview offers "Replace this page" → …/replace; 409 says the server\'s sentence', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      final replaced = <String>[];
+      final fake = FakeApi({
+        'GET $_e/omr/batches/*': (_) => _s('batch_smart'),
+        'GET /api/v1/exam/omr/images/*': (_) => 'x',
+        // the new page's own state (the fallback while no event came): still being read
+        'GET $_e/omr/pages/*': (_) => {'page': {'id': 5, 'status': 'processing'}},
+        'POST $_e/omr/pages/*': (RequestOptions o) {
+          replaced.add(_path(o));
+          return _reply(replaced.length == 1 ? 'replace_page_reviewed_409' : 'replace_retake_accepted');
+        },
+      }, latency: const Duration(milliseconds: 20))
+        ..install();
+      addTearDown(fake.uninstall);
+      await tester.pumpWidget(layoutHost(
+          OmrScanProgressScreen(
+            examId: 1,
+            batchId: 8,
+            picker: ({bool many = true}) async => [('page9.jpg', Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0, 9]))],
+            liveBus: LiveEvents.instance,
+            liveStream: _stream,
+          ),
+          scale: 1,
+          scaffold: false));
+      await _frames(tester, 6);
+      _notices(tester);
+      final retakeRow = (_s('batch_smart')['pages'] as List).cast<Map>().firstWhere((p) => (p['result'] as Map)['tier'] == 'retake');
+      final id = retakeRow['page_id'];
+      Future<void> replaceFromPreview() async {
+        final prev = find.byKey(ValueKey('omr.paper.preview.$id'));
+        await tester.ensureVisible(prev);
+        await tester.pump();
+        await tester.tap(prev);
+        await _frames(tester, 6);
+        final rep = find.byKey(const ValueKey('omr.preview.retake'));
+        await tester.ensureVisible(rep);
+        await tester.pump();
+        expect(find.descendant(of: rep, matching: find.text('Replace this page')), findsOneWidget);
+        await tester.tap(rep);
+        await _frames(tester, 6);
+      }
+
+      await replaceFromPreview();
+      expect(replaced, ['$_e/omr/pages/$id/replace']);
+      expect(find.text('You already reviewed questions on this paper, so it is not replaced.'), findsOneWidget);
+      expect(find.byKey(ValueKey('omr.paper.$id')), findsOneWidget, reason: 'the page is kept');
+
+      await tester.pump(const Duration(seconds: 5)); // the notice goes
+      await replaceFromPreview();
+      expect(replaced, hasLength(2));
+      expect(find.text('Page 1 replaced. It is being read now.'), findsOneWidget, reason: 'said: no rejected row carries it');
+      expect(find.byKey(ValueKey('omr.paper.$id')), findsNothing, reason: 'superseded');
+      expect(fake.unmatched, isEmpty);
       await _done(tester);
     });
 
