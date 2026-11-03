@@ -15,6 +15,17 @@ import 'omr_camera.dart';
 
 OmrCamera createPlatformCamera() => _NativeCamera();
 
+/// The video constraints. Plain numbers, never `{'ideal': n}`: the plugin's Android getConstrainInt looks for `ideal`
+/// on the outer map, and iOS reads it only as a string, so an `ideal` map is dropped and the camera falls back to
+/// 1280×720 - 2.3 px/mm on a sheet, where its QR rarely decodes (the owner's phone test, 2026-11-03).
+@visibleForTesting
+Map<String, Object> omrNativeVideoConstraints({bool front = false}) => {
+      'facingMode': front ? 'user' : 'environment',
+      'width': 1920,
+      'height': 1080,
+      'frameRate': 30,
+    };
+
 class _NativeCamera implements OmrCamera {
   final _renderer = rtc.RTCVideoRenderer();
   bool _rendererReady = false;
@@ -49,12 +60,7 @@ class _NativeCamera implements OmrCamera {
     try {
       _stream = await rtc.navigator.mediaDevices.getUserMedia({
         'audio': false,
-        'video': {
-          'facingMode': front ? 'user' : 'environment',
-          'width': {'ideal': 1920},
-          'height': {'ideal': 1080},
-          'frameRate': {'ideal': 30},
-        },
+        'video': omrNativeVideoConstraints(front: front),
       });
     } catch (e) {
       final s = '$e'.toLowerCase();

@@ -23,6 +23,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_notice.dart' show appNoticeTopOverlay;
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_camera.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_camera_native.dart' show omrNativeVideoConstraints;
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_paper_result.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan_widgets.dart';
@@ -243,6 +244,13 @@ void main() {
       expect(omrPhotoPlan(jpeg: true, bytes: 2 << 20, width: 1080, height: 1920).keep, isFalse, reason: 'a q100 JPEG');
       final big = omrPhotoPlan(jpeg: true, bytes: 1 << 20, width: 3000, height: 4000);
       expect((big.keep, big.width, big.height), (false, 1920, 2560));
+    });
+
+    test('phone camera asks for 1080p in plain numbers (the plugin drops an {ideal: n} map and films 720p)', () {
+      final v = omrNativeVideoConstraints();
+      expect((v['width'], v['height'], v['frameRate'], v['facingMode']), (1920, 1080, 30, 'environment'));
+      expect(v.values.whereType<Map>(), isEmpty);
+      expect(omrNativeVideoConstraints(front: true)['facingMode'], 'user');
     });
 
     test('how long a card stays', () {
