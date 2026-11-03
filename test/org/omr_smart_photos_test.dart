@@ -191,6 +191,15 @@ void main() {
       final shaded = OmrSheetsInfo.fromJson({..._r('sheets_info'), 'modes': ['named', 'blank', 'poster']});
       expect(shaded.modes, [OmrPrintMode.named, OmrPrintMode.blank], reason: 'an unknown mode is skipped');
       expect(shaded.prefilledMissing, contains('not all digits'));
+      // the server's real shape (omr_sheets.describe): a reason code under mode_detail.prefilled
+      Map<String, dynamic> detail(String code) => {..._r('sheets_info'), 'id_kind': 'shaded', 'modes': ['named', 'blank'],
+            'mode_detail': {'prefilled': {'available': false, 'reason': code}, 'named': {'available': true, 'reason': null}}};
+      expect(OmrSheetsInfo.fromJson(detail('no_identifier')).prefilledMissing, contains('does not identify students by a number'));
+      expect(OmrSheetsInfo.fromJson(detail('identifier_unknown')).prefilledMissing, contains('could not be checked'));
+      expect(OmrSheetsInfo.fromJson(detail('something_new')).prefilledMissing, contains('not all digits'), reason: 'unknown code → ID-kind fallback');
+      AppConfig.lang = 'ar';
+      expect(OmrSheetsInfo.fromJson(detail('identifier_zone_mismatch')).prefilledMissing, contains('لا تتسع'));
+      AppConfig.lang = 'en';
       final old = OmrSheetsInfo.fromJson(_r('sheets_info'));
       expect((old.modes, old.hasModes, old.prefilledMissing), (null, false, null));
       expect(omrOfferedModes(old), [OmrPrintMode.named, OmrPrintMode.blank]);

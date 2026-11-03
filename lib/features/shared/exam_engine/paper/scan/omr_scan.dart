@@ -691,8 +691,23 @@ class OmrSheetsInfo {
         prefilledReasonEn: _reasonOf(j, 'en'),
       );
 
-  /// `prefilled_reason {ar, en}`, or the reason of a `{mode: prefilled, available: false, reason}` entry of `modes`.
+  static const _prefilledReasons = <String, (String, String)>{
+    'zone_not_shaded': ('التظليل المسبق غير متاح: لا توجد على الورقة خانات تظليل لرقم الطالب',
+        'Pre-filled is not available: the sheet has no student-number bubbles'),
+    'no_identifier': ('التظليل المسبق غير متاح: الاختبار لا يعرّف الطلاب برقم', 'Pre-filled is not available: this exam does not identify students by a number'),
+    'identifier_unknown': ('التظليل المسبق غير متاح الآن: تعذّر التحقق من أرقام الطلاب، حاول لاحقًا',
+        "Pre-filled is not available right now: the students' numbers could not be checked, try again later"),
+    'identifier_zone_mismatch': ('التظليل المسبق غير متاح: أرقام الطلاب لا تتسع في خانات الورقة',
+        "Pre-filled is not available: the student numbers do not fit the sheet's boxes"),
+  };
+
+  /// The server's `mode_detail.prefilled.reason` code (omr_sheets.modes_of), else `prefilled_reason {ar, en}`, or the
+  /// reason of a `{mode: prefilled, available: false, reason}` entry of `modes`. An unknown code falls back to the
+  /// reason worked out from the ID kind (`prefilledMissing`).
   static String _reasonOf(Map<String, dynamic> j, String lang) {
+    final code = '${asMap(asMap(j['mode_detail'])['prefilled'])['reason'] ?? ''}';
+    final known = _prefilledReasons[code];
+    if (known != null) return lang == 'ar' ? known.$1 : known.$2;
     final direct = asMap(j['prefilled_reason']);
     if (direct.isNotEmpty) return '${direct[lang] ?? ''}';
     for (final m in asMapList(j['modes'])) {
