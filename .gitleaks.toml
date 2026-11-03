@@ -61,6 +61,7 @@ regexes = [
   '''^rag\.p95_latency$''',
   '''^nbb_6f1d0c5e2a9b47d8a3c1e0f9b8a7d6c5e4f3a2b1c0d9e8f7$''',
   '''^aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3zA5bC7dE9f$''',
+  '''^aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3zA5bC7dE9fG1hJ3kL5mN7$''',
 ]
 
 [[allowlists]]
