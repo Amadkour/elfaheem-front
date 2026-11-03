@@ -16,6 +16,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../../admin/admin_common.dart' show asMapList, t;
+import '../omr_counts.dart' show omrPublishedText, omrTypesText, omrVersionsText;
 import 'omr_template_learn.dart';
 import 'omr_templates.dart';
 
@@ -329,7 +330,7 @@ class TemplateLibraryView extends StatelessWidget {
                   const SizedBox(height: AppSpace.md),
                 ],
                 if (isSuperAdmin && pending.isNotEmpty) ...[
-                  AppSectionTitle(t('بانتظار اعتمادك', 'Waiting for your approval'), subtitle: t('${pending.length} إصدار', '${pending.length} version(s)')),
+                  AppSectionTitle(t('بانتظار اعتمادك', 'Waiting for your approval'), subtitle: omrVersionsText(pending.length)),
                   const SizedBox(height: AppSpace.xs),
                   for (final p in pending)
                     PendingCard(
@@ -407,8 +408,8 @@ class _Header extends StatelessWidget {
               style: appText(13, c: c.textMedium, h: 1.45)),
           const SizedBox(height: AppSpace.sm),
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-            FactChip(icon: Icons.grid_on_rounded, label: t('$families نوعًا', '$families types')),
-            FactChip(icon: Icons.verified_rounded, color: c.success, label: t('$published منشورًا', '$published published')),
+            FactChip(key: const ValueKey('omr.library.types'), icon: Icons.grid_on_rounded, label: omrTypesText(families)),
+            FactChip(key: const ValueKey('omr.library.published'), icon: Icons.verified_rounded, color: c.success, label: omrPublishedText(published)),
             if (pending > 0) FactChip(icon: Icons.hourglass_top_rounded, color: c.warning, label: t('$pending بانتظار الاعتماد', '$pending pending approval')),
           ]),
         ]);
@@ -483,7 +484,7 @@ class FamilyCard extends StatelessWidget {
               Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
                 if (family.isBuiltin) AppBadgePill(t('مدمج', 'Built-in'), color: c.purple, icon: Icons.print_rounded),
                 for (final v in family.versions.take(4))
-                  AppBadgePill(t('إ${v.version} · ${omrStatusLabel(v.status)}', 'v${v.version} · ${omrStatusLabel(v.status)}'), color: omrStatusColor(context, v.status)),
+                  AppBadgePill(t('إصدار ${v.version} · ${omrStatusLabel(v.status)}', 'v${v.version} · ${omrStatusLabel(v.status)}'), color: omrStatusColor(context, v.status)),
                 if (family.versions.length > 4) AppBadgePill('+${family.versions.length - 4}', color: c.textMedium),
               ]),
             ]),

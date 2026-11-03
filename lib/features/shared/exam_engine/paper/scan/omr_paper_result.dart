@@ -200,8 +200,9 @@ class OmrPreviewView extends StatelessWidget {
       const SizedBox(height: AppSpace.xs),
       Text(
         applied.isEmpty
-            ? t('الإطار الملوّن يبيّن ما وجده القارئ على الورقة', 'The coloured marks show what the reader found on the page')
-            : '$applied · ${t('الإطار الملوّن يبيّن ما وجده القارئ', 'the coloured marks show what the reader found')}',
+            // the preview is the reading's snapshot: a decision made later does not redraw it, so it says when it was
+            ? t('الإطار الملوّن يبيّن ما وجده القارئ عند قراءة الصورة', 'The coloured marks show what the reader found when the photo was read')
+            : '$applied · ${t('الإطار الملوّن يبيّن ما وجده القارئ عند قراءة الصورة', 'the coloured marks show what the reader found when the photo was read')}',
         style: appText(12.5, c: c.textMedium, h: 1.4),
       ),
       const SizedBox(height: AppSpace.md),
@@ -315,8 +316,10 @@ class OmrPaperRow {
   const OmrPaperRow({required this.pageId, required this.label, required this.result, this.fileName, this.replacing = false});
   final int pageId;
 
-  /// "Paper 3" (camera) / "Page 7" (an upload).
+  /// "Paper 3": the paper's name in its batch (the papers that need a clearer image say it the same way).
   final String label;
+
+  /// "wa24.jpg", or "PDF page 4 of scan.pdf" for a page of a multi-page PDF (omrFilePlace).
   final String? fileName;
   final OmrPageResult result;
 
@@ -328,13 +331,14 @@ class OmrPaperRow {
 /// files apart stays in view. Always left to right (a file name), at the reading direction's start.
 class OmrFileName extends StatelessWidget {
   const OmrFileName(this.name, {super.key, this.style});
+  static final _arabic = RegExp(r'[\u0600-\u06FF]');
   final String name;
   final TextStyle? style;
 
   /// The longest "head…tail" of [name] that fits [maxWidth] in [style] (the tail keeps a little more).
-  static String fit(String name, TextStyle style, double maxWidth, TextScaler scaler) {
+  static String fit(String name, TextStyle style, double maxWidth, TextScaler scaler, {TextDirection direction = TextDirection.ltr}) {
     double w(String s) =>
-        (TextPainter(text: TextSpan(text: s, style: style), textDirection: TextDirection.ltr, textScaler: scaler, maxLines: 1)..layout()).width;
+        (TextPainter(text: TextSpan(text: s, style: style), textDirection: direction, textScaler: scaler, maxLines: 1)..layout()).width;
     if (maxWidth <= 0 || w(name) <= maxWidth) return name;
     var lo = 0, hi = name.length - 1;
     var best = name.length > 2 ? '${name[0]}…' : name;
@@ -356,12 +360,14 @@ class OmrFileName extends StatelessWidget {
   Widget build(BuildContext context) {
     final st = DefaultTextStyle.of(context).style.merge(style);
     final scaler = MediaQuery.textScalerOf(context);
+    // a file name reads left to right; a name in Arabic words ("صفحة PDF رقم 2 من scan.pdf") in the page's direction
+    final dir = _arabic.hasMatch(name) ? Directionality.of(context) : TextDirection.ltr;
     return LayoutBuilder(builder: (context, box) {
-      final shown = box.hasBoundedWidth ? fit(name, st, box.maxWidth, scaler) : name;
+      final shown = box.hasBoundedWidth ? fit(name, st, box.maxWidth, scaler, direction: dir) : name;
       return Semantics(
         label: name,
         excludeSemantics: true,
-        child: Text(shown, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, textDirection: TextDirection.ltr, style: st),
+        child: Text(shown, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, textDirection: dir, style: st),
       );
     });
   }
@@ -429,7 +435,7 @@ class OmrPaperTile extends StatelessWidget {
                 style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
                 onPressed: onReplace,
                 icon: const Icon(Icons.find_replace_rounded),
-                label: Text(t('استبدال هذه الصفحة', 'Replace this page')),
+                label: Text(t('استبدال هذه الورقة', 'Replace this paper')),
               ),
           ]),
         ],

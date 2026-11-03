@@ -967,6 +967,43 @@ class OmrScoreBanner extends StatelessWidget {
   }
 }
 
+/// "Page 3 · wa01.jpg · Today, 10:42 AM" on one line: the page and file give way (an ellipsis), the time never does.
+class OmrWhereLine extends StatelessWidget {
+  const OmrWhereLine({super.key, required this.item});
+  final OmrReviewItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final style = appText(11.5, c: c.textLight);
+    final place = item.placeText, when = item.whenText;
+    if (place.isEmpty || when == null) return Text(item.whereText, maxLines: 2, overflow: TextOverflow.ellipsis, style: style);
+    final tail = ' · $when';
+    return LayoutBuilder(builder: (context, box) {
+      final painter = TextPainter(
+          text: TextSpan(text: tail, style: style),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1)
+        ..layout();
+      final tailWidth = painter.width;
+      painter.dispose();
+      // too narrow to keep the time beside even a short page name: the line wraps instead (two lines at most)
+      if (!box.hasBoundedWidth || tailWidth + 48 > box.maxWidth) {
+        return Text(item.whereText, maxLines: 2, overflow: TextOverflow.ellipsis, style: style);
+      }
+      return Semantics(
+        label: item.whereText,
+        excludeSemantics: true,
+        child: Row(children: [
+          Flexible(child: Text(place, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          Text(tail, maxLines: 1, softWrap: false, style: style),
+        ]),
+      );
+    });
+  }
+}
+
 // ── queue ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /// The queue as compact rows (the side list on desktop, the sheet on phones).
@@ -1008,10 +1045,9 @@ class OmrQueueList extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: appText(12, c: c.textMedium)),
-                      // which paper: page · file · when (two "Student ID is empty" rows told apart)
-                      if (it.whereText.isNotEmpty)
-                        Text(it.whereText,
-                            key: ValueKey('omr.queue.where.${it.id}'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textLight)),
+                      // which paper: page · file · when (two "Student ID is empty" rows told apart); a long file name
+                      // gives way, the time stays whole (it was cut to "Today, 3:18…" in the desktop side list)
+                      if (it.whereText.isNotEmpty) OmrWhereLine(item: it, key: ValueKey('omr.queue.where.${it.id}')),
                     ]),
                   ),
                 ]),

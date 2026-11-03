@@ -13,8 +13,12 @@
 //        {tier: accept|flags|retake|reject, review_count, message {ar,en}, tips [{ar,en}], preview_url, applied [str]}
 //   POST …/scans          files[] (≤ 50 files, PNG / JPEG / WebP / PDF, ≤ 300 pages) → {batch_id, pages, duplicates, omr}
 //   GET  …/omr/batches[/{batch_id}] → progress {total, done, graded, review, rejected, failed, pending, status, en, ar,
-//        rejected_pages[{page_id, page_no, page_label, file_name, codes, en, ar, instruction_en, instruction_ar, result?}],
-//        pages?[{page_id, page_no, page_label, file_name, status, result?}]}
+//        rejected_pages[{page_id, page_no, page_label, page_file_page?, file_name, codes, en, ar, instruction_en,
+//        instruction_ar, result?}], pages?[{page_id, page_no, page_label, page_file_page?, file_name, status, result?}]}
+//        page_label = the page's name in its batch (the server's sentences use it); page_no = the page inside its own
+//        file (every photo is page 1 of itself); page_file_page = the page inside a multi-page PDF (final polish).
+//   GET  …/omr/batches?limit=&before=      newest first; has_more + next_before (final polish; an older server ignores
+//        both and returns up to 100)
 //   POST …/omr/pages/{page_id}/replace   multipart image (JPG / PNG / WebP) → the capture gate on the request:
 //        accepted {page_id (new), replaces, batch_id, en, ar, progress} | refused {code, en, ar, page_en, page_ar,
 //        issues}; 409 page_not_rejected / page_duplicate / page_reviewed, 415, 413, 429, 503 omr_busy. Smart photos: a
@@ -402,7 +406,8 @@ class OmrPageResult {
     if (tier == OmrTier.retake) {
       // "Read in part — 1 question to review" + the server's own student / form part ("· confirm the student")
       final base = omrResultTitle(tier, questionsOnly ? reviewCount : 0);
-      if (tail != null) return '$base · $tail';
+      // one dash per title ("Read in part — 1 question to review · confirm the student"; the Arabic, a comma)
+      if (tail != null) return '$base${base.contains(' — ') ? ' · ' : ' — '}$tail';
       return omrResultTitle(tier, questionsOnly ? reviewCount : 0, student: student);
     }
     // a read paper with a person's part (student, answer form, another exam's sheet), or a count an older server may
@@ -456,16 +461,18 @@ String omrResultTitle(OmrTier tier, int review, {OmrStudentNeed student = OmrStu
     OmrStudentNeed.confirm => t('أكّد الطالب', 'confirm the student'),
     OmrStudentNeed.choose => t('اختر الطالب', 'choose the student'),
   };
-  // "Read — confirm the student" when only the student needs a person
-  if (who != null && review == 0 && tier != OmrTier.retake && tier != OmrTier.reject) return t('قُرئت — $who', 'Read — $who');
+  // the server's phrasing (mlkit/omr/messages.smart_message), so a batch never says one state two ways: "تمت القراءة،
+  // وسؤالان للمراجعة" (the count in the nominative, countText's 1 / 2 / 3–10 / 11+ forms) / "Read with 2 questions to
+  // review"; "Read — confirm the student" when only the student needs a person
+  if (who != null && review == 0 && tier != OmrTier.retake && tier != OmrTier.reject) return t('تمت القراءة — $who', 'Read — $who');
   final base = switch (tier) {
-    OmrTier.accept => t('قُرئت الورقة بنجاح', 'Read successfully'),
+    OmrTier.accept => t('تمت القراءة بنجاح', 'Read successfully'),
     OmrTier.flags => review > 0
-        ? t('قُرئت — ${omrQuestionsText(review)} للمراجعة', 'Read with ${omrQuestionsText(review)} to review')
-        : t('قُرئت — بعض الأسئلة للمراجعة', 'Read with some questions to review'),
+        ? t('تمت القراءة، و${omrQuestionsText(review)} للمراجعة', 'Read with ${omrQuestionsText(review)} to review')
+        : t('تمت القراءة، وبعض الأسئلة للمراجعة', 'Read with some questions to review'),
     OmrTier.retake => review > 0
-        ? t('قُرئت جزئيًا — ${omrQuestionsText(review)} للمراجعة', 'Read in part — ${omrQuestionsText(review)} to review')
-        : t('قُرئت جزئيًا', 'Read in part'),
+        ? t('تمت القراءة جزئيًا، و${omrQuestionsText(review)} للمراجعة', 'Read in part — ${omrQuestionsText(review)} to review')
+        : t('تمت القراءة جزئيًا', 'Read in part'),
     OmrTier.reject => t('تعذّرت قراءة الورقة', "Couldn't read this paper"),
   };
   if (who == null || tier == OmrTier.reject) return base;
@@ -604,6 +611,7 @@ class OmrRejectedPage {
     required this.en,
     required this.ar,
     this.fileName,
+    this.pageFilePage,
     this.codes = const [],
     this.instructionEn = '',
     this.instructionAr = '',
@@ -614,6 +622,9 @@ class OmrRejectedPage {
   final int pageNo;
   final String label;
   final String? fileName;
+
+  /// The page inside a multi-page PDF uploaded with other files (null for a photo, and on an older server).
+  final int? pageFilePage;
   final List<String> codes;
 
   /// "Page 7 is too blurry. Please upload a clearer image of it." (+ ar).
@@ -632,6 +643,7 @@ class OmrRejectedPage {
         pageNo: asInt(j['page_no'], 1),
         label: '${j['page_label'] ?? j['page_no'] ?? ''}',
         fileName: j['file_name']?.toString(),
+        pageFilePage: j['page_file_page'] == null ? null : asInt(j['page_file_page']),
         codes: [for (final c in (j['codes'] as List?) ?? const []) '$c'],
         en: '${j['en'] ?? ''}',
         ar: '${j['ar'] ?? ''}',
@@ -646,12 +658,19 @@ class OmrRejectedPage {
 
 /// One page of a batch with its reading's result (`pages` of `GET …/omr/batches/{id}`, smart photos).
 class OmrBatchPage {
-  const OmrBatchPage({required this.pageId, required this.pageNo, required this.label, this.fileName, this.status = '', this.result});
+  const OmrBatchPage({required this.pageId, required this.pageNo, required this.label, this.fileName, this.pageFilePage, this.status = '', this.result});
 
   final int pageId;
+
+  /// The page inside its own file (every photo is page 1 of itself).
   final int pageNo;
+
+  /// The page's name in its batch ("3": the server's sentences say "Page 3"); empty when the server sent none.
   final String label;
   final String? fileName;
+
+  /// The page inside a multi-page PDF uploaded with other files (null for a photo, and on an older server).
+  final int? pageFilePage;
 
   /// uploaded · processing · processed · review · rejected · failed · …
   final String status;
@@ -660,11 +679,30 @@ class OmrBatchPage {
   static OmrBatchPage fromJson(Map<String, dynamic> j) => OmrBatchPage(
         pageId: asInt(j['page_id'] ?? j['id']),
         pageNo: asInt(j['page_no'], 1),
-        label: '${j['page_label'] ?? j['page_no'] ?? ''}',
+        label: '${j['page_label'] ?? ''}',
         fileName: j['file_name']?.toString(),
+        pageFilePage: j['page_file_page'] == null ? null : asInt(j['page_file_page']),
         status: '${j['status'] ?? ''}',
         result: OmrPageResult.of(j),
       );
+}
+
+/// `GET …/omr/batches?limit=&before=`: one page of the exam's batches, newest first.
+class OmrBatchList {
+  const OmrBatchList({required this.items, this.hasMore = false, this.nextBefore});
+  final List<OmrBatchProgress> items;
+
+  /// Older batches exist past this page; [nextBefore] is where the next page starts (the last batch id here when an
+  /// older server forgot it). False on an older server (it returns up to 100 at once).
+  final bool hasMore;
+  final int? nextBefore;
+
+  static OmrBatchList fromJson(Map<String, dynamic> j) {
+    final items = [for (final b in asMapList(j['items'])) OmrBatchProgress.fromJson(b)];
+    final more = j['has_more'] == true && items.isNotEmpty;
+    final next = j['next_before'] == null ? null : asInt(j['next_before']);
+    return OmrBatchList(items: items, hasMore: more, nextBefore: more ? (next ?? items.last.batchId) : null);
+  }
 }
 
 /// `GET …/omr/batches/{id}` (the list rows have no rejected_pages).
@@ -1136,7 +1174,10 @@ class OmrScanApi {
 
   Future<EngineResult> batch(int examId, int batchId) => engineCall(() => _api.get('$_b/exams/$examId/omr/batches/$batchId'));
 
-  Future<EngineResult> batches(int examId) => engineCall(() => _api.get('$_b/exams/$examId/omr/batches'));
+  /// The exam's batches, newest first: [limit] at a time, [before] = a batch id (only older ones). An older server
+  /// ignores both and returns up to 100 (no `has_more`: [OmrBatchList.hasMore] false).
+  Future<EngineResult> batches(int examId, {int? limit, int? before}) => engineCall(() => _api.get('$_b/exams/$examId/omr/batches',
+      queryParams: (limit == null && before == null) ? null : {'limit': ?limit, 'before': ?before}));
 
   /// A better image for a REJECTED page (multipart `image`): the gate answers on the request ([OmrReplaceResult]).
   Future<EngineResult> replacePage(int examId, int pageId, (String, Uint8List) file) =>

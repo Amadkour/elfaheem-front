@@ -91,7 +91,7 @@ void main() {
       AppConfig.lang = 'ar';
       expect(two.title, 'تمت القراءة، وسؤالان للمراجعة — أكّد الطالب');
       expect(only.title, 'تمت القراءة — أكّد الطالب');
-      expect(retake.title, 'قُرئت جزئيًا — سؤال واحد للمراجعة · أكّد الطالب');
+      expect(retake.title, 'تمت القراءة جزئيًا، وسؤال واحد للمراجعة — أكّد الطالب');
       expect(retake.detail, 'شيئًا ما يغطي جزءًا من الورقة.');
     });
 

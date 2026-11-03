@@ -73,3 +73,33 @@ String omrPointsText(num v, {String? lang}) {
   final s = v.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
   return (lang ?? AppConfig.lang) == 'ar' ? '$s درجة' : '$s pts';
 }
+
+/// The super admin's bubble sheet library: "4 أنواع" / "4 types".
+String omrTypesText(int n, {String? lang}) => _n(n, false, lang,
+    ar1: 'نوع واحد', ar2: 'نوعان', ar2After: 'نوعين', arFew: '{n} أنواع', arMany: '{n} نوعًا', en1: '1 type', en: '{n} types');
+
+/// How many of the library's types are published: "4 منشورة" (the types counted, the noun left out) / "4 published".
+String omrPublishedText(int n, {String? lang}) => _n(n, false, lang,
+    ar1: 'منشور واحد', ar2: 'منشوران', ar2After: 'منشورين', arFew: '{n} منشورة', arMany: '{n} منشورًا', en1: '1 published', en: '{n} published');
+
+/// "3 إصدارات" / "3 versions".
+String omrVersionsText(int n, {String? lang}) => _n(n, false, lang,
+    ar1: 'إصدار واحد', ar2: 'إصداران', ar2After: 'إصدارين', arFew: '{n} إصدارات', arMany: '{n} إصدارًا', en1: '1 version', en: '{n} versions');
+
+// ── a scanned page named to the person ──────────────────────────────────────────────────────────────────────────
+
+String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
+
+/// "Paper 3" / "الورقة 3": a scanned sheet in a batch's views, by its name in the batch ([label], the server's
+/// `page_label`), the same word for the papers read and the ones that need a clearer image.
+String omrPaperText(String label) => _t('الورقة $label', 'Paper $label');
+
+/// Where a page came from, in words: "PDF page 4 of scan.pdf" for a page inside a multi-page PDF ([filePage] = the
+/// server's `page_file_page`), else the file name alone; "PDF page 4" when the file is hidden (anonymous grading).
+/// Never the page number of a photo: every photo is page 1 of itself.
+String? omrFilePlace(String? fileName, int? filePage) {
+  final f = fileName?.trim() ?? '';
+  if (filePage == null) return f.isEmpty ? null : f;
+  if (f.isEmpty) return _t('صفحة PDF رقم $filePage', 'PDF page $filePage');
+  return _t('صفحة PDF رقم $filePage من $f', 'PDF page $filePage of $f');
+}

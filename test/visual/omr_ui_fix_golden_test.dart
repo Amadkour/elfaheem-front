@@ -16,6 +16,12 @@
 //   queue        the review list: page · file · time per entry
 //   review_page  the real review page over the fake backend (the phone's short title)
 //   print_block  the print options of a block-fit exam: blank and pre-filled disabled with their reasons
+// Final polish round (same day):
+//   batch_names  the batch page with the names the server sends now (every photo page 1 of itself, `page_label` the
+//                name, a PDF's page): "Paper N" on every card, "PDF page 2 of scan.pdf"
+//   batches      the scan page's batches: the latest five + "Show all batches"; all of them + "Show older batches"
+//   queue_names  the review list with long file names at the desktop side list's width: the time whole
+//   quality_names an image-quality item of a photo named by its label ("Page 3 · wa01.jpg", not "Page 1")
 @Tags(['visual'])
 library;
 
@@ -29,6 +35,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/shared/exam_engine/paper/omr_counts.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_results_screen.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review_page.dart';
@@ -144,12 +151,14 @@ Future<void> _render(WidgetTester tester, String name, Widget Function() build,
   }
 }
 
-Widget _batch(String name) {
-  final b = OmrBatchProgress.fromJson(_s(name));
+Widget _batch(String name, [Map<String, dynamic>? body]) {
+  final b = OmrBatchProgress.fromJson(body ?? _s(name));
+  // as omr_upload_screen.dart builds them: "Paper N" by the page's name in the batch, "PDF page 2 of scan.pdf"
   final rows = [
     for (final (i, p) in b.pages.indexed)
       if (p.result != null && p.result!.tier != OmrTier.reject)
-        OmrPaperRow(pageId: p.pageId, label: t('الورقة ${i + 1}', 'Paper ${i + 1}'), fileName: p.fileName, result: p.result!),
+        OmrPaperRow(
+            pageId: p.pageId, label: omrPaperText(p.label.isEmpty ? '${i + 1}' : p.label), fileName: omrFilePlace(p.fileName, p.pageFilePage), result: p.result!),
   ];
   return _page(
       t('معالجة الأوراق', 'Processing papers'),
@@ -164,7 +173,12 @@ Widget _batch(String name) {
         rejectedPages: [
           for (final r in b.rejectedPages)
             RejectedPageRow(
-                pageId: r.pageId, label: t('الصفحة ${r.label}', 'Page ${r.label}'), text: r.text, instruction: r.instruction, fileName: r.fileName, result: r.result),
+                pageId: r.pageId,
+                label: omrPaperText(r.label.isEmpty ? '${r.pageNo}' : r.label),
+                text: r.text,
+                instruction: r.instruction,
+                fileName: omrFilePlace(r.fileName, r.pageFilePage),
+                result: r.result),
         ],
         papers: rows,
         onReplace: (_) {},
@@ -173,6 +187,46 @@ Widget _batch(String name) {
         onResults: () {},
         onMore: () {},
       ));
+}
+
+/// batch_v3 as the server sends it now: every photo is page 1 of its own file, named by `page_label`; page 104 is page
+/// 2 of a PDF uploaded with the photos.
+Map<String, dynamic> _realBatch() {
+  final b = jsonDecode(jsonEncode(_s('batch_v3'))) as Map<String, dynamic>;
+  for (final p in [...(b['pages'] as List), ...(b['rejected_pages'] as List)].cast<Map>()) {
+    p['page_no'] = 1;
+    if (p['page_id'] == 104) {
+      p['file_name'] = 'scan.pdf';
+      p['page_no'] = 2;
+      p['page_file_page'] = 2;
+    }
+  }
+  return b;
+}
+
+Map<String, dynamic> _batchRow(int id, {int review = 1, int rejected = 0}) => {
+      'batch_id': id, 'exam_id': 1, 'kind': id.isEven ? 'camera' : 'omr', 'total': 2 + rejected, 'done': 2 + rejected, 'graded': 1,
+      'review': review, 'rejected': rejected, 'failed': 0, 'pending': 0, 'status': 'done', 'expected': null,
+      'created_at': '2026-11-0${1 + id % 3}T0${id % 10}:15:00', 'en': '${2 + rejected} of ${2 + rejected} papers processed',
+      'ar': 'تمت معالجة ${2 + rejected} من ${2 + rejected} أوراق',
+    };
+
+Widget _batches() {
+  final rows = [for (var i = 9; i > 0; i--) OmrBatchProgress.fromJson(_batchRow(i, rejected: i % 3 == 0 ? 1 : 0))];
+  return _page(
+      t('أوراق التظليل', 'Bubble sheet'),
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        OmrBatchesPanel(batches: rows, onOpen: (_) {}, onShowAll: () {}),
+        const SizedBox(height: 24),
+        OmrBatchesPanel(batches: rows, expanded: true, hasMore: true, onOpen: (_) {}, onMore: () {}),
+      ]));
+}
+
+OmrReviewItem _named(Map<String, dynamic> m) {
+  final x = jsonDecode(jsonEncode(m)) as Map<String, dynamic>;
+  x['page_label'] = '${x['page_no'] ?? 1}';
+  x['page_no'] = 1;
+  return OmrReviewItem.fromJson(x);
 }
 
 const _audience = [
@@ -266,6 +320,22 @@ void main() {
       fake?.uninstall();
     }
   });
+  testWidgets('batch_names', (t0) => _render(t0, 'batch_names', () => _batch('batch_v3', _realBatch()), phoneH: 2300, deskH: 1700));
+  testWidgets('batches', (t0) => _render(t0, 'batches', _batches, phoneH: 2600, deskH: 2000));
+  testWidgets('queue_names', (t0) {
+    final items = [
+      for (final i in (_s('review_items_v3')['items'] as List).cast<Map<String, dynamic>>()) _named(i),
+      _named({'id': 90, 'kind': 'quality', 'code': 'mark_missing_top_right', 'status': 'open', 'page_no': 1, 'file_name': 'scaled_1000237462.jpg',
+        'batch_created_at': '2026-11-03T01:18:00', 'en': 'Page 1 has its top-right corner mark hidden. Please upload a clearer image of it.',
+        'ar': 'الصفحة 1 علامة ركنها العلوي الأيمن غير ظاهرة. يرجى رفع صورة أوضح لها.'}),
+      _named({'id': 91, 'kind': 'quality', 'code': 'blurry', 'status': 'open', 'page_no': 14, 'page_file_page': 3, 'file_name': 'scan_of_the_whole_class_morning_group.pdf',
+        'batch_created_at': '2026-11-02T09:05:00', 'en': 'Page 14 (scan_of_the_whole_class_morning_group.pdf, page 3) is too blurry. Please upload a clearer image of it.',
+        'ar': 'الصفحة 14 (scan_of_the_whole_class_morning_group.pdf، الصفحة 3) غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.'}),
+    ];
+    return _render(t0, 'queue_names', () => _page(t('قائمة المراجعة', 'Review queue'), OmrQueueList(items: items, currentId: 34, onTap: (_) {}), maxWidth: 340),
+        phoneH: 1300, deskH: 1300);
+  });
+  testWidgets('quality_names', (t0) => _render(t0, 'quality_names', () => _card(_named(_s('review_item_v3_quality')))));
   testWidgets('print_block', (t0) {
     final copies = TextEditingController(text: '1');
     return _render(

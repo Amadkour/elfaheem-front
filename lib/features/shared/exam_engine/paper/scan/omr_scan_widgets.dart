@@ -6,8 +6,10 @@
 //   CaptureResultCard   accepted ("Paper 12 of 40 captured") or rejected (the exact reason + Retake); with the
 //                       reading's result: its tier, the improved photo's thumbnail (tap: the preview), Retake
 //   CameraProblemView   permission denied / blocked / no camera / not supported, with the fix and a way out
-//   ScanProgressView    "X of N papers processed", the counts, rejected pages with "Replace this page"
+//   ScanProgressView    "X of N papers processed", the counts, the papers that need a clearer image ("Replace this
+//                       paper"; "Paper N" like the read papers below them, "PDF page 4 of scan.pdf" for a PDF's page)
 //   OmrToolsPanel       the bubble-sheet entries of the exam's scans screen
+//   OmrBatchesPanel     the exam's batches: the latest five, then "Show all batches" and "Show older batches"
 library;
 
 import 'dart:typed_data';
@@ -21,7 +23,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import '../../../../admin/admin_common.dart' show t;
 import 'omr_camera.dart' show OmrCameraIssue;
 import 'omr_paper_result.dart';
-import 'omr_scan.dart' show OmrHintTone, OmrPageResult, OmrTier, omrTextKey;
+import 'omr_scan.dart' show OmrBatchProgress, OmrHintTone, OmrPageResult, OmrTier, omrTextKey;
 import '../omr_counts.dart';
 
 /// A4 portrait: width / height of the guide.
@@ -936,8 +938,8 @@ class ScanProgressView extends StatelessWidget {
       ),
       if (rejectedPages.isNotEmpty) ...[
         const SizedBox(height: AppSpace.md),
-        AppSectionTitle(t('صفحات تحتاج صورة أوضح', 'Pages that need a clearer image'),
-            subtitle: t('لم تُصحَّح هذه الصفحات. ارفع صورة أوضح لكل منها.', 'These pages were not graded. Upload a clearer image of each.')),
+        AppSectionTitle(t('أوراق تحتاج صورة أوضح', 'Papers that need a clearer image'),
+            subtitle: t('لم تُصحَّح هذه الأوراق. ارفع صورة أوضح لكل منها.', 'These papers were not graded. Upload a clearer image of each.')),
         for (final r in rejectedPages)
           _RejectedTile(
             row: r,
@@ -1067,7 +1069,7 @@ class _RejectedTile extends StatelessWidget {
                 style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
                 onPressed: onReplace,
                 icon: const Icon(Icons.find_replace_rounded),
-                label: Text(t('استبدال هذه الصفحة', 'Replace this page')),
+                label: Text(t('استبدال هذه الورقة', 'Replace this paper')),
               ),
           ]),
         ],
@@ -1139,5 +1141,118 @@ class OmrToolsPanel extends StatelessWidget {
           ),
         ),
     ]);
+  }
+}
+
+// ── the exam's batches ──────────────────────────────────────────────────────────────────────────────────────────
+
+/// How many batches the scan page shows before "Show all batches".
+const kOmrLatestBatches = 5;
+
+/// The exam's batches ("2 of 2 papers processed · Upload · Today, 4:15 PM", a bar, what waits): the latest
+/// [kOmrLatestBatches], then "Show all batches" ([onShowAll]); once [expanded], every loaded batch and, while the
+/// server has older ones ([hasMore]), "Show older batches" ([onMore], [loadingMore] while it runs).
+class OmrBatchesPanel extends StatelessWidget {
+  const OmrBatchesPanel({
+    super.key,
+    required this.batches,
+    required this.onOpen,
+    this.expanded = false,
+    this.hasMore = false,
+    this.loadingMore = false,
+    this.onShowAll,
+    this.onMore,
+  });
+
+  final List<OmrBatchProgress> batches;
+  final ValueChanged<OmrBatchProgress> onOpen;
+  final bool expanded;
+  final bool hasMore;
+  final bool loadingMore;
+  final VoidCallback? onShowAll;
+  final VoidCallback? onMore;
+
+  @override
+  Widget build(BuildContext context) {
+    if (batches.isEmpty) return const SizedBox.shrink();
+    final shown = expanded ? batches : batches.take(kOmrLatestBatches).toList();
+    final canExpand = !expanded && (batches.length > kOmrLatestBatches || hasMore);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppSectionTitle(expanded ? t('كل الدفعات', 'All batches') : t('آخر الدفعات', 'Latest batches')),
+      for (final b in shown) _BatchCard(batch: b, onTap: () => onOpen(b)),
+      if (canExpand && onShowAll != null)
+        _MoreButton(
+            id: const ValueKey('omr.batches.all'), label: t('عرض كل الدفعات', 'Show all batches'), icon: Icons.expand_more_rounded, onTap: onShowAll!),
+      if (expanded && hasMore && onMore != null)
+        _MoreButton(
+            id: const ValueKey('omr.batches.more'),
+            label: t('عرض دفعات أقدم', 'Show older batches'),
+            icon: Icons.history_rounded,
+            busy: loadingMore,
+            onTap: onMore!),
+    ]);
+  }
+}
+
+class _MoreButton extends StatelessWidget {
+  const _MoreButton({required this.id, required this.label, required this.icon, required this.onTap, this.busy = false});
+
+  /// The button's own key (the tap target; the row around it is wider).
+  final Key id;
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextButton.icon(
+        key: id,
+        style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+        onPressed: busy ? null : onTap,
+        icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(icon),
+        label: Text(label),
+      ),
+    );
+  }
+}
+
+class _BatchCard extends StatelessWidget {
+  const _BatchCard({required this.batch, required this.onTap});
+  final OmrBatchProgress batch;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final b = batch;
+    return AppCard(
+      key: ValueKey('omr.batch.${b.batchId}'),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      onTap: onTap,
+      child: Row(children: [
+        Icon(b.kind == 'camera' ? Icons.photo_camera_outlined : Icons.document_scanner_outlined, color: b.finished ? c.success : c.primary),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(b.text, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+            Text(b.whenText, key: ValueKey('omr.batch.when.${b.batchId}'), style: appText(12.5, c: c.textMedium)),
+            const SizedBox(height: AppSpace.xxs),
+            AppProgressBar(value: b.fraction * 100, height: 5, color: b.finished ? c.success : c.primary),
+            if (b.review > 0 || b.rejected > 0) ...[
+              const SizedBox(height: AppSpace.xs),
+              Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+                if (b.review > 0) AppBadgePill(t('${b.review} للمراجعة', '${b.review} to review'), color: c.warning),
+                if (b.rejected > 0) AppBadgePill(t('${b.rejected} مرفوضة', '${b.rejected} rejected'), color: c.danger),
+              ]),
+            ],
+          ]),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        Icon(Icons.chevron_right_rounded, color: c.textMedium),
+      ]),
+    );
   }
 }

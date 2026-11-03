@@ -1,16 +1,14 @@
 // The bubble-sheet part of the exam's scans screen (exam_scan_review.dart): Print bubble sheets · Scan with camera ·
 // Upload images / PDF · Review · Results, and the latest batches with their "X of N papers processed" (tap → the
-// progress screen). Shown for an exam whose paper_format is bubble / both, behind the kill switch `exam.omr`.
+// progress screen); "Show all batches" lists every batch, older ones a page at a time (`?limit=&before=`). Shown for an exam whose paper_format is bubble / both, behind the kill switch `exam.omr`.
 // With [OmrScanSection.bubble] false (an "Exam paper only" exam: handwritten answers on the engine's printed sheets)
 // it keeps only Review and Results: the written answers are reviewed on the same page, each next to its crop (D-160).
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
-import '../../../../admin/admin_common.dart' show asMapList, t;
+import '../../../../admin/admin_common.dart' show t;
 import 'omr_routes.dart';
 import 'omr_scan.dart';
 import 'omr_scan_widgets.dart';
@@ -37,6 +35,12 @@ class OmrScanSection extends StatefulWidget {
 class _OmrScanSectionState extends State<OmrScanSection> {
   late final OmrScanApi _api = widget.api ?? OmrScanApi();
   List<OmrBatchProgress> _batches = const [];
+  bool _all = false, _hasMore = false, _loadingMore = false;
+  int? _nextBefore;
+
+  /// One more than shown, so the first answer already says whether "Show all batches" has anything to add.
+  static const _firstPage = kOmrLatestBatches + 1;
+  static const _olderPage = 20;
 
   @override
   void initState() {
@@ -44,11 +48,49 @@ class _OmrScanSectionState extends State<OmrScanSection> {
     if (widget.bubble) _load();
   }
 
+  /// The newest batches again (after a scan / upload screen closes): as many as are listed now, at most 100.
   Future<void> _load() async {
-    final r = await _api.batches(widget.examId);
+    final limit = _all ? _batches.length.clamp(_firstPage, 100) : _firstPage;
+    final r = await _api.batches(widget.examId, limit: limit);
     if (!mounted || !r.ok) return;
-    setState(() => _batches = [for (final b in asMapList(r.map['items'])) OmrBatchProgress.fromJson(b)]);
+    final page = OmrBatchList.fromJson(r.map);
+    setState(() {
+      _batches = page.items;
+      _hasMore = page.hasMore;
+      _nextBefore = page.nextBefore;
+    });
   }
+
+  /// "Show older batches": the next page after the last one listed.
+  Future<void> _older() async {
+    final before = _nextBefore;
+    if (before == null || _loadingMore) return;
+    setState(() => _loadingMore = true);
+    final r = await _api.batches(widget.examId, limit: _olderPage, before: before);
+    if (!mounted) return;
+    if (!r.ok) {
+      setState(() => _loadingMore = false);
+      return;
+    }
+    final page = OmrBatchList.fromJson(r.map);
+    final known = {for (final b in _batches) b.batchId};
+    setState(() {
+      _batches = [..._batches, for (final b in page.items) if (!known.contains(b.batchId)) b];
+      _hasMore = page.hasMore;
+      _nextBefore = page.nextBefore;
+      _loadingMore = false;
+    });
+  }
+
+  /// "Show all batches": every batch loaded so far, and the next page when the first one was all there was.
+  void _showAll() {
+    setState(() => _all = true);
+    if (_hasMore && _batches.length <= _firstPage) _older();
+  }
+
+  void _open(OmrBatchProgress b) => _after(Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => OmrScanProgressScreen(
+          examId: widget.examId, examTitle: widget.examTitle, batchId: b.batchId, camera: b.kind == 'camera', api: widget.api))));
 
   Future<void> _after(Future<void> f) async {
     await f;
@@ -59,7 +101,6 @@ class _OmrScanSectionState extends State<OmrScanSection> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final soon = t('تتوفر قريبًا', 'Available soon');
     final entries = [
       if (widget.bubble) ...[
@@ -117,36 +158,15 @@ class _OmrScanSectionState extends State<OmrScanSection> {
         ),
       if (_batches.isNotEmpty) ...[
         const SizedBox(height: AppSpace.sm),
-        AppSectionTitle(t('آخر الدفعات', 'Latest batches')),
-        for (final b in _batches.take(5))
-          AppCard(
-            key: ValueKey('omr.batch.${b.batchId}'),
-            margin: const EdgeInsets.only(bottom: AppSpace.xs),
-            onTap: () => _after(Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => OmrScanProgressScreen(
-                    examId: widget.examId, examTitle: widget.examTitle, batchId: b.batchId, camera: b.kind == 'camera', api: widget.api)))),
-            child: Row(children: [
-              Icon(b.kind == 'camera' ? Icons.photo_camera_outlined : Icons.document_scanner_outlined, color: b.finished ? c.success : c.primary),
-              const SizedBox(width: AppSpace.sm),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(b.text, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-                  Text(b.whenText, key: ValueKey('omr.batch.when.${b.batchId}'), style: appText(12.5, c: c.textMedium)),
-                  const SizedBox(height: AppSpace.xxs),
-                  AppProgressBar(value: b.fraction * 100, height: 5, color: b.finished ? c.success : c.primary),
-                  if (b.review > 0 || b.rejected > 0) ...[
-                    const SizedBox(height: AppSpace.xs),
-                    Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
-                      if (b.review > 0) AppBadgePill(t('${b.review} للمراجعة', '${b.review} to review'), color: c.warning),
-                      if (b.rejected > 0) AppBadgePill(t('${b.rejected} مرفوضة', '${b.rejected} rejected'), color: c.danger),
-                    ]),
-                  ],
-                ]),
-              ),
-              const SizedBox(width: AppSpace.xs),
-              Icon(Icons.chevron_right_rounded, color: c.textMedium),
-            ]),
-          ),
+        OmrBatchesPanel(
+          batches: _batches,
+          expanded: _all,
+          hasMore: _hasMore,
+          loadingMore: _loadingMore,
+          onOpen: _open,
+          onShowAll: _showAll,
+          onMore: _older,
+        ),
       ],
     ]);
   }

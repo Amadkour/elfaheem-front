@@ -375,7 +375,7 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
     final it = _item;
     final pageId = it?.scanPageId;
     if (it == null || pageId == null || _busy) return;
-    final label = it.pageNo != null ? '${it.pageNo}' : it.pageLabel;
+    final label = it.pageName;
     final files = widget.picker != null ? await widget.picker!(many: false) : await pickOneScanPage(context, pageLabel: label);
     if (files.isEmpty || !mounted) return;
     final problem = omrReplaceProblem(files.first);
