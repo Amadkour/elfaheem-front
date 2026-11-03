@@ -631,6 +631,8 @@ String omrCodeText(String? code, [Map<String, dynamic> detail = const {}]) => sw
       'upload_too_large' => t('حجم الرفع الكلي أكبر من 50 ميجابايت — ارفعها على دفعات', 'The upload is larger than 50 MB — send it in parts'),
       'image_too_large' => t('أبعاد الصورة أكبر من المسموح', 'The image is too large'),
       'bad_image' => t('تعذّر فتح الصورة', 'The image could not be opened'),
+      'bad_pdf' => t('ملف PDF غير صالح أو محمي بكلمة مرور', 'The PDF is damaged or protected by a password'),
+      'page_too_large' => t('صفحة في ملف PDF أكبر من المسموح', 'A page of the PDF is larger than allowed'),
       'grading_busy' || 'omr_busy' => t('الخادم مشغول الآن — أعد المحاولة بعد لحظة', 'The server is busy — try again in a moment'),
       'too_many_requests' => t('طلبات كثيرة في وقت قصير — انتظر قليلًا', 'Too many requests — wait a moment'),
       'batch_not_found' => t('جلسة التصوير غير موجودة — ابدأ جلسة جديدة', 'This capture session was not found — start a new one'),
@@ -679,7 +681,9 @@ class OmrScanApi {
       field: 'photo',
       fields: {'batch_id': ?batchId, 'expected': ?expected}));
 
-  Future<EngineResult> upload(int examId, List<(String, Uint8List)> files) => engineCall(() => _api.postFiles('$_b/exams/$examId/scans', files: files));
+  /// [batchId]: the next part of an upload sent in parts (scan_files.dart) — its pages join that batch.
+  Future<EngineResult> upload(int examId, List<(String, Uint8List)> files, {int? batchId}) =>
+      engineCall(() => _api.postFiles('$_b/exams/$examId/scans', files: files, fields: {'batch_id': ?batchId}));
 
   Future<EngineResult> batch(int examId, int batchId) => engineCall(() => _api.get('$_b/exams/$examId/omr/batches/$batchId'));
 
