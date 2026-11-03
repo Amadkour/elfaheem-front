@@ -1,4 +1,5 @@
-// lib/features/admin/admin_versions_page.dart — publish / force-update app versions.
+// lib/features/admin/admin_versions_page.dart — the update prompt (app_versions: forced / recommended update); building
+// and publishing a version is App versions (app_releases/, D-144), which fills this list when a version goes live.
 library;
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../../design/app_kit.dart' show AppBanner;
 import '../../design/app_switch.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
@@ -15,6 +17,7 @@ import 'admin_labels.dart';
 import 'admin_list.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
+import 'app_releases/app_releases_page.dart' show AppReleasesPage;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 final _semver = RegExp(r'^\d+(\.\d+){0,2}([+-][0-9A-Za-z.\-]+)?$');
@@ -53,15 +56,15 @@ class _View extends StatelessWidget {
       key: const ValueKey('admin_versions'),
       useWebCard: true,
       maxWith: 1100,
-      appBar: ScreenAppBar(title: 'app_version'.tr),
+      appBar: ScreenAppBar(title: t('رسالة التحديث', 'Update prompt')),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: "admin_float",
         key: const ValueKey('admin_versions.publish'),
         backgroundColor: c.primary,
         onPressed: () => _form(context, p),
-        icon: Icon(Icons.rocket_launch_rounded, color: c.onHero),
+        icon: Icon(Icons.add_rounded, color: c.onHero),
         label: Text(
-          'admin_publish_version'.tr,
+          t('إضافة رسالة تحديث', 'Add update prompt'),
           style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
         ),
       ),
@@ -76,8 +79,9 @@ class _View extends StatelessWidget {
           PremiumHero(
             icon: Icons.system_update_rounded,
             colors: AdminPalette.orange,
-            title: 'app_version'.tr,
-            subtitle: 'svc_versions_d'.tr,
+            title: t('رسالة التحديث', 'Update prompt'),
+            subtitle: t('الإصدار الذي يطلب التطبيق من المستخدمين التحديث إليه، إجباريًا أو موصى به',
+                'The version the app asks users to update to, forced or recommended'),
             footer: Wrap(spacing: 8, runSpacing: 6, children: [
               HeroPill(trp('ver_pill_total', {'n': p.items.length}), icon: Icons.layers_rounded),
               HeroPill(
@@ -87,6 +91,21 @@ class _View extends StatelessWidget {
                 icon: Icons.check_circle_rounded,
               ),
             ]),
+          ),
+          // this page builds nothing: the real build-and-publish page is App versions (super admin only)
+          AppBanner(
+            icon: Icons.info_outline_rounded,
+            text: t('هذه الصفحة لا تبني التطبيق. لبناء إصدار جديد ونشره على المتجر أو الموقع استخدم «إصدارات التطبيق»، وعند نشره تُضاف رسالة التحديث هنا تلقائيًا.',
+                'This page does not build the app. To build a new version and publish it to the store or the website, use App versions; when it goes live, its update prompt is added here by itself.'),
+            action: isSuperNow(context)
+                ? TextButton.icon(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        settings: const RouteSettings(name: AppReleasesPage.routeName),
+                        builder: (_) => const AppReleasesPage())),
+                    icon: const Icon(Icons.rocket_launch_rounded),
+                    label: Text(t('إصدارات التطبيق', 'App versions')),
+                  )
+                : null,
           ),
           for (final v in p.items) _VersionCard(v),
         ],
@@ -264,7 +283,7 @@ Future<void> _form(
             SheetHeader(
               editing
                   ? 'admin_edit_version'.tr
-                  : 'admin_publish_new_version'.tr,
+                  : t('رسالة تحديث جديدة', 'New update prompt'),
             ),
             Flexible(
               child: SingleChildScrollView(
