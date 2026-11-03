@@ -89,7 +89,8 @@ OmrReviewItem? omrFocusItem(List<OmrReviewItem> items, OmrReviewFocus? focus) {
 }
 
 class OmrReviewPage extends StatefulWidget {
-  const OmrReviewPage({super.key, required this.examId, this.initialItemId, this.focus, this.api, this.liveStream, this.liveBus, this.meId});
+  const OmrReviewPage(
+      {super.key, required this.examId, this.initialItemId, this.focus, this.api, this.scanApi, this.picker, this.liveStream, this.liveBus, this.meId});
 
   final int examId;
 
@@ -100,6 +101,10 @@ class OmrReviewPage extends StatefulWidget {
   /// queue has no item for it.
   final OmrReviewFocus? focus;
   final OmrReviewApi? api;
+
+  /// "Replace this page" on an image-quality item (tests hand their own API and picker).
+  final OmrScanApi? scanApi;
+  final OmrFilePicker? picker;
   final LiveStreamHandle? liveStream;
   final LiveEvents? liveBus;
 
@@ -112,6 +117,7 @@ class OmrReviewPage extends StatefulWidget {
 
 class _OmrReviewPageState extends State<OmrReviewPage> {
   late final OmrReviewApi _api = widget.api ?? OmrReviewApi();
+  late final OmrScanApi _scan = widget.scanApi ?? OmrScanApi();
   final _keys = FocusNode(debugLabel: 'omr.review.keys');
   EventOrPoll? _watch;
 
@@ -351,10 +357,48 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
   }
 
   Future<void> _replace() async {
+    final it = _item;
+    final who = it?.gradedStudentText;
+    final page = it?.gradedPageText;
     final ok = await appConfirm(context,
-        message: t('تصبح هذه الورقة ورقة الطالب وتُصحَّح بدل الورقة السابقة. متابعة؟', "This sheet becomes the student's sheet and is graded instead of the earlier one. Continue?"),
+        message: who == null
+            ? t('تصبح هذه الورقة ورقة الطالب وتُصحَّح بدل الورقة السابقة. متابعة؟', "This sheet becomes the student's sheet and is graded instead of the earlier one. Continue?")
+            : t('تصبح هذه الورقة ورقة $who وتُصحَّح بدل ${page ?? 'الورقة المصحّحة'}. متابعة؟',
+                'This sheet becomes the sheet of $who and is graded instead of ${page ?? 'the graded one'}. Continue?'),
         confirmLabel: t('استبدال', 'Replace'));
     if (ok) _resolve(omrResolveBody('replace'));
+  }
+
+  /// An image-quality item: a clearer image of its page, through the batch page's replace flow (the capture gate on
+  /// the request). Accepted → the page is read again and its open items close as "replaced"; refused → the reason.
+  Future<void> _replacePage() async {
+    final it = _item;
+    final pageId = it?.scanPageId;
+    if (it == null || pageId == null || _busy) return;
+    final label = it.pageNo != null ? '${it.pageNo}' : it.pageLabel;
+    final files = widget.picker != null ? await widget.picker!(many: false) : await pickOneScanPage(context, pageLabel: label);
+    if (files.isEmpty || !mounted) return;
+    final problem = omrReplaceProblem(files.first);
+    if (problem != null) {
+      showAppNotice(problem, error: true);
+      return;
+    }
+    setState(() => _busy = true);
+    final r = await _scan.replacePage(_examId, pageId, files.first);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!r.ok) {
+      showAppNotice(scan.omrErrorText(r), error: true);
+      return;
+    }
+    final res = OmrReplaceResult.fromJson(r.map);
+    if (!res.accepted) {
+      showAppNotice(res.refusal, error: true);
+      return;
+    }
+    showAppNotice(res.text.isNotEmpty ? res.text : t('استُبدلت الصفحة وتُقرأ الآن', 'The page was replaced. It is being read now.'));
+    _details.remove(it.id);
+    await _load(silent: true);
   }
 
   void _step(int delta) {
@@ -444,7 +488,7 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
       return KeyEventResult.handled;
     }
     if (it.kind == 'identifier' && (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) && it.can('accept') &&
-        it.readValue.isNotEmpty && const {'identifier_unclear', 'identifier_conflict', 'student_not_in_exam', 'attempt_in_progress'}.contains(it.code)) {
+        it.readValue.isNotEmpty && !it.partlyRead && const {'identifier_unclear', 'identifier_conflict', 'student_not_in_exam', 'attempt_in_progress'}.contains(it.code)) {
       _resolve(omrResolveBody('accept'));
       return KeyEventResult.handled;
     }
@@ -508,7 +552,13 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
     return BasePage(
       key: const ValueKey(kExamOmrFeatureKey),
       appBar: AppBar(
-        title: Text(t('مراجعة الأوراق الممسوحة', 'Review scanned papers'), maxLines: 1, overflow: TextOverflow.ellipsis),
+        // three actions leave a phone's title ~190 px: the short name there, the full one on wider screens
+        title: Text(
+            MediaQuery.sizeOf(context).width < Breakpoints.mobile
+                ? t('مراجعة الأوراق', 'Review papers')
+                : t('مراجعة الأوراق الممسوحة', 'Review scanned papers'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
               key: const ValueKey('omr.changes'),
@@ -624,6 +674,7 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
         onOpenPaper: _openPaper,
         onSetScore: _setScore,
         onFixText: _fixText,
+        onReplacePage: _replacePage,
       ),
     ));
     children.add(const SizedBox(height: AppSpace.sm));
@@ -652,16 +703,26 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
     if (wide && it.open) {
       children.add(Padding(
         padding: const EdgeInsets.only(top: AppSpace.xs),
-        child: Text(
-            it.written
-                ? t('لوحة المفاتيح: Enter لقبول الدرجة المقترحة · الأسهم للتنقل', 'Keyboard: Enter accepts the suggested score · arrows move')
-                : t('لوحة المفاتيح: 1–5 أو A–E لاختيار الإجابة · 0 بلا إجابة · Enter للتأكيد · الأسهم للتنقل',
-                    'Keyboard: 1–5 or A–E pick the answer · 0 no answer · Enter confirms · arrows move'),
-            style: appText(12, c: c.textLight)),
+        child: Text(omrKeyboardHint(it), key: const ValueKey('omr.keys.hint'), style: appText(12, c: c.textLight)),
       ));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
   }
+}
+
+/// The keyboard line under an item: only the keys that act on it (1–5 / A–E pick an answer on an answer item only).
+String omrKeyboardHint(OmrReviewItem it) {
+  if (it.written) return t('لوحة المفاتيح: Enter لقبول الدرجة المقترحة · الأسهم للتنقل', 'Keyboard: Enter accepts the suggested score · arrows move');
+  if (it.kind == 'bubble' && it.code != 'key_missing') {
+    return t('لوحة المفاتيح: 1–5 أو A–E لاختيار الإجابة · 0 بلا إجابة · Enter للتأكيد · الأسهم للتنقل',
+        'Keyboard: 1–5 or A–E pick the answer · 0 no answer · Enter confirms · arrows move');
+  }
+  if (it.kind == 'form' && it.can('confirm')) return t('لوحة المفاتيح: 1–5 لاختيار النموذج · الأسهم للتنقل', 'Keyboard: 1–5 pick the form · arrows move');
+  if (it.kind == 'identifier' && it.can('accept') && it.readValue.isNotEmpty && !it.partlyRead &&
+      const {'identifier_unclear', 'identifier_conflict', 'student_not_in_exam', 'attempt_in_progress'}.contains(it.code)) {
+    return t('لوحة المفاتيح: Enter لقبول الرقم · الأسهم للتنقل', 'Keyboard: Enter accepts the ID · arrows move');
+  }
+  return t('لوحة المفاتيح: الأسهم للتنقل بين العناصر', 'Keyboard: arrows move through the queue');
 }
 
 extension on Set<String> {

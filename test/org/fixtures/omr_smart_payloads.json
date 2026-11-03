@@ -737,6 +737,878 @@
      "message_en": "You already reviewed questions on this paper, so it is not replaced."
     }
    }
+  },
+  "batch_v3": {
+   "status": 200,
+   "body": {
+    "batch_id": 21,
+    "exam_id": 1,
+    "kind": "omr",
+    "total": 5,
+    "done": 5,
+    "graded": 1,
+    "review": 3,
+    "rejected": 1,
+    "failed": 0,
+    "pending": 0,
+    "status": "done",
+    "expected": null,
+    "created_at": "2026-11-03T08:42:24.948015",
+    "en": "5 of 5 papers processed",
+    "ar": "تمت معالجة 5 من 5 أوراق",
+    "rejected_pages": [
+     {
+      "page_id": 103,
+      "page_no": 3,
+      "page_label": "3",
+      "file_name": "wa01.jpg",
+      "codes": [
+       "blurry"
+      ],
+      "en": "Page 3 is too blurry. Please upload a clearer image of it.",
+      "ar": "الصفحة 3 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.",
+      "instruction_en": "Too blurry, hold steady.",
+      "instruction_ar": "الصورة غير واضحة، ثبّت الهاتف.",
+      "result": {
+       "tier": "reject",
+       "review_count": 0,
+       "student": null,
+       "message": {
+        "en": "Couldn't read this paper: the photo is too blurry.",
+        "ar": "تعذّرت قراءة هذه الورقة: الصورة غير واضحة."
+       },
+       "tips": [
+        {
+         "en": "Hold the phone steady and take it again.",
+         "ar": "ثبّت الهاتف وأعد التصوير."
+        }
+       ],
+       "preview_url": null,
+       "applied": []
+      }
+     }
+    ],
+    "pages": [
+     {
+      "page_id": 101,
+      "page_no": 1,
+      "page_label": "1",
+      "file_name": "scaled_1000237462.jpg",
+      "status": "processed",
+      "result": {
+       "tier": "accept",
+       "review_count": 0,
+       "student": "identified",
+       "message": {
+        "en": "Read successfully",
+        "ar": "تمت القراءة بنجاح"
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/101?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "resize"
+       ]
+      }
+     },
+     {
+      "page_id": 102,
+      "page_no": 2,
+      "page_label": "2",
+      "file_name": "scaled_1000237481.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 2,
+       "student": "confirm",
+       "message": {
+        "en": "Read with 2 questions to review — confirm the student",
+        "ar": "تمت القراءة، وسؤالان للمراجعة — أكّد الطالب"
+       },
+       "tips": [
+        {
+         "en": "A corner of the sheet was outside the photo: fit the whole sheet in the frame next time.",
+         "ar": "كان أحد أركان الورقة خارج الصورة: اجعل الورقة كاملة داخل الإطار في المرة القادمة."
+        },
+        {
+         "en": "Confirm the student for this paper: its QR code and student ID do not agree, or the student is already scanned / not in this exam.",
+         "ar": "أكّد الطالب لهذه الورقة: رمز QR ورقم الطالب غير متطابقين، أو الطالب مُصوَّر مسبقًا / ليس في هذا الاختبار."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/102?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "perspective"
+       ]
+      }
+     },
+     {
+      "page_id": 103,
+      "page_no": 3,
+      "page_label": "3",
+      "file_name": "wa01.jpg",
+      "status": "rejected",
+      "result": {
+       "tier": "reject",
+       "review_count": 0,
+       "student": null,
+       "message": {
+        "en": "Couldn't read this paper: the photo is too blurry.",
+        "ar": "تعذّرت قراءة هذه الورقة: الصورة غير واضحة."
+       },
+       "tips": [
+        {
+         "en": "Hold the phone steady and take it again.",
+         "ar": "ثبّت الهاتف وأعد التصوير."
+        }
+       ],
+       "preview_url": null,
+       "applied": []
+      }
+     },
+     {
+      "page_id": 104,
+      "page_no": 4,
+      "page_label": "4",
+      "file_name": "wa24.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 0,
+       "student": "confirm",
+       "message": {
+        "en": "Read — confirm the student",
+        "ar": "تمت القراءة — أكّد الطالب"
+       },
+       "tips": [
+        {
+         "en": "This student already has a graded paper in this exam.",
+         "ar": "لهذا الطالب ورقة مصحّحة في هذا الاختبار."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/104?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     },
+     {
+      "page_id": 105,
+      "page_no": 5,
+      "page_label": "5",
+      "file_name": "wa25.jpg",
+      "status": "review",
+      "result": {
+       "tier": "retake",
+       "review_count": 1,
+       "student": "confirm",
+       "message": {
+        "en": "Read with 1 question to review, but something covers part of the paper — confirm the student.",
+        "ar": "تمت القراءة، وسؤال واحد للمراجعة، لكن شيئًا ما يغطي جزءًا من الورقة — أكّد الطالب."
+       },
+       "tips": [
+        {
+         "en": "Make sure nothing lies on the sheet and take it again.",
+         "ar": "تأكّد أن لا شيء فوق الورقة وأعد التصوير."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/105?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     },
+     {
+      "page_id": 107,
+      "page_no": 7,
+      "page_label": "7",
+      "file_name": "wa27.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 1,
+       "student": "identified",
+       "message": {
+        "en": "Read with 1 question to review — confirm the answer form",
+        "ar": "تمت القراءة، وسؤال واحد للمراجعة — أكّد نموذج الإجابة"
+       },
+       "tips": [
+        {
+         "en": "The QR code and the printed letter name different answer forms.",
+         "ar": "رمز QR والحرف المطبوع يشيران إلى نموذجين مختلفين."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/107?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     }
+    ]
+   }
+  },
+  "batch_old_identity": {
+   "status": 200,
+   "body": {
+    "batch_id": 20,
+    "exam_id": 1,
+    "kind": "omr",
+    "total": 2,
+    "done": 2,
+    "graded": 0,
+    "review": 2,
+    "rejected": 0,
+    "failed": 0,
+    "pending": 0,
+    "status": "done",
+    "expected": null,
+    "created_at": "2026-11-02T19:05:00",
+    "en": "2 of 2 papers processed",
+    "ar": "تمت معالجة 2 من ورقتين",
+    "rejected_pages": [],
+    "pages": [
+     {
+      "page_id": 201,
+      "page_no": 1,
+      "page_label": "1",
+      "file_name": "page24.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 1,
+       "student": "unidentified",
+       "message": {
+        "en": "Read successfully - confirm the student (its QR code or student ID needs a person)",
+        "ar": "تمت القراءة بنجاح - أكّد الطالب (رمز QR أو رقم الطالب يحتاج إلى مراجعة)"
+       },
+       "tips": [
+        {
+         "en": "Confirm the student for this paper: its QR code and student ID do not agree, or the student is already scanned / not in this exam.",
+         "ar": "أكّد الطالب لهذه الورقة: رمز QR ورقم الطالب غير متطابقين، أو الطالب مُصوَّر مسبقًا / ليس في هذا الاختبار."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/201?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     },
+     {
+      "page_id": 202,
+      "page_no": 2,
+      "page_label": "2",
+      "file_name": "wa23.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 3,
+       "student": "unidentified",
+       "message": {
+        "en": "Read with 2 questions to review - confirm the student (its QR code or student ID needs a person)",
+        "ar": "تمت القراءة مع سؤالين للمراجعة - أكّد الطالب (رمز QR أو رقم الطالب يحتاج إلى مراجعة)"
+       },
+       "tips": [
+        {
+         "en": "A corner of the sheet was outside the photo: fit the whole sheet in the frame next time.",
+         "ar": "كان أحد أركان الورقة خارج الصورة: اجعل الورقة كاملة داخل الإطار في المرة القادمة."
+        },
+        {
+         "en": "Another sheet shows next to this one: put the page on a plain surface next time.",
+         "ar": "تظهر ورقة أخرى بجانب هذه الورقة: ضع الورقة على سطح خالٍ في المرة القادمة."
+        },
+        {
+         "en": "Confirm the student for this paper: its QR code and student ID do not agree, or the student is already scanned / not in this exam.",
+         "ar": "أكّد الطالب لهذه الورقة: رمز QR ورقم الطالب غير متطابقين، أو الطالب مُصوَّر مسبقًا / ليس في هذا الاختبار."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/202?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     }
+    ]
+   }
+  },
+  "review_items_v3": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "id": 31,
+      "scan_page_id": 104,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "identifier_blank",
+      "reading": {
+       "kind": "shaded",
+       "status": "blank",
+       "value": null,
+       "candidates": [],
+       "en": "The student ID is empty",
+       "ar": "رقم الطالب فارغ"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "The student ID is empty",
+      "ar": "رقم الطالب فارغ",
+      "page_no": 4,
+      "file_name": "wa24.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015"
+     },
+     {
+      "id": 32,
+      "scan_page_id": 105,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "identifier_unclear",
+      "reading": {
+       "kind": "handwritten",
+       "status": "review",
+       "value": null,
+       "qr_student_id": 24,
+       "qr_student_name": "Sara Nabil",
+       "qr_masked_id": "0121",
+       "candidates": [],
+       "en": "The student ID could not be read with confidence",
+       "ar": "تعذّرت قراءة رقم الطالب بثقة"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "The student ID could not be read with confidence",
+      "ar": "تعذّرت قراءة رقم الطالب بثقة",
+      "page_no": 5,
+      "file_name": "wa25.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015"
+     },
+     {
+      "id": 33,
+      "scan_page_id": 106,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "student_already_scanned",
+      "reading": {
+       "kind": "shaded",
+       "status": "clear",
+       "value": null,
+       "student_id": 24,
+       "student_name": "Sara Nabil",
+       "masked_id": "0121",
+       "other_page_no": 2,
+       "other_file_name": "scaled_1000237481.jpg",
+       "candidates": [],
+       "en": "This student already has a graded sheet",
+       "ar": "لهذا الطالب ورقة مصححة بالفعل"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "This student already has a graded sheet",
+      "ar": "لهذا الطالب ورقة مصححة بالفعل",
+      "page_no": 6,
+      "file_name": "wa26.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015"
+     },
+     {
+      "id": 34,
+      "scan_page_id": 103,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "quality",
+      "code": "blurry",
+      "reading": {
+       "en": "Too blurry, hold steady.",
+       "ar": "الصورة غير واضحة، ثبّت الهاتف."
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "Page 3 is too blurry. Please upload a clearer image of it.",
+      "ar": "الصفحة 3 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.",
+      "page_no": 3,
+      "file_name": "wa01.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015"
+     },
+     {
+      "id": 35,
+      "scan_page_id": 102,
+      "attempt_id": null,
+      "question_id": 503,
+      "kind": "bubble",
+      "code": "uncertain",
+      "reading": {
+       "n": 3,
+       "type": "mcq_single",
+       "fills": {
+        "A": 0.48,
+        "B": 0.0,
+        "C": 0.53,
+        "D": 0.0
+       },
+       "selected": []
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "choose",
+       "blank"
+      ],
+      "has_crop": false,
+      "en": "The mark is unclear",
+      "ar": "التظليل غير واضح",
+      "page_no": 2,
+      "file_name": "scaled_1000237481.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015",
+      "student": {
+       "id": 24,
+       "name": "Sara Nabil"
+      }
+     }
+    ],
+    "total": 5,
+    "open_by_kind": {
+     "identifier": 3,
+     "quality": 1,
+     "bubble": 1
+    }
+   }
+  },
+  "review_item_v3_conflict": {
+   "status": 200,
+   "body": {
+    "id": 36,
+    "scan_page_id": 107,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_conflict",
+    "reading": {
+     "kind": "shaded",
+     "status": "clear",
+     "value": "2024000122",
+     "read_student_id": 22,
+     "read_student_name": "Omar Adel",
+     "read_masked_id": "0122",
+     "qr_student_id": 21,
+     "qr_student_name": "Mona Adel",
+     "qr_masked_id": "0121",
+     "candidates": [],
+     "en": "The QR code and the shaded ID name different students",
+     "ar": "رمز QR ورقم الطالب المظلّل يشيران إلى طالبين مختلفين"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "The QR code and the shaded ID name different students",
+    "ar": "رمز QR ورقم الطالب المظلّل يشيران إلى طالبين مختلفين",
+    "page_no": 7,
+    "file_name": "wa27.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015"
+   }
+  },
+  "sheets_info_block": {
+   "status": 200,
+   "body": {
+    "template_id": 1,
+    "template_version": 1,
+    "printable": true,
+    "questions": 6,
+    "sheet_questions": 50,
+    "forms": [
+     "A"
+    ],
+    "sheet_forms": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "form_markers": [
+     "qr"
+    ],
+    "id_kind": "shaded",
+    "identifier_fit": {
+     "status": "block",
+     "reason": "too_long"
+    },
+    "modes": [
+     "named"
+    ],
+    "mode_detail": {
+     "prefilled": {
+      "available": false,
+      "reason": "too_long"
+     },
+     "named": {
+      "available": true,
+      "reason": null
+     },
+     "blank": {
+      "available": false,
+      "reason": "identifier_zone_mismatch"
+     }
+    },
+    "orders": [
+     "name",
+     "identifier"
+    ],
+    "max_students": 200
+   }
+  },
+  "review_item_v3_blank": {
+   "status": 200,
+   "body": {
+    "id": 31,
+    "scan_page_id": 104,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_blank",
+    "reading": {
+     "kind": "shaded",
+     "status": "blank",
+     "value": null,
+     "candidates": [],
+     "en": "The student ID is empty",
+     "ar": "رقم الطالب فارغ"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "The student ID is empty",
+    "ar": "رقم الطالب فارغ",
+    "page_no": 4,
+    "file_name": "wa24.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015"
+   }
+  },
+  "review_item_v3_proposed": {
+   "status": 200,
+   "body": {
+    "id": 32,
+    "scan_page_id": 105,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_unclear",
+    "reading": {
+     "kind": "handwritten",
+     "status": "review",
+     "value": null,
+     "qr_student_id": 24,
+     "qr_student_name": "Sara Nabil",
+     "qr_masked_id": "0121",
+     "candidates": [],
+     "en": "The student ID could not be read with confidence",
+     "ar": "تعذّرت قراءة رقم الطالب بثقة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "The student ID could not be read with confidence",
+    "ar": "تعذّرت قراءة رقم الطالب بثقة",
+    "page_no": 5,
+    "file_name": "wa25.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015"
+   }
+  },
+  "review_item_v3_duplicate": {
+   "status": 200,
+   "body": {
+    "id": 33,
+    "scan_page_id": 106,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "student_already_scanned",
+    "reading": {
+     "kind": "shaded",
+     "status": "clear",
+     "value": null,
+     "student_id": 24,
+     "student_name": "Sara Nabil",
+     "masked_id": "0121",
+     "other_page_no": 2,
+     "other_file_name": "scaled_1000237481.jpg",
+     "candidates": [],
+     "en": "This student already has a graded sheet",
+     "ar": "لهذا الطالب ورقة مصححة بالفعل"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "This student already has a graded sheet",
+    "ar": "لهذا الطالب ورقة مصححة بالفعل",
+    "page_no": 6,
+    "file_name": "wa26.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015"
+   }
+  },
+  "review_item_v3_quality": {
+   "status": 200,
+   "body": {
+    "id": 34,
+    "scan_page_id": 103,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "quality",
+    "code": "blurry",
+    "reading": {
+     "en": "Too blurry, hold steady.",
+     "ar": "الصورة غير واضحة، ثبّت الهاتف."
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "Page 3 is too blurry. Please upload a clearer image of it.",
+    "ar": "الصفحة 3 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.",
+    "page_no": 3,
+    "file_name": "wa01.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015",
+    "system_reading": {
+     "quality": {
+      "status": "rejected",
+      "issues": [
+       {
+        "code": "blurry",
+        "en": "Too blurry, hold steady.",
+        "ar": "الصورة غير واضحة، ثبّت الهاتف."
+       }
+      ],
+      "page_label": "3"
+     }
+    }
+   }
+  },
+  "review_items_old": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "id": 8,
+      "scan_page_id": 19,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "identifier_unclear",
+      "reading": {
+       "kind": "shaded",
+       "status": "review",
+       "value": "??",
+       "candidates": [],
+       "en": "The student ID could not be read with confidence",
+       "ar": "تعذّرت قراءة رقم الطالب بثقة"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-02T05:36:17.574789",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "The student ID could not be read with confidence",
+      "ar": "تعذّرت قراءة رقم الطالب بثقة"
+     },
+     {
+      "id": 9,
+      "scan_page_id": 20,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "student_already_scanned",
+      "reading": {
+       "kind": "shaded",
+       "status": "clear",
+       "value": "????",
+       "candidates": [],
+       "en": "This student already has a graded sheet",
+       "ar": "لهذا الطالب ورقة مصححة بالفعل"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-02T05:36:17.574789",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "This student already has a graded sheet",
+      "ar": "لهذا الطالب ورقة مصححة بالفعل"
+     }
+    ],
+    "total": 2,
+    "open_by_kind": {
+     "identifier": 2
+    }
+   }
+  },
+  "review_item_old_qq": {
+   "status": 200,
+   "body": {
+    "id": 8,
+    "scan_page_id": 19,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_unclear",
+    "reading": {
+     "kind": "shaded",
+     "status": "review",
+     "value": "??",
+     "candidates": [],
+     "en": "The student ID could not be read with confidence",
+     "ar": "تعذّرت قراءة رقم الطالب بثقة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:36:17.574789",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "The student ID could not be read with confidence",
+    "ar": "تعذّرت قراءة رقم الطالب بثقة"
+   }
+  },
+  "review_item_old_dup": {
+   "status": 200,
+   "body": {
+    "id": 9,
+    "scan_page_id": 20,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "student_already_scanned",
+    "reading": {
+     "kind": "shaded",
+     "status": "clear",
+     "value": "????",
+     "candidates": [],
+     "en": "This student already has a graded sheet",
+     "ar": "لهذا الطالب ورقة مصححة بالفعل"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:36:17.574789",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "This student already has a graded sheet",
+    "ar": "لهذا الطالب ورقة مصححة بالفعل"
+   }
   }
- }
+ },
+ "_source_round3": "2026-11-03 (UI fix round): batch_v3 / review_items_v3 / review_item_v3_* follow the round-3 contract the backend is changing in parallel (review_count = questions only, student identified | unidentified | confirm, one-sentence message with ' — ', identifier reading student_name / masked_id / other_page_no / other_file_name, value null when nothing was read, items with page_no / file_name / batch_id / batch_created_at); batch_old_identity / review_items_old / review_item_old_* are the shapes the stack answered before it (identity counted in review_count, ' - … (…)' messages, value '??', no page fields). Re-record from the real routes once the backend lands."
 }

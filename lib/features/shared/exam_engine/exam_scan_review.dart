@@ -24,6 +24,7 @@ import 'exam_review.dart';
 import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi, kExamOmrFeatureKey;
 import 'paper/review/omr_review_page.dart';
 import 'paper/scan/omr_audience_picker.dart';
+import 'paper/scan/omr_paper_result.dart' show OmrFileName;
 import 'paper/scan/omr_scan.dart' show omrDetailOf;
 import 'paper/scan/omr_scan_section.dart';
 import 'paper/scan/scan_sources.dart';
@@ -459,7 +460,11 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
               child: Row(children: [
                 Icon(p.unmatched ? Icons.help_outline_rounded : Icons.description_outlined, color: p.unmatched ? c.warning : c.primary),
                 const SizedBox(width: 12),
-                Expanded(child: Text(p.fileName ?? '#${p.id}', style: appText(13.5, w: FontWeight.w700, c: c.textDark), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                // two "scaled_1000237….jpg" told apart: the middle of a long name gives way, not its end
+                Expanded(
+                    child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: OmrFileName(p.fileName ?? '#${p.id}', style: appText(13.5, w: FontWeight.w700, c: c.textDark)))),
                 const SizedBox(width: 8),
                 AppBadgePill(scanPageStatusText(p.status),
                     color: p.unmatched || p.status == 'review' ? c.warning : (p.status == 'rejected' ? c.danger : c.textMedium)),

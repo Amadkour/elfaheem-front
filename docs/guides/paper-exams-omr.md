@@ -60,6 +60,19 @@ calls) next to screens whose bodies are plain-value widgets the layout harness p
   tip, the blocking Retake), with a thumbnail of `preview_url` (loaded by `OmrScanApi.image`, the signed-image call)
   that opens `showOmrPreview` (Retake there; "Replace this page" for a rejected upload). The progress screen lists the
   papers worth a look first and folds those read successfully.
+- Round 3 (UI check, 2026-11-03; `test/org/omr_ui_fix_test.dart`, renders `test/visual/omr_ui_fix_golden_test.dart`):
+  `review_count` counts questions only and `student` (`identified` | `confirm` | `unidentified`, unknown = unidentified)
+  says whether a person decides the student. `OmrPageResult.title` is the app's own line ("Read with 2 questions to
+  review") unless the server's one-sentence `message` carries a person's part (" — confirm the student / the answer form
+  / check this sheet") or an older server may have counted the ID in the number: then the server's sentence is the
+  title, never two different numbers. `detail` is only a retake's / rejection's reason; tips are shown once
+  (`omrTextKey`). A rejected page with a `result` shows `result.message` + tips under "Page N" (the legacy `en` /
+  `instruction` repeat them). A paper read in part (`retake`) has "Replace this page" on its card (never `flags`: 409
+  `page_not_rejected`); an image-quality review item has it too (`OmrReviewPage` → `OmrScanApi.replacePage`). Review
+  items carry `page_no` / `file_name` / `batch_id` / `batch_created_at` (`whereText`, AppTime; an older item: its own
+  time); identifier items name students (`student_name` / `masked_id`, `qr_*`, `read_*`, `uploaded_for_*`), a value
+  of null / "??" is "No number could be read" (choose the student first, never "The ID is right: ??"). Print: a mode
+  the server leaves out is drawn disabled with `mode_detail`'s reason (D-161 block fit: blank and pre-filled).
 - Print (`scan/omr_sheets_sheet.dart`): only the `modes` the describe lists (Pre-filled · Name only · Blank, one line
   each; Pre-filled missing → one line why: `prefilled_reason`, else from the ID kind), order By name / By student
   number, an Index page switch (on). The ids go as chosen (the server sorts). `mode` / `order` / `index` are sent only

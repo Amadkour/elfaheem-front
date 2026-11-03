@@ -175,9 +175,15 @@ String scanPickErrorText(Object e) {
 }
 
 /// One page (a replacement): Gallery (phones) and Files, images only; the photo prepared like an upload's.
-Future<List<(String, Uint8List)>> pickOneScanPage(BuildContext context, {ScanPlatform? platform, ScanSourcePicker? picker}) async {
+/// [pageLabel]: the page it replaces ("A clearer image of page 7").
+Future<List<(String, Uint8List)>> pickOneScanPage(BuildContext context, {ScanPlatform? platform, ScanSourcePicker? picker, String? pageLabel}) async {
   final pick = await showScanSourceSheet(context,
-      single: true, title: t('صورة أوضح للصفحة', 'A clearer image of the page'), platform: platform, picker: picker);
+      single: true,
+      title: pageLabel == null || pageLabel.isEmpty
+          ? t('صورة أوضح للصفحة', 'A clearer image of the page')
+          : t('صورة أوضح للصفحة $pageLabel', 'A clearer image of page $pageLabel'),
+      platform: platform,
+      picker: picker);
   if (pick == null || pick.files.isEmpty) return const [];
   try {
     return (await prepareScanFile(pick.files.first)).take(1).toList();
@@ -248,7 +254,8 @@ class ScanSourceSheet extends StatelessWidget {
     return AppSheetContent(
       title: title ?? t('إضافة أوراق الإجابة', 'Add answer sheets'),
       children: [
-        Text(t('من أين تأتي الصفحات؟', 'Where do the pages come from?'), style: appText(13.5, c: c.textMedium, h: 1.35)),
+        Text(single ? t('من أين تأتي الصورة؟', 'Where does the image come from?') : t('من أين تأتي الصفحات؟', 'Where do the pages come from?'),
+            key: const ValueKey('scan.src.question'), style: appText(13.5, c: c.textMedium, h: 1.35)),
         const SizedBox(height: AppSpace.sm),
         for (final s in sources)
           Padding(

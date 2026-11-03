@@ -148,7 +148,11 @@ class _OmrTemplateLibraryPageState extends State<OmrTemplateLibraryPage> {
       showAppNotice(omrTemplateErrorText(r), error: true);
       return;
     }
-    setState(() => _requireApproval = r.map['require_approval'] is bool ? r.map['require_approval'] as bool : v);
+    final now = r.map['require_approval'] is bool ? r.map['require_approval'] as bool : v;
+    setState(() => _requireApproval = now);
+    showAppNotice(now
+        ? t('حُفظ: أنواع المعلمين تحتاج اعتمادك', "Saved: teachers' sheet types need your approval")
+        : t('حُفظ: تُنشر أنواع المعلمين فور حفظها', "Saved: teachers' sheet types are published as soon as they are saved"));
   }
 
   Future<void> _setSmartPhotos(bool v) async {
@@ -161,7 +165,12 @@ class _OmrTemplateLibraryPageState extends State<OmrTemplateLibraryPage> {
       showAppNotice(omrTemplateErrorText(r), error: true);
       return;
     }
-    setState(() => _smartPhotos = r.map['smart_photos'] is bool ? r.map['smart_photos'] as bool : v);
+    final now = r.map['smart_photos'] is bool ? r.map['smart_photos'] as bool : v;
+    setState(() => _smartPhotos = now);
+    // saved: said like the other settings (the switch alone moved without a word)
+    showAppNotice(now
+        ? t('حُفظ: المعالجة الذكية لصور الأوراق مفعّلة', 'Saved: smart processing of sheet photos is on')
+        : t('حُفظ: المعالجة الذكية لصور الأوراق متوقفة — يعمل القارئ السابق', 'Saved: smart processing of sheet photos is off — the previous reader is used'));
   }
 
   void _family(OmrTemplateFamily f) {

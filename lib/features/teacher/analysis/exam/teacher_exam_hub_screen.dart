@@ -15,6 +15,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
+import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class TeacherExamHubScreen extends StatelessWidget {
@@ -34,10 +35,19 @@ class TeacherExamHubScreen extends StatelessWidget {
     required this.courseTitle,
     this.initialSessionId,
     this.openCreateOnStart = false,
+    this.orgId,
   });
 
+  /// The course's organization when the caller knows it (the engine's exam list is asked under it at once).
+  final int? orgId;
+
   @override
-  Widget build(BuildContext context) => ChangeNotifierProvider(
+  Widget build(BuildContext context) {
+    ExamAuthoringApi.knowScope(courseId, orgId);
+    return _build(context);
+  }
+
+  Widget _build(BuildContext context) => ChangeNotifierProvider(
     create: (_) => TeacherExamProvider(courseId: courseId)..loadExams(),
     child: _HubView(
       courseTitle: courseTitle,

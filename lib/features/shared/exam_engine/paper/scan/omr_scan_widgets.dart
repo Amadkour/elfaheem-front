@@ -21,7 +21,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import '../../../../admin/admin_common.dart' show t;
 import 'omr_camera.dart' show OmrCameraIssue;
 import 'omr_paper_result.dart';
-import 'omr_scan.dart' show OmrHintTone, OmrPageResult, OmrTier;
+import 'omr_scan.dart' show OmrHintTone, OmrPageResult, OmrTier, omrTextKey;
 import '../omr_counts.dart';
 
 /// A4 portrait: width / height of the guide.
@@ -813,6 +813,7 @@ class RejectedPageRow {
   const RejectedPageRow({
     required this.pageId,
     required this.text,
+    this.label,
     this.instruction = '',
     this.fileName,
     this.replacement,
@@ -821,6 +822,9 @@ class RejectedPageRow {
   });
 
   final int pageId;
+
+  /// "Page 7" — shown above the result's message (which names no page).
+  final String? label;
 
   /// "Page 7 is too blurry. Please upload a clearer image of it."
   final String text;
@@ -943,7 +947,10 @@ class ScanProgressView extends StatelessWidget {
       ],
       if (papers.isNotEmpty) ...[
         const SizedBox(height: AppSpace.md),
-        OmrPaperResults(rows: papers, onPreview: onPreview == null ? null : (p) => onPreview!(p.pageId, p.result)),
+        OmrPaperResults(
+            rows: papers,
+            onPreview: onPreview == null ? null : (p) => onPreview!(p.pageId, p.result),
+            onReplace: onReplace == null ? null : (p) => onReplace!(p.pageId)),
       ],
       const SizedBox(height: AppSpace.md),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -994,6 +1001,16 @@ class _RejectedTile extends StatelessWidget {
       _ => (null, null),
     };
     final settled = rep == 'processed' || rep == 'review';
+    // one "how to fix it" line: the reading's own tips (the most precise), else the gate's instruction — never the page
+    // sentence again in other words ("Too blurry, hold steady." under "Page 3 is too blurry…" and a third copy as a tip)
+    // with a result (smart photos) its message and tips say it; the legacy `en` / `instruction` repeat them for older
+    // apps and are shown only without one
+    final res = row.result;
+    final headline = res != null && res.message.trim().isNotEmpty ? res.message.trim() : row.text;
+    final seen = <String>{omrTextKey(headline)};
+    final tips = [for (final x in res?.tipTexts ?? const <String>[]) if (seen.add(omrTextKey(x))) x];
+    final how = tips.isNotEmpty || res != null ? tips : [if (row.instruction.isNotEmpty && seen.add(omrTextKey(row.instruction))) row.instruction];
+    final where = [if (headline != row.text && (row.label ?? '').isNotEmpty) row.label!];
     return AppCard(
       margin: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -1002,24 +1019,20 @@ class _RejectedTile extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(row.text, style: appText(14.5, w: FontWeight.w700, c: c.textDark, h: 1.35)),
-              if (row.instruction.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(row.instruction, style: appText(13, c: c.textMedium, h: 1.35)),
-              ],
-              for (final tip in row.result?.tipTexts ?? const <String>[])
-                if (tip != row.instruction && tip != row.text)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppSpace.xxs),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Padding(padding: const EdgeInsets.only(top: 2), child: Icon(Icons.lightbulb_outline_rounded, size: 16, color: appInk(context, c.warning))),
-                      const SizedBox(width: AppSpace.xxs),
-                      Expanded(child: Text(tip, style: appText(13, c: c.textDark, h: 1.35))),
-                    ]),
-                  ),
+              if (where.isNotEmpty) Text(where.join(), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+              Text(headline, key: ValueKey('omr.rejected.text.${row.pageId}'), style: appText(14.5, w: FontWeight.w700, c: c.textDark, h: 1.35)),
+              for (final tip in how)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpace.xxs),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Padding(padding: const EdgeInsets.only(top: 2), child: Icon(Icons.lightbulb_outline_rounded, size: 16, color: appInk(context, c.warning))),
+                    const SizedBox(width: AppSpace.xxs),
+                    Expanded(child: Text(tip, style: appText(13, c: c.textMedium, h: 1.35))),
+                  ]),
+                ),
               if (row.fileName != null && row.fileName!.isNotEmpty) ...[
                 const SizedBox(height: 2),
-                Text(row.fileName!, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: appText(12, c: c.textLight)),
+                OmrFileName(row.fileName!, style: appText(12, c: c.textLight)),
               ],
               if (pill != null) ...[
                 const SizedBox(height: AppSpace.xs),

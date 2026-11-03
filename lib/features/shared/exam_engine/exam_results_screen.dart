@@ -138,12 +138,25 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
           PaperExamEntry(examId: widget.examId, examTitle: widget.examTitle, onChanged: _load, margin: const EdgeInsets.only(bottom: 12)),
           if (rows == null && _error == null) const AppListSkeleton(items: 5),
           if (rows != null) ...[
-            AppGrid(children: [
-              AppStatTile(label: t('سلّموا', 'Submitted'), value: '$done', icon: Icons.assignment_turned_in_rounded),
-              AppStatTile(label: t('المتوسط', 'Average'), value: avg == null ? '—' : '${avg.toStringAsFixed(0)}%', icon: Icons.insights_rounded),
-              AppStatTile(label: t('ينتظر التصحيح', 'Waiting for you'), value: '$waiting', icon: Icons.rate_review_rounded,
-                  color: waiting > 0 ? c.warning : null),
-            ]),
+            // the list already has its gutter (the grid's own 16 px indented the tiles past the cards); on a phone the
+            // three numbers sit on one line as chips instead of three stacked full-width tiles
+            LayoutBuilder(builder: (context, box) {
+              final avgText = avg == null ? '—' : '${avg.toStringAsFixed(0)}%';
+              if (box.maxWidth < 520) {
+                return Wrap(key: const ValueKey('exam.results.stats'), spacing: 8, runSpacing: 8, children: [
+                  AppStatChip(icon: Icons.assignment_turned_in_rounded, value: '$done', label: t('سلّموا', 'Submitted'), color: c.primary),
+                  AppStatChip(icon: Icons.insights_rounded, value: avgText, label: t('المتوسط', 'Average'), color: c.primary),
+                  AppStatChip(icon: Icons.rate_review_rounded, value: '$waiting', label: t('ينتظر التصحيح', 'Waiting for you'),
+                      color: waiting > 0 ? c.warning : c.primary),
+                ]);
+              }
+              return AppGrid(key: const ValueKey('exam.results.stats'), padding: EdgeInsets.zero, children: [
+                AppStatTile(label: t('سلّموا', 'Submitted'), value: '$done', icon: Icons.assignment_turned_in_rounded),
+                AppStatTile(label: t('المتوسط', 'Average'), value: avgText, icon: Icons.insights_rounded),
+                AppStatTile(label: t('ينتظر التصحيح', 'Waiting for you'), value: '$waiting', icon: Icons.rate_review_rounded,
+                    color: waiting > 0 ? c.warning : null),
+              ]);
+            }),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: [
               if (waiting > 0)

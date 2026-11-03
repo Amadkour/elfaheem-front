@@ -19,7 +19,11 @@
 // `pending` until a worker recomputed it). Nothing handwritten is final here without a teacher's action.
 // Live: `job_updated {kind: omr_review, exam_id, item_id, status, open_count}` after every decision.
 // Rules: exam_engine/services/omr_review.py, omr_written.py, omr_results.py, omr_scan.page_view (the code wins).
-// Every reply above is recorded from the real engine in test/fixtures/payloads/omr_review/.
+// Every reply above is recorded from the real engine in test/fixtures/payloads/omr_review/. Round 3 (additive, older
+// servers fall back): items carry `page_no`, `file_name`, `batch_id` and the batch's `created_at` (top level, or under
+// `page` / `batch`); an identifier item's `reading` may name the student (`student_name`, `masked_id` = the last 4) and,
+// for student_already_scanned, the graded page (`other_page_no`, `other_file_name`); `reading.value` is null when no
+// digit was read (an older server sent "??").
 library;
 
 import 'dart:typed_data';
@@ -301,6 +305,10 @@ class OmrReviewItem {
     this.pageStatus,
     this.studentName,
     this.studentCode,
+    this.pageNo,
+    this.fileName,
+    this.batchId,
+    this.batchAt,
   });
 
   final int id;
@@ -332,6 +340,13 @@ class OmrReviewItem {
   final String? studentName;
   final String? studentCode;
 
+  /// Which paper it is, to tell items apart: the page number in its batch, the file it came from, the batch and when
+  /// the batch was made (null on an older server; [when] falls back to the item's own time).
+  final int? pageNo;
+  final String? fileName;
+  final int? batchId;
+  final DateTime? batchAt;
+
   /// The student in words for the queue and the card; null when the server names nobody.
   String? get studentText {
     final n = studentName?.trim() ?? '';
@@ -345,6 +360,8 @@ class OmrReviewItem {
     final student = asMap(m['student']);
     final sid = _intOrNull(student['id']);
     final sname = '${student['name'] ?? ''}'.trim();
+    final batch = asMap(m['batch']);
+    final file = '${m['file_name'] ?? page['file_name'] ?? ''}'.trim();
     return OmrReviewItem(
       id: asInt(m['id']),
       kind: '${m['kind'] ?? ''}',
@@ -370,10 +387,26 @@ class OmrReviewItem {
       // a roster without the name still says which student: "Student #12"
       studentName: sname.isNotEmpty ? sname : (sid == null ? null : t('الطالب #$sid', 'Student #$sid')),
       studentCode: student['code']?.toString(),
+      pageNo: _intOrNull(m['page_no'] ?? page['page_no']),
+      fileName: file.isEmpty ? null : file,
+      batchId: _intOrNull(m['batch_id'] ?? page['batch_id'] ?? batch['id']),
+      batchAt: omrUtc(m['batch_created_at'] ?? batch['created_at'] ?? page['batch_created_at']),
     );
   }
 
   bool get open => status == 'open';
+
+  /// "Page 3" (the batch's page number, else the detail's page label); null when the server says neither.
+  String? get pageText {
+    final n = pageNo != null ? '$pageNo' : (pageLabel ?? '');
+    return n.isEmpty ? null : t('الصفحة $n', 'Page $n');
+  }
+
+  /// When the paper came in: the batch's time, else the item's (an older server).
+  DateTime? get when => batchAt ?? createdAt;
+
+  /// "Page 3 · wa01.jpg · Today, 10:42 AM" — enough to tell two items of the same kind apart.
+  String get whereText => [?pageText, ?fileName, if (when != null) omrWhenText(when!)].join(' · ');
 
   /// This detail with a decision reply's item on top (its reading, code, state), keeping what only the detail has
   /// (the question, the system reading, the signed crop) until the fresh detail arrives.
@@ -402,6 +435,10 @@ class OmrReviewItem {
         // the decision reply's item does not name the student: keep the list's / detail's
         studentName: r.studentName ?? studentName,
         studentCode: r.studentCode ?? studentCode,
+        pageNo: r.pageNo ?? pageNo,
+        fileName: r.fileName ?? fileName,
+        batchId: r.batchId ?? batchId,
+        batchAt: r.batchAt ?? batchAt,
       );
 
   /// Why the item is here, in the app's language (the server's own sentence; two codes get a sharper one).
@@ -450,7 +487,87 @@ class OmrReviewItem {
   }
 
   // identifier
-  String get readValue => '${reading['value'] ?? ''}';
+  /// The ID as read; empty when no digit was read (null, or an older server's "??" / "????").
+  String get readValue {
+    final v = '${reading['value'] ?? ''}'.trim();
+    return omrNothingRead(v) ? '' : v;
+  }
+
+  /// No digit of the ID could be read: the student is chosen, not confirmed.
+  bool get nothingRead => kind == 'identifier' && readValue.isEmpty;
+
+  /// The read value has unread digits ("12?4"): never offered as "The ID is right".
+  bool get partlyRead => readValue.contains('?');
+
+  /// The student the sheet names or the system proposes (its QR code, the shaded ID, the server's `student_name` /
+  /// `masked_id`); a person still decides. Null when nobody is named.
+  OmrStudent? get proposed {
+    // the codes where naming a student is a proposal (a conflict lists its own choices; already-scanned, not in the
+    // exam and an online attempt name the student the problem is about, not the sheet's owner to pick)
+    if (const {'identifier_conflict', 'student_already_scanned', 'student_not_in_exam', 'attempt_in_progress'}.contains(code)) return null;
+    for (final p in const ['qr_', 'read_', '']) {
+      final s = namedStudent(p);
+      if (s != null) return s;
+    }
+    return null;
+  }
+
+  /// The student [prefix]`student_id` names, with the server's `…_name` / `…_masked_id` (prefix '' = `student_id`,
+  /// `student_name`, `masked_id`; 'uploaded_for' = `uploaded_for`, `uploaded_for_name`, `uploaded_for_masked_id`);
+  /// null when the reading holds no such id.
+  OmrStudent? namedStudent(String prefix) {
+    final upload = prefix == 'uploaded_for';
+    final id = _intOrNull(reading[upload ? 'uploaded_for' : '${prefix}student_id']);
+    if (id == null) return null;
+    final name = '${reading[upload ? 'uploaded_for_name' : '${prefix}student_name'] ?? ''}'.trim();
+    final masked = '${reading[upload ? 'uploaded_for_masked_id' : '${prefix}masked_id'] ?? ''}'.trim();
+    final known = candidates.where((c) => c.id == id).firstOrNull;
+    return OmrStudent(id, name.isNotEmpty ? name : (known?.name ?? ''),
+        identifier: masked.isNotEmpty ? omrMasked(masked) : known?.identifier, email: known?.email);
+  }
+
+  /// student_not_in_exam / attempt_in_progress: the student the sheet names, in words ("Sara Nabil ••••0121").
+  String? get namedText {
+    if (!const {'student_not_in_exam', 'attempt_in_progress'}.contains(code)) return null;
+    final s = namedStudent('') ?? namedStudent('qr_') ?? namedStudent('read_');
+    if (s == null || (s.name.trim().isEmpty && (s.identifier ?? '').isEmpty)) return null;
+    return [if (s.name.trim().isNotEmpty) s.name.trim(), if ((s.identifier ?? '').isNotEmpty) omrLtr(s.identifier!)].join(' ');
+  }
+
+  /// Why [proposed] is offered.
+  String get proposedWhy {
+    final p = proposed;
+    if (p != null && p.id == _intOrNull(reading['qr_student_id'])) return t('رمز QR في الورقة يحمل اسمه', "The sheet's QR code names this student");
+    if (p != null && p.id == _intOrNull(reading['read_student_id'])) return t('رقمه على الورقة', "The sheet shows this student's ID");
+    return t('اقتراح النظام', "The system's proposal");
+  }
+
+  /// student_already_scanned: whose sheet is already graded — `student_name` + `masked_id`, else the one candidate.
+  String? get gradedStudentText {
+    final name = '${reading['student_name'] ?? ''}'.trim();
+    final masked = '${reading['masked_id'] ?? ''}'.trim();
+    final c = candidates.length == 1 ? candidates.first : null;
+    final n = name.isNotEmpty ? name : (c?.name.trim() ?? '');
+    final m = masked.isNotEmpty ? omrMasked(masked) : (c?.identifier ?? '');
+    if (n.isEmpty && m.isEmpty) return null;
+    return [if (n.isNotEmpty) n, if (m.isNotEmpty) omrLtr(m)].join(' ');
+  }
+
+  /// The graded student's name alone (the Replace button names it).
+  String? get gradedStudentName {
+    final name = '${reading['student_name'] ?? ''}'.trim();
+    if (name.isNotEmpty) return name;
+    final c = candidates.length == 1 ? candidates.first.name.trim() : '';
+    return c.isEmpty ? null : c;
+  }
+
+  /// student_already_scanned: the graded page ("Page 4 · wa03.jpg"); null when the server does not say.
+  String? get gradedPageText {
+    final no = _intOrNull(reading['other_page_no']);
+    final file = '${reading['other_file_name'] ?? ''}'.trim();
+    final parts = [if (no != null) t('الصفحة $no', 'Page $no'), if (file.isNotEmpty) file];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
   String get idKind => '${reading['kind'] ?? ''}';
   List<OmrDigit> get digits {
     final low = {for (final x in (reading['low'] is List ? reading['low'] as List : const [])) asInt(x)};
@@ -873,7 +990,7 @@ class OmrChange {
         final now = n['blank'] == true ? t('بلا إجابة', 'no answer') : _strs(n['options']).join(', ');
         return t('السؤال ${o['n'] ?? ''}: ${omrStateText(was)} ← $now', 'Question ${o['n'] ?? ''}: ${omrStateText(was)} → $now');
       case 'identifier':
-        final was = o['value'] ?? '—';
+        final was = omrNothingRead('${o['value'] ?? ''}') ? '—' : '${o['value']}';
         final now = n['action'] == 'dismiss' ? t('نُحّيت', 'set aside') : (n['student_id'] != null ? t('الطالب #${n['student_id']}', 'student #${n['student_id']}') : '${n['action'] ?? ''}');
         return t('رقم الطالب: $was ← $now', 'Student ID: $was → $now');
       case 'form':
@@ -886,6 +1003,15 @@ class OmrChange {
     }
   }
 }
+
+/// Nothing of an ID was read: empty, or an older server's question marks ("??", "????", "? ?").
+bool omrNothingRead(String v) => RegExp(r'^[\s?\-_]*$').hasMatch(v);
+
+/// "••••0121" for a server's last-4 `masked_id` ("0121" or already "••••0121").
+String omrMasked(String v) => RegExp(r'^\d{1,4}$').hasMatch(v) ? '••••$v' : v;
+
+/// "Today, 10:42 AM" / "2 Nov 2026 · 10:42 AM" in the platform / organization time zone.
+String omrWhenText(DateTime utc) => _sameDay(utc) ? t('اليوم، ${AppTime.time(utc)}', 'Today, ${AppTime.time(utc)}') : AppTime.dateTime(utc);
 
 /// "Changed by you · 10:42" (the server's audited actor and time, D-158).
 String omrChangedBy(int? actorId, DateTime? at, {int? meId}) {

@@ -131,6 +131,7 @@ class _OmrScanSectionState extends State<OmrScanSection> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(b.text, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                  Text(b.whenText, key: ValueKey('omr.batch.when.${b.batchId}'), style: appText(12.5, c: c.textMedium)),
                   const SizedBox(height: AppSpace.xxs),
                   AppProgressBar(value: b.fraction * 100, height: 5, color: b.finished ? c.success : c.primary),
                   if (b.review > 0 || b.rejected > 0) ...[

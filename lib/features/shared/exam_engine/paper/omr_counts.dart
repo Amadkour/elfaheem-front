@@ -2,7 +2,8 @@
 // has 1 / 2 / 3–10 / 11+ forms ("سؤال واحد", "سؤالان", "3 أسئلة", "50 سؤالًا"), so "$n سؤالًا" reads wrong for most
 // numbers. [after] = the count follows a preposition (من، في، إلى، بعد …): the dual takes its genitive form
 // ("من سؤالين", "إلى طالبين"). English: "1 question" / "n questions". [lang] defaults to the app's language (a printed
-// paper passes its own).
+// paper passes its own). A round hundred takes the singular after it ("100 سؤال", "200 طالب", as the built-in sheets'
+// names say), not the 11–99 form ("100 سؤالًا").
 library;
 
 import 'package:flutter_education_app/config/app_config.dart';
@@ -16,7 +17,15 @@ String _n(int n, bool after, String? lang,
         required String arMany,
         required String en1,
         required String en}) =>
-    countText(n, ar1: ar1, ar2: after ? ar2After : ar2, arFew: arFew, arMany: arMany, en1: en1, en: en, lang: lang);
+    countText(n,
+        ar1: ar1,
+        ar2: after ? ar2After : ar2,
+        arFew: arFew,
+        // 100, 101, 102, 200 …: the singular noun (the first word of "سؤال واحد")
+        arMany: n.abs() >= 100 && n.abs() % 100 <= 2 ? '{n} ${ar1.split(' ').first}' : arMany,
+        en1: en1,
+        en: en,
+        lang: lang);
 
 String omrQuestionsText(int n, {bool after = false, String? lang}) => _n(n, after, lang,
     ar1: 'سؤال واحد', ar2: 'سؤالان', ar2After: 'سؤالين', arFew: '{n} أسئلة', arMany: '{n} سؤالًا', en1: '1 question', en: '{n} questions');

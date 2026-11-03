@@ -57,9 +57,11 @@ class OmrResultSummary extends StatelessWidget {
     final c = context.colors;
     final (tone, icon) = omrTierLook(context, result.tier);
     final ink = appInk(context, tone);
-    final msg = result.message;
-    final showMsg = msg.isNotEmpty && msg != result.title && msg != lead;
-    final tips = result.tier == OmrTier.accept ? const <String>[] : result.tipTexts;
+    // the server's sentence only where it adds something (a retake's / rejection's reason): the title already says
+    // what a read paper gave, and the tips never repeat a line above them
+    final msg = result.detail ?? '';
+    final showMsg = msg.isNotEmpty && msg != lead;
+    final tips = result.tier == OmrTier.accept ? const <String>[] : [for (final x in result.tipTexts) if (lead == null || omrTextKey(x) != omrTextKey(lead!)) x];
     final body = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Text(result.title,
           key: ValueKey('omr.result.title.${result.tier.name}'),
@@ -70,7 +72,8 @@ class OmrResultSummary extends StatelessWidget {
       ],
       if (showMsg) ...[
         const SizedBox(height: AppSpace.xxs),
-        Text(msg, style: appText(compact ? 13 : 14, c: result.tier == OmrTier.reject ? c.textDark : c.textMedium, h: 1.4)),
+        // the card's message reads before its tips: the body ink, the tips one step quieter (dark mode too)
+        Text(msg, key: const ValueKey('omr.result.detail'), style: appText(compact ? 13 : 14, c: c.textDark, h: 1.4)),
       ],
       for (final tip in tips)
         Padding(
@@ -78,7 +81,7 @@ class OmrResultSummary extends StatelessWidget {
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Padding(padding: const EdgeInsets.only(top: 2), child: Icon(Icons.lightbulb_outline_rounded, size: 16, color: ink)),
             const SizedBox(width: AppSpace.xxs),
-            Expanded(child: Text(tip, style: appText(compact ? 12.5 : 13.5, c: c.textDark, h: 1.4))),
+            Expanded(child: Text(tip, style: appText(compact ? 12.5 : 13.5, c: c.textMedium, h: 1.4))),
           ]),
         ),
       if (result.tier == OmrTier.retake) ...[
@@ -309,55 +312,127 @@ class _PreviewLoaderState extends State<_PreviewLoader> {
 
 /// One paper of a batch (plain values).
 class OmrPaperRow {
-  const OmrPaperRow({required this.pageId, required this.label, required this.result, this.fileName});
+  const OmrPaperRow({required this.pageId, required this.label, required this.result, this.fileName, this.replacing = false});
   final int pageId;
 
   /// "Paper 3" (camera) / "Page 7" (an upload).
   final String label;
   final String? fileName;
   final OmrPageResult result;
+
+  /// A clearer image of this page is being checked (Replace was tapped).
+  final bool replacing;
+}
+
+/// [name] on one line; when it does not fit, the middle gives way ("scaled_10002…7462.jpg"), so the end that tells two
+/// files apart stays in view. Always left to right (a file name), at the reading direction's start.
+class OmrFileName extends StatelessWidget {
+  const OmrFileName(this.name, {super.key, this.style});
+  final String name;
+  final TextStyle? style;
+
+  /// The longest "head…tail" of [name] that fits [maxWidth] in [style] (the tail keeps a little more).
+  static String fit(String name, TextStyle style, double maxWidth, TextScaler scaler) {
+    double w(String s) =>
+        (TextPainter(text: TextSpan(text: s, style: style), textDirection: TextDirection.ltr, textScaler: scaler, maxLines: 1)..layout()).width;
+    if (maxWidth <= 0 || w(name) <= maxWidth) return name;
+    var lo = 0, hi = name.length - 1;
+    var best = name.length > 2 ? '${name[0]}…' : name;
+    while (lo <= hi) {
+      final keep = (lo + hi) ~/ 2;
+      final tail = (keep * 3 / 5).ceil(), head = keep - tail;
+      final s = '${name.substring(0, head)}…${name.substring(name.length - tail)}';
+      if (w(s) <= maxWidth) {
+        best = s;
+        lo = keep + 1;
+      } else {
+        hi = keep - 1;
+      }
+    }
+    return best;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final st = DefaultTextStyle.of(context).style.merge(style);
+    final scaler = MediaQuery.textScalerOf(context);
+    return LayoutBuilder(builder: (context, box) {
+      final shown = box.hasBoundedWidth ? fit(name, st, box.maxWidth, scaler) : name;
+      return Semantics(
+        label: name,
+        excludeSemantics: true,
+        child: Text(shown, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, textDirection: TextDirection.ltr, style: st),
+      );
+    });
+  }
 }
 
 class OmrPaperTile extends StatelessWidget {
-  const OmrPaperTile({super.key, required this.row, this.onPreview});
+  const OmrPaperTile({super.key, required this.row, this.onPreview, this.onReplace});
   final OmrPaperRow row;
   final VoidCallback? onPreview;
+
+  /// "Replace this page" — offered on a paper read in part (`retake`, where the server lets a clearer image supersede
+  /// the partial read); never on a graded paper with questions to review (the server answers 409 page_not_rejected).
+  final VoidCallback? onReplace;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final r = row.result;
     final (tone, _) = omrTierLook(context, r.tier);
+    final replace = onReplace != null && r.tier == OmrTier.retake;
     return AppCard(
       key: ValueKey('omr.paper.${row.pageId}'),
       margin: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // "Paper 3 · wa24.jpg" together at the start (the file name used to float mid-card in Arabic)
         Row(children: [
           Container(width: 4, height: 18, decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(2))),
           const SizedBox(width: AppSpace.xs),
-          Flexible(child: Text(row.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textMedium))),
+          Text(row.label, maxLines: 1, style: appText(13, w: FontWeight.w700, c: c.textMedium)),
           if (row.fileName != null && row.fileName!.isNotEmpty) ...[
-            const SizedBox(width: AppSpace.xs),
+            Text('  ·  ', style: appText(12, c: c.textLight)),
             Expanded(
-              child: Text(row.fileName!,
-                  maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: appText(12, c: c.textLight)),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OmrFileName(row.fileName!, key: ValueKey('omr.paper.file.${row.pageId}'), style: appText(12, c: c.textLight)),
+              ),
             ),
-          ] else
-            const Spacer(),
+          ],
         ]),
         const SizedBox(height: AppSpace.xs),
         OmrResultSummary(result: r, compact: true),
-        if (onPreview != null && r.previewUrl != null)
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: TextButton.icon(
-              key: ValueKey('omr.paper.preview.${row.pageId}'),
-              style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-              onPressed: onPreview,
-              icon: const Icon(Icons.image_search_rounded, size: 20),
-              label: Text(t('معاينة', 'Preview')),
-            ),
-          ),
+        if ((onPreview != null && r.previewUrl != null) || replace || row.replacing) ...[
+          const SizedBox(height: AppSpace.xs),
+          Wrap(alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            if (onPreview != null && r.previewUrl != null)
+              TextButton.icon(
+                key: ValueKey('omr.paper.preview.${row.pageId}'),
+                style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                onPressed: onPreview,
+                icon: const Icon(Icons.image_search_rounded, size: 20),
+                label: Text(t('معاينة', 'Preview')),
+              ),
+            if (row.replacing)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                  const SizedBox(width: AppSpace.xs),
+                  Flexible(child: Text(t('تُفحص الصورة الجديدة…', 'Checking the new image…'), style: appText(13, c: c.textMedium))),
+                ]),
+              )
+            else if (replace)
+              FilledButton.tonalIcon(
+                key: ValueKey('omr.paper.replace.${row.pageId}'),
+                style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                onPressed: onReplace,
+                icon: const Icon(Icons.find_replace_rounded),
+                label: Text(t('استبدال هذه الصفحة', 'Replace this page')),
+              ),
+          ]),
+        ],
       ]),
     );
   }
@@ -366,9 +441,12 @@ class OmrPaperTile extends StatelessWidget {
 /// A batch's papers that were read: the ones to look at (to review / a better photo suggested) first, those read
 /// successfully folded under one line.
 class OmrPaperResults extends StatefulWidget {
-  const OmrPaperResults({super.key, required this.rows, this.onPreview});
+  const OmrPaperResults({super.key, required this.rows, this.onPreview, this.onReplace});
   final List<OmrPaperRow> rows;
   final ValueChanged<OmrPaperRow>? onPreview;
+
+  /// "Replace this page" on the papers read in part.
+  final ValueChanged<OmrPaperRow>? onReplace;
 
   @override
   State<OmrPaperResults> createState() => _OmrPaperResultsState();
@@ -384,11 +462,17 @@ class _OmrPaperResultsState extends State<OmrPaperResults> {
       ..sort((a, b) => (a.result.tier == OmrTier.retake ? 0 : 1).compareTo(b.result.tier == OmrTier.retake ? 0 : 1));
     final ok = [for (final r in widget.rows) if (r.result.tier == OmrTier.accept) r];
     if (look.isEmpty && ok.isEmpty) return const SizedBox.shrink();
-    Widget tile(OmrPaperRow r) => OmrPaperTile(row: r, onPreview: widget.onPreview == null ? null : () => widget.onPreview!(r));
+    Widget tile(OmrPaperRow r) => OmrPaperTile(
+        row: r,
+        onPreview: widget.onPreview == null ? null : () => widget.onPreview!(r),
+        onReplace: widget.onReplace == null ? null : () => widget.onReplace!(r));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (look.isNotEmpty) ...[
+        // "read", not "graded": a paper with a question or its student still to decide is not graded yet
         AppSectionTitle(t('أوراق تستحق نظرة', 'Papers worth a look'),
-            subtitle: t('صُححت هذه الأوراق، وبعض أسئلتها تنتظر مراجعتك', 'These papers were graded; some of their questions wait for your review')),
+            subtitle: look.any((r) => r.result.tier == OmrTier.retake)
+                ? t('قُرئت هذه الأوراق، وفي كل منها ما ينتظر قرارك أو صورة أوضح', 'These papers were read; each has something to decide, or a clearer photo would help')
+                : t('قُرئت هذه الأوراق، وفي كل منها ما ينتظر قرارك', 'These papers were read; each has something waiting for your decision')),
         for (final r in look) tile(r),
       ],
       if (ok.isNotEmpty) ...[

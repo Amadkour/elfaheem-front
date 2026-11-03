@@ -563,7 +563,9 @@ void main() {
       expect(find.text('Read successfully'), findsNWidgets(7));
 
       // the rejected page: its sentence, its tip, Preview → "Replace this page"
-      expect(find.text('Page 7 is too blurry. Please upload a clearer image of it.'), findsOneWidget);
+      // with a result its message (the legacy page sentence repeats it for older apps), under "Page 7"
+      expect(find.text('Too blurry, hold steady.'), findsOneWidget);
+      expect(find.text('Page 7'), findsOneWidget);
       expect(find.text('Rest the phone on something steady or brace your elbows.'), findsOneWidget);
       final prev = find.byKey(const ValueKey('omr.paper.preview.14'));
       await tester.ensureVisible(prev);
@@ -713,6 +715,7 @@ void main() {
         AppConfig.lang = lang;
         await openSheet(tester, 'sheets_info_no_prefilled');
         expect(find.byKey(const ValueKey('omr.sheets.mode.prefilled')), findsNothing);
+        expect(find.byKey(const ValueKey('omr.sheets.mode.prefilled.off')), findsOneWidget, reason: 'shown disabled with its reason, not hidden');
         expect(find.byKey(const ValueKey('omr.sheets.mode.named')), findsOneWidget);
         expect(find.text(lang == 'ar' ? 'لا يمكن التظليل المسبق: بعض أرقام الطلاب فيها حروف.' : 'Pre-filled is not possible: some student numbers contain letters.'),
             findsOneWidget);

@@ -31,6 +31,7 @@ import 'dart:typed_data';
 import 'package:flutter/painting.dart' show Offset;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 import '../../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../../exam_engine_api.dart';
@@ -60,6 +61,14 @@ String _pick(Object? ar, Object? en) {
 }
 
 double? _d(Object? v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}');
+
+/// The engine's naive UTC (`2026-11-02T05:29:37.03`) as a UTC instant; null when absent / unreadable.
+DateTime? omrUtcOf(Object? v) {
+  final s = '${v ?? ''}'.trim();
+  if (s.isEmpty || s == 'null') return null;
+  final zoned = s.endsWith('Z') || RegExp(r'[+-]\d\d:?\d\d$').hasMatch(s);
+  return DateTime.tryParse(zoned ? s : '${s}Z')?.toUtc();
+}
 
 // ── live hint ───────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -286,7 +295,24 @@ String? omrStepText(String step) => switch (step) {
       _ => null,
     };
 
+/// Who the paper belongs to, as far as the reading knows: the student is known ([none] needed), a student is named or
+/// proposed but a person confirms ([confirm]), or nobody is named and a person chooses ([choose]).
+enum OmrStudentNeed { none, confirm, choose }
+
+/// `result.student`: "identified" | "confirm" | "unidentified"; absent (an older server, a rejected page) = nothing to
+/// say; any other value is treated like "unidentified".
+OmrStudentNeed omrStudentNeedOf(Object? v) => switch (v) {
+      null || 'identified' || '' => OmrStudentNeed.none,
+      'confirm' => OmrStudentNeed.confirm,
+      _ => OmrStudentNeed.choose,
+    };
+
 /// `result` of one OMR page: what the reading gave, in a sentence, with tips and the improved image.
+///
+/// Contract (round 3): `review_count` counts the QUESTIONS to review only, `student` says whether a person must
+/// confirm / choose the student, `message` is one sentence with " — ". An older server counted the open identity
+/// items in `review_count` (its `questions_to_review`, when sent, is the questions alone): when the count cannot be
+/// trusted the title follows the server's own sentence instead of printing a second, different number.
 class OmrPageResult {
   const OmrPageResult({
     required this.tier,
@@ -296,11 +322,22 @@ class OmrPageResult {
     this.tips = const [],
     this.previewUrl,
     this.applied = const [],
+    this.student = OmrStudentNeed.none,
+    this.questionsOnly = true,
   });
 
   final OmrTier tier;
+
+  /// The questions to review (`questions_to_review` when the server sends it, else `review_count`).
   final int reviewCount;
   final String messageAr, messageEn;
+
+  /// Whether a person still has to confirm / choose the student (never on a rejected page).
+  final OmrStudentNeed student;
+
+  /// [reviewCount] counts questions only: the server said so (`questions_to_review`, `student: confirm`) or no
+  /// identity item can be in it (the student is known). False = an older server may have added identity items.
+  final bool questionsOnly;
 
   /// (ar, en) pairs.
   final List<(String, String)> tips;
@@ -317,9 +354,13 @@ class OmrPageResult {
     if (tier == null) return null;
     final msg = asMap(m['message']);
     final url = '${m['preview_url'] ?? ''}'.trim();
+    final need = tier == OmrTier.reject ? OmrStudentNeed.none : omrStudentNeedOf(m['student']);
+    final q = m['questions_to_review'];
     return OmrPageResult(
       tier: tier,
-      reviewCount: math.max(0, asInt(m['review_count'])),
+      reviewCount: math.max(0, asInt(q ?? m['review_count'])),
+      student: need,
+      questionsOnly: q != null || need != OmrStudentNeed.choose,
       messageAr: '${msg['ar'] ?? (m['message'] is String ? m['message'] : '')}',
       messageEn: '${msg['en'] ?? (m['message'] is String ? m['message'] : '')}',
       tips: [
@@ -340,16 +381,66 @@ class OmrPageResult {
   /// A better photo is suggested (retake, non-blocking) or needed (reject).
   bool get wantsRetake => tier == OmrTier.retake || tier == OmrTier.reject;
 
-  /// The server's sentence in the current language.
+  /// The server's sentence in the current language (as sent; [detail] is what is drawn of it).
   String get message => _pick(messageAr, messageEn);
-  List<String> get tipTexts => [
-        for (final (ar, en) in tips)
-          if (_pick(ar, en).isNotEmpty && _pick(ar, en) != message) _pick(ar, en),
-      ];
 
-  /// "Read successfully" · "Read with 3 questions to review" · "Read in part — 5 questions to review" · "Couldn't
-  /// read this paper".
-  String get title => omrResultTitle(tier, reviewCount);
+  /// The tips in the current language, each once: none that only repeats the title, the [detail] line or another tip.
+  List<String> get tipTexts {
+    final seen = <String>{omrTextKey(title), if (detail != null) omrTextKey(detail!), omrTextKey(message)};
+    return [
+      for (final (ar, en) in tips)
+        if (_pick(ar, en).trim().isNotEmpty && seen.add(omrTextKey(_pick(ar, en)))) _pick(ar, en).trim(),
+    ];
+  }
+
+  /// "Read successfully" · "Read with 3 questions to review" · "Read with 2 questions to review — confirm the student"
+  /// · "Read in part — 5 questions to review" · "Couldn't read this paper". When an older server may have counted the
+  /// student's check in the number, its own sentence is the title (never two different numbers on one card).
+  String get title {
+    final own = omrSentenceHead(message);
+    final tail = omrSentenceTail(message);
+    if (tier == OmrTier.retake) {
+      // "Read in part — 1 question to review" + the server's own student / form part ("· confirm the student")
+      final base = omrResultTitle(tier, questionsOnly ? reviewCount : 0);
+      if (tail != null) return '$base · $tail';
+      return omrResultTitle(tier, questionsOnly ? reviewCount : 0, student: student);
+    }
+    // a read paper with a person's part (student, answer form, another exam's sheet), or a count an older server may
+    // have inflated with the student's check: the server's one sentence, which its count and wording agree with
+    if (tier != OmrTier.reject && own.isNotEmpty && (student != OmrStudentNeed.none || tail != null || !questionsOnly)) return own;
+    if (!questionsOnly && tier != OmrTier.reject) return omrResultTitle(tier, 0, student: student);
+    return omrResultTitle(tier, reviewCount, student: student);
+  }
+
+  /// The line under the title: what only the server's sentence says (a retake's or a rejection's reason). Null for a
+  /// read paper (its sentence is the title again) and when it would repeat the title.
+  String? get detail {
+    final m = message.trim();
+    if (m.isEmpty || tier == OmrTier.accept || tier == OmrTier.flags) return null;
+    String d = m;
+    if (tier == OmrTier.retake) {
+      d = _after(m, const [', but ', '، لكن ', '، ولكن ']) ?? _after(m, const [' — ', ' - ']) ?? m;
+      // "…outside the photo — confirm the student.": the person's part is in the title already
+      final dash = d.indexOf(' — ');
+      if (dash > 0) d = '${d.substring(0, dash)}.';
+    } else if (tier == OmrTier.reject) {
+      d = _after(m, const [': ']) ?? m;
+    }
+    d = _capital(d.trim());
+    if (d.isEmpty || omrTextKey(omrResultTitle(tier, reviewCount, student: student)).contains(omrTextKey(d))) return null;
+    if (omrTextKey(title).contains(omrTextKey(d))) return null;
+    return d;
+  }
+
+  static String? _after(String s, List<String> seps) {
+    for (final sep in seps) {
+      final i = s.indexOf(sep);
+      if (i > 0 && i + sep.length < s.length) return s.substring(i + sep.length);
+    }
+    return null;
+  }
+
+  static String _capital(String s) => s.isEmpty || AppConfig.lang == 'ar' ? s : s[0].toUpperCase() + s.substring(1);
 
   /// "Improved: shadows evened out · contrast improved" — empty when the photo was used as it was.
   String get appliedText {
@@ -359,16 +450,60 @@ class OmrPageResult {
   }
 }
 
-String omrResultTitle(OmrTier tier, int review) => switch (tier) {
-      OmrTier.accept => t('قُرئت الورقة بنجاح', 'Read successfully'),
-      OmrTier.flags => review > 0
-          ? t('قُرئت — ${omrQuestionsText(review)} للمراجعة', 'Read with ${omrQuestionsText(review)} to review')
-          : t('قُرئت — بعض الأسئلة للمراجعة', 'Read with some questions to review'),
-      OmrTier.retake => review > 0
-          ? t('قُرئت جزئيًا — ${omrQuestionsText(review)} للمراجعة', 'Read in part — ${omrQuestionsText(review)} to review')
-          : t('قُرئت جزئيًا', 'Read in part'),
-      OmrTier.reject => t('تعذّرت قراءة الورقة', 'Couldn\'t read this paper'),
-    };
+String omrResultTitle(OmrTier tier, int review, {OmrStudentNeed student = OmrStudentNeed.none}) {
+  final who = switch (student) {
+    OmrStudentNeed.none => null,
+    OmrStudentNeed.confirm => t('أكّد الطالب', 'confirm the student'),
+    OmrStudentNeed.choose => t('اختر الطالب', 'choose the student'),
+  };
+  // "Read — confirm the student" when only the student needs a person
+  if (who != null && review == 0 && tier != OmrTier.retake && tier != OmrTier.reject) return t('قُرئت — $who', 'Read — $who');
+  final base = switch (tier) {
+    OmrTier.accept => t('قُرئت الورقة بنجاح', 'Read successfully'),
+    OmrTier.flags => review > 0
+        ? t('قُرئت — ${omrQuestionsText(review)} للمراجعة', 'Read with ${omrQuestionsText(review)} to review')
+        : t('قُرئت — بعض الأسئلة للمراجعة', 'Read with some questions to review'),
+    OmrTier.retake => review > 0
+        ? t('قُرئت جزئيًا — ${omrQuestionsText(review)} للمراجعة', 'Read in part — ${omrQuestionsText(review)} to review')
+        : t('قُرئت جزئيًا', 'Read in part'),
+    OmrTier.reject => t('تعذّرت قراءة الورقة', "Couldn't read this paper"),
+  };
+  if (who == null || tier == OmrTier.reject) return base;
+  // one dash per title: the student's part after " · " when the title already has one
+  return base.contains(' — ') ? '$base · $who' : '$base — $who';
+}
+
+/// A sentence compared by its letters and digits only (case, spaces, punctuation and Arabic marks ignored): two tips
+/// that say the same thing are shown once.
+String omrTextKey(String s) => s.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '');
+
+/// The person's part of the server's sentence ("confirm the student", "confirm the answer form", "check this sheet"):
+/// what follows its last " — " (" - " on an older server); null when it has none.
+String? omrSentenceTail(String message) {
+  final s = message.trim().replaceAll(' - ', ' — ');
+  final i = s.lastIndexOf(' — ');
+  if (i <= 0) return null;
+  var tail = s.substring(i + 3).trim();
+  final b = tail.lastIndexOf(' (');
+  if (b > 0 && tail.endsWith(')')) tail = tail.substring(0, b);
+  if (tail.endsWith('.')) tail = tail.substring(0, tail.length - 1);
+  return tail.isEmpty ? null : tail;
+}
+
+/// The server's sentence as a title: " - " as a dash, the bracketed explanation left to the tips ("Read with 2
+/// questions to review - confirm the student (its QR code …)" → "Read with 2 questions to review — confirm the
+/// student"), and a retake's ", but …" reason left to the line under it.
+String omrSentenceHead(String message) {
+  var s = message.trim().replaceAll(' - ', ' — ');
+  for (final sep in const [', but ', '، لكن ', '، ولكن ']) {
+    final i = s.indexOf(sep);
+    if (i > 0) s = s.substring(0, i);
+  }
+  final b = s.lastIndexOf(' (');
+  if (b > 0 && s.endsWith(')')) s = s.substring(0, b);
+  if (s.endsWith('.')) s = s.substring(0, s.length - 1);
+  return s.trim();
+}
 
 /// The non-blocking suggestion of a `retake` page.
 String omrRetakeSuggestion() =>
@@ -601,6 +736,20 @@ class OmrBatchProgress {
 
   bool get finished => status == 'done';
   String get text => _pick(ar, en);
+
+  /// When the batch was started (the engine's naive UTC read as UTC); null when absent.
+  DateTime? get createdUtc => omrUtcOf(createdAt);
+
+  /// "Camera · Today, 10:42 AM" / "Upload · 2 Nov 2026 · 9:05 AM" (the platform / organization time zone, AppTime).
+  String get whenText {
+    final kindText = kind == 'camera' ? t('تصوير', 'Camera') : t('رفع', 'Upload');
+    final at = createdUtc;
+    if (at == null) return kindText;
+    final day = AppTime.toZone(at), now = AppTime.toZone(DateTime.now().toUtc());
+    final today = day.year == now.year && day.month == now.month && day.day == now.day;
+    return '$kindText · ${today ? t('اليوم، ${AppTime.time(at)}', 'Today, ${AppTime.time(at)}') : AppTime.dateTime(at)}';
+  }
+
   double get fraction => total <= 0 ? (finished ? 1 : 0) : (done / total).clamp(0.0, 1.0).toDouble();
 
   /// The live event's numbers on top of the last fetch (the event carries done / total / status / text only).
@@ -640,6 +789,7 @@ class OmrSheetsInfo {
     this.modes,
     this.prefilledReasonAr = '',
     this.prefilledReasonEn = '',
+    this.blankReason = '',
   });
 
   final int? templateId;
@@ -661,6 +811,25 @@ class OmrSheetsInfo {
 
   /// Why Pre-filled is not offered, when the server says so.
   final String prefilledReasonAr, prefilledReasonEn;
+
+  /// `mode_detail.blank.reason` (D-161: `identifier_zone_mismatch` — the students' numbers do not fit the ID zone,
+  /// so only sheets that identify each student by name / QR print); empty when blank is offered or not said.
+  final String blankReason;
+
+  /// Why [m] is not offered, in one line (the server's reason code in words); null when it is offered, or on an
+  /// older server without modes. An unavailable mode is shown disabled with this line, never hidden silently.
+  String? missingText(OmrPrintMode m) {
+    final list = modes;
+    if (list == null || list.contains(m)) return null;
+    return switch (m) {
+      OmrPrintMode.prefilled => prefilledMissing,
+      OmrPrintMode.blank => blankReason == 'identifier_zone_mismatch' || blankReason == 'too_long'
+          ? t('الأوراق الفارغة غير متاحة: أرقام الطلاب لا تتسع في خانات الورقة، فتُطبع الأوراق باسم كل طالب ويعرّفه رمز QR',
+              "Blank sheets are not available: the students' numbers do not fit the sheet's boxes, so each sheet is printed for a named student and its QR code identifies them")
+          : t('الأوراق الفارغة غير متاحة لهذا الاختبار', 'Blank sheets are not available for this exam'),
+      OmrPrintMode.named => t('الأوراق بالاسم غير متاحة لهذا الاختبار', 'Named sheets are not available for this exam'),
+    };
+  }
 
   bool get hasModes => modes != null;
 
@@ -690,6 +859,7 @@ class OmrSheetsInfo {
         modes: omrPrintModesOf(j['modes']),
         prefilledReasonAr: _reasonOf(j, 'ar'),
         prefilledReasonEn: _reasonOf(j, 'en'),
+        blankReason: '${asMap(asMap(j['mode_detail'])['blank'])['reason'] ?? ''}',
       );
 
   static const _prefilledReasons = <String, (String, String)>{
@@ -700,6 +870,8 @@ class OmrSheetsInfo {
         "Pre-filled is not available right now: the students' numbers could not be checked, try again later"),
     'identifier_zone_mismatch': ('التظليل المسبق غير متاح: أرقام الطلاب لا تتسع في خانات الورقة',
         "Pre-filled is not available: the student numbers do not fit the sheet's boxes"),
+    'too_long': ('التظليل المسبق غير متاح: أرقام الطلاب أطول من خانات الورقة', "Pre-filled is not available: the student numbers are longer than the sheet's boxes"),
+    'not_digits': ('التظليل المسبق غير متاح: بعض أرقام الطلاب ليست أرقامًا فقط', 'Pre-filled is not available: some student numbers are not all digits'),
   };
 
   /// The server's `mode_detail.prefilled.reason` code (omr_sheets.modes_of), else `prefilled_reason {ar, en}`, or the
