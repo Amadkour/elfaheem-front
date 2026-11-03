@@ -26,6 +26,8 @@ import 'paper/review/omr_review_page.dart';
 import 'paper/scan/omr_audience_picker.dart';
 import 'paper/scan/omr_scan.dart' show omrDetailOf;
 import 'paper/scan/omr_scan_section.dart';
+import 'paper/scan/scan_sources.dart';
+import 'paper/scan/scan_upload_view.dart';
 
 /// The legacy page image, or — for a bubble-sheet page — the engine's answer that it must be opened in the OMR page
 /// view (409 `omr_page_use_review`; the JSON body of a bytes request arrives as bytes).
@@ -338,18 +340,25 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
     ];
   }
 
+  /// "Upload scans": the source sheet (gallery on a phone, files, a scanner's folder), then the upload page — the
+  /// pick's summary, the parts (one batch), the failures with Retry.
   Future<void> _upload() async {
-    final files = await _pick(const ['png', 'jpg', 'jpeg', 'webp', 'pdf'], many: true);
-    if (files.isEmpty || !mounted) return;
-    if (files.length > 50) return appToast(paperCodeText('too_many_files'), error: true);
+    final pick = await showScanSourceSheet(context);
+    if (pick == null || !mounted) return;
     setState(() => _busy = 'upload');
-    final r = await _api.uploadScans(widget.examId, files);
+    final out = await Navigator.of(context).push<ScanUploadOutcome>(MaterialPageRoute(
+        builder: (_) => ScanUploadPage(
+              pick: pick,
+              send: (files, batchId) => _api.uploadScans(widget.examId, files, batchId: batchId),
+              onChooseAgain: (ctx) => showScanSourceSheet(ctx),
+            )));
     if (!mounted) return;
     setState(() => _busy = null);
-    if (!r.ok) return _fail(r);
-    final u = ScanUploadResult.fromJson(r.map);
-    _lastBatch = u.batchId;
-    _result(u.summary, const []);
+    if (out == null) return;
+    if (out.batchId != null) {
+      _lastBatch = out.batchId;
+      _result(ScanUploadResult(batchId: out.batchId!, pages: out.pages, duplicates: out.duplicates).summary, const []);
+    }
     _load();
   }
 

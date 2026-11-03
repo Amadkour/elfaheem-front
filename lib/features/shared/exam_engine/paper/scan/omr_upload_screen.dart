@@ -5,12 +5,17 @@
 // upload a clearer image of it.") and "Replace this page" (`POST …/omr/pages/{id}/replace`: one photo through the
 // capture gate, accepted or refused with the exact reason; the new page is followed by its `page_id` in the batch's
 // events, its own page state as the fallback). The camera's session lands on the same screen.
+// Where the pages come from is ONE sheet (scan_sources.dart: camera, gallery, files, a scanner's folder); a pick is
+// shown first ("12 files found · 9 images · 3 PDFs · 2 skipped"), then sent in parts that join one batch
+// (scan_files.dart ScanUploader: "Uploading 3 of 12 files", a failed part does not stop the rest, Retry).
+// Smart photos: each paper read shows its own result (the batch's `pages[].result`: read successfully / N questions
+// to review / read in part + a suggested retake / couldn't read + reason + tip) with a preview of the improved photo
+// (`preview_url` through the signed-image call); a rejected page's preview offers "Replace this page".
 library;
 
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
@@ -21,41 +26,38 @@ import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../../admin/admin_common.dart' show t;
+import 'omr_paper_result.dart';
 import 'omr_routes.dart';
 import 'omr_scan.dart';
 import 'omr_scan_widgets.dart';
-import '../omr_counts.dart';
+import 'omr_scanner_screen.dart';
+import 'scan_files.dart';
+import 'scan_prepare.dart';
+import 'scan_sources.dart';
+import 'scan_upload_view.dart';
 
-/// Picks files: several (an upload) or one (a replacement). Tests hand their own.
+/// Picks ONE replacement page. Tests hand their own; the app opens the source sheet (gallery / files).
 typedef OmrFilePicker = Future<List<(String, Uint8List)>> Function({bool many});
 
-Future<List<(String, Uint8List)>> omrPickFiles({bool many = true}) async {
-  final picked = many
-      ? await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: omrUploadExtensions)
-      : [?await FilePicker.pickFile(type: FileType.custom, allowedExtensions: omrUploadExtensions)];
-  final out = <(String, Uint8List)>[];
-  for (final f in picked) {
-    try {
-      out.add((f.name, await f.readAsBytes()));
-    } catch (_) {}
-  }
-  return out;
-}
-
-/// "Upload images / PDF": picks inside the tap (a browser opens the file dialog only on a user gesture), checks the
-/// limits, then opens the progress screen, which sends them.
+/// "Upload": the source sheet (the live camera too unless [camera] is false), then the progress screen with the
+/// pick's summary first. [sources] / [platform]: tests.
 Future<void> startOmrUpload(BuildContext context,
-    {required int examId, String examTitle = '', OmrScanApi? api, OmrFilePicker? picker, bool replace = false}) async {
+    {required int examId,
+    String examTitle = '',
+    OmrScanApi? api,
+    OmrFilePicker? picker,
+    bool replace = false,
+    bool camera = true,
+    ScanSourcePicker? sources,
+    ScanPlatform? platform}) async {
   final nav = Navigator.of(context);
-  final files = await (picker ?? omrPickFiles)(many: true);
-  if (files.isEmpty) return;
-  final problem = omrPickProblem(files);
-  if (problem != null) {
-    showAppNotice(problem, error: true);
-    return;
-  }
-  final route = MaterialPageRoute<void>(
-      builder: (_) => OmrScanProgressScreen(examId: examId, examTitle: examTitle, files: files, api: api, picker: picker));
+  final pick = await showScanSourceSheet(context, camera: camera, platform: platform, picker: sources);
+  if (pick == null) return;
+  final Route<void> route = pick.source == ScanSource.camera
+      ? MaterialPageRoute<void>(builder: (_) => OmrScannerScreen(examId: examId, examTitle: examTitle, api: api))
+      : MaterialPageRoute<void>(
+          builder: (_) => OmrScanProgressScreen(
+              examId: examId, examTitle: examTitle, picked: pick, api: api, picker: picker, sources: sources, platform: platform));
   if (replace) {
     await nav.pushReplacement(route);
   } else {
@@ -92,12 +94,16 @@ class OmrScanProgressScreen extends StatefulWidget {
     this.examTitle = '',
     this.batchId,
     this.files,
+    this.picked,
     this.camera = false,
     this.api,
     this.picker,
+    this.sources,
+    this.platform,
+    this.prepare,
     this.liveBus,
     this.liveStream,
-  }) : assert(batchId != null || files != null);
+  }) : assert(batchId != null || files != null || picked != null);
 
   /// The camera's "Upload instead" (picks first, see [startOmrUpload]).
   static Widget pick({required int examId, String examTitle = '', OmrScanApi? api}) => _PickFirst(examId: examId, examTitle: examTitle, api: api);
@@ -108,11 +114,19 @@ class OmrScanProgressScreen extends StatefulWidget {
   /// An existing batch (the camera session, an earlier upload) …
   final int? batchId;
 
-  /// … or files to upload now.
+  /// … or files to upload now (sent at once) …
   final List<(String, Uint8List)>? files;
+
+  /// … or a pick from the source sheet: its summary first, sent on "Upload".
+  final ScanPick? picked;
   final bool camera;
   final OmrScanApi? api;
   final OmrFilePicker? picker;
+
+  /// Tests: the source sheet's pickers and platform, the file preparation.
+  final ScanSourcePicker? sources;
+  final ScanPlatform? platform;
+  final ScanPrepare? prepare;
   final LiveEvents? liveBus;
   final LiveStreamHandle? liveStream;
 
@@ -122,11 +136,12 @@ class OmrScanProgressScreen extends StatefulWidget {
 
 class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
   late final OmrScanApi _api = widget.api ?? OmrScanApi();
-  bool _uploading = false;
-  String? _uploadError;
+
+  /// The pick waiting for "Upload" (its summary is shown), null once sent / for a batch.
+  ScanPlan? _plan;
+  ScanSource? _source;
+  ScanUploader? _up;
   int? _batchId;
-  int _duplicates = 0;
-  bool _nothingNew = false;
   OmrBatchProgress? _progress;
 
   /// A FETCHED answer said done (the live event's "done" alone still needs the fetch: counts + rejected pages).
@@ -139,8 +154,11 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
   void initState() {
     super.initState();
     _batchId = widget.batchId;
-    if (widget.files != null) {
-      _upload(widget.files!);
+    if (widget.picked != null) {
+      _plan = widget.picked!.plan();
+      _source = widget.picked!.source;
+    } else if (widget.files != null) {
+      _upload([for (final (n, b) in widget.files!) ScanSourceFile.bytes(n, b)]);
     } else {
       _track();
     }
@@ -152,29 +170,53 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
     super.dispose();
   }
 
-  Future<void> _upload(List<(String, Uint8List)> files) async {
+  /// Sends the files part by part; the parts after the first join the first part's batch.
+  Future<void> _upload(List<ScanSourceFile> files) async {
+    final up = ScanUploader(
+      files: files,
+      prepare: widget.prepare ?? prepareScanFile,
+      send: (part, batchId) => _api.upload(widget.examId, part, batchId: batchId),
+      errorText: scanSendErrorText,
+      prepareErrorText: scanPrepareErrorText,
+      onChange: () {
+        if (mounted) setState(() {});
+      },
+    );
     setState(() {
-      _uploading = true;
-      _uploadError = null;
+      _plan = null;
+      _up = up;
     });
-    final r = await _api.upload(widget.examId, files);
+    await up.run();
     if (!mounted) return;
-    if (!r.ok) {
-      setState(() {
-        _uploading = false;
-        _uploadError = omrErrorText(r);
-      });
-      return;
-    }
-    final u = OmrUploadReply.fromJson(r.map);
-    setState(() {
-      _uploading = false;
-      _batchId = u.batchId;
-      _duplicates = u.duplicates;
-      _nothingNew = u.pages.isEmpty;
-    });
-    _track();
+    _afterSend();
   }
+
+  /// Retry: the failed files again, into the same batch.
+  Future<void> _retry() async {
+    final up = _up;
+    if (up == null) return;
+    await up.retry();
+    if (!mounted) return;
+    _afterSend();
+  }
+
+  void _afterSend() {
+    final b = _up?.batchId;
+    if (b == null) return;
+    setState(() {
+      _batchId = b;
+      _settled = false; // new pages: the batch is read again
+    });
+    if (_watch?.running ?? false) {
+      _watch!.poke();
+    } else {
+      _watch = null;
+      _track();
+    }
+  }
+
+  int get _duplicates => _up?.duplicates ?? 0;
+  bool get _nothingNew => (_up?.anySent ?? false) && _up!.pages == 0 && _up!.failures.isEmpty;
 
   /// The batch while it is still being read (a replacement is a new page of the same batch).
   Set<String> get _open => {
@@ -246,7 +288,9 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
   /// "Replace this page": ONE photo through the capture gate on the request (`POST …/omr/pages/{id}/replace`) —
   /// accepted (a new page of the same batch, read like any other) or refused with the exact reason, nothing stored.
   Future<void> _replace(int pageId) async {
-    final files = await (widget.picker ?? omrPickFiles)(many: false);
+    final files = widget.picker != null
+        ? await widget.picker!(many: false)
+        : await pickOneScanPage(context, platform: widget.platform, picker: widget.sources);
     if (files.isEmpty || !mounted) return;
     final problem = omrReplaceProblem(files.first);
     if (problem != null) {
@@ -264,9 +308,11 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
     }
     final res = OmrReplaceResult.fromJson(r.map);
     if (!res.accepted) {
-      setState(() => _replacements[pageId] = _Replacement('refused', row)..text = res.refusal);
+      setState(() => _replacements[pageId] = _Replacement('refused', row)..text = [res.refusal, ...?res.result?.tipTexts.where((x) => !res.refusal.contains(x)).take(1)].join(' '));
       return;
     }
+    // a page read in part has no rejected row to carry the outcome: say it here
+    if (row == null && res.text.isNotEmpty) showAppNotice(res.text);
     setState(() {
       _replacements[pageId] = _Replacement('processing', row)
         ..newPageId = res.pageId
@@ -280,6 +326,36 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       _watch = null;
       _track();
     }
+  }
+
+  /// The papers of the batch that were read (each with its result), "Paper n" in the batch's order (every photo is its
+  /// own page 1), with the file name (and the page of a PDF) for an upload; the rejected ones are listed apart (with
+  /// Replace).
+  List<OmrPaperRow> _paperRows(OmrBatchProgress p, {required bool camera}) {
+    final rejected = {for (final r in p.rejectedPages) r.pageId, ..._replacements.keys};
+    String? file(OmrBatchPage pg) {
+      final f = pg.fileName;
+      if (camera || f == null || f.isEmpty) return null;
+      return f.toLowerCase().endsWith('.pdf') && pg.label.isNotEmpty ? '$f #${pg.label}' : f;
+    }
+
+    return [
+      for (final (i, pg) in p.pages.indexed)
+        if (pg.result != null && pg.result!.tier != OmrTier.reject && !rejected.contains(pg.pageId))
+          OmrPaperRow(pageId: pg.pageId, label: t('الورقة ${i + 1}', 'Paper ${i + 1}'), fileName: file(pg), result: pg.result!),
+    ];
+  }
+
+  /// The improved photo of a page; a rejected one, or one read in part (`retake`: the server lets a better photo
+  /// supersede the partial read), can be replaced from there.
+  Future<void> _preview(int pageId, OmrPageResult result) async {
+    final canReplace = (_progress?.rejectedPages.any((p) => p.pageId == pageId) ?? false) || result.tier == OmrTier.retake;
+    final again = await showOmrPreview(context,
+        result: result,
+        load: () => _api.image(result.previewUrl),
+        retake: canReplace && _replacements[pageId] == null,
+        retakeLabel: t('استبدال هذه الصفحة', 'Replace this page'));
+    if (again && mounted) await _replace(pageId);
   }
 
   /// The batch's rejected pages, plus the ones replaced here (gone from the server's list, kept with the outcome).
@@ -297,31 +373,43 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       Navigator.of(context).maybePop();
       return;
     }
-    await startOmrUpload(context, examId: widget.examId, examTitle: widget.examTitle, api: widget.api, picker: widget.picker, replace: true);
+    await startOmrUpload(context,
+        examId: widget.examId,
+        examTitle: widget.examTitle,
+        api: widget.api,
+        picker: widget.picker,
+        replace: true,
+        sources: widget.sources,
+        platform: widget.platform);
+  }
+
+  /// "Choose other files" on the summary: the sheet again, without the camera (this screen is the upload's).
+  Future<void> _chooseAgain() async {
+    final pick = await showScanSourceSheet(context, platform: widget.platform, picker: widget.sources);
+    if (pick == null || !mounted) return;
+    setState(() {
+      _plan = pick.plan();
+      _source = pick.source;
+    });
   }
 
   Widget _body() {
     final c = context.colors;
-    if (_uploading) {
-      final n = widget.files?.length ?? 0;
-      return AppCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(t('جارٍ رفع ${omrFilesText(n)}…', 'Uploading $n file${n == 1 ? '' : 's'}…'), style: appText(17, w: FontWeight.w800, c: c.textDark)),
-          const SizedBox(height: AppSpace.xs),
-          Text(t('ابقَ على هذه الصفحة حتى يكتمل الرفع', 'Stay on this page until the upload finishes'), style: appText(13, c: c.textMedium)),
-          const SizedBox(height: AppSpace.md),
-          ClipRRect(borderRadius: BorderRadius.circular(AppRadius.chip), child: const LinearProgressIndicator(minHeight: 8)),
-        ]),
-      );
+    final plan = _plan;
+    if (plan != null) {
+      return ScanPickSummary(plan: plan, source: _source, onUpload: () => _upload(plan.files), onChooseAgain: _chooseAgain);
     }
-    if (_uploadError != null) {
+    final up = _up;
+    if (up != null && up.phase == ScanUploadPhase.sending && _batchId == null) {
+      return ScanUploadProgress(done: up.finished, total: up.runTotal, current: up.current);
+    }
+    if (up != null && up.phase == ScanUploadPhase.done && !up.anySent) {
+      // nothing went: the reasons, Retry, other files
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppBanner(icon: Icons.error_outline_rounded, text: _uploadError!, color: c.danger),
-        const SizedBox(height: AppSpace.md),
-        if (widget.files != null)
-          AppPrimaryButton(label: t('إعادة المحاولة', 'Try again'), icon: Icons.refresh_rounded, onPressed: () => _upload(widget.files!)),
+        ScanUploadFailures(failures: up.failures, onRetry: _retry),
         const SizedBox(height: AppSpace.sm),
         OutlinedButton.icon(
+          key: const ValueKey('scan.other'),
           style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
           onPressed: _more,
           icon: const Icon(Icons.upload_file_rounded),
@@ -329,14 +417,25 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
         ),
       ]);
     }
+    // some went: the batch below; a retry running, or what did not go, above it
+    final sendingMore = up != null && up.phase == ScanUploadPhase.sending;
+    final failed = up != null && up.phase == ScanUploadPhase.done && up.failures.isNotEmpty;
+    final head = <Widget>[
+      if (sendingMore) ...[ScanUploadProgress(done: up.finished, total: up.runTotal, current: up.current), const SizedBox(height: AppSpace.md)],
+      if (failed) ...[ScanUploadFailures(failures: up.failures, onRetry: _retry), const SizedBox(height: AppSpace.md)],
+    ];
     final p = _progress;
     if (p == null) {
-      if (_loadError != null) return AppBanner(icon: Icons.error_outline_rounded, text: _loadError!, color: c.danger);
-      return const AppListSkeleton(items: 2);
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ...head,
+        if (_loadError != null) AppBanner(icon: Icons.error_outline_rounded, text: _loadError!, color: c.danger) else const AppListSkeleton(items: 2),
+      ]);
     }
     final review = OmrRoutes.review == null ? null : () => openOmrReview(context, widget.examId);
     final results = OmrRoutes.results == null ? null : () => openOmrResults(context, widget.examId);
+    final camera = widget.camera || p.kind == 'camera';
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      ...head,
       if (_nothingNew) ...[
         AppBanner(icon: Icons.info_outline_rounded, text: t('كل هذه الصفحات مرفوعة من قبل — لم يُضف شيء جديد', 'All of these pages were uploaded before — nothing new was added')),
         const SizedBox(height: AppSpace.sm),
@@ -351,7 +450,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
         rejected: p.rejected,
         failed: p.failed,
         duplicates: _duplicates,
-        camera: widget.camera || p.kind == 'camera',
+        camera: camera,
         rejectedPages: [
           for (final r in _rejectedRows(p))
             RejectedPageRow(
@@ -361,9 +460,12 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
               fileName: r.fileName,
               replacement: _replacements[r.pageId]?.state,
               replacementText: _replacements[r.pageId]?.text,
+              result: r.result,
             ),
         ],
+        papers: _paperRows(p, camera: camera),
         onReplace: _replace,
+        onPreview: _preview,
         onReview: review,
         onResults: results,
         onMore: _more,
@@ -405,10 +507,11 @@ class _PickFirst extends StatelessWidget {
           child: AppEmpty(
             icon: Icons.upload_file_rounded,
             title: t('ارفع صور الأوراق أو ملفات PDF', 'Upload photos of the papers or PDFs'),
-            message: t('JPG أو PNG أو WebP أو PDF — حتى ${OmrLimits.maxFiles} ملفًا و ${OmrLimits.maxPages} صفحة في المرة',
-                'JPG, PNG, WebP or PDF — up to ${OmrLimits.maxFiles} files and ${OmrLimits.maxPages} pages at a time'),
-            actionLabel: t('اختيار الملفات', 'Choose files'),
-            onAction: () => startOmrUpload(context, examId: examId, examTitle: examTitle, api: api, replace: true),
+            message: t('من معرض الصور أو الملفات أو مجلد الماسح الضوئي — صور وملفات PDF معًا، حتى 25 ميجابايت للملف',
+                "From the photo gallery, files or a scanner's folder — images and PDFs together, up to 25 MB a file"),
+            actionLabel: t('اختيار الصفحات', 'Choose the pages'),
+            // the camera is what brought the teacher here (it failed, or they chose to upload): no camera in the sheet
+            onAction: () => startOmrUpload(context, examId: examId, examTitle: examTitle, api: api, replace: true, camera: false),
           ),
         ),
       ),

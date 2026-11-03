@@ -43,6 +43,7 @@ class _OmrTemplateLibraryPageState extends State<OmrTemplateLibraryPage> {
   late final OmrTemplatesApi _api = widget.api ?? OmrTemplatesApi();
   List<OmrTemplateRow>? _rows;
   bool? _requireApproval;
+  bool? _smartPhotos; // null: not loaded, or an older server without the switch
   String? _error;
   LibraryFilter _filter = LibraryFilter.all;
   final _previews = <int, Uint8List?>{};
@@ -56,6 +57,7 @@ class _OmrTemplateLibraryPageState extends State<OmrTemplateLibraryPage> {
   }
 
   Future<void> _load() async {
+    if (widget.isSuperAdmin) _loadSettings();
     final r = await _api.list();
     if (!mounted) return;
     setState(() {
@@ -67,6 +69,13 @@ class _OmrTemplateLibraryPageState extends State<OmrTemplateLibraryPage> {
         _error = omrTemplateErrorText(r);
       }
     });
+  }
+
+  Future<void> _loadSettings() async {
+    final r = await _api.settings();
+    if (!mounted || !r.ok) return;
+    final v = r.map['smart_photos'];
+    if (v is bool) setState(() => _smartPhotos = v);
   }
 
   Future<void> _preview(int id) async {
@@ -142,6 +151,19 @@ class _OmrTemplateLibraryPageState extends State<OmrTemplateLibraryPage> {
     setState(() => _requireApproval = r.map['require_approval'] is bool ? r.map['require_approval'] as bool : v);
   }
 
+  Future<void> _setSmartPhotos(bool v) async {
+    final before = _smartPhotos;
+    setState(() => _smartPhotos = v);
+    final r = await _api.putSettings(smartPhotos: v);
+    if (!mounted) return;
+    if (!r.ok) {
+      setState(() => _smartPhotos = before);
+      showAppNotice(omrTemplateErrorText(r), error: true);
+      return;
+    }
+    setState(() => _smartPhotos = r.map['smart_photos'] is bool ? r.map['smart_photos'] as bool : v);
+  }
+
   void _family(OmrTemplateFamily f) {
     showAppSheet<void>(
       context,
@@ -195,6 +217,8 @@ class _OmrTemplateLibraryPageState extends State<OmrTemplateLibraryPage> {
           onReject: _reject,
           onReview: (r) => _openAndReload(templateId: r.id, readOnly: true),
           onApproval: widget.isSuperAdmin ? _setApproval : null,
+          smartPhotos: _smartPhotos,
+          onSmartPhotos: widget.isSuperAdmin ? _setSmartPhotos : null,
         ),
       ),
     );
@@ -220,6 +244,8 @@ class TemplateLibraryView extends StatelessWidget {
     required this.onReject,
     required this.onReview,
     this.onApproval,
+    this.smartPhotos,
+    this.onSmartPhotos,
   });
 
   /// null = loading.
@@ -239,6 +265,10 @@ class TemplateLibraryView extends StatelessWidget {
   final ValueChanged<OmrTemplateRow> onReject;
   final ValueChanged<OmrTemplateRow> onReview;
   final ValueChanged<bool>? onApproval;
+
+  /// The super admin's smart phone photos switch (D-163); hidden while null.
+  final bool? smartPhotos;
+  final ValueChanged<bool>? onSmartPhotos;
 
   @override
   Widget build(BuildContext context) {
@@ -262,17 +292,30 @@ class TemplateLibraryView extends StatelessWidget {
               else if (list == null)
                 const AppListSkeleton(items: 4, padding: EdgeInsets.zero)
               else ...[
-                if (onApproval != null && requireApproval != null) ...[
+                if ((onApproval != null && requireApproval != null) || (onSmartPhotos != null && smartPhotos != null)) ...[
                   AppCard(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
-                    child: AppSwitchTile(
-                      key: const ValueKey('omr.require_approval'),
-                      icon: Icons.verified_user_outlined,
-                      title: t('أنواع المعلمين تحتاج اعتمادي', 'Teachers\' sheet types need my approval'),
-                      subtitle: t('عند الإيقاف يُنشر ما يتعلّمه المعلم فور حفظه.', 'When off, a teacher\'s learned sheet is published as soon as it is saved.'),
-                      value: requireApproval!,
-                      onChanged: onApproval,
-                    ),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      if (onApproval != null && requireApproval != null)
+                        AppSwitchTile(
+                          key: const ValueKey('omr.require_approval'),
+                          icon: Icons.verified_user_outlined,
+                          title: t('أنواع المعلمين تحتاج اعتمادي', 'Teachers\' sheet types need my approval'),
+                          subtitle: t('عند الإيقاف يُنشر ما يتعلّمه المعلم فور حفظه.', 'When off, a teacher\'s learned sheet is published as soon as it is saved.'),
+                          value: requireApproval!,
+                          onChanged: onApproval,
+                        ),
+                      if (onSmartPhotos != null && smartPhotos != null)
+                        AppSwitchTile(
+                          key: const ValueKey('omr.smart_photos'),
+                          icon: Icons.auto_fix_high_rounded,
+                          title: t('المعالجة الذكية لصور الأوراق', 'Smart processing of sheet photos'),
+                          subtitle: t('تُحسَّن الصورة العادية بدل رفضها، والإجابة غير الواضحة تذهب للمراجعة. عند الإيقاف يعود القارئ السابق.',
+                              'An ordinary photo is improved instead of refused, and an unclear answer goes to review. When off, the previous reader is used.'),
+                          value: smartPhotos!,
+                          onChanged: onSmartPhotos,
+                        ),
+                    ]),
                   ),
                   const SizedBox(height: AppSpace.md),
                 ],

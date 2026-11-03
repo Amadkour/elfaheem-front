@@ -315,7 +315,8 @@ void main() {
       await tester.ensureVisible(find.text('Download PDF'));
       await tester.tap(find.text('Download PDF'));
       await _frames(tester, 6);
-      expect(body?['student_ids'], [21, 22, 23, 24]);
+      expect(body?['student_ids'], unorderedEquals([21, 22, 23, 24]), reason: 'as chosen: the server sorts them');
+      expect(body?.containsKey('mode'), isFalse, reason: 'an older server (no modes): the old body');
       expect(fake.unmatched, isEmpty);
       await _done(tester);
     });

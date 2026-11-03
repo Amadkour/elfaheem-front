@@ -300,9 +300,11 @@ void main() {
         bodies['reject'] = o.data;
         return _p('reject_ok');
       },
+      'GET /api/v1/exam/admin/omr/settings': (_) => {'require_approval': true, 'smart_photos': true},
       'PUT /api/v1/exam/admin/omr/settings': (o) {
-        bodies['settings'] = o.data;
-        return {'require_approval': _body(o.data)['require_approval']};
+        final b = _body(o.data);
+        bodies[b.containsKey('smart_photos') ? 'smart' : 'settings'] = o.data;
+        return {'require_approval': b['require_approval'] ?? true, 'smart_photos': b['smart_photos'] ?? true};
       },
       'POST $_b/5/versions': (_) => FakeResponse(201, _p('versions_201')),
     }, latency: const Duration(milliseconds: 20))
@@ -332,6 +334,9 @@ void main() {
 
     await _tap(tester, 'omr.require_approval');
     expect(_body(bodies['settings']), {'require_approval': false});
+    // D-163: the rollback switch sends only its own field (the server keeps the other)
+    await _tap(tester, 'omr.smart_photos');
+    expect(_body(bodies['smart']), {'smart_photos': false});
 
     // a published learned family: Edit makes version n + 1 and opens it
     await tester.tap(find.byKey(ValueKey('omr.family.${OmrTemplateRow.fromJson(_p('learn_super_202')).familyId}')));

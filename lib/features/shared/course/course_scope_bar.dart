@@ -126,6 +126,7 @@ class CourseScopeBanner extends StatelessWidget {
     this.count,
     this.elsewhere = 0,
     this.onSwitch,
+    this.onShowElsewhere,
   });
 
   /// personal or org — the mode's side.
@@ -141,6 +142,10 @@ class CourseScopeBanner extends StatelessWidget {
   /// Opens the context switcher; null hides "Switch" (nothing to switch to).
   final VoidCallback? onSwitch;
 
+  /// Opens the courses waiting on the other sides (the personal list → those courses in their organization).
+  /// Given while [elsewhere] > 0, it replaces "Switch" with "Show them": the way to those courses, not to a home.
+  final VoidCallback? onShowElsewhere;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -150,6 +155,8 @@ class CourseScopeBanner extends StatelessWidget {
     final hint = elsewhere <= 0
         ? null
         : (scope.isOrg ? 'course_scope_elsewhere_personal' : 'course_scope_elsewhere_orgs').tr.replaceAll('{n}', '$elsewhere');
+    final show = hint == null ? null : onShowElsewhere;
+    final action = show ?? onSwitch;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
@@ -188,7 +195,7 @@ class CourseScopeBanner extends StatelessWidget {
             ),
           ],
         ]),
-        if (hint != null || onSwitch != null) ...[
+        if (hint != null || action != null) ...[
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -203,16 +210,17 @@ class CourseScopeBanner extends StatelessWidget {
                     child: Text(hint, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
                   ),
                 ]),
-              if (onSwitch != null)
+              if (action != null)
                 TextButton.icon(
-                  onPressed: onSwitch,
+                  key: ValueKey(show != null ? 'course_scope.show_elsewhere' : 'course_scope.switch'),
+                  onPressed: action,
                   style: TextButton.styleFrom(
                     minimumSize: const Size(48, 40),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     foregroundColor: courseScopeInk(context, c.primary),
                   ),
-                  icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                  label: Text('course_scope_switch'.tr,
+                  icon: Icon(show != null ? Icons.menu_book_rounded : Icons.swap_horiz_rounded, size: 18),
+                  label: Text((show != null ? 'course_scope_show_elsewhere' : 'course_scope_switch').tr,
                       style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 13)),
                 ),
             ],

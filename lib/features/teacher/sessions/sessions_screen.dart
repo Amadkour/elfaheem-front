@@ -44,6 +44,7 @@ import '../data_lab/data_lab_models.dart';
 import '../data_lab/data_lab_screen.dart';
 import '../home/teacher_models.dart';
 import '../schedules/schedules_screen.dart';
+import '../analysis/exam/teacher_exam_hub_screen.dart';
 import '../../student/courses/details/components/share_link.dart';
 import '../../shared/course_profile/course_profile_hub.dart';
 import 'components/course_reel_player.dart';
@@ -416,6 +417,16 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           caption: _t('المسجّلون وتقدّمهم', 'Enrolled students and progress'),
           color: c.primaryLight,
           onTap: _openStudents,
+        ),
+        CourseSpaceAction(                                   // the course's exams hub (online + paper / OMR)
+          icon: Icons.quiz_rounded,
+          label: _t('الاختبارات', 'Exams'),
+          caption: _t('أنشئ واطبع وصحّح', 'Create, print and grade'),
+          color: c.accent,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => TeacherExamHubScreen(courseId: course.id, courseTitle: title)),
+          ),
         ),
         if (_dataLab)
           CourseSpaceAction(

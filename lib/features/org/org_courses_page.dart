@@ -33,7 +33,8 @@ class OrgCoursesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.read<OrgSession>();
-    if (!s.can('courses')) return OrgEmpty(icon: Icons.lock_rounded, title: t('لا تملك صلاحية عرض الكورسات', 'You cannot view courses'));
+    // a department-scoped right is enough: the server lists those departments' courses plus the ones I teach
+    if (!s.canAny('courses')) return OrgEmpty(icon: Icons.lock_rounded, title: t('لا تملك صلاحية عرض الكورسات', 'You cannot view courses'));
     return ChangeNotifierProvider(create: (_) => OrgCoursesProvider(s)..refresh(), child: const _CoursesView());
   }
 }
@@ -85,6 +86,7 @@ class _CoursesView extends StatelessWidget {
           label: t('تصدير المقررات', 'Export courses'),
           onTap: () => exportPagedList(context, p, (rows) => orgCoursesExport(rows, orgName: s.name)),
         ),
+        if (s.can('courses'))
         OrgMenuItem(
           icon: Icons.download_rounded,
           label: t('تصدير التسجيلات', 'Export enrollments'),
@@ -94,7 +96,9 @@ class _CoursesView extends StatelessWidget {
       child: PagedList<OrgCoursesProvider>(
         emptyText: p.search.isNotEmpty
             ? t('لا مقررات بهذا الاسم', 'No course matches this search')
-            : t('لا توجد مقررات بعد — أضف أول مقرر أو استوردها من Excel', 'No courses yet — add the first one or import them from Excel'),
+            : s.can('courses', 'insert')
+                ? t('لا توجد مقررات بعد — أضف أول مقرر أو استوردها من Excel', 'No courses yet — add the first one or import them from Excel')
+                : t('لا توجد مقررات تدرّسها أو في أقسامك بعد', 'No course you teach or in your departments yet'),
         itemBuilder: (ctx, row) => _CourseTile(row: row),
       ),
     );
@@ -115,6 +119,8 @@ class _CourseTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
+        // the course page: its teacher finds Exams, attendance and the course's tools there (course_profile_actions)
+        onTap: () => openCourseProfile(context, asInt(row['id'])),
         child: Row(children: [
           IconBadge(Icons.menu_book_rounded, c.primary),
           const SizedBox(width: 12),

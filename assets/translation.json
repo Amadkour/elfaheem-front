@@ -35,6 +35,10 @@
     "en": "Switch",
     "ar": "تبديل"
   },
+  "course_scope_show_elsewhere": {
+    "en": "Show them",
+    "ar": "عرضها"
+  },
   "course_scope_org_empty": {
     "en": "Courses this organization gives you appear here",
     "ar": "تظهر هنا الكورسات التي تُسندها إليك هذه المؤسسة"

@@ -95,11 +95,14 @@ void main() {
       const pad = EdgeInsets.only(left: 10, right: 20);
       expect(appAssistantDockX(screen, pad, left: true), 10);
       expect(appAssistantDockX(screen, pad, left: false), 400 - 20 - appAssistantTabWidth);
-      // tucked: only the peek stays on screen
-      expect(appAssistantDockX(screen, pad, left: true, tucked: true) + appAssistantTabWidth, 10 + appAssistantTuckedPeek);
-      expect(appAssistantDockX(screen, pad, left: false, tucked: true), 400 - 20 - appAssistantTuckedPeek);
-      // it covers at most ~28 dp of a page that keeps a 16 dp gutter
-      expect(appAssistantTabWidth - 16, lessThanOrEqualTo(28));
+      // tucked: only the peek of its face stays on screen (the face sits at the screen-edge side of the target)
+      expect(appAssistantDockX(screen, pad, left: true, tucked: true) + appAssistantTabFace, 10 + appAssistantTuckedPeek);
+      expect(appAssistantDockX(screen, pad, left: false, tucked: true) + appAssistantTabWidth - appAssistantTabFace,
+          400 - 20 - appAssistantTuckedPeek);
+      // round 3 of the paper-exam e2e: the drawn face covered a result card's score and percent at 390 px. It now
+      // stays inside the page's 16 dp gutter + at most 10 dp of a card's padding, and the target keeps 44 dp
+      expect(appAssistantTabFace - 16, lessThanOrEqualTo(10));
+      expect(appAssistantTabWidth, greaterThanOrEqualTo(44));
     });
   });
 

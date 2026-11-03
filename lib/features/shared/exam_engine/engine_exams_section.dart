@@ -6,27 +6,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
+
 import '../../admin/admin_common.dart' show asInt, asMapList, t;
 import 'exam_engine_api.dart';
 import 'exam_result_screen.dart';
+import 'exam_taking.dart' show examOpensAt, examOpensText, examStartBlockText;
 import 'exam_taking_screen.dart';
 import 'offline/offline_exam_screen.dart';
 import 'offline/offline_exam_service.dart';
 
 /// Plain-values card for one engine exam (under the layout harness).
 class EngineExamCard extends StatelessWidget {
-  const EngineExamCard({super.key, required this.exam, required this.onOpen, this.offlineSaved = false});
+  const EngineExamCard({super.key, required this.exam, required this.onOpen, this.offlineSaved = false, this.now});
   final Map<String, dynamic> exam;
   final VoidCallback? onOpen;
   final bool offlineSaved;                 // the encrypted copy for a sitting without internet is on this phone
+  final DateTime? now;                     // the clock an older server's `starts_at` is judged by (tests)
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     // sat in class on paper (every section is a paper one): never started here — the server refuses with `paper_exam`
     final paper = exam['paper_only'] == true;
-    final canStart = exam['can_start'] == true && !paper;
     final open = exam['open_attempt_id'] != null && !paper;
+    // not open yet: "Opens Thu 5 Nov, 11:00 AM" instead of a Start the server would refuse (409 exam_not_started)
+    final opensAt = paper || open ? null : examOpensAt(exam, now: now);
+    final canStart = engineExamStartable(exam, now: now);
+    final block = exam['start_block'] is Map ? '${(exam['start_block'] as Map)['code'] ?? ''}' : '';
     final used = asInt(exam['attempts_used']), allowed = asInt(exam['attempts_allowed']);
     final results = asMapList(exam['results']);
     final last = results.isEmpty ? null : results.last;
@@ -41,8 +48,12 @@ class EngineExamCard extends StatelessWidget {
       action = last['visible'] == true ? t('عرض النتيجة', 'View result') : t('النتيجة قيد النشر', 'Result pending');
     } else if (paper) {
       action = paperExamLine;
+    } else if (opensAt != null) {
+      action = examOpensText(opensAt);
+    } else if (block == 'no_attempts_left') {
+      action = t('لا محاولات متبقية', 'No attempts left');
     } else {
-      action = status == 'closed' ? t('انتهى', 'Closed') : t('غير متاح', 'Unavailable');
+      action = status == 'closed' || block == 'exam_ended' ? t('انتهى', 'Closed') : t('غير متاح', 'Unavailable');
     }
     return AppCard(
       onTap: onOpen,
@@ -60,7 +71,8 @@ class EngineExamCard extends StatelessWidget {
             Wrap(spacing: 10, runSpacing: 4, children: [
               if (duration != null) Text(t('$duration دقيقة', '$duration min'), style: appText(12, c: c.textMedium)),
               if (!paper) Text(t('المحاولات $used/$allowed', 'Attempts $used/$allowed'), style: appText(12, c: c.textMedium)),
-              if (exam['starts_at'] != null) Text(AppTime.dateTime(DateTime.parse('${exam['starts_at']}Z')), style: appText(12, c: c.textMedium)),
+              if (exam['starts_at'] != null && opensAt == null)
+                Text(AppTime.dateTime(DateTime.parse('${exam['starts_at']}Z')), style: appText(12, c: c.textMedium)),
               if (last != null && last['visible'] == true && last['percentage'] != null)
                 Text('${last['percentage']}%', style: appText(12, w: FontWeight.w700, c: last['passed'] == true ? c.success : c.warning)),
             ]),
@@ -68,7 +80,8 @@ class EngineExamCard extends StatelessWidget {
             // the action sits under the texts, not beside them: at 320 px with large text a trailing pill left the
             // title column 26 px wide (layout harness)
             Wrap(spacing: 6, runSpacing: 6, children: [
-              AppBadgePill(action, color: canStart || open ? c.primary : c.textLight),
+              AppBadgePill(action, color: canStart || open ? c.primary : (opensAt != null ? c.textMedium : c.textLight),
+                  icon: opensAt != null ? Icons.schedule_rounded : null),
               if (paper && last != null) AppBadgePill(t('اختبار ورقي', 'Paper exam'), color: c.textLight, icon: Icons.edit_note_rounded),
               if (offlineSaved) AppBadgePill(t('محفوظ للحل دون اتصال', 'Saved for offline'), color: c.success, icon: Icons.offline_pin_rounded),
             ]),
@@ -78,6 +91,11 @@ class EngineExamCard extends StatelessWidget {
     );
   }
 }
+
+/// Whether the list offers a start (or a new attempt) of [exam] now: the server's `can_start`, never on paper, never
+/// before the window opens (an older server without `start_block` said can_start true there).
+bool engineExamStartable(Map<String, dynamic> exam, {DateTime? now}) =>
+    exam['can_start'] == true && exam['paper_only'] != true && examOpensAt(exam, now: now) == null;
 
 /// The calm line a paper-only exam shows instead of a Start button.
 String get paperExamLine => t('اختبار ورقي — يُؤدّى في الفصل', 'Paper exam — sat in class');
@@ -147,7 +165,7 @@ class _EngineExamsSectionState extends State<EngineExamsSection> {
         return;
       }
     }
-    if (exam['paper_only'] != true && (exam['can_start'] == true || exam['open_attempt_id'] != null)) {
+    if (exam['paper_only'] != true && (engineExamStartable(exam) || exam['open_attempt_id'] != null)) {
       String? passcode;
       if (exam['has_passcode'] == true && exam['open_attempt_id'] == null) {
         passcode = await _askPasscode();
@@ -159,7 +177,10 @@ class _EngineExamsSectionState extends State<EngineExamsSection> {
     }
     if (results.isNotEmpty && mounted) {
       await Navigator.push(context, MaterialPageRoute(builder: (_) => ExamResultScreen(result: results.last, examTitle: '${exam['title'] ?? ''}')));
+      return;
     }
+    // nothing to open yet: say why (when it opens, no attempt left, ended) — never a silent tap
+    showAppNotice(examStartBlockText(exam) ?? t('هذا الاختبار غير متاح الآن', 'This exam is not available now'));
   }
 
   Future<String?> _askPasscode() async {

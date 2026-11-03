@@ -11,7 +11,9 @@
 //     room, exam sitting).
 // The person decides about the BUBBLE (remembered per user on this device, [AppAssistantPrefs]):
 //   • at rest it is a slim tab docked flush against the END side (titles and labels start at the other one), so it
-//     covers as little of the page as it can ([appAssistantDockX], [AppAssistantEdgeTab]); while the person scrolls
+//     covers as little of the page as it can ([appAssistantDockX], [AppAssistantEdgeTab]): its visible face stays
+//     inside the page gutter + a card's inner padding ([appAssistantTabFace]), so a card's trailing figures (a score,
+//     a percent, an amount) are never under it, on any page and at any scroll position; while the person scrolls
 //     it slides out of the way and comes back a moment after the scroll stops (no taps land on it meanwhile);
 //   • drag it to any height of either side — it snaps to the nearer side, above the role's bottom tab bar and the
 //     strip where pages keep their primary buttons, below the app bar ([appAssistantSnap]);
@@ -59,10 +61,15 @@ const _edge = 12.0;
 /// Kept free above the bottom tab bar / safe area: where pages put their primary buttons (sticky bars, FABs).
 const appAssistantBottomClear = 72.0;
 
-/// The docked tab (the bubble at rest): flush against the screen edge, so it covers ~28 dp of the page's content
-/// (pages keep a 16 dp gutter) instead of the 60 dp a free-floating disc did (H9).
+/// The docked tab (the bubble at rest): a 44 x 52 touch target flush against the screen edge (H9: the 60 dp
+/// free-floating disc covered far more of the page).
 const appAssistantTabWidth = 44.0;
 const appAssistantTabHeight = 52.0;
+
+/// What is DRAWN of the docked tab, from the screen edge: the page gutter (16) + 10 dp, i.e. inside the padding of a
+/// card (12–16 dp) or a list tile (16 dp) — never over its text. The rest of the 44 dp target is transparent. Round 3
+/// of the paper-exam e2e: the 44 dp face sat on the first result card's score and percent at 390 px.
+const appAssistantTabFace = 26.0;
 
 /// What stays visible of the tab while the person scrolls (it slides out and takes no taps).
 const appAssistantTuckedPeek = 6.0;
@@ -161,9 +168,9 @@ Offset appAssistantDismissCenter(Size screen, EdgeInsets padding, {double bottom
 bool appAssistantOverDismiss(Offset center, Offset target, {double radius = 56}) => (center - target).distance <= radius;
 
 /// The docked tab's left edge on a [screen]: flush against the chosen side, inside [padding] (safe area + the role
-/// shell's sidebar); [tucked] slides it out until only [appAssistantTuckedPeek] shows.
+/// shell's sidebar); [tucked] slides it out until only [appAssistantTuckedPeek] of its face shows.
 double appAssistantDockX(Size screen, EdgeInsets padding, {required bool left, bool tucked = false}) {
-  const hide = appAssistantTabWidth - appAssistantTuckedPeek;
+  const hide = appAssistantTabFace - appAssistantTuckedPeek;
   return left
       ? padding.left - (tucked ? hide : 0)
       : screen.width - padding.right - appAssistantTabWidth + (tucked ? hide : 0);
@@ -735,7 +742,8 @@ class AppAssistantBubble extends StatelessWidget {
 }
 
 /// The bubble at rest: a slim tab docked flush against the screen edge ([onLeftSide]: the left edge), rounded on
-/// the page side only, with the assistant's mark. A 44 x 52 touch target that covers ~28 dp of a page's content.
+/// the page side only, with the assistant's mark. A 44 x 52 touch target whose drawn face is [appAssistantTabFace]
+/// wide at the screen edge (gutter + a card's padding), the rest transparent: it never hides a card's text.
 class AppAssistantEdgeTab extends StatelessWidget {
   const AppAssistantEdgeTab({super.key, required this.onLeftSide, required this.onTap});
   final bool onLeftSide;
@@ -754,27 +762,40 @@ class AppAssistantEdgeTab extends StatelessWidget {
       child: SizedBox(
         width: appAssistantTabWidth,
         height: appAssistantTabHeight,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            boxShadow: [
-              BoxShadow(color: c.primary.withValues(alpha: c.isDark ? 0.28 : 0.18), blurRadius: 12, offset: const Offset(0, 3)),
-            ],
-          ),
-          child: Material(
-            color: c.cardBg,
-            shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: ring)),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onTap,
-              child: Padding(
-                // the mark sits a little toward the page, away from the screen edge
-                padding: EdgeInsets.only(left: onLeftSide ? 4 : 0, right: onLeftSide ? 0 : 4),
-                child: Center(
-                  child: ShaderMask(
-                    blendMode: BlendMode.srcIn,
-                    shaderCallback: (r) => c.accentGradient.createShader(r),
-                    child: const Icon(Icons.auto_awesome_rounded, size: 20),
+        // the whole 44 dp target takes the tap; only the face at the screen edge is drawn
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Align(
+            alignment: onLeftSide ? Alignment.centerLeft : Alignment.centerRight,
+            child: SizedBox(
+              key: const ValueKey('app_assistant.tab_face'),
+              width: appAssistantTabFace,
+              height: appAssistantTabHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: radius,
+                  boxShadow: [
+                    BoxShadow(color: c.primary.withValues(alpha: c.isDark ? 0.28 : 0.18), blurRadius: 12, offset: const Offset(0, 3)),
+                  ],
+                ),
+                child: Material(
+                  color: c.cardBg,
+                  shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: ring)),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: onTap,
+                    child: Padding(
+                      // the mark sits a little toward the page, away from the screen edge
+                      padding: EdgeInsets.only(left: onLeftSide ? 2 : 0, right: onLeftSide ? 0 : 2),
+                      child: Center(
+                        child: ShaderMask(
+                          blendMode: BlendMode.srcIn,
+                          shaderCallback: (r) => c.accentGradient.createShader(r),
+                          child: const Icon(Icons.auto_awesome_rounded, size: 18),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

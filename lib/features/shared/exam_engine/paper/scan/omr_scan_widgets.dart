@@ -1,12 +1,16 @@
 // The scanner's presentational widgets (plain values, no camera, no network): the layout harness and the visual
 // renders pump them directly (CLAUDE.md pattern, like PreJoinLayout / LiveControlBar).
-//   ScannerOverlay      the guide rectangle with corner guides, the live message, the good-run pulse
+//   ScannerOverlay      the guide rectangle with corner guides, the live message (a gentle tip drawn softly), the
+//                       good-run pulse
 //   ScannerControls     shutter · finish · switch camera (bottom) — ScannerTopBar: close · count · torch
-//   CaptureResultCard   accepted ("Paper 12 of 40 captured") or rejected (the exact reason + Retake)
+//   CaptureResultCard   accepted ("Paper 12 of 40 captured") or rejected (the exact reason + Retake); with the
+//                       reading's result: its tier, the improved photo's thumbnail (tap: the preview), Retake
 //   CameraProblemView   permission denied / blocked / no camera / not supported, with the fix and a way out
 //   ScanProgressView    "X of N papers processed", the counts, rejected pages with "Replace this page"
 //   OmrToolsPanel       the bubble-sheet entries of the exam's scans screen
 library;
+
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -16,7 +20,8 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import 'omr_camera.dart' show OmrCameraIssue;
-import 'omr_scan.dart' show OmrHintTone;
+import 'omr_paper_result.dart';
+import 'omr_scan.dart' show OmrHintTone, OmrPageResult, OmrTier;
 import '../omr_counts.dart';
 
 /// A4 portrait: width / height of the guide.
@@ -105,9 +110,11 @@ class _ScannerOverlayState extends State<ScannerOverlay> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final gentle = widget.tone == OmrHintTone.gentle;
     final (bg, fg, icon) = switch (widget.tone) {
       OmrHintTone.good => (c.success, c.onHero, Icons.check_circle_rounded),
       OmrHintTone.warn => (c.warning, c.charcoalDark, Icons.wb_sunny_outlined),
+      OmrHintTone.gentle => (c.heroShade.withValues(alpha: .66), c.onHero, Icons.tips_and_updates_outlined),
       OmrHintTone.neutral => (c.heroShade.withValues(alpha: .82), c.onHero, Icons.crop_free_rounded),
     };
     return LayoutBuilder(builder: (context, box) {
@@ -144,16 +151,24 @@ class _ScannerOverlayState extends State<ScannerOverlay> with SingleTickerProvid
                 label: widget.message,
                 child: ExcludeSemantics(
                   child: AnimatedContainer(
+                    key: ValueKey('omr.hint.${widget.tone.name}'),
                     duration: AppMotion.of(context).base,
-                    constraints: const BoxConstraints(maxWidth: 520, minHeight: AppTouch.min),
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-                    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.hero)),
+                    constraints: BoxConstraints(maxWidth: 520, minHeight: gentle ? 40 : AppTouch.min),
+                    padding: EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: gentle ? AppSpace.xs : AppSpace.sm),
+                    decoration: BoxDecoration(
+                      color: bg,
+                      borderRadius: BorderRadius.circular(AppRadius.hero),
+                      border: gentle ? Border.all(color: c.onHero.withValues(alpha: .28)) : null,
+                    ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(widget.icon ?? icon, color: fg, size: 22),
+                      Icon(widget.icon ?? icon, color: gentle ? c.warning : fg, size: gentle ? 19 : 22),
                       const SizedBox(width: AppSpace.xs),
                       Flexible(
                         child: Text(widget.message,
-                            textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w700, c: fg, h: 1.3)),
+                            textAlign: TextAlign.center,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: appText(gentle ? 14.5 : 16, w: gentle ? FontWeight.w600 : FontWeight.w700, c: fg, h: 1.3)),
                       ),
                     ]),
                   ),
@@ -444,6 +459,10 @@ class CaptureResultCard extends StatelessWidget {
     this.duplicate = false,
     this.onRetake,
     this.onDismiss,
+    this.result,
+    this.previewBytes,
+    this.previewLoading = false,
+    this.onPreview,
   });
 
   final bool accepted;
@@ -457,8 +476,17 @@ class CaptureResultCard extends StatelessWidget {
   final VoidCallback? onRetake;
   final VoidCallback? onDismiss;
 
+  /// The reading's result (smart photos): the card speaks its tier; null = an older server (the card above).
+  final OmrPageResult? result;
+  final Uint8List? previewBytes;
+  final bool previewLoading;
+
+  /// Opens the improved photo (shown when the result has one).
+  final VoidCallback? onPreview;
+
   @override
   Widget build(BuildContext context) {
+    if (result != null) return _withResult(context, result!);
     final c = context.colors;
     final tone = accepted ? c.success : c.danger;
     return Semantics(
@@ -528,6 +556,140 @@ class CaptureResultCard extends StatelessWidget {
                 ),
               ),
             ],
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// The card of a smart-photos answer: the tier's sentence, "Paper 12 of 40 captured" under it, the reason and tips
+  /// of a retake / reject, the improved photo's thumbnail; Retake is required only when nothing was graded.
+  Widget _withResult(BuildContext context, OmrPageResult r) {
+    final c = context.colors;
+    final (tone, _) = omrTierLook(context, r.tier);
+    final blocking = !accepted || r.tier == OmrTier.reject;
+    final lead = blocking
+        ? t('لم يُصحَّح شيء من هذه الصورة.', 'Nothing was graded from this photo.')
+        : (duplicate ? t('هذه الصورة مرفوعة من قبل — لم يُضف شيء جديد', 'This photo was already sent — nothing new was added') : title);
+    final hasPreview = r.previewUrl != null && (previewBytes != null || previewLoading || onPreview != null);
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      child: Material(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.sheet),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 520),
+          padding: const EdgeInsets.all(AppSpace.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.sheet),
+            border: Border.all(color: tone.withValues(alpha: .45), width: 1.5),
+            boxShadow: AppShadow.card(context),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // the improved photo leads (its tier on a small badge); without one, the tier's icon does
+              if (hasPreview) ...[
+                Stack(clipBehavior: Clip.none, children: [
+                  OmrPreviewThumb(bytes: previewBytes, loading: previewLoading, onTap: onPreview, width: 50),
+                  PositionedDirectional(
+                    end: -6,
+                    bottom: -6,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
+                        child: Icon(omrTierLook(context, r.tier).$2, size: 20, color: appInk(context, tone)),
+                      ),
+                    ),
+                  ),
+                ]),
+                const SizedBox(width: AppSpace.sm),
+              ],
+              Expanded(child: OmrResultSummary(result: r, lead: lead, showIcon: !hasPreview)),
+              if (!blocking && onDismiss != null)
+                IconButton(
+                  constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+                  tooltip: t('إخفاء', 'Hide'),
+                  onPressed: onDismiss,
+                  icon: Icon(Icons.close_rounded, color: c.textMedium),
+                ),
+            ]),
+            for (final m in more)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(top: AppSpace.xs, start: 56),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Padding(padding: const EdgeInsets.only(top: 6), child: Icon(Icons.circle, size: 6, color: c.danger)),
+                  const SizedBox(width: AppSpace.xs),
+                  Expanded(child: Text(m, style: appText(13.5, c: c.textDark, h: 1.35))),
+                ]),
+              ),
+            if (blocking && onRetake != null) ...[
+              const SizedBox(height: AppSpace.md),
+              SizedBox(
+                height: AppTouch.primary,
+                child: FilledButton.icon(
+                  key: const ValueKey('omr.retake'),
+                  onPressed: onRetake,
+                  icon: const Icon(Icons.camera_alt_rounded),
+                  label: Text(t('إعادة التصوير', 'Retake'), style: appText(16, w: FontWeight.w800, c: c.onHero)),
+                ),
+              ),
+            ] else if (r.tier == OmrTier.retake && onRetake != null) ...[
+              const SizedBox(height: AppSpace.sm),
+              Wrap(alignment: WrapAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                if (onDismiss != null)
+                  TextButton(
+                    key: const ValueKey('omr.keep'),
+                    style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                    onPressed: onDismiss,
+                    child: Text(t('متابعة', 'Carry on')),
+                  ),
+                FilledButton.tonalIcon(
+                  key: const ValueKey('omr.retake.soft'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                  onPressed: onRetake,
+                  icon: const Icon(Icons.camera_alt_rounded, size: 20),
+                  label: Text(t('إعادة التصوير', 'Retake')),
+                ),
+              ]),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// "The next photo replaces the earlier one · Cancel": shown while a Retake is aimed at a kept paper.
+class RetakeTargetPill extends StatelessWidget {
+  const RetakeTargetPill({super.key, required this.onCancel});
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Center(
+      child: Material(
+        key: const ValueKey('omr.retake.target'),
+        color: c.heroShade.withValues(alpha: .78),
+        borderRadius: BorderRadius.circular(AppRadius.hero),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.sm),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.autorenew_rounded, color: c.warning, size: 18),
+            const SizedBox(width: AppSpace.xs),
+            Flexible(
+              child: Text(t('الصورة التالية تحلّ محل السابقة', 'The next photo replaces the earlier one'),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.onHero)),
+            ),
+            TextButton(
+              key: const ValueKey('omr.retake.cancel'),
+              style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: c.onHero),
+              onPressed: onCancel,
+              child: Text(t('إلغاء', 'Cancel'), style: appText(13, w: FontWeight.w800, c: c.onHero)),
+            ),
           ]),
         ),
       ),
@@ -655,12 +817,16 @@ class RejectedPageRow {
     this.fileName,
     this.replacement,
     this.replacementText,
+    this.result,
   });
 
   final int pageId;
 
   /// "Page 7 is too blurry. Please upload a clearer image of it."
   final String text;
+
+  /// The reading's result (smart photos: tips + the improved image); null on an older server.
+  final OmrPageResult? result;
   final String instruction;
   final String? fileName;
 
@@ -687,7 +853,9 @@ class ScanProgressView extends StatelessWidget {
     this.duplicates = 0,
     this.camera = false,
     this.rejectedPages = const [],
+    this.papers = const [],
     this.onReplace,
+    this.onPreview,
     this.onReview,
     this.onResults,
     this.onMore,
@@ -701,7 +869,13 @@ class ScanProgressView extends StatelessWidget {
   final int graded, review, rejected, failed, duplicates;
   final bool camera;
   final List<RejectedPageRow> rejectedPages;
+
+  /// The papers read, each with its result (smart photos; the rejected ones are [rejectedPages]).
+  final List<OmrPaperRow> papers;
   final ValueChanged<int>? onReplace;
+
+  /// The improved photo of a page ([pageId], its result).
+  final void Function(int pageId, OmrPageResult result)? onPreview;
   final VoidCallback? onReview;
   final VoidCallback? onResults;
 
@@ -760,7 +934,16 @@ class ScanProgressView extends StatelessWidget {
         const SizedBox(height: AppSpace.md),
         AppSectionTitle(t('صفحات تحتاج صورة أوضح', 'Pages that need a clearer image'),
             subtitle: t('لم تُصحَّح هذه الصفحات. ارفع صورة أوضح لكل منها.', 'These pages were not graded. Upload a clearer image of each.')),
-        for (final r in rejectedPages) _RejectedTile(row: r, onReplace: onReplace == null ? null : () => onReplace!(r.pageId)),
+        for (final r in rejectedPages)
+          _RejectedTile(
+            row: r,
+            onReplace: onReplace == null ? null : () => onReplace!(r.pageId),
+            onPreview: onPreview == null || r.result?.previewUrl == null ? null : () => onPreview!(r.pageId, r.result!),
+          ),
+      ],
+      if (papers.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.md),
+        OmrPaperResults(rows: papers, onPreview: onPreview == null ? null : (p) => onPreview!(p.pageId, p.result)),
       ],
       const SizedBox(height: AppSpace.md),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -791,9 +974,10 @@ class ScanProgressView extends StatelessWidget {
 }
 
 class _RejectedTile extends StatelessWidget {
-  const _RejectedTile({required this.row, this.onReplace});
+  const _RejectedTile({required this.row, this.onReplace, this.onPreview});
   final RejectedPageRow row;
   final VoidCallback? onReplace;
+  final VoidCallback? onPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -823,6 +1007,16 @@ class _RejectedTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(row.instruction, style: appText(13, c: c.textMedium, h: 1.35)),
               ],
+              for (final tip in row.result?.tipTexts ?? const <String>[])
+                if (tip != row.instruction && tip != row.text)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.xxs),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Padding(padding: const EdgeInsets.only(top: 2), child: Icon(Icons.lightbulb_outline_rounded, size: 16, color: appInk(context, c.warning))),
+                      const SizedBox(width: AppSpace.xxs),
+                      Expanded(child: Text(tip, style: appText(13, c: c.textDark, h: 1.35))),
+                    ]),
+                  ),
               if (row.fileName != null && row.fileName!.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(row.fileName!, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: appText(12, c: c.textLight)),
@@ -843,18 +1037,26 @@ class _RejectedTile extends StatelessWidget {
             ]),
           ),
         ]),
-        if (onReplace != null && !settled && rep != 'uploading' && rep != 'processing') ...[
+        if ((onReplace != null && !settled && rep != 'uploading' && rep != 'processing') || onPreview != null) ...[
           const SizedBox(height: AppSpace.sm),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: FilledButton.tonalIcon(
-              key: ValueKey('omr.replace.${row.pageId}'),
-              style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-              onPressed: onReplace,
-              icon: const Icon(Icons.find_replace_rounded),
-              label: Text(t('استبدال هذه الصفحة', 'Replace this page')),
-            ),
-          ),
+          Wrap(alignment: WrapAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            if (onPreview != null)
+              TextButton.icon(
+                key: ValueKey('omr.paper.preview.${row.pageId}'),
+                style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                onPressed: onPreview,
+                icon: const Icon(Icons.image_search_rounded, size: 20),
+                label: Text(t('معاينة', 'Preview')),
+              ),
+            if (onReplace != null && !settled && rep != 'uploading' && rep != 'processing')
+              FilledButton.tonalIcon(
+                key: ValueKey('omr.replace.${row.pageId}'),
+                style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                onPressed: onReplace,
+                icon: const Icon(Icons.find_replace_rounded),
+                label: Text(t('استبدال هذه الصفحة', 'Replace this page')),
+              ),
+          ]),
         ],
       ]),
     );

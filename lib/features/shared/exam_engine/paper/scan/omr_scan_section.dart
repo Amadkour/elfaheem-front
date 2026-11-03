@@ -81,8 +81,9 @@ class _OmrScanSectionState extends State<OmrScanSection> {
         OmrToolEntry(
           id: 'upload',
           icon: Icons.upload_file_rounded,
-          title: t('رفع صور أو PDF', 'Upload images / PDF'),
-          subtitle: t('عدة صور أو ملفات PDF دفعة واحدة', 'Many images or PDFs at once'),
+          title: t('رفع الأوراق', 'Upload papers'),
+          subtitle: t('من معرض الصور أو الملفات أو مجلد الماسح الضوئي — صور وPDF معًا',
+              "From the photo gallery, files or a scanner's folder — images and PDFs together"),
           onTap: () => _after(startOmrUpload(context, examId: widget.examId, examTitle: widget.examTitle, api: widget.api)),
         ),
       ],

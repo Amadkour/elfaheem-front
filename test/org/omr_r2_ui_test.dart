@@ -29,7 +29,7 @@ import 'package:flutter_education_app/features/shared/exam_engine/paper/review/o
 import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review_page.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review_parts.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_routes.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart' show OmrSheetsInfo;
+import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart' show OmrPrintMode, OmrSheetsInfo;
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_sheets_sheet.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -203,8 +203,8 @@ void main() {
           ListView(padding: const EdgeInsets.all(16), children: [
             OmrSheetsOptionsView(
               info: const OmrSheetsInfo(printable: true, questions: 3, sheetQuestions: 50, idKind: 'shaded'),
-              named: false,
-              onNamed: (_) {},
+              mode: OmrPrintMode.blank,
+              onMode: (_) {},
               forms: const {},
               onForm: (_) {},
               copiesController: TextEditingController(text: '1'),
