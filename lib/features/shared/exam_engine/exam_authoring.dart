@@ -1137,9 +1137,29 @@ class ExamAuthoringApi {
         'status': ?status,
       }));
 
+  /// The space each course's exams were found in this session (course id → organization id, null = personal).
+  static final Map<int, int?> _knownScope = {};
+
+  /// Tests: forget the remembered spaces.
+  static void forgetScopes() => _knownScope.clear();
+
+  /// A caller that knows the course's organization (the teacher's course carries `org`) says so before the first
+  /// list: it is then asked under it at once, no 409 `course_not_in_org` round trip.
+  static void knowScope(int courseId, int? orgId) {
+    if (orgId != null) _knownScope[courseId] = orgId;
+  }
+
   /// The course's exams, in the space the server says the course belongs to (asked once without an organization:
-  /// an organization's course answers 409 `course_not_in_org` naming it, then asked again under it).
+  /// an organization's course answers 409 `course_not_in_org` naming it, then asked again under it). The answer is
+  /// remembered for the session, so the next visit asks in the right space at once (the hub reloads on every return:
+  /// it logged a 409 and a retry each time). A course moved since is caught by the same 409 and asked again.
   Future<ExamScope> resolveScope(int courseId, {int? orgId}) async {
+    final s = await _resolveScope(courseId, orgId: orgId ?? _knownScope[courseId]);
+    if (s.list.ok) _knownScope[courseId] = s.orgId;
+    return s;
+  }
+
+  Future<ExamScope> _resolveScope(int courseId, {int? orgId}) async {
     var r = await exams(orgId: orgId, courseId: courseId);
     if (!r.ok && r.code == 'course_not_in_org' && r.detail['course_org_id'] == null && orgId != null) {
       r = await exams(courseId: courseId);                 // a teacher's personal course: the personal space

@@ -171,11 +171,15 @@ void main() {
       expect(omrResultTitle(OmrTier.retake, 0), 'Read in part');
       expect(omrResultTitle(OmrTier.reject, 0), "Couldn't read this paper");
       AppConfig.lang = 'ar';
-      expect(omrResultTitle(OmrTier.accept, 0), 'قُرئت الورقة بنجاح');
-      expect(omrResultTitle(OmrTier.flags, 1), 'قُرئت — سؤال واحد للمراجعة');
-      expect(omrResultTitle(OmrTier.flags, 2), 'قُرئت — سؤالان للمراجعة');
-      expect(omrResultTitle(OmrTier.flags, 3), 'قُرئت — 3 أسئلة للمراجعة');
-      expect(omrResultTitle(OmrTier.retake, 11), 'قُرئت جزئيًا — 11 سؤالًا للمراجعة');
+      // the server's phrasing (smart_message), so a batch never says one state two ways
+      expect(omrResultTitle(OmrTier.accept, 0), 'تمت القراءة بنجاح');
+      expect(omrResultTitle(OmrTier.flags, 1), 'تمت القراءة، وسؤال واحد للمراجعة');
+      expect(omrResultTitle(OmrTier.flags, 2), 'تمت القراءة، وسؤالان للمراجعة');
+      expect(omrResultTitle(OmrTier.flags, 3), 'تمت القراءة، و3 أسئلة للمراجعة');
+      expect(omrResultTitle(OmrTier.flags, 11), 'تمت القراءة، و11 سؤالًا للمراجعة');
+      expect(omrResultTitle(OmrTier.flags, 100), 'تمت القراءة، و100 سؤال للمراجعة');
+      expect(omrResultTitle(OmrTier.retake, 11), 'تمت القراءة جزئيًا، و11 سؤالًا للمراجعة');
+      expect(omrResultTitle(OmrTier.flags, 0, student: OmrStudentNeed.choose), 'تمت القراءة — اختر الطالب');
       expect(omrResultTitle(OmrTier.reject, 0), 'تعذّرت قراءة الورقة');
       expect(omrReadOkText(2), 'قُرئت ورقتان بنجاح');
       expect(omrReadOkText(12), 'قُرئت 12 ورقة بنجاح');
@@ -487,9 +491,9 @@ void main() {
       testWidgets('accept · flags · retake · reject ($lang)', (tester) async {
         AppConfig.lang = lang;
         final titles = {
-          'capture_accept': lang == 'ar' ? 'قُرئت الورقة بنجاح' : 'Read successfully',
-          'capture_flags': lang == 'ar' ? 'قُرئت — 3 أسئلة للمراجعة' : 'Read with 3 questions to review',
-          'capture_retake': lang == 'ar' ? 'قُرئت جزئيًا — 5 أسئلة للمراجعة' : 'Read in part — 5 questions to review',
+          'capture_accept': lang == 'ar' ? 'تمت القراءة بنجاح' : 'Read successfully',
+          'capture_flags': lang == 'ar' ? 'تمت القراءة، و3 أسئلة للمراجعة' : 'Read with 3 questions to review',
+          'capture_retake': lang == 'ar' ? 'تمت القراءة جزئيًا، و5 أسئلة للمراجعة' : 'Read in part — 5 questions to review',
           'capture_reject': lang == 'ar' ? 'تعذّرت قراءة الورقة' : "Couldn't read this paper",
         };
         for (final MapEntry(key: name, value: title) in titles.entries) {
@@ -563,7 +567,9 @@ void main() {
       expect(find.text('Read successfully'), findsNWidgets(7));
 
       // the rejected page: its sentence, its tip, Preview → "Replace this page"
-      expect(find.text('Page 7 is too blurry. Please upload a clearer image of it.'), findsOneWidget);
+      // with a result its message (the legacy page sentence repeats it for older apps), under "Page 7"
+      expect(find.text('Too blurry, hold steady.'), findsOneWidget);
+      expect(find.text('Paper 7'), findsOneWidget, reason: 'one word for a scanned sheet in the batch views');
       expect(find.text('Rest the phone on something steady or brace your elbows.'), findsOneWidget);
       final prev = find.byKey(const ValueKey('omr.paper.preview.14'));
       await tester.ensureVisible(prev);
@@ -574,7 +580,7 @@ void main() {
       final rep = find.byKey(const ValueKey('omr.preview.retake'));
       await tester.ensureVisible(rep);
       await tester.pump();
-      expect(find.descendant(of: rep, matching: find.text('Replace this page')), findsOneWidget);
+      expect(find.descendant(of: rep, matching: find.text('Replace this paper')), findsOneWidget);
       await tester.tap(rep);
       await _frames(tester, 6);
       expect(replaced, ['$_e/omr/pages/14/replace']);
@@ -623,7 +629,7 @@ void main() {
         final rep = find.byKey(const ValueKey('omr.preview.retake'));
         await tester.ensureVisible(rep);
         await tester.pump();
-        expect(find.descendant(of: rep, matching: find.text('Replace this page')), findsOneWidget);
+        expect(find.descendant(of: rep, matching: find.text('Replace this paper')), findsOneWidget);
         await tester.tap(rep);
         await _frames(tester, 6);
       }
@@ -713,6 +719,7 @@ void main() {
         AppConfig.lang = lang;
         await openSheet(tester, 'sheets_info_no_prefilled');
         expect(find.byKey(const ValueKey('omr.sheets.mode.prefilled')), findsNothing);
+        expect(find.byKey(const ValueKey('omr.sheets.mode.prefilled.off')), findsOneWidget, reason: 'shown disabled with its reason, not hidden');
         expect(find.byKey(const ValueKey('omr.sheets.mode.named')), findsOneWidget);
         expect(find.text(lang == 'ar' ? 'لا يمكن التظليل المسبق: بعض أرقام الطلاب فيها حروف.' : 'Pre-filled is not possible: some student numbers contain letters.'),
             findsOneWidget);

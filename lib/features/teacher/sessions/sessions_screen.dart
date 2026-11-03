@@ -425,7 +425,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           color: c.accent,
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => TeacherExamHubScreen(courseId: course.id, courseTitle: title)),
+            MaterialPageRoute(builder: (_) => TeacherExamHubScreen(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
           ),
         ),
         if (_dataLab)

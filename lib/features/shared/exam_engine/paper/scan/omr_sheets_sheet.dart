@@ -66,26 +66,31 @@ IconData _modeIcon(OmrPrintMode m) => switch (m) {
 
 /// One mode: its title and one line; a radio card.
 class _ModeOption extends StatelessWidget {
-  const _ModeOption({required this.mode, required this.selected, required this.onTap});
+  const _ModeOption({required this.mode, required this.selected, required this.onTap, this.unavailable});
   final OmrPrintMode mode;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Why this mode is not offered: the card is drawn disabled with this line instead of its description.
+  final String? unavailable;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final ink = appInk(context, c.primary);
+    final off = unavailable != null;
     return Semantics(
       inMutuallyExclusiveGroup: true,
       checked: selected,
-      button: true,
+      button: !off,
+      enabled: !off,
       child: Material(
-        color: selected ? c.primary.withValues(alpha: .08) : c.cardBg,
+        color: selected ? c.primary.withValues(alpha: .08) : (off ? c.background : c.cardBg),
         borderRadius: BorderRadius.circular(AppRadius.card),
         child: InkWell(
-          key: ValueKey('omr.sheets.mode.${mode.name}'),
+          key: ValueKey(off ? 'omr.sheets.mode.${mode.name}.off' : 'omr.sheets.mode.${mode.name}'),
           borderRadius: BorderRadius.circular(AppRadius.card),
-          onTap: onTap,
+          onTap: off ? null : onTap,
           child: Container(
             constraints: const BoxConstraints(minHeight: AppTouch.min),
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
@@ -94,17 +99,31 @@ class _ModeOption extends StatelessWidget {
               border: Border.all(color: selected ? c.primary : c.textLight.withValues(alpha: .3), width: selected ? 1.6 : 1),
             ),
             child: Row(children: [
-              Icon(_modeIcon(mode), color: selected ? ink : c.textMedium),
+              Icon(_modeIcon(mode), color: off ? c.textLight : (selected ? ink : c.textMedium)),
               const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(omrModeTitle(mode), style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
+                  // the reason line already says "… is not available": the title stays the mode's name
+                  Text(omrModeTitle(mode), style: appText(14.5, w: FontWeight.w700, c: off ? c.textMedium : c.textDark)),
                   const SizedBox(height: 2),
-                  Text(omrModeLine(mode), style: appText(12.5, c: c.textMedium, h: 1.35)),
+                  if (off)
+                    Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Padding(padding: const EdgeInsets.only(top: 1), child: Icon(Icons.info_outline_rounded, size: 16, color: c.textMedium)),
+                      const SizedBox(width: AppSpace.xxs),
+                      Expanded(
+                          child: Text(unavailable!,
+                              key: ValueKey(mode == OmrPrintMode.prefilled ? 'omr.sheets.prefilled.missing' : 'omr.sheets.${mode.name}.missing'),
+                              style: appText(12.5, c: c.textMedium, h: 1.35))),
+                    ])
+                  else
+                    Text(omrModeLine(mode), style: appText(12.5, c: c.textMedium, h: 1.35)),
                 ]),
               ),
               const SizedBox(width: AppSpace.xs),
-              Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded, color: selected ? ink : c.textLight),
+              if (off)
+                Icon(Icons.block_rounded, color: c.textLight)
+              else
+                Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded, color: selected ? ink : c.textLight),
             ]),
           ),
         ),
@@ -167,7 +186,6 @@ class OmrSheetsOptionsView extends StatelessWidget {
       ]);
     }
     final named = mode != OmrPrintMode.blank;
-    final missing = info.prefilledMissing;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Text(summary, style: appText(13.5, c: c.textMedium, h: 1.4)),
       const SizedBox(height: AppSpace.md),
@@ -180,16 +198,12 @@ class OmrSheetsOptionsView extends StatelessWidget {
       else ...[
         Text(t('ما يُطبع على الورقة', 'What each sheet shows'), style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
         const SizedBox(height: AppSpace.xs),
-        for (final m in omrOfferedModes(info)) ...[
-          _ModeOption(mode: m, selected: m == mode, onTap: () => onMode(m)),
+        // every mode, in order: an unavailable one disabled with its reason (D-161: blank is dropped on purpose when
+        // the students' numbers do not fit the ID zone), never hidden without a word
+        for (final m in OmrPrintMode.values) ...[
+          _ModeOption(mode: m, selected: m == mode, onTap: () => onMode(m), unavailable: info.missingText(m)),
           const SizedBox(height: AppSpace.xs),
         ],
-        if (missing != null)
-          Row(key: const ValueKey('omr.sheets.prefilled.missing'), crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(padding: const EdgeInsets.only(top: 1), child: Icon(Icons.info_outline_rounded, size: 16, color: c.textMedium)),
-            const SizedBox(width: AppSpace.xxs),
-            Expanded(child: Text(missing, style: appText(12.5, c: c.textMedium, h: 1.35))),
-          ]),
       ],
       if (info.forms.isNotEmpty) ...[
         const SizedBox(height: AppSpace.md),

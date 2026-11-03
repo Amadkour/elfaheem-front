@@ -193,7 +193,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
               label: 'analytics_btn_exams'.tr,
               sublabel: 'analytics_btn_exams_sub'.tr,
               color: c.primary,
-              onTap: () => go(TeacherExamHubScreen(courseId: course.id, courseTitle: title)),
+              onTap: () => go(TeacherExamHubScreen(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
             ),
           ),
           const SizedBox(height: 10),
@@ -218,7 +218,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
     final title = _courseTitle(course);
     return switch (i.target) {
       AnTarget.attendance => () => _push(TeacherAttendanceScreen(courseId: course.id, courseTitle: title)),
-      AnTarget.exams => () => _push(TeacherExamHubScreen(courseId: course.id, courseTitle: title)),
+      AnTarget.exams => () => _push(TeacherExamHubScreen(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
       AnTarget.dataLab => () => _push(DataLabScreen(courseId: course.id, courseTitle: title)),
       AnTarget.course || AnTarget.review => () => _openTools(course),
       AnTarget.none => null,
@@ -683,7 +683,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                     label: 'analytics_btn_exams'.tr,
                     sublabel: 'analytics_btn_exams_sub'.tr,
                     color: c.primary,
-                    onTap: () => _push(context, TeacherExamHubScreen(courseId: course.id, courseTitle: title)),
+                    onTap: () => _push(context, TeacherExamHubScreen(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
                   ),
                 ),
               ),

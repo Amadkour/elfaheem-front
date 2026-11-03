@@ -133,6 +133,7 @@ class OmrFixCallbacks {
     this.onOpenPaper,
     this.onSetScore,
     this.onFixText,
+    this.onReplacePage,
   });
 
   final ValueChanged<List<String>>? onChoose;
@@ -151,6 +152,10 @@ class OmrFixCallbacks {
   /// Handwritten answers: set the score (0 … points, step 0.5) / fix the recognised text (one text per blank).
   final ValueChanged<double>? onSetScore;
   final ValueChanged<List<String>>? onFixText;
+
+  /// Image quality: a clearer image of the page, through the same replace flow as the batch page (the page's open
+  /// items close as "replaced" once the gate accepts it).
+  final VoidCallback? onReplacePage;
 }
 
 /// One review item: the crop next to the system's reading, why it is here, and its one-click fix.
@@ -198,6 +203,8 @@ class OmrReviewItemCard extends StatelessWidget {
           Text(item.reason, key: const ValueKey('omr.item.reason'), style: appText(16, w: FontWeight.w700, c: c.textDark)),
           const SizedBox(height: 2),
           Text(_where(), style: appText(12.5, c: c.textMedium)),
+          // which paper: "Page 3 · wa01.jpg · Today, 10:42 AM" (two items of one kind told apart)
+          if (item.whereText.isNotEmpty) Text(item.whereText, key: const ValueKey('omr.item.where'), style: appText(12, c: c.textLight)),
           if (item.detail != null && item.open) ...[
             const SizedBox(height: AppSpace.xxs),
             Text(item.detail!, key: const ValueKey('omr.item.detail'), style: appText(13, c: c.textDark, h: 1.35)),
@@ -252,13 +259,13 @@ class OmrReviewItemCard extends StatelessWidget {
     );
   }
 
+  /// "Sara Mahmoud · Answers · Question 3 · 1 pt" — what it is and whose.
   String _where() {
     final parts = <String>[
       ?item.studentText,
       omrKindLabel(item.kind),
       if (item.kind == 'bubble' && item.n != null) t('السؤال ${item.n}', 'Question ${item.n}'),
       if (item.question != null) omrPointsText(item.question!.points),
-      if (item.pageLabel != null && item.kind != 'bubble') t('الصفحة ${item.pageLabel}', 'Page ${item.pageLabel}'),
     ];
     return parts.join(' · ');
   }
@@ -275,8 +282,8 @@ class OmrReviewItemCard extends StatelessWidget {
             onAccept: fix.onAccept,
             onSetScore: fix.onSetScore,
             onFixText: fix.onFixText),
-        // a kind the app does not know yet: the reason, the crop and "set aside" when the server allows it
-        _ => OmrDismissFix(item: item, onDismiss: fix.onDismiss),
+        // image quality (and a kind the app does not know yet): Replace this page, or set it aside
+        _ => OmrDismissFix(item: item, onDismiss: fix.onDismiss, onReplacePage: item.kind == 'quality' && item.scanPageId != null ? fix.onReplacePage : null),
       };
 }
 
@@ -305,15 +312,33 @@ class _ReadingBlock extends StatelessWidget {
         ];
       case 'identifier':
         final cands = item.candidates;
+        final graded = item.code == 'student_already_scanned' ? item.gradedStudentText : null;
+        final gradedPage = item.code == 'student_already_scanned' ? item.gradedPageText : null;
         body = [
           if (item.readValue.isNotEmpty)
             Directionality(textDirection: TextDirection.ltr, child: Text(item.readValue, style: appText(18, w: FontWeight.w700, c: c.textDark)))
-          else
-            Text(t('لم يُقرأ رقم', 'No number read'), style: appText(15, w: FontWeight.w600, c: c.textDark)),
-          if (item.digits.any((d) => d.confidence != null)) ...[const SizedBox(height: AppSpace.xs), OmrDigitsRow(digits: item.digits)],
+          // a duplicate found by its QR code names its student below: "no number" would only distract there
+          else if (graded == null)
+            Text(t('تعذّرت قراءة أي رقم', 'No number could be read'),
+                key: const ValueKey('omr.id.nothingRead'), style: appText(15, w: FontWeight.w600, c: c.textDark)),
+          if (!item.nothingRead && item.digits.any((d) => d.confidence != null)) ...[const SizedBox(height: AppSpace.xs), OmrDigitsRow(digits: item.digits)],
           if (cands.length > 1 && item.code == 'identifier_duplicate') ...[
             const SizedBox(height: AppSpace.xs),
             Text(t('${omrStudentsText(cands.length)} لديهم هذا الرقم', '${cands.length} students have this ID'), style: appText(13, c: c.textMedium)),
+          ],
+          if (item.namedText != null) ...[
+            const SizedBox(height: AppSpace.sm),
+            Text(t('الطالب على الورقة', 'The student on the sheet'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+            Text(item.namedText!, key: const ValueKey('omr.id.named'), style: appText(15, w: FontWeight.w700, c: c.textDark)),
+          ],
+          if (graded != null) ...[
+            const SizedBox(height: AppSpace.sm),
+            Text(t('مصحّحة بالفعل للطالب', 'Already graded for'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+            Text(graded, key: const ValueKey('omr.dup.student'), style: appText(15, w: FontWeight.w700, c: c.textDark)),
+          ],
+          if (gradedPage != null) ...[
+            const SizedBox(height: AppSpace.xxs),
+            Text(t('الورقة المصحّحة: $gradedPage', 'The graded sheet: $gradedPage'), key: const ValueKey('omr.dup.page'), style: appText(13, c: c.textMedium)),
           ],
         ];
       case 'form':
@@ -471,7 +496,8 @@ class OmrBubbleFix extends StatelessWidget {
       Text(item.multi ? t('اختر الإجابات الصحيحة على الورقة ثم احفظ', 'Tick every answer on the sheet, then save') : t('اضغط الإجابة الصحيحة على الورقة', 'Tap the answer on the sheet'),
           style: appText(14, w: FontWeight.w600, c: c.textDark)),
       const SizedBox(height: AppSpace.sm),
-      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+      // the printed sheet runs A → E left to right (the crop above shows it so): the buttons follow it in Arabic too
+      Wrap(textDirection: TextDirection.ltr, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final (i, l) in letters.indexed)
           OmrOptionButton(
             key: ValueKey('omr.opt.$l'),
@@ -535,6 +561,13 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
       _known[c.id] = c;
     }
     final s = widget.fix.onSearch;
+    // nothing was read: the students are listed at once (choosing is the way on, typing the ID the fallback)
+    if (widget.item.nothingRead && widget.item.can('assign') && widget.fix.onAssign != null && s != null &&
+        !const {'identifier_conflict', 'student_already_scanned'}.contains(widget.item.code)) {
+      Future.microtask(() {
+        if (mounted && _hits == null) _search('');
+      });
+    }
     if (widget.item.code == 'identifier_conflict' && s != null) {
       s('').then((r) {
         if (!mounted || r == null) return;
@@ -552,14 +585,15 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
     final it = widget.item;
     final out = <(OmrStudent, String)>[];
     final seen = <int>{};
-    void add(int? id, String why) {
-      if (id == null || !seen.add(id)) return;
-      out.add((_known[id] ?? OmrStudent(id, ''), why));
+    void add(OmrStudent? named, String why) {
+      if (named == null || !seen.add(named.id)) return;
+      out.add((named.name.trim().isNotEmpty ? named : (_known[named.id] ?? named), why));
     }
 
-    add(it.uploadedFor, t('رُفعت الورقة باسمه', 'The page was uploaded for this student'));
-    add(int.tryParse('${it.reading['read_student_id'] ?? ''}'), t('رقمه مظلّل على الورقة: ${it.readValue}', "The sheet shows this student's ID: ${it.readValue}"));
-    add(int.tryParse('${it.reading['qr_student_id'] ?? ''}'), t('رمز QR في الورقة يحمل اسمه', "The sheet's QR code names this student"));
+    add(it.namedStudent('uploaded_for'), t('رُفعت الورقة باسمه', 'The page was uploaded for this student'));
+    add(it.namedStudent('read_'),
+        it.readValue.isEmpty ? t('رقمه على الورقة', "The sheet shows this student's ID") : t('رقمه مظلّل على الورقة: ${it.readValue}', "The sheet shows this student's ID: ${it.readValue}"));
+    add(it.namedStudent('qr_'), t('رمز QR في الورقة يحمل اسمه', "The sheet's QR code names this student"));
     return out;
   }
 
@@ -591,42 +625,19 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
     final it = widget.item;
     final f = widget.fix;
     final conflict = it.code == 'identifier_conflict' ? _conflictChoices() : const <(OmrStudent, String)>[];
-    final cands = conflict.isNotEmpty ? const <OmrStudent>[] : it.candidates;
-    final canAccept = it.can('accept') && it.readValue.isNotEmpty && !_noAccept.contains(it.code);
+    final dup = it.code == 'student_already_scanned';
+    // the student the sheet names (QR) or the system proposes, first; a conflict lists its own choices
+    final proposed = conflict.isEmpty && !dup ? it.proposed : null;
+    final cands = conflict.isNotEmpty ? const <OmrStudent>[] : [for (final s in it.candidates) if (s.id != proposed?.id) s];
+    // never "The ID is right: ??": only a value read in full is offered as right
+    final canAccept = it.can('accept') && it.readValue.isNotEmpty && !it.partlyRead && !_noAccept.contains(it.code);
+    // nothing read: choosing the student leads (a duplicate's Replace leads there: its student is known)
+    final choosing = it.nothingRead && !dup;
     final section = appText(13, w: FontWeight.w700, c: c.textMedium);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (conflict.isNotEmpty && it.can('assign') && f.onAssign != null) ...[
-        Text(t('لمن هذه الورقة؟', 'Whose sheet is this?'), style: section),
-        const SizedBox(height: AppSpace.xs),
-        for (final (s, why) in conflict) _StudentRow(student: s, note: why, onTap: () => f.onAssign!(s)),
-        const SizedBox(height: AppSpace.md),
-      ],
-      if (canAccept) ...[
-        FilledButton.icon(
-          key: const ValueKey('omr.id.accept'),
-          onPressed: f.onAccept,
-          icon: const Icon(Icons.check_rounded),
-          label: Text(t('الرقم صحيح: ${it.readValue}', 'The ID is right: ${it.readValue}')),
-        ),
-        const SizedBox(height: AppSpace.md),
-      ],
-      if (it.code == 'student_already_scanned' && it.can('replace')) ...[
-        FilledButton.icon(
-          key: const ValueKey('omr.id.replace'),
-          onPressed: f.onReplace,
-          icon: const Icon(Icons.swap_horiz_rounded),
-          label: Text(t('هذه ورقة الطالب: استبدل الورقة المصححة', "This is the student's sheet: replace the graded one")),
-        ),
-        const SizedBox(height: AppSpace.md),
-      ],
-      if (cands.isNotEmpty && it.can('assign')) ...[
-        Text(cands.length == 1 ? t('هل هي ورقة هذا الطالب؟', "Is it this student's sheet?") : t('لمن هذه الورقة؟', 'Whose sheet is this?'), style: section),
-        const SizedBox(height: AppSpace.xs),
-        for (final s in cands) _StudentRow(student: s, onTap: f.onAssign == null ? null : () => f.onAssign!(s)),
-        const SizedBox(height: AppSpace.md),
-      ],
-      if (it.can('fix') && f.onFix != null && it.code != 'student_already_scanned') ...[
-        Text(t('صحّح الرقم', 'Fix the ID'), style: section),
+    final dupName = it.gradedStudentName;
+    final fixBlock = <Widget>[
+      if (it.can('fix') && f.onFix != null && !dup) ...[
+        Text(choosing ? t('أو اكتب الرقم كما على الورقة', 'Or type the ID as on the sheet') : t('صحّح الرقم', 'Fix the ID'), style: section),
         const SizedBox(height: AppSpace.xs),
         Row(children: [
           Expanded(
@@ -651,8 +662,10 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
         ]),
         const SizedBox(height: AppSpace.md),
       ],
+    ];
+    final chooseBlock = <Widget>[
       if (it.can('assign') && f.onAssign != null) ...[
-        Text(t('أو اختر الطالب', 'Or choose the student'), style: section),
+        Text(choosing ? t('اختر الطالب', 'Choose the student') : t('أو اختر الطالب', 'Or choose the student'), key: const ValueKey('omr.id.chooseTitle'), style: section),
         const SizedBox(height: AppSpace.xs),
         if (!_noSearch && f.onSearch != null)
           TextField(
@@ -695,6 +708,48 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
         ],
         const SizedBox(height: AppSpace.sm),
       ],
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (conflict.isNotEmpty && it.can('assign') && f.onAssign != null) ...[
+        Text(t('لمن هذه الورقة؟', 'Whose sheet is this?'), style: section),
+        const SizedBox(height: AppSpace.xs),
+        for (final (s, why) in conflict) _StudentRow(student: s, note: why, onTap: () => f.onAssign!(s)),
+        const SizedBox(height: AppSpace.md),
+      ],
+      if (canAccept) ...[
+        FilledButton.icon(
+          key: const ValueKey('omr.id.accept'),
+          onPressed: f.onAccept,
+          icon: const Icon(Icons.check_rounded),
+          label: Text(t('الرقم صحيح: ${it.readValue}', 'The ID is right: ${it.readValue}')),
+        ),
+        const SizedBox(height: AppSpace.md),
+      ],
+      if (dup && it.can('replace')) ...[
+        FilledButton.icon(
+          key: const ValueKey('omr.id.replace'),
+          onPressed: f.onReplace,
+          icon: const Icon(Icons.swap_horiz_rounded),
+          label: Text(dupName == null
+              ? t('اعتمد هذه الورقة لهذا الطالب (تحلّ محل المصحّحة)', 'Use this sheet for this student (replaces the graded one)')
+              : t('اعتمد هذه الورقة للطالب $dupName (تحلّ محل المصحّحة)', 'Use this sheet for $dupName (replaces the graded one)')),
+        ),
+        const SizedBox(height: AppSpace.md),
+      ],
+      if (proposed != null && it.can('assign') && f.onAssign != null) ...[
+        Text(t('هل هي ورقة هذا الطالب؟', "Is it this student's sheet?"), style: section),
+        const SizedBox(height: AppSpace.xs),
+        _StudentRow(key: const ValueKey('omr.id.proposed'), student: proposed, note: it.proposedWhy, onTap: () => f.onAssign!(proposed)),
+        const SizedBox(height: AppSpace.md),
+      ],
+      if (cands.isNotEmpty && it.can('assign')) ...[
+        Text(cands.length == 1 ? t('هل هي ورقة هذا الطالب؟', "Is it this student's sheet?") : t('لمن هذه الورقة؟', 'Whose sheet is this?'), style: section),
+        const SizedBox(height: AppSpace.xs),
+        for (final s in cands) _StudentRow(student: s, onTap: f.onAssign == null ? null : () => f.onAssign!(s)),
+        const SizedBox(height: AppSpace.md),
+      ],
+      // nothing read: choosing the student leads, typing the ID is the fallback; otherwise fixing the read ID leads
+      if (choosing) ...[...chooseBlock, ...fixBlock] else ...[...fixBlock, ...chooseBlock],
       if (it.can('dismiss'))
         Align(
           alignment: AlignmentDirectional.centerStart,
@@ -710,7 +765,7 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
 }
 
 class _StudentRow extends StatelessWidget {
-  const _StudentRow({required this.student, required this.onTap, this.note});
+  const _StudentRow({super.key, required this.student, required this.onTap, this.note});
   final OmrStudent student;
   final VoidCallback? onTap;
 
@@ -778,7 +833,7 @@ class OmrFormFix extends StatelessWidget {
       else ...[
         Text(t('ما نموذج هذه الورقة؟', 'Which form is this sheet?'), style: appText(14, w: FontWeight.w600, c: c.textDark)),
         const SizedBox(height: AppSpace.sm),
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        Wrap(textDirection: TextDirection.ltr, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final (i, f) in forms.indexed)
             OmrOptionButton(
               key: ValueKey('omr.form.$f'),
@@ -827,17 +882,35 @@ class OmrKeyMissingFix extends StatelessWidget {
 
 /// Image quality (and any kind the app does not know yet): the only decision is to set it aside.
 class OmrDismissFix extends StatelessWidget {
-  const OmrDismissFix({super.key, required this.item, this.onDismiss});
+  const OmrDismissFix({super.key, required this.item, this.onDismiss, this.onReplacePage});
   final OmrReviewItem item;
   final VoidCallback? onDismiss;
+
+  /// "Replace this page" (a rejected page's quality item): the batch page's replace flow, right here.
+  final VoidCallback? onReplacePage;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final replace = onReplacePage != null;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(t('ارفع صورة أوضح لهذه الصفحة، ثم أغلق هذا العنصر', 'Upload a clearer image of this page, then close this item'),
-          style: appText(14, c: c.textDark)),
+      Text(
+          replace
+              ? t('ارفع صورة أوضح لهذه الصفحة: تُقرأ من جديد ويُغلق هذا العنصر وحده', 'Upload a clearer image of this page: it is read again and this item closes by itself')
+              : t('ارفع صورة أوضح لهذه الصفحة من صفحة الدفعة («الأوراق الممسوحة» ← الدفعة ← «استبدال هذه الصفحة»)، ثم أغلق هذا العنصر',
+                  'Upload a clearer image of this page from its batch (Scanned pages → the batch → Replace this page), then close this item'),
+          style: appText(14, c: c.textDark, h: 1.35)),
       const SizedBox(height: AppSpace.sm),
+      if (replace) ...[
+        FilledButton.icon(
+          key: const ValueKey('omr.quality.replace'),
+          style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+          onPressed: onReplacePage,
+          icon: const Icon(Icons.find_replace_rounded),
+          label: Text(t('استبدال هذه الصفحة', 'Replace this page')),
+        ),
+        const SizedBox(height: AppSpace.xs),
+      ],
       if (item.can('dismiss'))
         OutlinedButton.icon(
           key: const ValueKey('omr.dismiss'),
@@ -894,6 +967,43 @@ class OmrScoreBanner extends StatelessWidget {
   }
 }
 
+/// "Page 3 · wa01.jpg · Today, 10:42 AM" on one line: the page and file give way (an ellipsis), the time never does.
+class OmrWhereLine extends StatelessWidget {
+  const OmrWhereLine({super.key, required this.item});
+  final OmrReviewItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final style = appText(11.5, c: c.textLight);
+    final place = item.placeText, when = item.whenText;
+    if (place.isEmpty || when == null) return Text(item.whereText, maxLines: 2, overflow: TextOverflow.ellipsis, style: style);
+    final tail = ' · $when';
+    return LayoutBuilder(builder: (context, box) {
+      final painter = TextPainter(
+          text: TextSpan(text: tail, style: style),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1)
+        ..layout();
+      final tailWidth = painter.width;
+      painter.dispose();
+      // too narrow to keep the time beside even a short page name: the line wraps instead (two lines at most)
+      if (!box.hasBoundedWidth || tailWidth + 48 > box.maxWidth) {
+        return Text(item.whereText, maxLines: 2, overflow: TextOverflow.ellipsis, style: style);
+      }
+      return Semantics(
+        label: item.whereText,
+        excludeSemantics: true,
+        child: Row(children: [
+          Flexible(child: Text(place, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          Text(tail, maxLines: 1, softWrap: false, style: style),
+        ]),
+      );
+    });
+  }
+}
+
 // ── queue ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /// The queue as compact rows (the side list on desktop, the sheet on phones).
@@ -935,6 +1045,9 @@ class OmrQueueList extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: appText(12, c: c.textMedium)),
+                      // which paper: page · file · when (two "Student ID is empty" rows told apart); a long file name
+                      // gives way, the time stays whole (it was cut to "Today, 3:18…" in the desktop side list)
+                      if (it.whereText.isNotEmpty) OmrWhereLine(item: it, key: ValueKey('omr.queue.where.${it.id}')),
                     ]),
                   ),
                 ]),

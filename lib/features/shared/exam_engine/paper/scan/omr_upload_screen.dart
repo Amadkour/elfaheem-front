@@ -26,6 +26,7 @@ import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../../admin/admin_common.dart' show t;
+import '../omr_counts.dart' show omrFilePlace, omrPaperText;
 import 'omr_paper_result.dart';
 import 'omr_routes.dart';
 import 'omr_scan.dart';
@@ -290,7 +291,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
   Future<void> _replace(int pageId) async {
     final files = widget.picker != null
         ? await widget.picker!(many: false)
-        : await pickOneScanPage(context, platform: widget.platform, picker: widget.sources);
+        : await pickOneScanPage(context, platform: widget.platform, picker: widget.sources, pageLabel: _pageLabelOf(pageId), paper: true);
     if (files.isEmpty || !mounted) return;
     final problem = omrReplaceProblem(files.first);
     if (problem != null) {
@@ -308,7 +309,14 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
     }
     final res = OmrReplaceResult.fromJson(r.map);
     if (!res.accepted) {
-      setState(() => _replacements[pageId] = _Replacement('refused', row)..text = [res.refusal, ...?res.result?.tipTexts.where((x) => !res.refusal.contains(x)).take(1)].join(' '));
+      final why = [res.refusal, ...?res.result?.tipTexts.where((x) => !res.refusal.contains(x)).take(1)].join(' ');
+      if (row == null) {
+        // a paper read in part keeps its card: the refusal is said, the card offers Replace again
+        setState(() => _replacements.remove(pageId));
+        showAppNotice(why, error: true);
+        return;
+      }
+      setState(() => _replacements[pageId] = _Replacement('refused', row)..text = why);
       return;
     }
     // a page read in part has no rejected row to carry the outcome: say it here
@@ -328,22 +336,36 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
     }
   }
 
-  /// The papers of the batch that were read (each with its result), "Paper n" in the batch's order (every photo is its
-  /// own page 1), with the file name (and the page of a PDF) for an upload; the rejected ones are listed apart (with
-  /// Replace).
+  /// The papers of the batch that were read (each with its result), "Paper n" by the page's name in the batch (the
+  /// one the server's sentences and the papers that need a clearer image use; the batch's order on an older server —
+  /// never `page_no`: every photo is its own page 1), with the file name (and "PDF page 4 of scan.pdf" for a PDF's
+  /// page) for an upload; the rejected ones are listed apart (with Replace).
   List<OmrPaperRow> _paperRows(OmrBatchProgress p, {required bool camera}) {
-    final rejected = {for (final r in p.rejectedPages) r.pageId, ..._replacements.keys};
-    String? file(OmrBatchPage pg) {
-      final f = pg.fileName;
-      if (camera || f == null || f.isEmpty) return null;
-      return f.toLowerCase().endsWith('.pdf') && pg.label.isNotEmpty ? '$f #${pg.label}' : f;
-    }
-
+    // a paper being replaced stays (with "Checking the new image…") until the gate answers
+    final rejected = {for (final r in p.rejectedPages) r.pageId, for (final e in _replacements.entries) if (e.value.state != 'uploading' || e.value.row != null) e.key};
     return [
       for (final (i, pg) in p.pages.indexed)
         if (pg.result != null && pg.result!.tier != OmrTier.reject && !rejected.contains(pg.pageId))
-          OmrPaperRow(pageId: pg.pageId, label: t('الورقة ${i + 1}', 'Paper ${i + 1}'), fileName: file(pg), result: pg.result!),
+          OmrPaperRow(
+              pageId: pg.pageId,
+              label: omrPaperText(pg.label.isEmpty ? '${i + 1}' : pg.label),
+              fileName: camera ? null : omrFilePlace(pg.fileName, pg.pageFilePage),
+              result: pg.result!,
+              replacing: _replacements[pg.pageId]?.state == 'uploading'),
     ];
+  }
+
+  /// "7" of the paper [pageId], as its card says it ("Paper 7"): the Replace sheet says which paper it replaces.
+  String? _pageLabelOf(int pageId) {
+    final p = _progress;
+    if (p == null) return null;
+    final r = p.rejectedPages.where((x) => x.pageId == pageId).firstOrNull ?? _replacements[pageId]?.row;
+    if (r != null) return r.label.isEmpty ? '${r.pageNo}' : r.label;
+    final i = p.pages.indexWhere((x) => x.pageId == pageId);
+    if (i < 0) return null;
+    final pg = p.pages[i];
+    // the batch's order when an older server sent no name (never page_no: every photo is its own page 1)
+    return pg.label.isEmpty ? '${i + 1}' : pg.label;
   }
 
   /// The improved photo of a page; a rejected one, or one read in part (`retake`: the server lets a better photo
@@ -354,7 +376,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
         result: result,
         load: () => _api.image(result.previewUrl),
         retake: canReplace && _replacements[pageId] == null,
-        retakeLabel: t('استبدال هذه الصفحة', 'Replace this page'));
+        retakeLabel: t('استبدال هذه الورقة', 'Replace this paper'));
     if (again && mounted) await _replace(pageId);
   }
 
@@ -455,9 +477,11 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
           for (final r in _rejectedRows(p))
             RejectedPageRow(
               pageId: r.pageId,
+              // "Paper 3", like the read papers under it (the server's own sentence, when shown, says "Page 3")
+              label: omrPaperText(r.label.isEmpty ? '${r.pageNo}' : r.label),
               text: r.text,
               instruction: r.instruction,
-              fileName: r.fileName,
+              fileName: omrFilePlace(r.fileName, r.pageFilePage),
               replacement: _replacements[r.pageId]?.state,
               replacementText: _replacements[r.pageId]?.text,
               result: r.result,

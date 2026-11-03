@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/templates/omr_sheet_overlay.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/templates/omr_template_learn.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/templates/omr_template_library.dart';
@@ -335,8 +336,13 @@ void main() {
     await _tap(tester, 'omr.require_approval');
     expect(_body(bodies['settings']), {'require_approval': false});
     // D-163: the rollback switch sends only its own field (the server keeps the other)
+    // the notices drawn from here on (the approval one above would sit over the next switch)
+    appNoticeTopOverlay = () => tester.state<NavigatorState>(find.byType(Navigator).first).overlay;
+    addTearDown(() => appNoticeTopOverlay = null);
     await _tap(tester, 'omr.smart_photos');
     expect(_body(bodies['smart']), {'smart_photos': false});
+    // saved: said like the other settings (the switch alone used to move without a word)
+    expect(find.text('Saved: smart processing of sheet photos is off — the previous reader is used'), findsOneWidget);
 
     // a published learned family: Edit makes version n + 1 and opens it
     await tester.tap(find.byKey(ValueKey('omr.family.${OmrTemplateRow.fromJson(_p('learn_super_202')).familyId}')));
@@ -346,5 +352,6 @@ void main() {
     expect(fake.calls.where((c) => c.path == '$_b/5/versions').length, 1);
     expect(opened.last, (6, false));
     await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 10)); // the notices' own timers
   });
 }
