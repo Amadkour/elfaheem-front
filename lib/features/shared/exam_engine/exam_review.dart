@@ -328,10 +328,12 @@ class ExamReviewApi {
   Future<EngineResult> correct(int pageId, {required int questionId, required String text}) =>
       engineCall(() => _api.put('$base/scans/$pageId/transcription', body: {'question_id': questionId, 'text': text}));
 
-  Future<EngineResult> uploadScans(int examId, List<(String, Uint8List)> files, {int? studentId, int? questionId}) =>
+  /// [batchId]: the next part of an upload sent in parts (paper/scan/scan_files.dart) — its pages join that batch.
+  Future<EngineResult> uploadScans(int examId, List<(String, Uint8List)> files, {int? studentId, int? questionId, int? batchId}) =>
       engineCall(() => _api.postFiles('$base/exams/$examId/scans', files: files, fields: {
             'student_id': ?studentId,
             'question_id': ?questionId,
+            'batch_id': ?batchId,
           }));
 
   Future<EngineResult> importMarks(int examId, String fileName, Uint8List bytes) =>

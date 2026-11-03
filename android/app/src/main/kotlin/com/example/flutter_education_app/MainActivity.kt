@@ -141,6 +141,7 @@ class MainActivity : FlutterFragmentActivity() {
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (ScanFolderChannel.onActivityResult(requestCode, resultCode, data)) return
 
         when (requestCode) {
 
@@ -223,6 +224,7 @@ class MainActivity : FlutterFragmentActivity() {
         AnnotationOverlayChannel.register(this, flutterEngine.dartExecutor.binaryMessenger) // D-079 whole-screen annotation
         LiveCallService.register(this, flutterEngine.dartExecutor.binaryMessenger) // the room's mic in the background
         VodMediaService.register(this, flutterEngine.dartExecutor.binaryMessenger) // a lecture as sound (D-104)
+        ScanFolderChannel.register(this, flutterEngine.dartExecutor.binaryMessenger) // paper scans: a scanner's folder (SAF)
 
         // ── 1. Screen-share channel ───────────────────────────────────────────
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CH_SCREEN_SHARE)

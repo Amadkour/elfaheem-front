@@ -34,7 +34,8 @@ import '../../../../admin/admin_common.dart' show asInt, t;
 import '../exam_setup.dart' show kExamOmrFeatureKey;
 import '../scan/omr_scan.dart' show OmrScanApi, OmrReplaceResult, omrReplaceProblem;
 import '../scan/omr_scan.dart' as scan show omrErrorText;
-import '../scan/omr_upload_screen.dart' show OmrFilePicker, omrPickFiles;
+import '../scan/omr_upload_screen.dart' show OmrFilePicker;
+import '../scan/scan_sources.dart' show pickOneScanPage;
 import 'omr_results_page.dart';
 import 'omr_review.dart';
 import 'omr_review_parts.dart';
@@ -720,7 +721,8 @@ class _OmrPaperPageState extends State<OmrPaperPage> {
   }
 
   Future<void> _replace() async {
-    final files = await (widget.picker ?? omrPickFiles)(many: false);
+    // one clearer image: the source sheet (the phone's photos or files), or the test's picker
+    final files = widget.picker != null ? await widget.picker!(many: false) : await pickOneScanPage(context);
     if (files.isEmpty || !mounted) return;
     final problem = omrReplaceProblem(files.first);
     if (problem != null) {
