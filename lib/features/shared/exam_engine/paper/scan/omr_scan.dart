@@ -5,16 +5,21 @@
 // Server (Exam Engine, the exam's managers; rules in exam_engine/services/omr_camera.py, omr_scan.py, omr_sheets.py):
 //   POST /api/v1/exam/exams/{id}/omr/live-hint   multipart frame (a small JPEG, ≤ 400 KB, long side ≤ 1280), prev?
 //        → {ok, code, en, ar, corners, corners_found, brightness, clipped, sharpness, motion, page_fraction, cv_ms, ms,
-//           stat}; 503 omr_busy + Retry-After, 429 too_many_requests (300 / min / user), 413 frame_too_large
+//           stat, blocking?}; 503 omr_busy + Retry-After, 429 too_many_requests (300 / min / user), 413 frame_too_large.
+//           `blocking: false` (smart photos) = a gentle hint ("Add a little more light") that never stops a capture.
 //   POST …/omr/capture   multipart photo, batch_id?, expected? → accepted {page_id, batch_id, captured, expected, en, ar,
-//        duplicate?} | rejected {code, en, ar, issues} (nothing stored); 404 batch_not_found, 429 (60 / min), 503
+//        duplicate?, result?} | rejected {code, en, ar, issues, result?} (nothing stored); 404 batch_not_found, 429, 503
+//   every OMR page (capture, batch pages / rejected_pages, page, replace) may carry `result` (smart photos):
+//        {tier: accept|flags|retake|reject, review_count, message {ar,en}, tips [{ar,en}], preview_url, applied [str]}
 //   POST …/scans          files[] (≤ 50 files, PNG / JPEG / WebP / PDF, ≤ 300 pages) → {batch_id, pages, duplicates, omr}
 //   GET  …/omr/batches[/{batch_id}] → progress {total, done, graded, review, rejected, failed, pending, status, en, ar,
-//        rejected_pages[{page_id, page_no, page_label, file_name, codes, en, ar, instruction_en, instruction_ar}]}
+//        rejected_pages[{page_id, page_no, page_label, file_name, codes, en, ar, instruction_en, instruction_ar, result?}],
+//        pages?[{page_id, page_no, page_label, file_name, status, result?}]}
 //   POST …/omr/pages/{page_id}/replace   multipart image (JPG / PNG / WebP) → the capture gate on the request:
 //        accepted {page_id (new), replaces, batch_id, en, ar, progress} | refused {code, en, ar, page_en, page_ar,
 //        issues}; 409 page_not_rejected / page_duplicate, 415, 413, 429, 503 omr_busy
-//   GET / POST …/omr/sheets → what will be printed / application/pdf
+//   GET / POST …/omr/sheets → what will be printed (+ `modes` on a server with print modes) / application/pdf
+//        (body: forms?, copies, student_ids?, + mode / order / index only when the describe listed `modes`)
 //   live: job_updated {kind: omr_scan, id: batch_id, exam_id, status, done, total, page_id, page_status, en, ar}
 library;
 
@@ -74,9 +79,14 @@ class OmrLiveHint {
     this.stat,
     this.frameW = 0,
     this.frameH = 0,
+    this.blocking,
   });
 
   final bool ok;
+
+  /// false = a gentle hint ("Add a little more light", "Hold steady"): the frame is readable enough, the hint only
+  /// helps; null = an older server (only `ready` may capture).
+  final bool? blocking;
 
   /// ready | no_sheet | corners | too_dark | too_bright | blurry | moving | move_closer.
   final String code;
@@ -113,13 +123,21 @@ class OmrLiveHint {
         stat: j['stat']?.toString(),
         frameW: frameW,
         frameH: frameH,
+        blocking: j['blocking'] is bool ? j['blocking'] as bool : null,
       );
 
   /// The server's own sentence in the current language.
   String get text => _pick(ar, en);
 
-  /// Ready AND steadiness measured (a first frame without `prev` cannot be steady yet) AND the four marks found.
-  bool get steady => ok && code == 'ready' && motion != null && cornersFound >= 4;
+  /// A gentle hint: drawn softly, never a blocker.
+  bool get gentle => blocking == false && code != 'ready';
+
+  /// The server says this frame may be captured: `ready`, or a non-blocking hint about a frame it can read — never
+  /// one that says the scene is still changing (no sheet, a corner out, moving, too far).
+  bool get capturable => (ok && code == 'ready') || (blocking == false && !AutoCaptureGate.rearmCodes.contains(code));
+
+  /// Capturable AND steadiness measured (a first frame without `prev` cannot be steady yet) AND the four marks found.
+  bool get steady => capturable && motion != null && cornersFound >= 4;
 
   /// Which of the frame's quarters hold a detected corner mark: [top-left, top-right, bottom-right, bottom-left] in
   /// image space (not mirrored by the reading direction: the sheet is a physical object).
@@ -134,11 +152,12 @@ class OmrLiveHint {
   }
 }
 
-/// The tone a hint is drawn in.
-enum OmrHintTone { neutral, warn, good }
+/// The tone a hint is drawn in ([gentle]: a soft tip that never stops the capture).
+enum OmrHintTone { neutral, warn, good, gentle }
 
-OmrHintTone omrHintTone(String code) => switch (code) {
+OmrHintTone omrHintTone(String code, {bool? blocking}) => switch (code) {
       'ready' => OmrHintTone.good,
+      _ when blocking == false => OmrHintTone.gentle,
       'too_dark' || 'too_bright' || 'blurry' => OmrHintTone.warn,
       _ => OmrHintTone.neutral,
     };
@@ -240,6 +259,120 @@ int? retryAfterOf(EngineResult r) {
   return v is num ? v.toInt() : int.tryParse('${v ?? ''}');
 }
 
+// ── a page's result (smart photos) ──────────────────────────────────────────────────────────────────────────────
+
+/// accept = graded, nothing to review · flags = graded, N questions to review · retake = read what it could, the rest
+/// to review, and a better photo is suggested (never required) · reject = not graded.
+enum OmrTier { accept, flags, retake, reject }
+
+OmrTier? omrTierOf(Object? v) => switch ('${v ?? ''}') {
+      'accept' => OmrTier.accept,
+      'flags' => OmrTier.flags,
+      'retake' => OmrTier.retake,
+      'reject' => OmrTier.reject,
+      _ => null,
+    };
+
+/// The steps the server ran on the photo, in plain words ("direct" = used as it was: nothing to say).
+String? omrStepText(String step) => switch (step) {
+      'resize' => t('تصغير', 'resized'),
+      'shadow' => t('إزالة الظلال', 'shadows evened out'),
+      'clahe' => t('تحسين التباين', 'contrast improved'),
+      'sauvola' => t('توضيح الحبر', 'ink sharpened'),
+      'perspective' => t('تقويم الورقة', 'page straightened'),
+      'rotate' || 'rotation' => t('تدوير', 'rotated'),
+      'deskew' => t('تقويم الميل', 'deskewed'),
+      _ => null,
+    };
+
+/// `result` of one OMR page: what the reading gave, in a sentence, with tips and the improved image.
+class OmrPageResult {
+  const OmrPageResult({
+    required this.tier,
+    this.reviewCount = 0,
+    this.messageAr = '',
+    this.messageEn = '',
+    this.tips = const [],
+    this.previewUrl,
+    this.applied = const [],
+  });
+
+  final OmrTier tier;
+  final int reviewCount;
+  final String messageAr, messageEn;
+
+  /// (ar, en) pairs.
+  final List<(String, String)> tips;
+
+  /// The access-logged page image with the improvement applied and the detected marks drawn (a signed path).
+  final String? previewUrl;
+  final List<String> applied;
+
+  /// Null when [j] has no known tier (an older server, a malformed block): the screens keep their old look then.
+  static OmrPageResult? fromJson(Object? j) {
+    if (j is! Map) return null;
+    final m = asMap(j);
+    final tier = omrTierOf(m['tier']);
+    if (tier == null) return null;
+    final msg = asMap(m['message']);
+    final url = '${m['preview_url'] ?? ''}'.trim();
+    return OmrPageResult(
+      tier: tier,
+      reviewCount: math.max(0, asInt(m['review_count'])),
+      messageAr: '${msg['ar'] ?? (m['message'] is String ? m['message'] : '')}',
+      messageEn: '${msg['en'] ?? (m['message'] is String ? m['message'] : '')}',
+      tips: [
+        for (final tip in (m['tips'] as List?) ?? const [])
+          if (tip is Map && '${tip['ar'] ?? ''}${tip['en'] ?? ''}'.isNotEmpty) ('${tip['ar'] ?? ''}', '${tip['en'] ?? ''}')
+          else if (tip is String && tip.isNotEmpty) (tip, tip),
+      ],
+      previewUrl: url.isEmpty ? null : url,
+      applied: [for (final a in (m['applied'] as List?) ?? const []) '$a'],
+    );
+  }
+
+  /// The `result` of a page map, or of its `page` object.
+  static OmrPageResult? of(Map<String, dynamic> j) => fromJson(j['result']) ?? fromJson(asMap(j['page'])['result']);
+
+  bool get graded => tier != OmrTier.reject;
+
+  /// A better photo is suggested (retake, non-blocking) or needed (reject).
+  bool get wantsRetake => tier == OmrTier.retake || tier == OmrTier.reject;
+
+  /// The server's sentence in the current language.
+  String get message => _pick(messageAr, messageEn);
+  List<String> get tipTexts => [
+        for (final (ar, en) in tips)
+          if (_pick(ar, en).isNotEmpty && _pick(ar, en) != message) _pick(ar, en),
+      ];
+
+  /// "Read successfully" · "Read with 3 questions to review" · "Read in part — 5 questions to review" · "Couldn't
+  /// read this paper".
+  String get title => omrResultTitle(tier, reviewCount);
+
+  /// "Improved: shadows evened out · contrast improved" — empty when the photo was used as it was.
+  String get appliedText {
+    final steps = [for (final a in applied) ?omrStepText(a)];
+    if (steps.isEmpty) return '';
+    return t('حُسّنت الصورة: ${steps.join('، ')}', 'Improved: ${steps.join(' · ')}');
+  }
+}
+
+String omrResultTitle(OmrTier tier, int review) => switch (tier) {
+      OmrTier.accept => t('قُرئت الورقة بنجاح', 'Read successfully'),
+      OmrTier.flags => review > 0
+          ? t('قُرئت — ${omrQuestionsText(review)} للمراجعة', 'Read with ${omrQuestionsText(review)} to review')
+          : t('قُرئت — بعض الأسئلة للمراجعة', 'Read with some questions to review'),
+      OmrTier.retake => review > 0
+          ? t('قُرئت جزئيًا — ${omrQuestionsText(review)} للمراجعة', 'Read in part — ${omrQuestionsText(review)} to review')
+          : t('قُرئت جزئيًا', 'Read in part'),
+      OmrTier.reject => t('تعذّرت قراءة الورقة', 'Couldn\'t read this paper'),
+    };
+
+/// The non-blocking suggestion of a `retake` page.
+String omrRetakeSuggestion() =>
+    t('صورة أوضح تعطي قراءة كاملة — أعد التصوير إن أمكن، أو تابع', 'A clearer photo gives a full reading — retake it if you can, or carry on');
+
 // ── capture ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class OmrIssue {
@@ -263,6 +396,7 @@ class OmrCaptureResult {
     this.expected,
     this.duplicate = false,
     this.issues = const [],
+    this.result,
   });
 
   final bool accepted;
@@ -278,6 +412,12 @@ class OmrCaptureResult {
   final bool duplicate;
   final List<OmrIssue> issues;
 
+  /// What the reading gave (smart photos); null on an older server.
+  final OmrPageResult? result;
+
+  /// The scanner stops for this answer (nothing stored, or nothing graded): Retake is the way on.
+  bool get blocks => !accepted || result?.tier == OmrTier.reject;
+
   static OmrCaptureResult fromJson(Map<String, dynamic> j) => OmrCaptureResult(
         accepted: j['accepted'] == true,
         code: j['code']?.toString(),
@@ -289,6 +429,7 @@ class OmrCaptureResult {
         expected: j['expected'] == null ? null : asInt(j['expected']),
         duplicate: j['duplicate'] == true,
         issues: [for (final i in asMapList(j['issues'])) OmrIssue('${i['code'] ?? ''}', '${i['en'] ?? ''}', '${i['ar'] ?? ''}')],
+        result: OmrPageResult.of(j),
       );
 
   String get text => _pick(ar, en);
@@ -330,6 +471,7 @@ class OmrRejectedPage {
     this.codes = const [],
     this.instructionEn = '',
     this.instructionAr = '',
+    this.result,
   });
 
   final int pageId;
@@ -346,6 +488,9 @@ class OmrRejectedPage {
   final String instructionEn;
   final String instructionAr;
 
+  /// The reading's result (smart photos: the reason + tips + the improved image); null on an older server.
+  final OmrPageResult? result;
+
   static OmrRejectedPage fromJson(Map<String, dynamic> j) => OmrRejectedPage(
         pageId: asInt(j['page_id']),
         pageNo: asInt(j['page_no'], 1),
@@ -356,10 +501,34 @@ class OmrRejectedPage {
         ar: '${j['ar'] ?? ''}',
         instructionEn: '${j['instruction_en'] ?? ''}',
         instructionAr: '${j['instruction_ar'] ?? ''}',
+        result: OmrPageResult.of(j),
       );
 
   String get text => _pick(ar, en);
   String get instruction => _pick(instructionAr, instructionEn);
+}
+
+/// One page of a batch with its reading's result (`pages` of `GET …/omr/batches/{id}`, smart photos).
+class OmrBatchPage {
+  const OmrBatchPage({required this.pageId, required this.pageNo, required this.label, this.fileName, this.status = '', this.result});
+
+  final int pageId;
+  final int pageNo;
+  final String label;
+  final String? fileName;
+
+  /// uploaded · processing · processed · review · rejected · failed · …
+  final String status;
+  final OmrPageResult? result;
+
+  static OmrBatchPage fromJson(Map<String, dynamic> j) => OmrBatchPage(
+        pageId: asInt(j['page_id'] ?? j['id']),
+        pageNo: asInt(j['page_no'], 1),
+        label: '${j['page_label'] ?? j['page_no'] ?? ''}',
+        fileName: j['file_name']?.toString(),
+        status: '${j['status'] ?? ''}',
+        result: OmrPageResult.of(j),
+      );
 }
 
 /// `GET …/omr/batches/{id}` (the list rows have no rejected_pages).
@@ -380,6 +549,7 @@ class OmrBatchProgress {
     this.expected,
     this.createdAt,
     this.rejectedPages = const [],
+    this.pages = const [],
   });
 
   final int batchId;
@@ -406,6 +576,9 @@ class OmrBatchProgress {
   final String ar;
   final List<OmrRejectedPage> rejectedPages;
 
+  /// Every page with its result (smart photos); empty on an older server.
+  final List<OmrBatchPage> pages;
+
   static OmrBatchProgress fromJson(Map<String, dynamic> j) => OmrBatchProgress(
         batchId: asInt(j['batch_id']),
         kind: '${j['kind'] ?? 'omr'}',
@@ -422,6 +595,7 @@ class OmrBatchProgress {
         en: '${j['en'] ?? ''}',
         ar: '${j['ar'] ?? ''}',
         rejectedPages: [for (final p in asMapList(j['rejected_pages'])) OmrRejectedPage.fromJson(p)],
+        pages: [for (final p in asMapList(j['pages'])) OmrBatchPage.fromJson(p)],
       );
 
   bool get finished => status == 'done';
@@ -445,6 +619,7 @@ class OmrBatchProgress {
         en: '${e['en'] ?? en}',
         ar: '${e['ar'] ?? ar}',
         rejectedPages: rejectedPages,
+        pages: pages,
       );
 }
 
@@ -461,6 +636,9 @@ class OmrSheetsInfo {
     this.sheetForms = const [],
     this.formMarkers = const [],
     this.idKind = '',
+    this.modes,
+    this.prefilledReasonAr = '',
+    this.prefilledReasonEn = '',
   });
 
   final int? templateId;
@@ -476,6 +654,29 @@ class OmrSheetsInfo {
   /// shaded | handwritten | printed | qr | none.
   final String idKind;
 
+  /// The print modes this exam offers (prefilled · named · blank, in that order); null = an older server that knows
+  /// no modes (blank sheets or named sheets, and the body carries no mode / order / index).
+  final List<OmrPrintMode>? modes;
+
+  /// Why Pre-filled is not offered, when the server says so.
+  final String prefilledReasonAr, prefilledReasonEn;
+
+  bool get hasModes => modes != null;
+
+  /// One line on why Pre-filled is missing (the server's words, else the likely reason from the sheet's ID kind);
+  /// null when it is offered or the server has no modes.
+  String? get prefilledMissing {
+    final m = modes;
+    if (m == null || m.contains(OmrPrintMode.prefilled)) return null;
+    final own = _pick(prefilledReasonAr, prefilledReasonEn);
+    if (own.isNotEmpty) return own;
+    if (idKind != 'shaded') {
+      return t('التظليل المسبق غير متاح: لا توجد على الورقة خانات تظليل لرقم الطالب', 'Pre-filled is not available: the sheet has no student-number bubbles');
+    }
+    return t('التظليل المسبق غير متاح: أرقام الطلاب ليست أرقامًا فقط أو أطول من خانات الورقة',
+        "Pre-filled is not available: the student numbers are not all digits or do not fit the sheet's boxes");
+  }
+
   static OmrSheetsInfo fromJson(Map<String, dynamic> j) => OmrSheetsInfo(
         templateId: j['template_id'] == null ? null : asInt(j['template_id']),
         printable: j['printable'] == true,
@@ -485,15 +686,69 @@ class OmrSheetsInfo {
         sheetForms: [for (final f in (j['sheet_forms'] as List?) ?? const []) '$f'],
         formMarkers: [for (final f in (j['form_markers'] as List?) ?? const []) '$f'],
         idKind: '${j['id_kind'] ?? ''}',
+        modes: omrPrintModesOf(j['modes']),
+        prefilledReasonAr: _reasonOf(j, 'ar'),
+        prefilledReasonEn: _reasonOf(j, 'en'),
       );
+
+  /// `prefilled_reason {ar, en}`, or the reason of a `{mode: prefilled, available: false, reason}` entry of `modes`.
+  static String _reasonOf(Map<String, dynamic> j, String lang) {
+    final direct = asMap(j['prefilled_reason']);
+    if (direct.isNotEmpty) return '${direct[lang] ?? ''}';
+    for (final m in asMapList(j['modes'])) {
+      if ('${m['mode'] ?? m['id'] ?? ''}' == 'prefilled') {
+        final r = m['reason'];
+        if (r is Map) return '${r[lang] ?? ''}';
+        return '${m['reason_$lang'] ?? ''}';
+      }
+    }
+    return '';
+  }
 }
 
-/// The POST body of `…/omr/sheets`: blank sheets per form × copies, or one named sheet per student (forms cycle).
-Map<String, dynamic> omrSheetsBody({List<String> forms = const [], int copies = 1, List<int> studentIds = const []}) => {
-      if (forms.isNotEmpty) 'forms': forms,
-      if (studentIds.isEmpty) 'copies': copies.clamp(1, OmrLimits.maxCopies),
-      if (studentIds.isNotEmpty) 'student_ids': studentIds,
-    };
+/// prefilled = name + masked ID printed, the ID bubbles shaded · named = name + masked ID printed, bubbles empty ·
+/// blank = no name, no ID.
+enum OmrPrintMode { prefilled, named, blank }
+
+/// The modes `describe` lists: strings, or `{mode, available?}` maps (an unavailable one is left out); unknown
+/// names are skipped. Null when the server sent no `modes` (an older server).
+List<OmrPrintMode>? omrPrintModesOf(Object? v) {
+  if (v is! List) return null;
+  final got = <OmrPrintMode>{};
+  for (final e in v) {
+    final name = e is Map ? '${e['mode'] ?? e['id'] ?? ''}' : '$e';
+    if (e is Map && e['available'] == false) continue;
+    for (final m in OmrPrintMode.values) {
+      if (m.name == name) got.add(m);
+    }
+  }
+  return [for (final m in OmrPrintMode.values) if (got.contains(m)) m];
+}
+
+/// The print order of the student sheets (the server sorts).
+enum OmrPrintOrder { name, identifier }
+
+/// The POST body of `…/omr/sheets`: blank sheets per form × copies, or one sheet per student (forms cycle). The
+/// student ids go in the order they were chosen: the server sorts ([order]). [mode] / [order] / [index] are sent
+/// only to a server that listed modes (an older one refuses unknown fields): null [mode] = the old body.
+Map<String, dynamic> omrSheetsBody({
+  List<String> forms = const [],
+  int copies = 1,
+  List<int> studentIds = const [],
+  OmrPrintMode? mode,
+  OmrPrintOrder order = OmrPrintOrder.name,
+  bool index = true,
+}) {
+  final students = mode != OmrPrintMode.blank && studentIds.isNotEmpty;
+  return {
+    if (forms.isNotEmpty) 'forms': forms,
+    if (!students) 'copies': copies.clamp(1, OmrLimits.maxCopies),
+    if (students) 'student_ids': studentIds,
+    if (mode != null) 'mode': mode.name,
+    if (mode != null && students) 'order': order.name,
+    if (mode != null && students) 'index': index,
+  };
+}
 
 /// Pages the request will print (the server refuses > 1000 blank or > 200 named ones).
 int omrSheetsPageCount({required int forms, required int copies, required int students}) =>
@@ -547,6 +802,7 @@ class OmrReplaceResult {
     this.pageAr = '',
     this.issues = const [],
     this.progress,
+    this.result,
   });
 
   final bool accepted;
@@ -567,6 +823,9 @@ class OmrReplaceResult {
   /// Accepted: the batch's progress after the swap.
   final OmrBatchProgress? progress;
 
+  /// The new image's result (smart photos); null on an older server.
+  final OmrPageResult? result;
+
   static OmrReplaceResult fromJson(Map<String, dynamic> j) {
     final p = asMap(j['progress']);
     return OmrReplaceResult(
@@ -581,6 +840,7 @@ class OmrReplaceResult {
       pageAr: '${j['page_ar'] ?? ''}',
       issues: [for (final i in asMapList(j['issues'])) OmrIssue('${i['code'] ?? ''}', '${i['en'] ?? ''}', '${i['ar'] ?? ''}')],
       progress: p.isEmpty ? null : OmrBatchProgress.fromJson(p),
+      result: OmrPageResult.of(j),
     );
   }
 
@@ -697,6 +957,20 @@ class OmrScanApi {
   Future<EngineResult> page(int examId, int pageId) => engineCall(() => _api.get('$_b/exams/$examId/omr/pages/$pageId'));
 
   Future<EngineResult> sheetsInfo(int examId) => engineCall(() => _api.get('$_b/exams/$examId/omr/sheets'));
+
+  /// A signed page / crop / preview image (a result's `preview_url`); null when it cannot be read.
+  Future<Uint8List?> image(String? signedUrl) async {
+    final u = Uri.tryParse(signedUrl ?? '');
+    final seg = u?.pathSegments ?? const [];
+    final i = seg.indexOf('images');
+    if (u == null || i < 0 || seg.length < i + 3) return null;
+    final what = seg[i + 1], id = seg[i + 2];
+    try {
+      return await _api.getBytes('$_b/omr/images/$what/$id', queryParams: u.queryParameters);
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// The PDF, or the failure (a JSON error body comes back as bytes here: parsed into an [EngineResult]).
   Future<(Uint8List?, EngineResult?)> sheetsPdf(int examId, Map<String, dynamic> body) async {

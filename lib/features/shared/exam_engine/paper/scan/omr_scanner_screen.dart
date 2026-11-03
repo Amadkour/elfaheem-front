@@ -2,6 +2,10 @@
 // own guidance from `POST …/omr/live-hint` on small frames at a modest rate (backing off on 503 omr_busy), an
 // automatic capture once the hint says ready for a short steady run, the full photo checked by `POST …/omr/capture`:
 // accepted → "Paper 12 of 40 captured" and the next sheet; rejected → the exact reason + a big Retake, nothing graded.
+// Smart photos: a hint with `blocking: false` ("Add a little more light") is a soft tip and the frame may still be
+// captured; the capture's `result` speaks per paper ("Read successfully" / "Read with 3 questions to review" / "Read
+// in part" + a Retake that is only a suggestion / "Couldn't read" + reason + tip), with a thumbnail of the improved
+// photo (its `preview_url` through the signed-image call) that opens the preview with Retake.
 // The manual shutter always works; torch / switch where the camera has them; a dead camera shows the fix and a way
 // out (upload instead). Phones and browsers (omr_camera.dart).
 library;
@@ -20,10 +24,19 @@ import 'package:permission_handler/permission_handler.dart' show openAppSettings
 import '../../../../admin/admin_common.dart' show t;
 import '../../exam_engine_api.dart' show EngineResult;
 import 'omr_camera.dart';
+import 'omr_paper_result.dart';
 import 'omr_scan.dart';
 import 'omr_scan_widgets.dart';
 import 'omr_upload_screen.dart';
 import '../omr_counts.dart';
+
+/// How long a capture's card stays before the next sheet (null: until the person acts): an older server's accepted
+/// photo and a clean read briefly, a read with questions to review a little longer, a suggested retake until chosen.
+Duration? omrResultStays(OmrPageResult? r) => switch (r?.tier) {
+      null || OmrTier.accept => const Duration(milliseconds: 2600),
+      OmrTier.flags => const Duration(milliseconds: 4500),
+      OmrTier.retake || OmrTier.reject => null,
+    };
 
 class OmrScannerScreen extends StatefulWidget {
   const OmrScannerScreen({super.key, required this.examId, this.examTitle = '', this.camera, this.api, this.clock});
@@ -59,13 +72,18 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
   OmrCaptureResult? _result;
   Timer? _hideResult;
 
+  /// The improved photo of [_result] (its `preview_url`), and the preview sheet being open (the hints wait).
+  Uint8List? _previewBytes;
+  bool _previewLoading = false;
+  bool _previewOpen = false;
+
   int? _batchId;
   int? _expected;
   int _captured = 0;
   bool _auto = true;
   bool _paused = false;
 
-  bool get _holding => _capturing || _paused || (_result != null && !_result!.accepted) || _setupProblem != null;
+  bool get _holding => _capturing || _paused || _previewOpen || (_result?.blocks ?? false) || _setupProblem != null;
 
   @override
   void initState() {
@@ -212,6 +230,8 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     setState(() {
       _capturing = true;
       _result = null;
+      _previewBytes = null;
+      _previewLoading = false;
     });
     _gate.captured();
     final photo = await cam.photo();
@@ -227,22 +247,57 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     if (!mounted) return;
     if (!r.ok) return _captureFailed(r);
     final res = OmrCaptureResult.fromJson(r.map);
+    final url = res.result?.previewUrl;
     setState(() {
       _capturing = false;
       _result = res;
+      _previewLoading = url != null;
       if (res.accepted) {
         _batchId = res.batchId ?? _batchId;
         _captured = res.captured;
         _expected = res.expected ?? _expected;
       }
     });
-    if (res.accepted) {
+    if (url != null) unawaited(_loadPreview(res, url));
+    if (!res.blocks) {
       unawaited(HapticFeedback.mediumImpact());
-      _hideResult = Timer(const Duration(milliseconds: 2600), () {
-        if (mounted && _result == res) setState(() => _result = null);
-      });
+      final stay = omrResultStays(res.result);
+      if (stay != null) {
+        _hideResult = Timer(stay, () {
+          if (mounted && _result == res && !_previewOpen) setState(() => _result = null);
+        });
+      }
     } else {
       unawaited(HapticFeedback.heavyImpact());
+    }
+  }
+
+  Future<void> _loadPreview(OmrCaptureResult res, String url) async {
+    final b = await _api.image(url);
+    if (!mounted || _result != res) return;
+    setState(() {
+      _previewBytes = b;
+      _previewLoading = false;
+    });
+  }
+
+  /// The improved photo, full size: Retake from there too. The live hints wait while it is open.
+  Future<void> _openPreview() async {
+    final res = _result, r = res?.result;
+    if (res == null || r == null) return;
+    _hideResult?.cancel();
+    setState(() => _previewOpen = true);
+    final again = await showOmrPreview(context,
+        result: r,
+        bytes: _previewBytes,
+        load: _previewBytes == null ? () => _api.image(r.previewUrl) : null,
+        retake: r.wantsRetake || !res.accepted);
+    if (!mounted) return;
+    setState(() => _previewOpen = false);
+    if (again) {
+      _retake();
+    } else if (_result == res && !res.blocks && r.tier != OmrTier.retake) {
+      setState(() => _result = null); // seen: the next sheet
     }
   }
 
@@ -257,8 +312,13 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
   }
 
   void _retake() {
+    _hideResult?.cancel();
     _gate.reset();
-    setState(() => _result = null);
+    setState(() {
+      _result = null;
+      _previewBytes = null;
+      _previewLoading = false;
+    });
   }
 
   Future<void> _toggleTorch() async {
@@ -327,7 +387,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     if (_note != null) return (_note!, OmrHintTone.warn, Icons.cloud_queue_rounded);
     final h = _hint;
     if (h == null || h.text.isEmpty) return (t('وجّه الكاميرا إلى ورقة التظليل', 'Point the camera at the bubble sheet'), OmrHintTone.neutral, null);
-    return (h.text, omrHintTone(h.code), null);
+    return (h.text, omrHintTone(h.code, blocking: h.blocking), null);
   }
 
   @override
@@ -418,10 +478,17 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
                     more: res.accepted ? const [] : res.moreIssues,
                     duplicate: res.duplicate,
                     onRetake: _retake,
-                    onDismiss: () => setState(() => _result = null),
+                    onDismiss: () {
+                      _hideResult?.cancel();
+                      setState(() => _result = null);
+                    },
+                    result: res.result,
+                    previewBytes: _previewBytes,
+                    previewLoading: _previewLoading,
+                    onPreview: res.result?.previewUrl == null ? null : _openPreview,
                   ),
                 ),
-              if (res == null || res.accepted)
+              if (res == null || !res.blocks)
                 ScannerControls(
                   onShutter: cam == null || _starting ? null : _shoot,
                   busy: _capturing,

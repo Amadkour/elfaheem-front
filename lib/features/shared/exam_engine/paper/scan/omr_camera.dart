@@ -7,11 +7,16 @@
 //     (every iPhone browser) and Firefox lack.
 // The screen sees only [OmrCamera]; tests hand it a fake (no platform object), like the live room's presentational
 // widgets (CLAUDE.md).
+// Resolution: both ask for an `ideal` 1920 × 1080 stream — a wish, not a demand: the phone / browser gives what its
+// camera has (never a special high-resolution mode). The capture is that frame, sent as a JPEG of a sensible size
+// ([omrPhotoPlan]: an already small JPEG goes as it is; a PNG — iOS — or a heavy q100 JPEG — Android — is re-encoded
+// at quality 90, long side ≤ 2560, never upscaled); the browser's canvas JPEG (q 0.92) goes as it is.
 library;
 
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/widgets.dart';
 import 'package:image/image.dart' as img;
 
@@ -77,6 +82,57 @@ abstract class OmrCamera {
 
 /// The platform's camera.
 OmrCamera createOmrCamera() => impl.createPlatformCamera();
+
+/// Long side, quality and size of a capture as sent (see the header).
+const kOmrPhotoMaxSide = 2560;
+const kOmrPhotoQuality = 90;
+const kOmrPhotoKeepBytes = 1536 * 1024;
+
+/// What to send for a capture of [width] × [height] in [bytes] bytes: as it is ([keep]: a JPEG already small enough
+/// and not too large), else a JPEG at [quality] with this long side (never upscaled).
+({bool keep, int width, int height, int quality}) omrPhotoPlan({required bool jpeg, required int bytes, required int width, required int height}) {
+  final long = width > height ? width : height;
+  final s = long > kOmrPhotoMaxSide ? kOmrPhotoMaxSide / long : 1.0;
+  final tw = (width * s).round().clamp(1, width < 1 ? 1 : width), th = (height * s).round().clamp(1, height < 1 ? 1 : height);
+  final keep = jpeg && bytes <= kOmrPhotoKeepBytes && s == 1.0;
+  return (keep: keep, width: tw, height: th, quality: kOmrPhotoQuality);
+}
+
+bool _isJpeg(Uint8List b) => b.length > 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF;
+
+/// The capture as it is sent ([omrPhotoPlan]); the original when anything fails (the server reads PNG too).
+Future<Uint8List> omrUploadPhoto(Uint8List encoded) async {
+  try {
+    final buffer = await ui.ImmutableBuffer.fromUint8List(encoded);
+    final desc = await ui.ImageDescriptor.encoded(buffer);
+    final plan = omrPhotoPlan(jpeg: _isJpeg(encoded), bytes: encoded.length, width: desc.width, height: desc.height);
+    if (plan.keep) {
+      desc.dispose();
+      buffer.dispose();
+      return encoded;
+    }
+    final codec = await desc.instantiateCodec(targetWidth: plan.width, targetHeight: plan.height);
+    final fi = await codec.getNextFrame();
+    final rgba = await fi.image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    final iw = fi.image.width, ih = fi.image.height;
+    fi.image.dispose();
+    codec.dispose();
+    desc.dispose();
+    buffer.dispose();
+    if (rgba == null) return encoded;
+    // the JPEG encoder is pure Dart: off the UI isolate on a phone
+    final out = await compute(_encodeJpeg, (rgba.buffer.asUint8List(rgba.offsetInBytes, rgba.lengthInBytes), iw, ih, plan.quality));
+    return out.length < encoded.length ? out : encoded;
+  } catch (_) {
+    return encoded;
+  }
+}
+
+Uint8List _encodeJpeg((Uint8List, int, int, int) a) {
+  final (rgba, w, h, q) = a;
+  final im = img.Image.fromBytes(width: w, height: h, bytes: rgba.buffer, bytesOffset: rgba.offsetInBytes, numChannels: 4);
+  return Uint8List.fromList(img.encodeJpg(im, quality: q));
+}
 
 /// Decodes an encoded picture natively (Skia / the browser), downscaled so its long side is ≤ [maxSide], and
 /// encodes it as JPEG. Used for the native camera's frames (captureFrame hands back a full-size JPEG or PNG).
