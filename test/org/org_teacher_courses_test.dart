@@ -169,6 +169,9 @@ void main() {
     await settle(tester, 14);
     expect(find.text('You cannot view courses'), findsNothing);
     expect(find.text('Introduction to Programming'), findsOneWidget);
+    // let the shell's attention / notification loads answer before the tree goes (no pending timer under load)
+    await tester.pumpWidget(const SizedBox.shrink());
+    await settle(tester, 10);
   });
 
   group('My courses banner: "+N in your organizations"', () {
