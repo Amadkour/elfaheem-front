@@ -75,10 +75,10 @@ abstract class NativeRecorderBackend {
   void Function(Map<dynamic, dynamic> event)? onBroadcastEvent;
 
   static const MethodChannel channel = MethodChannel(
-    'com.example.flutter_education_app/native_recorder',
+    'com.doubley.nextbrain/native_recorder',
   );
   static const EventChannel eventChannel = EventChannel(
-    'com.example.flutter_education_app/rec_events',
+    'com.doubley.nextbrain/rec_events',
   );
 
   StreamSubscription<dynamic>? _recEventSub;

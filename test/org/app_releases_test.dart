@@ -268,10 +268,10 @@ void main() {
       await _pump(tester, NewAppReleasePage(latest: latest, askPassword: (_) async => 'pw'));
       await _tapKey(tester, 'release.channel.store');
       expect(submit(tester).onPressed, isNull);
-      await tester.enterText(find.byKey(const ValueKey('release.package_name')), 'site.nextbrain.app');
+      await tester.enterText(find.byKey(const ValueKey('release.package_name')), 'com.doubley.nextbrain');
       await _frames(tester, 3);
       expect(submit(tester).onPressed, isNotNull, reason: 'the server re-checks with the same override');
-      await tester.enterText(find.byKey(const ValueKey('release.store_url')), 'https://play.google.com/store/apps/details?id=site.nextbrain.app');
+      await tester.enterText(find.byKey(const ValueKey('release.store_url')), 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain');
       await _tapKey(tester, 'release.submit');
       await _frames(tester, 10);
       expect(sent, isNotNull);
@@ -281,8 +281,8 @@ void main() {
         'branch': 'production',
         'workflow': 'android-store',
         'track': 'internal',
-        'package_name': 'site.nextbrain.app',
-        'store_url': 'https://play.google.com/store/apps/details?id=site.nextbrain.app',
+        'package_name': 'com.doubley.nextbrain',
+        'store_url': 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain',
       });
       expect(sent!.containsKey('password'), isTrue);
       await tester.pump(const Duration(seconds: 5));

@@ -27,11 +27,11 @@ stored on the release row `config{}`):
 - `CODEMAGIC_WORKFLOW_ANDROID_STORE=android-store`, `CODEMAGIC_WORKFLOW_ANDROID_WEBSITE=android-website`,
   `CODEMAGIC_WORKFLOW_IOS_STORE=ios-store`, `CODEMAGIC_WORKFLOW_WEB=web-website`,
   `CODEMAGIC_WORKFLOW_LINUX=linux-website`, `CODEMAGIC_WORKFLOW_WINDOWS=windows-website` (= the ids in `codemagic.yaml`).
-- `PLAY_PACKAGE_NAME` (must not start with `com.example.` — Google Play refuses it; today's applicationId is
-  `com.example.flutter_education_app`, so the store option is NOT ready until the owner picks a real id),
+- `PLAY_PACKAGE_NAME` (must not start with `com.example.` — Google Play refuses it; the applicationId is
+  `com.doubley.nextbrain` since D-145, so set it to that),
   `PLAY_TRACK=internal` (internal|alpha|beta|production), `PLAY_STORE_URL` (default
   `https://play.google.com/store/apps/details?id=<PLAY_PACKAGE_NAME>`).
-- `APP_STORE_APP_ID`, `IOS_BUNDLE_ID` (today `com.softkour.alfaheem`), `APP_STORE_URL`.
+- `APP_STORE_APP_ID`, `IOS_BUNDLE_ID` (`com.doubley.nextbrain`, D-145), `APP_STORE_URL`.
 - `APP_RELEASES_BUCKET=app-releases` (MinIO, private; downloads are served through our API, see below).
 - `NB_PUBLIC_API_URL` (default `https://nextbrain.site/api`) — passed to Codemagic so the upload step can reach us.
 Signing material lives in Codemagic (Android keystore, Play service-account JSON, App Store Connect API key are set up by

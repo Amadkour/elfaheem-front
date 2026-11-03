@@ -2028,7 +2028,7 @@ the manifest from the files it serves. Readers: the web banner and the "Get the 
 **Not done / owed.** A signed Windows / macOS build (code-signing certificates remove SmartScreen / Gatekeeper
 warnings); iOS native through TestFlight once an Apple Developer account (or the nonprofit / education fee waiver)
 exists; the `applicationId` is still `com.example.flutter_education_app` (Play rejects `com.example`; changing it
-means a new Firebase Android app and a reinstall for everyone).
+means a new Firebase Android app and a reinstall for everyone). Done in D-145: `com.doubley.nextbrain`.
 
 ## D-140 — Requests for someone else: who may file them, and where the person's details live · 2026-11-01 · accepted
 
@@ -2117,7 +2117,69 @@ which keeps them in MinIO), and Codemagic runs every build. The D-143 page, stat
   `app.download_banner`. While anything is published there the D-137 "Get the app" strip steps aside (one offer).
 - The applicationId stays `com.example.flutter_education_app` in phase 1: Google Play refuses it, so the
   `android:store` pair stays not ready until the owner picks a real id (a new Firebase Android client, everyone
-  reinstalls); `NB_PACKAGE_NAME` is recorded, not applied to the build.
+  reinstalls); `NB_PACKAGE_NAME` is recorded, not applied to the build. Superseded by D-145 (`com.doubley.nextbrain`).
 
 **Not verified.** No Codemagic build has run yet (no account set up): the Windows image's shell / Git bash path, the
 `linux_x2` apt packages, `GOOGLE_PLAY_TRACK` being honoured, the `ios-store` signing and App Store submission.
+
+## D-145 — One identity: NextBrain by DoubleY, com.doubley.nextbrain · 2026-11-02 · accepted
+
+**Decision** (the owner, 2026-11-02). Users see one product name, **NextBrain**, made by **DoubleY**, and every
+platform carries one application id, **`com.doubley.nextbrain`**: Android `applicationId` + `namespace`, the iOS and
+macOS bundle id, the Linux GTK `APPLICATION_ID`. The iPhone app was never published, so the iOS bundle id moves too
+(from `com.softkour.alfaheem`).
+- **Android:** `applicationId` and `namespace` `com.doubley.nextbrain`; the Kotlin sources moved to
+  `android/app/src/main/kotlin/com/doubley/nextbrain/` (package lines changed, nothing else). Every platform channel is
+  `com.doubley.nextbrain/<name>` on BOTH sides (`native_recorder`, `rec_events`, `screen_share`, `notifications`,
+  `radios`, `live_events`, `live_call`, `annotation_overlay`, `share_window`, `vod_media`, iOS `broadcast_state`), and
+  the Android service intent actions are `com.doubley.nextbrain.<ACTION>`. The signing setup did not change.
+- **iOS:** Runner `com.doubley.nextbrain`, `com.doubley.nextbrain.RunnerTests`, the screen-share extension
+  `com.doubley.nextbrain.BroadcastUploadExtension`; the App Group is `group.com.doubley.nextbrain` in both entitlements,
+  `RTCAppGroupIdentifier` / `RTCScreenSharingExtension` in Info.plist and `kAppGroup` in AppDelegate.swift and
+  SampleHandler.swift (they must stay identical); the recording IPC Darwin names are `com.doubley.nextbrain.frame` /
+  `.audioframe` / `.stop` / `.wants_changed` in AppDelegate.swift and the extension's DarwinNotificationCenter.swift.
+  Display name and bundle name "NextBrain". `DEVELOPMENT_TEAM` (MVHKS8482X) unchanged.
+- **macOS:** the `macos/` runner had been committed as empty files (every Xcode file 0 bytes since the first commit),
+  so it was refilled from Flutter 3.47.7's `flutter create` template, then given `PRODUCT_NAME = NextBrain`,
+  `PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain`, the DoubleY copyright and the network-client entitlement. Never
+  built (no Mac here).
+- **Windows:** binary `nextbrain.exe` (`BINARY_NAME`), window title "NextBrain", Runner.rc CompanyName "DoubleY",
+  ProductName / FileDescription "NextBrain", copyright DoubleY. **Linux:** `APPLICATION_ID com.doubley.nextbrain`, the
+  .deb's desktop entry `com.doubley.nextbrain.desktop` with `StartupWMClass=com.doubley.nextbrain`, maintainer DoubleY.
+  **Web:** `<meta name="author" content="DoubleY">` (title and manifest already said NextBrain).
+- **App links:** `web/.well-known/apple-app-site-association` names `MVHKS8482X.com.doubley.nextbrain`;
+  `assetlinks.json` names `com.doubley.nextbrain` with the same certificate fingerprint (the same key signs it).
+- **Texts:** the About page ends with "Developed by DoubleY" / "تطوير DoubleY" (`about_developed_by`); the leftover
+  ElFaheem / Al-Faheem fallbacks users could see (Remote Config default `app_name`, the sign-in brand fallback, the
+  sidebar fallback, the Google role question, the Android notification channel name, the web notification title,
+  two translations) say NextBrain.
+- **Firebase: a NEW project, `nextbrain-2y`** (display name NextBrain, project number 647242717565). Its apps:
+  `NextBrain (Android)` `1:647242717565:android:b49304b99ce6da89d69414` (com.doubley.nextbrain; the old Android
+  app's SHA-1 / SHA-256 copied onto it), `NextBrain (iOS + macOS)` `1:647242717565:ios:9e1944ca9c37d70bd69414`
+  (com.doubley.nextbrain: a bundle id is unique per project, so one Apple app serves both, and both
+  GoogleService-Info.plist files are its config), `NextBrain (Web)` `1:647242717565:web:7c22c255a55be260d69414` and
+  `NextBrain (Windows)` `1:647242717565:web:b5d10b704f2f574fd69414`. `lib/firebase_options.dart` now has android,
+  ios, macos, web and windows blocks (Firebase starts on macOS and Windows too; Crashlytics is skipped on Windows /
+  Linux, which it does not support); `firebase.json`'s flutterfire block and `web/firebase-messaging-sw.js` name the
+  new project. The old project `elfaheem` stays as the fallback for the apps already installed (old Android
+  installs keep their pushes; the backend accepts both projects during the move). Its NextBrain apps, registered
+  there first (`1:520907928286:android:4806ebf35b912c5a77884f`, `1:520907928286:ios:4da3fb02e605cfe677884f`), are
+  unused and harmless. Hosting (`.firebaserc`, the `hosting` block) is unchanged.
+- **Owed in the new project's console:** the Web Push certificate (Cloud Messaging → Web Push certificates →
+  Generate key pair) for `NotificationService.webPushVapidKey`, which still holds the old project's key; Google
+  sign-in enabled under Authentication (then re-download GoogleService-Info.plist, which gains `CLIENT_ID` /
+  `REVERSED_CLIENT_ID`, and add the reversed id as a URL scheme in ios/Runner/Info.plist), plus whatever else the
+  old project had switched on (Remote Config, Crashlytics, the APNs key for iOS push).
+
+**Not changed, on purpose.** The Dart package name `flutter_education_app` (pubspec `name:`): it is internal, never
+shown, and renaming it rewrites every `package:` import in thousands of files and breaks every other open branch. The
+signing key. Internal names users never see and that would break compatibility: the Android notification channel id
+`elfaheem_main` (internal; it must match the backend, whose pushes name it), the attendance relay service id
+`com.elfaheem.attendance.relay` (older app versions must still find a relay), the envelope-encryption HKDF labels
+`elfaheem-envelope-*` (the server must match), the flutter-webrtc fork's `ElFaheem*` classes, the web recorder's
+`_ElFaheemCompositor*` globals, and the Dart class `ElFaheemApp`.
+
+**Consequence.** A build with the new id is a NEW app: on Android it installs next to an old
+`com.example.flutter_education_app` install instead of updating it (the old one should be uninstalled; the D-137 /
+D-144 update dialog of old installs points to the website download), and everyone signs in again once. The server's
+`PLAY_PACKAGE_NAME` / `IOS_BUNDLE_ID` (D-144) must be set to `com.doubley.nextbrain`.

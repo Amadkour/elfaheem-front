@@ -31,7 +31,7 @@ Exec=/opt/nextbrain/nextbrain %U
 Icon=nextbrain
 Terminal=false
 Categories=Education;
-StartupWMClass=site.nextbrain.app"
+StartupWMClass=com.doubley.nextbrain"
 
 echo "==> ${NAME}.tar.gz"
 mkdir -p "$STAGE/tar/nextbrain"
@@ -45,7 +45,7 @@ D="$STAGE/deb"
 mkdir -p "$D/DEBIAN" "$D/opt/nextbrain" "$D/usr/bin" "$D/usr/share/applications" "$D/usr/share/icons/hicolor/512x512/apps"
 cp -a "$BUNDLE/." "$D/opt/nextbrain/"
 ln -s /opt/nextbrain/nextbrain "$D/usr/bin/nextbrain"
-printf '%s\n' "$DESKTOP" > "$D/usr/share/applications/nextbrain.desktop"
+printf '%s\n' "$DESKTOP" > "$D/usr/share/applications/com.doubley.nextbrain.desktop"
 cp "$ICON" "$D/usr/share/icons/hicolor/512x512/apps/nextbrain.png"
 # Depends: the packages that own the system libraries the binary and the bundled .so files load
 libs="$( { ldd "$BUNDLE/nextbrain"; find "$BUNDLE/lib" -name '*.so*' -exec ldd {} \; ; } 2>/dev/null | awk '/=> \//{print $3}' | { grep -v "^$BUNDLE" || true; } | sort -u)"
@@ -62,7 +62,7 @@ Version: ${VERSION}+${BUILD}
 Section: education
 Priority: optional
 Architecture: amd64
-Maintainer: NextBrain <noreply@nextbrain.site>
+Maintainer: DoubleY <noreply@nextbrain.site>
 Installed-Size: ${size_kb}
 Depends: ${deps}
 Homepage: https://nextbrain.site

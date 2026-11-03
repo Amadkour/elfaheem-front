@@ -53,14 +53,14 @@ files join the extension target with no project edit — check §2). Deleted:
    **BroadcastUploadExtension** ticked (not Runner). Runner's Compile Sources must no longer list
    `LocalDebugRecorder.swift`.
 4. Info.plist of the **built** app (`Products/Runner.app/Info.plist`) contains
-   `RTCAppGroupIdentifier = group.com.softkour.alfaheem` and
-   `RTCScreenSharingExtension = com.softkour.alfaheem.BroadcastUploadExtension`.
+   `RTCAppGroupIdentifier = group.com.doubley.nextbrain` and
+   `RTCScreenSharingExtension = com.doubley.nextbrain.BroadcastUploadExtension`.
 
 ## 3. Signing and capabilities
 
-- Team `MVHKS8482X` on both targets. Runner bundle id `com.softkour.alfaheem`, extension
-  `com.softkour.alfaheem.BroadcastUploadExtension` (must equal RTCScreenSharingExtension).
-- **App Groups** capability on BOTH targets with `group.com.softkour.alfaheem` ticked (Signing &
+- Team `MVHKS8482X` on both targets. Runner bundle id `com.doubley.nextbrain`, extension
+  `com.doubley.nextbrain.BroadcastUploadExtension` (must equal RTCScreenSharingExtension).
+- **App Groups** capability on BOTH targets with `group.com.doubley.nextbrain` ticked (Signing &
   Capabilities). In the Apple developer portal the group must be assigned to BOTH App IDs and the
   provisioning profiles regenerated — otherwise `containerURL(forSecurityApplicationGroupIdentifier:)`
   returns nil: the extension then stops at once with "App Group … not found".

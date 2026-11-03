@@ -3,26 +3,36 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "elfaheem",
-          "appId": "1:520907928286:android:c262d4fcaa8a4a4277884f",
+          "projectId": "nextbrain-2y",
+          "appId": "1:647242717565:android:b49304b99ce6da89d69414",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
-          "projectId": "elfaheem",
-          "appId": "1:520907928286:ios:0d8cb6a92aa79d6b77884f",
+          "projectId": "nextbrain-2y",
+          "appId": "1:647242717565:ios:9e1944ca9c37d70bd69414",
           "uploadDebugSymbols": false,
           "fileOutput": "ios/Runner/GoogleService-Info.plist"
         }
       },
+      "macos": {
+        "default": {
+          "projectId": "nextbrain-2y",
+          "appId": "1:647242717565:ios:9e1944ca9c37d70bd69414",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "elfaheem",
+          "projectId": "nextbrain-2y",
           "configurations": {
-            "android": "1:520907928286:android:c262d4fcaa8a4a4277884f",
-            "ios": "1:520907928286:ios:0d8cb6a92aa79d6b77884f",
-            "web": "1:520907928286:web:18b6dc8a8c5f9f5b77884f"
+            "android": "1:647242717565:android:b49304b99ce6da89d69414",
+            "ios": "1:647242717565:ios:9e1944ca9c37d70bd69414",
+            "macos": "1:647242717565:ios:9e1944ca9c37d70bd69414",
+            "web": "1:647242717565:web:7c22c255a55be260d69414",
+            "windows": "1:647242717565:web:b5d10b704f2f574fd69414"
           }
         }
       }

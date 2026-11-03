@@ -1,4 +1,4 @@
-package com.example.flutter_education_app
+package com.doubley.nextbrain
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -30,7 +30,7 @@ class ScanFolderChannel private constructor(private val activity: Activity, mess
 
     companion object {
         private const val TAG = "ScanFolder"
-        const val CHANNEL = "com.example.flutter_education_app/scan_folder"
+        const val CHANNEL = "com.doubley.nextbrain/scan_folder"
         const val REQUEST_TREE = 4721
         private const val MAX_FILES = 5000
         private const val MAX_DEPTH = 8

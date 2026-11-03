@@ -2,7 +2,8 @@
 
 The Flutter client of the NextBrain education platform for **Android, iOS and the web** — universities (credit-hour
 and traditional systems), training centers and an open course marketplace in one app, Arabic (RTL) by default and
-English. Package `flutter_education_app`; the backend is the sibling repository [`../back`](../back).
+English. NextBrain by DoubleY, application id `com.doubley.nextbrain` on every platform (D-145); the Dart package
+stays `flutter_education_app` (internal, never shown; renaming it would rewrite every import). The backend is the sibling repository [`../back`](../back).
 
 - Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Developer documents (guides and slides for the app, the core, the Exam Engine, RAG and operations):

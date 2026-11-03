@@ -88,9 +88,9 @@ import os
 @objc class AppDelegate: FlutterAppDelegate {
 
     // ── Channel names ─────────────────────────────────────────────────────────
-    private let kScreenShareChannel = "com.example.flutter_education_app/screen_share"
-    private let kRecorderChannel    = "com.example.flutter_education_app/native_recorder"
-    private let kRecEventChannel    = "com.example.flutter_education_app/rec_events"
+    private let kScreenShareChannel = "com.doubley.nextbrain/screen_share"
+    private let kRecorderChannel    = "com.doubley.nextbrain/native_recorder"
+    private let kRecEventChannel    = "com.doubley.nextbrain/rec_events"
 
     // ── EventChannel sink ─────────────────────────────────────────────────────
     private var eventSink: FlutterEventSink?
@@ -230,7 +230,7 @@ import os
     // ffmpeg step) instead.
     private var videoBroadcastSeenThisChunk: Int = 0
     private var videoBroadcastAppendedThisChunk: Int = 0
-    private var writerQueue = DispatchQueue(label: "com.elfaheem.writer", qos: .userInitiated)
+    private var writerQueue = DispatchQueue(label: "com.doubley.nextbrain.writer", qos: .userInitiated)
     // Same reasoning as audioIpcReadQueue above, one level further down the
     // pipeline: writerQueue does video JPEG decode + append (expensive) AND
     // mic-audio append. Appending system audio there too means a slow video
@@ -239,7 +239,7 @@ import os
     // call from a different thread per input; it's only unsafe to call
     // concurrently on the SAME input from multiple threads, which this
     // doesn't do (systemAudioInput is only ever touched from this queue).
-    private var systemAudioQueue = DispatchQueue(label: "com.elfaheem.writer.systemAudio", qos: .userInteractive)
+    private var systemAudioQueue = DispatchQueue(label: "com.doubley.nextbrain.writer.systemAudio", qos: .userInteractive)
 
     // ── Session params ────────────────────────────────────────────────────────
     private var sessionId:  Int    = 0
@@ -551,14 +551,14 @@ import os
     //
     // ⚠️  REQUIRED XCODE SETUP (one-time, ~30 seconds):
     //   1. Select the Runner target → Signing & Capabilities → "+" → App Groups
-    //      Add group ID:  group.com.example.flutterEducationApp
+    //      Add group ID:  group.com.doubley.nextbrain
     //   2. Select the BroadcastUploadExtension target → same steps → same ID
     //   Both targets must share the EXACT same group string.
     //
     //   NOTE: this must match BroadcastUploadExtension.entitlements AND the
     //   kAppGroup constant in SampleHandler.swift EXACTLY (character-for-
     //   character). A previous version of this file used the snake_case
-    //   variant "group.com.example.flutter_education_app", which silently
+    //   variant of the group id ("group.<bundle id in snake_case>"), which silently
     //   mismatched the entitlements file (camelCase) — that mismatch makes
     //   containerURL(forSecurityApplicationGroupIdentifier:) return nil in
     //   BOTH processes, breaking the IPC with no obvious error at the call
@@ -566,8 +566,8 @@ import os
     //   the old string and update every occurrence in the same commit.
     //   If your bundle ID differs, update kAppGroup in BOTH this file and
     //   SampleHandler.swift — they must be identical.
-    private let kAppGroup           = "group.com.softkour.alfaheem"
-    private let kDarwinFrameNotif   = "com.example.flutter_education_app.frame"
+    private let kAppGroup           = "group.com.doubley.nextbrain"
+    private let kDarwinFrameNotif   = "com.doubley.nextbrain.frame"
     // NEW: shared app's own audio (e.g. sound from a video/game on the
     // shared screen) — see SampleHandler.swift's .audioApp case. This is
     // backed by a QUEUE DIRECTORY (kAudioQueueDirName), not a single file
@@ -575,12 +575,12 @@ import os
     // single-file "mailbox" silently drops the large majority of this
     // audio (it arrives every ~10-25ms, too fast for overwrite-and-notify
     // to keep up with reliably).
-    private let kDarwinAudioNotif   = "com.example.flutter_education_app.audioframe"
-    private let kDarwinStopNotif    = "com.example.flutter_education_app.stop"
+    private let kDarwinAudioNotif   = "com.doubley.nextbrain.audioframe"
+    private let kDarwinStopNotif    = "com.doubley.nextbrain.stop"
     private let kFrameFileName      = "broadcast_frame.bin"
     private let kAudioQueueDirName  = "broadcast_audio_queue"
     private var darwinObserverAdded = false
-    private let ipcReadQueue        = DispatchQueue(label: "com.elfaheem.ipc", qos: .userInteractive)
+    private let ipcReadQueue        = DispatchQueue(label: "com.doubley.nextbrain.ipc", qos: .userInteractive)
     // Audio buffers (from LiveKit's mic tap AND the broadcast's .audioApp)
     // arrive far more often than video frames (every ~10-25ms vs every
     // ~33-100ms), and reading the video frame file involves decoding a full
@@ -590,7 +590,7 @@ import os
     // more audio keeps arriving faster than the queue can process it. A
     // dedicated queue means video work can never delay audio work or vice
     // versa.
-    private let audioIpcReadQueue   = DispatchQueue(label: "com.elfaheem.ipc.audio", qos: .userInteractive)
+    private let audioIpcReadQueue   = DispatchQueue(label: "com.doubley.nextbrain.ipc.audio", qos: .userInteractive)
 
     // ── Broadcast-picker watchdog ─────────────────────────────────────────────
     // showBroadcastPicker() pauses RPScreenRecorder and waits for the extension
@@ -625,12 +625,12 @@ import os
     private let kLkBroadcastStarted     = "iOS_BroadcastStarted"
     private let kLkBroadcastStopped     = "iOS_BroadcastStopped"
     private let kLkBroadcastRequestStop = "iOS_BroadcastRequestStop"
-    private let kDarwinWantsChanged     = "com.example.flutter_education_app.wants_changed"
+    private let kDarwinWantsChanged     = "com.doubley.nextbrain.wants_changed"
     // Marker files in the App Group the extension polls (SampleHandler Wants).
     private let kWantsVideoFile  = "ext_wants_video_file"
     private let kWantsAudioQueue = "ext_wants_audio_queue"
     private let kWantsDetail     = "ext_detail_mode"
-    private let kBroadcastStateChannel = "com.example.flutter_education_app/broadcast_state"
+    private let kBroadcastStateChannel = "com.doubley.nextbrain/broadcast_state"
     /// True between iOS_BroadcastStarted and iOS_BroadcastStopped. Main thread.
     private var extensionBroadcastLive = false
     private var broadcastStateSink: FlutterEventSink?
@@ -4422,7 +4422,7 @@ final class VodNowPlaying {
     private var speed = 1.0
 
     func register(messenger: FlutterBinaryMessenger) {
-        let ch = FlutterMethodChannel(name: "com.example.flutter_education_app/vod_media", binaryMessenger: messenger)
+        let ch = FlutterMethodChannel(name: "com.doubley.nextbrain/vod_media", binaryMessenger: messenger)
         ch.setMethodCallHandler { [weak self] call, result in
             guard let self = self else { return }
             let a = call.arguments as? [String: Any] ?? [:]

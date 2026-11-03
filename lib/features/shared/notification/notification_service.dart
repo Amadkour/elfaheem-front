@@ -53,6 +53,11 @@ class NotificationService {
 
   static final NotificationService instance = NotificationService._();
 
+  /// The Web Push (VAPID) public key of the web app's Firebase project (`nextbrain-2y`, D-145): Project settings →
+  /// Cloud Messaging → Web Push certificates. A public key, not a secret.
+  static const webPushVapidKey =
+      'BMbmlTUe7ISZTKD-qlNpxHGOZiS4TQ4_OAUi4_pAIjtHB2iQCIICTh0j6vVdZylU3mTbgYPMKdElK55jACSqAR0';
+
   final FlutterLocalNotificationsPlugin _plugin =
   FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
@@ -66,7 +71,7 @@ class NotificationService {
   // ── Android channel ───────────────────────────────────────────────────────
   static const _channel = AndroidNotificationChannel(
     'elfaheem_main',
-    'ElFaheem Notifications',
+    'NextBrain Notifications',
     description: 'Course updates, payments, and reminders',
     importance: Importance.max,
   );
@@ -79,7 +84,7 @@ class NotificationService {
   static NotificationDetails _withGenerateAction() => NotificationDetails(
         android: AndroidNotificationDetails(
           'elfaheem_main',
-          'ElFaheem Notifications',
+          'NextBrain Notifications',
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
@@ -91,7 +96,7 @@ class NotificationService {
   static const _notifDetails = NotificationDetails(
     android: AndroidNotificationDetails(
       'elfaheem_main',
-      'ElFaheem Notifications',
+      'NextBrain Notifications',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
@@ -193,10 +198,7 @@ class NotificationService {
       String? token;
 
       if (kIsWeb) {
-        token = await _fcm.getToken(
-          vapidKey:
-          'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
-        );
+        token = await _fcm.getToken(vapidKey: webPushVapidKey);
       } else {
         token = await _fcm.getToken();
       }

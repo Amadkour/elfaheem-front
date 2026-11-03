@@ -14,7 +14,7 @@
 //     requestStop() (and AppDelegate's "requestBroadcastStop") posts
 //     RequestStop, which this extension answers with finishBroadcastWithError.
 //
-//   com.example.flutter_education_app.*  — this app's own recording IPC
+//   com.doubley.nextbrain.*  — this app's own recording IPC
 //     (frame / audioframe / stop, plus wants_changed); must match
 //     AppDelegate.swift.
 
@@ -25,11 +25,11 @@ enum DarwinNotification: String {
     case broadcastStopped     = "iOS_BroadcastStopped"
     case broadcastRequestStop = "iOS_BroadcastRequestStop"
     // App recording IPC (AppDelegate.swift kDarwin* constants).
-    case recordingFrame       = "com.example.flutter_education_app.frame"
-    case recordingAudio       = "com.example.flutter_education_app.audioframe"
-    case recordingStop        = "com.example.flutter_education_app.stop"
+    case recordingFrame       = "com.doubley.nextbrain.frame"
+    case recordingAudio       = "com.doubley.nextbrain.audioframe"
+    case recordingStop        = "com.doubley.nextbrain.stop"
     /// Posted by the app after it changed one of the ext_wants_* marker files.
-    case wantsChanged         = "com.example.flutter_education_app.wants_changed"
+    case wantsChanged         = "com.doubley.nextbrain.wants_changed"
 }
 
 final class DarwinNotificationCenter {

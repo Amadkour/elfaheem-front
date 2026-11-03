@@ -223,7 +223,7 @@ void main() {
   testWidgets('release_store', (t) async {
     final api = FakeApi({
       'GET $b/21': (_) => codemagicReleaseJson(
-          channel: 'store', status: 'live', isLive: true, progress: 100, log: sampleLog(12), config: {'track': 'production', 'package_name': 'site.nextbrain.app'}),
+          channel: 'store', status: 'live', isLive: true, progress: 100, log: sampleLog(12), config: {'track': 'production', 'package_name': 'com.doubley.nextbrain'}),
       'GET $b/21/log': (_) => {'lines': []},
     }, latency: const Duration(milliseconds: 10))
       ..install();

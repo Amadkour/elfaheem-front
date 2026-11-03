@@ -74,7 +74,7 @@ void main() {
       () => NewAppReleasePage(
           latest: latest,
           initialChannel: 'store',
-          config: ReleaseConfig.fromJson(releaseConfigJson(notReady: const {}, packageName: 'site.nextbrain.app')),
+          config: ReleaseConfig.fromJson(releaseConfigJson(notReady: const {}, packageName: 'com.doubley.nextbrain')),
           askPassword: (_) async => null),
       scaffold: false,
       act: (tester) async {
@@ -118,7 +118,7 @@ void main() {
   });
 
   testWidgets('detail: a Codemagic store release and a website release with its files', (tester) async {
-    final store = AppRelease.fromJson(codemagicReleaseJson(channel: 'store', status: 'live', isLive: true, progress: 100, config: {'track': 'production', 'package_name': 'site.nextbrain.app'}));
+    final store = AppRelease.fromJson(codemagicReleaseJson(channel: 'store', status: 'live', isLive: true, progress: 100, config: {'track': 'production', 'package_name': 'com.doubley.nextbrain'}));
     final site = AppRelease.fromJson(codemagicReleaseJson(status: 'uploading', progress: 92, artifacts: codemagicApkArtifacts, log: sampleLog(8)));
     for (final r in [store, site]) {
       await expectNoLayoutErrors(
@@ -164,7 +164,7 @@ void main() {
     final r = AppRelease.fromJson(releaseJson(
       status: 'ready',
       source: 'google_play',
-      storeUrl: 'https://play.google.com/store/apps/details?id=com.nextbrain.app',
+      storeUrl: 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain',
       autoPublish: false,
       progress: 100,
       log: sampleLog(12),

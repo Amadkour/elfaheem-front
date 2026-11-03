@@ -277,7 +277,7 @@ class AuthBrandName extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              id.name.isNotEmpty ? id.name : 'El-faheem',
+              id.name.isNotEmpty ? id.name : 'NextBrain',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: authText(large ? 20 : 15.5, w: FontWeight.w800, c: onHero ? c.onHero : c.textDark, h: 1.2),

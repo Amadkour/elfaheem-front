@@ -13,7 +13,7 @@
 // Needs "Display over other apps" (SYSTEM_ALERT_WINDOW): [requestPermission] opens the system page and answers
 // once the person comes back. Refused → the in-app annotation on the share view is the fallback.
 //
-// Channel `com.example.flutter_education_app/annotation_overlay`:
+// Channel `com.doubley.nextbrain/annotation_overlay`:
 //   Dart → native: isPermitted · requestPermission · openSettings · show {labels, colors, color, thickness, rtl,
 //                  surface, accent} (arms it for the share) · hide · isShowing (armed)
 //   native → Dart: closed (the overlay could not be shown any more, e.g. the permission was revoked: the room
@@ -32,7 +32,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 class AndroidAnnotationOverlay {
   AndroidAnnotationOverlay._();
 
-  static const _channel = MethodChannel('com.example.flutter_education_app/annotation_overlay');
+  static const _channel = MethodChannel('com.doubley.nextbrain/annotation_overlay');
 
   static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 

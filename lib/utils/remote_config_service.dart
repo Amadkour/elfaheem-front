@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 /// ┌──────────────────────┬────────────────┬───────────────────────────────┐
 /// │ Key                  │ Default        │ Description                   │
 /// ├──────────────────────┼────────────────┼───────────────────────────────┤
-/// │ app_name             │ ElFaheem       │ Displayed name in the UI      │
+/// │ app_name             │ NextBrain      │ Displayed name in the UI      │
 /// │ maintenance_mode     │ false          │ Show maintenance banner        │
 /// │ force_update_version │ 0              │ Min version before hard block  │
 /// └──────────────────────┴────────────────┴───────────────────────────────┘
@@ -21,7 +21,7 @@ class RemoteConfigService {
   // ── Defaults — used before fetch or when offline ──────────────────────────
 
   static const Map<String, dynamic> _defaults = {
-    'app_name':             'ElFaheem',
+    'app_name':             'NextBrain',
     'maintenance_mode':     false,
     'force_update_version': 0,
   };
@@ -61,7 +61,7 @@ class RemoteConfigService {
 
   // ── Getters ───────────────────────────────────────────────────────────────
 
-  /// The app's display name — replaces the hardcoded "ElFaheem" string.
+  /// The app's display name — replaces the hardcoded "NextBrain" string.
   String get appName => _rc.getString('app_name');
 
   /// When true, show a maintenance screen or banner to users.

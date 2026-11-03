@@ -26,9 +26,9 @@ import 'package:flutter/services.dart';
 class IosShareNative {
   IosShareNative._();
 
-  static const _channel = MethodChannel('com.example.flutter_education_app/screen_share');
-  static const _recorder = MethodChannel('com.example.flutter_education_app/native_recorder');
-  static const _state = EventChannel('com.example.flutter_education_app/broadcast_state');
+  static const _channel = MethodChannel('com.doubley.nextbrain/screen_share');
+  static const _recorder = MethodChannel('com.doubley.nextbrain/native_recorder');
+  static const _state = EventChannel('com.doubley.nextbrain/broadcast_state');
 
   static bool get supported => !kIsWeb && Platform.isIOS;
 
