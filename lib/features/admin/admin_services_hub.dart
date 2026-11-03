@@ -484,26 +484,30 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           colors: AdminPalette.rose,
           onTap: () => push(const AdminFlagsSettingsPage()),
         ),
-        AdminService(
-          labelKey: 'versions',
-          descKey: 'svc_versions_d',
-          icon: Icons.system_update_rounded,
-          colors: AdminPalette.orange,
-          onTap: () => push(const AdminVersionsPage()),
-        ),
-        // app releases from the dashboard (D-143): a build server builds the chosen branch and publishes it
+        // app versions from the dashboard (D-144): Codemagic builds them, then the store or our website's download
+        // banner; going live also fills the update prompt below, which stays for a manual override
         AdminService(
           labelKey: 'svc_app_releases',
           descKey: 'svc_app_releases_d',
-          label: t('إصدارات التطبيق', 'App versions'),
-          desc: t('إصدار جديد لأندرويد أو الويب أو لينكس يبنيه خادم البناء وينشره، سجل البناء، والرجوع لإصدار سابق',
-              'A new Android, web or Linux version built and published by the build server, the build log, rolling back'),
+          label: t('إصدارات التطبيق (بناء ونشر)', 'App versions (build & publish)'),
+          desc: t('بناء إصدار جديد لأندرويد أو الويب أو لينكس أو ويندوز على Codemagic ونشره على المتجر أو في شريط التحميل بالموقع',
+              'Build a new Android, web, Linux or Windows version on Codemagic and publish it to the store or the website download banner'),
           icon: Icons.rocket_launch_rounded,
           colors: AdminPalette.indigo,
           featureKey: kAppReleasesFeatureKey,
           visible: isSuper,
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
               settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => const AppReleasesPage())),
+        ),
+        AdminService(
+          labelKey: 'versions',
+          descKey: 'svc_versions_d',
+          label: t('رسالة التحديث', 'Update prompt'),
+          desc: t('الإصدار الذي يطلب التطبيق من المستخدمين التحديث إليه (إجباري أو مُوصى به)، دون بناء',
+              'The version the app asks users to update to (forced or recommended), without building'),
+          icon: Icons.system_update_rounded,
+          colors: AdminPalette.orange,
+          onTap: () => push(const AdminVersionsPage()),
         ),
         AdminService(
           labelKey: 'terms_and_conditions',
