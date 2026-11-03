@@ -683,7 +683,8 @@ Widget examTab(IconData icon, String text) => Tab(
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 16),
         const SizedBox(width: 6),
-        Text(text),
+        // at 320 px with large text "Student Results" overflowed its half of the bar (layout harness)
+        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis)),
       ]),
     );
 

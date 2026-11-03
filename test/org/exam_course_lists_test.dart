@@ -115,5 +115,10 @@ void main() {
     expect((examHubThirdStat(legacy, const []).value, examHubThirdStat(legacy, const []).label), ('9', 'btn_questions'));
     final engine = [_exam(1, 'A'), {..._exam(2, 'B'), 'attempts': const {'total': 3}}, {..._exam(3, 'C'), 'attempts': null}];
     expect((examHubThirdStat(legacy, engine).value, examHubThirdStat(legacy, engine).label), ('5', 'exam_hub_attempts'));
+    // round 3 of the paper-exam e2e: the engine list carries question_count — the tile is Questions again, legacy +
+    // engine (9 + 4 + 6 + 0)
+    final counted = [{..._exam(1, 'A'), 'question_count': 4}, {..._exam(2, 'B'), 'question_count': 6}, {..._exam(3, 'C'), 'question_count': 0}];
+    expect((examHubThirdStat(legacy, counted).value, examHubThirdStat(legacy, counted).label), ('19', 'btn_questions'));
+    expect((examHubThirdStat(const [], counted).value, examHubThirdStat(const [], counted).label), ('10', 'btn_questions'));
   });
 }

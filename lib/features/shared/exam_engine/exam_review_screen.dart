@@ -9,6 +9,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/utils/page_return.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
@@ -545,11 +546,12 @@ class EngineReviewSection extends StatefulWidget {
   State<EngineReviewSection> createState() => _EngineReviewSectionState();
 }
 
-class _EngineReviewSectionState extends State<EngineReviewSection> {
+class _EngineReviewSectionState extends State<EngineReviewSection> with PageReturnAware {
   final _api = ExamAuthoringApi();
   List<Map<String, dynamic>> _items = const [];
   bool _ready = false;
   int? _orgId;
+  Future<void>? _loading;
 
   @override
   void initState() {
@@ -557,8 +559,16 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
     _load();
   }
 
+  /// The hub is on screen again (a page above it closed, or its tab came back): an exam created or published from
+  /// another page shows up without a pull (round 3 of the paper-exam e2e). One load at a time: the pop of a page this
+  /// section opened also reloads it.
+  @override
+  void onPageReturn() => _load();
+
+  Future<void> _load() => _loading ??= _fetch().whenComplete(() => _loading = null);
+
   // The course's space comes from the server: an organization's course answers 409 course_not_in_org naming it.
-  Future<void> _load() async {
+  Future<void> _fetch() async {
     final s = await _api.resolveScope(widget.courseId);
     if (!mounted || !s.list.ok) return;
     setState(() {
