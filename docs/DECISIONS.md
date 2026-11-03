@@ -2228,3 +2228,46 @@ between steps.
 
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
+
+
+## D-164 — One design engine: layout v4 (computed fields, page mode, grids, page breaks) · 2026-11-04 · accepted
+
+**Context.** The owner's brief (session 6, "Unified design engine"): exports must pass through a design studio whose
+flow is poor, large lists lack layout control, there is no logic for computed columns, and the same engine must serve
+data exports, certificates, exam papers / covers, bubble sheets and the user-guide export. The audit
+(`docs/design_engine/AUDIT.md` in the front repo) found one shared canvas (`lib/design/studio/`) but two document
+models and two server renderers (layout v3 in mm via reportlab; certificates in 1000-unit space via Pillow).
+
+**Decision.** The layout document becomes THE engine document, version 4 = v3 + optional keys (contract
+`docs/design_engine.md` = front `docs/design_engine/ENGINE.md`): document-level **computed fields** (`calc.` keys;
+cases of nested all/any condition groups → a value expression of text / number / field / concat / math; first match
+wins, else a value; evaluated on the server per row before sort / group / totals, mirrored in the app for its row
+preview and checked against a parity fixture), **mode `page`** (one page per item), **list columns**, cards up to 4
+per line with **per_page / fill_page** (2×2, 3×3 grids), **items_per_page**, **group page breaks**, custom page sizes and
+background images, ellipse / opacity / photo shapes, letter spacing / line height / shrink / shadow. The server
+accepts schema 3 and 4 and keeps the version it was sent; older apps keep the unknown keys.
+- Computed fields are DATA from a closed vocabulary with depth / item / text caps — never code, never `eval`.
+- A computed key is not a source column: `referenced_fields` reports the source columns it reads (what the file may
+  reveal), so dataset column checks still apply.
+- Excel stays data-focused: page mode is refused, free-form elements are simplified with a note in the studio.
+- Image values may be an export asset id or a URL on the platform's own storage (the certificate rule), never another
+  host.
+
+**Not done here.** Exam papers, covers, bubble sheets and the guide export are not migrated by this job (the exam
+sessions own them); they get the API (`engine.py`, `design_engine.dart`).
+
+## D-165 — Certificates render through the design engine; the legacy renderer stays for unsaved designs · 2026-11-04 · accepted
+
+**Context.** Certificate designs are Pillow-rendered from `fields` / `fields_en` in a 1000-unit space. The audit found
+the Arabic / English saving problems (a background regenerate committed to the stored design behind the user's back
+and wiped theme keys; no save concurrency check; drafts dropped silently) and a designer that rebuilt everything per
+drag frame.
+
+**Decision.** `certificate_designs.document` (JSON, nullable) + `document_version` (migration 0043, reversible). A design
+saved by the new Certificate Studio holds a v4 page-mode document (one design per language, never an implicit English
+fallback) and renders through the engine (PDF, and PNG at the legacy pixel size); a design with no document renders
+with the legacy renderer exactly as before, and a legacy save clears `document` — whatever saved last renders.
+Saving sends `version`; a stale version answers 409 `design_conflict` instead of overwriting. The legacy designer stays
+reachable behind the kill switch `certificates.engine`. `scripts/migrate_cert_designs.py` converts legacy designs
+(dry run by default; writes only the new columns; rollback = `document` null). The draft endpoint no longer commits to
+a stored design and merges theme keys instead of replacing them.
