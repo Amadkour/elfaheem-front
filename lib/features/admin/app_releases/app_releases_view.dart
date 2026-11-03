@@ -140,9 +140,12 @@ class BuilderStatusBanner extends StatelessWidget {
 /// D-144: Codemagic builds every version — whether it is set up, and which channels are ready (from
 /// `GET …/config`; the env names of what is missing are listed in the New version form).
 class CodemagicStatusBanner extends StatelessWidget {
-  const CodemagicStatusBanner({super.key, required this.config});
+  const CodemagicStatusBanner({super.key, required this.config, this.optional = false});
 
   final ReleaseConfig config;
+
+  /// D-146: your own runner builds the website channels, so Codemagic not set up is a note, not an alarm.
+  final bool optional;
 
   /// Every platform + channel Codemagic builds, in the page's platform order.
   static List<(String, String)> get builtChannels => [
@@ -157,11 +160,15 @@ class CodemagicStatusBanner extends StatelessWidget {
     final cm = config.codemagic;
     final all = builtChannels;
     final ready = [for (final (p, ch) in all) if (config.readiness(p, ch).ready) (p, ch)];
-    final col = !cm.ready ? c.danger : (ready.length == all.length ? c.success : c.warning);
-    final title = cm.ready ? t('Codemagic متصل', 'Codemagic connected') : t('Codemagic غير مُعدّ بعد', 'Codemagic is not set up yet');
+    final col = !cm.ready ? (optional ? c.textLight : c.danger) : (ready.length == all.length ? c.success : c.warning);
+    final title = cm.ready
+        ? t('Codemagic متصل', 'Codemagic connected')
+        : (optional ? t('Codemagic غير متصل (اختياري)', 'Codemagic not connected (optional)') : t('Codemagic غير مُعدّ بعد', 'Codemagic is not set up yet'));
     final meta = cm.ready
         ? t('${ready.length} من ${all.length} قنوات جاهزة للبناء', '${ready.length} of ${all.length} channels ready to build')
-        : t('لا يبدأ أي بناء حتى يُضبط: ${cm.missing.join('، ')}', 'No build can start until these are set: ${cm.missing.join(', ')}');
+        : (optional
+            ? t('يلزم فقط للرفع إلى Google Play و App Store؛ جهازك يبني قنوات الموقع مجاناً', 'Needed only for Google Play and App Store uploads; your computer builds the website channels for free')
+            : t('لا يبدأ أي بناء حتى يُضبط: ${cm.missing.join('، ')}', 'No build can start until these are set: ${cm.missing.join(', ')}'));
     return AppCard(
       key: const ValueKey('releases.codemagic'),
       padding: const EdgeInsets.all(AppSpace.sm),
@@ -196,6 +203,79 @@ class CodemagicStatusBanner extends StatelessWidget {
               ),
           ]),
         ],
+      ]),
+    );
+  }
+}
+
+/// D-146: your own build runners — which are on, what they build, the token, and how to start one.
+class RunnerStatusCard extends StatelessWidget {
+  const RunnerStatusCard({super.key, required this.runners, this.onNewToken});
+
+  final ReleaseRunners runners;
+  final VoidCallback? onNewToken;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final on = runners.online;
+    final col = on.isNotEmpty ? c.success : (runners.items.isEmpty ? c.warning : c.textLight);
+    final title = on.isNotEmpty
+        ? t('مشغّل البناء يعمل', 'Build runner on')
+        : (runners.items.isEmpty ? t('مشغّل البناء: لم يتصل بعد', 'Build runner: never connected') : t('مشغّل البناء متوقف', 'Build runner off'));
+    final meta = on.isNotEmpty
+        ? t('مجاني على حاسوبك — ${on.map((r) => r.name).join('، ')}', 'Free, on your computer — ${on.map((r) => r.name).join(', ')}')
+        : (runners.items.isEmpty
+            ? t('يبني الإصدارات على حاسوبك مجاناً. أنشئ رمزاً ثم شغّل tools/runner/nextbrain_runner.py (الخطوات في tools/runner/README.md).',
+                'Builds versions on your computer for free. Create a token, then run tools/runner/nextbrain_runner.py (steps in tools/runner/README.md).')
+            : t('الإصدارات تنتظر في الطابور حتى تشغّله على حاسوبك', 'Versions wait in the queue until you start it on your computer'));
+    return AppCard(
+      key: const ValueKey('releases.runner'),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
+            child: Icon(Icons.computer_rounded, color: col, size: 22),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontFamily: AppFonts.family))),
+              ]),
+              Text(meta, maxLines: 4, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family)),
+            ]),
+          ),
+        ]),
+        if (runners.items.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+            for (final r in runners.items)
+              AppBadgePill(
+                '${r.name} · ${r.platforms.map(releasePlatformShort).join(' ')}'
+                '${r.online ? '' : ' · ${releaseAgo(r.lastSeen)}'}',
+                color: r.online ? c.success : c.textLight,
+                icon: r.busyRelease != null ? Icons.autorenew_rounded : (r.online ? Icons.check_rounded : Icons.power_settings_new_rounded),
+              ),
+          ]),
+        ],
+        if (onNewToken != null)
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(
+              key: const ValueKey('releases.runner.token'),
+              onPressed: onNewToken,
+              style: TextButton.styleFrom(foregroundColor: c.primary, minimumSize: const Size(48, AppTouch.min)),
+              icon: const Icon(Icons.key_rounded, size: 18),
+              label: Text(runners.tokenSet ? t('رمز جديد', 'New token') : t('أنشئ الرمز', 'Create the token'),
+                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+            ),
+          ),
       ]),
     );
   }

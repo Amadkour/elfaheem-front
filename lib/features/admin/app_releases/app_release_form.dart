@@ -88,6 +88,9 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
   String _track = 'internal';
   String _policy = 'recommended';
   String _gate = 'test_first';
+
+  /// D-146: `runner` (your computer, free) or `codemagic`; the server's default once the config is in.
+  String _executor = 'codemagic';
   bool _auto = true;
   bool _busy = false;
   Map<String, String> _errors = const {};
@@ -111,8 +114,18 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
   void initState() {
     super.initState();
     _prefill();
+    _executor = _defaultExecutor(_config);
     if (_config == null) _loadConfig();
   }
+
+  /// The executor the form starts on: the server's default (runner), Codemagic on an older server.
+  static String _defaultExecutor(ReleaseConfig? cfg) {
+    if (cfg == null || !cfg.supportsRunner) return 'codemagic';
+    return kReleaseExecutors.contains(cfg.defaultExecutor) ? cfg.defaultExecutor! : 'runner';
+  }
+
+  /// The executor that builds this channel: your computer cannot upload to a store, so a store channel is Codemagic's.
+  String get _effectiveExecutor => _channel == 'store' ? 'codemagic' : _executor;
 
   @override
   void dispose() {
@@ -129,6 +142,7 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
       if (!mounted) return;
       setState(() {
         _config = cfg;
+        _executor = _defaultExecutor(cfg);
         _serverMissing.clear();
         _prefillConfig();
       });
@@ -177,13 +191,14 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
 
   bool get _builds => releaseChannelBuilds(_platform, _channel);
 
-  String get _key => releaseChannelKey(_platform, _channel);
+  String get _key => '$_effectiveExecutor/${releaseChannelKey(_platform, _channel)}';
 
   /// What blocks this platform + channel: the server's check, plus a refusal it sent; null while it is unknown.
   ReleaseReadiness? get _readiness {
     final cfg = _config;
     final refused = _serverMissing[_key];
-    ReleaseReadiness? r = cfg?.readiness(_platform, _channel).without(_fixedByForm) ?? (_builds ? null : ReleaseReadiness.ok);
+    ReleaseReadiness? r =
+        cfg?.readiness(_platform, _channel, executor: _effectiveExecutor).without(_fixedByForm) ?? (_builds ? null : ReleaseReadiness.ok);
     if (refused != null) r = (r ?? ReleaseReadiness.ok).and(refused);
     return r;
   }
@@ -224,6 +239,7 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
         track: _track,
         packageName: _package.text.trim(),
         autoPublish: _auto,
+        executor: (_config?.supportsRunner ?? false) ? _effectiveExecutor : null,
       );
 
   Future<void> _submit() async {
@@ -245,9 +261,11 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
     try {
       final created = await widget.api.create(d, password: password);
       if (!mounted) return;
-      showAppNotice(d.builds
-          ? t('أُنشئ الإصدار ${created.label} — بدأ Codemagic بناءه', 'Version ${created.label} created — Codemagic is building it')
-          : t('سُجّل الإصدار ${created.label}', 'Version ${created.label} saved'));
+      showAppNotice(!d.builds
+          ? t('سُجّل الإصدار ${created.label}', 'Version ${created.label} saved')
+          : (d.executor == 'runner'
+              ? t('أُنشئ الإصدار ${created.label} — ينتظر مشغّل البناء على حاسوبك', 'Version ${created.label} created — waiting for the build runner on your computer')
+              : t('أُنشئ الإصدار ${created.label} — بدأ Codemagic بناءه', 'Version ${created.label} created — Codemagic is building it')));
       Navigator.of(context).pop(created);
     } catch (e) {
       final f = ReleaseFailure.from(e);
@@ -324,10 +342,15 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
                           const SizedBox(height: AppSpace.sm),
                           AppBanner(key: const ValueKey('release.store_note'), icon: Icons.gavel_rounded, color: c.warning, text: releaseStoreReviewNote(_platform)),
                         ],
+                        if (builds && (_config?.supportsRunner ?? false) && _channel != 'store') ...[
+                          const SizedBox(height: AppSpace.sm),
+                          _executorPicker(context),
+                        ],
                         const SizedBox(height: AppSpace.sm),
                         ReleaseReadinessBox(
                           key: const ValueKey('release.readiness'),
                           builds: builds,
+                          builder: releaseExecutorName(_effectiveExecutor),
                           readiness: readiness,
                           loading: _config == null && _configError == null && builds,
                           error: _config == null && builds ? _configError : null,
@@ -451,6 +474,44 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
     );
   }
 
+  /// D-146: "Build on" — your computer (free) or Codemagic, with a note when no runner for this platform is on.
+  Widget _executorPicker(BuildContext context) {
+    final c = context.colors;
+    final runners = _config?.runners ?? const ReleaseRunners();
+    final noRunner = _executor == 'runner' && !runners.onlineFor(_platform);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(t('يُبنى على', 'Build on'), style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+      const SizedBox(height: AppSpace.xs),
+      _ChoiceGrid(
+        minWidth: 280,
+        children: [
+          for (final ex in kReleaseExecutors)
+            _ChoiceCard(
+              key: ValueKey('release.executor.$ex'),
+              icon: ex == 'runner' ? Icons.computer_rounded : Icons.cloud_outlined,
+              title: releaseExecutorName(ex),
+              subtitle: releaseExecutorHint(ex),
+              selected: _executor == ex,
+              onTap: () => setState(() {
+                _executor = ex;
+                _general = null;
+              }),
+            ),
+        ],
+      ),
+      if (noRunner) ...[
+        const SizedBox(height: AppSpace.sm),
+        AppBanner(
+          key: const ValueKey('release.runner_off'),
+          icon: Icons.power_settings_new_rounded,
+          color: c.warning,
+          text: t('لا يعمل الآن مشغّل يبني ${releasePlatformShort(_platform)}. يُنشأ الإصدار وينتظر في الطابور حتى تشغّل tools/runner/nextbrain_runner.py على حاسوبك.',
+              'No runner that builds ${releasePlatformShort(_platform)} is on now. The version is created and waits in the queue until you start tools/runner/nextbrain_runner.py on your computer.'),
+        ),
+      ],
+    ]);
+  }
+
   /// Branch, the Codemagic workflow, Play's track and package name, the store link, the gate — the server's defaults,
   /// editable for this version (never a secret).
   Widget _buildSection(BuildContext context) {
@@ -458,7 +519,7 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
     final play = AppReleaseDraft.playFields(_platform, _channel);
     final store = _channel == 'store';
     return _Section(
-      title: t('البناء على Codemagic', 'Build on Codemagic'),
+      title: _effectiveExecutor == 'runner' ? t('إعدادات البناء', 'Build settings') : t('البناء على Codemagic', 'Build on Codemagic'),
       subtitle: t('القيم الافتراضية من إعداد الخادم؛ يمكنك تغييرها لهذا الإصدار', "The server's defaults; you may change them for this version"),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _Pair(
@@ -474,7 +535,7 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
             fieldKey: 'release.workflow',
             controller: _workflow,
             onChanged: _rebuild,
-            label: t('سير العمل في Codemagic', 'Codemagic workflow'),
+            label: _effectiveExecutor == 'runner' ? t('سير العمل', 'Workflow') : t('سير العمل في Codemagic', 'Codemagic workflow'),
             hint: releaseDefaultWorkflow(_platform, _channel),
             helper: t('كما في codemagic.yaml', 'As in codemagic.yaml'),
             ltr: true,
@@ -587,6 +648,7 @@ class ReleaseReadinessBox extends StatelessWidget {
     required this.builds,
     required this.readiness,
     required this.what,
+    this.builder = 'Codemagic',
     this.loading = false,
     this.error,
     this.onRetry,
@@ -598,6 +660,9 @@ class ReleaseReadinessBox extends StatelessWidget {
 
   /// "Android · Google Play"
   final String what;
+
+  /// Who builds it: "Codemagic" or "My computer (free)" (D-146).
+  final String builder;
   final bool loading;
   final String? error;
   final VoidCallback? onRetry;
@@ -636,7 +701,7 @@ class ReleaseReadinessBox extends StatelessWidget {
       return AppBanner(
         icon: Icons.check_circle_outline_rounded,
         color: c.success,
-        text: t('جاهز: يبني Codemagic $what', 'Ready: Codemagic builds $what'),
+        text: t('جاهز: يبني $builder ‏$what', 'Ready: $builder builds $what'),
       );
     }
     final col = c.danger;

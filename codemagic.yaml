@@ -1,5 +1,12 @@
 # codemagic.yaml — every app build runs on Codemagic (D-144, docs/release/APP_RELEASES_CODEMAGIC.md).
 #
+# D-146: the SAME workflows also run on the owner's own computer, for free, through tools/runner/nextbrain_runner.py (the
+# default "Build on: My computer"). It reads this file at the commit it builds and runs every script step (bash, or
+# PowerShell for windows-website), skipping a step that uses sudo. Keep the steps runnable there: no Codemagic-only
+# tools in the website workflows (`publishing`, `ios_signing` and `integrations` are Codemagic's and stay in the store
+# workflows), files to upload in build/nb-upload, and `zip -qr <dest> <paths>` as the only zip form (Git Bash has no zip;
+# tools/runner/zip_shim.py stands in).
+#
 # The builds are started by OUR server, never by a push: Super Admin → App versions → New version calls
 # POST https://api.codemagic.io/builds {appId, workflowId, branch, environment: {variables: {…}}} with:
 #   NB_RELEASE_ID      the release row (labels the build, names the upload)

@@ -59,6 +59,10 @@ bool releaseChannelBuilds(String platform, String channel) => switch (platform) 
       _ => false,
     };
 
+/// D-146: who builds a version — `runner` (your own computer, free; the website channels) or `codemagic` (its cloud;
+/// needed for the Google Play / App Store uploads).
+const List<String> kReleaseExecutors = ['runner', 'codemagic'];
+
 /// The D-143 `source` as a channel (google_play / app_store → store; website / custom → website).
 String releaseChannelOfSource(String? source) => const {'google_play', 'app_store'}.contains(source) ? 'store' : 'website';
 
@@ -179,13 +183,85 @@ class ReleaseChannelDefaults {
   final String? workflow, track, packageName, storeUrl, branch;
 }
 
+/// One build runner machine the server has seen (D-146): `{name, os, platforms, version, last_seen, online,
+/// busy_release_id}`.
+class ReleaseRunner {
+  const ReleaseRunner({required this.name, this.os, this.platforms = const [], this.version, this.lastSeen, this.online = false, this.busyRelease});
+
+  final String name;
+
+  /// windows | linux | macos
+  final String? os;
+
+  /// What it builds: android, web, windows, linux.
+  final List<String> platforms;
+  final String? version;
+  final DateTime? lastSeen;
+
+  /// Polled in the last 2 minutes.
+  final bool online;
+
+  /// The release it builds now.
+  final int? busyRelease;
+
+  factory ReleaseRunner.fromJson(Map<String, dynamic> j) => ReleaseRunner(
+        name: _str(j['name']) ?? 'runner',
+        os: _str(j['os']),
+        platforms: _strList(j['platforms']),
+        version: _str(j['version']),
+        lastSeen: releaseTime(j['last_seen']),
+        online: _bool(j['online']),
+        busyRelease: _int(j['busy_release_id']),
+      );
+}
+
+/// `config.runners` (D-146): the runner machines, how many are on, the platforms they build, whether a token exists.
+class ReleaseRunners {
+  const ReleaseRunners({this.items = const [], this.tokenSet = false});
+
+  final List<ReleaseRunner> items;
+  final bool tokenSet;
+
+  List<ReleaseRunner> get online => [for (final r in items) if (r.online) r];
+
+  /// A runner that builds [platform] is on now.
+  bool onlineFor(String platform) => items.any((r) => r.online && r.platforms.contains(platform));
+
+  factory ReleaseRunners.fromJson(Object? raw) {
+    final m = _map(raw);
+    return ReleaseRunners(
+      items: [for (final r in (m['items'] is List ? m['items'] as List : const [])) if (r is Map) ReleaseRunner.fromJson(Map<String, dynamic>.from(r))],
+      tokenSet: _bool(m['token_set']),
+    );
+  }
+}
+
 /// `GET /api/v1/admin/app-releases/config` → `{codemagic {ready, missing}, channels {"android:store": {ready, missing,
-/// reasons_ar?, reasons_en?}}, defaults {android: {workflow, track, package_name, store_url}, …}}`.
+/// reasons_ar?, reasons_en?}}, defaults {android: {workflow, track, package_name, store_url}, …}}`. D-146 adds
+/// `executors {codemagic|runner: {ready, missing, channels}}`, `default_executor` and `runners`.
 class ReleaseConfig {
-  const ReleaseConfig({this.codemagic = ReleaseReadiness.ok, this.channels = const {}, this.defaults = const {}, this.appId});
+  const ReleaseConfig({
+    this.codemagic = ReleaseReadiness.ok,
+    this.channels = const {},
+    this.defaults = const {},
+    this.appId,
+    this.executorChannels = const {},
+    this.defaultExecutor,
+    this.runners = const ReleaseRunners(),
+  });
 
   final ReleaseReadiness codemagic;
   final Map<String, ReleaseReadiness> channels;
+
+  /// D-146: the readiness of every channel per executor other than Codemagic (`runner`); empty from an older server.
+  final Map<String, Map<String, ReleaseReadiness>> executorChannels;
+
+  /// What the New version form starts on (`runner` unless the server says `codemagic`).
+  final String? defaultExecutor;
+  final ReleaseRunners runners;
+
+  /// The server knows the build runner (D-146).
+  bool get supportsRunner => executorChannels.containsKey('runner');
 
   /// The raw `defaults` per platform (read through [defaultsFor]).
   final Map<String, Map<String, dynamic>> defaults;
@@ -196,7 +272,15 @@ class ReleaseConfig {
   factory ReleaseConfig.fromJson(Object? raw) {
     final m = _map(raw);
     final cm = m['codemagic'];
+    final ex = _map(m['executors']);
     return ReleaseConfig(
+      executorChannels: {
+        for (final e in ex.entries)
+          if (e.key != 'codemagic' && e.value is Map)
+            e.key: {for (final c in _map(_map(e.value)['channels']).entries) c.key: ReleaseReadiness.fromJson(c.value)},
+      },
+      defaultExecutor: _str(m['default_executor']),
+      runners: ReleaseRunners.fromJson(m['runners']),
       codemagic: cm == null ? ReleaseReadiness.ok : ReleaseReadiness.fromJson(cm),
       channels: {for (final e in _map(m['channels']).entries) e.key: ReleaseReadiness.fromJson(e.value)},
       defaults: {for (final e in _map(m['defaults']).entries) if (e.value is Map) e.key: _map(e.value)},
@@ -205,8 +289,11 @@ class ReleaseConfig {
   }
 
   /// What blocks building [platform] on [channel]: Codemagic's own setup plus the channel's. A channel Codemagic does
-  /// not build (iOS website, macOS) is ready unless the server says otherwise.
-  ReleaseReadiness readiness(String platform, String channel) {
+  /// not build (iOS website, macOS) is ready unless the server says otherwise. [executor] `runner` (D-146): the
+  /// runner's own readiness (no Codemagic token; store channels are not its).
+  ReleaseReadiness readiness(String platform, String channel, {String? executor}) {
+    final own = executor == null || executor == 'codemagic' ? null : executorChannels[executor];
+    if (own != null) return own[releaseChannelKey(platform, channel)] ?? ReleaseReadiness.ok;
     final ch = channels[releaseChannelKey(platform, channel)];
     if (!releaseChannelBuilds(platform, channel)) return ch ?? ReleaseReadiness.ok;
     return codemagic.and(ch ?? ReleaseReadiness.ok);
@@ -439,7 +526,7 @@ class AppRelease {
   /// D-144: `store` | `website` (an older server's `source` is mapped: google_play / app_store → store).
   final String channel;
 
-  /// Who builds it: `codemagic` (D-144) or the D-143 build agent (`builder` / null).
+  /// Who builds it: `codemagic` (D-144), `runner` (your own computer, D-146) or the D-143 build agent (`agent`).
   final String? executor;
 
   /// The Codemagic build of the current attempt, and its page (`https://codemagic.io/app/<appId>/build/<buildId>`).
@@ -454,7 +541,11 @@ class AppRelease {
   bool get isStore => channel == 'store';
 
   /// Built (by Codemagic or the D-143 agent) rather than recorded only.
-  bool get builds => buildable ?? (viaCodemagic ? releaseChannelBuilds(platform, channel) : releasePlatformBuildable(platform));
+  bool get builds =>
+      buildable ?? (viaCodemagic || viaRunner ? releaseChannelBuilds(platform, channel) : releasePlatformBuildable(platform));
+
+  /// Built by your own build runner (D-146).
+  bool get viaRunner => executor == 'runner';
 
   /// Built by Codemagic (D-144).
   bool get viaCodemagic => executor == 'codemagic' || codemagicBuildId != null || codemagicUrl != null;
@@ -723,11 +814,15 @@ class AppReleaseDraft {
     this.track,
     this.packageName,
     this.autoPublish = true,
+    this.executor,
   });
 
   final String platform;
   final String version;
   final int? buildNumber;
+
+  /// D-146: `runner` or `codemagic`; null leaves it to the server's default.
+  final String? executor;
   final String notesAr, notesEn;
   final String policy;
   final String? minSupported;
@@ -769,6 +864,7 @@ class AppReleaseDraft {
       if (minSupported != null && minSupported!.isNotEmpty) 'min_supported': minSupported,
       'channel': channel,
       'source': source,
+      if (builds) 'executor': ?executor,
       if (builds) 'branch': branch,
       'gate': builds ? gate : 'direct',
       'store_url': ?url,

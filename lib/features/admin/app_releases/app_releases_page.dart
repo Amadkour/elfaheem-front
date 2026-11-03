@@ -172,8 +172,8 @@ class AppReleasesPageState extends State<AppReleasesPage> {
     final ok = await appConfirm(context,
         danger: true,
         confirmLabel: t('رمز جديد', 'New token'),
-        message: t('إنشاء رمز جديد لخادم البناء؟ يتوقف الرمز الحالي فوراً، فضع الجديد في إعدادات خادم البناء.',
-            'Create a new build server token? The current one stops working at once, so put the new one in the build server settings.'));
+        message: t('إنشاء رمز جديد لمشغّل البناء؟ يتوقف الرمز الحالي فوراً، فضع الجديد في tools/runner/runner.env على كل جهاز يبني.',
+            'Create a new build runner token? The current one stops working at once, so put the new one in tools/runner/runner.env on every machine that builds.'));
     if (!ok || !mounted) return;
     final pw = await widget.askPassword(context);
     if (pw == null || pw.isEmpty || !mounted) return;
@@ -213,7 +213,11 @@ class AppReleasesPageState extends State<AppReleasesPage> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1100),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  if (_config != null)
+                  if (_config != null && _config!.supportsRunner) ...[
+                    RunnerStatusCard(runners: _config!.runners, onNewToken: _rotate),
+                    const SizedBox(height: AppSpace.xs),
+                    CodemagicStatusBanner(config: _config!, optional: true),
+                  ] else if (_config != null)
                     CodemagicStatusBanner(config: _config!)
                   else
                     // an older server (no Codemagic config): the D-143 build server strip
@@ -265,7 +269,7 @@ class BuilderTokenSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      AppSheetHeader(t('رمز خادم البناء الجديد', 'New build server token')),
+      AppSheetHeader(t('رمز مشغّل البناء الجديد', 'New build runner token')),
       Flexible(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
@@ -273,8 +277,8 @@ class BuilderTokenSheet extends StatelessWidget {
             AppBanner(
               icon: Icons.visibility_outlined,
               color: c.warning,
-              text: t('يظهر هذا الرمز مرة واحدة فقط. انسخه الآن وضعه في إعدادات خادم البناء (Authorization: Builder …).',
-                  'This token is shown once only. Copy it now and put it in the build server settings (Authorization: Builder …).'),
+              text: t('يظهر هذا الرمز مرة واحدة فقط. انسخه الآن وضعه في tools/runner/runner.env كـ NB_BUILDER_TOKEN=…',
+                  'This token is shown once only. Copy it now and put it in tools/runner/runner.env as NB_BUILDER_TOKEN=…'),
             ),
             const SizedBox(height: AppSpace.sm),
             Container(

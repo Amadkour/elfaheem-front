@@ -2183,3 +2183,48 @@ signing key. Internal names users never see and that would break compatibility: 
 `com.example.flutter_education_app` install instead of updating it (the old one should be uninstalled; the D-137 /
 D-144 update dialog of old installs points to the website download), and everyone signs in again once. The server's
 `PLAY_PACKAGE_NAME` / `IOS_BUNDLE_ID` (D-144) must be set to `com.doubley.nextbrain`.
+
+## D-146 — A free build runner on the owner's own computer; Codemagic only for the store uploads · 2026-11-03 · accepted
+
+**Context.** The first builds through Codemagic (D-144) failed in two ways. Android → website had no keystore uploaded
+to Codemagic, which is a setup gap and not a bug. Windows → website failed with "The selected instance type is not
+available with the current billing plan": Codemagic's free minutes cover only its Mac machine, and Linux and Windows
+need a paid plan. GitHub Actions is not an option either, because the account's jobs do not start (billing). The owner
+asked for a fully free way.
+
+**Decision** (the owner, 2026-11-03). A third executor, **`runner`**, is the default for new versions
+(`APP_RELEASE_DEFAULT_EXECUTOR`, default `runner`). `tools/runner/nextbrain_runner.py` runs on a computer the owner
+already has. A Windows PC builds Windows, Android and web; Linux or WSL builds Linux, Android and web. It claims a
+queued version (`POST /api/v1/builder/runner/claim` with the platforms it builds), checks out the branch in its own
+clone, and runs **the same workflow of `codemagic.yaml`** at that commit with the same `NB_*` variables (the upload token
+included). The workflow's own last step uploads the files through the website channel's upload route. Steps are bash
+(Git Bash on Windows, with `zip_shim.py` for the missing `zip`), or PowerShell for the Windows workflow. A step that
+uses `sudo` is skipped: its packages are installed once by hand (README). The Android key comes from a local
+`key.properties` (`NB_KEY_PROPERTIES`) and never leaves the machine.
+- **One source of steps.** `codemagic.yaml` stays the only description of a build, and the runner and Codemagic run it
+  alike. A workflow change needs no runner change, unless it uses a Codemagic feature the runner does not implement
+  (`publishing`, `ios_signing`, `integrations`).
+- **Server side** (`../back/services/app_release_runner.py`, migration 0042 `app_release_runners`). A runner release is
+  a Codemagic release in everything but who builds it (`HOSTED_EXECUTORS`): channels, MinIO, publish, rollback,
+  downloads and the update prompt are the same code. A claim is a conditional UPDATE on `status = 'queued'`, filtered
+  by the platforms the runner declares; a runner builds one version at a time. `report` is the log and the heartbeat
+  (status forward only, progress up only, below 100 until the end). `finish ok` makes the version ready (then live)
+  only when the website files are complete, and otherwise fails it with `upload_missing`. A runner silent for
+  `APP_BUILDER_STALE_SECONDS` fails the version with `runner_lost`. Cancel answers the runner's next call with 409,
+  and the runner kills the step. Every runner shares the build agent's token (App versions › Build runner › New token).
+- **Not on the runner:** the store channels (`runner_channel`). Google Play / App Store uploads stay on Codemagic,
+  whose free Mac minutes cover them, and an iPhone build needs a Mac and a paid Apple account anyway.
+- **Dashboard.** The form gets **Build on: My computer (free) | Codemagic**, defaulting to the server's choice. It is
+  hidden for a store channel, which is always Codemagic. When no runner for the platform is on, a note says the version
+  waits in the queue; Create stays on. The page shows a **Build runner** card (machines, platforms, online, busy, the
+  token) and marks Codemagic "optional".
+
+**Verified.** The backend e2e `tests/org_v2/e2e_app_releases_runner.py` passes 95 checks; the Codemagic (304), agent
+(233 + 32) and claim race suites still pass; 0042 round-trips on SQLite and PostgreSQL. On this PC, against a stand-in
+server: the real `web-website` workflow (clone, the bash steps, `flutter build web` in about 7 min, the zip shim, the
+real `upload_artifacts.sh`) ended live. A PowerShell workflow with the Windows packaging steps and an `android_signing`
+keystore ended live with the key passwords masked. A failing step reported its error and `CM_ENV` carried a variable
+between steps.
+
+**Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
+Studio, and the release keystore is not here. The first real ones run on the owner's PC.

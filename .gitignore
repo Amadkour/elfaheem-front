@@ -91,3 +91,6 @@ test/visual/goldens/
 
 # real-app QA screenshots + ISSUES.md (web build driven by playwright-core); regenerated on demand
 screenshots/
+
+# D-146 build runner: its local settings (token, key path) — never committed
+tools/runner/runner.env

@@ -505,6 +505,117 @@ String stepText() => tester.widget<Text>(find.byKey(const ValueKey('release.step
     });
   });
 
+  group('Build runner (D-146)', () {
+    AppPrimaryButton submit(WidgetTester tester) => tester.widget<AppPrimaryButton>(find.byKey(const ValueKey('release.submit')));
+
+    test('the config: executors, the default, the runners, readiness per executor', () {
+      final cfg = ReleaseConfig.fromJson(releaseConfigJson(codemagic: false, runner: true, runners: [
+        runnerJson(),
+        runnerJson(name: 'wsl', os: 'linux', platforms: const ['linux', 'android', 'web'], online: false),
+      ]));
+      expect(cfg.supportsRunner, isTrue);
+      expect(cfg.defaultExecutor, 'runner');
+      expect(cfg.runners.items.map((r) => r.name), ['office-pc', 'wsl']);
+      expect(cfg.runners.online.map((r) => r.name), ['office-pc']);
+      expect(cfg.runners.onlineFor('windows'), isTrue);
+      expect(cfg.runners.onlineFor('linux'), isFalse, reason: 'the Linux runner is off');
+      expect(cfg.runners.tokenSet, isTrue);
+      expect(cfg.readiness('android', 'website').ready, isFalse, reason: 'Codemagic has no token');
+      expect(cfg.readiness('android', 'website', executor: 'runner').ready, isTrue, reason: 'the runner needs none');
+      expect(cfg.readiness('android', 'store', executor: 'runner').missing, ['runner_channel']);
+      expect(cfg.readiness('ios', 'website', executor: 'runner').ready, isTrue, reason: 'the PWA record');
+      final old = ReleaseConfig.fromJson(releaseConfigJson());
+      expect(old.supportsRunner, isFalse);
+      expect(old.runners.items, isEmpty);
+      final r = AppRelease.fromJson({...codemagicReleaseJson(), 'executor': 'runner', 'codemagic_build_id': null, 'codemagic_url': null});
+      expect(r.viaRunner && !r.viaCodemagic && r.builds, isTrue);
+      const d = AppReleaseDraft(platform: 'windows', version: '1.0.1', executor: 'runner');
+      expect(d.toJson(password: 'x')['executor'], 'runner');
+      const rec = AppReleaseDraft(platform: 'macos', version: '1.0.1', executor: 'runner');
+      expect(rec.toJson(password: 'x').containsKey('executor'), isFalse, reason: 'a recorded version is built by nobody');
+    });
+
+    testWidgets('the form starts on My computer, says when no runner is on, and sends the executor', (tester) async {
+      Map<String, dynamic>? sent;
+      final fake = FakeApi({
+        'GET $_b/config': (_) => releaseConfigJson(codemagic: false, runner: true, runners: [
+              runnerJson(name: 'wsl', os: 'linux', platforms: const ['linux', 'android', 'web']),
+            ]),
+        'POST $_b': (o) {
+          sent = _body(o.data);
+          return FakeResponse(201, {...releaseJson(), 'executor': 'runner'});
+        },
+      }, latency: const Duration(milliseconds: 20))
+        ..install();
+      addTearDown(fake.uninstall);
+      await _pump(tester, NewAppReleasePage(latest: latest, askPassword: (_) async => 'pw'));
+      expect(find.byKey(const ValueKey('release.executor.runner')), findsOneWidget);
+      expect(submit(tester).onPressed, isNotNull, reason: 'Codemagic is not set up, yet the runner can build Android');
+      expect(find.textContaining('Ready: My computer (free) builds Android'), findsOneWidget);
+      expect(find.byKey(const ValueKey('release.runner_off')), findsNothing, reason: 'the WSL runner builds Android');
+
+      await _tapKey(tester, 'release.platform.windows');
+      expect(find.byKey(const ValueKey('release.runner_off')), findsOneWidget, reason: 'no runner builds Windows now');
+      expect(submit(tester).onPressed, isNotNull, reason: 'it may still be created: it waits in the queue');
+
+      await _tapKey(tester, 'release.executor.codemagic');
+      expect(submit(tester).onPressed, isNull, reason: 'Codemagic still needs its token');
+      expect(find.byKey(const ValueKey('release.readiness.missing.CODEMAGIC_API_TOKEN')), findsOneWidget);
+      await _tapKey(tester, 'release.executor.runner');
+      expect(submit(tester).onPressed, isNotNull);
+
+      // a store channel is Codemagic's: no picker, Codemagic's readiness
+      await _tapKey(tester, 'release.platform.android');
+      await _tapKey(tester, 'release.channel.store');
+      expect(find.byKey(const ValueKey('release.executor.runner')), findsNothing);
+      expect(submit(tester).onPressed, isNull);
+      await _tapKey(tester, 'release.channel.website');
+
+      await _tapKey(tester, 'release.submit');
+      await _frames(tester);
+      expect(sent?['executor'], 'runner');
+      expect(sent?['platform'], 'android');
+      expect(sent?['password'], 'pw');
+      await _end(tester);
+    });
+
+    testWidgets('the page: the runner card and its token; Codemagic is optional', (tester) async {
+      var rotations = 0;
+      final fake = FakeApi({
+        'GET $_b': (_) => releasesListJson(),
+        'GET $_b/config': (_) => releaseConfigJson(codemagic: false, runner: true, runners: [runnerJson(busy: 9)]),
+        'POST $_b/builder/token': (o) {
+          rotations++;
+          return {'token': 'nbb_runner_$rotations'};
+        },
+      }, latency: const Duration(milliseconds: 20))
+        ..install();
+      addTearDown(fake.uninstall);
+      await _pump(tester, AppReleasesPage(stream: _stream, bus: LiveEvents.instance, askPassword: (_) async => 'pw'));
+      expect(find.text('Build runner on'), findsOneWidget);
+      expect(find.textContaining('office-pc'), findsWidgets);
+      expect(find.text('Codemagic not connected (optional)'), findsOneWidget);
+      expect(fake.calls.where((c) => c.path == '$_b/builder/status').length, lessThanOrEqualTo(1), reason: 'only the first load asks (an older server has no config)');
+      await _tapKey(tester, 'releases.runner.token');
+      await _confirmDialog(tester);
+      expect(find.text('nbb_runner_1'), findsOneWidget);
+      expect(find.textContaining('NB_BUILDER_TOKEN'), findsOneWidget);
+      await tester.tapAt(const Offset(10, 10));
+      await _frames(tester);
+      expect(rotations, 1);
+      await tester.pump(const Duration(seconds: 5));
+      await _end(tester);
+    });
+
+    test('runner failures read as sentences', () {
+      expect(releaseErrorText('runner_lost: the build runner stopped reporting', ''), contains('stopped reporting'));
+      expect(releaseErrorText('runner: signing_key_missing: set NB_KEY_PROPERTIES', ''), contains('Android release key'));
+      expect(releaseErrorText('runner: step "Gate": exit 1', ''), 'Build runner: step "Gate": exit 1');
+      expect(releaseErrorText('upload_missing: x', ''), isNot(contains('Codemagic')));
+      expect(releaseMissingText('runner_channel'), contains('Codemagic only'));
+    });
+  });
+
   testWidgets('list: grouped, the builder status, a new token is shown once', (tester) async {
     var rotations = 0;
     final tokenPasswords = <Object?>[];
