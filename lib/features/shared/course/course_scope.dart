@@ -152,6 +152,11 @@ int countFor(List<CourseScopeCount> counts, CourseScope scope) => switch (scope.
         counts.where((c) => c.org != null && c.org!.within(scope.orgId!)).fold(0, (s, c) => s + c.count),
     };
 
+/// The organizations that hold courses of [counts] (count > 0), the largest first — where "+N in your
+/// organizations" leads from the personal list.
+List<CourseScopeCount> orgsHoldingCourses(List<CourseScopeCount> counts) =>
+    [for (final c in counts) if (c.scope.isOrg && c.org != null && c.count > 0) c]..sort((a, b) => b.count.compareTo(a.count));
+
 /// The organization [orgId] as best known: from `scopes`, else from the mode's membership entry
 /// (`{organization: {...}}` of GET /org/public/me/overview), else a bare id.
 CourseOrg courseOrgFor(int orgId, List<CourseScopeCount> counts, [Map? modeEntry]) {
