@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime;
+import 'package:flutter_education_app/design/app_kit.dart' show AppErrorState, AppListSkeleton, AppRefresh, AppSpace, AppTime;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -154,7 +154,12 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
     _orgId ??= orgs.isEmpty ? null : asInt(orgs.first['id']);
     final id = _orgId;
     if (id == null) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _mixData = m; // null = the mix failed (the tab shows a Retry); a map without organizations = not a member
+          _loading = false;
+        });
+      }
       return;
     }
     final res = await Future.wait([
@@ -217,7 +222,12 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
       return const SizedBox(height: 300, child: AppListSkeleton(items: 3));
     }
     final org = _org;
-    if (org.isEmpty) return const SizedBox.shrink();
+    if (org.isEmpty) {
+      // the mix never arrived (offline / server error): a slim Retry instead of an empty tab; no organization → nothing
+      return _mixData != null
+          ? const SizedBox.shrink()
+          : Padding(padding: const EdgeInsets.all(AppSpace.md), child: AppErrorState(compact: true, onRetry: _load));
+    }
     final orgs = asMapList(_mixData?['organizations']);
     final req = asMapList(_mixData?['required']).where((r) => asInt(r['org_id'], _orgId ?? 0) == _orgId).toList();
     // weekly sessions of a timetable whose term is in a published exam window today are paused (member_exams.py)

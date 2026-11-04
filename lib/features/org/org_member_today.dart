@@ -61,6 +61,7 @@ class OrgTodayAgenda extends StatefulWidget {
 class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
   List<Map<String, dynamic>> _timetables = const [];
   bool _loading = true;
+  bool _failed = false; // the load failed and nothing is known: a compact Retry above the (empty) agenda
   int? _busy; // the change with a request in flight
 
   Future<void> _respond(OccurrenceChange x, String decision) async {
@@ -99,8 +100,10 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
     try {
       final r = await ApiClient().get('$orgBase/public/schedule/me', queryParams: {'org_id': widget.orgId});
       if (r is Map) _timetables = asMapList(r['items']);
+      _failed = false;
     } catch (_) {
-      // offline / old server: an empty day, never an error wall on the home
+      // offline / old server: never an error wall on the home — one slim Retry row; what was loaded stays
+      _failed = _timetables.isEmpty;
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -119,6 +122,19 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       HomeSectionTitle('home_today'.tr,
           count: rows.length, actionLabel: 'home_full_timetable'.tr, onAction: openWeek, padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 8, 10)),
+      if (_failed)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+          child: AppErrorState(
+              compact: true,
+              onRetry: () {
+                setState(() {
+                  _failed = false;
+                  _loading = true;
+                });
+                _load();
+              }),
+        ),
       if (pauses.isNotEmpty)
         Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: examPauseBanner(context, pauses, padding: EdgeInsets.zero)),
       for (final x in upcoming)

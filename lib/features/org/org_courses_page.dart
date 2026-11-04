@@ -15,6 +15,8 @@ import 'org_v3.dart';
 import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'org_academic_pages.dart' show CourseArchiveScreen;
+import 'org_page_header.dart' show OrgPushedPage;
+import 'org_schedule_pages.dart' show OrgSchedulePage;
 import '../admin/admin_table_export.dart' show exportPagedList, orgCoursesExport;
 import '../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -157,6 +159,11 @@ class _CourseTile extends StatelessWidget {
                   p.refresh();
                 }
               }
+              if (v == 'timetable' && context.mounted) {
+                // ROUTE: org_schedule (the timetable office, where this course's teaching loads live)
+                await Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => OrgPushedPage(title: t('الجدول الدراسي', 'Timetable'), subtitle: name, child: const OrgSchedulePage())));
+              }
               if (v == 'enroll') await _enrollSheet(context, p, row);
               if (v == 'unlink' && await confirm(context, message: t('فصل الكورس عن المؤسسة وإلغاء نشره؟ (اشتراكات الطلاب تبقى)', 'Remove this course from the organization and unpublish it? (student enrollments stay)'), danger: true)) {
                 await p.unlink(asInt(row['id']));
@@ -166,6 +173,7 @@ class _CourseTile extends StatelessWidget {
               PopupMenuItem(value: 'profile', child: Text(t('ملف المقرر', 'Course profile'))),
               if (s.can('courses', 'update')) PopupMenuItem(value: 'edit', child: Text(t('تعديل', 'Edit'))),
               if (s.can('courses', 'update')) PopupMenuItem(value: 'code', child: Text(t('كود المقرر', 'Course code'))),
+              if (s.can('schedule')) PopupMenuItem(value: 'timetable', child: Text(t('الجدول وتوزيع المدرسين', 'Timetable & teaching loads'))),
               PopupMenuItem(value: 'archive', child: Text(t('الفصول والأرشيف', 'Terms & archive'))),
               if (s.can('students', 'update')) PopupMenuItem(value: 'enroll', child: Text(t('تسجيل طلاب', 'Enroll students'))),
               if (s.can('courses', 'delete')) PopupMenuItem(value: 'unlink', child: Text(t('فصل عن المؤسسة', 'Remove'), style: TextStyle(color: c.danger))),
@@ -177,6 +185,17 @@ class _CourseTile extends StatelessWidget {
   }
 }
 
+
+/// Whether saving [chosen] over the course's [original] teacher takes the teacher away (an edit that ends with none).
+bool orgCourseUnassigns({required bool isEdit, required int? original, required int? chosen}) =>
+    isEdit && original != null && chosen == null;
+
+/// The `teacher_id` entry of the course body: the chosen teacher; an EXPLICIT null when an edit unassigns (the server
+/// keeps the teacher when the key is missing); no key otherwise.
+Map<String, dynamic> orgCourseTeacherField({required bool isEdit, required int? original, required int? chosen}) {
+  if (chosen != null) return {'teacher_id': chosen};
+  return orgCourseUnassigns(isEdit: isEdit, original: original, chosen: chosen) ? {'teacher_id': null} : const {};
+}
 
 /// Create or edit an organization course. Returns the saved course row (after the server confirmed it), or null.
 /// A teacher is optional: a course without one stays unpublished until a teacher is assigned.
@@ -248,9 +267,9 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
               label: t('المدرس', 'Teacher'),
               icon: Icons.person_rounded,
               value: teacherId,
-              // the server ignores teacher_id: null on update, so an assigned teacher can only be replaced
-              allowNone: edit == null || origTeacher == null,
-              noneLabel: t('يُعيَّن لاحقاً', 'Assign later'),
+              // an explicit teacher_id: null unassigns (C6); the course is unpublished while it has no teacher
+              allowNone: true,
+              noneLabel: origTeacher == null ? t('يُعيَّن لاحقاً', 'Assign later') : t('إلغاء التعيين (يُلغى النشر)', 'Unassign (the course gets unpublished)'),
               options: {
                 for (final u in teachers) asInt(u['id']): '${u['name']}',
                 if (origTeacher != null) origTeacher: '${asMap(edit?['teacher'])['name']}',
@@ -319,7 +338,7 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
                   'description_en': txt(descEn),
                   'program_id': program,
                   'term_id': term,
-                  'teacher_id': ?teacherId,
+                  ...orgCourseTeacherField(isEdit: edit != null, original: origTeacher, chosen: teacherId),
                   'fees': double.tryParse(fees.text) ?? 0,
                   'total_hours': double.tryParse(hours.text) ?? 0,
                   'is_published': published && canPublish,
@@ -327,6 +346,14 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
                   'prerequisite_ids': prereqs.toList(),
                 };
                 if (edit == null) body.removeWhere((k, v) => v == null);
+                if (orgCourseUnassigns(isEdit: edit != null, original: origTeacher, chosen: teacherId) &&
+                    !await confirm(ctx,
+                        message: t('إلغاء تعيين المدرس؟ سيصبح المقرر غير منشور حتى تعيّن مدرساً آخر.',
+                            'Unassign the teacher? The course becomes unpublished until you assign another one.'),
+                        danger: true)) {
+                  return;
+                }
+                if (!ctx.mounted) return;
                 set(() {
                   busy = true;
                   err = null;

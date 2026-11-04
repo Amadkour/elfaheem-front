@@ -40,14 +40,15 @@ import 'package:flutter_education_app/features/shared/calendar/calendar_models.d
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeAgendaItemOf, homeDaySummaryOf, openHomeEvent;
 import 'package:flutter_education_app/features/student/home/home_live.dart' show HomeLiveNow;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart' show t, asInt, asMap, asMapList;
+import 'org_access_joining.dart' show openOrgJoin;
 import 'org_access_page.dart' show OrgAccessPage;
+import 'org_page_header.dart' show OrgPushedPage;
 import 'org_announcements.dart' show OrgAnnouncementFeed;
 import 'org_common.dart' show OrgHero, orgColor, orgTypeIcons;
 import 'org_courses_page.dart' show OrgCoursesPage;
@@ -113,12 +114,14 @@ Future<void> _openManaged(BuildContext context, int orgId, String title, Widget 
   if (!s.loaded || !s.items.any((o) => asInt(o['id']) == orgId)) await s.load();
   if (!context.mounted) return;
   if (!s.items.any((o) => asInt(o['id']) == orgId)) {
-    appToast(t('لا تملك صلاحية إدارة هذا الجزء', "You don't manage this part"), error: true);
+    showAppNotice(t('لا تملك صلاحية إدارة هذا الجزء', "You don't manage this part"), error: true);
     return;
   }
   s.select(orgId);
+  // the organization header (name · switcher · way out) like every dashboard page, with this organization's name under the title
+  final orgName = orgNameOf(asMap(s.items.firstWhere((o) => asInt(o['id']) == orgId, orElse: () => const {})));
   await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => BasePage(useWebCard: true, maxWith: 1100, appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]), child: page)));
+      builder: (_) => OrgPushedPage(title: title, subtitle: orgName.isEmpty ? null : orgName, child: page)));
   AppModeController.instance
     ..applyOrgContext() // the management pages applied OrgSession's organization — back to the member's one
     ..refresh();
@@ -382,6 +385,8 @@ class OrgMemberHome extends StatelessWidget {
             icon: Icons.domain_rounded,
             title: t('لست عضواً في مؤسسة الآن', "You're not in an organization right now"),
             message: t('عند انضمامك لجامعتك أو كليتك ستظهر هنا مساحتها', 'Join your university or faculty and its space appears here'),
+            actionLabel: t('انضم إلى مؤسسة', 'Join an organization'),
+            onAction: () => openOrgJoin(context, onDone: ctl.refresh),
           );
         }
         final orgId = asInt(_orgOf(entry)['id']);
@@ -858,45 +863,57 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final ctl = AppModeController.instance;
+    // The header always says WHICH organization this is (its name as the title, what I am there under it); the
+    // switcher and the way out to the personal space sit under it, so a person with several organizations sees the
+    // open one and the picker at once.
     return BasePage(
       useWebCard: true,
       maxWith: 960,
-      appBar: ScreenAppBar(
-        title: t('مساحتي في المؤسسة', 'My organization'),
-        actions: [
-          // Personal included: leaving replaces this root page with the personal dashboard (leaveToPersonal)
-          ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 190),
-              child: const Center(child: ContextSwitcher(compact: true))),
-          const ContextExitButton(),
-          const SizedBox(width: 4),
-          const QuickMeetingIcon(),
-          if (ctl.currentOrgId != null)
-            ParentComponent(
-              featureKey: 'rag.assistant',
-              child: IconButton(
-                  tooltip: t('مساعد المستندات', 'Documents assistant'),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RagChatScreen(orgId: ctl.currentOrgId))),
-                  icon: const Icon(Icons.auto_stories_outlined)),
-            ),
-          if (AppConfig.orgsEnabled)
-            IconButton(
-                tooltip: t('صندوق الوارد', 'Inbox'),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InboxScreen())),
-                icon: const Icon(Icons.inbox_rounded)),
-        ],
-      ),
-      child: AppRefresh(
-        onRefresh: () {
-          orgTodayEpoch.value++; // the older today agenda reloads too
-          return Future.wait<void>([MeHomeService.instance.refresh(), ctl.refresh()]);
-        },
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(top: 4, bottom: 32),
-          children: const [OrgMemberHome(showPickerInHero: false)],
+      child: Column(children: [
+        ListenableBuilder(
+          listenable: ctl,
+          builder: (context, _) {
+            final entry = ctl.current;
+            final name = orgNameOf(_orgOf(entry));
+            return AppPageHeader(
+              title: name.isEmpty ? t('مساحتي في المؤسسة', 'My organization') : name,
+              subtitle: entry == null ? null : orgRolesLine(entry),
+              icon: Icons.apartment_rounded,
+              actions: [
+                const QuickMeetingIcon(),
+                if (ctl.currentOrgId != null)
+                  ParentComponent(
+                    featureKey: 'rag.assistant',
+                    child: IconButton(
+                        tooltip: t('مساعد المستندات', 'Documents assistant'),
+                        onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RagChatScreen(orgId: ctl.currentOrgId))),
+                        icon: const Icon(Icons.auto_stories_outlined)),
+                  ),
+                if (AppConfig.orgsEnabled)
+                  IconButton(
+                      tooltip: t('صندوق الوارد', 'Inbox'),
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InboxScreen())),
+                      icon: const Icon(Icons.inbox_rounded)),
+              ],
+              // Personal included: leaving replaces this root page with the personal dashboard (leaveToPersonal)
+              bottom: const Row(children: [Expanded(child: ContextSwitcher()), ContextExitButton()]),
+            );
+          },
         ),
-      ),
+        Expanded(
+          child: AppRefresh(
+            onRefresh: () {
+              orgTodayEpoch.value++; // the older today agenda reloads too
+              return Future.wait<void>([MeHomeService.instance.refresh(), ctl.refresh()]);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xl),
+              children: const [OrgMemberHome(showPickerInHero: false)],
+            ),
+          ),
+        ),
+      ]),
     );
   }
 }
