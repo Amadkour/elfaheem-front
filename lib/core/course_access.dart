@@ -10,7 +10,7 @@ import 'api_client.dart';
 import 'app_time.dart';
 
 /// Reasons that stop a downloaded copy from playing: the plan ended or the access was withdrawn.
-const Set<String> kOfflineBlockingReasons = {'expired', 'cancelled', 'refunded'};
+const Set<String> kOfflineBlockingReasons = {'expired', 'cancelled', 'refunded', 'course_deleted'};
 
 class CourseAccess {
   const CourseAccess({
@@ -100,6 +100,8 @@ String accessReasonTextFor(String reason, {DateTime? expiresAt}) {
     case 'refunded':
       return _t('تم استرداد ثمن هذا الكورس فلم يعد متاحاً لك — تواصل مع الدعم إن كان ذلك بالخطأ',
           'This course was refunded, so it is no longer open to you — contact support if that is a mistake');
+    case 'course_deleted':
+      return _t('تم حذف هذا الكورس ولم يعد متاحاً', 'This course was deleted and is no longer available');
     case 'org_subscription_required':
       return _t('اشتراك المؤسسة غير مفعّل — تواصل مع إدارة المؤسسة', "The organization's subscription is not active — contact the organization");
     case 'not_enrolled':

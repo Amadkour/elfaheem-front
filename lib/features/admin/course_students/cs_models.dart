@@ -168,6 +168,8 @@ String csReasonText(CsAccess a) {
       return t('أُلغي الاشتراك', 'The enrollment was cancelled');
     case 'refunded':
       return t('أُعيد مبلغ الدفعة فسقط الوصول', 'The payment was refunded, so access ended');
+    case 'course_deleted':
+      return t('الكورس في سلة المحذوفات', 'The course is in the trash');
     case 'payment_pending':
       return t('الدفع قيد المراجعة', 'Payment pending review');
     case 'payment_failed':
