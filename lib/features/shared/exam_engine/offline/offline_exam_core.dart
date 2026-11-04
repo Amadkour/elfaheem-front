@@ -8,6 +8,7 @@
 //   receipt  HMAC-SHA256(K_student, "exr|<bundle>|<attempt>"): the only proof that the server really took the answers.
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as dc;
 import 'package:cryptography/cryptography.dart';
@@ -99,6 +100,36 @@ Future<Map<String, dynamic>> openPackage(OfflinePackage p, List<int> key) async 
   final box = SecretBox(ct.sublist(0, ct.length - macBytes), nonce: base64Decode('${p.json['nonce']}'), mac: Mac(ct.sublist(ct.length - macBytes)));
   final plain = await _aes.decrypt(box, secretKey: SecretKey(key), aad: utf8.encode(p.aad));
   return asMap(jsonDecode(utf8.decode(plain)));
+}
+
+/// The question images of an opened package. They travel INSIDE the ciphertext (`media` {id: base64}) and so rest on the
+/// phone encrypted, in the package file, and are only ever decoded in memory here. `omitted`: ids the server left out
+/// (over its size cap or missing from its store); the screen shows their alt text instead.
+class PackageMedia {
+  const PackageMedia(this.bytes, this.omitted);
+  static const none = PackageMedia({}, {});
+  final Map<String, Uint8List> bytes;
+  final Set<String> omitted;
+
+  /// An older package, or one without images, gives [none]. A damaged entry is treated as omitted.
+  factory PackageMedia.fromContent(Map<String, dynamic> content) {
+    final out = <String, Uint8List>{};
+    final omitted = <String>{if (content['media_omitted'] is List) for (final x in content['media_omitted'] as List) '$x'};
+    final raw = content['media'];
+    if (raw is Map) {
+      raw.forEach((k, v) {
+        try {
+          out['$k'] = base64Decode('$v');
+        } catch (_) {
+          omitted.add('$k');
+        }
+      });
+    }
+    return PackageMedia(out, omitted);
+  }
+
+  Uint8List? of(String id) => bytes[id];
+  bool isOmitted(String id) => !bytes.containsKey(id);
 }
 
 // ═══════════════════════════════════════════ one copy, a paper per student ════════════════════════════════════
