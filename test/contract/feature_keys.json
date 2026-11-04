@@ -52,6 +52,7 @@
  "categories.section_header",
  "categories.side_list",
  "certificates",
+ "certificates.engine",
  "certificates.standalone",
  "certificates.students",
  "certificates.template",
