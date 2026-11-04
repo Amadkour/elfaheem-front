@@ -1,4 +1,4 @@
-// VISUAL review renders of the super admin's "Landing page" screen (D-165 round 2): the rate-limit card and the
+// VISUAL review renders of the super admin's "Landing page" screen (D-270 round 2): the rate-limit card and the
 // featured testimonials, at 390x844 and 1440x900, ar / en, light / dark, into test/visual/goldens/admin_landing_*.png.
 // Not a CI suite; compared by eye.
 //

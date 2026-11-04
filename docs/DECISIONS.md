@@ -2429,7 +2429,7 @@ the app keeps its `u<id>` fallback for those. Every writer of `ManualChange` get
 finding 11a. Privacy: the name is kept in an append-only audit table (a grade record names who changed it);
 a user erasure leaves the row with the `actor_id` and needs a DBA-run redaction. Notes: `docs/grading/notes/G3.md`.
 
-## D-165 — A static landing site at the root; the web app moves to /app/; first-run onboarding in the apps · 2026-11-04 · accepted
+## D-270 — A static landing site at the root; the web app moves to /app/; first-run onboarding in the apps · 2026-11-04 · accepted
 
 **Context.** The site opened straight on the login screen, and so did a fresh install of the phone app: nothing showed
 what the platform offers before asking for an account. The owner asked for a welcoming page first (a sentence-builder

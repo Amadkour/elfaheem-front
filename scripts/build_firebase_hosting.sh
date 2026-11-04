@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds build/hosting for Firebase Hosting (firebase.json "public"), the same layout nginx serves (D-165):
+# Builds build/hosting for Firebase Hosting (firebase.json "public"), the same layout nginx serves (D-270):
 #   /            the landing site (landing/dist), its requests to the API at PUBLIC_LANDING_API_BASE
 #   /app/        the Flutter web app (--base-href /app/, post-processed by scripts/web/postbuild.dart, D-171)
 #   /.well-known App Links / Universal Links, from the app's build (the verifiers do not follow redirects)
@@ -46,7 +46,7 @@ cat > build/hosting/404.html <<'HTML'
 <meta name="robots" content="noindex">
 <title>NextBrain</title>
 <script>
-  // an old web-app URL from before the app moved to /app/ (D-165): the same path, query and hash under /app/
+  // an old web-app URL from before the app moved to /app/ (D-270): the same path, query and hash under /app/
   (function () {
     var p = location.pathname;
     if (p.indexOf('/app/') !== 0 && p !== '/app') location.replace('/app' + p + location.search + location.hash);
