@@ -59,3 +59,21 @@ jobs:
           else range="HEAD --not origin/production"; fi            # a new branch: what it adds over production
           echo "scanning commits: $range"
           "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --redact --verbose --no-banner --exit-code 1 --log-opts="$range"
+
+  landing:
+    name: landing · build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: landing/.nvmrc
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+      - name: install and build the static landing site
+        working-directory: landing
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: both language pages and the language chooser exist
+        run: test -f landing/dist/index.html && test -f landing/dist/ar/index.html && test -f landing/dist/en/index.html

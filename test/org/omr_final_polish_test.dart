@@ -313,10 +313,10 @@ void main() {
 
   group('6 · the queue keeps the time whole', () {
     testWidgets('a desktop side list: a long file name gives way, the time does not', (tester) async {
-      // a paper that came in today ("Today, 1:29 PM"): the fixture's fixed date read "3 Nov 2026 · 1:29 PM" from the
-      // next day on, too wide to sit beside any file name at 320, so the test failed on the clock, not the widget
-      final now = DateTime.now().toUtc().toIso8601String().substring(0, 19);
-      final it = _quality({'id': 5, 'page_no': 1, 'page_label': '1', 'file_name': 'scaled_1000237462_from_the_phone_gallery.jpg', 'batch_created_at': now});
+      // a paper that came in today ("Today, 1:29 PM"): the fixture's fixed date made this pass only on 2026-11-03
+      final today = DateTime.now().toUtc().toIso8601String().substring(0, 19);
+      final it = _quality({'id': 5, 'page_no': 1, 'page_label': '1', 'file_name': 'scaled_1000237462_from_the_phone_gallery.jpg',
+          'batch_created_at': today});
       await _pump(tester, Align(alignment: Alignment.topLeft, child: SizedBox(width: 320, child: OmrQueueList(items: [it], currentId: null, onTap: (_) {}))),
           width: 1440, height: 900);
       final tail = ' · ${it.whenText}';

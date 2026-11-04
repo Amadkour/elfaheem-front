@@ -291,7 +291,8 @@ workflows:
         script: |
           set -euo pipefail
           # dart2js minifies the web build; --obfuscate / --split-debug-info do not apply to web
-          flutter build web --release \
+          # served at https://nextbrain.site/app/ (D-165); MSYS_NO_PATHCONV: Git Bash (the Windows runner) would rewrite /app/
+          MSYS_NO_PATHCONV=1 flutter build web --release --base-href /app/ \
             --dart-define=API_BASE_URL=https://nextbrain.site/api \
             --dart-define=LIVEKIT_URL=wss://nextbrain.site/livekit \
             --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER"

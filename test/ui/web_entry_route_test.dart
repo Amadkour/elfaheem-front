@@ -1,8 +1,25 @@
 // M20: a browser URL opened directly (or refreshed) starts the web app on that page when the person may open it.
+import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart' show guestLiveRouteFromUri, legacyHashRoute;
 import 'package:flutter_education_app/utils/web_entry_route.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('base path /app/: stripped from the URL route and the guest live route', () {
+    String? r(String u) => webEntryRouteFromUri(Uri.parse(u), basePath: '/app/');
+    expect(r('https://nextbrain.site/app/c/12?ref=5'), '/c/12?ref=5');
+    expect(r('https://nextbrain.site/app/live/x'), '/live/x');
+    expect(r('https://nextbrain.site/app/login'), '/login');
+    expect(r('https://nextbrain.site/app/'), isNull);
+    expect(r('https://nextbrain.site/app'), isNull);
+    expect(r('https://nextbrain.site/application'), '/application', reason: 'not under the base');
+    expect(webEntryRouteFromUri(Uri.parse('https://nextbrain.site/c/12?ref=5'), basePath: '/'), '/c/12?ref=5');
+    expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/app/live/abc'), basePath: '/app/'), '/live/abc');
+    expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/live/abc'), basePath: '/'), '/live/abc');
+    expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/app/#/live/abc'), basePath: '/app/'), '/live/abc');
+    expect(legacyHashRoute(Uri.parse('https://nextbrain.site/app/#/payment/callback?status=paid')),
+        '/payment/callback?status=paid');
+  });
+
   bool link(String r) => r.startsWith('/c/') || r.startsWith('/live/') || r.startsWith('/@');
 
   test('the URL route: path and query, nothing for the root', () {

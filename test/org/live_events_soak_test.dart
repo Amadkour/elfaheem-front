@@ -141,8 +141,9 @@ void main() {
     await until(() => srv.requests.length >= 6, what: '6 attempts');
     expect(c.attempt, greaterThanOrEqualTo(5), reason: 'the attempt counter used to reset on every 200');
     final gaps = [for (var i = 1; i < srv.times.length; i++) srv.times[i] - srv.times[i - 1]];
-    // 2, 4, 8, 16, 32 ms (+ jitter): the fifth gap is clearly longer than the first
-    expect(gaps[4], greaterThan(gaps[0]));
+    // 2, 4, 8, 16, 32 ms (+ jitter): the fifth wait is at least the fifth step. A lower bound, not "longer than the
+    // first gap": on a loaded machine the first gap alone took 167 ms (scheduling, not backoff) and the test failed.
+    expect(gaps[4], greaterThanOrEqualTo(const Duration(milliseconds: 30)));
   });
 
   test("the server's retry: hint is the minimum delay", () async {

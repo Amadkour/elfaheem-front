@@ -37,7 +37,10 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.initialRole});
+
+  /// 'teacher' / 'student' / 'parent': preselects that role (the landing's "teach on NextBrain" link).
+  final String? initialRole;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -81,6 +84,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pre = widget.initialRole;
+      if (pre != null) {
+        final a = context.read<MyAuthProvider>();
+        final i = a.roles.indexWhere((r) => r['text'] == pre);
+        if (i >= 0) setState(() => a.selectedRole = a.roles[i]);
+      }
       context.read<MyAuthProvider>().loadSpecialization(context);
       context.read<MyAuthProvider>().loadPolicy();
       context.read<AboutTermsProvider>().loadTerms(context);
