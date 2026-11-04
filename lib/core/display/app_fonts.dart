@@ -10,7 +10,9 @@
 //   AppFonts.select(arabic:, latin:)   loads the files, switches, rebuilds every mounted widget
 //
 // The two defaults (IBM Plex Sans Arabic · Inter) are declared in pubspec `fonts:`, so they draw from the first
-// frame (boot splash). Every other family is a plain asset folder (assets/fonts/ui/<id>/) registered through
+// frame (boot splash). On the web build the post-build prune step keeps Inter out of FontManifest.json (the Arabic
+// UI is the default and draws Latin with Plex): `start` / `ensureLanguage` load the family of the open language
+// through LazyFonts before it is needed. Every other family is a plain asset folder (assets/fonts/ui/<id>/) registered through
 // FontLoader the first time it is chosen or previewed: nothing is downloaded for fonts nobody picked (web).
 // The Latin-only families were subset to Latin + punctuation (pyftsubset) to keep the bundle small.
 //
@@ -18,10 +20,13 @@
 // export designer's 'tajawal' / 'bahji' choices) so a preview matches the file.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../../config/app_config.dart';
+import 'lazy_fonts.dart';
 
 /// One choosable family. [arabic] = it draws Arabic (every Arabic option also draws Latin).
 @immutable
@@ -170,7 +175,8 @@ abstract final class AppFonts {
   static String get display => _displayReady.contains(current.id) ? current.displayFamily : current.family;
   static List<String> get fallback => [current.family, other.family];
 
-  static final Set<String> _loaded = {for (final f in catalog) if (f.bundled) f.id};
+  // the ids whose files are registered; a bundled family joins after LazyFonts.ensure (instant when not lazy)
+  static final Set<String> _loaded = {};
   static final Set<String> _displayReady = {};
   static final Map<String, Future<void>> _pending = {};
 
@@ -184,6 +190,10 @@ abstract final class AppFonts {
       });
 
   static Future<void> _load(AppFontOption f) async {
+    if (!_loaded.contains(f.id) && f.bundled) {
+      await LazyFonts.ensure(f.family); // a pubspec family: only a pruned web build has anything to fetch
+      _loaded.add(f.id);
+    }
     if (!_loaded.contains(f.id)) {
       final loader = FontLoader(f.family);
       for (final path in f.weights.values) {
@@ -205,6 +215,19 @@ abstract final class AppFonts {
     if (arabic != null) _ar = byId(arabic, arabic: true);
     if (latin != null) _en = byId(latin, arabic: false);
   }
+
+  /// Start-up: loads the choice of [lang] (the open language) and returns; the other language's choice loads in the
+  /// background, so the first frame never waits for a family it does not draw with.
+  static Future<void> start(String lang) async {
+    final first = lang == 'ar' ? _ar : _en;
+    final second = lang == 'ar' ? _en : _ar;
+    await ensureLoaded(first);
+    unawaited(ensureLoaded(second));
+    version.value++;
+  }
+
+  /// Before the app switches to [lang]: its font choice must be registered first (no fallback-font flash).
+  static Future<void> ensureLanguage(String lang) => ensureLoaded(lang == 'ar' ? _ar : _en);
 
   /// Loads the chosen families, then switches. A family that fails to load keeps the previous choice.
   static Future<void> select({String? arabic, String? latin}) async {

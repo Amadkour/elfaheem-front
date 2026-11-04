@@ -9,6 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData, rootBundle;
+import 'package:flutter_education_app/core/display/lazy_fonts.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -170,7 +171,7 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
   // ═════════════════════════════════════════════════════════════════════════
 
   @override
-  Widget build(BuildContext context) {
+Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', 'bahji'], child: _body(context));  Widget _body(BuildContext context) {
     final c = context.colors;
     final steps = [t('العناصر', 'Items'), t('التصميم', 'Design'), t('الإخراج', 'Output')];
     final title = t('تقرير الشكاوى والطلبات', 'Complaints & requests report');
