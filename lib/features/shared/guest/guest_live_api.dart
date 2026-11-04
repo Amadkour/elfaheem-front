@@ -22,6 +22,7 @@ import '../live/live_controls_api.dart' show liveControlsErrorText;
 import '../live/live_room.dart'
     show JoinOutcome, LiveGuestAdmission, LiveRoomKind, LiveRoomRef, liveGuestAdmissionFrom, liveRoomCodeText;
 import '../live/live_room_words.dart' show liveTr;
+import '../../../utils/web_entry_route.dart' show stripWebBasePath;
 import '../live/live_config.dart';
 import '../live/live_time_limit.dart' show parseLiveTimeLimit, parseNaiveUtc;
 
@@ -402,8 +403,8 @@ String? guestLiveTokenFromRoute(String? routeName) {
 }
 
 /// The guest route a browser URL points at — path form `/live/x` or the legacy hash form `/#/live/x` — else null.
-String? guestLiveRouteFromUri(Uri base) {
-  final fromPath = guestLiveTokenFromRoute(base.path);
+String? guestLiveRouteFromUri(Uri base, {String? basePath}) {
+  final fromPath = guestLiveTokenFromRoute(stripWebBasePath(base.path, basePath));
   final fromHash = guestLiveTokenFromRoute(base.fragment);
   final token = fromPath ?? fromHash;
   return token == null ? null : '/live/$token';

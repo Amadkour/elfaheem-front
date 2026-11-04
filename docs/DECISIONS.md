@@ -2228,3 +2228,48 @@ between steps.
 
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
+
+## D-150 — A static landing site at the root; the web app moves to /app/; first-run onboarding in the apps · 2026-11-04 · accepted
+
+**Context.** The site opened straight on the login screen, and so did a fresh install of the phone app: nothing showed
+what the platform offers before asking for an account. The owner asked for a welcoming page first (a sentence-builder
+search with live counts, trust numbers, how it works, features, FAQ, entry points for students, teachers and
+institutions), fast and well indexed in Arabic and English, and for 2–3 onboarding screens plus a guest search in the
+apps.
+
+**Decision** (the owner's brief, 2026-11-04).
+- **Landing = a separate static site** (`landing/`, Astro, no client framework, self-hosted fonts), built by
+  `scripts/build_landing.sh` (Docker `node` image when the machine has no node, as on the server). `/ar/` and `/en/`
+  are separate pages with hreflang, canonical, Open Graph, JSON-LD and a sitemap; `/` picks the language (saved choice,
+  then the browser) and first forwards a hash route (`/#/payment/callback`, still what `FLUTTER_APP_URL` callbacks
+  use) and an installed PWA started at `/` to `/app/`. Flutter web was not used for it: its first paint is a
+  multi-megabyte download, which a page meant to be found and opened cold cannot afford. The page prefetches the app's
+  bundle when idle, so `/app/` opens fast afterwards.
+- **The web app lives under `/app/`** (`--base-href /app/` in every web build: `scripts/build_release.sh`,
+  `codemagic.yaml`, the owner's `build_web.sh`). `lib/utils/web_base_path.dart` reads `<base href>`, and the start-URL
+  parsers strip it, so routes stay `/c/12`, `/login`. Share links keep their root form (`/c/<id>`, `/@name`,
+  `/verify/<t>`, `/live/<t>`): nginx sends a person on to `/app/…` (302, query kept) and every other unknown root path
+  too, so printed certificates and old mails keep working; `.well-known/*`, `/flutter_service_worker.js`,
+  `/firebase-messaging-sw.js` and `/releases/` stay at the root, and the landing ships a self-unregistering `/sw.js` for
+  browsers that registered the app's worker at `/`. The served build is still the live web release
+  (`/root/nextbrain/www/app` → `app_releases/web/current`), and `switch_web` refuses a build whose `<base href>` is not
+  `APP_WEB_BASE_HREF` (default `/app/`, code `web_base_href_mismatch`), so a rollback to a release built for the root
+  cannot blank the site. nginx: `../back/deploy/nginx/nextbrain.conf.example`; the live cutover is `deploy_landing.sh`
+  in the workspace root (backup, build, swap, `nginx -t`, smoke test, automatic rollback).
+- **Numbers come from three public, read-only routes** (`../back/routers/public_landing_router.py`): `stats`
+  (students, teachers, courses), `options` (subjects = top-level categories, levels = their children, only those with
+  public courses) and `match` (courses and distinct teachers for subject / level / mode). Counts only, cached 300 s per
+  process and by `Cache-Control`. "A course" is always the anonymous catalogue (`public_catalog_filter`: published,
+  not private, not archived, not a members-only organization course) — the same rule as an anonymous `GET /courses`,
+  so no organization's private course is counted. There is no "level" or "center" field on a course: level is the
+  sub-category, and `mode=center` means the course belongs to an organization (`OrgCourse`), `online` that it does not.
+  `GET /courses` takes the same `mode` plus `with_subcategories`.
+- **Apps:** a signed-out start on a phone / desktop opens the onboarding once (device-local flag), then the guest
+  search (the same sentence builder, live counts) with Log in / Create account; signed-in people never see it. On the
+  web the landing does the pitch, so a signed-out start stays on the login, and `/app/explore?subject=&level=&mode=&lang=`
+  (the landing's button) starts guest mode with those filters.
+- **Not invented:** testimonials come from `landing/src/content/testimonials.json`, empty until the owner adds real
+  ones (the section is hidden while empty); the trust badges name real features only.
+
+**Consequences.** Every web build must use `--base-href /app/`, or `switch_web` refuses it. `firebase.json` (Firebase
+Hosting at its own root) was left as it is and does not match an `/app/` build; production is nginx.

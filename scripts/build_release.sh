@@ -18,7 +18,8 @@ case "$target" in
     ;;
   web)
     # web code is minified by dart2js; --obfuscate does not apply to web builds
-    flutter build web --release
+    # served at https://nextbrain.site/app/ (the landing site owns the root)
+    MSYS_NO_PATHCONV=1 flutter build web --release --base-href /app/  # MSYS: Git Bash on Windows would rewrite /app/ into a C:/Program Files/Git path
     ;;
   *) echo "usage: $0 apk|appbundle|ipa|web" >&2; exit 2 ;;
 esac

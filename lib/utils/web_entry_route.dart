@@ -5,6 +5,8 @@
 // [resolveWebEntry] says the person may open it there. Pure, unit-tested (test/ui/web_entry_route_test.dart).
 library;
 
+import 'web_base_path.dart';
+
 /// The dashboards: a URL never opens another role's home; the person's own home is used instead.
 const kWebDashboardRoutes = {
   '/home',
@@ -27,9 +29,21 @@ const kWebTabPages = {'/profile': 'profile'};
 /// The sign-in pages, which a signed-out person may open by URL.
 const kWebAuthRoutes = {'/login', '/register', '/forgot-password'};
 
-/// The route of a browser URL (path + query), or null for the root.
-String? webEntryRouteFromUri(Uri base) {
-  final path = base.path;
+/// [path] without the document's base path ([basePath], e.g. `/app/`): `/app/c/12` -> `/c/12`, `/app` and `/app/`
+/// -> `/`; a path outside the base (`/application`) is returned unchanged. A base of `/` changes nothing.
+String stripWebBasePath(String path, [String? basePath]) {
+  var b = basePath ?? webBasePath;
+  if (b.isEmpty || b == '/') return path;
+  if (!b.endsWith('/')) b = '$b/';
+  final bare = b.substring(0, b.length - 1); // `/app`
+  if (path == bare || path == b) return '/';
+  if (path.startsWith(b)) return '/${path.substring(b.length)}';
+  return path;
+}
+
+/// The route of a browser URL (path + query) relative to the base path, or null for the root.
+String? webEntryRouteFromUri(Uri base, {String? basePath}) {
+  final path = stripWebBasePath(base.path, basePath);
   if (path.isEmpty || path == '/') return null;
   return base.query.isEmpty ? path : '$path?${base.query}';
 }

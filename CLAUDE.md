@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Flutter education platform (VOD courses, live sessions, attendance, organizations) — product name NextBrain by DoubleY, application id `com.doubley.nextbrain` on every platform (D-145), Dart package name `flutter_education_app` (internal, never renamed), Firebase project `nextbrain-2y` (the old `elfaheem` stays as the fallback for installed apps, D-145), backend at `AppConfig.baseUrl` (`https://nextbrain.site/api` unless built with `--dart-define=API_BASE_URL=…`; a release build accepts only an `https://` override, see `resolveApiBaseUrl`). Targets Android, iOS and Web (web is deployed to Firebase Hosting from `build/web`). Default UI language is Arabic (RTL); English is also supported.
+Flutter education platform (VOD courses, live sessions, attendance, organizations) — product name NextBrain by DoubleY, application id `com.doubley.nextbrain` on every platform (D-145), Dart package name `flutter_education_app` (internal, never renamed), Firebase project `nextbrain-2y` (the old `elfaheem` stays as the fallback for installed apps, D-145), backend at `AppConfig.baseUrl` (`https://nextbrain.site/api` unless built with `--dart-define=API_BASE_URL=…`; a release build accepts only an `https://` override, see `resolveApiBaseUrl`). Targets Android, iOS and Web. The web app is served by nginx under **`/app/`** (every web build uses `--base-href /app/`; the start-URL parsers strip it, `lib/utils/web_base_path.dart`); the site root is the static landing in `landing/` (Astro, its own README), and old root URLs are redirected to `/app/…` (D-150). Default UI language is Arabic (RTL); English is also supported.
 
 ## Commands
 
@@ -15,7 +15,8 @@ flutter run                          # add -d chrome for web
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:18080/api   # Android emulator → local stack (../back/scripts/dev/setup.*, demo accounts in ../back/README.md); web / iOS simulator use http://localhost:18080/api, a USB phone after `adb reverse tcp:18080 tcp:18080`; default is production
 flutter test test/org/ test/export/ test/ui/ test/auth/ test/perf/ test/contract/   # the real suites (CI runs them all); test/widget_test.dart is the stock counter template and fails
 flutter test test/some_test.dart --plain-name "name"   # run a single test
-flutter build web && firebase deploy --only hosting
+MSYS_NO_PATHCONV=1 flutter build web --release --base-href /app/   # web (the env var stops Git Bash rewriting /app/)
+scripts/build_landing.sh             # the landing site: landing/dist (npm, or Docker node when node is missing)
 scripts/build_release.sh apk|appbundle|ipa|web   # release builds (bash): obfuscated, symbols in build/debug-info/<version>/ (keep them: `flutter symbolize -i trace.txt -d build/debug-info/<version>/app.android-arm64.symbols` is the only way to read a stack trace); signing from android/key.properties / env (never committed)
 dart run flutter_launcher_icons      # regenerate app icons
 dart run flutter_native_splash:create  # regenerate splash screens (android/ios drawables + assets/images/splash*.png)
