@@ -43,7 +43,9 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/*.gz",
+      "**/*.br"
     ],
     "rewrites": [
       {
@@ -58,6 +60,69 @@
           {
             "key": "Content-Security-Policy",
             "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.gstatic.com https://apis.google.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://nextbrain.site wss://nextbrain.site https://*.googleapis.com https://*.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://*.google.com https://*.firebase.com https://*.firebaseapp.com; frame-src https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+          }
+        ]
+      },
+      {
+        "source": "/main.dart.????????.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/main.dart.????????.js_*.part.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/canvaskit/????????????????????????????????????????/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/{index.html,flutter_bootstrap.js,flutter.js,main.dart.js,flutter_service_worker.js,version.json,manifest.json,app_links.json,sw.js,firebase-messaging-sw.js,offline.html,e2ee.worker.dart.js,recorder_compositor.js,video_protection.js}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/assets/{AssetManifest.bin,AssetManifest.bin.json,AssetManifest.json,FontManifest.json,assets/translation.json}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/{assets,icons,splash}/**/*.@(otf|ttf|woff|woff2|png|jpg|jpeg|webp|svg)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=86400, stale-while-revalidate=604800"
           }
         ]
       }
