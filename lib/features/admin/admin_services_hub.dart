@@ -8,7 +8,6 @@
 // So an icon / label / page is changed in exactly one place.
 library;
 
-import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/config/app_config.dart';
