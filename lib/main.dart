@@ -550,7 +550,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         isLink: (r) =>
             guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || exportLinkTokenFromRoute(r) != null ||
             DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null ||
-            ExploreRequest.matches(r) || isInstitutionRoute(r) || registerRoleFromRoute(r) != null);
+            ExploreRequest.matches(r) || isInstitutionRoute(r) ||
+            // /register?role=teacher (the landing's teacher card) is a sign-in page: signed out only, like /register
+            (!auth.isAuthenticated && registerRoleFromRoute(r) != null));
     final String initialRoute = entry?.route ??
         (!auth.isAuthenticated
         ? (decideSignedOutStart(

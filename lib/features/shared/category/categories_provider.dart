@@ -246,14 +246,16 @@ class CategoriesProvider extends BaseProvider {
   String? get exploreMode => _exploreMode;
   void setExploreMode(String? mode) => _exploreMode = mode;
 
-  /// `mode` (not for 'any') and, with a category, its sub-categories too (a subject lists its levels' courses).
+  /// `mode` and, with a category, its sub-categories too (a subject lists its levels' courses). `any` / `center`
+  /// widen the server's default personal scope to the whole public catalogue, so the list matches the landing's count.
   Map<String, dynamic> get _explore => _exploreMode == null
       ? const {}
-      : {if (_exploreMode != 'any') 'mode': _exploreMode, if (_selectedId != null) 'with_subcategories': true};
+      : {'mode': _exploreMode, if (_selectedId != null) 'with_subcategories': true};
 
   /// The mode's side on GET /courses (the server's default is the personal account). An organization's side is
-  /// for its members only, so that request goes signed in; the personal catalogue stays public (guests).
-  Map<String, dynamic> get _side => modeCourseScopeQuery();
+  /// for its members only, so that request goes signed in; the personal catalogue stays public (guests). The guest
+  /// explore sends no side at all: an explicit `scope` would cancel its `mode` (D-150).
+  Map<String, dynamic> get _side => _exploreMode != null ? const {} : modeCourseScopeQuery();
   bool get _sideNeedsAuth => _side['scope'] == 'org';
 
   Future<void> _fetchCoursesFor(String categoryId) async {
