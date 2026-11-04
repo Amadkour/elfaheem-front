@@ -65,6 +65,7 @@ String embedderJobText(EmbedderJob j) {
     'queued' => t('تدريب نموذج البحث في الانتظار', 'Search-model training is queued'),
     'running' => t('يجري تدريب نموذج البحث…', 'The search model is training…'),
     'done' || 'succeeded' || 'completed' => t('انتهى آخر تدريب لنموذج البحث', 'The last search-model training finished'),
+    'skipped' => t('تخطّى آخر تدريب لنموذج البحث', 'The last search-model training was skipped'),
     'failed' || 'error' => t('فشل آخر تدريب لنموذج البحث', 'The last search-model training failed'),
     _ => j.state,
   };

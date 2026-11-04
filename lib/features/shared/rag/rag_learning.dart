@@ -415,7 +415,9 @@ class LearningStats {
 
 /// The state of the search-model training job (`queued | running | done | failed`), when the stats carry one.
 class EmbedderJob {
-  const EmbedderJob({required this.state, this.detail = '', this.at});
+  const EmbedderJob({required this.state, this.detail = '', this.at, this.locked = true});
+  /// The server's lock file: a `running` state without it is a run that died.
+  final bool locked;
   final String state, detail;
   final String? at;
 
@@ -423,10 +425,10 @@ class EmbedderJob {
     final j = asMap(v);
     final state = asStr(j['state'] ?? j['status']);
     if (state.isEmpty) return null;
-    return EmbedderJob(state: state, detail: asStr(j['detail'] ?? j['message'] ?? j['error']), at: (j['at'] ?? j['finished_at'] ?? j['started_at'])?.toString());
+    return EmbedderJob(state: state, detail: asStr(j['detail'] ?? j['message'] ?? j['error']), at: (j['at'] ?? j['finished_at'] ?? j['started_at'])?.toString(), locked: j['locked'] == null ? true : asBool(j['locked']));
   }
 
-  bool get running => state == 'queued' || state == 'running';
+  bool get running => state == 'queued' || (state == 'running' && locked);
 }
 
 /// Reason counts, biggest first (the donut's parts).
@@ -735,6 +737,9 @@ class LearningApi {
   Future<EngineResult> models({String? kind}) => engineCall(() => _api.get('$base/models', queryParams: {'kind': ?kind}));
   /// Retrains the search model (embedder) from the feedback and verified answers now (platform admins).
   Future<EngineResult> trainEmbedder() => engineCall(() => _api.post('$base/embedder/train'));
+
+  /// `{status: running|done|failed|skipped, message, started_at, finished_at, locked, new_signals}` (platform admins).
+  Future<EngineResult> embedderStatus() => engineCall(() => _api.get('$base/embedder/status'));
 
   Future<EngineResult> promote(int id) => engineCall(() => _api.post('$base/models/$id/promote'));
   Future<EngineResult> rollback(int id) => engineCall(() => _api.post('$base/models/$id/rollback'));
