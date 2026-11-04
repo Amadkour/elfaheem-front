@@ -471,13 +471,13 @@ class AdminMoneyPage extends StatefulWidget {
 
 class _AdminMoneyPageState extends State<AdminMoneyPage> {
   late int _tab = widget.initialTab;
-  final _policyKey = GlobalKey<_PolicyTabState>();
+  final _policyKey = GlobalKey<FeePolicyTabState>();
   final _orgsKey = GlobalKey<_OrgFeesTabState>();
   final _ledgerKey = GlobalKey<_LedgerTabState>();
 
   Future<void> _refresh() async {
     await switch (_tab) {
-      0 => _policyKey.currentState?._load(),
+      0 => _policyKey.currentState?.reload(),
       1 => _orgsKey.currentState?._load(),
       _ => _ledgerKey.currentState?._run(),
     };
@@ -510,7 +510,7 @@ class _AdminMoneyPageState extends State<AdminMoneyPage> {
             ),
           Expanded(
             child: IndexedStack(index: _tab, children: [
-              _PolicyTab(key: _policyKey, superAdmin: sup),
+              FeePolicyTab(key: _policyKey, superAdmin: sup),
               if (sup) _OrgFeesTab(key: _orgsKey, superAdmin: sup) else AppEmpty(icon: Icons.lock_outline_rounded, title: t('رسوم المؤسسات للمشرف العام فقط', 'Organization fees are for the super admin only')),
               _LedgerTab(key: _ledgerKey),
             ]),
@@ -521,14 +521,18 @@ class _AdminMoneyPageState extends State<AdminMoneyPage> {
   }
 }
 
-class _PolicyTab extends StatefulWidget {
-  const _PolicyTab({super.key, required this.superAdmin});
+/// The fee-policy editor with its own load / save / reset (reused by [AdminMoneyPage] and the Fees page).
+/// [onDirty] reports whether the form holds unsaved changes; [footer] is drawn under the form.
+class FeePolicyTab extends StatefulWidget {
+  const FeePolicyTab({super.key, required this.superAdmin, this.onDirty, this.footer = const []});
   final bool superAdmin;
+  final ValueChanged<bool>? onDirty;
+  final List<Widget> footer;
   @override
-  State<_PolicyTab> createState() => _PolicyTabState();
+  State<FeePolicyTab> createState() => FeePolicyTabState();
 }
 
-class _PolicyTabState extends State<_PolicyTab> {
+class FeePolicyTabState extends State<FeePolicyTab> {
   final _api = MoneyP8Api();
   FeePolicy? _policy;
   bool _loading = true, _busy = false;
@@ -539,6 +543,8 @@ class _PolicyTabState extends State<_PolicyTab> {
     super.initState();
     _load();
   }
+
+  Future<void> reload() => _load();
 
   Future<void> _load() async {
     final r = await _api.feesOverview();
@@ -572,6 +578,7 @@ class _PolicyTabState extends State<_PolicyTab> {
     setState(() => _busy = false);
     if (r.ok) {
       appToast(t('تم حفظ سياسة الرسوم', 'Fee policy saved'));
+      widget.onDirty?.call(false);
       _load();
     } else {
       appToast(feeCodeText(r.code, r.message), error: true);
@@ -585,6 +592,7 @@ class _PolicyTabState extends State<_PolicyTab> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (r.ok) {
+      widget.onDirty?.call(false);
       _load();
     } else {
       appToast(feeCodeText(r.code, r.message), error: true);
@@ -602,19 +610,23 @@ class _PolicyTabState extends State<_PolicyTab> {
         padding: const EdgeInsets.all(14),
         child: FeePolicyForm(
             key: ValueKey('${_policy!.feeBearer}${_policy!.studentShare}${_policy!.vatOn}'),
-            policy: _policy!, readOnly: !widget.superAdmin, busy: _busy, onSave: _save, onReset: _policy!.isDefault ? null : _reset),
+            policy: _policy!, readOnly: !widget.superAdmin, busy: _busy, onSave: _save, onReset: _policy!.isDefault ? null : _reset, onDirty: widget.onDirty),
       ),
+      ...widget.footer,
     ]);
   }
 }
 
 /// The platform fee policy editor (presentational — the page owns the calls).
 class FeePolicyForm extends StatefulWidget {
-  const FeePolicyForm({super.key, required this.policy, required this.onSave, this.onReset, this.readOnly = false, this.busy = false});
+  const FeePolicyForm({super.key, required this.policy, required this.onSave, this.onReset, this.readOnly = false, this.busy = false, this.onDirty});
   final FeePolicy policy;
   final bool readOnly, busy;
   final void Function(FeePolicyDraft draft) onSave;
   final VoidCallback? onReset;
+
+  /// Whether the form differs from [policy] (told on every edit).
+  final ValueChanged<bool>? onDirty;
 
   @override
   State<FeePolicyForm> createState() => _FeePolicyFormState();
@@ -624,6 +636,20 @@ class _FeePolicyFormState extends State<FeePolicyForm> {
   late final FeePolicyDraft _d = FeePolicyDraft.of(widget.policy);
   late final TextEditingController _share = TextEditingController(text: _d.share);
   String? _err;
+
+  @override
+  void initState() {
+    super.initState();
+    _share.addListener(_tellDirty);
+  }
+
+  void _tellDirty() {
+    final p = widget.policy;
+    final dirty = _d.bearer != p.feeBearer ||
+        _d.vatOn != p.vatOn ||
+        (_d.bearer == 'split' && numText(parseNum(_share.text) ?? -1) != numText(p.studentShare * 100));
+    widget.onDirty?.call(dirty);
+  }
 
   @override
   void dispose() {
@@ -651,7 +677,7 @@ class _FeePolicyFormState extends State<FeePolicyForm> {
         value: _d.bearer,
         decoration: InputDecoration(labelText: t('متحمل الرسوم', 'Fee bearer')),
         items: [for (final b in feeBearers) DropdownMenuItem(value: b, child: Text(feeBearerText(b), maxLines: 1, overflow: TextOverflow.ellipsis))],
-        onChanged: widget.readOnly ? null : (v) => setState(() => _d.bearer = v ?? 'both'),
+        onChanged: widget.readOnly ? null : (v) { setState(() => _d.bearer = v ?? 'both'); _tellDirty(); },
       ),
       const SizedBox(height: 12),
       if (_d.bearer == 'split')
@@ -660,7 +686,7 @@ class _FeePolicyFormState extends State<FeePolicyForm> {
         value: _d.vatOn,
         decoration: InputDecoration(labelText: t('أساس الضريبة', 'VAT base')),
         items: [for (final b in vatBases) DropdownMenuItem(value: b, child: Text(vatBaseText(b), maxLines: 1, overflow: TextOverflow.ellipsis))],
-        onChanged: widget.readOnly ? null : (v) => setState(() => _d.vatOn = v ?? 'fee'),
+        onChanged: widget.readOnly ? null : (v) { setState(() => _d.vatOn = v ?? 'fee'); _tellDirty(); },
       ),
       if (_err != null) Padding(padding: const EdgeInsets.only(top: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: draftErrorText(_err!))),
       if (!widget.readOnly) ...[

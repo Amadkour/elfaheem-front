@@ -30,6 +30,7 @@ import 'admin_common.dart' hide StatusChip;
 import 'admin_page.dart';
 import 'admin_premium_widgets.dart' show AdminPalette;
 import 'admin_finance_provider.dart';
+import 'admin_fees_page.dart';
 import 'admin_money_p8.dart';
 import 'admin_payouts_page.dart';
 import 'admin_table_export.dart' show adminPaymentsExport, exportFetched;
@@ -94,11 +95,11 @@ class _View extends StatelessWidget {
             )
           : null,
       actions: [
-        // Phase 8: fee policy · per-organization fees · ledger report
+        // the fee policy (Round C: it lives on the Fees page, Policy tab)
         AppIconButton(
-          tooltip: t('الرسوم والتقارير المالية', 'Fees & financial reports'),
+          tooltip: t('الرسوم وسياسة الرسوم', 'Fees & fee policy'),
           icon: Icons.account_balance_wallet_outlined,
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminMoneyPage())),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeesPage(initialTab: 1))),
         ),
         AppIconButton(
           tooltip: t('معالجة استرداد معلّق', 'Resolve a pending refund'),
@@ -384,6 +385,7 @@ class _TabBody extends StatelessWidget {
     final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
     if (tab == 0) return _PendingTab(l: l);
+    if (tab == 2) return const _PayoutsLink();
 
     // History (1) and Payouts (2): a real table on wide screens, cards on phones
     final f = p.filters(tab);
@@ -393,7 +395,6 @@ class _TabBody extends StatelessWidget {
 
     return Column(
       children: [
-        if (tab == 2) const _ManagePayoutsButton(),
         _FilterBar(tab: tab, compact: true),
         if (l.loaded && l.items.isNotEmpty)
           Padding(
@@ -692,30 +693,56 @@ class _SwipeHint extends StatelessWidget {
   }
 }
 
-class _ManagePayoutsButton extends StatelessWidget {
-  const _ManagePayoutsButton();
+/// The Payouts tab: payouts are handled on the Payouts page, so this is a link, not a second copy of it.
+/// The pending count comes from the summary the screen already loads (no extra request).
+class _PayoutsLink extends StatelessWidget {
+  const _PayoutsLink();
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-    child: Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: TextButton.icon(
-        onPressed: () async {
-          final p = context.read<AdminFinanceProvider>();
-          await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AdminPayoutsPage()),
-          );
-          // approve / reject / mark paid happened in there
-          p.loadSummary();
-          p.load(2, silent: true);
-        },
-        icon: const Icon(Icons.edit_note_rounded, size: 18),
-        label: Text(t('إدارة طلبات السحب (موافقة / رفض / دفع)',
-            'Manage payout requests (approve / reject / pay)')),
-      ),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final p = context.watch<AdminFinanceProvider>();
+    final pending = _countOf(asMap(p.summary['payouts'])['pending']);
+    return ListView(
+      padding: AdminPage.bodyPadding(context),
+      children: [
+        AppCard(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(t('طلبات السحب', 'Teacher payouts'), style: AppType.section(context)),
+            AppSpace.gapXs,
+            Text(t('طلبات سحب المعلمين تُدار من صفحة السحوبات.', 'Teacher payouts are handled on the Payouts page.'),
+                style: AppType.body(context)),
+            if (pending > 0) ...[
+              AppSpace.gapXs,
+              AppStatusBadge(
+                label: countText(pending,
+                    ar1: 'طلب واحد بانتظار المراجعة',
+                    ar2: 'طلبان بانتظار المراجعة',
+                    arFew: '{n} طلبات بانتظار المراجعة',
+                    arMany: '{n} طلبًا بانتظار المراجعة',
+                    en1: '1 request waiting',
+                    en: '{n} requests waiting'),
+                tone: AppTone.warning,
+                dense: true,
+              ),
+            ],
+            AppSpace.gapSm,
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: AppButton.secondary(
+                label: t('فتح صفحة السحوبات', 'Open the Payouts page'),
+                icon: Icons.account_balance_wallet_rounded,
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminPayoutsPage()));
+                  // approve / reject / mark paid happened in there
+                  p.loadSummary();
+                },
+              ),
+            ),
+          ]),
+        ),
+      ],
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

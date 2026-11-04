@@ -17,12 +17,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 
-import 'admin_common.dart' show t;
+import 'admin_common.dart' show isSuperNow, t;
+import 'admin_recents.dart';
+import 'admin_services_hub.dart' show AdminService, adminServiceGroups;
+import 'admin_view_as_page.dart' show AdminViewAsPage;
 
 const adminSearchMinChars = 2;
 const adminSearchDebounce = Duration(milliseconds: 300);
@@ -146,10 +150,13 @@ IconData adminSearchGroupIcon(String kind) => switch (kind) {
     };
 
 class AdminSearchController extends ChangeNotifier {
-  AdminSearchController({required this.pages, AdminRemoteSearch? search, this.debounce = adminSearchDebounce})
+  AdminSearchController({required this.pages, this.recents = const [], AdminRemoteSearch? search, this.debounce = adminSearchDebounce})
       : _search = search ?? adminRemoteSearch;
 
   final List<AdminSearchPage> pages;
+
+  /// The pages this person opened last (newest first): the first group while the query is empty.
+  final List<AdminSearchPage> recents;
   final AdminRemoteSearch _search;
   final Duration debounce;
 
@@ -174,6 +181,10 @@ class AdminSearchController extends ChangeNotifier {
   List<AdminSearchGroup> get groups => _groups;
 
   List<AdminSearchRow> get rows => [
+        if (isIdle && recents.isNotEmpty) ...[
+          AdminSearchRow.header(t('الأحدث', 'Recent')),
+          for (final p in recents) AdminSearchRow.page(p),
+        ],
         if (_pageHits.isNotEmpty) ...[
           AdminSearchRow.header(t('الصفحات', 'Pages')),
           for (final p in _pageHits.take(8)) AdminSearchRow.page(p),
@@ -258,6 +269,59 @@ class AdminSearchController extends ChangeNotifier {
   }
 }
 
+/// What the palette shows beyond the caller's [pages]: the "View as a user" command (super admin only; not added when
+/// the services already list it), page openings that feed [AdminRecents], and the recent pages themselves.
+({List<AdminSearchPage> pages, List<AdminSearchPage> recents}) adminPaletteSetup(BuildContext context, List<AdminSearchPage> pages) {
+  final byKey = <String, AdminService>{};
+  try {
+    for (final g in adminServiceGroups(context, watch: false)) {
+      for (final s in g.visibleServices) {
+        if (s.featureKey != null && AppConfig.disableList.contains(s.featureKey)) continue;
+        byKey.putIfAbsent(s.labelKey, () => s);
+      }
+    }
+  } catch (_) {} // no providers above (a preview): the caller's pages only
+  final keyOfLabel = {for (final e in byKey.entries) e.value.labelText: e.key};
+
+  AdminSearchPage tracked(AdminSearchPage p) {
+    final key = keyOfLabel[p.label];
+    if (key == null) return p;
+    return AdminSearchPage(
+        label: p.label,
+        desc: p.desc,
+        group: p.group,
+        icon: p.icon,
+        onOpen: () {
+          AdminRecents.instance.record(key);
+          p.onOpen();
+        });
+  }
+
+  var superNow = false;
+  try {
+    superNow = isSuperNow(context);
+  } catch (_) {}
+  final all = [for (final p in pages) tracked(p)];
+  // the hub has no View-as tile any more (R1): this command is its path besides the user rows and sheet
+  final viewAsLabel = t('عرض كمستخدم', 'View as a user');
+  if (superNow && !pages.any((p) => p.label == viewAsLabel)) {
+    all.add(AdminSearchPage(
+      label: t('عرض كمستخدم', 'View as a user'),
+      desc: t('افتح التطبيق كما يراه مستخدم آخر', 'Open the app as another user sees it'),
+      group: t('الأشخاص', 'People'),
+      icon: Icons.supervised_user_circle_rounded,
+      onOpen: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminViewAsPage())),
+    ));
+  }
+  final recents = [
+    for (final k in AdminRecents.instance.keys)
+      if (byKey[k] != null)
+        tracked(AdminSearchPage(
+            label: byKey[k]!.labelText, desc: byKey[k]!.descText, icon: byKey[k]!.icon, onOpen: byKey[k]!.onTap)),
+  ].take(AdminRecents.shown).toList();
+  return (pages: all, recents: recents);
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Opening it
 // ═════════════════════════════════════════════════════════════════════════════
@@ -270,7 +334,8 @@ Future<void> showAdminGlobalSearch(
   required void Function(AdminSearchHit hit) onOpenHit,
   AdminRemoteSearch? search,
 }) async {
-  final controller = AdminSearchController(pages: pages, search: search);
+  final setup = adminPaletteSetup(context, pages);
+  final controller = AdminSearchController(pages: setup.pages, recents: setup.recents, search: search);
   AdminSearchRow? picked;
   void select(BuildContext ctx, AdminSearchRow row) {
     picked = row;
@@ -534,6 +599,13 @@ class _AdminSearchPanelState extends State<AdminSearchPanel> {
         active: active,
         onTap: () => widget.onSelect(r),
         onHover: () => _c.setActive(index),
+      ));
+    }
+    if (_c.isIdle && rows.isNotEmpty) {
+      children.add(Padding(
+        padding: const EdgeInsets.all(AppSpace.md),
+        child: Text(t('اكتب للبحث في الصفحات والطلاب والمعلمين والدورات', 'Type to search pages, students, teachers and courses'),
+            textAlign: TextAlign.center, style: AppType.meta(context)),
       ));
     }
     if (_c.loading) {

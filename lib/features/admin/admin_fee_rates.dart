@@ -148,7 +148,10 @@ typedef _FeeSave = Future<bool> Function({double? percent, double? fixed, bool r
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
 class AdminFeeRatesSection extends StatelessWidget {
-  const AdminFeeRatesSection({super.key});
+  const AdminFeeRatesSection({super.key, this.showPolicyLink = true});
+
+  /// The "Fee policy & organizations" button; the Fees page has the policy in its own tab and turns it off.
+  final bool showPolicyLink;
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +162,7 @@ class AdminFeeRatesSection extends StatelessWidget {
         title: 'admin_fee_rates'.tr,
         subtitle: 'admin_fee_rates_hint'.tr,
         // Phase 8: fee policy, per-organization fees, ledger report
-        child: Align(
+        child: !showPolicyLink ? const SizedBox.shrink() : Align(
           alignment: AlignmentDirectional.centerStart,
           child: AppButton.secondary(
             label: _t('سياسة الرسوم والمؤسسات', 'Fee policy & organizations'),

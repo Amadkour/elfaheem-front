@@ -8,7 +8,7 @@
 //  Tab 2 · Fees     → platform fee, student VAT, teacher VAT and the gateway fee of every
 //                     method (AdminFeeRatesSection — percent, fixed amount, or both)
 //
-// The platform fee % is edited ONLY in the Fees tab (one place = no stale overwrites).
+// The platform fee % is edited ONLY on the Fees page (AdminFeesPage; one place = no stale overwrites).
 // Devices live in admin_devices_page.dart.
 library;
 
@@ -21,6 +21,7 @@ import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_fee_rates.dart';
+import 'admin_fees_page.dart';
 import 'admin_page.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -255,8 +256,8 @@ class _MethodsTab extends StatelessWidget {
       ),
       AppSpace.gapXs,
       Text(
-        _t('إنستاباي يظهر للطلاب بالجنيه المصري فقط. Apple Pay / Google Pay تظهر على الجوال فقط، وعندما تدعمها بوابة الدفع. رسومها من تبويب الرسوم.',
-            'InstaPay is only shown to students paying in EGP. Apple Pay / Google Pay show on mobile only, and only when the gateway supports them. Set their fees in the Fees tab.'),
+        _t('إنستاباي يظهر للطلاب بالجنيه المصري فقط. Apple Pay / Google Pay تظهر على الجوال فقط، وعندما تدعمها بوابة الدفع. رسومها من صفحة الرسوم.',
+            'InstaPay is only shown to students paying in EGP. Apple Pay / Google Pay show on mobile only, and only when the gateway supports them. Set their fees on the Fees page.'),
         style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight),
       ),
     ]);
@@ -324,35 +325,31 @@ class _FeesTab extends StatelessWidget {
   const _FeesTab();
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: c.primary.withValues(alpha: .07),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: c.primary.withValues(alpha: .2)),
-        ),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(Icons.info_outline_rounded, size: 20, color: c.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              _t('كل رسم يمكن ضبطه كنسبة مئوية، أو مبلغ ثابت، أو الاثنين معاً. '
-                  'لكل رسم قيمة افتراضية يمكنك الرجوع إليها.',
-                  'Every fee can be set as a percent, a fixed amount, or both. '
-                      'Each one has a default you can reset to.'),
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, height: 1.45, color: c.textDark),
-            ),
-          ),
-        ]),
+  Widget build(BuildContext context) => AppCard(
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(_t('الرسوم انتقلت إلى صفحة الرسوم', 'Fees moved to the Fees page'), style: AppType.section(context)),
+      AppSpace.gapXs,
+      Text(
+        _t('نسب الرسوم (طرق الدفع والمنصة والضريبة) وسياسة من يتحمّلها في مكان واحد.',
+            'Fee rates (payment methods, platform, VAT) and the policy of who bears them, in one place.'),
+        style: AppType.meta(context),
       ),
-      const SizedBox(height: 14),
-      const AdminFeeRatesSection(),
-    ]);
-  }
+      AppSpace.gapSm,
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: AppButton.secondary(
+          label: _t('فتح صفحة الرسوم', 'Open the Fees page'),
+          icon: Icons.percent_rounded,
+          // back from the Fees page: the platform-fee figure on this page shows the new rate at once
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeesPage())).then((_) {
+            if (context.mounted) context.read<AdminFeeRatesProvider>().load();
+          }),
+        ),
+      ),
+    ]),
+  );
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Method card: header (icon, summary, status, switch) that expands into the editor

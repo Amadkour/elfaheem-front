@@ -47,13 +47,6 @@ class _List extends StatefulWidget {
 class _ListState extends State<_List> {
   DateTime? _loadedAt;
 
-  void _runSearch(String v) {
-    final p = context.read<AdminParentLinkProvider>();
-    if (p.search == v.trim()) return;
-    p.search = v.trim();
-    p.loadRequests();
-  }
-
   Future<void> _reload() async {
     await context.read<AdminParentLinkProvider>().loadRequests();
     if (mounted) setState(() => _loadedAt = DateTime.now());
@@ -62,13 +55,34 @@ class _ListState extends State<_List> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminParentLinkProvider>();
-    final first = p.items.isEmpty;
     return AdminPage(
       title: 'pl_requests_title'.tr,
       icon: Icons.family_restroom_rounded,
       onRefresh: p.isLoading ? null : _reload,
       updatedAt: _loadedAt,
-      body: Padding(
+      body: const ParentRequestsBody(),
+    );
+  }
+}
+
+/// The requests table (search, status filter, load more, the detail page on a row tap) without a page header, so it
+/// sits under [AdminParentRequestsPage]'s own header or inside a tab of the Parent linking page. Reads the
+/// [AdminParentLinkProvider] above it.
+class ParentRequestsBody extends StatelessWidget {
+  const ParentRequestsBody({super.key});
+
+  void _runSearch(BuildContext context, String v) {
+    final p = context.read<AdminParentLinkProvider>();
+    if (p.search == v.trim()) return;
+    p.search = v.trim();
+    p.loadRequests();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<AdminParentLinkProvider>();
+    final first = p.items.isEmpty;
+    return Padding(
         padding: AdminPage.bodyPadding(context),
         child: AppDataTable<Map<String, dynamic>>(
           state: p.isLoading && first
@@ -80,7 +94,7 @@ class _ListState extends State<_List> {
           onRetry: p.loadRequests,
           rows: p.items,
           searchHint: 'pl_search_hint'.tr,
-          onSearch: _runSearch,
+          onSearch: (v) => _runSearch(context, v),
           filters: [
             AppTableFilter(
               label: t('الحالة', 'Status'),
@@ -130,7 +144,6 @@ class _ListState extends State<_List> {
             ),
           ],
         ),
-      ),
     );
   }
 }

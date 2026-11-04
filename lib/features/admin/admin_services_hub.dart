@@ -52,7 +52,10 @@ import '../shared/roadmap/roadmap_api.dart' show kRecsAdminKey;
 import '../shared/points/points_api.dart' show kAdminPointsFeatureKey;
 import 'admin_theme_page.dart';
 import 'admin_users_page.dart';
-import 'admin_versions_page.dart';
+import 'admin_app_versions_page.dart';
+import 'admin_fees_page.dart';
+import 'admin_parent_linking_page.dart';
+import 'admin_recents.dart';
 import 'admin_view_as_page.dart';
 import 'live_settings/live_settings_page.dart' show LiveSettingsPage, kLiveSettingsFeatureKey, liveSettingsTitle;
 import 'enrollment_request/teacher_transfers_provider.dart';
@@ -187,21 +190,6 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           onTap: () => push(const AdminSendMessagePage()),
         ),
         AdminService(
-          labelKey: 'view_as_user',
-          descKey: 'svc_view_as_d',
-          icon: Icons.supervised_user_circle_rounded,
-          colors: AdminPalette.orange,
-          visible: isSuper,
-          onTap: () => push(const AdminViewAsPage()),
-        ),
-        AdminService(
-          labelKey: 'teachers',
-          descKey: 'svc_teachers_d',
-          icon: Icons.cast_for_education_rounded,
-          colors: AdminPalette.rose,
-          onTap: () => push(const AdminUsersPage(role: 'teacher')),
-        ),
-        AdminService(
           labelKey: 'admin_admins',
           descKey: 'svc_admins_d',
           icon: Icons.admin_panel_settings_rounded,
@@ -217,19 +205,12 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           onTap: () => push(const AdminCategoriesPage()),
         ),
         AdminService(
-          labelKey: 'pl_requests_title',
+          labelKey: 'admin_parent_linking',
           descKey: 'svc_pl_requests_d',
+          label: t('ربط أولياء الأمور', 'Parent linking'),
           icon: Icons.family_restroom_rounded,
           colors: AdminPalette.green,
-          onTap: () => push(const AdminParentRequestsPage()),
-        ),
-        AdminService(
-          labelKey: 'pl_settings_title',
-          descKey: 'svc_pl_settings_d',
-          icon: Icons.settings_suggest_rounded,
-          colors: AdminPalette.violet,
-          visible: isSuper,
-          onTap: () => push(const AdminParentLinkSettingsPage()),
+          onTap: () => push(const AdminParentLinkingPage()),
         ),
       ],
     ),
@@ -301,6 +282,16 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           colors: AdminPalette.blue,
           featureKey: 'profile.payment',
           onTap: () => push(const AdminPaymentsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_fees',
+          descKey: 'admin_fees_d',
+          label: t('الرسوم', 'Fees'),
+          desc: t('نسب الرسوم لكل وسيلة دفع والمنصة والضريبة، وسياسة من يتحمل الرسوم',
+              'Fee rates per payment method, the platform and VAT, and the policy of who pays them'),
+          icon: Icons.percent_rounded,
+          colors: AdminPalette.blue,
+          onTap: () => push(const AdminFeesPage()),
         ),
         AdminService(
           labelKey: 'admin_payments',
@@ -517,25 +508,12 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         AdminService(
           labelKey: 'svc_app_releases',
           descKey: 'svc_app_releases_d',
-          label: t('إصدارات التطبيق (بناء ونشر)', 'App versions (build & publish)'),
-          desc: t('بناء إصدار جديد لأندرويد أو الويب أو لينكس أو ويندوز على Codemagic ونشره على المتجر أو في شريط التحميل بالموقع',
-              'Build a new Android, web, Linux or Windows version on Codemagic and publish it to the store or the website download banner'),
+          label: t('إصدارات التطبيق', 'App versions'),
+          desc: t('بناء إصدار ونشره، ورسالة التحديث التي يراها المستخدمون',
+              'Build and publish a version, and set the update prompt users see'),
           icon: Icons.rocket_launch_rounded,
           colors: AdminPalette.indigo,
-          featureKey: kAppReleasesFeatureKey,
-          visible: isSuper,
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => deferredAppReleases())),
-        ),
-        AdminService(
-          labelKey: 'versions',
-          descKey: 'svc_versions_d',
-          label: t('رسالة التحديث', 'Update prompt'),
-          desc: t('الإصدار الذي يطلب التطبيق من المستخدمين التحديث إليه (إجباري أو مُوصى به)، دون بناء',
-              'The version the app asks users to update to (forced or recommended), without building'),
-          icon: Icons.system_update_rounded,
-          colors: AdminPalette.orange,
-          onTap: () => push(const AdminVersionsPage()),
+          onTap: () => push(const AdminAppVersionsPage()),
         ),
         AdminService(
           labelKey: 'terms_and_conditions',
@@ -558,8 +536,14 @@ Widget adminServiceTile(AdminService s) => AppSettingsTile(
       subtitle: s.descText,
       badge: s.badge,
       featureKey: s.featureKey,
-      onTap: s.onTap,
+      onTap: () => _openService(s),
     );
+
+/// Opens a service and remembers it for the Overview's "Recently opened" (and the search palette's Recent).
+void _openService(AdminService s) {
+  AdminRecents.instance.record(s.labelKey);
+  s.onTap();
+}
 
 
 // ── wide shells: hub page (one sidebar tab = one group) ──────────────────────
@@ -671,7 +655,7 @@ class ServiceCard extends StatelessWidget {
       container: true,
       label: '${service.labelText}. ${service.descText}',
       excludeSemantics: true,
-      onTap: service.onTap,
+      onTap: () => _openService(service),
       child: Material(
         color: c.cardBg,
         shape: RoundedRectangleBorder(
@@ -680,7 +664,7 @@ class ServiceCard extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: service.onTap,
+          onTap: () => _openService(service),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: AppTouch.primary + AppSpace.md),
             child: Padding(

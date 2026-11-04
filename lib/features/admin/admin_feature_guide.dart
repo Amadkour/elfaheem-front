@@ -4,8 +4,9 @@
 // admins …), where it is and how to use it, in Arabic and English. The app assistant (RAG) answers "how do I …"
 // from it. Seeded from the server's data/app_features_guide.json (update it with every new feature — CLAUDE.md);
 // the super admin edits, adds and deletes here, and decides per feature where it shows:
-//   • App        — the feature's kill-switch keys (the Features page rows). Hidden = all of them off on every
-//                  platform; hidden on some platforms only = "partial". A feature without keys can't be hidden here.
+//   • App        — the feature's kill-switch keys (the Features page rows), shown READ-ONLY here (C-round: one place
+//                  to switch them, the Features page; a "Change in Features" button opens it). Hidden = all of them off
+//                  on every platform; off on some platforms only = "partial".
 //   • Assistant  — whether the assistant may explain it. A feature hidden in the app is left out of the assistant
 //                  automatically.
 // Changes reach the assistant on its next pass over the app pages (every few hours) or at once with "Update the
@@ -23,6 +24,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import '../org/org_v3.dart';
 import '../shared/rag/rag_library.dart' show RagLibraryApi, ragOutcomeSummary, ragResultText;
 import 'admin_common.dart' show asInt, asMap, asMapList, t;
+import 'admin_features_page.dart' show AdminFeaturesPage;
 import 'admin_page.dart';
 import 'cfg_common.dart';
 
@@ -323,7 +325,7 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
                     feature: f,
                     roleNames: roles,
                     onTap: () => _openEditor(f),
-                    onApp: _super && !busy && f.appState != 'none' ? (v) => _visibility(f, app: v) : null,
+                    onOpenFeatures: f.appState != 'none' ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeaturesPage())) : null,
                     onRag: _super && !busy ? (v) => _visibility(f, rag: v) : null,
                   ),
                 );
@@ -369,11 +371,12 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
 
 /// One row: title, key, who has it, summary, state badges, and the two quick switches (App · Assistant) as chips.
 class GuideFeatureTile extends StatelessWidget {
-  const GuideFeatureTile({super.key, required this.feature, required this.roleNames, this.onTap, this.onApp, this.onRag});
+  const GuideFeatureTile({super.key, required this.feature, required this.roleNames, this.onTap, this.onOpenFeatures, this.onRag});
   final GuideFeature feature;
   final Map<String, String> roleNames;
   final VoidCallback? onTap;
-  final ValueChanged<bool>? onApp, onRag;
+  final VoidCallback? onOpenFeatures;
+  final ValueChanged<bool>? onRag;
 
   @override
   Widget build(BuildContext context) {
@@ -391,12 +394,19 @@ class GuideFeatureTile extends StatelessWidget {
         if (f.summary.isNotEmpty) Text(f.summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
         const SizedBox(height: 8),
         Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          if (f.appState != 'none')
-            AppChoiceChip(
-                label: t('التطبيق', 'App'),
-                icon: appOn ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-                selected: appOn,
-                onTap: onApp == null ? () {} : () => onApp!(!appOn)),
+          // read-only: the app switches belong to the Features page
+          if (f.appState != 'none') ...[
+            AppStatusBadge(
+                label: appOn ? t('التطبيق: يعمل', 'App: On') : t('التطبيق: مخفية', 'App: Hidden'),
+                tone: appOn ? AppTone.success : AppTone.warning,
+                dot: true),
+            if (onOpenFeatures != null)
+              AppButton.ghost(
+                  key: const ValueKey('guide.change_in_features'),
+                  label: t('تغيير في الميزات', 'Change in Features'),
+                  size: AppButtonSize.sm,
+                  onPressed: onOpenFeatures),
+          ],
           AppChoiceChip(
               label: t('المساعد', 'Assistant'),
               icon: f.rag ? Icons.smart_toy_rounded : Icons.block_rounded,

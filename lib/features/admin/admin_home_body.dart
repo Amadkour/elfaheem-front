@@ -21,6 +21,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -32,6 +33,9 @@ import '../org/org_common.dart' show orgTypeLabels;
 import 'admin_common.dart' show t;
 import 'admin_global_search.dart';
 import 'admin_home_data.dart';
+import 'admin_recents.dart';
+import 'admin_services_hub.dart' show AdminService, AdminServiceGroup, adminServiceGroups;
+import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'admin_models.dart' show moneyByCurrency;
 
 /// What the home can open. Every callback is optional (null in tests and previews).
@@ -151,7 +155,7 @@ class AdminHomeBody extends StatelessWidget {
         if (showAi)
           AdminAssistantCard(
               health: assistant!, onOpen: AppConfig.disableList.contains('rag.admin') ? null : actions.openAssistant),
-        _Hubs(actions: actions),
+        const _Recents(),
       ];
       Widget stack(List<Widget> l) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             for (var i = 0; i < l.length; i++) ...[if (i > 0) AppSpace.gapLg, l[i]],
@@ -687,23 +691,125 @@ class _CurrencyShare extends StatelessWidget {
   }
 }
 
-class _Hubs extends StatelessWidget {
-  const _Hubs({required this.actions});
-  final AdminHomeActions actions;
+/// "Recently opened": the admin pages this person opened last on this device (local, no request). Not drawn at all
+/// with no history; a kill-switched or role-hidden service never shows (resolved through [adminServiceGroups]).
+class _Recents extends StatefulWidget {
+  const _Recents();
+
+  @override
+  State<_Recents> createState() => _RecentsState();
+}
+
+class _RecentsState extends State<_Recents> {
+  @override
+  void initState() {
+    super.initState();
+    AdminRecents.instance.addListener(_changed);
+    String? uid;
+    try {
+      uid = context.read<MyAuthProvider>().currentUser?.id.toString();
+    } catch (_) {}
+    AdminRecents.instance.use(uid);
+  }
+
+  @override
+  void dispose() {
+    AdminRecents.instance.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  List<AdminService> _resolve() {
+    final keys = AdminRecents.instance.keys;
+    if (keys.isEmpty) return const [];
+    List<AdminServiceGroup> groups;
+    try {
+      groups = adminServiceGroups(context, watch: false);
+    } catch (_) {
+      return const []; // no providers above (a preview): nothing to resolve against
+    }
+    final byKey = <String, AdminService>{};
+    for (final g in groups) {
+      for (final s in g.visibleServices) {
+        if (s.featureKey != null && AppConfig.disableList.contains(s.featureKey)) continue;
+        byKey.putIfAbsent(s.labelKey, () => s);
+      }
+    }
+    return [for (final k in keys) if (byKey[k] != null) byKey[k]!].take(AdminRecents.shown).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    void none() {}
+    final items = _resolve();
+    if (items.isEmpty) return const SizedBox.shrink();
     return AppSection(
-      title: 'admin_home_hubs'.tr,
-      child: HomeShortcuts(padding: EdgeInsets.zero, items: [
-        HomeShortcut(icon: Icons.science_rounded, label: 'dl_admin_title'.tr, featureKey: 'data_lab.admin', onTap: actions.openDataLab ?? none),
-        HomeShortcut(icon: Icons.domain_rounded, label: 'svc_organizations'.tr, onTap: actions.openOrganizations ?? none),
-        HomeShortcut(icon: Icons.auto_awesome_rounded, label: 'admin_home_assistant'.tr, featureKey: 'rag.admin', onTap: actions.openAssistant ?? none),
-        HomeShortcut(icon: Icons.tune_rounded, label: 'features'.tr, onTap: actions.openFeatures ?? none),
-        HomeShortcut(icon: Icons.co_present_rounded, label: 'admin_teachers'.tr, onTap: actions.openTeachers ?? none),
-        HomeShortcut(icon: Icons.request_quote_rounded, label: 'admin_home_income'.tr, onTap: actions.openIncome ?? none),
-      ]),
+      title: t('فُتحت مؤخراً', 'Recently opened'),
+      child: LayoutBuilder(builder: (context, box) {
+        final cols = box.maxWidth >= 360 ? 2 : 1;
+        final w = (box.maxWidth - AppSpace.sm * (cols - 1)) / cols;
+        return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
+          for (final s in items)
+            SizedBox(
+              width: w,
+              child: _RecentTile(
+                icon: s.icon,
+                label: s.labelText,
+                onTap: () {
+                  AdminRecents.instance.record(s.labelKey);
+                  s.onTap();
+                },
+              ),
+            ),
+        ]);
+      }),
+    );
+  }
+}
+
+class _RecentTile extends StatelessWidget {
+  const _RecentTile({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(color: c.divider, width: AppBorder.hairline),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.primary),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+              child: Row(children: [
+                Container(
+                  width: AppTouch.min - AppSpace.sm,
+                  height: AppTouch.min - AppSpace.sm,
+                  decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+                  child: Icon(icon, size: AppIconSize.md, color: c.primary),
+                ),
+                AppSpace.gapSm,
+                Expanded(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
+              ]),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

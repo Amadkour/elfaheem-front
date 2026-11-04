@@ -47,7 +47,6 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminVersionsProvider>();
-    final loaded = !p.isLoading || p.items.isNotEmpty;
     return AdminPage(
       key: const ValueKey('admin_versions'),
       title: t('رسالة التحديث', 'Update prompt'),
@@ -55,64 +54,96 @@ class _View extends StatelessWidget {
           'The version the app asks users to update to, forced or recommended'),
       icon: Icons.system_update_rounded,
       onRefresh: p.load,
-      primaryAction: AppButton.primary(
+      primaryAction: AdminVersionsAddButton(provider: p),
+      body: const AdminVersionsContent(),
+    );
+  }
+}
+
+/// The header's one primary action of the update prompt list ("Add update prompt").
+class AdminVersionsAddButton extends StatelessWidget {
+  const AdminVersionsAddButton({super.key, required this.provider});
+
+  final AdminVersionsProvider provider;
+
+  @override
+  Widget build(BuildContext context) => AppButton.primary(
         key: const ValueKey('admin_versions.publish'),
         label: t('إضافة رسالة تحديث', 'Add update prompt'),
         icon: Icons.add_rounded,
-        onPressed: () => _form(context, p),
+        onPressed: () => _form(context, provider),
+      );
+}
+
+/// The update prompt list without a page header, so it sits inside a tab (App versions, C-round) or under
+/// [AdminVersionsPage]'s own header. Reads the [AdminVersionsProvider] above it.
+///
+/// [onOpenBuild]: when the Build & publish tab is next door, the banner's button switches to it; null keeps the
+/// standalone behaviour (a super admin gets a button that pushes the App versions page).
+class AdminVersionsContent extends StatelessWidget {
+  const AdminVersionsContent({super.key, this.onOpenBuild});
+
+  final VoidCallback? onOpenBuild;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<AdminVersionsProvider>();
+    final loaded = !p.isLoading || p.items.isNotEmpty;
+    if (!loaded) return const AppListSkeleton();
+    if (p.error != null && p.items.isEmpty) return AppErrorState(message: p.error, onRetry: p.load);
+    return AppRefresh(
+      onRefresh: p.load,
+      child: ListView(
+        padding: AdminPage.bodyPadding(context),
+        children: [
+          AppKpiGrid(maxColumns: 2, children: [
+            AppKpiCard(icon: Icons.layers_rounded, value: '${p.items.length}', label: t('رسائل التحديث', 'Update prompts')),
+            AppKpiCard(
+                icon: Icons.check_circle_rounded,
+                value: '${p.items.where((v) => asBool(v['is_active'])).length}',
+                label: t('مفعّلة', 'Active')),
+          ]),
+          AppSpace.gapSm,
+          if (p.error != null) ...[
+            AppErrorState(compact: true, message: p.error, onRetry: p.load),
+            AppSpace.gapSm,
+          ],
+          // this page builds nothing: the real build-and-publish page is App versions (super admin only)
+          AppBanner(
+            icon: Icons.info_outline_rounded,
+            text: t('هذه الصفحة لا تبني التطبيق. لبناء إصدار جديد ونشره على المتجر أو الموقع استخدم «إصدارات التطبيق»، وعند نشره تُضاف رسالة التحديث هنا تلقائيًا.',
+                'This page does not build the app. To build a new version and publish it to the store or the website, use App versions; when it goes live, its update prompt is added here by itself.'),
+          ),
+          if (onOpenBuild != null) ...[
+            AppSpace.gapXs,
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: AppButton.secondary(
+                key: const ValueKey('admin_versions.open_build'),
+                icon: Icons.rocket_launch_rounded,
+                label: t('بناء ونشر', 'Build & publish'),
+                onPressed: onOpenBuild,
+              ),
+            ),
+          ] else if (isSuperNow(context)) ...[
+            AppSpace.gapXs,
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: AppButton.secondary(
+                icon: Icons.rocket_launch_rounded,
+                label: t('إصدارات التطبيق', 'App versions'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => deferredAppReleases())),
+              ),
+            ),
+          ],
+          AppSpace.gapMd,
+          if (p.items.isEmpty)
+            AppEmpty(icon: Icons.rocket_launch_rounded, title: 'admin_no_versions_published_yet'.tr)
+          else
+            for (final v in p.items) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: _VersionCard(v)),
+        ],
       ),
-      body: !loaded
-          ? const AppListSkeleton()
-          : p.error != null && p.items.isEmpty
-              ? AppErrorState(message: p.error, onRetry: p.load)
-              : AppRefresh(
-                  onRefresh: p.load,
-                  child: ListView(
-                    padding: AdminPage.bodyPadding(context),
-                    children: [
-                      AppKpiGrid(maxColumns: 2, children: [
-                        AppKpiCard(
-                            icon: Icons.layers_rounded,
-                            value: '${p.items.length}',
-                            label: t('رسائل التحديث', 'Update prompts')),
-                        AppKpiCard(
-                            icon: Icons.check_circle_rounded,
-                            value: '${p.items.where((v) => asBool(v['is_active'])).length}',
-                            label: t('مفعّلة', 'Active')),
-                      ]),
-                      AppSpace.gapSm,
-                      if (p.error != null) ...[
-                        AppErrorState(compact: true, message: p.error, onRetry: p.load),
-                        AppSpace.gapSm,
-                      ],
-                      // this page builds nothing: the real build-and-publish page is App versions (super admin only)
-                      AppBanner(
-                        icon: Icons.info_outline_rounded,
-                        text: t('هذه الصفحة لا تبني التطبيق. لبناء إصدار جديد ونشره على المتجر أو الموقع استخدم «إصدارات التطبيق»، وعند نشره تُضاف رسالة التحديث هنا تلقائيًا.',
-                            'This page does not build the app. To build a new version and publish it to the store or the website, use App versions; when it goes live, its update prompt is added here by itself.'),
-                      ),
-                      if (isSuperNow(context)) ...[
-                        AppSpace.gapXs,
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: AppButton.secondary(
-                            icon: Icons.rocket_launch_rounded,
-                            label: t('إصدارات التطبيق', 'App versions'),
-                            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                                settings: const RouteSettings(name: AppReleasesPage.routeName),
-                                builder: (_) => deferredAppReleases())),
-                          ),
-                        ),
-                      ],
-                      AppSpace.gapMd,
-                      if (p.items.isEmpty)
-                        AppEmpty(icon: Icons.rocket_launch_rounded, title: 'admin_no_versions_published_yet'.tr)
-                      else
-                        for (final v in p.items)
-                          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: _VersionCard(v)),
-                    ],
-                  ),
-                ),
     );
   }
 }

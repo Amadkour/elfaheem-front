@@ -2348,8 +2348,13 @@ payment without knowing which tab holds it.
 - One money formatter, `money()` in `admin_common.dart` (thousands separators); amounts typed with Arabic digits or
   "2,5" parse (`parseAmountLoose`).
 
-**Kept on purpose.** No page, tile or action was removed. The redundancies the audit found (R1–R8) are listed there and
-wait for the owner's decision. Screens owned by other sessions (courses ↔ students, RAG, exams and the grading
+**Consolidated, nothing lost.** The owner asked for best practice ("premium and smart"): the duplicated entry points the
+audit found (R1–R8) were folded into one home each — one Fees page (Rates · Policy), one App versions page (Build &
+publish · Update prompt, each tab with its old role and kill-switch rules), one Parent linking page (Requests ·
+Settings), the Feature guide shows the app switch read-only and links to Features, the View-as and Teachers hub tiles
+went (their paths are the user rows, the Teachers tab and the search palette), and the Overview's hubs block became
+"Recently opened" (`AdminRecents`, per user, on this device; the palette shows the same as Recent). Every call, field,
+kill switch and role check of the old screens is kept, and the old page classes still open for any caller. Screens owned by other sessions (courses ↔ students, RAG, exams and the grading
 feedback store, organization flow) were not redesigned.
 
 ## D-210 — One course-access rule, expiry enforced, an organization's charge stops at its own courses · 2026-11-04 · accepted

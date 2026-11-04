@@ -35,14 +35,43 @@ class AdminParentLinkSettingsPage extends StatelessWidget {
       );
 }
 
-class _Form extends StatefulWidget {
+/// What a host page (the Parent linking page's header) needs to know about an embedded [ParentLinkSettingsForm], and
+/// how to drive it: its Save and Refresh. The form keeps it up to date; listen to it to redraw the header.
+class ParentLinkSettingsHandle extends ChangeNotifier {
+  bool ready = false, dirty = false, saving = false;
+  DateTime? loadedAt;
+  Future<void> Function()? save, reload;
+
+  void _sync({required bool ready, required bool dirty, required bool saving, required DateTime? loadedAt}) {
+    if (this.ready == ready && this.dirty == dirty && this.saving == saving && this.loadedAt == loadedAt) return;
+    this.ready = ready;
+    this.dirty = dirty;
+    this.saving = saving;
+    this.loadedAt = loadedAt;
+    notifyListeners();
+  }
+}
+
+class _Form extends StatelessWidget {
   const _Form();
 
   @override
-  State<_Form> createState() => _FormState();
+  Widget build(BuildContext context) => const ParentLinkSettingsForm();
 }
 
-class _FormState extends State<_Form> {
+/// The settings form. Alone (no [handle]) it is a whole page with its own header; with a [handle] it is the body only
+/// and the host draws Save / Refresh / the unsaved-changes guard from the handle. Reads the [AdminParentLinkProvider]
+/// above it.
+class ParentLinkSettingsForm extends StatefulWidget {
+  const ParentLinkSettingsForm({super.key, this.handle});
+
+  final ParentLinkSettingsHandle? handle;
+
+  @override
+  State<ParentLinkSettingsForm> createState() => _FormState();
+}
+
+class _FormState extends State<ParentLinkSettingsForm> {
   bool _ready = false, _saving = false;
   String _mode = 'easy';
   final _ttl = TextEditingController();
@@ -70,11 +99,15 @@ class _FormState extends State<_Form> {
   @override
   void initState() {
     super.initState();
+    widget.handle?.save = _save;
+    widget.handle?.reload = _load;
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
   void dispose() {
+    final h = widget.handle;
+    if (h != null && h.save == _save) h.save = h.reload = null;
     for (final c in [_ttl, _provider, _url, _header, _secret, _timeout, _template, _path, _value]) {
       c.dispose();
     }
@@ -334,15 +367,12 @@ class _FormState extends State<_Form> {
     context.watch<LangProvider>();
     final c = context.colors;
     final p = context.watch<AdminParentLinkProvider>();
-    return AdminPage(
-      title: 'pl_settings_title'.tr,
-      subtitle: 'svc_pl_settings_d'.tr,
-      icon: Icons.family_restroom_rounded,
-      onRefresh: _saving || (p.isLoading && !_ready) ? null : _load,
-      updatedAt: _loadedAt,
-      dirty: _dirty,
-      primaryAction: _ready ? AppButton.primary(label: 'pl_save'.tr, busy: _saving, onPressed: _dirty ? _save : null) : null,
-      body: !_ready
+    final h = widget.handle;
+    if (h != null) {
+      final (ready, dirty, saving, at) = (_ready, _dirty, _saving, _loadedAt);
+      WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? h._sync(ready: ready, dirty: dirty, saving: saving, loadedAt: at) : null);
+    }
+    final body = !_ready
           ? (p.hasError
               ? Center(child: AppErrorState(message: p.errorMessage, onRetry: _load))
               : const AppListSkeleton())
@@ -414,7 +444,17 @@ class _FormState extends State<_Form> {
                 _tf(_value, 'pl_success_value'.tr, ltr: true),
                 _list('pl_fields'.tr, _extFields, false),
               ]),
-            ]),
+            ]);
+    if (h != null) return body;
+    return AdminPage(
+      title: 'pl_settings_title'.tr,
+      subtitle: 'svc_pl_settings_d'.tr,
+      icon: Icons.family_restroom_rounded,
+      onRefresh: _saving || (p.isLoading && !_ready) ? null : _load,
+      updatedAt: _loadedAt,
+      dirty: _dirty,
+      primaryAction: _ready ? AppButton.primary(label: 'pl_save'.tr, busy: _saving, onPressed: _dirty ? _save : null) : null,
+      body: body,
     );
   }
 }
