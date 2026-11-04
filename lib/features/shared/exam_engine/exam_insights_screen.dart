@@ -8,6 +8,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, t;
+import 'exam_grading.dart';
+import 'exam_grading_widgets.dart';
 import 'exam_insights.dart';
 import 'exam_review.dart' show scoreError;
 
@@ -293,8 +295,12 @@ class ScoreHistogram extends StatelessWidget {
 }
 
 class ExamAnalyticsBody extends StatelessWidget {
-  const ExamAnalyticsBody({super.key, required this.data});
+  const ExamAnalyticsBody({super.key, required this.data, this.onVoid, this.onRestore});
   final ExamAnalytics data;
+
+  /// Cancel / restore a question (null = not offered, e.g. a view-only caller).
+  final void Function(ItemStat item)? onVoid;
+  final void Function(ItemStat item)? onRestore;
 
   @override
   Widget build(BuildContext context) {
@@ -329,10 +335,28 @@ class ExamAnalyticsBody extends StatelessWidget {
               AppBadgePill(t('تمييز ${_n(it.discrimination)}', 'r ${_n(it.discrimination)}'), color: c.textMedium),
               for (final f in it.flags) AppBadgePill(itemFlagText(f), color: f == 'negative' ? c.danger : c.warning),
             ]),
-            if (it.options.isNotEmpty) ...[
+            if (it.optionStats.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              OptionBars(options: it.optionStats, unused: it.unusedDistractors),
+            ] else if (it.options.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(it.options.entries.map((e) => '${e.key}: ${e.value}').join(' · '), style: appText(12.5, c: c.textMedium)),
             ],
+            for (final f in it.flags)
+              if (itemFlagExplain(f) != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(itemFlagExplain(f)!, style: appText(12.5, c: c.textMedium))),
+            if (it.voided)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  AppBadgePill(t('أُلغي السؤال', 'Cancelled'), color: c.warning, icon: Icons.block_rounded),
+                  if (onRestore != null) TextButton.icon(key: ValueKey('item.restore.${it.questionId}'), onPressed: () => onRestore!(it), icon: const Icon(Icons.undo_rounded, size: 16), label: Text(t('أعد السؤال', 'Restore'))),
+                ]),
+              )
+            else if (onVoid != null)
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton.icon(key: ValueKey('item.void.${it.questionId}'), onPressed: () => onVoid!(it), icon: const Icon(Icons.block_rounded, size: 16), label: Text(t('إلغاء هذا السؤال', 'Cancel this question'))),
+              ),
           ]),
         ),
       const SizedBox(height: 8),
@@ -405,6 +429,25 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
     });
   }
 
+  /// Cancel (or bring back) a question; the server recomputes every attempt, then the analytics are recomputed.
+  Future<void> _void(ItemStat it, {required bool restore}) async {
+    final api = ExamGradingApi();
+    final done = await showAppSheet<bool>(context, (_) => VoidQuestionSheet(
+          questionLabel: t('سؤال #${it.questionId}', 'Question #${it.questionId}'),
+          restoring: restore,
+          onSubmit: (reason, mode) async {
+            final r = restore
+                ? await api.restoreQuestion(widget.examId, it.questionId, reason: reason)
+                : await api.voidQuestion(widget.examId, it.questionId, reason: reason, mode: mode);
+            return r.ok ? null : voidErrorText(r.code, r.message);
+          },
+        ));
+    if (done != true || !mounted) return;
+    appToast(restore ? t('عاد السؤال وأُعيد حساب الدرجات', 'The question is back and the scores are recomputed') : t('أُلغي السؤال وأُعيد حساب الدرجات', 'The question is cancelled and the scores are recomputed'));
+    await _load();
+    if (mounted) _refresh();
+  }
+
   Future<void> _refresh() async {
     setState(() => _busy = true);
     final r = await _api.refreshAnalytics(widget.examId);
@@ -447,7 +490,11 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
             AppBanner(icon: Icons.hourglass_top_rounded, color: c.primary,
                 text: d.state == 'queued' ? t('جارٍ الحساب…', 'Computing…') : t('احسب التحليلات بعد تصحيح المحاولات', 'Compute the analytics once attempts are graded'),
                 action: TextButton(onPressed: _busy ? null : _refresh, child: Text(t('احسب الآن', 'Compute now')))),
-          if (d != null && d.items.isNotEmpty) ExamAnalyticsBody(data: d),
+          if (d != null && d.items.isNotEmpty)
+            ExamAnalyticsBody(
+                data: d,
+                onVoid: (it) => _busy ? null : _void(it, restore: false),
+                onRestore: (it) => _busy ? null : _void(it, restore: true)),
         ]),
       ),
     );

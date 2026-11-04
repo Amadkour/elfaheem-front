@@ -27,9 +27,12 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../omr_counts.dart' show omrFilePlace, omrPaperText;
+import '../review/omr_review_page.dart' show OmrReviewPage;
+import 'omr_batch_notice.dart';
 import 'omr_paper_result.dart';
 import 'omr_routes.dart';
 import 'omr_scan.dart';
+import 'omr_scan_issues.dart';
 import 'omr_scan_widgets.dart';
 import 'omr_scanner_screen.dart';
 import 'scan_files.dart';
@@ -147,6 +150,8 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
 
   /// A FETCHED answer said done (the live event's "done" alone still needs the fetch: counts + rejected pages).
   bool _settled = false;
+  OmrScanIssues _issues = OmrScanIssues.empty;
+  bool _doneNoticed = false;
   String? _loadError;
   final Map<int, _Replacement> _replacements = {};
   EventOrPoll? _watch;
@@ -238,6 +243,10 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       onEvent: (e) {
         // the event's own numbers at once ("13 of 40 papers processed"); the fetch right after brings the rest
         if (e.id == '$_batchId' && _progress != null && mounted) setState(() => _progress = _progress!.withEvent(e.data));
+        if (e.id == '$_batchId') {
+          _loadIssues();
+          if ('${e.data['status']}' == 'done') _batchDone();
+        }
         // a replacement's page read: its outcome at once
         final pid = int.tryParse('${e.data['page_id'] ?? ''}');
         final st = _replacementState('${e.data['page_status'] ?? ''}');
@@ -250,6 +259,28 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       bus: widget.liveBus,
       stream: widget.liveStream,
     )..start(pollNow: true);
+  }
+
+  Future<void> _loadIssues() async {
+    final b = _batchId;
+    if (b == null) return;
+    final r = await _api.issues(widget.examId, batchId: b);
+    if (!mounted || !r.ok) return;
+    setState(() => _issues = OmrScanIssues.fromJson(r.map));
+  }
+
+  /// The batch finished while the screen is open: "Grading finished: X graded, Y to review" (once per run).
+  Future<void> _batchDone() async {
+    if (_doneNoticed) return;
+    _doneNoticed = true;
+    await _poll(); // the counts of the finished batch
+    if (!mounted) return;
+    final p = _progress;
+    showOmrBatchDone(p?.graded ?? 0, p?.review ?? 0, () => openOmrReview(context, widget.examId));
+  }
+
+  void _openIssue(OmrScanIssue i) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => OmrReviewPage(examId: widget.examId, initialItemId: i.reviewItemId)));
   }
 
   Future<void> _poll() async {
@@ -272,6 +303,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
         final cur = _progress;
         if (cur == null || p.finished || p.done >= cur.done || p.total != cur.total) _progress = p;
         if (p.finished) _settled = true;
+        if (!p.finished) _doneNoticed = false;
       });
     }
     // the replacements still being read: their page's own state (the fallback when no event came)
@@ -284,6 +316,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
       if (st != null) setState(() => rep.state = st);
     }
     if (_open.isEmpty) _watch?.stop();
+    await _loadIssues();
   }
 
   /// "Replace this page": ONE photo through the capture gate on the request (`POST …/omr/pages/{id}/replace`) —
@@ -494,6 +527,10 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
         onResults: results,
         onMore: _more,
       ),
+      if (!_issues.isEmpty) ...[
+        const SizedBox(height: AppSpace.md),
+        OmrIssuesCard(issues: _issues, onOpen: _openIssue, onReplace: (i) => _replace(i.pageId!)),
+      ],
     ]);
   }
 

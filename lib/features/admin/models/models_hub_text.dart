@@ -23,6 +23,7 @@ String hubRoleName(String role) => switch (role) {
       'handwriting_en' => t('خط اليد (إنجليزي)', 'Handwriting (English)'),
       'digits' => t('الأرقام', 'Digits'),
       'vision_language' => t('الرؤية واللغة', 'Vision-language'),
+      'exam_grading' => t('تصحيح الاختبارات', 'Exam grading'),
       _ => role,
     };
 
@@ -37,8 +38,35 @@ String hubRoleHint(String role) => switch (role) {
       'handwriting_en' => t('يقرأ الإجابات المكتوبة بخط اليد', 'Reads handwritten answers'),
       'digits' => t('يقرأ الأرقام المكتوبة في أوراق الإجابة', 'Reads handwritten digits on answer sheets'),
       'vision_language' => t('يصف الصور ويقرأ الحالات الصعبة', 'Describes images and reads the hard cases'),
+      'exam_grading' => t('نموذج توليد يستشيره مصحّح الإجابات المفتوحة في الحالات الحدّية (يشارك نموذج التوليد افتراضياً)؛ بدونه يعمل التصحيح بالتضمين والاستدلال فقط',
+          'A generation model the open-answer grader may consult for borderline answers (it shares the generation model by default); without it grading uses embedding and NLI only'),
       _ => '',
     };
+
+/// The label of an Exam grading mode (D-252).
+String hubGradingModeLabel(String mode) => switch (mode) {
+      'shared' => t('مشترك مع نموذج التوليد', 'Shared with the generation model'),
+      'own' => t('نموذج خاص', 'Own model'),
+      'off' => t('متوقف', 'Off'),
+      _ => mode,
+    };
+
+/// One line that says what the mode means right now.
+String hubGradingModeHint(String mode, {String? sharedActive, String? active}) => switch (mode) {
+      'shared' => sharedActive == null
+          ? t('لا يوجد نموذج توليد مُفعّل، فالفحص متوقف الآن', 'The generation role has no active model, so the check is off for now')
+          : t('يعمل على نموذج التوليد نفسه (${bidiIsolate(sharedActive)}) بلا نسخة ثانية في الذاكرة',
+              'Runs on the generation model (${bidiIsolate(sharedActive)}) with no second copy in memory'),
+      'own' => active == null
+          ? t('فعّل نموذجاً من القائمة أدناه ليعمل', 'Activate a model from the list below for it to run')
+          : t('يعمل على نموذجه الخاص (${bidiIsolate(active)})', 'Runs on its own model (${bidiIsolate(active)})'),
+      _ => t('لا يستشير المصحّح أي نموذج توليد', 'The grader does not consult a generation model'),
+    };
+
+/// "Exam grading uses: Exam grading, NLI, Embedding" (null when the task has no roles).
+String? hubTaskLine(HubTask? task) => task == null || task.roles.isEmpty
+    ? null
+    : t('تصحيح الاختبارات يستخدم: ', 'Exam grading uses: ') + task.roles.map(hubRoleName).join(t('، ', ', '));
 
 String hubStatusLabel(String status) => switch (status) {
       'not_downloaded' => t('غير مُنزّل', 'Not downloaded'),

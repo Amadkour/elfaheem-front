@@ -2229,6 +2229,160 @@ between steps.
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
 
+## D-240 — Results start as a draft; nothing unreviewed is ever published; the teacher picks what students see · 2026-11-04 · accepted
+
+**Context.** The owner's grading brief (session 9): grades start as draft, the teacher reviews, then publishes;
+low-confidence results are never published unreviewed; a setting for score only / + own answers / + correct answers.
+The old gate refused only `high_stakes` exams, so an ordinary exam could publish with answers still queued.
+**Decision.** `POST /exams/{id}/results/publish` refuses (409 `review_pending`, or `review_items_open` when a scan item
+is open — both carry `open_answers` / `open_items`) for EVERY exam while any answer is queued / proposed /
+needs_review / in moderation or any OMR review item is open. `{graded_only: true}` publishes and HOLDS every attempt
+that still has something open, and on a high-stakes exam every attempt with an uncleared integrity flag; a held
+attempt shows by itself once a person resolves it (`results_visibility.sync_attempt` / `resync` after recompute AND
+after every review-item status change). `POST …/results/unpublish` (audited; refused 409 `unpublish_after_submit` on
+an `after_submit` exam, whose students already saw it). `exam.settings.results_view` = `score` (default) | `answers` |
+`answers_key`; answers are shown only once the exam has ended or its results are published, the key only when the
+student has no attempt left; `answers_key` with `after_submit` needs an end time (422 `answers_key_needs_end`).
+**Consequences.** Visibility reaches the core through `exam.attempt.finalised.results_visible` and the outbox topic
+`exam.results.visibility`; a one-time resync (`grading.visibility_resync_v1`, jobs.tick) corrects rows written before
+this. Notes: docs/grading/notes/BA.md, FX.md.
+
+## D-241 — Organization paper templates: covers, mark sheets and answer tables, published by the org's teachers · 2026-11-04 · accepted
+
+**Decision.** `omr_templates` gains `org_id` (NULL = global, D-155 unchanged) and `kind` = `bubble` | `answer_table` |
+`mark_sheet` | `cover` (migration exam_0009). Org templates need no super-admin approval and every teacher of the org
+(exams view) can use them; editing needs exams update; a personal-space template is its owner's only. Registration:
+photograph a blank → `detect` proposes fields on the DESKEWED page (stored as the template's blank) → the teacher
+confirms / draws / resizes → spec validated (unique question numbers, max > 0, no overlaps, identifier present, sum
+rule) → test on one filled sheet (identifier masked) before batch scanning. A PUT makes a new version; sessions keep
+theirs. Answer-table templates can be an exam's sheet (the wizard list returns them with `kind`); mark sheets and
+covers cannot. Exams the system generates keep their own layout and skip registration. Notes: BD.md.
+
+## D-242 — How a handwritten mark is read: two readers or a very sure one, and never from a misplaced box · 2026-11-04 · accepted
+
+**Decision.** `mlkit.marksheet` (pure library): numbers by component segmentation + the digits CNN (D-157), "7.5",
+"7,5", "½", "7½", Arabic-Indic digits; `ok` only when a second reader agrees above 0.95 or the digit CNN alone is above
+0.993; a value above the field's max is `above_max` (a read error until a person confirms), crossed out / not a
+multiple of the step is `low`. Answer rows: ink ratio per cell with the four outcomes of D-154; letter mode only with
+two agreeing readers. Fail-closed alignment (round 2): a registration must keep ≥ 90 % of the reference's printed ink
+within 2 px, and each field's printed lines are matched locally (± 2 % of the page): a field that moved is
+`unreadable` (`misaligned`), more than 35 % moved refuses the page. A row reads `blank` only if no cell has faint ink.
+**Measured** (synthetic teacher sheets, 45 per split): wrong-but-accepted 1 / 3 → **0 / 0 / 0** (seeds 1001 tune, 2002,
+3003 fresh); ~38-42 % of fields to a person (most numbers: no second reader yet); answer rows ~86-88 % automatic.
+No real teacher sheets measured yet. Notes: BC.md.
+
+## D-243 — Grade review by camera ("Moraga'a"): the system compares and proposes, a person changes the grade · 2026-11-04 · accepted
+
+**Decision.** A session = course + gradebook column + registered template (mark sheet / cover) + optional exam. The
+phone only captures (quality gate synchronous: 422 with the exact reason, 409 duplicate); reading runs on the server at
+low priority. Per sheet: identifier (QR > ID digits > name — a name never links by itself), every mark checked against
+its max, the parts summed by the system (`paper_sum_error` when the paper's own total disagrees; the computed total is
+used), scaled to the column (`paper × column_max / paper_max`, Decimal half-up to the rounding step, default 0.5 when
+scaled), match when |scaled − recorded| ≤ step / 2. Three lists: match / mismatch / unreadable. Applying a correction
+is a person's action through the core (`expect_old`; 409 `value_changed`; row locked; audited in `data_lab_audit` +
+`manual_changes`). ONE "done" notice per pause (90 s); pages follow the scan retention unless a row is still open. The
+same session in `import` mode fills marks from paper, still per person decision (bulk apply only for clean rows).
+Notes: BD.md, FX.md.
+
+## D-244 — What parents see of exam grades: a platform default, an organization override · 2026-11-04 · accepted
+
+**Decision.** Super admin `grades.parents_see` = `always` | `when_published` (default) | `never`; an org admin may
+override (`inherit` | …) through `GET/PUT /api/v1/org/orgs/{id}/grades/visibility`. The effective value gates every
+parent-facing grade read (overview, child report, profile strip, alerts). `when_published` shows an Exam Engine result
+only when `exam_results.results_visible` (migration 0043) is true. Notes: BB.md.
+
+## D-245 — Cancelling a question recalculates every attempt, logged · 2026-11-04 · accepted
+
+**Decision.** `POST /exams/{id}/questions/{qid}/void {reason, mode}`: `remove` takes the question out of score AND max,
+`full_marks` gives everyone its points; restore undoes it. Stored in `exam.settings.voided_questions`; every attempt
+recomputed; every changed score a grade-log row. Item analysis adds per-option shares (upper / lower group), unused
+distractors and `key_suspect`; `options` stays the old counts map for installed apps, the new list is `option_stats`.
+Notes: BA.md.
+
+## D-246 — One grade log: every score change is a manual_changes row · 2026-11-04 · accepted
+
+**Decision.** Teacher marks, bulk approve (one row per answer), appeal decisions, OMR / OCR fixes, void / restore,
+recompute changes, automatic regrade (actor 0, `regrade`) and the first automatic acceptance (actor 0, `auto_accept`)
+all write `manual_changes` (who, when, old, new, reason). `GET /exams/{id}/grade-log` (managers; the student is hidden
+under anonymous grading). `actor_name` is null for now (the engine has no cheap name lookup). Notes: BA.md.
+
+## D-247 — Exam notices: one outbox topic, the core delivers · 2026-11-04 · accepted
+
+**Decision.** The engine emits `exam.notify {user_ids, kind, title / body ar + en, data (flat scalars)}`; the core
+consumer writes the in-app notification, sends the push and the live event `exam_notice`, deduplicated by event id.
+Kinds: `appeal_created`, `appeal_decided`, `results_published`, `batch_done` (scan batch finished),
+`mark_session_done`. Notes: BB.md.
+
+## D-248 — "Exam grading" is a model-hub task · 2026-11-04 · accepted
+
+**Decision.** New hub role `exam_grading` (a generation model, optional, no fallback); the models list carries
+`tasks: [{task: "exam_grading", roles: ["exam_grading", "nli", "embedding"]}]`. When active, the open-answer grader
+asks it a yes / no per undecided criterion; it can only lower confidence (a disagreement abstains → the teacher),
+never raise a score. Inactive = the previous behaviour. A library row is unique per ref, so it needs a model other
+than the `generation` one. Notes: BE.md.
+
+## D-249 — Bubble-sheet accuracy: blurry-but-placed photos and heavy erasures go to a person · 2026-11-04 · accepted
+
+**Context.** Measured at the start of the job on the production code: real photos 15 of 21 read, 0 wrong; the old
+synthetic bench (seed 1001, 224 sheets) **188 wrong of 9 900 auto-graded**, all in heavy erasures (D-163's known limit).
+**Decision.** (1) A placed photo with blur between 0.75 and 1.3 mm is read with every answer to review (tier `retake`,
+`photo_blurry`) instead of refused. (2) A sheet with heavy-erasure evidence (lopsided mark pairs AND erased residues
+above per-sheet shares) sends every clear / multiple answer to review (`erasures`). (3) OMR wall budgets scale with
+`OMR_BUDGET_SCALE` (default 1) — benches on a loaded machine must raise it. (4) A mark sheet without corner marks is
+found by its table border / page edges / feature matching / QR (D-242).
+**Measured.** Old bench wrong auto-grades 188 / 202 / 195 → **0 / 0 / 0** (seeds 1001 tuned, 2002, 3003); review
+13.2 % → 17.2 % overall, all of it in heavy erasures (~90 % of that condition), every other condition unchanged. Real
+photos: 18 of 21 read (was 15), 0 wrong; students identified by QR unchanged (7 of 21). The erasure margin is thin
+(tuned on synthetic sheets; real sheets use one pen, likely easier). Notes: BE.md, BE2.md.
+
+## D-250 — Handwritten numbers: a second, independent reader that can veto; nothing is accepted on one doubtful opinion · 2026-11-04 · accepted
+The digits CNN alone accepted numbers at 0.993+; on 232 crops without a max rule it accepted 14 WRONG numbers that way
+(the bench's max / sum rules caught them, real sheets do not always have them). A second reader of a different family
+(PaddleOCR PP-OCRv5 English + Arabic text-line recognisers, ONNX on CPU, loaded through `mlkit.registry.resolve`;
+`mlkit/marksheet/second.py`) now reads every number. `ok` needs: the same value from both readers, the second reader itself
+at `second_min_conf` 0.5 or more (a line reader always emits something - a 0.05 match is no opinion, note `second_unsure`),
+the CNN at `digit_pair_min` 0.7, every old rule (max, step, crossed out, alignment, faint ink, sum), AND - for any number
+accepted below the old solo bar - the sum rule verified (parts and total read and adding up; `sum_unverified` otherwise,
+for parts as well as the total: the independent review found a sheet without a readable total would else auto-accept
+every part at the lower floor). Missing model or `MARKSHEET_SECOND_READER=off` = exactly the old behaviour; a failing read
+= review. Measured (bench n=45 × seeds 1001 / 2002 / 3003): wrong-but-accepted 0 / 0 / 0 before and after; fields to a
+person 38.4 / 41.1 / 42.3 % before → 39.9 / 42.6 / 44.0 % after - the reader buys SAFETY (its veto; 14 → 3 wrong on the
+crop check), not automation. Cost ~50 ms CPU per number. The stray-mark tolerance ships OFF (`stray_area_frac` 0).
+Limits: a missed decimal point ("4.5" → "45") is a shared blind spot (only the max rule stops it); Arabic-Indic digits are
+read less well by the second reader. Fewer reviews need a better digits model trained on real teacher handwriting.
+Notes: `docs/grading/notes/G1.md`.
+
+## D-251 — Tiny printed QR codes read with the sheet's known geometry; heavy erasures get a second sheet rule · 2026-11-04 · accepted
+In chat-app photos the student QR is 56–72 px (1.5–1.9 px per module) and neither OpenCV detector finds it.
+`mlkit/omr/qrgrid.py` cuts it with the sheet's homography, finds the three finder patterns, samples the module grid
+(unsharp mask + a self-trained linear equaliser scored on the modules the standard fixes) and hands the clean matrix to
+`QRCodeDetector.decode`: Reed-Solomon still decides, the payload checks are unchanged, so a wrong student is practically
+impossible. Real photos: students identified 7/21 → 11/21, wrong IDs 0 (the other 10: sheet not placed, code outside or cut
+by the frame, blur). Budget `QR_GRID_BUDGET_S` 1.2 s full / 0.4 s quick × `OMR_BUDGET_SCALE`. Erasures: 78 new synthetic
+erasure scenarios showed the D-249 rule never fires on pen sheets with heavy residue; a second arm (≥ 3 questions and ≥ 8 %
+of them whose lighter mark is under 0.7 of the darker) cuts wrong auto-grades there 523 → 389 and keeps the old bench at 0
+wrong; review on the old bench 17 → 22 % (all in its simulated `double_marks`, whose pen/pencil mix a real student does not
+make). The remaining cases are lone heavy residues no bubble measurement separates (AUC ≤ 0.83): real erasure photos are
+needed to go further. Switch: `erasure.strict_share` 9999 turns the arm off. Notes: `docs/grading/notes/G2.md`.
+
+## D-252 — "Exam grading" shares the generation model by default · 2026-11-04 · accepted
+A model-hub library row is unique per ref, so the generation Qwen could not also serve `exam_grading`: a second LLM would
+double RAM and CPU on the CPU-only server for a ≤ 6-token yes/no check. The role now has a mode: `shared` (default when it has
+no own model: the same loaded object, generation's queue and limits with the `grading` priority class), `own` (a dedicated
+model, today's flow; activating one sets it) or `off`. Kept in the role's hidden `limits["_mode"]` slot, no schema change.
+Shared with no generation model = off. The hub runs ONE worker by design (the models live in that process) and caches the mode 5 s, so a
+change applies at once; activating a model for the role (also a roll-back) sets `own`, overriding `off` on purpose. Safety unchanged: the check never changes a score or raises a confidence, ≤ 2 per
+answer, 30 / minute. `PUT /api/v1/models/roles/exam_grading/mode` (super admin, audited `set_mode`); the AI Models page shows
+"Model source". Notes: `docs/grading/notes/G3.md`.
+
+## D-253 — The grade log records who by name, at write time · 2026-11-04 · accepted
+`manual_changes.actor_name` (nullable, engine migration `exam_0010`, reversible) is filled by a column default from the
+request's caller (the per-request context `org_gate` already uses), only when the row's `actor_id` IS that caller; the
+system actor, jobs outside a request and rows written for someone else stay null, and old rows stay null (append-only):
+the app keeps its `u<id>` fallback for those. Every writer of `ManualChange` gets it without passing it. Closes review
+finding 11a. Privacy: the name is kept in an append-only audit table (a grade record names who changed it);
+a user erasure leaves the row with the `actor_id` and needs a DBA-run redaction. Notes: `docs/grading/notes/G3.md`.
+
 ## D-165 — A static landing site at the root; the web app moves to /app/; first-run onboarding in the apps · 2026-11-04 · accepted
 
 **Context.** The site opened straight on the login screen, and so did a fresh install of the phone app: nothing showed

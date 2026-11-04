@@ -14,6 +14,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import 'exam_authoring.dart';
+import 'exam_grading_widgets.dart' show ResultsViewField;
 import 'exam_media.dart';
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'offline/offline_exam_teacher.dart';
@@ -216,6 +217,10 @@ class _ExamSettingsFormState extends State<ExamSettingsForm> with _Controllers {
         onChanged: (v) => setState(() => d.resultsPolicy = v ?? d.resultsPolicy),
       ),
       _gap(),
+      if (d.resultsPolicy != 'hidden') ...[
+        ResultsViewField(value: d.resultsView, onChanged: (v) => setState(() => d.resultsView = v)),
+        _gap(),
+      ],
       AppSwitchTile(
           title: t('اختبار مصيري', 'High-stakes exam'),
           subtitle: t('يعتمد المعلم كل درجة مقالية، ولا تُنشر النتائج والمراجعة معلقة', 'The teacher approves every open mark; results wait for the review'),
