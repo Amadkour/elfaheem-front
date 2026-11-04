@@ -81,7 +81,8 @@ class HelpService extends ChangeNotifier {
   Map<String, HelpEntry> _pages = const {};
   DateTime? _checkedAt, _failedAt;
   Future<void>? _inFlight;
-  Set<String>? _index;
+  Map<String, Set<String>>? _index; // page_id -> roles that have an entry
+  String _helpRole = ''; // the person's resolved help role ([helpRoleOf]); '' = unknown
   Future<void>? _indexLoading;
 
   int get version => _version;
@@ -94,8 +95,41 @@ class HelpService extends ChangeNotifier {
 
   Iterable<String> get pageIds => _pages.keys;
 
-  /// Whether [pageId] has help: the cached catalogue when there is one, else the bundled index (any role).
-  bool has(String pageId) => _version >= 0 ? _pages.containsKey(pageId) : (_index?.contains(pageId) ?? false);
+  /// Without a cached catalogue the bundled index decides, for the person's help role and its fallback chain (the
+  /// server's rules, [helpRoleOf] / [helpFallback]); an unknown role (no [loadLocal] yet) shows nothing.
+  bool has(String pageId) {
+    if (_version >= 0) return _pages.containsKey(pageId);
+    final roles = _index?[pageId];
+    if (roles == null || _helpRole.isEmpty) return false;
+    return helpFallback(_helpRole).any(roles.contains);
+  }
+
+  /// The help role of a person, as the server's `resolve_role` computes it: a platform admin is always
+  /// `super_admin`; inside an organization an `org_admin` member is `org_admin` and any other member `org_member`;
+  /// else the platform role (`org-admin` -> org_admin, `org-staff` -> org_member, teacher / parent / student).
+  static String helpRoleOf(String? platformRole, {bool inOrg = false, bool orgAdmin = false}) {
+    final base = switch (platformRole) {
+      'admin' || 'super-admin' || 'super_admin' || 'developer' => 'super_admin',
+      'teacher' => 'teacher',
+      'parent' => 'parent',
+      'org-admin' || 'org_admin' => 'org_admin',
+      'org-staff' || 'org_staff' => 'org_member',
+      _ => 'student',
+    };
+    if (base == 'super_admin' || !inOrg) return base;
+    return orgAdmin ? 'org_admin' : 'org_member';
+  }
+
+  /// The server's fallback chains (`_FALLBACK` in services/help_service.py).
+  static List<String> helpFallback(String role) => switch (role) {
+        'super_admin' => const ['super_admin', 'org_admin'],
+        'org_admin' => const ['org_admin', 'org_member', 'student'],
+        'org_member' => const ['org_member', 'student'],
+        'teacher' => const ['teacher', 'student'],
+        'parent' => const ['parent', 'student'],
+        'student' => const ['student'],
+        _ => [role, 'student'],
+      };
 
   static String scopeOf(String userKey, int? orgId) => '$userKey:${orgId ?? 0}';
 
@@ -104,20 +138,24 @@ class HelpService extends ChangeNotifier {
         try {
           final m = jsonDecode(await _indexLoader());
           final list = m is Map ? (m['pages'] as List? ?? const []) : const [];
-          _index = {
-            for (final p in list)
-              if (p is List && p.isNotEmpty) '${p.first}',
-          };
+          final idx = <String, Set<String>>{};
+          for (final p in list) {
+            if (p is List && p.length >= 2) idx.putIfAbsent('${p[0]}', () => {}).add('${p[1]}');
+          }
+          _index = idx;
         } catch (_) {
-          _index = <String>{};
+          _index = <String, Set<String>>{};
         }
         notifyListeners();
       }();
 
   /// Local only, no request: the bundled index plus this person's cached catalogue (saved by an earlier tap).
-  Future<void> loadLocal({required String userKey, int? orgId}) async {
+  Future<void> loadLocal({required String userKey, int? orgId, required String helpRole}) async {
     unawaited(loadIndex());
+    final roleChanged = helpRole != _helpRole;
+    _helpRole = helpRole;
     final scope = scopeOf(userKey, orgId);
+    if (scope == _scope && roleChanged) notifyListeners();
     if (scope == _scope) return;
     _resetTo(scope);
     await _loadCache(scope);

@@ -59,6 +59,31 @@ int? _orgOfContext() {
   }
 }
 
+String _defaultHelpRole(BuildContext context) {
+  String? platform;
+  try {
+    platform = Provider.of<MyAuthProvider>(context, listen: false).currentUser?.role;
+  } on ProviderNotFoundException {
+    platform = null;
+  }
+  var inOrg = false, orgAdmin = false;
+  try {
+    final m = AppModeController.instance;
+    final cur = m.isOrg ? m.current : null;
+    inOrg = cur != null;
+    final roles = cur?['roles'];
+    orgAdmin = roles is List && roles.any((r) => '$r' == 'org_admin');
+  } catch (_) {}
+  return HelpService.helpRoleOf(platform, inOrg: inOrg, orgAdmin: orgAdmin);
+}
+
+/// The person's help role (server rules); tests replace it.
+String Function(BuildContext context) helpRoleOfContext = _defaultHelpRole;
+
+/// Local only (no request): bundled index + cached catalogue for this person, role and organization.
+Future<void> _loadHelpLocal(BuildContext context, String user) =>
+    HelpService.instance.loadLocal(userKey: user, orgId: _orgOfContext(), helpRole: helpRoleOfContext(context));
+
 class HelpInfoButton extends StatefulWidget {
   const HelpInfoButton({super.key, required this.pageId, this.autoTour = true});
 
@@ -91,7 +116,7 @@ class _HelpInfoButtonState extends State<HelpInfoButton> {
       _tourChecked = false;
     }
     if (u != null && !AppConfig.disableList.contains(helpInfoFeatureKey)) {
-      unawaited(HelpService.instance.loadLocal(userKey: u, orgId: _orgOfContext())); // local only: no request
+      unawaited(_loadHelpLocal(context, u)); // local only: no request
     }
   }
 
@@ -365,6 +390,6 @@ void helpAskAboutPage(BuildContext context, HelpEntry entry) =>
 bool helpAvailableForMenu(BuildContext context, String pageId) {
   final u = helpUserKeyOf(context);
   if (u == null || AppConfig.disableList.contains(helpInfoFeatureKey)) return false;
-  unawaited(HelpService.instance.loadLocal(userKey: u, orgId: _orgOfContext()));
+  unawaited(_loadHelpLocal(context, u));
   return HelpService.instance.has(pageId);
 }

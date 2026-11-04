@@ -121,8 +121,8 @@ void main() {
 
   test('no request until a tap: the bundled index and the cache are read locally', () async {
     final s = HelpService(remote: remote, clock: () => now, indexLoader: () async => '{"version":1,"pages":[["home.student","student"],["org.members","org_admin"]]}');
-    await s.loadLocal(userKey: '7');
-    expect(s.has('home.student'), isTrue); // from the bundled index
+    await s.loadLocal(userKey: '7', helpRole: 'org_admin');
+    expect(s.has('home.student'), isTrue); // from the bundled index (org_admin falls back to student)
     expect(s.has('org.members'), isTrue);
     expect(s.has('nope'), isFalse);
     expect(s.entry('home.student'), isNull); // no content yet: the tour waits
@@ -138,7 +138,7 @@ void main() {
     await make().ensure(userKey: '7');
     remote.pageCalls = remote.versionCalls = 0;
     final s2 = HelpService(remote: remote, clock: () => now, indexLoader: () async => '{"pages":[["other","student"]]}');
-    await s2.loadLocal(userKey: '7');
+    await s2.loadLocal(userKey: '7', helpRole: 'student');
     expect(s2.has('home.student'), isTrue);
     expect(s2.has('other'), isFalse);
     expect(s2.entry('home.student'), isNotNull);
@@ -150,12 +150,62 @@ void main() {
 
   test('a missing or damaged index shows nothing and never throws', () async {
     final s = HelpService(remote: remote, indexLoader: () async => throw Exception('no asset'));
-    await s.loadLocal(userKey: '7');
+    await s.loadLocal(userKey: '7', helpRole: 'student');
     expect(s.has('home.student'), isFalse);
+  });
+
+  test('help role resolution follows the server', () {
+    String r(String? p, {bool o = false, bool a = false}) => HelpService.helpRoleOf(p, inOrg: o, orgAdmin: a);
+    for (final p in ['admin', 'super-admin', 'developer']) {
+      expect(r(p), 'super_admin');
+      expect(r(p, o: true, a: true), 'super_admin'); // a platform admin stays super_admin inside an org
+    }
+    expect(r('teacher'), 'teacher');
+    expect(r('parent'), 'parent');
+    expect(r('student'), 'student');
+    expect(r(null), 'student');
+    expect(r('org-admin'), 'org_admin');
+    expect(r('org-staff'), 'org_member');
+    expect(r('teacher', o: true), 'org_member');
+    expect(r('student', o: true), 'org_member');
+    expect(r('student', o: true, a: true), 'org_admin');
+    expect(HelpService.helpFallback('super_admin'), ['super_admin', 'org_admin']);
+    expect(HelpService.helpFallback('org_admin'), ['org_admin', 'org_member', 'student']);
+    expect(HelpService.helpFallback('org_member'), ['org_member', 'student']);
+    expect(HelpService.helpFallback('teacher'), ['teacher', 'student']);
+    expect(HelpService.helpFallback('parent'), ['parent', 'student']);
+    expect(HelpService.helpFallback('student'), ['student']);
+  });
+
+  test('has() is role-aware with the fallback chains', () async {
+    const idx = '{"pages":[["p.student","student"],["p.member","org_member"],["p.admin","org_admin"],["p.sa","super_admin"],["p.teacher","teacher"],["p.parent","parent"]]}';
+    Future<HelpService> as(String role) async {
+      final s = HelpService(remote: remote, indexLoader: () async => idx);
+      await s.loadLocal(userKey: '7', helpRole: role);
+      await s.loadIndex();
+      return s;
+    }
+
+    final student = await as('student');
+    expect([for (final p in ['p.student', 'p.member', 'p.admin', 'p.sa', 'p.teacher', 'p.parent']) student.has(p)], [true, false, false, false, false, false]);
+    final teacher = await as('teacher');
+    expect([for (final p in ['p.student', 'p.member', 'p.admin', 'p.sa', 'p.teacher', 'p.parent']) teacher.has(p)], [true, false, false, false, true, false]);
+    final parent = await as('parent');
+    expect([for (final p in ['p.student', 'p.member', 'p.admin', 'p.sa', 'p.teacher', 'p.parent']) parent.has(p)], [true, false, false, false, false, true]);
+    final member = await as('org_member');
+    expect([for (final p in ['p.student', 'p.member', 'p.admin', 'p.sa', 'p.teacher', 'p.parent']) member.has(p)], [true, true, false, false, false, false]);
+    final admin = await as('org_admin');
+    expect([for (final p in ['p.student', 'p.member', 'p.admin', 'p.sa', 'p.teacher', 'p.parent']) admin.has(p)], [true, true, true, false, false, false]);
+    final sa = await as('super_admin');
+    expect([for (final p in ['p.student', 'p.member', 'p.admin', 'p.sa', 'p.teacher', 'p.parent']) sa.has(p)], [false, false, true, true, false, false]);
+    final unknown = HelpService(remote: remote, indexLoader: () async => idx);
+    await unknown.loadIndex();
+    expect(unknown.has('p.student'), isFalse); // role not known yet: no button
   });
 
   test('the real bundled index loads', () async {
     final s = HelpService(remote: remote);
+    await s.loadLocal(userKey: '7', helpRole: 'student');
     await s.loadIndex();
     expect(s.has('home.student'), isTrue);
   });

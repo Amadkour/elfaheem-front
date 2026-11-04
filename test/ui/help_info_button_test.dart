@@ -35,17 +35,20 @@ HelpEntry _entry() => HelpEntry.fromJson(jsonDecode(File('test/fixtures/help_ent
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final saved = helpUserKeyOf;
+  final savedRole = helpRoleOfContext;
   late _Remote remote;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     AppConfig.lang = 'en';
     helpUserKeyOf = (_) => '7';
+    helpRoleOfContext = (_) => 'student';
     remote = _Remote();
     HelpService.debugReplace(HelpService(remote: remote));
   });
   tearDown(() {
     helpUserKeyOf = saved;
+    helpRoleOfContext = savedRole;
     AppConfig.setDisableList(const []);
   });
 
