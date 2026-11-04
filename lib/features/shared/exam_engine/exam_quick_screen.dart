@@ -33,6 +33,8 @@ import 'paper/paper_exam_entry.dart' show isPaperExam, showPaperExamReady;
 import 'paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
 
 const _numKeyboard = TextInputType.numberWithOptions(decimal: true);
+/// The builder's column on a wide window.
+const quickScreenMaxWidth = 820.0;
 const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
 
 /// Opens the quick builder; returns the created exam's id (null when the creator left without creating).
@@ -368,7 +370,8 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     return BasePage(
       key: const ValueKey('exam.quick'),
       appBar: AppBar(title: Text(t('اختبار جديد', 'New exam'))),
-      child: !_started
+      // a desktop window: the builder reads as one column, not as 1400 px wide cards
+      child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: quickScreenMaxWidth), child: !_started
           ? SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               child: QuickStartChooser(onPick: _start, canGenerate: q.courseId != null))
@@ -452,7 +455,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                   ]),
                 ),
               ),
-            ]),
+            ]))),
     );
   }
 }
