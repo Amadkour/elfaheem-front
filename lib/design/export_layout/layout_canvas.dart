@@ -169,10 +169,16 @@ LayoutAddOption layoutEllipseAddOption() => LayoutAddOption(
 
 /// One "add" entry of the editor's menu: a ready element (placed by the editor).
 class LayoutAddOption {
-  const LayoutAddOption(this.label, this.icon, this.build);
+  const LayoutAddOption(this.label, this.icon, this.build, {this.centered = false, this.toBack = false});
   final String label;
   final IconData icon;
   final LayoutElement Function(String id) build;
+
+  /// Placed in the middle of the page instead of at the start side.
+  final bool centered;
+
+  /// Inserted as the first element (drawn behind the others).
+  final bool toBack;
 }
 
 class LayoutCanvasEditor extends StatefulWidget {
@@ -190,6 +196,8 @@ class LayoutCanvasEditor extends StatefulWidget {
     required this.newId,
     required this.onChanged,
     required this.upload,
+    this.uploadFor,
+    this.extraFor,
     this.vars = const {},
     this.fieldOf,
     this.background,
@@ -215,6 +223,10 @@ class LayoutCanvasEditor extends StatefulWidget {
   final String Function() newId;
   final VoidCallback onChanged;
   final LayoutAssetUploader upload;
+
+  /// Optional, wins over [upload] (told the element).
+  final LayoutElementUploader? uploadFor;
+  final Widget? Function(BuildContext context, LayoutElement element, StudioController<LayoutElement> ctl)? extraFor;
   final Map<String, String> vars;
   final LayoutField? Function(String key)? fieldOf;
   final String? background;
@@ -324,8 +336,12 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
     // the start side of the design: the right of an Arabic card
     e.x = widget.rtl ? widget.width - e.w - 2 : 2;
     e.x = e.x.clamp(0, widget.width - e.w).toDouble();
+    if (o.centered) {
+      e.x = (widget.width - e.w) / 2;
+      e.y = (widget.height - e.h) / 2;
+    }
     e.y = e.y.clamp(0, widget.height - e.h).toDouble();
-    _ctl.record('add', () => widget.elements.add(e));
+    _ctl.record('add', () => o.toBack ? widget.elements.insert(0, e) : widget.elements.add(e));
     _ctl.select(e.id);
   }
 
@@ -485,6 +501,8 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
             element: sel,
             fields: widget.fields,
             upload: widget.upload,
+            uploadFor: widget.uploadFor,
+            extraFor: widget.extraFor,
             pageFontSize: widget.pageFontSize,
             fieldFocus: _fieldFocus,
             onClose: () => _ctl.clearSelection(),

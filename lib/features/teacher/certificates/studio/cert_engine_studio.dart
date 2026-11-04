@@ -35,6 +35,7 @@ import '../../../../design/app_tokens.dart';
 import '../../../../design/export_layout/layout_canvas.dart';
 import '../../../../design/export_layout/layout_element_view.dart' show LayoutAssets;
 import '../../../../design/export_layout/layout_model.dart';
+import '../../../../design/studio/studio.dart' show StudioController;
 import '../../../admin/admin_common.dart' show t;
 import '../designer/certificate_designer_screen.dart' show CertificateDesignerScreen;
 import 'cert_engine_api.dart';
@@ -139,6 +140,12 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   final _saving = ValueNotifier<bool>(false);
   Timer? _draftTimer;
   final Map<String, Uint8List> _previews = {};
+
+  /// The photo a signature element was uploaded from (this session): "Clean signature again" re-runs from it.
+  final Map<String, Uint8List> _sigOrig = {};
+
+  /// Sample values the person typed for the custom variables (memory only).
+  Map<String, String> _samples = {};
 
   LayoutDocument get doc => _doc!;
   LayoutDesign get _design => doc.designs[_lang]!;
@@ -486,6 +493,95 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
 
   // ── images ───────────────────────────────────────────────────────────────────────────────────────────────────
 
+  /// A signature goes through the signature endpoint (the server removes its background), the rest as before.
+  Future<String?> _uploadFor(LayoutElement el, Uint8List bytes, String name) async {
+    if (el.kind != 'signature') return _upload(bytes, name);
+    try {
+      final url = await _api.uploadSignature(bytes, ink: '#000000');
+      _sigOrig[el.id] = bytes;
+      LayoutAssets.put(url, bytes);
+      // the canvas then stores the picked photo under the URL: show the cleaned image over it
+      unawaited(Future<void>(() async {
+        final clean = await _loadImage(url);
+        if (clean != null && mounted) LayoutAssets.put(url, clean);
+      }));
+      return url;
+    } catch (e) {
+      if (mounted) certNotifyError(e);
+      return null;
+    }
+  }
+
+  Widget? _extraFor(BuildContext context, LayoutElement el, StudioController<LayoutElement> ctl) {
+    if (el.kind != 'signature' || el.value == null || !_sigOrig.containsKey(el.id)) return null;
+    return OutlinedButton.icon(
+      key: const ValueKey('cert-sig-clean'),
+      onPressed: () => unawaited(_cleanSignature(context, el, ctl)),
+      icon: const Icon(Icons.auto_fix_high_rounded),
+      label: Text(t('تنظيف التوقيع مجددًا', 'Clean signature again')),
+      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
+    );
+  }
+
+  Future<void> _cleanSignature(BuildContext context, LayoutElement el, StudioController<LayoutElement> ctl) async {
+    final bytes = _sigOrig[el.id];
+    if (bytes == null) return;
+    final r = await showCertSignatureClean(context);
+    if (r == null || !mounted) return;
+    try {
+      final url = await _api.uploadSignature(bytes, ink: r.ink, strength: r.strength);
+      final clean = await _loadImage(url);
+      LayoutAssets.put(url, clean ?? bytes);
+      if (mounted) ctl.record('signature', () => el.value = url);
+    } catch (e) {
+      if (mounted) certNotifyError(e);
+    }
+  }
+
+  /// A generated background for the current language (the server returns it; nothing else changes).
+  Future<String?> _generateBackground(String style, String color) async {
+    final p = _design.page;
+    Map<String, dynamic>? page;
+    switch (p.size) {
+      case 'Letter':
+        page = {'size': 'letter'};
+      case 'A3':
+        page = {'size': 'custom', 'w_mm': 297.0, 'h_mm': 420.0};
+      case 'A5':
+        page = {'size': 'custom', 'w_mm': 148.0, 'h_mm': 210.0};
+      case 'custom':
+        page = {'size': 'custom', 'w_mm': p.customWidth, 'h_mm': p.customHeight};
+      default:
+        page = {'size': 'a4'};
+    }
+    try {
+      final url = await _api.generateBackground(_id!, lang: _lang, landscape: p.landscape, style: style, themeColor: color, page: page);
+      final bytes = await _loadImage(url);
+      if (bytes != null) LayoutAssets.put(url, bytes);
+      return url;
+    } catch (e) {
+      if (mounted) certNotifyError(e);
+      return null;
+    }
+  }
+
+  Future<void> _rename() async {
+    final name = await showCertRenameDialog(context, doc.name ?? '');
+    if (name == null || !mounted || name == doc.name) return;
+    try {
+      await _api.rename(_id!, name);
+    } catch (e) {
+      if (mounted) certNotifyError(e);
+      return;
+    }
+    if (!mounted) return;
+    final clean = !_dirty.value;
+    setState(() => doc.name = name);
+    // the server already has the name: a clean design stays clean, an edited one is saved with the name anyway
+    if (clean) _savedSig = _sigNow();
+    showAppNotice(t('تمت إعادة التسمية', 'Renamed'));
+  }
+
   Future<String?> _upload(Uint8List bytes, String name) async {
     try {
       final url = await _api.uploadLogo(bytes);
@@ -529,10 +625,11 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   Future<Uint8List> _fetchPreview(String lang) async {
     final map = doc.toJson(withSource: false);
     final s = jsonEncode(map);
-    final key = '$lang/${s.length}/${s.hashCode}';
+    final vals = _valuesFor(lang);
+    final key = '$lang/${s.length}/${s.hashCode}/${jsonEncode(vals).hashCode}';
     final hit = _previews[key];
     if (hit != null) return hit;
-    final png = await _api.preview(map, lang, certSampleValues(lang, certCustomKeysOf(doc)));
+    final png = await _api.preview(map, lang, _valuesFor(lang));
     _previews[key] = png;
     while (_previews.length > 6) {
       _previews.remove(_previews.keys.first);
@@ -540,7 +637,18 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     return png;
   }
 
-  void _preview() => unawaited(showCertPreview(context, languages: doc.languages, initial: _lang, fetch: _fetchPreview));
+  /// The sample values of [lang]: the built-in ones, the custom ones, then what the person typed.
+  Map<String, String> _valuesFor(String lang) => {...certSampleValues(lang, certCustomKeysOf(doc)), ..._samples};
+
+  void _preview() => unawaited(showCertPreview(
+        context,
+        languages: doc.languages,
+        initial: _lang,
+        fetch: _fetchPreview,
+        customKeys: certCustomKeysOf(doc),
+        samples: _samples,
+        onSamples: (v) => setState(() => _samples = v),
+      ));
 
   // ── build ────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -615,7 +723,11 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
       title: ValueListenableBuilder<bool>(
         valueListenable: _dirty,
         builder: (context, dirty, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(doc.name ?? t('تصميم الشهادة', 'Certificate design'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w700, c: c.textDark)),
+          InkWell(
+            key: const ValueKey('cert-title'),
+            onTap: () => unawaited(_rename()),
+            child: Text(doc.name ?? t('تصميم الشهادة', 'Certificate design'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w700, c: c.textDark)),
+          ),
           Text(
             dirty ? t('تعديلات غير محفوظة', 'Unsaved changes') : t('كل التعديلات محفوظة', 'All changes saved'),
             key: const ValueKey('cert-save-state'),
@@ -647,10 +759,12 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
           onSelected: (v) {
             switch (v) {
               case 'page':
-                unawaited(showCertPageSheet(context, design: _design, pickBackground: _pickBackground, onChanged: () {
+                unawaited(showCertPageSheet(context, design: _design, pickBackground: _pickBackground, generateBackground: _generateBackground, onChanged: () {
                   setState(() {});
                   _touch();
                 }));
+              case 'rename':
+                unawaited(_rename());
               case 'langs':
                 unawaited(_chooseLanguages());
               case 'starter':
@@ -665,6 +779,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
           },
           itemBuilder: (_) => [
             _item('page', Icons.crop_landscape_rounded, t('الصفحة والخلفية', 'Page and background')),
+            _item('rename', Icons.drive_file_rename_outline_rounded, t('إعادة تسمية', 'Rename')),
             _item('langs', Icons.translate_rounded, t('اللغات', 'Languages')),
             _item('starter', Icons.dashboard_customize_outlined, t('تصاميم جاهزة', 'Ready designs')),
             if (doc.languages.length > 1)
@@ -769,7 +884,9 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
               newId: _newId,
               onChanged: _touch,
               upload: _upload,
-              vars: certSampleValues(l, custom),
+              uploadFor: _uploadFor,
+              extraFor: _extraFor,
+              vars: {...certSampleValues(l, custom), ..._samples},
               fieldOf: (k) => certFieldOf(l, k),
               background: doc.designs[l]!.page.background,
               backgroundImage: doc.designs[l]!.page.backgroundImage,

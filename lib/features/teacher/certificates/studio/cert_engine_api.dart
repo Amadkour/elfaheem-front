@@ -103,7 +103,32 @@ class CertEngineApi {
   }
 
   Future<String> uploadLogo(Uint8List bytes) => _upload('$_base/logo', bytes);
-  Future<String> uploadSignature(Uint8List bytes) => _upload('$_base/signature', bytes);
+  /// The server removes the background of a signature photo; [ink] recolours it, [strength] 0..1 is the sensitivity.
+  Future<String> uploadSignature(Uint8List bytes, {String? ink, double strength = .5}) =>
+      _upload('$_base/signature', bytes, {'ink_color': ?ink, 'strength': strength});
+
+  /// Renames the design only (the legacy save keeps the studio document on a rename-only call).
+  Future<void> rename(int id, String name) async {
+    await api.put('$_base/$id', body: {'name': name});
+  }
+
+  /// A generated background for one language of an existing design (the server returns it, nothing is stored).
+  /// `theme` is the generated colour set when present.
+  Future<String> generateBackground(int id, {required String lang, required bool landscape, required String style, String? themeColor, bool dark = false, Map<String, dynamic>? page}) async {
+    final r = _map(await api.post('$_base/draft', body: {
+      'design_id': id,
+      'lang': lang,
+      'orientation': landscape ? 'landscape' : 'portrait',
+      'style': style,
+      'theme_color': ?themeColor,
+      'dark': dark,
+      'reset_fields': false,
+      'page': ?page,
+    }));
+    final url = r[lang == 'en' ? 'background_url_en' : 'background_url'];
+    if (url is! String || url.isEmpty) throw const ApiException(statusCode: 0, message: 'no background');
+    return url;
+  }
 
   Future<String> uploadBackground(Uint8List bytes, {required bool landscape, String size = 'A4', double? wMm, double? hMm}) {
     final q = StringBuffer('orientation=${landscape ? 'landscape' : 'portrait'}');
