@@ -34,12 +34,16 @@ import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show asBool, asDouble, asInt, asMap, asMapList, asStr, t;
 import '../../admin/admin_home_data.dart' show halfDelta;
+import '../../admin/models/ai_models_page.dart' show AiModelsPage;
 import '../../auth/auth_provider.dart' show MyAuthProvider;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'admin/rag_cache_card.dart' show RagCacheApi, RagCacheSection;
+import 'admin/rag_console_settings.dart' show RagExtraSettings, RagExtraSettingsCard;
+import 'admin/rag_feedback_review.dart' show FeedbackReviewApi, FeedbackReviewBody;
 import 'rag_alerts_page.dart' show RagAlertsTab, RagGateTab;
 import 'rag_chat.dart';
 import 'rag_chat_screen.dart' show RagAnswerBody;
-import 'rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
+import 'rag_learning.dart' show EmbedderJob, LearningApi, LearningStats, kRagLearningFeatureKey, learningCodeText;
 import 'rag_learning_page.dart' show RagLearningBody, RagTileGrid;
 import 'rag_library.dart' show ragLibraryCodeText;
 import 'rag_library_screen.dart' show RagLibraryScreen;
@@ -79,7 +83,11 @@ class RagAdminSettings {
     this.llmFilesOk = true,
     this.llmFilesError = '',
     this.llmTokensPerS,
+    this.extra = const RagExtraSettings(),
   });
+
+  /// The D-190 settings (answer mode, OCR, upload size, search-model training); saved on their own card.
+  final RagExtraSettings extra;
   final String generator; // llm | extractive
   final bool allowExternalDefault;
   final String answerStyle; // concise | balanced | detailed
@@ -139,6 +147,7 @@ class RagAdminSettings {
       llmFilesError: asStr(asMap(llm['files'])['error']),
       llmTokensPerS: llm['warm_tokens_per_s'] == null ? null : double.tryParse('${llm['warm_tokens_per_s']}'),
       effectiveGenerator: asStr(j['generator_effective'], 'extractive'),
+      extra: RagExtraSettings.fromJson(j['settings']),
     );
   }
 
@@ -193,6 +202,7 @@ class RagAdminSettings {
         llmAvailable: llmAvailable, llmProvider: llmProvider, llmModel: llmModel, llmFastModel: llmFastModel, llmExternal: llmExternal,
         llmLocal: llmLocal, llmProfile: llmProfile, llmFilesOk: llmFilesOk, llmFilesError: llmFilesError, llmTokensPerS: llmTokensPerS,
         effectiveGenerator: effectiveGenerator,
+        extra: extra,
       );
 }
 
@@ -458,15 +468,17 @@ String ragAdminCodeText(String? code, String fallback) => switch (code) {
 // ── the page ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class RagAdminConsole extends StatefulWidget {
-  const RagAdminConsole({super.key, this.api, this.qaApi, this.learningApi, this.initialTab = 0});
+  const RagAdminConsole({super.key, this.api, this.qaApi, this.learningApi, this.feedbackApi, this.cacheApi, this.initialTab = 0});
   final RagAdminApi? api;
   final QaApi? qaApi;
   final LearningApi? learningApi;
+  final FeedbackReviewApi? feedbackApi;
+  final RagCacheApi? cacheApi;
 
   /// The tab to open on (the admin home's alert rows open [alertsTab]).
   final int initialTab;
 
-  /// Overview · Settings · Playground · Questions · Alerts · Gate refusals · [Q&A] · [Learning].
+  /// Overview · Settings · Playground · Questions · Alerts · Gate refusals · [Q&A] · [Learning] · Feedback.
   static const alertsTab = 4;
   static const gateTab = 5;
 
@@ -483,6 +495,8 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
   final bool _learningAllowed = !AppConfig.disableList.contains(kRagLearningFeatureKey);
   late final LearningApi _learning = widget.learningApi ?? LearningApi();
   bool _learningOn = false;
+  EmbedderJob? _embedderJob;
+  bool _training = false;
   // the alert rules and "evaluate now" are the Super Admin's (the server answers 403 to the other platform admins)
   bool get _superAdmin {
     try {
@@ -492,7 +506,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
     }
   }
   late TabController _tabs = TabController(length: _tabCount, vsync: this, initialIndex: widget.initialTab.clamp(0, _tabCount - 1));
-  int get _tabCount => 6 + (_qaOn ? 1 : 0) + (_learningOn ? 1 : 0);
+  int get _tabCount => 7 + (_qaOn ? 1 : 0) + (_learningOn ? 1 : 0);
 
   /// Shows / hides the Learning tab: a new controller of the new length on the same tab (the old one is disposed
   /// after the frame that stops using it).
@@ -525,6 +539,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
     final learning = _learningAllowed && !_learningOn ? await _learning.stats(days: 7) : null;
     if (!mounted) return;
     if (learning != null) _setLearning(learning.ok);
+    if (_learningAllowed && learning != null && learning.ok) _embedderJob = LearningStats.fromJson(learning.map).embedderJob;
     setState(() {
       _error = null;
       for (final r in rs) {
@@ -545,6 +560,37 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
       appToast(ragAdminCodeText(r.code, r.message), error: true);
     }
   }
+
+  /// The D-190 settings card: only its own keys travel (the server merges).
+  Future<EngineResult> _saveSettingsBody(Map<String, dynamic> body) => _api.saveSettings(body);
+
+  Future<void> _saveExtra(Map<String, dynamic> body) async {
+    final r = await _api.saveSettings(body);
+    if (!mounted) return;
+    if (r.ok) {
+      setState(() => _settings = RagAdminSettings.fromJson(r.map));
+      appToast(t('تم الحفظ', 'Saved'));
+    } else {
+      appToast(ragAdminCodeText(r.code, r.message), error: true);
+    }
+  }
+
+  Future<void> _trainEmbedder() async {
+    setState(() => _training = true);
+    final r = await _learning.trainEmbedder();
+    if (!mounted) return;
+    setState(() => _training = false);
+    if (r.ok) {
+      appToast(t('بدأ تدريب نموذج البحث', 'Search-model training started'));
+      final st = await _learning.stats(days: 7);
+      if (mounted && st.ok) setState(() => _embedderJob = LearningStats.fromJson(st.map).embedderJob);
+    } else {
+      appToast(learningCodeText(r.code, r.message), error: true);
+    }
+  }
+
+  void _manageModels() => Navigator.of(context).push(MaterialPageRoute(
+      settings: const RouteSettings(name: AiModelsPage.routeName), builder: (_) => const AiModelsPage()));
 
   Future<void> _test() async {
     final r = await _api.testLlm();
@@ -596,6 +642,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
             Tab(text: t('رفض البوابة', 'Gate refusals')),
             if (_qaOn) Tab(text: t('الإجابات المعتمدة', 'Q&A')),
             if (_learningOn) Tab(text: t('التعلّم', 'Learning')),
+            Tab(text: t('مراجعة التقييمات', 'Feedback')),
           ]),
         ),
         if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
@@ -613,13 +660,31 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
                     }),
             _settings == null
                 ? const AppListSkeleton(items: 4, padding: EdgeInsets.all(16))
-                : SingleChildScrollView(padding: const EdgeInsets.all(16), child: RagPlatformSettingsForm(settings: _settings!, onSave: _save, onTest: _test)),
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      RagPlatformSettingsForm(settings: _settings!, onSave: _save, onTest: _test, onManageModels: _manageModels),
+                      if (_settings!.extra.present) ...[
+                        const SizedBox(height: 16),
+                        RagExtraSettingsCard(
+                            settings: _settings!.extra,
+                            onSave: _saveExtra,
+                            canEdit: _superAdmin,
+                            onTrain: _learningOn && _superAdmin ? _trainEmbedder : null,
+                            training: _training,
+                            job: _embedderJob),
+                      ],
+                      const SizedBox(height: 16),
+                      RagCacheSection(api: widget.cacheApi, saveSettings: _saveSettingsBody),
+                    ]),
+                  ),
             RagPlaygroundTab(api: _api),
             RagQuestionsTab(api: _api),
             RagAlertsTab(canEdit: _superAdmin),
             RagGateTab(onPromote: _qaOn ? _promote : null),
             if (_qaOn) RagQaAdminBody(scope: 'app', api: _qa),
             if (_learningOn) ParentComponent(featureKey: 'rag.learning', child: RagLearningBody(api: _learning, qaApi: _qa)),
+            FeedbackReviewBody(api: widget.feedbackApi ?? FeedbackReviewApi(), canVerify: _qaOn),
           ]),
         ),
       ]),
@@ -926,10 +991,14 @@ class _RateRow extends StatelessWidget {
 // ── settings ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class RagPlatformSettingsForm extends StatefulWidget {
-  const RagPlatformSettingsForm({super.key, required this.settings, required this.onSave, this.onTest});
+  const RagPlatformSettingsForm({super.key, required this.settings, required this.onSave, this.onTest, this.onManageModels});
   final RagAdminSettings settings;
   final ValueChanged<RagAdminSettings> onSave;
   final VoidCallback? onTest;
+
+  /// Opens the AI Models page. The model name fields moved there (the keys stay in the settings and are sent
+  /// unchanged); null keeps the two fields as they were (tests, an older flow).
+  final VoidCallback? onManageModels;
 
   @override
   State<RagPlatformSettingsForm> createState() => _RagPlatformSettingsFormState();
@@ -1074,9 +1143,19 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
         const SizedBox(height: 8),
         AppDropdown<String>(value: s.effortExam, decoration: InputDecoration(labelText: t('جهد كاتب الامتحانات', 'Exam writer effort')), items: _efforts(xhigh: true), onChanged: (v) => setState(() => _s = _s.copyWith(effortExam: v))),
         const SizedBox(height: 8),
-        AppField(controller: _model, label: t('النموذج (فارغ = إعداد الخادم ${s.llmModel})', 'Model (empty = the server\'s ${s.llmModel})'), ltr: true, onChanged: (v) => _s = _s.copyWith(model: v)),
-        const SizedBox(height: 8),
-        AppField(controller: _fast, label: t('النموذج الأسرع للخطوات الخفيفة (فارغ = ${s.llmFastModel})', 'Fast model for the light steps (empty = ${s.llmFastModel})'), ltr: true, onChanged: (v) => _s = _s.copyWith(fastModel: v)),
+        if (widget.onManageModels != null)
+          AppActionCard(
+              key: const ValueKey('manage_models'),
+              icon: Icons.memory_rounded,
+              title: t('إدارة النماذج', 'Manage models'),
+              subtitle: t('اختيار نموذج المحادثة وتوليد الامتحانات والتصحيح، وسرعته ودقته، من صفحة النماذج',
+                  'Pick the chat, exam-generation and grading models, with their speed and accuracy, on the Models page'),
+              onTap: widget.onManageModels!)
+        else ...[
+          AppField(controller: _model, label: t('النموذج (فارغ = إعداد الخادم ${s.llmModel})', 'Model (empty = the server\'s ${s.llmModel})'), ltr: true, onChanged: (v) => _s = _s.copyWith(model: v)),
+          const SizedBox(height: 8),
+          AppField(controller: _fast, label: t('النموذج الأسرع للخطوات الخفيفة (فارغ = ${s.llmFastModel})', 'Fast model for the light steps (empty = ${s.llmFastModel})'), ltr: true, onChanged: (v) => _s = _s.copyWith(fastModel: v)),
+        ],
       ],
       const SizedBox(height: 16),
       AppPrimaryButton(label: t('حفظ الإعدادات', 'Save settings'), icon: Icons.save_rounded, onPressed: () => widget.onSave(_s)),

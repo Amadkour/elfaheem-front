@@ -36,7 +36,7 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter_education_app/core/api_client.dart';
 
-import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t;
+import '../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, t;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
 import 'rag_chat.dart' show RagAnswer;
 import 'rag_library.dart' show ragLibraryCodeText;
@@ -366,6 +366,8 @@ class LearningStats {
     this.suggestionsOpen = 0,
     this.models = const [],
     this.lora,
+    this.loraDisabled = false,
+    this.embedderJob,
   });
   final int chatVotes;
   final double? helpfulRate;
@@ -379,6 +381,13 @@ class LearningStats {
 
   /// The LoRA readiness (platform admins on the platform view; null elsewhere or from an older server).
   final LoraReadiness? lora;
+
+  /// The stats' `lora: {disabled: true}`: the writer / exam-writer fine-tune is switched off on this server, so the
+  /// readiness cards and the promote buttons of those two kinds are hidden (the code stays).
+  final bool loraDisabled;
+
+  /// The search-model (embedder) training job, when the stats expose it (`embedder` / `embedder_job`).
+  final EmbedderJob? embedderJob;
 
   factory LearningStats.fromJson(Map<String, dynamic> j) {
     final chat = asMap(j['chat']);
@@ -396,10 +405,28 @@ class LearningStats {
       suggestionsOpen: asInt(j['suggestions_open']),
       models: asMapList(j['models']).map(ModelVersion.fromJson).toList(),
       lora: LoraReadiness.fromJson(j['lora']),
+      loraDisabled: asBool(asMap(j['lora'])['disabled']),
+      embedderJob: EmbedderJob.fromJson(j['embedder_job'] ?? j['embedder']),
     );
   }
 
   bool get empty => chatVotes == 0 && examItems == 0;
+}
+
+/// The state of the search-model training job (`queued | running | done | failed`), when the stats carry one.
+class EmbedderJob {
+  const EmbedderJob({required this.state, this.detail = '', this.at});
+  final String state, detail;
+  final String? at;
+
+  static EmbedderJob? fromJson(Object? v) {
+    final j = asMap(v);
+    final state = asStr(j['state'] ?? j['status']);
+    if (state.isEmpty) return null;
+    return EmbedderJob(state: state, detail: asStr(j['detail'] ?? j['message'] ?? j['error']), at: (j['at'] ?? j['finished_at'] ?? j['started_at'])?.toString());
+  }
+
+  bool get running => state == 'queued' || state == 'running';
 }
 
 /// Reason counts, biggest first (the donut's parts).
@@ -675,6 +702,8 @@ String learningCodeText(String? code, String fallback) => switch (code) {
       'not_draft_owner' => t('المسودة ليست لك', 'This draft is not yours'),
       'bad_reason' => t('سبب غير صالح', 'Invalid reason'),
       'bad_kind' => t('نوع غير صالح', 'Invalid kind'),
+      'llm_finetune_disabled' => t('تدريب نماذج الكتابة معطّل على هذا الخادم', 'Fine-tuning of the writing models is switched off on this server'),
+      'embedder_training_busy' || 'train_in_progress' => t('تدريب نموذج البحث جارٍ بالفعل', 'The search model is already training'),
       'too_many_requests' || 'rate_limited' => t('طلبات كثيرة في وقت قصير — انتظر دقيقة', 'Too many requests — wait a minute'),
       _ => ragLibraryCodeText(code, fallback),
     };
@@ -704,6 +733,9 @@ class LearningApi {
   Future<EngineResult> dismiss(int id) => engineCall(() => _api.post('$base/suggestions/$id/dismiss'));
 
   Future<EngineResult> models({String? kind}) => engineCall(() => _api.get('$base/models', queryParams: {'kind': ?kind}));
+  /// Retrains the search model (embedder) from the feedback and verified answers now (platform admins).
+  Future<EngineResult> trainEmbedder() => engineCall(() => _api.post('$base/embedder/train'));
+
   Future<EngineResult> promote(int id) => engineCall(() => _api.post('$base/models/$id/promote'));
   Future<EngineResult> rollback(int id) => engineCall(() => _api.post('$base/models/$id/rollback'));
 

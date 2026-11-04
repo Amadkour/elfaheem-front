@@ -272,6 +272,54 @@ class HubPending {
   String get stepKey => '$modelId:$stage';
 }
 
+/// A model's measured quality for one role (`accuracy[role]`): `{metric, score 0..1, n, dataset, details, at}`.
+class HubAccuracy {
+  const HubAccuracy({this.metric = '', this.score, this.n = 0, this.dataset = '', this.at});
+
+  static HubAccuracy? fromJson(Object? v) {
+    if (v is! Map) return null;
+    final j = Map<String, dynamic>.from(v);
+    return HubAccuracy(metric: _str(j['metric']) ?? '', score: _dbl(j['score']), n: _int(j['n']), dataset: _str(j['dataset']) ?? '', at: hubTime(j['at']));
+  }
+
+  final String metric, dataset;
+
+  /// 0..1; null = not measured.
+  final double? score;
+  final int n;
+  final DateTime? at;
+
+  /// The score as a whole percent (null when not measured).
+  int? get percent => score == null ? null : (score! * 100).round().clamp(0, 100);
+}
+
+/// A model's speed on this server (`speed`): `{value, unit: "tok/s", ttft_ms, load_ms, rss_mb, at, ok}`.
+class HubSpeed {
+  const HubSpeed({this.value, this.unit = 'tok/s', this.ttftMs, this.loadMs, this.rssMb, this.at, this.ok = true});
+
+  static HubSpeed? fromJson(Object? v) {
+    if (v is! Map) return null;
+    final j = Map<String, dynamic>.from(v);
+    return HubSpeed(
+      value: _dbl(j['value']),
+      unit: _str(j['unit']) ?? 'tok/s',
+      ttftMs: _intOrNull(j['ttft_ms']),
+      loadMs: _intOrNull(j['load_ms']),
+      rssMb: _intOrNull(j['rss_mb']),
+      at: hubTime(j['at']),
+      ok: j['ok'] != false,
+    );
+  }
+
+  final double? value;
+  final String unit;
+  final int? ttftMs, loadMs, rssMb;
+  final DateTime? at;
+  final bool ok;
+
+  bool get measured => ok && value != null;
+}
+
 /// One library row (`ModelRow`).
 class HubModel {
   const HubModel({
@@ -298,6 +346,13 @@ class HubModel {
     this.addedBy,
     this.addedAt,
     this.deletable = false,
+    this.roles = const [],
+    this.usedIn = const {},
+    this.accuracy = const {},
+    this.speed,
+    this.context,
+    this.paramsB,
+    this.recommendedFor = const [],
   });
 
   factory HubModel.fromJson(Map<String, dynamic> j) => HubModel(
@@ -324,6 +379,18 @@ class HubModel {
         addedBy: _intOrNull(j['added_by']),
         addedAt: hubTime(j['added_at']),
         deletable: j['deletable'] == true,
+        roles: [for (final r in (j['roles'] is List ? j['roles'] as List : const [])) '$r'],
+        usedIn: {
+          for (final e in _map(j['used_in']).entries) e.key: [for (final u in (e.value is List ? e.value as List : const [])) '$u'],
+        },
+        accuracy: {
+          for (final e in _map(j['accuracy']).entries)
+            if (HubAccuracy.fromJson(e.value) != null) e.key: HubAccuracy.fromJson(e.value)!,
+        },
+        speed: HubSpeed.fromJson(j['speed']),
+        context: _intOrNull(j['context']),
+        paramsB: _dbl(j['params_b']),
+        recommendedFor: [for (final r in (j['recommended_for'] is List ? j['recommended_for'] as List : const [])) '$r'],
       );
 
   final int id;
@@ -350,6 +417,19 @@ class HubModel {
   final DateTime? addedAt;
   final bool deletable;
 
+  /// The roles this model can serve (empty on an older server: only [role]).
+  final List<String> roles;
+
+  /// role -> how it is used there (`active`, `previous`, `fallback`, `pending`).
+  final Map<String, List<String>> usedIn;
+
+  /// role -> its measured quality there.
+  final Map<String, HubAccuracy> accuracy;
+  final HubSpeed? speed;
+  final int? context;
+  final double? paramsB;
+  final List<String> recommendedFor;
+
   bool get isActive => status == 'active';
   bool get isFallback => usedAs.contains('fallback');
   bool get isPrevious => usedAs.contains('previous');
@@ -369,10 +449,14 @@ class HubRole {
     this.fallbackId,
     this.pending,
     this.limits = const HubLimits(),
+    this.task,
+    this.recommended,
   });
 
   factory HubRole.fromJson(Map<String, dynamic> j) => HubRole(
         role: _str(j['role']) ?? '',
+        task: _str(j['task']),
+        recommended: _str(j['recommended']),
         active: _str(j['active']),
         activeId: _intOrNull(j['active_id']),
         previous: _str(j['previous']),
@@ -390,6 +474,23 @@ class HubRole {
   final HubPending? pending;
   final HubLimits limits;
   final List<HubModel> models;
+
+  /// `chat` | `exam` | `grading` for the per-task generation roles (null on every other role and on an older server).
+  final String? task;
+
+  /// The ref the server recommends for this role (`ollama:qwen3:4b`).
+  final String? recommended;
+
+  bool get isTask => task != null;
+
+  /// Is [m] the model this role serves now? A model shared by several roles has one global `status`, so a task role
+  /// reads its own `active_id`.
+  bool isActiveHere(HubModel m) => isTask ? activeId == m.id : m.isActive;
+
+  bool isRecommended(HubModel m) => recommended != null && (m.ref == recommended || recommended == '${m.provider}:${m.ref}');
+
+  /// [m]'s status as this role shows it (a task model active for another task is just downloaded here).
+  String statusOf(HubModel m) => isTask && m.status == 'active' && !isActiveHere(m) ? 'ready' : m.status;
 
   HubModel? byId(int? id) {
     if (id == null) return null;
@@ -666,8 +767,11 @@ class ModelsHubApi {
 
   Future<void> test(int modelId) async => _api.post('$base/$modelId/test');
 
-  Future<HubStep> activate(int modelId, {bool confirm = false, String? reindex}) async => HubStep.fromJson(
-      await _api.post('$base/$modelId/activate', body: {if (confirm) 'confirm': true, 'reindex': ?reindex}));
+  Future<HubStep> activate(int modelId, {bool confirm = false, String? reindex, String? role}) async => HubStep.fromJson(
+      await _api.post('$base/$modelId/activate', body: {if (confirm) 'confirm': true, 'reindex': ?reindex, 'role': ?role}));
+
+  /// "Use the recommended models": activates the server's recommendation of every task.
+  Future<Map<String, dynamic>> applyDefaults() async => _map(await _api.post('$base/defaults/apply'));
 
   Future<Map<String, dynamic>> delete(int modelId) async => _map(await _api.delete('$base/$modelId'));
 
