@@ -26,6 +26,7 @@ import 'package:flutter/services.dart';
 
 import '../../config/app_config.dart' show AppConfig, translate;
 import '../../features/teacher/certificates/designer/certificate_design_models.dart' show CertFont, kCertFonts;
+import '../../core/display/lazy_fonts.dart';
 import 'ttf_tools.dart';
 
 /// The file of each certificate font key — the server renderer's FONT_CATALOG (`../back/services/
@@ -276,6 +277,7 @@ abstract final class ExportFonts {
       Future<ByteData> file(String asset) => _pdfArabicStandIn.containsKey(f.id)
           ? pdfFile(asset).then((x) => ByteData.sublistView(x.$1))
           : bytes(asset).then((b) => ByteData.sublistView(b));
+      await LazyFonts.ensure('PaperPlex'); // the preview's last fallback (see previewFallback)
       final loader = FontLoader(f.previewFamily);
       loader.addFont(file(f.regularAsset));
       if (f.hasBold) loader.addFont(file(f.boldAsset));
@@ -299,6 +301,7 @@ abstract final class ExportFonts {
   /// The app's own 'tajawal' family stays a pubspec font.
   static Future<void> ensureCertFamilies() => _cert ??= () async {
         await Future.wait([
+          LazyFonts.ensure('tajawal'), // the certificate studio draws the app's own 'tajawal' family
           for (final c in kCertFonts)
             if (c.family != 'tajawal')
               (FontLoader(c.family)..addFont(bytes(certFontAsset(c.key)).then((b) => ByteData.sublistView(b)))).load().catchError((Object e) {

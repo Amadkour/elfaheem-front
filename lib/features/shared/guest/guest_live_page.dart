@@ -18,6 +18,7 @@
 //                              Tried once per visit; a PIN or a missing recording consent waits for the visitor.
 //   GuestLiveContent       → the pure layout (plain values + callbacks): loading skeleton · not live (waiting) ·
 //                            live · error. Tested with expectNoLayoutErrors (test/ui/guest_live_layout_test.dart).
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -32,7 +33,7 @@ import '../../../design/app_kit.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../auth/auth_provider.dart';
-import '../../teacher/sessions/live/prejoin.dart';
+import '../../teacher/sessions/live/join_args.dart';
 import '../../teacher/sessions/live/widgets/participant_info.dart' show isGuestIdentity;
 import '../../teacher/sessions/model/live_response_model.dart';
 import '../live/live_lobby_sheets.dart' show WaitingForHostPage;
@@ -348,7 +349,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
     await Navigator.of(context).push(
       // No route name on purpose: a named route would be reported to the browser URL bar.
       MaterialPageRoute(
-        builder: (_) => PreJoinPage(
+        builder: (_) => deferredPreJoin(
           args: JoinArgs(
             isTeacher: false,
             userId: guest ? -1 : (_auth?.currentUser?.id ?? -1),

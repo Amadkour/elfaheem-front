@@ -17,6 +17,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // webview_flutter is imported only on mobile; the stub keeps Flutter Web compiling.
 import 'package:webview_flutter/webview_flutter.dart'
 if (dart.library.html) 'webview_stub.dart';
+import 'package:flutter_education_app/core/display/lazy_fonts.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -173,7 +174,11 @@ class MoyasarCardPaymentScreen extends StatelessWidget {
         ),
         body: ParentComponent(
           featureKey: 'payments.card',
-          child: CreditCard(config: config, onPaymentResult: onPaymentResult),
+          // the card form draws with the moyasar package's Readex Pro (a lazy font on the web build)
+          child: LazyFontGate(
+            families: const ['packages/moyasar/ReadexPro'],
+            child: CreditCard(config: config, onPaymentResult: onPaymentResult),
+          ),
         ),
       ),
     );

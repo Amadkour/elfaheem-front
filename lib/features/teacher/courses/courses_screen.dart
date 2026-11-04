@@ -1,5 +1,6 @@
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:math' as math;
 
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -266,7 +267,7 @@ class _CoursesProgress extends StatelessWidget {
 }
 
 void _openNewCourse(BuildContext context) =>
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CourseFormScreen()));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCourseForm()));
 
 class _FloatingAddBtn extends StatelessWidget {
   @override
@@ -469,7 +470,7 @@ class _TeacherCourseCard extends StatelessWidget {
   void _act(BuildContext context, _CourseAction a) {
     switch (a) {
       case _CourseAction.edit:
-        Navigator.of(context).push(MaterialPageRoute(builder: (_) => CourseFormScreen(course: course)));
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCourseForm(course: course)));
       case _CourseAction.publish:
         _togglePublish(context);
       case _CourseAction.schedule:
@@ -528,7 +529,7 @@ class _TeacherCourseCard extends StatelessWidget {
     MaterialPageRoute(
       builder: (_) => ChangeNotifierProvider(
         create: (_) => TeacherCourseScreenProvider(initialCourse: course),
-        child: TeacherSessionsScreen(),
+        child: deferredTeacherSessionsScreen(),
       ),
     ),
   );

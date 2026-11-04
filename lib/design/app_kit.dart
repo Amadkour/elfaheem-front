@@ -11,7 +11,14 @@
 // (context.colors), and raw Material widgets are styled by ThemeConfigProvider.materialTheme(), so a screen built
 // from these pieces looks the same in every role and follows the theme the super admin picks.
 //
+// The full system (tokens, type scale, gradient rules, every component with examples): lib/design/README.md.
+//
 // Rule of thumb for new screens:
+//   dashboard page   → AppPageHeader + AppSection      records       → AppDataTable (cards on phones by itself)
+//   actions          → AppButton.primary / secondary / tonal / ghost / danger · AppIconButton
+//   KPIs             → AppKpiGrid(AppKpiCard …, one highlight: true)   status → AppStatusBadge(tone:)
+//   tabs             → AppTabs / AppUnderlineTabs      side panel    → showAppDrawer · dialog → showAppDialog
+//   load / error     → AppStateView / AppErrorState (appErrorMessage(e), never '$e') · AppUnsavedGuard on forms
 //   page header      → AppHero(+ AppHeroStat)        section title → AppSectionTitle
 //   content block    → AppCard / AppActionCard        numbers       → AppStatTile in an AppGrid
 //   nothing yet      → AppEmpty                        loading       → AppListSkeleton (not a spinner)
@@ -46,6 +53,21 @@ import '../features/admin/admin_common.dart' as admin;
 import '../features/org/org_ui.dart' as org;
 import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
 
+// The design system (D-180, lib/design/README.md): tokens, the gradient rules and the components added on top of
+// the Data Lab / org kits below.
+export 'app_tokens.dart';
+export 'app_gradients.dart';
+export 'app_buttons.dart';
+export 'app_badges.dart';
+export 'app_tabs.dart';
+export 'app_search_field.dart';
+export 'app_pagination.dart';
+export 'app_data_table.dart';
+export 'app_states.dart';
+export 'app_overlays.dart';
+export 'app_kpi.dart';
+export 'app_page_header.dart';
+export 'app_notice.dart' show showAppNotice;
 export 'app_switch.dart';
 export 'app_refresh.dart';
 export 'app_shell.dart';

@@ -313,12 +313,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         context.watch<LangProvider>();
         final tabs = context.watch<AdminDashboardProvider>();
 
-        return PopScope(
-          // Back goes to the Overview tab first; from the Overview tab it may leave the app.
-          canPop: tabs.currentTab == 0,
-          onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) tabs.onChangeTab(0);
-          },
+        return KeyedSubtree(
+          // Back is the shell's alone (AppShell: the tab's pages, then the home tab, then out — D-081). A second
+          // PopScope here also jumped to the first tab on the same press: Back from a tab's page skipped its tab (D-170).
           child: Directionality(
             textDirection: pageDirection,
             child: LayoutBuilder(
