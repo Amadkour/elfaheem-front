@@ -8,6 +8,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'live_control_bar.dart';
 import 'live_palette.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show helpEntryForMenu, showHelpFor;
+import 'package:flutter_education_app/features/shared/help/help_service.dart' show HelpService;
 import 'android_share.dart' show LiveMicGate;
 import 'ios_share.dart' show IosShareNative;
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -141,6 +143,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
     super.initState();
     participant.addListener(_onChange);
     LiveMicGate.instance.addListener(_onChange);
+    HelpService.instance.addListener(_onChange);
     // iOS (I3): the share button follows the broadcast, which runs before LiveKit has published the track.
     IosShareNative.broadcasting.addListener(_onChange);
     _subscription = Hardware.instance.onDeviceChange.stream.listen(_loadDevices);
@@ -152,6 +155,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
     unawaited(_subscription?.cancel());
     participant.removeListener(_onChange);
     LiveMicGate.instance.removeListener(_onChange);
+    HelpService.instance.removeListener(_onChange);
     IosShareNative.broadcasting.removeListener(_onChange);
     super.dispose();
   }
@@ -522,6 +526,17 @@ class ControlsWidgetState extends State<ControlsWidget> {
           )
         : null;
 
+    // The room has no header (D-059): the page's Info button lives in the "More" menu.
+    final helpEntry = helpEntryForMenu(context, 'live.room');
+    final help = helpEntry == null
+        ? null
+        : LiveControlAction(
+            key: const ValueKey('live_room.help'),
+            icon: Icons.info_outline_rounded,
+            label: AppConfig.lang == 'ar' ? 'معلومات عن هذه الصفحة' : 'About this page',
+            onTap: () => unawaited(showHelpFor(context, helpEntry)),
+          );
+
     final end = LiveControlAction(
       key: const ValueKey('live_room.end'),
       icon: Icons.call_end_rounded,
@@ -534,7 +549,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
       // Listen-only: no mic / camera / share — just Leave, reactions and audio output.
       return LiveControlBar(
         primary: [?react, ?hand, ?chat, ?speaker, ?output],
-        secondary: [?annotate],
+        secondary: [?annotate, ?help],
         groups: [
           [?speaker, ?output],
           [?annotate],
@@ -551,7 +566,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
     return LiveControlBar(
       // Phones: whatever does not fit the pill moves into the "More" sheet automatically.
       primary: [?mic, ?cam, ?share, ?annotate, ?react, ?hand, ?hands, ?chat],
-      secondary: [?flip, ?speaker, ?output],
+      secondary: [?flip, ?speaker, ?output, ?help],
       groups: [
         [?mic, ?cam, ?flip, ?speaker, ?output],
         [?share, ?annotate],

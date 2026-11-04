@@ -264,3 +264,13 @@ class HelpEntryView extends StatelessWidget {
 /// "Ask about this page": opens the app assistant on a new chat with a question about the page typed in.
 void helpAskAboutPage(BuildContext context, HelpEntry entry) =>
     openAssistantForPage(context, pageId: entry.pageId, pageTitle: entry.title.of(AppConfig.lang));
+
+/// The help entry of [pageId] for a menu item where a header has no room for the Info button (the live room's
+/// "More" menu). Null for guests, when `help.info` is off, or while the catalogue is not loaded (it loads on the
+/// way; the caller rebuilds on [HelpService]).
+HelpEntry? helpEntryForMenu(BuildContext context, String pageId) {
+  final u = helpUserKeyOf(context);
+  if (u == null || AppConfig.disableList.contains(helpInfoFeatureKey)) return null;
+  unawaited(HelpService.instance.ensure(userKey: u, orgId: _orgOfContext()));
+  return HelpService.instance.entry(pageId);
+}

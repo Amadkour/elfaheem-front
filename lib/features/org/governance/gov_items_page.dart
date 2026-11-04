@@ -566,7 +566,7 @@ class _GovItemsPageState extends State<GovItemsPage> {
     if (widget.embedded) return body;
     // staff only (a governance dashboard tile): the dashboard's header — Back · title · the entity · New item
     final dept = widget.deptId;
-    return OrgPushedPage(
+    return OrgPushedPage(helpPageId: 'org.governance', 
       title: widget.title ?? (dept == null ? t('الطلبات والمعاملات', 'Requests & workflow') : _deptName(dept)),
       subtitle: widget.title != null && dept != null && _entities.isNotEmpty ? _deptName(dept) : null,
       refresh: _refresh,

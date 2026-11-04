@@ -436,7 +436,7 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
     // staff of this organization: the dashboard's header (Back first; Send stays at the end of the form); a student /
     // member keeps the screen's own app bar
     if (orgUsesDashboardHeader(context, widget.orgId)) {
-      return OrgPushedPage(title: t('معاملة جديدة', 'New request'), refresh: _refresh, maxWidth: 760, child: child);
+      return OrgPushedPage(helpPageId: 'org.governance', title: t('معاملة جديدة', 'New request'), refresh: _refresh, maxWidth: 760, child: child);
     }
     return BasePage(
       useWebCard: true,
@@ -561,7 +561,7 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
     if (widget.embedded) return body;
     if (pushed) {
       final submit = widget.onSubmit;
-      return OrgPushedPage(
+      return OrgPushedPage(helpPageId: 'org.governance', 
         title: t('معاملاتي', 'My requests'),
         refresh: _refresh,
         maxWidth: 900,
@@ -694,7 +694,7 @@ class _GovMyAssignmentsPageState extends State<GovMyAssignmentsPage> {
     if (widget.embedded) return body;
     // staff with an organization open: the dashboard's header, Back first; a student keeps the screen's own app bar
     if (orgUsesDashboardHeader(context, null)) {
-      return OrgPushedPage(title: t('نماذج مطلوبة مني', 'Forms to answer'), maxWidth: 900, child: body);
+      return OrgPushedPage(helpPageId: 'org.governance', title: t('نماذج مطلوبة مني', 'Forms to answer'), maxWidth: 900, child: body);
     }
     return BasePage(useWebCard: true, maxWith: 900, appBar: ScreenAppBar(title: t('نماذج مطلوبة مني', 'Forms to answer')), child: body);
   }

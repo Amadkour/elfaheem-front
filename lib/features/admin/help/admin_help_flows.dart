@@ -117,7 +117,11 @@ class _HelpFlowFormState extends State<HelpFlowForm> {
     final d = widget.draft;
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppField(controller: d.key, label: _t('مفتاح المسار', 'Flow key'), ltr: true),
+      // the key names the flow on the server: read-only when editing an existing one
+      IgnorePointer(
+        ignoring: !d.isNew,
+        child: ExcludeFocus(excluding: !d.isNew, child: Opacity(opacity: d.isNew ? 1 : 0.6, child: AppField(controller: d.key, label: _t('مفتاح المسار', 'Flow key'), ltr: true))),
+      ),
       AppSpace.gapXs,
       AppField(controller: d.title.ar, label: '${_t('العنوان', 'Title')} · العربية'),
       AppSpace.gapXs,
