@@ -23,6 +23,7 @@ String hubRoleName(String role) => switch (role) {
       'handwriting_en' => t('خط اليد (إنجليزي)', 'Handwriting (English)'),
       'digits' => t('الأرقام', 'Digits'),
       'vision_language' => t('الرؤية واللغة', 'Vision-language'),
+      'exam_grading' => t('تصحيح الاختبارات', 'Exam grading'),
       _ => role,
     };
 
@@ -37,8 +38,15 @@ String hubRoleHint(String role) => switch (role) {
       'handwriting_en' => t('يقرأ الإجابات المكتوبة بخط اليد', 'Reads handwritten answers'),
       'digits' => t('يقرأ الأرقام المكتوبة في أوراق الإجابة', 'Reads handwritten digits on answer sheets'),
       'vision_language' => t('يصف الصور ويقرأ الحالات الصعبة', 'Describes images and reads the hard cases'),
+      'exam_grading' => t('نموذج توليد يستشيره مصحّح الإجابات المفتوحة في الحالات الحدّية؛ بدونه يعمل التصحيح بالتضمين والاستدلال فقط',
+          'A generation model the open-answer grader may consult for borderline answers; without it grading uses embedding and NLI only'),
       _ => '',
     };
+
+/// "Exam grading uses: Exam grading, NLI, Embedding" (null when the task has no roles).
+String? hubTaskLine(HubTask? task) => task == null || task.roles.isEmpty
+    ? null
+    : t('تصحيح الاختبارات يستخدم: ', 'Exam grading uses: ') + task.roles.map(hubRoleName).join(t('، ', ', '));
 
 String hubStatusLabel(String status) => switch (status) {
       'not_downloaded' => t('غير مُنزّل', 'Not downloaded'),

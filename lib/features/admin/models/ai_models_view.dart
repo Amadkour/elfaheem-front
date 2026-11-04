@@ -111,6 +111,10 @@ class AiModelsView extends StatelessWidget {
           if (s?.cpuCount != null)
             _Fact(icon: Icons.developer_board_rounded, value: '${s!.cpuCount}', label: t('أنوية', 'cores')),
         ]),
+        if (hubTaskLine(overview.task('exam_grading')) case final line?) ...[
+          const SizedBox(height: AppSpace.sm),
+          AppBanner(key: const ValueKey('models.task.exam_grading'), icon: Icons.fact_check_outlined, text: line),
+        ],
         for (final a in alerts) ...[
           const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.warning_amber_rounded, color: context.colors.warning, text: _alertText(a)),

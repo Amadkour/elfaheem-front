@@ -404,13 +404,37 @@ class HubRole {
   HubModel? get pendingModel => byId(pending?.modelId);
 }
 
+/// One task of the models list: the roles it uses.
+class HubTask {
+  const HubTask(this.task, this.roles);
+  final String task;
+  final List<String> roles;
+}
+
 /// `GET /api/v1/models`.
 class HubOverview {
-  const HubOverview(this.roles);
+  const HubOverview(this.roles, {this.tasks = const []});
 
-  factory HubOverview.fromJson(Object? v) => HubOverview([for (final r in _maps(_map(v)['roles'])) HubRole.fromJson(r)]);
+  factory HubOverview.fromJson(Object? v) => HubOverview(
+        [for (final r in _maps(_map(v)['roles'])) HubRole.fromJson(r)],
+        // additive: an older server sends no `tasks`
+        tasks: [
+          for (final t in _maps(_map(v)['tasks']))
+            HubTask(_str(t['task']) ?? '', [for (final r in (t['roles'] is List ? t['roles'] as List : const [])) '$r']),
+        ],
+      );
 
   final List<HubRole> roles;
+
+  /// The roles grouped by task (`tasks`: `{task: "exam_grading", roles: ["exam_grading", "nli", "embedding"]}`).
+  final List<HubTask> tasks;
+
+  HubTask? task(String task) {
+    for (final t in tasks) {
+      if (t.task == task) return t;
+    }
+    return null;
+  }
 
   HubRole? role(String role) {
     for (final r in roles) {
