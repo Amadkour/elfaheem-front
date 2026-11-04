@@ -27,6 +27,8 @@ import '../../main.dart';
 import '../top_route_observer.dart' show topRouteObserver;
 import 'view_as_state.dart';
 import '../../design/app_shell_nav.dart' show AppShellNav;
+import '../../design/context_switcher.dart' show closeOrgPages;
+import '../../features/org/org_providers.dart' show OrgSession;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
@@ -331,17 +333,50 @@ class AppNavigator {
     await _nav?.pushNamed('/notifications');
   }
 
-  /// Organization notification (push data / tap target carry `org_id`): open that organization in Organization
-  /// mode BEFORE routing, so the screen it leads to shows that organization (its timezone and feature offs too).
-  /// Returns true when it already navigated (nothing more specific to open: back to the home root, now in that
-  /// organization).
+  /// Organization notification (push data / tap target carry `org_id`): open that organization BEFORE routing, so the
+  /// screen it leads to shows that organization (its timezone and feature offs too). The organization is selected in
+  /// BOTH [AppModeController] and [OrgSession] (before, only the mode followed, so a push for org B opened B's page
+  /// under A's dashboard), and when it is a different organization from the one open, A's org pages close first.
+  /// An organization where I am staff opens its dashboard ([AppModeController.opensDashboard]); one where I study,
+  /// the member home. Returns true when it already navigated (nothing more specific to open: back to the home root /
+  /// the dashboard, now in that organization). Never throws: tapping must never crash.
   static Future<bool> _openOrgFirst(int orgId, bool homeOnly) async {
     if (!AppConfig.orgsEnabled) return false;
+    final ctl = AppModeController.instance;
+    OrgSession? session;
     try {
-      await AppModeController.instance.openOrg(orgId);
+      session = navigatorKey.currentContext?.read<OrgSession>();
+    } catch (_) {/* no provider in scope */}
+    bool? staff;
+    try {
+      await ctl.openOrg(orgId);
+      staff = ctl.opensDashboardFor(orgId);
+      // the overview may not list it yet (cold start): the dashboard's own list decides
+      if (staff == null && session != null && session.loaded) {
+        final item = session.items.where((o) => o['id'] == orgId).firstOrNull;
+        staff = item != null;
+      }
+      final other = session != null && session.currentId != null && session.currentId != orgId;
+      session?.open(orgId);
+      if (other) {
+        // org A -> org B: A's pages go, B is selected (OrgSession.select clears A's context)
+        final root = navigatorKey.currentState;
+        if (root != null) closeOrgPages(root);
+      }
     } catch (_) {/* never block the tap */}
     if (!homeOnly) return false;
-    navigatorKey.currentState?.popUntil((r) => r.isFirst);
+    final root = navigatorKey.currentState;
+    if (staff == true) {
+      // the staff dashboard of that organization: reuse the one on screen, else open it
+      if (_onOrgDashboard) {
+        if (root != null) closeOrgPages(root);
+      } else {
+        root?.popUntil((r) => r.isFirst);
+        if (topRouteObserver.rootRoute?.settings.name != '/org_dashboard') unawaited(root?.pushNamed('/org_dashboard'));
+      }
+      return true;
+    }
+    root?.popUntil((r) => r.isFirst);
     AppShellNav.popVisibleToRoot(); // and the tab on screen back to its own first page
     return true;
   }
