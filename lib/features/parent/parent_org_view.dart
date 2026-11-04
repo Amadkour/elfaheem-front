@@ -324,13 +324,15 @@ class _ChildOrgsCard extends StatelessWidget {
                   Icon(Icons.apartment_rounded, size: AppIconSize.md, color: c.primary),
                   AppSpace.gapSm,
                   Expanded(
-                    child: Text(o.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(o.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                      if (o.status.isNotEmpty && o.status != 'active' && o.status != 'approved')
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpace.xxs),
+                          child: AppStatusBadge(label: statusLabel(o.status), tone: AppTone.warning, dense: true),
+                        ),
+                    ]),
                   ),
-                  if (o.status.isNotEmpty && o.status != 'active' && o.status != 'approved')
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
-                      child: AppStatusBadge(label: statusLabel(o.status), tone: AppTone.warning, dense: true),
-                    ),
                   Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: c.textLight),
                 ]),
               ),

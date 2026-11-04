@@ -1,5 +1,8 @@
 // Agent f4: the parent organization view over the fake backend (C2) — a parent with two children, one of them in an
 // organization, sees ONE card; the organization page loads; a failure shows Retry and Retry recovers.
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -62,6 +65,7 @@ void main() {
 
   setUp(() {
     AppConfig.lang = 'en';
+    translation = jsonDecode(File('assets/translation.json').readAsStringSync()) as Map<String, dynamic>;
     childrenFails = 0;
     viewFails = 0;
     mockRequestPlugins();
@@ -103,6 +107,9 @@ void main() {
   });
 
   testWidgets('the organization page shows today, the week, news and explains the empty blocks', (tester) async {
+    tester.view.physicalSize = const Size(900, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(_screen());
     await _settle(tester);
     expect(find.text('Noor University'), findsWidgets);
