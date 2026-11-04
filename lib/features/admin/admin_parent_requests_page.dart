@@ -7,19 +7,25 @@
 //   Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminParentRequestsPage()));
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/app_config.dart';
 import '../parent/parent_link_providers.dart';
-import '../parent/parent_widgets.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import '../parent/parent_widgets.dart' show plDateTime, plLabel, plList;
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'admin_common.dart' show t;
+import 'admin_labels.dart';
+import 'admin_page.dart';
+
+AppTone _statusTone(String s) => switch (s) {
+      'approved' => AppTone.success,
+      'rejected' || 'failed' => AppTone.danger,
+      'cancelled' => AppTone.neutral,
+      _ => AppTone.warning,
+    };
 
 class AdminParentRequestsPage extends StatelessWidget {
   const AdminParentRequestsPage({super.key});
@@ -39,12 +45,33 @@ class _List extends StatefulWidget {
 }
 
 class _ListState extends State<_List> {
-  final _scroll = ScrollController();
-  final _search = TextEditingController();
-  Timer? _debounce;
+  DateTime? _loadedAt;
 
-  /// 1 s after the last keystroke (or Enter) → one request.
-  void _runSearch(String v) {
+  Future<void> _reload() async {
+    await context.read<AdminParentLinkProvider>().loadRequests();
+    if (mounted) setState(() => _loadedAt = DateTime.now());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<AdminParentLinkProvider>();
+    return AdminPage(
+      title: 'pl_requests_title'.tr,
+      icon: Icons.family_restroom_rounded,
+      onRefresh: p.isLoading ? null : _reload,
+      updatedAt: _loadedAt,
+      body: const ParentRequestsBody(),
+    );
+  }
+}
+
+/// The requests table (search, status filter, load more, the detail page on a row tap) without a page header, so it
+/// sits under [AdminParentRequestsPage]'s own header or inside a tab of the Parent linking page. Reads the
+/// [AdminParentLinkProvider] above it.
+class ParentRequestsBody extends StatelessWidget {
+  const ParentRequestsBody({super.key});
+
+  void _runSearch(BuildContext context, String v) {
     final p = context.read<AdminParentLinkProvider>();
     if (p.search == v.trim()) return;
     p.search = v.trim();
@@ -52,118 +79,71 @@ class _ListState extends State<_List> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(() {
-      if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 300) {
-        context.read<AdminParentLinkProvider>().loadMore();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    _debounce?.cancel();
-    _search.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminParentLinkProvider>();
-    final c = context.colors;
-    return BasePage(
-      useWebCard: true,
-maxWith: 1100,
-      appBar: ScreenAppBar(title: 'pl_requests_title'.tr),
-      child: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: TextField(
-            controller: _search,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: 'pl_search_hint'.tr,
-              prefixIcon: const Icon(Icons.search_rounded),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-              isDense: true,
+    final first = p.items.isEmpty;
+    return Padding(
+        padding: AdminPage.bodyPadding(context),
+        child: AppDataTable<Map<String, dynamic>>(
+          state: p.isLoading && first
+              ? AppTableState.loading
+              : p.hasError && first
+                  ? AppTableState.error
+                  : AppTableState.ready,
+          errorText: p.errorMessage,
+          onRetry: p.loadRequests,
+          rows: p.items,
+          searchHint: 'pl_search_hint'.tr,
+          onSearch: (v) => _runSearch(context, v),
+          filters: [
+            AppTableFilter(
+              label: t('الحالة', 'Status'),
+              value: p.status.isEmpty ? null : p.status,
+              options: [
+                for (final s in ['pending', 'approved', 'rejected', 'failed', 'cancelled'])
+                  (s, '${'pl_status_$s'.tr}${s == 'pending' && p.pendingTotal > 0 ? ' (${p.pendingTotal})' : ''}'),
+              ],
+              onChanged: (v) => p.setFilter(status: v ?? ''),
             ),
-            onChanged: (v) {
-              _debounce?.cancel();
-              _debounce = Timer(const Duration(seconds: 1), () {
-                if (mounted) _runSearch(v);
-              });
-            },
-            onSubmitted: (v) {
-              _debounce?.cancel();
-              _runSearch(v);
-            },
-          ),
+          ],
+          empty: AppEmpty(icon: Icons.family_restroom_rounded, title: 'pl_no_requests'.tr),
+          hasMore: p.page < p.pages,
+          loadingMore: p.loadingMore,
+          onLoadMore: p.loadMore,
+          onRowTap: (r) => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => ChangeNotifierProvider.value(value: p, child: _Detail(id: (r['id'] as num).toInt())),
+          )),
+          columns: [
+            AppTableColumn<Map<String, dynamic>>.text(
+              key: 'who',
+              label: t('الطلب', 'Request'),
+              primary: true,
+              flex: 3,
+              text: (r) => '${r['parent_name']}  →  ${r['student_name']}',
+            ),
+            AppTableColumn<Map<String, dynamic>>.text(
+              key: 'mode',
+              label: t('الطريقة', 'Method'),
+              text: (r) => 'pl_mode_${r['mode']}'.tr,
+            ),
+            AppTableColumn<Map<String, dynamic>>(
+              key: 'status',
+              label: t('الحالة', 'Status'),
+              cell: (context, r) => AppStatusBadge(label: 'pl_status_${r['status']}'.tr, tone: _statusTone('${r['status']}')),
+            ),
+            AppTableColumn<Map<String, dynamic>>.text(
+              key: 'docs',
+              label: t('المستندات', 'Documents'),
+              numeric: true,
+              text: (r) => '${r['documents_count'] ?? 0}',
+            ),
+            AppTableColumn<Map<String, dynamic>>.text(
+              key: 'created_at',
+              label: t('التاريخ', 'Date'),
+              text: (r) => plDateTime(r['created_at']),
+            ),
+          ],
         ),
-        SizedBox(
-          height: 48,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            children: [
-              for (final s in ['pending', 'approved', 'rejected', 'failed', 'cancelled', ''])
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                  child: ChoiceChip(
-                    label: Text(s.isEmpty ? 'pl_all'.tr : '${'pl_status_$s'.tr}${s == 'pending' && p.pendingTotal > 0 ? ' (${p.pendingTotal})' : ''}'),
-                    selected: p.status == s,
-                    onSelected: (_) => p.setFilter(status: s),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: p.isLoading && p.items.isEmpty
-              ? const AppListSkeleton()
-              : p.hasError && p.items.isEmpty
-                  ? PlError(p.errorMessage ?? '', onRetry: p.loadRequests)
-                  : p.items.isEmpty
-                      ? PlEmpty('pl_no_requests'.tr)
-                      : AppRefresh(
-                          onRefresh: p.loadRequests,
-                          child: ListView.builder(
-                            controller: _scroll,
-                            padding: const EdgeInsets.all(16),
-                            itemCount: p.items.length + (p.page < p.pages ? 1 : 0),
-                            itemBuilder: (_, i) {
-                              if (i >= p.items.length) {
-                                return const Padding(
-                                    padding: EdgeInsets.all(16), child: const AppListSkeleton());
-                              }
-                              final r = p.items[i];
-                              return PlCard(
-                                onTap: () async {
-                                  await Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (_) => ChangeNotifierProvider.value(
-                                        value: p, child: _Detail(id: r['id'] as int)),
-                                  ));
-                                },
-                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Row(children: [
-                                    Expanded(
-                                        child: Text('${r['parent_name']}  →  ${r['student_name']}',
-                                            style: c.h2.copyWith(fontSize: 15))),
-                                    PlStatusChip('${r['status']}'),
-                                  ]),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                      '${'pl_mode_${r['mode']}'.tr} · ${plDateTime(r['created_at'])}'
-                                      '${(r['documents_count'] ?? 0) > 0 ? ' · 📎 ${r['documents_count']}' : ''}',
-                                      style: c.caption),
-                                ]),
-                              );
-                            },
-                          ),
-                        ),
-        ),
-      ]),
     );
   }
 }
@@ -180,7 +160,8 @@ class _Detail extends StatefulWidget {
 
 class _DetailState extends State<_Detail> {
   Map<String, dynamic>? _d;
-  bool _busy = false;
+  bool _busy = false, _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -190,15 +171,52 @@ class _DetailState extends State<_Detail> {
 
   Future<void> _load() async {
     final p = context.read<AdminParentLinkProvider>();
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     final d = await p.detail(widget.id);
     if (!mounted) return;
-    if (d == null) plToast(p.errorMessage);
-    setState(() => _d = d);
+    setState(() {
+      _loading = false;
+      _d = d;
+      if (d == null) _error = p.errorMessage ?? 'ds_error_body'.tr;
+    });
+  }
+
+  /// The note sheet of an approve / reject (its controller leaves with the sheet).
+  Future<String?> _askNote(String title, String hint, {required bool required}) async {
+    final ctrl = TextEditingController();
+    bool tooShort = false;
+    final res = await showAppSheet<String>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          return AppSheetContent(title: title, children: [
+            AppField(controller: ctrl, label: hint, maxLines: 3),
+            if (tooShort)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                child: Text(t('اكتب السبب (3 أحرف على الأقل)', 'Write the reason (at least 3 characters)'),
+                    style: AppType.meta(ctx).copyWith(color: ctx.colors.danger)),
+              ),
+            AppButton.primary(
+              label: 'pl_confirm'.tr,
+              expand: true,
+              onPressed: () {
+                if (required && ctrl.text.trim().length < 3) {
+                  set(() => tooShort = true);
+                  return;
+                }
+                Navigator.pop(ctx, ctrl.text.trim());
+              },
+            ),
+          ]);
+        }));
+    disposeAfterRoute([ctrl]);
+    return res;
   }
 
   Future<void> _decide(bool approve) async {
-    final note = await plAskText(context, approve ? 'pl_approve'.tr : 'pl_reject'.tr,
-        hint: approve ? 'pl_note_optional'.tr : 'pl_reject_reason'.tr, required: !approve);
+    final note = await _askNote(approve ? 'pl_approve'.tr : 'pl_reject'.tr, approve ? 'pl_note_optional'.tr : 'pl_reject_reason'.tr,
+        required: !approve);
     if (note == null || !mounted) return;
     setState(() => _busy = true);
     final p = context.read<AdminParentLinkProvider>();
@@ -208,14 +226,14 @@ class _DetailState extends State<_Detail> {
       _busy = false;
       if (r != null) _d = r;
     });
-    plToast(r == null ? p.errorMessage : 'pl_decision_saved'.tr);
+    showAppNotice(r == null ? (p.errorMessage ?? 'ds_error_body'.tr) : 'pl_decision_saved'.tr, error: r == null);
   }
 
   Future<void> _openDoc(Map<String, dynamic> doc) async {
     final p = context.read<AdminParentLinkProvider>();
-    final link = await p.documentLink(doc['id'] as int);
+    final link = await p.documentLink((doc['id'] as num).toInt());
     if (link == null || !mounted) {
-      plToast(p.errorMessage);
+      showAppNotice(p.errorMessage ?? 'ds_error_body'.tr, error: true);
       return;
     }
     final url = p.absoluteUrl('${link['path']}');
@@ -227,122 +245,107 @@ class _DetailState extends State<_Detail> {
     await showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        insetPadding: const EdgeInsets.all(12),
+        insetPadding: const EdgeInsets.all(AppSpace.sm),
         child: Stack(children: [
           InteractiveViewer(
             child: Image.network(url, fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => Padding(
-                    padding: const EdgeInsets.all(32), child: Text('pl_file_load_failed'.tr))),
+                errorBuilder: (_, _, _) => Padding(padding: const EdgeInsets.all(AppSpace.xl), child: Text('pl_file_load_failed'.tr))),
           ),
           PositionedDirectional(
-              top: 4, end: 4, child: IconButton(tooltip: t('إغلاق', 'Close'), icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx))),
+              top: AppSpace.xxs,
+              end: AppSpace.xxs,
+              child: AppIconButton(icon: Icons.close_rounded, tooltip: t('إغلاق', 'Close'), onPressed: () => Navigator.pop(ctx))),
         ]),
       ),
     );
   }
 
   Widget _kv(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 120, child: Text(k, style: context.colors.caption)),
-          Expanded(child: SelectableText(v.isEmpty ? '—' : v)),
+          SizedBox(width: 120, child: Text(k, style: AppType.meta(context))),
+          Expanded(child: SelectableText(v.isEmpty ? '—' : v, style: AppType.body(context))),
         ]),
       );
 
-  Widget _person(String title, Map m) => PlCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: context.colors.h2.copyWith(fontSize: 14)),
-          const SizedBox(height: 6),
-          _kv('pl_name'.tr, '${m['name'] ?? ''}'),
-          _kv('E-mail', '${m['email'] ?? ''}'),
-          _kv('pl_phone'.tr, '${m['phone'] ?? ''}'),
-        ]),
+  Widget _block(String title, List<Widget> children) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+        child: AppCard(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(title, style: AppType.section(context)),
+            AppSpace.gapXs,
+            ...children,
+          ]),
+        ),
       );
+
+  Widget _person(String title, Map m) => _block(title, [
+        _kv('pl_name'.tr, '${m['name'] ?? ''}'),
+        _kv(t('البريد', 'E-mail'), '${m['email'] ?? ''}'),
+        _kv('pl_phone'.tr, '${m['phone'] ?? ''}'),
+      ]);
+
+  Widget _content(Map<String, dynamic> d) {
+    final c = context.colors;
+    final answers = plList(d['answers']);
+    final docs = plList(d['documents']);
+    final ver = d['verification_result'];
+    return ListView(padding: AdminPage.bodyPadding(context), children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+        child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          AppStatusBadge(label: 'pl_status_${d['status']}'.tr, tone: _statusTone('${d['status']}')),
+          Text('${'pl_mode_${d['mode']}'.tr} · ${plDateTime(d['created_at'])}', style: AppType.meta(context)),
+        ]),
+      ),
+      _person('pl_parent'.tr, d['parent'] as Map? ?? {}),
+      _person('pl_student'.tr, d['student'] as Map? ?? {}),
+      if (answers.isNotEmpty) _block('pl_answers'.tr, [for (final a in answers) _kv(plLabel(a), '${a['value']}')]),
+      if (docs.isNotEmpty)
+        _block('pl_documents'.tr, [
+          for (final x in docs)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(x['file_type'] == 'pdf' ? Icons.picture_as_pdf_rounded : Icons.image_rounded, color: c.primary),
+              title: Text(plLabel(x)),
+              subtitle: Text('${x['file_name'] ?? ''} · ${((x['file_size'] as num?) ?? 0) ~/ 1024} KB'),
+              trailing: const Icon(Icons.open_in_new_rounded),
+              onTap: () => _openDoc(x),
+            ),
+        ]),
+      if (ver is Map)
+        _block('pl_verification'.tr, [
+          _kv('pl_verified'.tr, ver['verified'] == true ? t('نعم', 'Yes') : t('لا', 'No')),
+          _kv('pl_reason'.tr, '${ver['reason'] ?? ''}'),
+          _kv(t('رمز استجابة الخادم', 'Server response code'), '${ver['http_status'] ?? '—'}'),
+        ]),
+      if (d['status'] != 'pending' && d['reviewed_at'] != null)
+        _block('pl_decision'.tr, [
+          _kv('pl_by'.tr, '${d['reviewer_name'] ?? '—'}'),
+          _kv('pl_at'.tr, plDateTime(d['reviewed_at'])),
+          _kv('pl_admin_note'.tr, '${d['decision_note'] ?? ''}'),
+        ]),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final d = _d;
-    return BasePage(
-      appBar: ScreenAppBar(title: 'pl_request_details'.tr),
-      child: d == null
+    final pending = d != null && d['status'] == 'pending';
+    return AdminPage(
+      title: 'pl_request_details'.tr,
+      icon: Icons.family_restroom_rounded,
+      onRefresh: _loading || _busy ? null : _load,
+      // approve is THE action; reject sits beside it as a danger outline
+      primaryAction: pending ? AppButton.primary(label: 'pl_approve'.tr, icon: Icons.check_rounded, busy: _busy, onPressed: _busy ? null : () => _decide(true)) : null,
+      actions: pending
+          ? [AppButton.danger(label: 'pl_reject'.tr, icon: Icons.close_rounded, dangerOutline: true, onPressed: _busy ? null : () => _decide(false))]
+          : const [],
+      body: _loading
           ? const AppListSkeleton()
-          : ListView(padding: const EdgeInsets.all(16), children: [
-              Row(children: [
-                PlStatusChip('${d['status']}'),
-                const SizedBox(width: 10),
-                Flexible(child: Text('${'pl_mode_${d['mode']}'.tr} · ${plDateTime(d['created_at'])}', style: c.caption)),
-              ]),
-              const SizedBox(height: 12),
-              _person('pl_parent'.tr, d['parent'] as Map? ?? {}),
-              _person('pl_student'.tr, d['student'] as Map? ?? {}),
-              if ((d['answers'] as List).isNotEmpty)
-                PlCard(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('pl_answers'.tr, style: c.h2.copyWith(fontSize: 14)),
-                    const SizedBox(height: 6),
-                    for (final a in plList(d['answers'])) _kv(plLabel(a), '${a['value']}'),
-                  ]),
-                ),
-              if ((d['documents'] as List).isNotEmpty)
-                PlCard(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('pl_documents'.tr, style: c.h2.copyWith(fontSize: 14)),
-                    for (final x in plList(d['documents']))
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(x['file_type'] == 'pdf' ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
-                            color: c.primary),
-                        title: Text(plLabel(x)),
-                        subtitle: Text('${x['file_name'] ?? ''} · ${((x['file_size'] as num?) ?? 0) ~/ 1024} KB'),
-                        trailing: const Icon(Icons.open_in_new_rounded),
-                        onTap: () => _openDoc(x),
-                      ),
-                  ]),
-                ),
-              if (d['verification_result'] != null)
-                PlCard(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('pl_verification'.tr, style: c.h2.copyWith(fontSize: 14)),
-                    const SizedBox(height: 6),
-                    _kv('pl_verified'.tr, (d['verification_result'] as Map)['verified'] == true ? '✔' : '✘'),
-                    _kv('pl_reason'.tr, '${(d['verification_result'] as Map)['reason']}'),
-                    _kv('HTTP', '${(d['verification_result'] as Map)['http_status'] ?? '—'}'),
-                  ]),
-                ),
-              if (d['status'] != 'pending' && d['reviewed_at'] != null)
-                PlCard(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('pl_decision'.tr, style: c.h2.copyWith(fontSize: 14)),
-                    const SizedBox(height: 6),
-                    _kv('pl_by'.tr, '${d['reviewer_name'] ?? '—'}'),
-                    _kv('pl_at'.tr, plDateTime(d['reviewed_at'])),
-                    _kv('pl_admin_note'.tr, '${d['decision_note'] ?? ''}'),
-                  ]),
-                ),
-              if (d['status'] == 'pending') ...[
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(foregroundColor: c.danger),
-                      icon: const Icon(Icons.close_rounded),
-                      label: Text('pl_reject'.tr),
-                      onPressed: _busy ? null : () => _decide(false),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.check_rounded),
-                      label: Text('pl_approve'.tr),
-                      onPressed: _busy ? null : () => _decide(true),
-                    ),
-                  ),
-                ]),
-              ],
-              const SizedBox(height: 24),
-            ]),
+          : d == null
+              ? Center(child: AppErrorState(message: _error, onRetry: _load))
+              : _content(d),
     );
   }
 }

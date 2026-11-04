@@ -466,6 +466,12 @@ class AiModelsPageState extends State<AiModelsPage> {
     });
   }
 
+  Future<void> _gradingMode(HubRole r, String mode) => _guard(null, () async {
+        await _api.setGradingMode(mode);
+        showAppNotice('${hubRoleName(r.role)}: ${hubGradingModeLabel(mode)}');
+        await _load(silent: true);
+      });
+
   Future<void> _addByName() => _add(source: 'ollama', role: 'generation.chat');
 
   Future<void> _add({String? source, String? role}) async {
@@ -518,6 +524,7 @@ class AiModelsPageState extends State<AiModelsPage> {
       onCancelDownload: (d) => _downloadAction(d, 'cancel'),
       onRollback: _rollback,
       onLimits: _limits,
+      onGradingMode: _gradingMode,
       onReview: (r) => _review(r, null),
       onCancelPending: _cancelPending,
       onReindexNow: _reindexNow,

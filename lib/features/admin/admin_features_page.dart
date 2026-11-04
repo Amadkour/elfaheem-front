@@ -14,15 +14,15 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../org/org_v3.dart';
 import 'admin_common.dart' show asMap, asMapList, t;
 import 'admin_feature_guide.dart' show AdminFeatureGuidePage;
+import 'admin_labels.dart' show disposeAfterRoute;
+import 'admin_page.dart';
+import 'cfg_common.dart';
 
 const _catalog = '/api/v1/admin/features/catalog';
 const _features = '/api/v1/admin/features';
@@ -39,7 +39,7 @@ enum _State { all, on, off }
 
 class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
   Map<String, dynamic>? _data;
-  String? _error;
+  ApiException? _error;
   String _q = '';
   String? _group;
   _State _state = _State.all;
@@ -60,12 +60,17 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
   Future<void> _load() async {
     final r = await orgCall(() => ApiClient().get(_catalog), quiet: true);
     if (!mounted) return;
+    // a failed refresh keeps the loaded list: a notice, never an empty page
+    if (!r.ok && _data != null) {
+      showAppNotice(orgErrorText(r.error!), error: true);
+      return;
+    }
     setState(() {
       if (r.ok) {
         _data = r.map;
         _error = null;
       } else {
-        _error = r.endpointMissing ? t('قائمة الميزات تحتاج تحديث الخادم.', 'The feature list needs a server update.') : orgErrorText(r.error!);
+        _error = r.error;
       }
     });
   }
@@ -103,6 +108,20 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
 
   Future<void> _setVisible(Map<String, dynamic> f, bool visible, {List<String>? platforms}) async {
     final key = '${f['key']}';
+    if (_busy.contains(key)) return;
+    if (!visible) {
+      // switching a feature OFF hides it in every app immediately: say which one, and for whom
+      final hiddenNow = {for (final p in (f['platforms'] as List? ?? const [])) '$p'};
+      final everywhere = (platforms ?? _platforms).toSet().union(hiddenNow).containsAll(_platforms);
+      if (everywhere) {
+        final ok = await appConfirm(context,
+            danger: true,
+            confirmLabel: t('إخفاء', 'Hide'),
+            message: t('إخفاء «${_title(f)}» عن كل المستخدمين؟ سيختفي من كل التطبيقات فوراً، ولا يستطيع مديرو المؤسسات إعادته.',
+                'Hide "${_title(f)}" for everyone? It disappears from every app immediately and organization admins cannot bring it back.'));
+        if (!ok || !mounted) return;
+      }
+    }
     setState(() => _busy.add(key));
     final r = await orgCall(() => ApiClient().put('$_features/${Uri.encodeComponent(key)}',
         body: {'hidden': !visible, 'platforms': platforms}));
@@ -121,13 +140,21 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
   }
 
   Future<void> _setAccess(Map<String, dynamic> f, bool allow) async {
+    final id = 'access:${f['key']}';
+    if (!_busy.add(id)) return;
     final r = await orgCall(() => ApiClient().put('$_features/${Uri.encodeComponent('${f['key']}')}/access', body: {'allow_to_admin': allow}));
+    _busy.remove(id);
     if (r.ok && mounted) setState(() => f['allow_to_admin'] = allow);
   }
 
   Future<void> _setOrg(Map<String, dynamic> f, bool on) async {
-    _take(await orgCall(() => ApiClient().put('$_catalog/${Uri.encodeComponent('${f['key']}')}/org-manageable', body: {'org_manageable': on}),
-        ok: on ? t('يمكن لمديري المؤسسات التحكم بها الآن', 'Organization admins can control it now') : t('أصبحت بيد المنصة فقط', 'Now controlled by the platform only')));
+    final id = 'org:${f['key']}';
+    if (!_busy.add(id)) return;
+    final r = await orgCall(() => ApiClient().put('$_catalog/${Uri.encodeComponent('${f['key']}')}/org-manageable', body: {'org_manageable': on}),
+        ok: on ? t('يمكن لمديري المؤسسات التحكم بها الآن', 'Organization admins can control it now') : t('أصبحت بيد المنصة فقط', 'Now controlled by the platform only'));
+    _busy.remove(id);
+    _take(r);
+    if (r.ok) f['org_manageable'] = on;
   }
 
   Future<void> _delete(Map<String, dynamic> f) async {
@@ -144,24 +171,23 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1000,
-      appBar: ScreenAppBar(helpPageId: 'admin.features', title: t('الميزات', 'Features'), actions: [
-        IconButton(
-            tooltip: t('دليل ميزات التطبيق (للمساعد)', 'App features guide (assistant)'),
-            icon: const Icon(Icons.menu_book_rounded),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeatureGuidePage()))),
-      ]),
-      floatingActionButton: _super && _data != null
-          ? FloatingActionButton.extended(
-              onPressed: _openCreate,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(t('ميزة جديدة', 'New feature')),
-            )
+    return AdminPage(
+      helpPageId: 'admin.features',
+      title: t('الميزات', 'Features'),
+      subtitle: t('ما تخفيه هنا يختفي من التطبيق لكل المستخدمين فوراً.', 'What you hide here disappears from the app for everyone, right away.'),
+      icon: Icons.dashboard_customize_rounded,
+      onRefresh: _load,
+      primaryAction: _super && _data != null
+          ? AppButton.primary(label: t('ميزة جديدة', 'New feature'), icon: Icons.add_rounded, onPressed: _openCreate)
           : null,
-      child: _error != null
-          ? AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Try again'), onAction: _load)
+      actions: [
+        AppIconButton(
+            tooltip: t('دليل ميزات التطبيق (للمساعد)', 'App features guide (assistant)'),
+            icon: Icons.menu_book_rounded,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeatureGuidePage()))),
+      ],
+      body: _error != null
+          ? cfgErrorState(_error, onRetry: _load)
           : _data == null
               ? const AppListSkeleton(items: 8)
               : _list(context),
@@ -169,7 +195,6 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
   }
 
   Widget _list(BuildContext context) {
-    final c = context.colors;
     final shown = _filtered;
     // flatten: group header rows + feature rows (one lazy list, fine for hundreds of features)
     final order = [for (final tb in _tabs) '${tb['id']}'];
@@ -186,33 +211,26 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
       rows.addAll(list);
     }
     final counts = asMap(_data!['counts']);
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
     return AppRefresh(
       onRefresh: _load,
       child: CustomScrollView(slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, 0),
           sliver: SliverList.list(children: [
-            AppHero(
-              title: t('ميزات التطبيق', 'App features'),
-              subtitle: t('ما تخفيه هنا يختفي من التطبيق لكل المستخدمين فوراً.', 'What you hide here disappears from the app for everyone, right away.'),
-              icon: Icons.dashboard_customize_rounded,
-              stats: [
-                AppHeroStat(icon: Icons.widgets_rounded, value: '${counts['total'] ?? _items.length}', label: t('ميزة', 'Features')),
-                AppHeroStat(icon: Icons.visibility_off_rounded, value: '${counts['hidden'] ?? 0}', label: t('مخفية', 'Hidden')),
-                AppHeroStat(icon: Icons.account_balance_rounded, value: '${counts['org_manageable'] ?? 0}', label: t('بيد المؤسسات', 'Org-managed')),
-              ],
-            ),
-            const SizedBox(height: 14),
-            TextField(
+            AppKpiGrid(maxColumns: 3, children: [
+              AppKpiCard(icon: Icons.widgets_rounded, value: '${counts['total'] ?? _items.length}', label: t('ميزة', 'Features')),
+              AppKpiCard(icon: Icons.visibility_off_rounded, value: '${counts['hidden'] ?? 0}', label: t('مخفية', 'Hidden')),
+              AppKpiCard(icon: Icons.account_balance_rounded, value: '${counts['org_manageable'] ?? 0}', label: t('بيد المؤسسات', 'Org-managed')),
+            ]),
+            AppSpace.gapMd,
+            AppSearchField(
+              hint: t('ابحث بالاسم أو المفتاح أو الوصف', 'Search by name, key or description'),
               onChanged: (v) => setState(() => _q = v),
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search_rounded),
-                hintText: t('ابحث بالاسم أو المفتاح أو الوصف', 'Search by name, key or description'),
-              ),
             ),
-            const SizedBox(height: 10),
-            Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            AppSpace.gapSm,
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
               AppChoiceChip(label: t('الكل', 'All'), selected: _state == _State.all, onTap: () => setState(() => _state = _State.all)),
               AppChoiceChip(label: t('ظاهرة', 'Shown'), icon: Icons.visibility_rounded, selected: _state == _State.on, onTap: () => setState(() => _state = _State.on)),
               AppChoiceChip(label: t('مخفية', 'Hidden'), icon: Icons.visibility_off_rounded, selected: _state == _State.off, onTap: () => setState(() => _state = _State.off)),
@@ -222,7 +240,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
                   selected: _orgOnly,
                   onTap: () => setState(() => _orgOnly = !_orgOnly)),
             ]),
-            const SizedBox(height: 10),
+            AppSpace.gapSm,
             AppPicker<String>(
               label: t('المجموعة', 'Group'),
               icon: Icons.folder_open_rounded,
@@ -232,7 +250,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
               options: {for (final tb in _tabs) '${tb['id']}': '${names['${tb['id']}']} (${tb['count']})'},
               onChanged: (v) => setState(() => _group = v),
             ),
-            const SizedBox(height: 6),
+            AppSpace.gapXs,
           ]),
         ),
         if (rows.isEmpty)
@@ -249,19 +267,19 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
           )
         else
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+            padding: EdgeInsets.fromLTRB(gutter, AppSpace.xxs, gutter, AppSpace.xxl),
             sliver: SliverList.builder(
               itemCount: rows.length,
               itemBuilder: (_, i) {
                 final row = rows[i];
                 if (row is (String, String, int, int)) {
                   return Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
+                    padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs),
                     child: Row(children: [
-                      Expanded(child: Text(row.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.textDark))),
-                      const SizedBox(width: 8),
+                      Expanded(child: Text(row.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
+                      AppSpace.gapXs,
                       Text(row.$4 > 0 ? t('${row.$3} · ${row.$4} مخفية', '${row.$3} · ${row.$4} hidden') : '${row.$3}',
-                          style: appText(12, c: c.textLight)),
+                          style: AppType.meta(context)),
                     ]),
                   );
                 }
@@ -274,36 +292,37 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
   }
 
   Widget _row(BuildContext context, Map<String, dynamic> f) {
-    final c = context.colors;
     final key = '${f['key']}';
     final plats = [for (final p in (f['platforms'] as List? ?? const [])) '$p'];
     final partial = plats.isNotEmpty && f['hidden_everywhere'] != true;
     final desc = _desc(f);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: AppCard(
-        padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 8, 10),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xs, AppSpace.xs),
         onTap: () => _openDetail(f),
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(_title(f), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-              Text(key, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
-                  style: appText(11, c: c.textLight).copyWith(fontFamily: 'monospace')),
-              if (desc != null) Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+              Text(_title(f), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context)),
+              Text(key, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context)),
+              if (desc != null) Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
               if (partial || f['org_manageable'] == true || f['is_custom'] == true) ...[
-                const SizedBox(height: 6),
-                Wrap(spacing: 6, runSpacing: 4, children: [
+                const SizedBox(height: AppSpace.xs),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                   if (partial)
-                    AppBadgePill(t('مخفية على: ', 'Hidden on: ') + plats.map((p) => _platformNames[p] ?? p).join('، '),
-                        color: c.warning, icon: Icons.devices_rounded),
-                  if (f['org_manageable'] == true) AppBadgePill(t('بيد المؤسسات', 'Org-managed'), color: c.primary, icon: Icons.account_balance_rounded),
-                  if (f['is_custom'] == true) AppBadgePill(t('مضافة', 'Custom'), color: c.purple),
+                    AppStatusBadge(
+                        label: t('مخفية على: ', 'Hidden on: ') + plats.map((p) => _platformNames[p] ?? p).join('، '),
+                        tone: AppTone.warning,
+                        icon: Icons.devices_rounded),
+                  if (f['org_manageable'] == true)
+                    AppStatusBadge(label: t('بيد المؤسسات', 'Org-managed'), tone: AppTone.brand, icon: Icons.account_balance_rounded),
+                  if (f['is_custom'] == true) AppStatusBadge(label: t('مضافة', 'Custom')),
                 ]),
               ],
             ]),
           ),
-          const SizedBox(width: 8),
+          AppSpace.gapXs,
           AppSwitch(
             value: f['hidden'] != true,
             semanticLabel: _title(f),
@@ -318,7 +337,8 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     final descAr = TextEditingController(text: '${f['description_ar'] ?? ''}');
     final descEn = TextEditingController(text: '${f['description_en'] ?? ''}');
     await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
-          final c = ctx.colors;
+          final busyAccess = _busy.contains('access:${f['key']}');
+          final busyOrg = _busy.contains('org:${f['key']}');
           final plats = {for (final p in (f['platforms'] as List? ?? const [])) '$p'};
           Future<void> run(Future<void> Function() fn) async {
             await fn();
@@ -329,26 +349,26 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               AppSheetHeader(_title(f)),
-              SelectableText('${f['key']}', textDirection: TextDirection.ltr, style: appText(12, c: c.textLight).copyWith(fontFamily: 'monospace')),
-              const SizedBox(height: 12),
-              Text(t('الظهور حسب المنصة', 'Visibility per platform'), style: appText(12.5, w: FontWeight.w800, c: c.textMedium)),
+              SelectableText('${f['key']}', textDirection: TextDirection.ltr, style: AppType.meta(ctx)),
+              AppSpace.gapSm,
+              Text(t('الظهور حسب المنصة', 'Visibility per platform'), style: AppType.label(ctx)),
               for (final p in _platforms)
                 AppSwitchTile(
                   dense: true,
                   icon: p == 'web' ? Icons.language_rounded : (p == 'ios' ? Icons.phone_iphone_rounded : Icons.android_rounded),
                   title: _platformNames[p] ?? p,
                   value: !plats.contains(p),
-                  onChanged: (v) => run(() => _setVisible(f, v, platforms: [p])),
+                  onChanged: _busy.contains('${f['key']}') ? null : (v) => run(() => _setVisible(f, v, platforms: [p])),
                 ),
               if (_super) ...[
-                const Divider(height: 24),
-                Text(t('من يمكنه التحكم', 'Who may control it'), style: appText(12.5, w: FontWeight.w800, c: c.textMedium)),
+                const Divider(height: AppSpace.lg),
+                Text(t('من يمكنه التحكم', 'Who may control it'), style: AppType.label(ctx)),
                 AppSwitchTile(
                   icon: Icons.admin_panel_settings_rounded,
                   title: t('مديرو المنصة', 'Platform admins'),
                   subtitle: t('يظهر لهم المفتاح ويمكنهم إخفاؤها.', 'They see this switch and may hide it.'),
                   value: f['allow_to_admin'] == true,
-                  onChanged: (v) => run(() => _setAccess(f, v)),
+                  onChanged: busyAccess ? null : (v) => run(() => _setAccess(f, v)),
                 ),
                 AppSwitchTile(
                   icon: Icons.account_balance_rounded,
@@ -356,21 +376,18 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
                   subtitle: t('يمكنهم إيقافها داخل مؤسستهم فقط. إيقافك هنا يغلب دائماً.',
                       'They may switch it off inside their organization only. Your OFF here always wins.'),
                   value: f['org_manageable'] == true,
-                  onChanged: (v) => run(() async {
-                    await _setOrg(f, v);
-                    f['org_manageable'] = v;
-                  }),
+                  onChanged: busyOrg ? null : (v) => run(() => _setOrg(f, v)),
                 ),
-                const Divider(height: 24),
-                Text(t('الوصف', 'Description'), style: appText(12.5, w: FontWeight.w800, c: c.textMedium)),
-                const SizedBox(height: 6),
+                const Divider(height: AppSpace.lg),
+                Text(t('الوصف', 'Description'), style: AppType.label(ctx)),
+                const SizedBox(height: AppSpace.xs),
                 AppField(controller: descAr, label: t('بالعربية', 'Arabic'), maxLines: 2),
                 AppField(controller: descEn, label: t('بالإنجليزية', 'English'), maxLines: 2, ltr: true),
                 Align(
                   alignment: AlignmentDirectional.centerEnd,
-                  child: TextButton.icon(
-                    icon: const Icon(Icons.save_rounded, size: 18),
-                    label: Text(t('حفظ الوصف', 'Save description')),
+                  child: AppButton.secondary(
+                    icon: Icons.save_rounded,
+                    label: t('حفظ الوصف', 'Save description'),
                     onPressed: () => run(() async {
                       final r = await orgCall(
                           () => ApiClient().put('$_catalog/${Uri.encodeComponent('${f['key']}')}/description',
@@ -385,11 +402,11 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
                   ),
                 ),
                 if (f['deletable'] == true) ...[
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(foregroundColor: c.danger, side: BorderSide(color: c.danger.withValues(alpha: 0.4))),
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    label: Text(t('حذف الميزة', 'Delete feature')),
+                  AppSpace.gapSm,
+                  AppButton.danger(
+                    dangerOutline: true,
+                    icon: Icons.delete_outline_rounded,
+                    label: t('حذف الميزة', 'Delete feature'),
                     onPressed: () async {
                       Navigator.pop(ctx);
                       await _delete(f);
@@ -397,16 +414,15 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
                   ),
                 ] else
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: AppSpace.xs),
                     child: Text(t('ميزة أساسية في التطبيق — يمكن إخفاؤها ولا يمكن حذفها.', 'A built-in feature — it can be hidden but not deleted.'),
-                        style: appText(11.5, c: c.textLight)),
+                        style: AppType.meta(ctx)),
                   ),
               ],
             ]),
           );
         }));
-    descAr.dispose();
-    descEn.dispose();
+    disposeAfterRoute([descAr, descEn]);
     if (mounted) setState(() {});
   }
 
@@ -418,7 +434,6 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     bool newGroup = false, admins = false, orgs = false, hidden = false, busy = false;
     final names = {for (final tb in _tabs) '${tb['id']}': t('${tb['title_ar']}', '${tb['title_en']}')};
     await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
-          final c = ctx.colors;
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -432,7 +447,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
               AppField(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
               AppField(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
               Row(children: [
-                Expanded(child: Text(t('المجموعة', 'Group'), style: appText(12.5, w: FontWeight.w800, c: c.textMedium))),
+                Expanded(child: Text(t('المجموعة', 'Group'), style: AppType.label(ctx))),
                 AppChoiceChip(label: t('مجموعة جديدة', 'New group'), icon: Icons.add_rounded, selected: newGroup, onTap: () => set(() => newGroup = !newGroup)),
               ]),
               const SizedBox(height: 8),
@@ -452,8 +467,8 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
                   value: orgs,
                   onChanged: (v) => set(() => orgs = v)),
               AppSwitchTile(title: t('ابدأ وهي مخفية', 'Start hidden'), value: hidden, onChanged: (v) => set(() => hidden = v)),
-              const SizedBox(height: 12),
-              AppPrimaryButton(
+              AppSpace.gapSm,
+              AppButton.primary(
                 label: t('إضافة', 'Add'),
                 icon: Icons.add_rounded,
                 busy: busy,
@@ -491,8 +506,6 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
             ]),
           );
         }));
-    for (final x in [key, ar, en, dAr, dEn, gAr, gEn]) {
-      x.dispose();
-    }
+    disposeAfterRoute([key, ar, en, dAr, dEn, gAr, gEn]);
   }
 }

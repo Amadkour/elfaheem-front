@@ -6,6 +6,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMapList, t;
+import 'exam_grading.dart' show ResultAnswer;
+import 'exam_grading_widgets.dart' show ResultAnswerCard;
 import 'exam_insights.dart';
 import 'exam_insights_screen.dart' show StudentAppealSheet;
 
@@ -39,6 +41,7 @@ class ExamResultBody extends StatelessWidget {
     final percentage = (result['percentage'] as num?)?.toDouble();
     final passed = result['passed'];
     final questions = asMapList(result['questions']);
+    final answers = [for (final a in asMapList(result['answers'])) ResultAnswer.fromJson(a)];
     return ListView(padding: const EdgeInsets.all(16), children: [
       AppHero(
         title: examTitle,
@@ -73,7 +76,11 @@ class ExamResultBody extends StatelessWidget {
             ],
           ]),
         ),
-        if (questions.isNotEmpty) ...[
+        if (answers.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          AppSectionTitle(t('إجاباتك', 'Your answers')),
+          for (final a in answers) ResultAnswerCard(answer: a, footer: a.score == null || a.isVoided ? null : _appealLine(context, a.questionId, true)),
+        ] else if (questions.isNotEmpty) ...[
           const SizedBox(height: 12),
           AppSectionTitle(t('حسب السؤال', 'Per question')),
           for (final q in questions)

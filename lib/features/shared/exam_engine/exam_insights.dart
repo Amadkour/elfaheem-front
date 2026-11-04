@@ -61,9 +61,27 @@ String appealCodeText(String? code, String fallback) => switch (code) {
       _ => fallback,
     };
 
+/// One option of a choice question in the item analysis: how many chose it, the share, and the top vs bottom group.
+class OptionStat {
+  OptionStat({required this.key, this.label = '', this.count = 0, this.share = 0, this.isCorrect = false, this.upperShare, this.lowerShare});
+  final String key;
+  final String label;
+  final int count;
+  final double share;
+  final bool isCorrect;
+  final double? upperShare;
+  final double? lowerShare;
+
+  factory OptionStat.fromJson(Map<String, dynamic> j) => OptionStat(
+        key: '${j['key'] ?? ''}', label: '${j['label'] ?? ''}', count: asInt(j['count']), share: _d(j['share']) ?? 0,
+        isCorrect: j['is_correct'] == true, upperShare: _d(j['upper_share']), lowerShare: _d(j['lower_share']),
+      );
+}
+
 class ItemStat {
   ItemStat({required this.questionId, required this.type, required this.points, required this.answered, this.difficulty,
-      this.discrimination, this.upperLower, this.options = const {}, this.flags = const []});
+      this.discrimination, this.upperLower, this.options = const {}, this.flags = const [], this.optionStats = const [],
+      this.unusedDistractors = const [], this.voided = false});
   final int questionId;
   final String type;
   final double points;
@@ -71,15 +89,32 @@ class ItemStat {
   final double? difficulty;
   final double? discrimination;
   final double? upperLower;
+
+  /// option key → count (the older payload's shape; derived from [optionStats] when the server sends the list).
   final Map<String, int> options;
   final List<String> flags;
 
-  factory ItemStat.fromJson(Map<String, dynamic> j) => ItemStat(
-        questionId: asInt(j['question_id']), type: '${j['type'] ?? ''}', points: _d(j['points']) ?? 0, answered: asInt(j['answered']),
-        difficulty: _d(j['difficulty']), discrimination: _d(j['discrimination']), upperLower: _d(j['upper_lower']),
-        options: {for (final e in asMap(j['options']).entries) e.key: asInt(e.value)},
-        flags: [for (final f in (j['flags'] as List? ?? const [])) '$f'],
-      );
+  /// The newer per-option rows (share, upper / lower group, the key) and the distractors nobody chose.
+  final List<OptionStat> optionStats;
+  final List<String> unusedDistractors;
+
+  /// The question was cancelled (D-245).
+  final bool voided;
+
+  factory ItemStat.fromJson(Map<String, dynamic> j) {
+    final raw = j['options'];
+    final rawStats = j['option_stats'] is List ? j['option_stats'] : (raw is List ? raw : const []);
+    final stats = [for (final o in rawStats as List) if (o is Map) OptionStat.fromJson(asMap(o))];
+    return ItemStat(
+      questionId: asInt(j['question_id']), type: '${j['type'] ?? ''}', points: _d(j['points']) ?? 0, answered: asInt(j['answered']),
+      difficulty: _d(j['difficulty']), discrimination: _d(j['discrimination']), upperLower: _d(j['upper_lower']),
+      options: raw is Map ? {for (final e in asMap(raw).entries) e.key: asInt(e.value)} : {for (final o in stats) o.key: o.count},
+      flags: [for (final f in (j['flags'] as List? ?? const [])) '$f'],
+      optionStats: stats,
+      unusedDistractors: [for (final k in (j['unused_distractors'] as List? ?? const [])) '$k'],
+      voided: j['voided'] == true || j['voided'] is Map,
+    );
+  }
 }
 
 String itemFlagText(String f) => switch (f) {
@@ -87,7 +122,18 @@ String itemFlagText(String f) => switch (f) {
       'too_easy' => t('سهل جداً', 'Too easy'),
       'weak_discrimination' => t('تمييز ضعيف', 'Weak discrimination'),
       'negative' => t('تمييز سلبي — راجع المفتاح', 'Negative discrimination — check the key'),
+      'unused_distractor' => t('خيار لم يختره أحد', 'A choice nobody picked'),
+      'key_suspect' => t('المفتاح مشكوك فيه', 'The key looks wrong'),
       _ => f,
+    };
+
+/// A flag in plain words for the teacher: what it means and what to do about it (null = the short label is enough).
+String? itemFlagExplain(String f) => switch (f) {
+      'unused_distractor' => t('هذا الخيار الخاطئ لم يختره أي طالب، فهو لا يختبر شيئاً. استبدله بخيار أكثر إقناعاً.',
+          'No student chose this wrong option, so it tests nothing. Replace it with a more convincing one.'),
+      'key_suspect' => t('خيار خاطئ اختاره من حصلوا على أعلى الدرجات أكثر ممن اختاروا الإجابة الصحيحة. قد يكون مفتاح الإجابة خاطئاً أو السؤال ملتبساً.',
+          'A wrong option was chosen by more of the top scorers than the marked answer. The key may be wrong or the question unclear.'),
+      _ => null,
     };
 
 class ExamAnalytics {

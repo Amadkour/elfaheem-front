@@ -30,9 +30,9 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppPageHeader;
+import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/refresh_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
@@ -46,6 +46,10 @@ import '../shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistan
 import '../shared/profile/compalints/complaint_provider.dart';
 import 'admin_common.dart';
 import 'admin_courses_page.dart';
+import 'admin_finance_page.dart' show AdminFinancePage;
+import 'admin_global_search.dart';
+import 'admin_organizations_page.dart' show AdminOrganizationsPage;
+import 'admin_page.dart' show AdminRefreshScope, AdminRefreshSlot;
 import 'admin_overview_page.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_profile_page.dart';
@@ -86,8 +90,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   late final List<DashboardItem> _wideItems;
 
   // One counter per data tab (0-3). Refreshing bumps it, which re-creates that
-  // tab's page (so it reloads its data) without touching the admin pages.
+  // tab's page (so it reloads its data) without touching the admin pages, UNLESS the page registered its own reload
+  // in the tab's AdminRefreshScope slot (then Refresh calls that: filters, search text and scroll stay).
   final _epochs = List.generate(4, (_) => ValueNotifier<int>(0));
+  final _slots = List.generate(4, (_) => AdminRefreshSlot());
 
   // Labels double as translation keys (the shells translate them).
   static const _moreLabel = 'admin_more';
@@ -97,7 +103,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // Returns immediately: RefreshButton hides itself while the returned Future
   // is pending, so we must not await any network call here.
   Future<void> _refreshTab(int i) async {
-    _epochs[i].value++;
+    final reload = _slots[i].reload;
+    if (reload != null) {
+      reload(); // fire-and-forget (see above)
+    } else {
+      _epochs[i].value++;
+    }
     _refreshBadges();
   }
 
@@ -131,24 +142,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     // ── tabs 0-3: same in every layout ─────────────────────────────────
     final overview = _AdminTab(
+      slot: _slots[0],
       titleKey: 'admin_dashboard',
       epoch: _epochs[0],
       onRefresh: () => _refreshTab(0),
       child: AdminOverviewPage(onOpenTab: _tabs.onChangeTab),
     );
     final students = _AdminTab(
+      slot: _slots[1],
       titleKey: 'admin_students',
       epoch: _epochs[1],
       onRefresh: () => _refreshTab(1),
       child: AdminUsersPage(role: 'student', embedded: true),
     );
     final courses = _AdminTab(
+      slot: _slots[2],
       titleKey: 'courses',
       epoch: _epochs[2],
       onRefresh: () => _refreshTab(2),
       child: AdminCoursesPage(embedded: true),
     );
     final teachers = _AdminTab(
+      slot: _slots[3],
       titleKey: 'teachers',
       epoch: _epochs[3],
       onRefresh: () => _refreshTab(3),
@@ -219,7 +234,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           o,
           a,
           label,
-          null,
+          _refreshBadges,
           _AdminTab(
             titleKey: label,
             onRefresh: _refreshBadges,
@@ -277,6 +292,39 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         context.read<TeacherTransfersProvider>().ensureLoaded();
       }
     });
+  }
+
+  /// The "Pages" of the global search: the shell's tabs and every service the admin may open (no call).
+  List<AdminSearchPage> _searchPages(BuildContext context, List<DashboardItem> items) {
+    final groups = adminServiceGroups(context, watch: false);
+    return [
+      for (var i = 0; i < 4 && i < items.length; i++)
+        AdminSearchPage(
+          label: items[i].label.tr,
+          icon: items[i].selectedIcon,
+          onOpen: () => _tabs.onChangeTab(i),
+        ),
+      for (final g in groups)
+        for (final s in g.visibleServices)
+          if (s.featureKey == null || !AppConfig.disableList.contains(s.featureKey))
+            AdminSearchPage(label: s.labelText, desc: s.descText, group: g.titleKey.tr, icon: s.icon, onOpen: s.onTap),
+    ];
+  }
+
+  /// A server hit: a person -> their detail, a course -> the Courses tab, an organization -> its page, a payment ->
+  /// the payments page.
+  void _openHit(BuildContext context, AdminSearchHit h) {
+    Future<void> push(Widget w) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
+    switch (h.kind) {
+      case 'students' || 'teachers' || 'admins':
+        showAdminUserDetail(context, userId: h.id, role: switch (h.kind) { 'teachers' => 'teacher', 'admins' => 'admin', _ => 'student' });
+      case 'courses':
+        _tabs.onChangeTab(2);
+      case 'organizations':
+        push(const AdminOrganizationsPage());
+      case 'payments':
+        push(const AdminFinancePage());
+    }
   }
 
   @override
@@ -341,7 +389,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   if (mounted) tabs.onChangeTab(i);
                 }
 
-                return AppShell(width: w, currentIndex: current, onTap: onTap, items: items);
+                final pages = _searchPages(context, items);
+                return AppCommandPaletteScope(
+                  onOpen: () => showAdminGlobalSearch(context, pages: pages, onOpenHit: (h) => _openHit(context, h)),
+                  child: AppShell(width: w, currentIndex: current, onTap: onTap, items: items),
+                );
               },
             ),
           ),
@@ -351,24 +403,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 }
 
-/// Gives each tab its own page frame (app bar + web card), like the teacher's
-/// tabs which each build their own BasePage.
+/// Gives each tab its page frame.
 ///
-/// • [epoch] changes → the page is re-created, so it reloads its data.
-/// • On wide / rail layouts the refresh button lives in the shell's top bar.
-///   On the phone layout there is no top bar, so the button is drawn over the
-///   app bar here.
+/// - The title appears ONCE. Wide / rail layouts draw it (and Refresh) in the shell's top bar, so the tab adds no
+///   header there. The phone layout has no top bar, so the tab starts with an AppPageHeader (title + Refresh).
+/// - [slot] is the page's registered reload (AdminRefreshScope); without one, [epoch] changing re-creates the page
+///   so it reloads its data.
 class _AdminTab extends StatelessWidget {
   const _AdminTab({
     required this.titleKey,
     required this.child,
     this.epoch,
+    this.slot,
     this.onRefresh,
   });
 
   final String titleKey;
   final Widget child;
   final ValueNotifier<int>? epoch;
+  final AdminRefreshSlot? slot;
   final Future<void> Function()? onRefresh;
 
   @override
@@ -377,28 +430,27 @@ class _AdminTab extends StatelessWidget {
     // Mirrors the shell choice in _AdminDashboardScreenState.build.
     final isMobileShell = w < Breakpoints.mobile;
 
-    final page = BasePage(
-      appBar: ScreenAppBar(title: titleKey.tr, showBack: false),
-      child: epoch == null
-          ? child
-          : ValueListenableBuilder<int>(
-              valueListenable: epoch!,
-              builder: (_, e, _) =>
-                  KeyedSubtree(key: ValueKey(e), child: child),
-            ),
-    );
+    Widget content = epoch == null
+        ? child
+        : ValueListenableBuilder<int>(
+            valueListenable: epoch!,
+            builder: (_, e, _) => KeyedSubtree(key: ValueKey(e), child: child),
+          );
+    if (slot != null) content = AdminRefreshScope(slot: slot!, child: content);
 
-    if (!isMobileShell || onRefresh == null) return page;
-
-    return Stack(
-      children: [
-        page,
-        PositionedDirectional(
-          top: MediaQuery.paddingOf(context).top + 4,
-          end: 8,
-          child: RefreshButton(onTap: onRefresh!),
-        ),
-      ],
+    return BasePage(
+      child: isMobileShell
+          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              SafeArea(
+                bottom: false,
+                child: AppPageHeader(
+                  title: titleKey.tr,
+                  onRefresh: onRefresh == null ? null : () => onRefresh!(),
+                ),
+              ),
+              Expanded(child: content),
+            ])
+          : content,
     );
   }
 }
@@ -525,3 +577,4 @@ class _MorePageState extends State<_MorePage> {
     );
   }
 }
+

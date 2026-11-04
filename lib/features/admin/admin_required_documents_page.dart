@@ -2,22 +2,17 @@
 // Admin: documents teachers must upload at registration (additional_register_screen).
 //
 // The admin can add any document a teacher must submit (title in Arabic +
-// English, description, icon, required / optional, active), reorder them by
-// dragging, flip "required" / "active" with one tap, edit and delete.
+// English, description, icon, required / optional, active), reorder them
+// (move up / down), flip "required" / "active" with one tap, edit and delete.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart'
-    show Breakpoints;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import 'admin_common.dart';
-import 'admin_premium_widgets.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'admin_page.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 /// icon_name (stored in the DB) → icon. Use the same map in
 /// additional_register_screen so the teacher sees the icon the admin picked.
@@ -61,17 +56,17 @@ class AdminRequiredDocumentsPage extends StatefulWidget {
   const AdminRequiredDocumentsPage({super.key});
 
   @override
-  State<AdminRequiredDocumentsPage> createState() =>
-      _AdminRequiredDocumentsPageState();
+  State<AdminRequiredDocumentsPage> createState() => _AdminRequiredDocumentsPageState();
 }
 
-class _AdminRequiredDocumentsPageState
-    extends State<AdminRequiredDocumentsPage> {
+class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage> {
   static const _base = '/api/v1/admin/required-documents';
   final _api = ApiClient();
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
-  String? _error;
+  Object? _error;
+  DateTime? _loadedAt;
+  final Set<Object> _busyIds = {};
 
   @override
   void initState() {
@@ -85,64 +80,67 @@ class _AdminRequiredDocumentsPageState
       final r = await _api.get(_base);
       _items = asMapList(r);
       _error = null;
+      _loadedAt = DateTime.now();
     } catch (e) {
-      _error = '$e';
+      // a failed refresh keeps the rows on screen
+      if (_items.isEmpty || !silent) {
+        if (_items.isEmpty) _error = e;
+      }
+      if (_items.isNotEmpty) showAppNotice(appErrorMessage(e), error: true);
     }
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _reorder(int from, int to) async {
-    if (to > from) to--;
+  Future<void> _move(int from, int to) async {
+    if (to < 0 || to >= _items.length) return;
     final it = _items.removeAt(from);
     _items.insert(to, it);
     setState(() {});
     try {
-      await _api.post(
-        '$_base/reorder',
-        body: {'ids': _items.map((e) => e['id']).toList()},
-      );
+      await _api.post('$_base/reorder', body: {'ids': _items.map((e) => e['id']).toList()});
     } catch (e) {
-      toast('$e', error: true);
+      showAppNotice(appErrorMessage(e), error: true);
       _load(silent: true);
     }
   }
 
   Future<void> _toggle(Map<String, dynamic> d, String key) async {
+    final id = d['id'] as Object;
+    if (_busyIds.contains(id)) return;
     final v = !asBool(d[key]);
+    setState(() => _busyIds.add(id));
     try {
       await _api.put('$_base/${d['id']}', body: {key: v});
-      if (mounted) setState(() => d[key] = v);
+      if (mounted) {
+        // replace the row with a copy: the response map is never mutated in place
+        final i = _items.indexWhere((e) => e['id'] == id);
+        if (i >= 0) _items[i] = {..._items[i], key: v};
+      }
     } catch (e) {
-      toast('$e', error: true);
+      showAppNotice(appErrorMessage(e), error: true);
     }
+    if (mounted) setState(() => _busyIds.remove(id));
   }
 
   Future<void> _delete(Map<String, dynamic> d) async {
-    final ok = await confirm(
+    final ok = await appConfirm(
       context,
-      message: 'doc_delete_confirm'.tr,
+      message: '${_title(d)}\n${'doc_delete_confirm'.tr}',
       confirmLabel: 'delete'.tr,
       danger: true,
     );
     if (!ok) return;
     try {
       final r = await _api.delete('$_base/${d['id']}');
-      toast(
-        r is Map && r['disabled'] == true
-            ? 'doc_disabled_instead'.tr
-            : 'doc_deleted'.tr,
-      );
+      showAppNotice(r is Map && r['disabled'] == true ? 'doc_disabled_instead'.tr : 'doc_deleted'.tr);
       await _load(silent: true);
     } catch (e) {
-      toast('$e', error: true);
+      showAppNotice(appErrorMessage(e), error: true);
     }
   }
 
   Future<void> _edit([Map<String, dynamic>? d]) async {
-    final body = await showAdminSheet<Map<String, dynamic>>(
-      context,
-      (ctx) => _DocForm(doc: d),
-    );
+    final body = await showAppSheet<Map<String, dynamic>>(context, (ctx) => _DocForm(doc: d));
     if (body == null) return;
     try {
       if (d == null) {
@@ -150,10 +148,10 @@ class _AdminRequiredDocumentsPageState
       } else {
         await _api.put('$_base/${d['id']}', body: body);
       }
-      toast('doc_saved'.tr);
+      showAppNotice('doc_saved'.tr);
       await _load(silent: true);
     } catch (e) {
-      toast('$e', error: true);
+      showAppNotice(appErrorMessage(e), error: true);
     }
   }
 
@@ -172,310 +170,117 @@ class _AdminRequiredDocumentsPageState
     return _ar ? en : ar;
   }
 
-  // ── pieces ───────────────────────────────────────────────────────────────
-  Widget _header() {
-    final requiredActive = _items
-        .where((e) => asBool(e['is_required']) && asBool(e['is_active']))
-        .length;
+  /// A switch with a 48 px hit area (the track alone is 28 px high).
+  Widget _toggleCell(Map<String, dynamic> d, String key, String label) => Semantics(
+        label: label,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          child: Center(
+            child: AppSwitch(
+              value: asBool(d[key]),
+              semanticLabel: label,
+              onChanged: _busyIds.contains(d['id']) ? null : (_) => _toggle(d, key),
+            ),
+          ),
+        ),
+      );
+
+  Widget _summary() {
+    final requiredActive = _items.where((e) => asBool(e['is_required']) && asBool(e['is_active'])).length;
     final active = _items.where((e) => asBool(e['is_active'])).length;
-    return PremiumHero(
-      icon: Icons.folder_shared_rounded,
-      colors: AdminPalette.teal,
-      title: 'required_documents_title'.tr,
-      subtitle: 'doc_intro'.tr,
-      footer: Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        children: [
-          HeroPill(
-            trp('doc_count', {'n': _items.length}),
-            icon: Icons.folder_copy_rounded,
-          ),
-          HeroPill(
-            trp('doc_active_count', {'n': active}),
-            icon: Icons.check_circle_rounded,
-          ),
-          HeroPill(
-            trp('doc_required_count', {'n': requiredActive}),
-            icon: Icons.priority_high_rounded,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _empty() {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: c.divider),
-      ),
-      child: Column(
-        children: [
-          ServiceIcon(
-            icon: Icons.note_add_rounded,
-            colors: AdminPalette.teal,
-            size: 62,
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'doc_empty'.tr,
-            textAlign: TextAlign.center,
-            style: adminText(
-              context,
-              size: 14,
-              weight: FontWeight.w600,
-              color: c.textMedium,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: () => _edit(),
-            icon: const Icon(Icons.add_rounded),
-            label: Text(
-              'doc_add'.tr,
-              style: TextStyle(fontFamily: AppFonts.family),
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: c.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _pill({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required bool on,
-    required VoidCallback onTap,
-  }) {
-    final c = context.colors;
-    final fg = on ? color : c.textLight;
-    return Material(
-      color: on ? color.withValues(alpha: 0.13) : c.inputBg,
-      shape: StadiumBorder(
-        side: BorderSide(color: on ? color.withValues(alpha: 0.5) : c.divider),
-      ),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: fg),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: fg,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _card(int i, Map<String, dynamic> d) {
-    final c = context.colors;
-    final isRequired = asBool(d['is_required']);
-    final isActive = asBool(d['is_active']);
-    final palette = AdminPalette.all[asInt(d['id']) % AdminPalette.all.length];
-    final other = _otherTitle(d);
-
-    return Container(
-      key: ValueKey(d['id']),
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: c.cardShadow,
-      ),
-      child: Material(
-        color: c.cardBg,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: c.divider),
-        ),
-        child: InkWell(
-          onTap: () => _edit(d),
-          child: Opacity(
-            opacity: isActive ? 1 : 0.62,
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      ServiceIcon(
-                        icon: docIcon(d['icon_name'] as String?),
-                        colors: palette,
-                        size: 48,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _title(d),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: adminText(
-                                context,
-                                size: 15,
-                                weight: FontWeight.w800,
-                              ),
-                            ),
-                            if (other.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                other,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: adminText(
-                                  context,
-                                  size: 12,
-                                  weight: FontWeight.w500,
-                                  color: c.textMedium,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'delete'.tr,
-                        icon: Icon(
-                          Icons.delete_outline_rounded,
-                          color: c.danger,
-                        ),
-                        onPressed: () => _delete(d),
-                      ),
-                      ReorderableDragStartListener(
-                        index: i,
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: Icon(
-                            Icons.drag_indicator_rounded,
-                            color: c.textLight,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      _pill(
-                        label: isRequired
-                            ? 'doc_required'.tr
-                            : 'doc_optional'.tr,
-                        icon: isRequired
-                            ? Icons.priority_high_rounded
-                            : Icons.remove_rounded,
-                        color: AdminPalette.rose.last,
-                        on: isRequired,
-                        onTap: () => _toggle(d, 'is_required'),
-                      ),
-                      _pill(
-                        label: isActive ? 'doc_active'.tr : 'doc_hidden'.tr,
-                        icon: isActive
-                            ? Icons.check_circle_rounded
-                            : Icons.visibility_off_rounded,
-                        color: AdminPalette.green.last,
-                        on: isActive,
-                        onTap: () => _toggle(d, 'is_active'),
-                      ),
-                      StatusChip(
-                        trp('doc_uploads_n', {'n': asInt(d['uploads'])}),
-                        AdminPalette.blue.last,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text('doc_intro'.tr, style: AppType.meta(context)),
+        AppStatusBadge(label: trp('doc_count', {'n': _items.length}), tone: AppTone.neutral),
+        AppStatusBadge(label: trp('doc_active_count', {'n': active}), tone: AppTone.success),
+        AppStatusBadge(label: trp('doc_required_count', {'n': requiredActive}), tone: AppTone.warning),
+      ]),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    AdminPalette.attach(context);
-    context
-        .watch<
-          LangProvider
-        >(); // whole page re-translates when the language changes
-
-    Widget body;
-    if (_loading) {
-      body = const AppListSkeleton();
-    } else if (_error != null) {
-      body = ErrorRetry(message: _error!, onRetry: _load);
-    } else if (_items.isEmpty) {
-      body = AppRefresh(onRefresh: () => _load(), child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-        children: [_header(), _empty()],
-      ));
-    } else {
-      body = AppRefresh(onRefresh: () => _load(), child: ReorderableListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-        header: _header(),
-        buildDefaultDragHandles: false,
-        // our own handle on each card
-        itemCount: _items.length,
-        onReorder: _reorder,
-        itemBuilder: (_, i) => _card(i, _items[i]),
-      ));
-    }
-
-    return BasePage(
-      useWebCard: true,
-      appBar: ScreenAppBar(helpPageId: 'admin.teacher_documents', title: 'required_documents_title'.tr),
-      floatingActionButton: (_loading || _error != null)
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => _edit(),
-              backgroundColor: context.colors.primary,
-              foregroundColor: context.colors.onHero,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(
-                'doc_add'.tr,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontWeight: FontWeight.w800,
+    context.watch<LangProvider>(); // whole page re-translates when the language changes
+    final c = context.colors;
+    return AdminPage(
+      helpPageId: 'admin.teacher_documents',
+      title: 'required_documents_title'.tr,
+      icon: Icons.folder_shared_rounded,
+      onRefresh: _loading ? null : () => _load(silent: true),
+      updatedAt: _loadedAt,
+      // ONE "add" button: the header's (the empty state only explains)
+      primaryAction: AppButton.primary(
+        label: 'doc_add'.tr,
+        icon: Icons.add_rounded,
+        onPressed: _loading || _error != null ? null : () => _edit(),
+      ),
+      body: Padding(
+        padding: AdminPage.bodyPadding(context),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (!_loading && _error == null && _items.isNotEmpty) _summary(),
+          Expanded(
+            child: AppDataTable<Map<String, dynamic>>(
+              state: _loading
+                  ? AppTableState.loading
+                  : _error != null
+                      ? AppTableState.error
+                      : AppTableState.ready,
+              errorText: appErrorMessage(_error),
+              onRetry: _load,
+              rows: _items,
+              empty: AppEmpty(icon: Icons.note_add_rounded, title: 'doc_empty'.tr),
+              onRowTap: _edit,
+              columns: [
+                AppTableColumn<Map<String, dynamic>>(
+                  key: 'title',
+                  label: t('المستند', 'Document'),
+                  primary: true,
+                  flex: 3,
+                  cell: (context, d) {
+                    final other = _otherTitle(d);
+                    return Row(children: [
+                      Icon(docIcon(d['icon_name'] as String?), color: c.primary, size: AppIconSize.lg),
+                      AppSpace.gapSm,
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                          Text(_title(d), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                          if (other.isNotEmpty) Text(other, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                        ]),
+                      ),
+                    ]);
+                  },
                 ),
-              ),
+                AppTableColumn<Map<String, dynamic>>(
+                  key: 'required',
+                  label: 'doc_required'.tr,
+                  cell: (context, d) => _toggleCell(d, 'is_required', 'doc_required'.tr),
+                ),
+                AppTableColumn<Map<String, dynamic>>(
+                  key: 'active',
+                  label: 'doc_active'.tr,
+                  cell: (context, d) => _toggleCell(d, 'is_active', 'doc_active'.tr),
+                ),
+                AppTableColumn<Map<String, dynamic>>.text(
+                  key: 'uploads',
+                  label: t('المرفوعات', 'Uploads'),
+                  numeric: true,
+                  text: (d) => '${asInt(d['uploads'])}',
+                ),
+              ],
+              rowActions: (d) {
+                final i = _items.indexOf(d);
+                return [
+                  AppRowAction(icon: Icons.edit_rounded, label: t('تعديل', 'Edit'), onTap: () => _edit(d)),
+                  AppRowAction(icon: Icons.delete_outline_rounded, label: 'delete'.tr, danger: true, onTap: () => _delete(d)),
+                  if (i > 0) AppRowAction(icon: Icons.arrow_upward_rounded, label: t('تحريك لأعلى', 'Move up'), onTap: () => _move(i, i - 1)),
+                  if (i >= 0 && i < _items.length - 1)
+                    AppRowAction(icon: Icons.arrow_downward_rounded, label: t('تحريك لأسفل', 'Move down'), onTap: () => _move(i, i + 1)),
+                ];
+              },
             ),
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
-          child: body,
-        ),
+          ),
+        ]),
       ),
     );
   }
@@ -494,7 +299,6 @@ class _DocForm extends StatefulWidget {
 }
 
 class _DocFormState extends State<_DocForm> {
-  final _form = GlobalKey<FormState>();
   late final TextEditingController _titleAr;
   late final TextEditingController _titleEn;
   late final TextEditingController _descAr;
@@ -502,6 +306,7 @@ class _DocFormState extends State<_DocForm> {
   late String _icon;
   late bool _required;
   late bool _active;
+  bool _tried = false;
 
   bool get _isNew => widget.doc == null;
 
@@ -528,15 +333,17 @@ class _DocFormState extends State<_DocForm> {
   }
 
   void _usePreset(_Preset p) => setState(() {
-    _titleAr.text = p.ar;
-    _titleEn.text = p.en;
-    _icon = p.icon;
-  });
+        _titleAr.text = p.ar;
+        _titleEn.text = p.en;
+        _icon = p.icon;
+      });
 
   void _submit() {
-    if (!(_form.currentState?.validate() ?? false)) return;
-    String? n(TextEditingController t) =>
-        t.text.trim().isEmpty ? null : t.text.trim();
+    if (_titleAr.text.trim().isEmpty) {
+      setState(() => _tried = true);
+      return;
+    }
+    String? n(TextEditingController t) => t.text.trim().isEmpty ? null : t.text.trim();
     Navigator.pop(context, <String, dynamic>{
       'title_ar': _titleAr.text.trim(),
       'title_en': n(_titleEn),
@@ -549,17 +356,9 @@ class _DocFormState extends State<_DocForm> {
   }
 
   Widget _label(String key) => Padding(
-    padding: const EdgeInsets.only(bottom: 8, top: 4),
-    child: Text(
-      key.tr,
-      style: adminText(
-        context,
-        size: 12.5,
-        weight: FontWeight.w700,
-        color: context.colors.textMedium,
-      ),
-    ),
-  );
+        padding: const EdgeInsets.only(bottom: AppSpace.xs, top: AppSpace.xxs),
+        child: Text(key.tr, style: AppType.label(context)),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -567,144 +366,72 @@ class _DocFormState extends State<_DocForm> {
     final c = context.colors;
     final ar = AppConfig.lang == 'ar';
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return AppSheetContent(
+      title: _isNew ? 'doc_new'.tr : 'doc_edit'.tr,
       children: [
-        SheetHeader(_isNew ? 'doc_new'.tr : 'doc_edit'.tr),
-        Flexible(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-            child: Form(
-              key: _form,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_isNew) ...[
-                    _label('doc_quick_add'),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final p in _presets)
-                          ActionChip(
-                            avatar: Icon(
-                              docIcon(p.icon),
-                              size: 16,
-                              color: c.primary,
-                            ),
-                            label: Text(
-                              ar ? p.ar : p.en,
-                              style: TextStyle(
-                                fontFamily: AppFonts.family,
-                                fontSize: 12.5,
-                              ),
-                            ),
-                            backgroundColor: c.inputBg,
-                            side: BorderSide(color: c.divider),
-                            onPressed: () => _usePreset(p),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  Field(
-                    controller: _titleAr,
-                    label: 'doc_title_ar'.tr,
-                    validator: (v) => (v ?? '').trim().isEmpty
-                        ? 'doc_title_required'.tr
-                        : null,
-                  ),
-                  Field(
-                    controller: _titleEn,
-                    label: 'doc_title_en'.tr,
-                    ltr: true,
-                  ),
-                  Field(
-                    controller: _descAr,
-                    label: 'doc_desc_ar'.tr,
-                    maxLines: 2,
-                  ),
-                  Field(
-                    controller: _descEn,
-                    label: 'doc_desc_en'.tr,
-                    maxLines: 2,
-                    ltr: true,
-                  ),
-                  _label('doc_icon'),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      for (final e in kDocIcons.entries)
-                        InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () => setState(() => _icon = e.key),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: _icon == e.key
-                                  ? c.primary.withValues(alpha: 0.12)
-                                  : c.inputBg,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: _icon == e.key ? c.primary : c.divider,
-                                width: _icon == e.key ? 2 : 1,
-                              ),
-                            ),
-                            child: Icon(
-                              e.value,
-                              color: _icon == e.key ? c.primary : c.textMedium,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  PremiumSwitchRow(
-                    icon: Icons.priority_high_rounded,
-                    title: 'doc_required'.tr,
-                    subtitle: 'doc_required_hint'.tr,
-                    value: _required,
-                    onChanged: (v) => setState(() => _required = v),
-                  ),
-                  PremiumSwitchRow(
-                    icon: Icons.check_circle_rounded,
-                    title: 'doc_active'.tr,
-                    subtitle: 'doc_active_hint'.tr,
-                    value: _active,
-                    onChanged: (v) => setState(() => _active = v),
-                  ),
-                  const SizedBox(height: 6),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton(
-                      onPressed: _submit,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: c.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Text(
-                        'save'.tr,
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          color: c.onHero,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        if (_isNew) ...[
+          _label('doc_quick_add'),
+          Wrap(
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
+            children: [
+              for (final p in _presets) AppChoiceChip(label: ar ? p.ar : p.en, icon: docIcon(p.icon), selected: false, onTap: () => _usePreset(p)),
+            ],
           ),
+          AppSpace.gapMd,
+        ],
+        AppField(controller: _titleAr, label: 'doc_title_ar'.tr, onChanged: (_) => setState(() {})),
+        if (_tried && _titleAr.text.trim().isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: Text('doc_title_required'.tr, style: AppType.meta(context).copyWith(color: c.danger)),
+          ),
+        AppField(controller: _titleEn, label: 'doc_title_en'.tr, ltr: true),
+        AppField(controller: _descAr, label: 'doc_desc_ar'.tr, maxLines: 2),
+        AppField(controller: _descEn, label: 'doc_desc_en'.tr, maxLines: 2, ltr: true),
+        _label('doc_icon'),
+        Wrap(
+          spacing: AppSpace.xs,
+          runSpacing: AppSpace.xs,
+          children: [
+            for (final e in kDocIcons.entries)
+              InkWell(
+                borderRadius: AppRadius.cardAll,
+                onTap: () => setState(() => _icon = e.key),
+                child: AnimatedContainer(
+                  duration: AppMotion.of(context).fast,
+                  width: AppTouch.min,
+                  height: AppTouch.min,
+                  decoration: BoxDecoration(
+                    color: _icon == e.key ? c.primary.withValues(alpha: 0.12) : c.inputBg,
+                    borderRadius: AppRadius.cardAll,
+                    border: Border.all(
+                      color: _icon == e.key ? c.primary : c.divider,
+                      width: _icon == e.key ? AppBorder.focus : AppBorder.hairline,
+                    ),
+                  ),
+                  child: Icon(e.value, color: _icon == e.key ? c.primary : c.textMedium, size: AppIconSize.lg),
+                ),
+              ),
+          ],
         ),
+        AppSpace.gapMd,
+        AppSwitchTile(
+          icon: Icons.priority_high_rounded,
+          title: 'doc_required'.tr,
+          subtitle: 'doc_required_hint'.tr,
+          value: _required,
+          onChanged: (v) => setState(() => _required = v),
+        ),
+        AppSwitchTile(
+          icon: Icons.check_circle_rounded,
+          title: 'doc_active'.tr,
+          subtitle: 'doc_active_hint'.tr,
+          value: _active,
+          onChanged: (v) => setState(() => _active = v),
+        ),
+        AppSpace.gapXs,
+        AppButton.primary(label: 'save'.tr, expand: true, onPressed: _submit),
       ],
     );
   }

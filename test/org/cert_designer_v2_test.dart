@@ -58,8 +58,9 @@ CertificateDesignerProvider _provider(CertDesign d, {String lang = 'ar'}) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  // the provider's autosave timer can fire after a test ends on a slow machine: give it an in-memory store
-  SharedPreferences.setMockInitialValues({});
+  // the provider autosaves its draft on a short timer; on a loaded machine a test outlives it, and an unmocked
+  // SharedPreferences then failed the test with MissingPluginException
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('model', () {
     test('JSON round trip keeps every v2 key and unknown keys', () {

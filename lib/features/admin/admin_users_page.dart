@@ -6,9 +6,6 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/base_page.dart';
-import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/phone_field.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
@@ -16,14 +13,20 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
-import 'admin_table_export.dart' show adminUsersExport;
+import 'admin_page.dart';
+import 'admin_table_export.dart' show adminUsersExport, exportPagedList;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'admin_view_as_page.dart' show startViewAs;
 import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
 import '../auth/auth_provider.dart' show MyAuthProvider;
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_badges.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_data_table.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppEmpty, AppListSkeleton;
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart' show usernameFrom;
 import '../auth/username.dart' show UsernameError;
@@ -36,7 +39,7 @@ class AdminUsersPage extends StatelessWidget {
   /// 'student' | 'teacher'
   final String role;
 
-  /// true when shown as a tab inside the dashboard shell (no AppBar).
+  /// true when shown as a tab inside the dashboard shell (no Back).
   final bool embedded;
 
   @override
@@ -48,92 +51,285 @@ class AdminUsersPage extends StatelessWidget {
   }
 }
 
-class _UsersView extends StatelessWidget {
+class _UsersView extends StatefulWidget {
   const _UsersView({required this.role, required this.embedded});
 
   final String role;
   final bool embedded;
 
-  bool get isStudent => role == 'student';
+  @override
+  State<_UsersView> createState() => _UsersViewState();
+}
+
+class _UsersViewState extends State<_UsersView> {
+  bool get isStudent => widget.role == 'student';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // the shell's Refresh reloads the list in place: filters, search text and scroll stay
+    AdminRefreshScope.register(context, context.read<AdminUsersProvider>().refresh);
+  }
+
+  /// The server's sort value -> the table column it belongs to.
+  String? _sortKey(String? s) {
+    if (s == null) return null;
+    if (s.startsWith('name')) return 'name';
+    if (s == 'newest' || s == 'oldest') return 'joined';
+    if (s == 'last_login') return 'last_login';
+    return null;
+  }
+
+  void _onSort(AdminUsersProvider p, String key, bool asc) {
+    p.setSort(switch (key) {
+      'name' => asc ? 'name_asc' : 'name_desc',
+      'joined' => asc ? 'oldest' : 'newest',
+      _ => 'last_login',
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminUsersProvider>();
-    final c = context.colors;
+    final specs = _userSpecs(isStudent);
+    final canViewAs = isSuperNow(context);
+    final users = [for (final r in p.rows) AdminUser(r)];
+    final wide = MediaQuery.sizeOf(context).width >= 600;
 
-    final header = Column(
-      children: [
-        AdminFilterBar(
-          host: p,
-          hintKey: 'admin_search_name_email_or_phone',
-          specs: _userSpecs(isStudent),
-          sort: _userSort,
-          quickKeys: const {'status', 'subscribed'},
+    final state = p.error != null && p.rows.isEmpty
+        ? AppTableState.error
+        : (!p.loaded && p.isLoading ? AppTableState.loading : AppTableState.ready);
+
+    final table = AppDataTable<AdminUser>(
+      state: state,
+      errorText: p.error,
+      onRetry: p.refresh,
+      rows: users,
+      rowId: (u) => u.id,
+      searchHint: 'admin_search_name_email_or_phone'.tr,
+      onSearch: p.setSearch,
+      toolbarTrailing: _controls(context, p, specs),
+      columns: [
+        AppTableColumn<AdminUser>(
+          key: 'name',
+          label: 'name_label'.tr,
+          primary: true,
+          sortable: true,
+          flex: 3,
+          cell: (ctx, u) => _NameCell(u),
         ),
-        FilterChips<String>(
-          value: p.status ?? 'all',
-          options: {
-            'all': 'filter_all'.tr,
-            'active': 'exam_status_active'.tr,
-            'inactive': 'admin_inactive'.tr,
-            'pending_deletion': 'admin_pending_deletion'.tr,
-          },
-          onChanged: (v) => p.setStatus(v == 'all' ? null : v),
+        AppTableColumn<AdminUser>(
+          key: 'contact',
+          label: 'admin_email'.tr,
+          flex: 3,
+          cell: (ctx, u) => _ContactCell(u),
         ),
-        if (isStudent)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: FilterChips<String>(
-              value: p.subscribed == null
-                  ? 'any'
-                  : (p.subscribed! ? 'yes' : 'no'),
-              options: {
-                'any': 'admin_any_subscription'.tr,
-                'yes': 'admin_subscribed'.tr,
-                'no': 'admin_not_subscribed'.tr,
-              },
-              onChanged: (v) => p.setSubscribed(v == 'any' ? null : v == 'yes'),
-            ),
-          ),
-        const SizedBox(height: 6),
+        AppTableColumn<AdminUser>(
+          key: 'status',
+          label: 'status'.tr,
+          flex: 2,
+          cell: (ctx, u) => _StatusCell(u, isStudent: isStudent),
+        ),
+        AppTableColumn<AdminUser>.text(
+          key: 'courses',
+          label: t('الدورات', 'Courses'),
+          flex: 1,
+          text: (u) => _coursesText(isStudent ? u.enrolledCourses.length : u.coursesCount),
+        ),
+        AppTableColumn<AdminUser>.text(
+          key: 'joined',
+          label: 'admin_joined'.tr,
+          sortable: true,
+          flex: 2,
+          showOnPhone: false,
+          text: (u) => shortDate(u.createdAt),
+        ),
+        AppTableColumn<AdminUser>.text(
+          key: 'last_login',
+          label: 'admin_last_login'.tr,
+          sortable: true,
+          flex: 2,
+          showOnPhone: false,
+          text: (u) => shortDateTime(u.lastLogin),
+        ),
       ],
+      sortKey: _sortKey(p.sort),
+      sortAscending: p.sort == 'name_asc' || p.sort == 'oldest',
+      onSort: (k, asc) => _onSort(p, k, asc),
+      onRowTap: (u) => _openDetail(context, p, u.id),
+      rowActions: (u) => [
+        if (canViewAs && (u.role == 'student' || u.role == 'teacher'))
+          AppRowAction<AdminUser>(
+            icon: Icons.visibility_rounded,
+            label: 'view_as_user'.tr,
+            onTap: () => startViewAs(Navigator.of(context, rootNavigator: true), id: u.id, name: u.name, role: u.role),
+          ),
+        AppRowAction<AdminUser>(
+          icon: Icons.open_in_new_rounded,
+          label: t('فتح', 'Open'),
+          onTap: () => _openDetail(context, p, u.id),
+        ),
+      ],
+      empty: p.hasActiveQuery
+          ? AppEmpty(
+              icon: Icons.search_off_rounded,
+              title: 'ds_no_results'.tr,
+              message: 'ds_no_results_hint'.tr,
+              actionLabel: 'ds_clear_filters'.tr,
+              onAction: p.clearAll,
+            )
+          : AppEmpty(
+              icon: Icons.inbox_outlined,
+              title: isStudent ? 'admin_no_students_found'.tr : 'admin_no_teachers_found'.tr,
+            ),
+      onClearFilters: p.clearAll,
+      onLoadMore: p.loadMore,
+      hasMore: p.hasMore,
+      loadingMore: p.loadingMore,
     );
 
-    final list = PagedList<AdminUsersProvider>(
-      export: (rows) => adminUsersExport(role, rows),
-      header: header,
-      emptyText: isStudent
-          ? 'admin_no_students_found'.tr
-          : 'admin_no_teachers_found'.tr,
-      itemBuilder: (ctx, row) =>
-          _UserTile(AdminUser(row), isStudent: isStudent),
-    );
-
-    final fab = FloatingActionButton.extended(
-      heroTag: "users_float",
-      key: ValueKey("users_float"),
-      backgroundColor: c.primary,
-      onPressed: () => _openForm(context, p),
-      icon: Icon(Icons.person_add_alt_1_rounded, color: c.onHero),
-      label: Text(
-        isStudent ? 'admin_add_student'.tr : 'admin_add_teacher'.tr,
-        style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
+    return AdminPage(
+      helpPageId: 'admin.users',
+      title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
+      icon: isStudent ? Icons.school_rounded : Icons.person_pin_rounded,
+      subtitle: wide && p.loaded ? _totalText(p.total) : null,
+      showBack: !widget.embedded,
+      maxWidth: double.infinity,
+      onRefresh: p.refresh,
+      primaryAction: AppButton.primary(
+        key: const ValueKey('users_add'),
+        label: isStudent ? 'admin_add_student'.tr : 'admin_add_teacher'.tr,
+        icon: Icons.person_add_alt_1_rounded,
+        onPressed: () => _openForm(context, p),
+      ),
+      body: Padding(
+        padding: AdminPage.bodyPadding(context),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AdminActiveFilterChips(host: p, specs: specs, sort: _userSort, quickKeys: const {'status'}),
+          Expanded(child: table),
+        ]),
       ),
     );
+  }
 
-    return BasePage(
-      useWebCard: !embedded,
-      maxWith: 1100,
-      // The dashboard tab already wraps this page in a BasePage that owns the footer.
-      enableFooterWidget: !embedded,
-      appBar: embedded
-          ? null
-          : ScreenAppBar(helpPageId: 'admin.users', 
-              title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
-            ),
-      floatingActionButton: fab,
-      child: list,
+  String _totalText(int n) => isStudent
+      ? countText(n,
+          ar1: 'طالب واحد', ar2: 'طالبان', arFew: '{n} طلاب', arMany: '{n} طالباً', en1: '1 student', en: '{n} students')
+      : countText(n,
+          ar1: 'معلم واحد', ar2: 'معلمان', arFew: '{n} معلمين', arMany: '{n} معلماً', en1: '1 teacher', en: '{n} teachers');
+
+  /// The search lives in the table toolbar; this is the rest of the ONE row of controls: the status filter, the
+  /// advanced filter sheet (everything else, subscription filter included) and Export.
+  Widget _controls(BuildContext context, AdminUsersProvider p, List<FilterSpec> specs) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Flexible(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 168),
+          child: AppDropdown<String>(
+          value: p.status ?? 'all',
+          decoration: InputDecoration(labelText: 'admin_filter_status'.tr),
+          items: [
+            DropdownMenuItem(value: 'all', child: Text('filter_all'.tr)),
+            DropdownMenuItem(value: 'active', child: Text('exam_status_active'.tr)),
+            DropdownMenuItem(value: 'inactive', child: Text('admin_inactive'.tr)),
+            DropdownMenuItem(value: 'pending_deletion', child: Text('admin_pending_deletion'.tr)),
+          ],
+          onChanged: (v) => p.setStatus(v == null || v == 'all' ? null : v),
+          ),
+        ),
+      ),
+      const SizedBox(width: AppSpace.xxs),
+      AdminFilterButton(host: p, specs: specs, sort: _userSort, quickKeys: const {'status'}),
+      AppIconButton(
+        icon: Icons.ios_share_rounded,
+        tooltip: t('تصدير', 'Export'),
+        onPressed: p.rows.isEmpty
+            ? null
+            : () => exportPagedList(context, p, (rows) => adminUsersExport(widget.role, rows)),
+      ),
+    ]);
+  }
+}
+
+/// "3 courses" / "ثلاث دورات" (the number is part of the text).
+String _coursesText(int n) => countText(
+      n,
+      ar0: 'لا دورات',
+      ar1: 'دورة واحدة',
+      ar2: 'دورتان',
+      arFew: '{n} دورات',
+      arMany: '{n} دورة',
+      en0: 'No courses',
+      en1: '1 course',
+      en: '{n} courses',
     );
+
+class _NameCell extends StatelessWidget {
+  const _NameCell(this.u);
+
+  final AdminUser u;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      AdminAvatar(name: u.name, url: u.imageUrl, size: 36),
+      const SizedBox(width: AppSpace.sm),
+      Expanded(
+        child: Text(u.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+      ),
+    ]);
+  }
+}
+
+/// Email on the first line, the @username (or the phone) under it.
+class _ContactCell extends StatelessWidget {
+  const _ContactCell(this.u);
+
+  final AdminUser u;
+
+  @override
+  Widget build(BuildContext context) {
+    final uname = usernameFrom(u.j);
+    final second = uname != null ? '@$uname' : u.phone;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Text(u.gmail.isEmpty ? '—' : u.gmail,
+          maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.row(context)),
+      if (second.isNotEmpty)
+        Text(second,
+            maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context)),
+    ]);
+  }
+}
+
+class _StatusCell extends StatelessWidget {
+  const _StatusCell(this.u, {required this.isStudent});
+
+  final AdminUser u;
+  final bool isStudent;
+
+  @override
+  Widget build(BuildContext context) {
+    final sub = u.subscription;
+    return Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+      if (u.pendingDeletion)
+        AppStatusBadge(label: 'admin_pending_deletion'.tr, tone: AppTone.danger, dense: true)
+      else
+        AppStatusBadge(
+          label: u.isActive ? 'exam_status_active'.tr : 'admin_inactive'.tr,
+          tone: u.isActive ? AppTone.success : AppTone.warning,
+          dense: true,
+        ),
+      if (isStudent)
+        AppStatusBadge(
+          label: u.hasActiveSubscription
+              ? 'admin_subscribed'.tr
+              : (sub?.status == 'pending' ? 'admin_sub_pending'.tr : 'admin_no_sub'.tr),
+          tone: u.hasActiveSubscription
+              ? AppTone.success
+              : (sub?.status == 'pending' ? AppTone.warning : AppTone.neutral),
+          dense: true,
+        ),
+    ]);
   }
 }
 
@@ -203,120 +399,47 @@ List<FilterSpec> _userSpecs(bool isStudent) => [
   }),
 ];
 
-class _UserTile extends StatelessWidget {
-  const _UserTile(this.u, {required this.isStudent});
-
-  final AdminUser u;
-  final bool isStudent;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final p = context.read<AdminUsersProvider>();
-    final sub = u.subscription;
-
-    return RowCard(
-      onTap: () => _openDetail(context, p, u.id),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: c.primary.withValues(alpha: 0.15),
-            child: Text(
-              u.name.isEmpty ? '?' : u.name.characters.first.toUpperCase(),
-              style: TextStyle(color: c.primary, fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  u.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-                Text(
-                  u.gmail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textDirection: TextDirection.ltr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    if (u.pendingDeletion)
-                      StatusChip('admin_pending_deletion'.tr, c.danger)
-                    else
-                      StatusChip(
-                        u.isActive
-                            ? 'exam_status_active'.tr
-                            : 'admin_inactive'.tr,
-                        u.isActive ? c.success : c.warning,
-                      ),
-                    if (isStudent)
-                      StatusChip(
-                        u.hasActiveSubscription
-                            ? 'admin_subscribed'.tr
-                            : (sub?.status == 'pending'
-                                  ? 'admin_sub_pending'.tr
-                                  : 'admin_no_sub'.tr),
-                        u.hasActiveSubscription
-                            ? c.success
-                            : (sub?.status == 'pending'
-                                  ? c.warning
-                                  : c.textLight),
-                      ),
-                    if (isStudent)
-                      StatusChip(
-                        '${u.enrolledCourses.length} ${'roadmap_course_unit'.tr}',
-                        c.primary,
-                      )
-                    else
-                      StatusChip(
-                        '${u.coursesCount} ${'roadmap_course_unit'.tr}',
-                        c.primary,
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // Super-admin: jump straight into this user's app (read-only). "Back to admin" is in the banner.
-          if (isSuperNow(context) &&
-              (u.role == 'student' || u.role == 'teacher'))
-            IconButton(
-              tooltip: 'view_as_user'.tr,
-              icon: Icon(Icons.visibility_rounded, color: c.warning),
-              onPressed: () => startViewAs(
-                Navigator.of(context, rootNavigator: true),
-                id: u.id,
-                name: u.name,
-                role: u.role,
-              ),
-            ),
-          Icon(Icons.chevron_right_rounded, color: c.textLight),
-        ],
-      ),
-    );
-  }
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 //  Detail / control sheet
 // ═════════════════════════════════════════════════════════════════════════════
+
+/// Opens the detail / control sheet of ONE user by id (the global search uses it). [role] is the list the user
+/// belongs to ('student' | 'teacher' | 'admin'); the sheet loads the user itself, like a row tap does.
+Future<void> showAdminUserDetail(BuildContext context, {required int userId, required String role}) async {
+  // not disposed on purpose: a request of the sheet may still be in flight when it closes, and a provider with no
+  // timer and no listener left is simply garbage collected
+  await _openDetail(context, AdminUsersProvider(role), userId);
+}
+
+String _experienceText(Object? years) {
+  final n = years is num ? years.toInt() : int.tryParse('${years ?? ''}');
+  if (n == null) return '—';
+  return countText(n,
+      ar0: 'أقل من سنة',
+      ar1: 'سنة واحدة',
+      ar2: 'سنتان',
+      arFew: '{n} سنوات',
+      arMany: '{n} سنة',
+      en0: 'Less than a year',
+      en1: '1 year',
+      en: '{n} years');
+}
+
+String _teachingLabel(String v) => switch (v) {
+      'live' => t('مباشر', 'Live'),
+      'recorded' => t('مسجّل', 'Recorded'),
+      'both' => t('مباشر ومسجّل', 'Live and recorded'),
+      '' => '—',
+      _ => v,
+    };
+
+String _paymentLabel(String v) => switch (v) {
+      'free' => t('مجاني', 'Free'),
+      'paid' => t('مدفوع', 'Paid'),
+      'both' => t('مجاني ومدفوع', 'Free and paid'),
+      '' => '—',
+      _ => v,
+    };
 
 Future<void> _openDetail(
   BuildContext context,
@@ -354,8 +477,11 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
   /// [spinner] = true for the first load / the Retry button; false for silent refreshes after an action
   /// (so the sheet does not flash a spinner and lose its scroll position).
   Future<void> _load({bool spinner = false}) async {
+    // the sheet may have been closed while an action was running (Edit, Deactivate …): nothing to redraw
+    if (!mounted) return;
     if (spinner && !loading) setState(() => loading = true);
-    final r = await context.read<AdminUsersProvider>().detail(widget.userId);
+    final provider = context.read<AdminUsersProvider>();
+    final r = await provider.detail(widget.userId);
     if (!mounted) return;
     setState(() {
       d = r;
@@ -422,17 +548,15 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                   title: 'admin_teacher_profile'.tr,
                   child: Column(
                     children: [
-                      KeyValue(
-                        'admin_experience'.tr,
-                        '${asMap(d!.j['teacher_profile'])['experience_years']}',
-                      ),
+                      KeyValue('admin_experience'.tr, _experienceText(asMap(d!.j['teacher_profile'])['experience_years'])),
+                      KeyValue(t('الدورات', 'Courses'), _coursesText(u.coursesCount)),
                       KeyValue(
                         'admin_teaching'.tr,
-                        asStr(asMap(d!.j['teacher_profile'])['teaching_type']),
+                        _teachingLabel(asStr(asMap(d!.j['teacher_profile'])['teaching_type'])),
                       ),
                       KeyValue(
                         'admin_payment'.tr,
-                        asStr(asMap(d!.j['teacher_profile'])['payment_type']),
+                        _paymentLabel(asStr(asMap(d!.j['teacher_profile'])['payment_type'])),
                       ),
                     ],
                   ),
@@ -440,125 +564,118 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
               Section(
                 title: 'admin_controls'.tr,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (isSuperNow(context) &&
-                        (u.role == 'student' || u.role == 'teacher')) ...[
-                      Row(
-                        children: [
-                          OutlineButton(
+                    // primary row: View as, Edit
+                    Wrap(
+                      spacing: AppSpace.sm,
+                      runSpacing: AppSpace.xs,
+                      children: [
+                        if (isSuperNow(context) && (u.role == 'student' || u.role == 'teacher'))
+                          AppButton.tonal(
+                            key: const ValueKey('admin.user_view_as'),
                             label: 'view_as_user'.tr,
-                            color: context.colors.success,
                             icon: Icons.visibility_rounded,
                             onPressed: () {
-                              final nav = Navigator.of(
-                                context,
-                                rootNavigator: true,
-                              );
+                              final nav = Navigator.of(context, rootNavigator: true);
                               Navigator.pop(context); // close the sheet first
-                              startViewAs(
-                                nav,
-                                id: u.id,
-                                name: u.name,
-                                role: u.role,
-                              );
+                              startViewAs(nav, id: u.id, name: u.name, role: u.role);
                             },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    // super admin: a user who lost both the phone and the recovery codes (the server answers
-                    // mfa_not_enabled when there is nothing to remove)
-                    if (isSuperNow(context) && context.read<MyAuthProvider>().currentUser?.id != u.id) ...[
-                      Row(
-                        children: [
-                          OutlineButton(
-                            key: const ValueKey('admin.user_mfa_reset'),
-                            label: mfaResetLabel(),
-                            color: context.colors.textMedium,
-                            icon: Icons.phonelink_erase_rounded,
-                            onPressed: () => confirmResetUserMfa(context, userId: u.id, name: u.name),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    PrimaryButton(
-                      label: u.isActive
-                          ? 'admin_deactivate_account'.tr
-                          : 'admin_activate_account'.tr,
-                      isLoading: false,
-                      iconBefore: true,
-
-                      icon: u.isActive
-                          ? Icons.block_rounded
-                          : Icons.check_circle_rounded,
-                      background: context.colors.danger,
-                      onPressed: () async {
-                        final ok = await confirm(
-                          context,
-                          message: u.isActive
-                              ? 'admin_deactivate_this_account'.tr
-                              : 'admin_activate_this_account'.tr,
-                          danger: u.isActive,
-                        );
-                        if (!ok) return;
-                        if (await p.setActive(u.id, !u.isActive)) {
-                          await _load();
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    PrimaryButton(
-                      // an ACTION label ("Remove verification" / "Verify"), not the current state
-                      label: u.isVerified
-                          ? 'admin_unverify_account'.tr
-                          : 'admin_verify_account'.tr,
-                      isLoading: false,
-                      iconBefore: true,
-                      icon: u.isVerified
-                          ? Icons.gpp_bad_rounded
-                          : Icons.verified_rounded,
-                      background: context.colors.warning,
-                      onPressed: () async {
-                        final ok = await confirm(
-                          context,
-                          message: u.isVerified
-                              ? 'admin_unverified_this_account'.tr
-                              : 'admin_verified_this_account'.tr,
-                          danger: u.isVerified,
-                        );
-                        if (!ok) return;
-                        if (await p.setVerified(u.id, !u.isVerified)) {
-                          await _load();
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        OutlineButton(
+                        AppButton.secondary(
+                          key: const ValueKey('admin.user_edit'),
                           label: 'btn_edit'.tr,
-                          color: context.colors.warning,
                           icon: Icons.edit_rounded,
                           onPressed: () async {
                             await _openForm(context, p, existing: u);
-                            await _load();
+                            if (mounted) await _load();
                           },
                         ),
-                        const SizedBox(width: 8),
-                        OutlineButton(
+                      ],
+                    ),
+                    const SizedBox(height: AppSpace.sm),
+                    // account state: verify / unverify, Activate (not a danger action), a lost authenticator
+                    Wrap(
+                      spacing: AppSpace.sm,
+                      runSpacing: AppSpace.xs,
+                      children: [
+                        if (!u.isActive)
+                          AppButton.tonal(
+                            key: const ValueKey('admin.user_activate'),
+                            label: 'admin_activate_account'.tr,
+                            icon: Icons.check_circle_rounded,
+                            onPressed: () async {
+                              final ok = await confirm(context, message: 'admin_activate_this_account'.tr);
+                              if (!ok || !mounted) return;
+                              if (await p.setActive(u.id, true) && mounted) await _load();
+                            },
+                          ),
+                        AppButton.secondary(
+                          key: const ValueKey('admin.user_verify'),
+                          // an ACTION label ("Remove verification" / "Verify"), not the current state
+                          label: u.isVerified ? 'admin_unverify_account'.tr : 'admin_verify_account'.tr,
+                          icon: u.isVerified ? Icons.gpp_bad_rounded : Icons.verified_rounded,
+                          onPressed: () async {
+                            final ok = await confirm(
+                              context,
+                              message: u.isVerified
+                                  ? 'admin_unverified_this_account'.tr
+                                  : 'admin_verified_this_account'.tr,
+                              danger: u.isVerified,
+                            );
+                            if (!ok || !mounted) return;
+                            if (await p.setVerified(u.id, !u.isVerified) && mounted) await _load();
+                          },
+                        ),
+                        // super admin: a user who lost both the phone and the recovery codes (the server answers
+                        // mfa_not_enabled when there is nothing to remove)
+                        if (isSuperNow(context) && context.read<MyAuthProvider>().currentUser?.id != u.id)
+                          AppButton.ghost(
+                            key: const ValueKey('admin.user_mfa_reset'),
+                            label: mfaResetLabel(),
+                            icon: Icons.phonelink_erase_rounded,
+                            onPressed: () => confirmResetUserMfa(context, userId: u.id, name: u.name),
+                          ),
+                      ],
+                    ),
+                    // danger zone: only Deactivate and Delete are red
+                    const SizedBox(height: AppSpace.md),
+                    Divider(color: context.colors.divider, height: 1),
+                    const SizedBox(height: AppSpace.md),
+                    Text(t('منطقة الخطر', 'Danger zone'), style: AppType.label(context).copyWith(color: context.colors.danger)),
+                    const SizedBox(height: AppSpace.xs),
+                    Wrap(
+                      spacing: AppSpace.sm,
+                      runSpacing: AppSpace.xs,
+                      children: [
+                        if (u.isActive)
+                          AppButton.danger(
+                            key: const ValueKey('admin.user_deactivate'),
+                            dangerOutline: true,
+                            label: 'admin_deactivate_account'.tr,
+                            icon: Icons.block_rounded,
+                            onPressed: () async {
+                              final ok = await confirm(
+                                context,
+                                message: '${u.name}\n${'admin_deactivate_this_account'.tr}',
+                                danger: true,
+                              );
+                              if (!ok || !mounted) return;
+                              if (await p.setActive(u.id, false) && mounted) await _load();
+                            },
+                          ),
+                        AppButton.danger(
+                          key: const ValueKey('admin.user_delete'),
+                          dangerOutline: true,
                           label: 'delete'.tr,
-                          color: context.colors.danger,
                           icon: Icons.delete_outline_rounded,
                           onPressed: () async {
                             final ok = await confirm(
                               context,
-                              message:
-                                  'admin_permanently_delete_this_user_this'.tr,
+                              message: '${u.name}\n${'admin_permanently_delete_this_user_this'.tr}',
                               danger: true,
                             );
-                            if (!ok) return;
+                            if (!ok || !mounted) return;
                             if (await p.remove(u.id) && context.mounted) {
                               Navigator.pop(context);
                             }
@@ -1032,9 +1149,8 @@ class _UserFormState extends State<_UserForm> {
         'name': _name.text.trim(),
         'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
         'gmail': _email.text.trim().isEmpty ? null : _email.text.trim(),
-        'country': kPhoneCountries
-            .firstWhere((e) => _phone.text.contains(e.dial))
-            .flag,
+        // no known dial code (or no phone): leave the stored country alone instead of throwing
+        if (kPhoneCountries.where((e) => _phone.text.contains(e.dial)).firstOrNull case final pc?) 'country': pc.flag,
         if (_password.text.isNotEmpty) 'password': _password.text,
         ...uname,
       }, onError: (e) {
@@ -1048,9 +1164,8 @@ class _UserFormState extends State<_UserForm> {
         'password': _password.text,
         'role': role,
         'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-        'country':  kPhoneCountries
-          .firstWhere((e) => _phone.text.contains(e.dial))
-          .flag,
+        // no known dial code (or no phone): leave the stored country alone instead of throwing
+        if (kPhoneCountries.where((e) => _phone.text.contains(e.dial)).firstOrNull case final pc?) 'country': pc.flag,
         if (role == 'teacher')
           'experience_years': int.tryParse(_years.text.trim()) ?? 0,
       });

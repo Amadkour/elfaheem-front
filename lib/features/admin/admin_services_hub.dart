@@ -8,16 +8,12 @@
 // So an icon / label / page is changed in exactly one place.
 library;
 
-import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_settings.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaints_screen.dart';
-import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart'
-    show Breakpoints;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
@@ -33,13 +29,12 @@ import 'admin_common.dart';
 import 'admin_content_page.dart';
 import 'admin_devices_page.dart';
 import 'admin_features_page.dart';
+import 'admin_feedback_settings.dart' show AdminFeedbackSettingsPage;
 import 'admin_platform_settings_page.dart';
 import 'admin_finance_page.dart';
 import 'admin_mfa_page.dart';
 import 'admin_flags_settings_page.dart';
 import 'admin_organizations_page.dart';
-import 'admin_parent_link_settings_page.dart';
-import 'admin_parent_requests_page.dart';
 import 'admin_payment_page.dart';
 import 'admin_payouts_page.dart';
 import 'admin_premium_widgets.dart';
@@ -53,16 +48,16 @@ import 'admin_recs_page.dart';
 import '../shared/roadmap/roadmap_api.dart' show kRecsAdminKey;
 import '../shared/points/points_api.dart' show kAdminPointsFeatureKey;
 import 'admin_theme_page.dart';
-import 'admin_users_page.dart';
-import 'admin_versions_page.dart';
-import 'admin_view_as_page.dart';
+import 'admin_app_versions_page.dart';
+import 'admin_fees_page.dart';
+import 'admin_parent_linking_page.dart';
+import 'admin_recents.dart';
 import 'live_settings/live_settings_page.dart' show LiveSettingsPage, kLiveSettingsFeatureKey, liveSettingsTitle;
 import 'enrollment_request/teacher_transfers_provider.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'app_releases/app_releases_page.dart';
+import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -129,18 +124,20 @@ class AdminServiceGroup {
 
 // ── data ─────────────────────────────────────────────────────────────────────
 /// Call from a build method (it uses context.select for the live badge counts).
-List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
+///
+/// [watch] false: for a call from an event handler (the global search opens the list on Ctrl+K), where
+/// `context.select` is not allowed; the counts are then read once.
+List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = true}) {
   Future<void> push(Widget w) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
 
   final isSuper = isSuperNow(context);
-  final payouts = context.select<AdminPendingPayoutsProvider, int>(
-    (p) => p.count,
-  );
-  final transfers = context.select<TeacherTransfersProvider, int>(
-    (p) => p.total,
-  );
-  final complaints = context.select<ComplaintProvider, int>((p) => p.count);
+  final payouts = watch
+      ? context.select<AdminPendingPayoutsProvider, int>((p) => p.count)
+      : context.read<AdminPendingPayoutsProvider>().count;
+  final transfers =
+      watch ? context.select<TeacherTransfersProvider, int>((p) => p.total) : context.read<TeacherTransfersProvider>().total;
+  final complaints = watch ? context.select<ComplaintProvider, int>((p) => p.count) : context.read<ComplaintProvider>().count;
 
   return [
     // ── People ────────────────────────────────────────────────────────────
@@ -161,6 +158,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
         AdminService(
           labelKey: 'svc_requirements',
           descKey: 'svc_requirements_d',
+          label: t('إشعارات تتطلب الإقرار', 'Notices to acknowledge'),
           icon: Icons.fact_check_rounded,
           colors: AdminPalette.green,
           onTap: () => push(const AdminRequirementsPage()),
@@ -182,24 +180,9 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
         AdminService(
           labelKey: 'send_message',
           descKey: 'svc_send_message_d',
-          icon: Icons.campaign_rounded,
+          icon: Icons.send_rounded,
           colors: AdminPalette.blue,
           onTap: () => push(const AdminSendMessagePage()),
-        ),
-        AdminService(
-          labelKey: 'view_as_user',
-          descKey: 'svc_view_as_d',
-          icon: Icons.supervised_user_circle_rounded,
-          colors: AdminPalette.orange,
-          visible: isSuper,
-          onTap: () => push(const AdminViewAsPage()),
-        ),
-        AdminService(
-          labelKey: 'teachers',
-          descKey: 'svc_teachers_d',
-          icon: Icons.cast_for_education_rounded,
-          colors: AdminPalette.rose,
-          onTap: () => push(const AdminUsersPage(role: 'teacher')),
         ),
         AdminService(
           labelKey: 'admin_admins',
@@ -217,19 +200,12 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           onTap: () => push(const AdminCategoriesPage()),
         ),
         AdminService(
-          labelKey: 'pl_requests_title',
+          labelKey: 'admin_parent_linking',
           descKey: 'svc_pl_requests_d',
+          label: t('ربط أولياء الأمور', 'Parent linking'),
           icon: Icons.family_restroom_rounded,
           colors: AdminPalette.green,
-          onTap: () => push(const AdminParentRequestsPage()),
-        ),
-        AdminService(
-          labelKey: 'pl_settings_title',
-          descKey: 'svc_pl_settings_d',
-          icon: Icons.settings_suggest_rounded,
-          colors: AdminPalette.violet,
-          visible: isSuper,
-          onTap: () => push(const AdminParentLinkSettingsPage()),
+          onTap: () => push(const AdminParentLinkingPage()),
         ),
       ],
     ),
@@ -301,6 +277,16 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           colors: AdminPalette.blue,
           featureKey: 'profile.payment',
           onTap: () => push(const AdminPaymentsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_fees',
+          descKey: 'admin_fees_d',
+          label: t('الرسوم', 'Fees'),
+          desc: t('نسب الرسوم لكل وسيلة دفع والمنصة والضريبة، وسياسة من يتحمل الرسوم',
+              'Fee rates per payment method, the platform and VAT, and the policy of who pays them'),
+          icon: Icons.percent_rounded,
+          colors: AdminPalette.blue,
+          onTap: () => push(const AdminFeesPage()),
         ),
         AdminService(
           labelKey: 'admin_payments',
@@ -449,6 +435,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
         AdminService(
           labelKey: 'exs_center_title',
           descKey: 'exs_center_admin',
+          desc: t('سجل التصدير، التصدير المجدول، والروابط المشتركة', 'The export log, scheduled exports and shared links'),
           icon: Icons.ios_share_rounded,
           colors: AdminPalette.teal,
           onTap: () => Navigator.pushNamed(context, '/exports', arguments: true),
@@ -491,9 +478,34 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           visible: isSuper,
           onTap: () => openOmrTemplateLibrary(context),
         ),
+        // grades (D-244): whether parents see their child's grades — always / when published / never
+        AdminService(
+          labelKey: 'svc_parent_grades',
+          descKey: 'svc_parent_grades_d',
+          label: t('رؤية أولياء الأمور للدرجات', 'What parents see of grades'),
+          desc: t('القاعدة الافتراضية للمنصة: دائماً، عند النشر، أو أبداً', 'The platform default: always, when published, or never'),
+          icon: Icons.family_restroom_rounded,
+          colors: AdminPalette.teal,
+          featureKey: kParentVisibilityKey,
+          visible: isSuper,
+          onTap: () => openParentGradeVisibility(context),
+        ),
+        // the grading-corrections store (it was reachable only from inside Platform settings)
+        AdminService(
+          labelKey: 'admin_feedback_settings',
+          descKey: 'admin_feedback_settings_d',
+          label: t('بيانات تصحيح الامتحانات', 'Grading feedback store'),
+          desc: t('جمع تصحيحات المعلمين لتحسين التصحيح الآلي: التفعيل، الافتراضي للمؤسسات، مدة الاحتفاظ، والتصدير',
+              'Collect teachers’ corrections to improve automatic grading: on/off, organization default, retention and export'),
+          icon: Icons.rate_review_rounded,
+          colors: AdminPalette.rose,
+          visible: isSuper,
+          onTap: () => push(const AdminFeedbackSettingsPage()),
+        ),
         AdminService(
           labelKey: 'admin_flags_title',
           descKey: 'svc_flags_d',
+          label: t('علامات المراجعة والقراءة للطلاب', 'Student review & read flags'),
           icon: Icons.flag_rounded,
           colors: AdminPalette.rose,
           onTap: () => push(const AdminFlagsSettingsPage()),
@@ -503,29 +515,17 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
         AdminService(
           labelKey: 'svc_app_releases',
           descKey: 'svc_app_releases_d',
-          label: t('إصدارات التطبيق (بناء ونشر)', 'App versions (build & publish)'),
-          desc: t('بناء إصدار جديد لأندرويد أو الويب أو لينكس أو ويندوز على Codemagic ونشره على المتجر أو في شريط التحميل بالموقع',
-              'Build a new Android, web, Linux or Windows version on Codemagic and publish it to the store or the website download banner'),
+          label: t('إصدارات التطبيق', 'App versions'),
+          desc: t('بناء إصدار ونشره، ورسالة التحديث التي يراها المستخدمون',
+              'Build and publish a version, and set the update prompt users see'),
           icon: Icons.rocket_launch_rounded,
           colors: AdminPalette.indigo,
-          featureKey: kAppReleasesFeatureKey,
-          visible: isSuper,
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => deferredAppReleases())),
-        ),
-        AdminService(
-          labelKey: 'versions',
-          descKey: 'svc_versions_d',
-          label: t('رسالة التحديث', 'Update prompt'),
-          desc: t('الإصدار الذي يطلب التطبيق من المستخدمين التحديث إليه (إجباري أو مُوصى به)، دون بناء',
-              'The version the app asks users to update to (forced or recommended), without building'),
-          icon: Icons.system_update_rounded,
-          colors: AdminPalette.orange,
-          onTap: () => push(const AdminVersionsPage()),
+          onTap: () => push(const AdminAppVersionsPage()),
         ),
         AdminService(
           labelKey: 'terms_and_conditions',
           descKey: 'svc_terms_d',
+          label: t('من نحن والشروط', 'About & terms'),
           icon: Icons.gavel_rounded,
           colors: AdminPalette.slate,
           onTap: () => push(const AdminContentPage()),
@@ -543,11 +543,20 @@ Widget adminServiceTile(AdminService s) => AppSettingsTile(
       subtitle: s.descText,
       badge: s.badge,
       featureKey: s.featureKey,
-      onTap: s.onTap,
+      onTap: () => _openService(s),
     );
 
-// ── web: hub page (one sidebar tab = one group) ──────────────────────────────
-class AdminServicesHub extends StatelessWidget {
+/// Opens a service and remembers it for the Overview's "Recently opened" (and the search palette's Recent).
+void _openService(AdminService s) {
+  AdminRecents.instance.record(s.labelKey);
+  s.onTap();
+}
+
+
+// ── wide shells: hub page (one sidebar tab = one group) ──────────────────────
+/// No hero (the shell's top bar already names the tab): a search field that filters the group's services by label
+/// and description, then a grid of tiles that fills the width up to [maxWidth].
+class AdminServicesHub extends StatefulWidget {
   const AdminServicesHub({super.key, required this.groupId, this.onRefresh});
 
   final String groupId;
@@ -555,76 +564,89 @@ class AdminServicesHub extends StatelessWidget {
   /// Reloads the counts on the cards (the dashboard's badge refresh); null = no pull-to-refresh.
   final Future<void> Function()? onRefresh;
 
+  static const double maxWidth = 1200;
+
+  /// 1 column on a narrow window, then 2 → 3 → 4.
+  static int columnsFor(double width) => width >= 960 ? 4 : (width >= 700 ? 3 : (width >= 440 ? 2 : 1));
+
+  /// The services of [items] whose label or description contains every word of [q].
+  static List<AdminService> filter(List<AdminService> items, String q) {
+    final words = q.toLowerCase().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.isEmpty) return items;
+    return [
+      for (final s in items)
+        if (words.every('${s.labelText} ${s.descText}'.toLowerCase().contains)) s,
+    ];
+  }
+
+  @override
+  State<AdminServicesHub> createState() => _AdminServicesHubState();
+}
+
+class _AdminServicesHubState extends State<AdminServicesHub> {
+  String _q = '';
+
   @override
   Widget build(BuildContext context) {
     AdminPalette.attach(context);
     context.watch<LangProvider>(); // re-translate when the language changes
-    final group = adminServiceGroups(
-      context,
-    ).firstWhere((g) => g.id == groupId);
-    final items = group.visibleServices;
+    final group = adminServiceGroups(context).firstWhere((g) => g.id == widget.groupId);
+    final all = group.visibleServices;
+    final items = AdminServicesHub.filter(all, _q);
+    final g = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
-    final body = SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Align(
-          alignment: Alignment.topCenter,
+    final body = ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(g, AppSpace.md, g, AppSpace.xl),
+      children: [
+        Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  PremiumHero(
-                    icon: group.icon,
-                    colors: group.colors,
-                    title: group.titleKey.tr,
-                    subtitle: group.subtitleKey.tr,
-                    footer: Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        HeroPill(
-                          trp('svc_count', {'n': items.length}),
-                          icon: Icons.apps_rounded,
-                        ),
-                        if (group.badgeTotal > 0)
-                          HeroPill(
-                            trp('svc_pending', {'n': group.badgeTotal}),
-                            icon: Icons.notifications_active_rounded,
-                          ),
-                      ],
-                    ),
-                  ),
-                  LayoutBuilder(
-                    builder: (context, bc) {
-                      const gap = 12.0;
-                      final cols = bc.maxWidth >= 820
-                          ? 3
-                          : (bc.maxWidth >= 520 ? 2 : 1);
-                      final w = (bc.maxWidth - gap * (cols - 1)) / cols;
-                      return Wrap(
-                        spacing: gap,
-                        runSpacing: gap,
-                        children: [
-                          for (final s in items)
-                            SizedBox(width: w, child: ServiceCard(s)),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+            constraints: const BoxConstraints(maxWidth: AdminServicesHub.maxWidth),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              AppSearchField(
+                hint: t('ابحث في ${group.titleKey.tr}', 'Search ${group.titleKey.tr}'),
+                onChanged: (v) => setState(() => _q = v),
               ),
-            ),
+              AppSpace.gapMd,
+              if (items.isEmpty)
+                AppEmpty(
+                  icon: Icons.search_off_rounded,
+                  title: t('لا توجد خدمة بهذا الاسم', 'No service matches'),
+                  message: t('جرّب كلمة أخرى', 'Try another word'),
+                )
+              else
+                _grid(items),
+            ]),
           ),
         ),
-      );
+      ],
+    );
     return SafeArea(
-      child: onRefresh == null ? body : AppRefresh(onRefresh: onRefresh!, child: body),
+      child: widget.onRefresh == null ? body : AppRefresh(onRefresh: widget.onRefresh!, child: body),
     );
   }
+
+  Widget _grid(List<AdminService> items) => LayoutBuilder(builder: (context, box) {
+        final cols = AdminServicesHub.columnsFor(box.maxWidth);
+        final rows = (items.length / cols).ceil();
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var r = 0; r < rows; r++) ...[
+            if (r > 0) AppSpace.gapSm,
+            IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (var i = 0; i < cols; i++) ...[
+                  if (i > 0) AppSpace.gapSm,
+                  Expanded(child: r * cols + i < items.length ? ServiceCard(items[r * cols + i]) : const SizedBox.shrink()),
+                ],
+              ]),
+            ),
+          ],
+        ]);
+      });
 }
 
+/// One service tile: a brand-tint icon square, the name, up to two lines of description, and the count (or a
+/// chevron). The whole tile is the target (≥ 48 px, focusable, Enter / Space).
 class ServiceCard extends StatelessWidget {
   const ServiceCard(this.service, {super.key});
 
@@ -635,91 +657,49 @@ class ServiceCard extends StatelessWidget {
     final c = context.colors;
     final count = service.badge ?? 0;
 
-    Widget card = DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: c.cardShadow,
-      ),
+    Widget card = Semantics(
+      button: true,
+      container: true,
+      label: '${service.labelText}. ${service.descText}',
+      excludeSemantics: true,
+      onTap: () => _openService(service),
       child: Material(
         color: c.cardBg,
-        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: c.divider),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(color: c.divider, width: AppBorder.hairline),
         ),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: service.onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                ServiceIcon(
-                  icon: service.icon,
-                  colors: service.colors,
-                  size: 46,
+          onTap: () => _openService(service),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.primary + AppSpace.md),
+            child: Padding(
+              padding: AppSpace.card,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  width: AppTouch.min - AppSpace.xs,
+                  height: AppTouch.min - AppSpace.xs,
+                  decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+                  child: Icon(service.icon, size: AppIconSize.lg, color: c.primary),
                 ),
-                const SizedBox(width: 12),
+                AppSpace.gapSm,
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        service.labelText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: adminText(
-                          context,
-                          size: 14.5,
-                          weight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        service.descText,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: adminText(
-                          context,
-                          size: 12,
-                          weight: FontWeight.w500,
-                          color: c.textMedium,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    Text(service.labelText, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                    const SizedBox(height: AppSpace.xxs),
+                    Text(service.descText, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                  ]),
                 ),
-                const SizedBox(width: 8),
+                AppSpace.gapSm,
                 if (count > 0)
-                  Container(
-                    constraints: const BoxConstraints(minWidth: 24),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: c.danger,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      count > 99 ? '99+' : '$count',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        color: c.onHero,
-                      ),
-                    ),
-                  )
+                  AppCountBadge(count: count)
                 else
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 14,
-                    color: c.textLight,
-                    textDirection: Directionality.of(context),
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.xs),
+                    child: Icon(Icons.arrow_forward_ios_rounded, size: AppIconSize.xs, color: c.textLight),
                   ),
-              ],
+              ]),
             ),
           ),
         ),

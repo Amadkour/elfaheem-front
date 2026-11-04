@@ -540,6 +540,7 @@ void main() {
       final replaced = <String>[];
       final fake = FakeApi({
         'GET $_e/omr/batches/*': (_) => _s('batch_smart'),
+        'GET $_e/omr/issues*': (_) => {'items': [], 'counts': {}}, // the batch's issues card (none here)
         'GET /api/v1/exam/omr/images/*': (RequestOptions o) {
           images.add(_path(o));
           return 'x';
@@ -604,6 +605,7 @@ void main() {
       final replaced = <String>[];
       final fake = FakeApi({
         'GET $_e/omr/batches/*': (_) => _s('batch_smart'),
+        'GET $_e/omr/issues*': (_) => {'items': [], 'counts': {}}, // the batch's issues card (none here)
         'GET /api/v1/exam/omr/images/*': (_) => 'x',
         // the new page's own state (the fallback while no event came): still being read
         'GET $_e/omr/pages/*': (_) => {'page': {'id': 5, 'status': 'processing'}},
