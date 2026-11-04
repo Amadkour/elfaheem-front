@@ -8,7 +8,6 @@
 // So an icon / label / page is changed in exactly one place.
 library;
 
-import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -36,8 +35,6 @@ import 'admin_finance_page.dart';
 import 'admin_mfa_page.dart';
 import 'admin_flags_settings_page.dart';
 import 'admin_organizations_page.dart';
-import 'admin_parent_link_settings_page.dart';
-import 'admin_parent_requests_page.dart';
 import 'admin_payment_page.dart';
 import 'admin_payouts_page.dart';
 import 'admin_premium_widgets.dart';
@@ -51,18 +48,15 @@ import 'admin_recs_page.dart';
 import '../shared/roadmap/roadmap_api.dart' show kRecsAdminKey;
 import '../shared/points/points_api.dart' show kAdminPointsFeatureKey;
 import 'admin_theme_page.dart';
-import 'admin_users_page.dart';
 import 'admin_app_versions_page.dart';
 import 'admin_fees_page.dart';
 import 'admin_parent_linking_page.dart';
 import 'admin_recents.dart';
-import 'admin_view_as_page.dart';
 import 'live_settings/live_settings_page.dart' show LiveSettingsPage, kLiveSettingsFeatureKey, liveSettingsTitle;
 import 'enrollment_request/teacher_transfers_provider.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
-import 'app_releases/app_releases_page.dart';
 import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
 
 // ── model ────────────────────────────────────────────────────────────────────
