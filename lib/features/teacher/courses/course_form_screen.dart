@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/utils/widget/editable_image.dart';
@@ -1207,6 +1208,7 @@ class _HeroHeader extends StatelessWidget {
                     ),
                   ),
                 ),
+                const HelpInfoButton(pageId: 'teacher.course_editor'),
                 // Mode badge
                 Container(
                   padding: const EdgeInsets.symmetric(

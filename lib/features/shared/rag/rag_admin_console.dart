@@ -22,10 +22,13 @@
 // [RagTraceView], [RagAdminQueryTile]. [RagAdminConsole] owns the calls.
 library;
 
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart' show EventOrPoll;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -43,7 +46,7 @@ import 'admin/rag_feedback_review.dart' show FeedbackReviewApi, FeedbackReviewBo
 import 'rag_alerts_page.dart' show RagAlertsTab, RagGateTab;
 import 'rag_chat.dart';
 import 'rag_chat_screen.dart' show RagAnswerBody;
-import 'rag_learning.dart' show EmbedderJob, LearningApi, LearningStats, kRagLearningFeatureKey, learningCodeText;
+import 'rag_learning.dart' show EmbedderJob, LearningApi, kRagLearningFeatureKey, learningCodeText;
 import 'rag_learning_page.dart' show RagLearningBody, RagTileGrid;
 import 'rag_library.dart' show ragLibraryCodeText;
 import 'rag_library_screen.dart' show RagLibraryScreen;
@@ -496,6 +499,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
   late final LearningApi _learning = widget.learningApi ?? LearningApi();
   bool _learningOn = false;
   EmbedderJob? _embedderJob;
+  EventOrPoll? _embedderPoll;
   bool _training = false;
   // the alert rules and "evaluate now" are the Super Admin's (the server answers 403 to the other platform admins)
   bool get _superAdmin {
@@ -530,6 +534,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
 
   @override
   void dispose() {
+    _embedderPoll?.dispose();
     _tabs.dispose();
     super.dispose();
   }
@@ -539,7 +544,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
     final learning = _learningAllowed && !_learningOn ? await _learning.stats(days: 7) : null;
     if (!mounted) return;
     if (learning != null) _setLearning(learning.ok);
-    if (_learningAllowed && learning != null && learning.ok) _embedderJob = LearningStats.fromJson(learning.map).embedderJob;
+    if (_learningAllowed && learning != null && learning.ok) unawaited(_refreshEmbedder());
     setState(() {
       _error = null;
       for (final r in rs) {
@@ -575,6 +580,24 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
     }
   }
 
+  /// `GET /rag/learning/embedder/status`; while a run is active the job event (or the slow poll) refreshes it.
+  Future<void> _refreshEmbedder() async {
+    final st = await _learning.embedderStatus();
+    if (!mounted) return;
+    final job = st.ok ? EmbedderJob.fromJson(st.map) : null;
+    if (st.ok) setState(() => _embedderJob = job);
+    if (job?.running == true) {
+      (_embedderPoll ??= EventOrPoll(
+              match: (e) => e.kind == 'embedder' || e.kind == 'rag_embedder',
+              every: const Duration(seconds: 10),
+              fallbackEvery: const Duration(seconds: 30),
+              poll: _refreshEmbedder))
+          .start();
+    } else {
+      _embedderPoll?.stop();
+    }
+  }
+
   Future<void> _trainEmbedder() async {
     setState(() => _training = true);
     final r = await _learning.trainEmbedder();
@@ -582,8 +605,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
     setState(() => _training = false);
     if (r.ok) {
       appToast(t('بدأ تدريب نموذج البحث', 'Search-model training started'));
-      final st = await _learning.stats(days: 7);
-      if (mounted && st.ok) setState(() => _embedderJob = LearningStats.fromJson(st.map).embedderJob);
+      await _refreshEmbedder();
     } else {
       appToast(learningCodeText(r.code, r.message), error: true);
     }

@@ -422,7 +422,7 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
     // a sub-page of the dashboard's Services section: the section's header (title · Refresh · switcher) is above it
     if (OrgPageRefresh.maybeOf(context, listen: false) != null) return body;
     // opened on its own (staff only): the dashboard's header, Back first
-    return OrgPushedPage(title: t('المجالس', 'Councils'), maxWidth: 1000, child: body);
+    return OrgPushedPage(helpPageId: 'org.governance', title: t('المجالس', 'Councils'), maxWidth: 1000, child: body);
   }
 }
 
@@ -635,7 +635,7 @@ class _GovCouncilPageState extends State<GovCouncilPage> {
     }
     // staff only (the councils list, a department's quick action): the dashboard's header — Back · the council ·
     // its level line · Refresh (reloads the council in place) · calendar · bell · switcher
-    return OrgPushedPage(
+    return OrgPushedPage(helpPageId: 'org.governance', 
       title: k?.name ?? t('المجلس', 'Council'),
       subtitle: k == null ? null : [councilLevelLabel(k.level), if (k.parentDept != null) k.parentDept!.name].join(' · '),
       refresh: _refresh,

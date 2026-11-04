@@ -144,8 +144,8 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
     final done = await showAppSheet<bool>(
         context,
         (_) => replaces == null
-            ? RagBatchUploadSheet(api: _api, orgId: widget.orgId, courseId: widget.courseId, app: widget.app, library: _lib)
-            : RagUploadSheet(api: _api, orgId: widget.orgId, courseId: widget.courseId, library: _lib, replaces: replaces));
+            ? RagBatchUploadSheet(api: _api, orgId: widget.orgId, courseId: widget.courseId, app: widget.app, library: _lib, ocrScanned: _lib?.ocrScanned, maxMb: _lib?.maxMb)
+            : RagUploadSheet(api: _api, orgId: widget.orgId, courseId: widget.courseId, library: _lib, replaces: replaces, ocrScanned: _lib?.ocrScanned, maxMb: _lib?.maxMb));
     if (done == true) _load(silent: true);
   }
 
@@ -419,7 +419,9 @@ class RagDocumentCard extends StatelessWidget {
 // ── upload ────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class RagUploadSheet extends StatefulWidget {
-  const RagUploadSheet({super.key, required this.api, this.orgId, this.courseId, this.library, this.replaces});
+  const RagUploadSheet({super.key, required this.api, this.orgId, this.courseId, this.library, this.replaces, this.ocrScanned, this.maxMb});
+  final bool? ocrScanned;
+  final int? maxMb;
   final RagLibraryApi api;
   final int? orgId;
   final int? courseId;
@@ -465,6 +467,8 @@ class _RagUploadSheetState extends State<RagUploadSheet> {
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader(widget.replaces == null ? t('رفع مستند', 'Upload a document') : t('نسخة جديدة من المستند', 'New version of the document')),
         RagUploadForm(
+            ocrScanned: widget.ocrScanned,
+            maxMb: widget.maxMb,
             orgId: widget.orgId, courseId: widget.courseId, library: widget.library, replaces: widget.replaces, busy: _busy, error: _err, onSubmit: _submit),
       ]),
     );
@@ -473,8 +477,9 @@ class _RagUploadSheetState extends State<RagUploadSheet> {
 
 /// Title · scope · (course) · replaces · file. Presentational: [onSubmit] gets a validated draft.
 class RagUploadForm extends StatefulWidget {
-  const RagUploadForm({super.key, required this.onSubmit, this.orgId, this.courseId, this.library, this.replaces, this.busy = false, this.error, this.pickFile, this.ocrScanned});
+  const RagUploadForm({super.key, required this.onSubmit, this.orgId, this.courseId, this.library, this.replaces, this.busy = false, this.error, this.pickFile, this.ocrScanned, this.maxMb});
   final bool? ocrScanned;
+  final int? maxMb;
   final void Function(RagUploadDraft draft) onSubmit;
   final int? orgId;
   final int? courseId;
@@ -578,7 +583,7 @@ class _RagUploadFormState extends State<RagUploadForm> {
           onPressed: widget.busy ? null : _choose,
           icon: const Icon(Icons.attach_file_rounded, size: 18),
           label: Text(_d.fileName ?? t('اختر ملفاً (PDF, DOCX, TXT, MD, HTML, صور)', 'Pick a file (PDF, DOCX, TXT, MD, HTML, images)'), maxLines: 2, overflow: TextOverflow.ellipsis)),
-      RagUploadHint(ocrScanned: widget.ocrScanned),
+      RagUploadHint(ocrScanned: widget.ocrScanned, maxMb: widget.maxMb),
       if (_d.fileBytes != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(ragSizeText(_d.fileBytes!.length), style: appText(11.5, c: c.textLight))),
       if (_err != null || widget.error != null)
         Padding(padding: const EdgeInsets.only(top: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err ?? widget.error!)),
@@ -822,7 +827,8 @@ class _Stat extends StatelessWidget {
 /// nothing is touched) · merge (same name → new version) · replace (the old ones are archived only after every upload
 /// succeeded, so a failed upload never empties the library). [RagBatchUploadForm] is the presentational part.
 class RagBatchUploadSheet extends StatefulWidget {
-  const RagBatchUploadSheet({super.key, required this.api, this.orgId, this.courseId, this.app = false, this.library, this.pickFiles, this.ocrScanned});
+  const RagBatchUploadSheet({super.key, required this.api, this.orgId, this.courseId, this.app = false, this.library, this.pickFiles, this.ocrScanned, this.maxMb});
+  final int? maxMb;
   final RagLibraryApi api;
   final int? orgId;
   final int? courseId;
@@ -963,6 +969,7 @@ class _RagBatchUploadSheetState extends State<RagBatchUploadSheet> {
           onCourse: (v) => setState(() => _pickedCourse = v),
           fixedCourse: widget.courseId != null,
           ocrScanned: widget.ocrScanned,
+          maxMb: widget.maxMb,
           plan: RagConflictPlan.of(_existing, [for (final f in _files) f.$1]),
           mode: _mode,
           busy: _busy,

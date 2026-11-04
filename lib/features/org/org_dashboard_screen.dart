@@ -27,6 +27,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
@@ -523,18 +524,24 @@ class _SectionHubState extends State<_SectionHub> {
     }
     final i = _i.clamp(0, widget.subs.length - 1);
     if (widget.subs.length == 1) return widget.subs.first.$4;
+    final subHelp = _subHelpIds[widget.subs[i].$1];
     return Column(children: [
       // one row; on a phone it scrolls with a fade on the hidden edge and keeps the chosen chip in view
       Padding(
         padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xs),
-        child: OrgSectionChips(
+        child: Row(children: [
+          Expanded(
+            child: OrgSectionChips(
           items: [for (final x in widget.subs) (x.$2, x.$3)],
           index: i,
           onChanged: (k) => setState(() {
             _i = k;
             _seen.add(k);
           }),
-        ),
+            ),
+          ),
+          if (subHelp != null) HelpInfoButton(pageId: subHelp),
+        ]),
       ),
       Expanded(
         child: IndexedStack(index: i, children: [
@@ -552,3 +559,13 @@ class OrgOverviewPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const OrgHomePage();
 }
+
+/// The help page of a hub's section (the chip row has no header of its own): the page ids of the help seed.
+const _subHelpIds = <String, String>{
+  'members': 'org.members',
+  'departments': 'org.departments',
+  'courses': 'org.courses',
+  'governance': 'org.governance',
+  'entities': 'org.governance',
+  'councils': 'org.governance',
+};

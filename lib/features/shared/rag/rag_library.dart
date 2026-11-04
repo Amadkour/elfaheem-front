@@ -228,15 +228,23 @@ class RagDocument {
 }
 
 class RagLibrary {
-  const RagLibrary(this.items, this.manager, [this.quota]);
+  const RagLibrary(this.items, this.manager, [this.quota, this.ocrScanned, this.maxMb]);
   final List<RagDocument> items;
   final bool manager;
 
   /// Managers only, when the server reports it (Phase 10).
   final RagQuota? quota;
 
-  factory RagLibrary.fromJson(Map<String, dynamic> j) =>
-      RagLibrary(asMapList(j['items']).map(RagDocument.fromJson).toList(), asBool(j['manager']), RagQuota.fromJson(j['quota']));
+  /// From `"upload": {"ocr_scanned", "max_doc_mb"}` of the list; null = unknown (an older server).
+  final bool? ocrScanned;
+  final int? maxMb;
+
+  factory RagLibrary.fromJson(Map<String, dynamic> j) {
+    final up = j['upload'] is Map ? asMap(j['upload']) : const <String, dynamic>{};
+    final mb = up['max_doc_mb'] == null ? 0 : asInt(up['max_doc_mb']);
+    return RagLibrary(asMapList(j['items']).map(RagDocument.fromJson).toList(), asBool(j['manager']), RagQuota.fromJson(j['quota']),
+        up.containsKey('ocr_scanned') ? asBool(up['ocr_scanned']) : null, mb > 0 ? mb : null);
+  }
 
   /// true while the worker still has something to do — the screen keeps polling.
   bool get hasBusy => items.any((d) => d.busy);

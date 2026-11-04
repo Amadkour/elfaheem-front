@@ -11,6 +11,7 @@ import 'dart:async' show unawaited;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -291,7 +292,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     final (errors, perQ) = _tried ? q.validate() : (const <String>[], const <int, List<String>>{});
     return BasePage(
       key: const ValueKey('exam.quick'),
-      appBar: AppBar(title: Text(t('اختبار جديد', 'New exam'))),
+      appBar: AppBar(title: Text(t('اختبار جديد', 'New exam')), actions: const [HelpInfoButton(pageId: 'teacher.exam_quick')]),
       child: q.mode == null
           ? SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), child: QuickModeChooser(onPick: (m) => setState(() => q.mode = m)))
           : Column(children: [

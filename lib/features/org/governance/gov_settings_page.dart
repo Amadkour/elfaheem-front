@@ -243,6 +243,6 @@ class _GovSettingsPageState extends State<GovSettingsPage> {
         : GovSettingsForm(settings: _s!, busy: _busy, onChanged: () => setState(() {}), onSave: _save);
     if (widget.embedded) return body;
     // org admin only: the dashboard's header, Back first (Save stays at the end of the form)
-    return OrgPushedPage(title: t('إعدادات الطلبات والإحالات', 'Requests & routing settings'), maxWidth: 900, child: body);
+    return OrgPushedPage(helpPageId: 'org.governance', title: t('إعدادات الطلبات والإحالات', 'Requests & routing settings'), maxWidth: 900, child: body);
   }
 }

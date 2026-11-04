@@ -2,6 +2,7 @@
 
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
@@ -285,7 +286,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
         child: Column(
           children: [
             // ── App bar ────────────────────────────────────────────────────
-            if (isWide) ScreenAppBar(title: 'update_account'.tr),
+            if (isWide) ScreenAppBar(helpPageId: 'account.edit', title: 'update_account'.tr),
 
             // ── Body: the same hero for every role; a teacher's Personal info / Documents switch sits under it (M18)
             Expanded(child: _mobileLayout(p, c)),

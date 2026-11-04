@@ -355,7 +355,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
         child: body,
       );
     }
-    return OrgPushedPage(
+    return OrgPushedPage(helpPageId: 'org.timetable', 
       title: title,
       subtitle: d == null ? null : '${t('الخطوة', 'Step')} ${_step + 1}/${_steps.length} · ${_steps[_step].$1}',
       refresh: _refresh,

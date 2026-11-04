@@ -128,6 +128,7 @@ class _AdminHelpPageState extends State<AdminHelpPage> {
       useWebCard: true,
       maxWith: 1000,
       appBar: ScreenAppBar(
+        helpPageId: 'admin.help',
         title: _t('إدارة المساعدة', 'Help management'),
         actions: [
           IconButton(

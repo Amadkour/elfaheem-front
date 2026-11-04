@@ -353,7 +353,7 @@ class _GovMyVotesPageState extends State<GovMyVotesPage> {
     // staff of this organization: the dashboard's header (Back · title · Refresh · switcher); a student / a member
     // page elsewhere keeps the screen's own app bar
     if (orgUsesDashboardHeader(context, _orgId)) {
-      return OrgPushedPage(title: t('تصويتاتي', 'My votes'), refresh: _refresh, maxWidth: 1000, child: body);
+      return OrgPushedPage(helpPageId: 'org.governance', title: t('تصويتاتي', 'My votes'), refresh: _refresh, maxWidth: 1000, child: body);
     }
     return BasePage(
       useWebCard: true,

@@ -621,7 +621,7 @@ class _GovCouncilSettingsPageState extends State<GovCouncilSettingsPage> {
     // staff of this organization: the dashboard's header (Back · council · "Council settings"); Save stays in the
     // form. Without the organization loaded: the screen's own app bar
     if (orgUsesDashboardHeader(context, _orgId)) {
-      return OrgPushedPage(
+      return OrgPushedPage(helpPageId: 'org.governance', 
         title: council?.name ?? t('إعدادات المجلس', 'Council settings'),
         subtitle: council == null ? null : t('إعدادات المجلس', 'Council settings'),
         maxWidth: 900,

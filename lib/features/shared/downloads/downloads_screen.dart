@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -161,6 +162,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 ),
           title: Text(offlineT('dl_title'), style: c.h3),
           actions: [
+            const HelpInfoButton(pageId: 'downloads'),
             if (_items.isNotEmpty && _tab == 0)
               IconButton(
                 tooltip: offlineT('dl_delete_all'),

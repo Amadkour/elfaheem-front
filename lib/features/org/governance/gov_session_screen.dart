@@ -1167,7 +1167,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     // staff of this organization: the dashboard's header (Back · council · kind and status · Refresh · switcher);
     // a member, a deep link before the organization loaded: the screen's own app bar
     if (orgUsesDashboardHeader(context, _orgId)) {
-      return OrgPushedPage(
+      return OrgPushedPage(helpPageId: 'org.governance', 
         title: title,
         subtitle: s == null ? null : [if (s.council != null) sessionKindLabel(s.kind), sessionStatusLabel(s.status)].join(' · '),
         refresh: _refresh,

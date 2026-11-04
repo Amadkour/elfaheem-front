@@ -30,6 +30,7 @@ import 'dart:typed_data';
 
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
@@ -651,6 +652,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
                 const SizedBox(width: 2),
               ],
               Expanded(child: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(22, w: FontWeight.w800, c: c.textDark))),
+              const HelpInfoButton(pageId: 'calendar'),
             ]),
             const SizedBox(height: 2),
           ],
@@ -770,6 +772,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           ]),
         ),
         if (!_dept) QuickMeetingButton(icon: true, orgId: widget.orgId, api: widget.api, onDone: _refresh),
+        const HelpInfoButton(pageId: 'calendar'),
         _TodayButton(onTap: _today, isToday: _atToday),
         _MoreMenu(onRefresh: _refresh, onExport: _export),
       ]),
