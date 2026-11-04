@@ -743,7 +743,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
     final c = context.colors;
     return [
       for (final o in q.options)
-        Row(children: [
+        Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs), child: Row(children: [
           IconButton(
             tooltip: t('الإجابة الصحيحة', 'The right answer'),
             onPressed: () {
@@ -760,7 +760,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
             ),
           ),
           if (q.options.length > 2) IconButton(onPressed: () => _removeOption(o), tooltip: t('حذف الخيار', 'Remove option'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
-        ]),
+        ])),
       Align(
         alignment: AlignmentDirectional.centerStart,
         child: TextButton.icon(onPressed: _addOption, icon: const Icon(Icons.add_rounded, size: 18), label: Text(t('خيار', 'Choice'))),
