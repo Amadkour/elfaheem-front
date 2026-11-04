@@ -19,6 +19,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../export/table_export_model.dart' show AppExportColumn, AppColType, dateValue;
+import 'layout_computed.dart';
 import 'layout_model.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -455,12 +456,16 @@ const _pageVars = {'page', 'pages'};
 
 /// `{{name}}` → [vars]`[name]`, as the server's `expand`: an unknown name becomes empty text, except `{{page}}` /
 /// `{{pages}}`, which stay as written until the page is known.
-String layoutFillVars(String s, Map<String, String> vars) {
+String layoutFillVars(String s, Map<String, String> vars, {Map<String, Object?>? item, String lang = 'en'}) {
   if (!s.contains('{{')) return s;
-  return s.replaceAllMapped(RegExp(r'\{\{\s*([a-z_]+)\s*\}\}'), (m) {
+  return s.replaceAllMapped(RegExp(r'\{\{\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\}\}'), (m) {
     final k = m.group(1)!;
     final v = vars[k];
-    return v ?? (_pageVars.contains(k) ? '{{$k}}' : '');
+    if (v != null) return v;
+    if (_pageVars.contains(k)) return '{{$k}}';
+    // v4: an item's field (a source column or a `calc.` value) prints as text; document variables win.
+    if (item != null && item.containsKey(k)) return layoutFormat(item[k], LayoutBind(field: k, empty: ''), lang: lang);
+    return '';
   });
 }
 
@@ -676,6 +681,9 @@ bool layoutCondMatches(LayoutCond c, Map<String, Object?> item) {
       final sv = v == null ? '' : _str(v).trim().toLowerCase();
       final nv = layoutAsNumber(v);
       return items.any((it) => _str(it).trim().toLowerCase() == sv || (nv != null && layoutAsNumber(it) == nv));
+    case 'starts_with' || 'ends_with':
+      final hay = (v == null ? '' : _str(v)).trim().toLowerCase(), needle = (target == null ? '' : _str(target)).trim().toLowerCase();
+      return op == 'starts_with' ? hay.startsWith(needle) : hay.endsWith(needle);
     case 'contains' || 'not_contains':
       final hit = target != null && (v == null ? '' : _str(v)).toLowerCase().contains(_str(target).trim().toLowerCase());
       return op == 'contains' ? hit : !hit;
@@ -727,7 +735,10 @@ LayoutResolved layoutResolve(
   String lang = 'en',
   Map<String, String> vars = const {},
   LayoutField? Function(String key)? fieldOf,
+  List<LayoutComputedField> computedFields = const [],
 }) {
+  // v4: the `calc.` values join the row (the server evaluates them before everything else).
+  if (computedFields.isNotEmpty) item = applyComputed(item, computedFields);
   String text;
   final c = e.computed;
   if (c != null) {
@@ -741,7 +752,7 @@ LayoutResolved layoutResolve(
   } else if (e.kind == 'image' || e.kind == 'signature' || e.kind == 'line' || e.kind == 'rect') {
     text = '';
   } else {
-    text = layoutFillVars(e.value ?? '', vars);
+    text = layoutFillVars(e.value ?? '', vars, item: item, lang: lang);
   }
   LayoutThen? hit;
   int? at;
@@ -760,7 +771,7 @@ LayoutResolved layoutResolve(
   final t = hit.text;
   return LayoutResolved(
     show: hit.show,
-    text: t == null ? text : layoutFillVars(t, vars),
+    text: t == null ? text : layoutFillVars(t, vars, item: item, lang: lang),
     color: hit.color,
     bg: hit.bg,
     icon: hit.icon,
