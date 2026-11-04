@@ -60,7 +60,7 @@ class _View extends StatelessWidget {
     return BasePage(
       useWebCard: true,
       maxWith: 1000,
-      appBar: ScreenAppBar(title: t('المدفوعات والتحويلات', 'Payments & payouts'), actions: [
+      appBar: ScreenAppBar(helpPageId: 'admin.payments', title: t('المدفوعات والتحويلات', 'Payments & payouts'), actions: [
         // Phase 8: fee policy · per-organization fees · ledger report
         IconButton(
           tooltip: t('الرسوم والتقارير المالية', 'Fees & financial reports'),

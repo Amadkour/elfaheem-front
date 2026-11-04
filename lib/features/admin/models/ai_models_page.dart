@@ -459,7 +459,7 @@ class AiModelsPageState extends State<AiModelsPage> {
     );
     return BasePage(
       key: const ValueKey(kModelsAdminFeatureKey),
-      appBar: ScreenAppBar(
+      appBar: ScreenAppBar(helpPageId: 'admin.models', 
         title: t('نماذج الذكاء الاصطناعي', 'AI Models'),
         actions: [
           IconButton(key: const ValueKey('add_model'), tooltip: t('إضافة نموذج', 'Add model'), onPressed: _add, icon: const Icon(Icons.add_rounded)),

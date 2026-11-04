@@ -182,7 +182,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            ScreenAppBar(title: 'change_password'.tr),
+            ScreenAppBar(helpPageId: 'account.change_password', title: 'change_password'.tr),
             Expanded(
               child: isWide ? _webLayout(p, c) : _mobileLayout(p, c),
             ),

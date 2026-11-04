@@ -11,6 +11,7 @@
 // with refresh + log out instead of the "app is free" page again.
 library;
 
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
@@ -346,7 +347,7 @@ class _ViewState extends State<_View> {
         backgroundColor: c.background,
         appBar: AppBar(
           title: Text('sub_title'.tr, style: TextStyle(fontFamily: AppFonts.family)),
-          actions: [AppRefreshAction(onRefresh: p.load)],
+          actions: [AppRefreshAction(onRefresh: p.load), const HelpInfoButton(pageId: 'account.subscription')],
         ),
         body: p.loaded ? AppRefresh(onRefresh: p.load, scrollable: scrollable, child: body) : body,
       ),

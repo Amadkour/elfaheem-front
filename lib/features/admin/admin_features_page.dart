@@ -147,7 +147,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     return BasePage(
       useWebCard: true,
       maxWith: 1000,
-      appBar: ScreenAppBar(title: t('الميزات', 'Features'), actions: [
+      appBar: ScreenAppBar(helpPageId: 'admin.features', title: t('الميزات', 'Features'), actions: [
         IconButton(
             tooltip: t('دليل ميزات التطبيق (للمساعد)', 'App features guide (assistant)'),
             icon: const Icon(Icons.menu_book_rounded),

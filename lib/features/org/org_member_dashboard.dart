@@ -864,6 +864,7 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
       useWebCard: true,
       maxWith: 960,
       appBar: ScreenAppBar(
+        helpPageId: 'org.member',
         title: t('مساحتي في المؤسسة', 'My organization'),
         actions: [
           // Personal included: leaving replaces this root page with the personal dashboard (leaveToPersonal)

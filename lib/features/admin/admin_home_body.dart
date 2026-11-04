@@ -140,6 +140,7 @@ class AdminHomeBody extends StatelessWidget {
         HomeEntrance(
           index: 0,
           child: HomeHeader(
+            helpPageId: 'home.admin',
             name: name,
             subtitle: 'home_admin_sub'.tr,
             actions: headerActions,

@@ -388,7 +388,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
       };
 
   /// "Home" (the organization's name is already on the switcher pill beside it) · my role there.
-  Widget _header(OrgSession s, OrgHomeData? d) => OrgPageHeader(title: t('الرئيسية', 'Home'), subtitle: _roleLabel(s, d), searchBar: true);
+  Widget _header(OrgSession s, OrgHomeData? d) => OrgPageHeader(title: t('الرئيسية', 'Home'), subtitle: _roleLabel(s, d), searchBar: true, helpPageId: 'home.org');
 
   List<OrgAttentionSpec> _alerts(BuildContext context, OrgHomeData d) => [
         for (final a in d.alerts)

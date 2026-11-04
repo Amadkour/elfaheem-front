@@ -89,6 +89,7 @@ class _ParentOverviewPageState extends State<ParentOverviewPage> with AutomaticK
                   HomeEntrance(
                     index: 0,
                     child: HomeHeader(
+                      helpPageId: 'home.parent',
                       name: user?.name ?? 'role_parent'.tr,
                       leading: user == null ? null : UserChipButton(user: user, showLabel: false),
                       shellActions: [const CalendarEntryIcon(), NotificationIcon(unreadCount: unread)],

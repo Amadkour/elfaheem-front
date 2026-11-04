@@ -577,7 +577,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
     final c = context.colors;
     return BasePage(
       key: const ValueKey('rag.admin'),
-      appBar: ScreenAppBar(title: t('لوحة المساعد الذكي', 'AI assistant console'), actions: [
+      appBar: ScreenAppBar(helpPageId: 'admin.rag_console', title: t('لوحة المساعد الذكي', 'AI assistant console'), actions: [
         IconButton(
             tooltip: t('مستندات التطبيق', 'App documents'),
             icon: const Icon(Icons.folder_copy_outlined),

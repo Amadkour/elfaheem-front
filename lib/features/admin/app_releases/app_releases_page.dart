@@ -192,7 +192,7 @@ class AppReleasesPageState extends State<AppReleasesPage> {
     final page = _page;
     return BasePage(
       key: const ValueKey(kAppReleasesFeatureKey),
-      appBar: ScreenAppBar(
+      appBar: ScreenAppBar(helpPageId: 'admin.app_releases', 
         title: t('إصدارات التطبيق', 'App versions'),
         actions: [AppRefreshAction(onRefresh: _load)],
       ),

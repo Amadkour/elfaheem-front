@@ -14,6 +14,7 @@
 // every write; tabs come from cpTabs(). The header is identity only — each role's numbers live on its overview.
 library;
 
+import 'package:flutter_education_app/features/shared/help/help_tour.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -98,7 +99,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
     return BasePage(
       useWebCard: true,
       maxWith: 1100,
-      appBar: ScreenAppBar(
+      appBar: ScreenAppBar(helpPageId: 'course', 
         title: p == null ? t('ملف المقرر', 'Course profile') : p.name(ar),
         actions: [
           ParentComponent(
@@ -378,8 +379,8 @@ class CpHeader extends StatelessWidget {
             chip(cpRoleLabel(p.role), icon: Icons.badge_rounded),
           ]),
           const SizedBox(height: 10),
-          Text(p.name(ar), maxLines: 3, overflow: TextOverflow.ellipsis,
-              style: appText(roomy ? 23 : 19, w: FontWeight.w800, c: context.colors.onHero, h: 1.3)),
+          HelpTourTarget(pageId: 'course', id: 'hero', child: Text(p.name(ar), maxLines: 3, overflow: TextOverflow.ellipsis,
+              style: appText(roomy ? 23 : 19, w: FontWeight.w800, c: context.colors.onHero, h: 1.3))),
           if (where.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(where, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: context.colors.onHeroMuted)),
