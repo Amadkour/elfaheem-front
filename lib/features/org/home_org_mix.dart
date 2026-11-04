@@ -10,6 +10,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_states.dart' show AppErrorState, appErrorMessage;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../admin/admin_common.dart';
 import 'org_common.dart';
@@ -35,6 +37,7 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
   static bool _requiredShown = false;   // once per app session
   static bool _blockingOpen = false;
   Map<String, dynamic>? _mix;
+  Object? _error; // the load failed and nothing is on screen yet: a compact Retry instead of a vanished block
 
   @override
   void initState() {
@@ -47,7 +50,10 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
       final r = await ApiClient().get('/api/v1/home/mix');
       if (!mounted || r is! Map) return;
       final mix = Map<String, dynamic>.from(r);
-      setState(() => _mix = mix);
+      setState(() {
+        _mix = mix;
+        _error = null;
+      });
       // (organization news now lives on the organization's own home tab — no feed call here)
       final req = asMapList(mix['required']);
       // BLOCKING: availability requests open as a frozen screen until submitted (every time, not once per session)
@@ -69,7 +75,9 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
         _requiredShown = true;
         WidgetsBinding.instance.addPostFrameCallback((_) => _showRequired(req));
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted && _mix == null) setState(() => _error = e);
+    }
   }
 
   Future<void> _showRequired(List<Map<String, dynamic>> req) async {
@@ -126,6 +134,18 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
     // "Needs your action" lives in ONE place: the unified inbox entry (InboxEntry) above this block.
     // Here only the "join your university" entry for people outside any organization; the organization itself
     // lives in its own home tab.
+    if (m == null && _error != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+        child: AppErrorState(
+            compact: true,
+            message: appErrorMessage(_error),
+            onRetry: () {
+              setState(() => _error = null);
+              _load();
+            }),
+      );
+    }
     if (m == null || weight <= 10) return const OrgHomeEntry();
     return const SizedBox.shrink();
   }

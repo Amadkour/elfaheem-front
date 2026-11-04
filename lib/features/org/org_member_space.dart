@@ -10,6 +10,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_page_header.dart' show AppPageHeader;
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -52,7 +54,13 @@ class OrgMemberSpace extends StatelessWidget {
       child: BasePage(
         useWebCard: true,
         maxWith: 900,
-        appBar: ScreenAppBar(title: orgNameOf(org), actions: [
+        child: Column(children: [
+          // the organization's name always leads the page, with the way out to the personal space
+          AppPageHeader(
+            title: orgNameOf(org),
+            icon: Icons.apartment_rounded,
+            onBack: () => Navigator.of(context).maybePop(),
+            actions: [
           IconButton(
               tooltip: t('المقررات', 'Courses'),
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: org))),
@@ -65,8 +73,9 @@ class OrgMemberSpace extends StatelessWidget {
               tooltip: t('امتحاناتي', 'My exams'),
               onPressed: () => openMyExams(context, orgId: id),
               icon: const Icon(Icons.event_note_rounded)),
-        ]),
-        child: Column(children: [
+          const ContextExitButton(),
+            ],
+          ),
           OrgHero(org: org, subtitle: t('مرحباً بك في مجتمعك 👋', 'Welcome to your community 👋')),
           TabBar(
             isScrollable: true,
@@ -182,7 +191,15 @@ class _DirectoryState extends State<_Directory> with _Loader<_Directory> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return body((list) => list.isEmpty
-        ? ListView(children: [OrgEmpty(icon: Icons.apartment_rounded, title: t('لا إدارات منشورة بعد', 'No departments listed yet'))])
+        ? ListView(children: [
+            OrgEmpty(
+              icon: Icons.apartment_rounded,
+              title: t('لا إدارات منشورة بعد', 'No departments listed yet'),
+              message: t('عند نشر المؤسسة لإداراتها ستجدها هنا. يمكنك طلب الانضمام لقسم من تبويب الانضمام.', 'Departments appear here once the organization publishes them. You can ask to join a unit from the Join tab.'),
+              actionLabel: t('انضمام لقسم', 'Join a department'),
+              onAction: () => DefaultTabController.maybeOf(context)?.animateTo(6),
+            )
+          ])
         : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
             for (final d in list)
               Container(
@@ -535,7 +552,11 @@ class _MyComplaintsState extends State<_MyComplaints> with _Loader<_MyComplaints
         return list.isEmpty
             ? ListView(children: [
                 OrgEmpty(icon: Icons.support_agent_rounded, title: t('لا شكاوى', 'No complaints'),
-                    message: t('إن واجهتك مشكلة فنحن هنا — رأيك يحسّن الخدمة للجميع', "If something goes wrong, we're here — your voice improves things for everyone")),
+                    message: t('إن واجهتك مشكلة فنحن هنا — رأيك يحسّن الخدمة للجميع', "If something goes wrong, we're here — your voice improves things for everyone"),
+                    actionLabel: t('شكوى جديدة', 'New complaint'),
+                    onAction: () async {
+                      if (await showComplaintComposer(context, widget.org)) load();
+                    }),
               ])
             : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
                 for (final x in list)
