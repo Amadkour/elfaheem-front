@@ -14,6 +14,7 @@ import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_pdf
 import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/fake_api.dart';
 import '../ui/layout_harness.dart';
 
 Map<String, dynamic> _q(int id, String type, Map<String, dynamic> body, Map<String, dynamic> answer, double points) =>
@@ -164,6 +165,8 @@ void main() {
     });
 
     testWidgets('the sheet', (t) async {
+      final fake = FakeApi({})..install();
+      addTearDown(fake.uninstall);
       await expectNoLayoutErrors(t, () => SingleChildScrollView(child: ExamPaperSheet(view: _view(), course: 'Biology', orgName: 'Al Noor High School')),
           act: (t) async {
         await t.ensureVisible(find.byType(ExpansionTile));

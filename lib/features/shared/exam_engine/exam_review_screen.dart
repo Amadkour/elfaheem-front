@@ -9,12 +9,13 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
 import 'package:flutter_education_app/utils/page_return.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import 'exam_review.dart';
-import 'exam_authoring.dart' show ExamAuthoringApi, ExamView, examStatusLabel;
+import 'exam_authoring.dart' show ExamAuthoringApi, ExamView, authoringError, examStatusLabel;
 import 'exam_authoring_screen.dart' show ExamEditorScreen, QuestionBankScreen;
 import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
 import 'exam_scan_review.dart';
@@ -550,6 +551,7 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
   final _api = ExamAuthoringApi();
   List<Map<String, dynamic>> _items = const [];
   bool _ready = false;
+  String? _reason;
   int? _orgId;
   Future<void>? _loading;
 
@@ -570,8 +572,14 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
   // The course's space comes from the server: an organization's course answers 409 course_not_in_org naming it.
   Future<void> _fetch() async {
     final s = await _api.resolveScope(widget.courseId);
-    if (!mounted || !s.list.ok) return;
+    if (!mounted) return;
+    if (!s.list.ok) {
+      // not silent: the "+" stays, disabled, with the reason under the title
+      setState(() => _reason = authoringError(s.list));
+      return;
+    }
     setState(() {
+      _reason = null;
       _ready = true;
       _orgId = s.orgId;
       _items = asMapList(s.list.map['items']);
@@ -590,16 +598,24 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready) return const SizedBox.shrink();
+    if (!_ready && _reason == null) return const SizedBox.shrink();
     final c = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSectionTitle(t('الاختبارات الجديدة', 'New-engine exams'),
+        AppSectionTitle(t('اختبارات المقرر', 'Course exams'),
             trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-              IconButton(onPressed: () => _open(QuestionBankScreen(orgId: _orgId, courseId: widget.courseId)), icon: const Icon(Icons.quiz_outlined), tooltip: t('بنك الأسئلة', 'Question bank')),
-              IconButton(onPressed: _quick, icon: Icon(Icons.add_circle_outline_rounded, color: c.primary), tooltip: t('اختبار جديد', 'New exam')),
+              IconButton(
+                  onPressed: _ready ? () => _open(QuestionBankScreen(orgId: _orgId, courseId: widget.courseId)) : null,
+                  icon: const Icon(Icons.quiz_outlined),
+                  tooltip: t('بنك الأسئلة', 'Question bank')),
+              IconButton(onPressed: _ready ? _quick : null, icon: Icon(Icons.add_circle_outline_rounded, color: _ready ? c.primary : c.textLight), tooltip: t('اختبار جديد', 'New exam')),
             ])),
+        if (!_ready)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+            child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: t('لا يمكن إنشاء اختبار الآن: $_reason', 'Can\'t create an exam right now: $_reason')),
+          ),
         // every exam at its natural height: the hub scrolls them with the rest of the tab (a box of a quarter of the
         // screen cut the list after two and a half rows, with empty space under it)
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
