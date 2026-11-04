@@ -570,8 +570,12 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
 /// The engine exams a teacher manages for a course, with how many answers wait for them. Hidden when the engine is
 /// not deployed or the course has no engine exams, so the legacy hub stays as it was.
 class EngineReviewSection extends StatefulWidget {
-  const EngineReviewSection({super.key, required this.courseId, this.onItems});
+  const EngineReviewSection({super.key, required this.courseId, this.onItems, this.showEmpty = false});
   final int courseId;
+
+  /// Says "No exams for this course yet" when there are none: the admin's course page, where nothing else would. The
+  /// teacher's hub keeps it off (its own list and empty state follow the section).
+  final bool showEmpty;
 
   /// The engine exams once loaded: the exam hub counts them in its header and drops its legacy "No exams yet" when
   /// there are some (it showed 0 / 0 / 0 and "No exams yet" under a list of exams).
@@ -650,7 +654,7 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
             padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: t('لا يمكن إنشاء اختبار الآن: $_reason', 'Can\'t create an exam right now: $_reason')),
           ),
-        if (_ready && _items.isEmpty)
+        if (widget.showEmpty && _ready && _items.isEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: Text(t('لا اختبارات لهذا المقرر بعد. أنشئ أولها بزر +', 'No exams for this course yet. Create the first one with the + button'),

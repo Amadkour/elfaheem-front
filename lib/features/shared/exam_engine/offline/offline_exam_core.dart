@@ -418,6 +418,10 @@ const kExamPartChars = 12000;
 List<String> splitParts(String s, {int size = kExamPartChars}) =>
     [for (var i = 0; i < s.length; i += size) s.substring(i, min(i + size, s.length))];
 
+/// The other side of `splitParts(await link.seal(…))`: ONE box was split, so the parts are joined before it is opened
+/// (a part on its own is no box and never opens).
+Future<String> openParts(ExamLink me, String remotePub, List<String> parts) => me.open(remotePub, parts.join());
+
 /// The answers file a student can share (any app) and the teacher uploads in bulk.
 const kAnswersFileExt = 'nbexam';
 

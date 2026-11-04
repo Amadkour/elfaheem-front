@@ -87,7 +87,7 @@ void main() {
     AppConfig.lang = 'en';
     final fake = FakeApi({'GET /api/v1/exam/exams': (_) => {'items': <Object>[]}}, latency: const Duration(milliseconds: 10))..install();
     addTearDown(fake.uninstall);
-    await tester.pumpWidget(layoutHost(SingleChildScrollView(child: EngineReviewSection(courseId: 1)), scale: 1));
+    await tester.pumpWidget(layoutHost(SingleChildScrollView(child: EngineReviewSection(courseId: 1, showEmpty: true)), scale: 1));
     await frames(tester);
     expect(find.textContaining('No exams for this course yet'), findsOneWidget);
   });

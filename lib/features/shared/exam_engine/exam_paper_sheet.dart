@@ -761,8 +761,9 @@ class PaperCopiesSection extends StatelessWidget {
         if (wordNote)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(t('في Word: ملف لكل طالب داخل ملف مضغوط، والاسم في كل صفحة (الرمز QR في PDF فقط).',
-                'Word: one file per student in a zip, the name on every page (the QR code is in PDF only).'), style: appText(11.5, c: c.textLight)),
+            child: Text(t('في Word: ملف لكل طالب داخل ملف مضغوط، والاسم ورمز QR في كل صفحة. Word يرتّب الصفحات بنفسه: افتح نسخة وتأكد أن كل صفحة برمز مختلف قبل الطباعة، أو اطبع PDF لتطابق مضمون.',
+                'Word: one file per student in a zip, the name and a QR code on every page. Word lays out the pages itself: open one copy and check every page has its own code before printing, or print the PDF for an exact match.'),
+                style: appText(11.5, c: c.textLight)),
           ),
         const SizedBox(height: 8),
         OutlinedButton.icon(

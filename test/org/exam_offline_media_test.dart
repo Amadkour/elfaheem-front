@@ -80,14 +80,17 @@ void main() {
     expect(PackageMedia.fromContent(await openPackage(back, key)).of(_id1), _png);
   });
 
-  test('the relay carries the images: a package with ~2 MB of images splits into parts and joins back intact', () async {
-    final big = Uint8List.fromList(List<int>.generate(2 * 1024 * 1024, (i) => (i * 31) & 255));
+  test('the relay carries the images: the host seals the package once and splits it, the client joins then opens', () async {
+    // 1.5 MB of images: the server's cap (offline.MAX_PACKAGE_IMAGE_BYTES), the most a package can hold
+    final big = Uint8List.fromList(List<int>.generate(1536 * 1024, (i) => (i * 31) & 255));
     final p = await _seal(_content(media: {_id1: base64Encode(big)}), key);
-    final wire = jsonEncode(p.json);
-    final parts = splitParts(wire);
+    final host = await ExamLink.create(), client = await ExamLink.create();
+    final parts = splitParts(await host.seal(client.pub, jsonEncode(p.json)));     // OfflineExamHost, `exam_part`
     expect(parts.every((x) => x.length <= kExamPartChars), isTrue);
-    expect(parts.length, greaterThan(200));
-    final received = OfflinePackage.fromJson(Map<String, dynamic>.from(jsonDecode(parts.join()) as Map));
+    expect(parts.length, greaterThan(1));
+    expect(parts.length, lessThanOrEqualTo(400), reason: 'the client reads at most 400 parts (offline_exam_relay.dart)');
+    await expectLater(client.open(host.pub, parts.first), throwsA(anything), reason: 'a part on its own is no box');
+    final received = OfflinePackage.fromJson(Map<String, dynamic>.from(jsonDecode(await openParts(client, host.pub, parts)) as Map));
     expect(received.intact, isTrue);
     expect(received.hash, p.hash);
     expect(PackageMedia.fromContent(await openPackage(received, key)).of(_id1), big);

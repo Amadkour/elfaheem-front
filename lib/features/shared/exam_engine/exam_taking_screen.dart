@@ -796,7 +796,9 @@ class _InlineQuestionImage extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxHeight: 260),
-        child: Image.memory(bytes!, fit: BoxFit.contain, gaplessPlayback: true, height: 260, semanticLabel: label, errorBuilder: (_, _, _) => missing()),
+        // decoded at the box's height, not the photo's (a 4000 x 3000 picture is ~48 MB as pixels)
+        child: Image.memory(bytes!, fit: BoxFit.contain, gaplessPlayback: true, height: 260, cacheHeight: (260 * MediaQuery.devicePixelRatioOf(context)).round(),
+            semanticLabel: label, errorBuilder: (_, _, _) => missing()),
       ),
     );
   }
