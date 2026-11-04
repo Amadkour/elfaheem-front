@@ -15,6 +15,7 @@ import '../../core/app_mode.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
 import '../../config/app_config.dart' show AppConfig;
+import '../shared/exam_engine/exam_media.dart' show MediaBytesCache;
 import 'biometric.dart';
 import 'mfa.dart';
 import 'teacher_onboarding_token.dart';
@@ -1073,6 +1074,7 @@ class MyAuthProvider extends BaseProvider {
     accountSetup = null;
     _resetMfa();
     TeacherOnboardingToken.clear();
+    MediaBytesCache.instance.clear(); // question images of the previous user's exams
     _currentUser = null;
     notifyListeners();
   }

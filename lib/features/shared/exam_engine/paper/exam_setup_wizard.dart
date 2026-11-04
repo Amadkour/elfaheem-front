@@ -3,14 +3,16 @@
 //   1 Students   how do we identify each student? → the audience check ("34 ready, 6 missing", who shares a value),
 //                ask the missing ones (due on exam day for paper) and remind them; the list follows the core's
 //                `exam_identifiers` event live (EventOrPoll, a slow poll only as the fallback)
-//   2 Type       Online (stored; "Online exams are coming next" — the wizard stops there) or Paper
+//   2 Type       Online (saved, then the wizard closes with true: the exam's online delivery settings — time, attempts,
+//                proctoring — are the exam editor's, where the caller returns) or Paper
 //   3 Paper      Exam paper only · Bubble sheet only · Both together (paper only skips step 4)
 //   4 Sheet      the published bubble-sheet types; "Upload a custom layout" when the caller gives onLearnTemplate.
 //                Each type shows its student-ID zone; when the identifier does not fit the chosen one (a 14-digit
 //                national ID on 10 columns) a card says so under it with the fixes (IdZoneFitCard, the server's
 //                identifier_fit rule mirrored by identifierZoneFit). The same card shows on step 1 once a sheet is
 //                pinned and on step 5 from the server's answer: a teacher sees it before printing.
-//   5 Models     forms A / B / C … with their own answer keys, how they are told apart (pick two), and what a blank /
+//   5 Models     forms A / B / C … with their own answer keys (typed by hand for an uploaded paper, or "Generate versions":
+//                the server shuffles questions / choices and derives the keys), how they are told apart (pick two), and what a blank /
 //                a double mark means; an unclear mark always goes to review (not a choice)
 //
 // One primary action per step, a progress line on top, Back on every step (no dead ends). Every step saves its own
@@ -32,6 +34,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../../admin/admin_common.dart' show asInt, asMapList, t;
 import '../exam_authoring.dart' show parseEngineUtc;
 import '../exam_authoring_screen.dart' show pickEngineDateTime;
+import '../exam_versions_sheet.dart' show openExamVersions;
 import 'exam_setup.dart';
 import 'omr_counts.dart';
 
@@ -355,7 +358,10 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
 
   Future<void> _continueDelivery() async {
     if (_delivery == 'online') {
-      if (await _put(onlineBody(_setup)) && mounted) setState(() => _onlineSaved = true);
+      if (await _put(onlineBody(_setup)) && mounted) {
+        showAppNotice(t('حُفظ كاختبار إلكتروني — اضبط الوقت والمحاولات من محرر الاختبار', 'Saved as an online exam — set the time and attempts in the exam editor'));
+        Navigator.of(context).pop(true);
+      }
       return;
     }
     _next();
@@ -411,6 +417,15 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
         _formsError = setupErrorText(r);
       }
     });
+  }
+
+  /// "Generate versions": the sheet makes the versions on the server (orders + keys), the models are read back.
+  Future<void> _generateVersions() async {
+    final r = await openExamVersions(context, examId: widget.examId, bubble: _bubble);
+    if (r != null && mounted) {
+      setState(() => _forms = null);
+      await _loadForms();
+    }
   }
 
   void _addForm() {
@@ -594,6 +609,7 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
             policy: _policy,
             bubble: _bubble,
             onAdd: _forms != null && nextFormCode(_forms!) != null ? _addForm : null,
+            onGenerate: _questions.isEmpty ? null : _generateVersions,
             onRemove: _removeForm,
             onChoose: (f, q, v) => setState(() => q.choose(f, v)),
             onToggleMarker: _toggleMarker,
@@ -1356,6 +1372,7 @@ class FormsStepBody extends StatelessWidget {
     required this.onToggleMarker,
     required this.onPolicy,
     this.onAdd,
+    this.onGenerate,
     this.error,
     this.onRetry,
     this.zoneFit,
@@ -1375,6 +1392,9 @@ class FormsStepBody extends StatelessWidget {
   /// A bubble sheet is printed (the marked-bubble marker and the marking rules apply).
   final bool bubble;
   final VoidCallback? onAdd;
+
+  /// "Generate versions" (shuffled orders and keys made by the server); manual keys stay for uploaded papers.
+  final VoidCallback? onGenerate;
   final ValueChanged<String> onRemove;
   final void Function(ExamFormDraft form, ObjectiveQuestion q, Object value) onChoose;
   final ValueChanged<String> onToggleMarker;
@@ -1420,6 +1440,16 @@ class FormsStepBody extends StatelessWidget {
           onChoose: (q, v) => onChoose(f, q, v),
         ),
         const SizedBox(height: AppSpace.sm),
+      ],
+      if (onGenerate != null) ...[
+        FilledButton.tonalIcon(
+          key: const ValueKey('setup.form.generate'),
+          onPressed: onGenerate,
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
+          icon: const Icon(Icons.shuffle_rounded, size: 18),
+          label: Text(t('إنشاء النماذج تلقائيًا', 'Generate versions')),
+        ),
+        const SizedBox(height: AppSpace.xs),
       ],
       if (onAdd != null)
         OutlinedButton.icon(

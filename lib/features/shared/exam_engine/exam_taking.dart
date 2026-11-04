@@ -54,6 +54,15 @@ class PaperQuestion {
   final int index;
 
   String get prompt => '${body['prompt'] ?? ''}';
+
+  /// The question's image (body `media`, first item): its id is fetched through `GET /attempts/{aid}/media/{id}`.
+  ({String id, String alt})? get image {
+    for (final m in asMapList(body['media'])) {
+      final id = '${m['id'] ?? ''}';
+      if (id.isNotEmpty) return (id: id, alt: '${m['alt'] ?? ''}');
+    }
+    return null;
+  }
   List<Map<String, dynamic>> get options => asMapList(body['options']);
   bool get answered => answer != null && answer!.values.any((v) => v != null && v != '' && v != const [] && !(v is List && v.isEmpty) && !(v is Map && v.isEmpty));
 }

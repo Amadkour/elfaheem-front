@@ -1,5 +1,5 @@
-// Quick exam: the short way to create an Exam Engine exam (one question first — Online or Offline? — then the
-// questions or one uploaded file; everything else is a smart default the creator may open under "Advanced").
+// Quick exam: the short way to create an Exam Engine exam (first: manual, generated or one uploaded file; then the
+// questions; last: online or printed; everything else is a smart default the creator may open under "Advanced").
 //
 // It builds the same engine objects as the full editor (exam_authoring.dart): one exam, one section (online, or
 // paper for offline), and bank questions placed in it. Nothing new on the server except
@@ -64,7 +64,13 @@ List<double> splitPoints(double total, int n) {
 
 List<String> _lines(String s) => s.split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
-/// One question of the quick builder: multiple choice (one right answer) or essay.
+/// The types the quick builder offers, in the order of its "add a question" row.
+const quickQuestionTypes = <String>['mcq_single', 'true_false', 'fill_blank', 'short_answer', 'matching', 'essay'];
+
+/// One question of the quick builder: multiple choice (one right answer), true / false, complete (fill_blank), short
+/// answer, matching or essay. Multiple choice, the generator's and the open types keep their own fields; true / false,
+/// complete and matching are carried by an engine [QuestionDraft] ([engine]), so their bodies and validation are the
+/// full editor's, not a second copy.
 class QuickQuestion {
   QuickQuestion.mcq()
       : type = 'mcq_single',
@@ -74,10 +80,33 @@ class QuickQuestion {
       : type = 'essay',
         points = 5,
         options = [];
+  QuickQuestion.shortAnswer()
+      : type = 'short_answer',
+        points = 2,
+        options = [];
+  QuickQuestion._engine(this.type, this.points)
+      : options = [],
+        engine = QuestionDraft(type: type);
+
+  /// A new empty question of [type] (one of [quickQuestionTypes]).
+  factory QuickQuestion.ofType(String type) => switch (type) {
+        'true_false' => QuickQuestion._engine(type, 1),
+        'fill_blank' => QuickQuestion._engine(type, 1),
+        'matching' => QuickQuestion._engine(type, 2),
+        'short_answer' => QuickQuestion.shortAnswer(),
+        'essay' => QuickQuestion.essay(),
+        _ => QuickQuestion.mcq(),
+      };
 
   final String type;
   String prompt = '';
   double points;
+
+  /// 1 (easy) to 5 (hard); kept on the bank question.
+  int difficulty = 3;
+
+  /// true / false, complete and matching: the engine draft that holds their answer parts.
+  QuestionDraft? engine;
   List<QOption> options;
   String? correct;
 
@@ -86,13 +115,21 @@ class QuickQuestion {
   EssayKey keyBy = EssayKey.model;
   String keyText = '';
 
-  bool get isEssay => type == 'essay';
+  bool get isEssay => type == 'essay' || type == 'short_answer';
 
   /// The engine question (body + answer key) this stands for.
   QuestionDraft toDraft() {
+    final e = engine;
+    if (e != null) {
+      return e
+        ..prompt = prompt
+        ..points = points
+        ..difficulty = difficulty;
+    }
     final d = QuestionDraft(type: type)
       ..prompt = prompt
-      ..points = points;
+      ..points = points
+      ..difficulty = difficulty;
     if (!isEssay) {
       d.options = [for (final o in options) if (o.text.trim().isNotEmpty) o];
       d.correctSingle = d.options.any((o) => o.id == correct) ? correct : null;
@@ -122,6 +159,7 @@ class QuickQuestion {
 
   /// Codes for [quickCodeText]; empty = ready.
   List<String> validate() {
+    if (engine != null) return toDraft().validate();
     final out = <String>[];
     if (prompt.trim().isEmpty) out.add('prompt_required');
     if (!(points > 0)) out.add('points_positive');
@@ -252,6 +290,18 @@ class QuickExam {
     return [d];
   }
 }
+
+String quickTypeLabel(String type) => switch (type) {
+      'true_false' => t('صح / خطأ', 'True / False'),
+      'fill_blank' => t('أكمل', 'Complete'),
+      'short_answer' => t('إجابة قصيرة', 'Short answer'),
+      'matching' => t('مطابقة', 'Matching'),
+      'essay' => t('مقالي', 'Essay'),
+      _ => t('اختيار من متعدد', 'Multiple choice'),
+    };
+
+/// The delivery choice that closes the builder: online in the app, or printed / exported.
+String quickModeTitle(QuickMode m) => m == QuickMode.online ? t('إلكتروني في التطبيق', 'Online in the app') : t('طباعة / تصدير', 'Print / export');
 
 String quickCodeText(String code) => switch (code) {
       'mode_required' => t('اختر: إلكتروني أم ورقي', 'Choose online or offline'),
