@@ -268,8 +268,11 @@ class LayoutRunPanel extends StatelessWidget {
     final total = f.rowsTotal;
     final pct = run?.progress ?? 0;
     final rowsText = total == null ? '' : '${layoutCount(f.rowsDone)} / ${layoutCount(total)} ${t('صف', 'rows')} · ';
+    // the rows upload: a real fraction once Dio knows the size, indeterminate before
+    final up = f.uploading ? f.uploadProgress : null;
+    final upPct = up == null ? '' : ' · ${(up * 100).round()}%';
     final status = switch (phase) {
-      LayoutRunPhase.preparing => f.uploading ? '${t('يرسل', 'Sending')} ${layoutCount(f.uploadCount)} ${t('صف إلى الخادم…', 'rows to the server…')}' : t('يجهّز التصدير…', 'Preparing the export…'),
+      LayoutRunPhase.preparing => f.uploading ? '${t('يرسل', 'Sending')} ${layoutCount(f.uploadCount)} ${t('صف إلى الخادم…', 'rows to the server…')}$upPct' : t('يجهّز التصدير…', 'Preparing the export…'),
       LayoutRunPhase.running => '${t('يُنشئ الملف', 'Creating the file')} · $rowsText$pct%',
       LayoutRunPhase.downloading => t('يُنزّل الملف…', 'Downloading the file…'),
       LayoutRunPhase.done => '${t('تم الحفظ', 'Saved')}: ${exportLtr(f.savedName ?? '')}',
@@ -283,7 +286,8 @@ class LayoutRunPanel extends StatelessWidget {
         const SizedBox(height: AppSpace.sm),
         ClipRRect(
           borderRadius: AppRadius.chipAll,
-          child: LinearProgressIndicator(value: phase == LayoutRunPhase.running ? pct / 100 : null, minHeight: 6, backgroundColor: c.divider, color: c.primary),
+          child: LinearProgressIndicator(
+              value: phase == LayoutRunPhase.running ? pct / 100 : up, minHeight: 6, backgroundColor: c.divider, color: c.primary),
         ),
         const SizedBox(height: AppSpace.xs),
         Text(
