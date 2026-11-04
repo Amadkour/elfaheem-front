@@ -2322,7 +2322,7 @@ screens are untouched until they opt in):
 `StatusChip`, `PremiumHero` …): each session moves its own screens when it touches them; the Super Admin pages move in
 D-181.
 
-## D-190 — One course-access rule, expiry enforced, an organization's charge stops at its own courses · 2026-11-04 · accepted
+## D-210 — One course-access rule, expiry enforced, an organization's charge stops at its own courses · 2026-11-04 · accepted
 
 **Context.** A student who paid for a six-month plan was told to "subscribe" again. The investigation (fix/subscriptions,
 Phase 1) found no expired or overwritten plan on the server: every six-month purchase of 20–29 Oct was active with the
@@ -2346,16 +2346,16 @@ locked by progress to "complete the current session or subscribe"; and an organi
 - Denied requests are refused with their exact reason: 403 `course_access_denied` + `reason`, logged as an
   `access_denied` event (one per user, course and reason every 10 minutes).
 
-## D-191 — `subscription_events`: an append-only history of access and money state · 2026-11-04 · accepted
+## D-211 — `subscription_events`: an append-only history of access and money state · 2026-11-04 · accepted
 
 One row per change (created, payment_succeeded, payment_failed, activated, renewed, expired, cancelled, refunded,
 admin_extended, admin_reactivated, admin_granted, plan_backfilled, access_denied), with the actor (system / admin /
 user / webhook), the reason and a before / after snapshot, written in the same transaction as the change.
 PostgreSQL refuses UPDATE and DELETE with a trigger and the app role loses those rights (the ledger's pattern, D-025).
 The past is backfilled once from payments, enrollments and platform subscriptions (`backfilled = true`, original times).
-Two types beyond the brief: `admin_granted` (access with no payment) and `plan_backfilled` (D-190's backfill).
+Two types beyond the brief: `admin_granted` (access with no payment) and `plan_backfilled` (D-210's backfill).
 
-## D-192 — The Super Admin's Courses ↔ Students console · 2026-11-04 · accepted
+## D-212 — The Super Admin's Courses ↔ Students console · 2026-11-04 · accepted
 
 `/api/v1/admin/course-students/…` (super admin only; kill switch `admin.course_students`) and
 `lib/features/admin/course_students/`: courses with active / expiring / expired students, revenue and issues; each

@@ -385,7 +385,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         final local = await OfflineVideoService.instance
             .localVariant(_current.sessionId, _current.id);
         if (!mounted) return;
-        if (local != null && await _accessEndedForCopy()) return; // refused: the plan ended (D-190)
+        if (local != null && await _accessEndedForCopy()) return; // refused: the plan ended (D-210)
         if (!mounted) return;
         if (local != null) {
           setState(() {

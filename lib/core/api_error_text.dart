@@ -105,7 +105,7 @@ String apiErrorText(ApiException e) {
               'You changed your username recently — you can change it again later, or remove it now')
           : _t('غيّرت اسم المستخدم مؤخراً — يمكنك تغييره مرة أخرى في ${AppTime.date(at)}',
               'You changed your username recently — you can change it again on ${AppTime.date(at)}');
-    case 'course_access_denied':                           // 403 on a course's content (D-190): reason, expires_at
+    case 'course_access_denied':                           // 403 on a course's content (D-210): reason, expires_at
     case 'SUBSCRIPTION_REQUIRED':                          // 402 org_subscription_required
       return accessDeniedText(e) ?? e.message;
     case 'USERNAME_INVALID':

@@ -515,7 +515,7 @@ class CourseModel with DiscountInfo {
   final bool isPublished;
   bool isEnrolled;
 
-  /// The server's access verdict for this student (D-190); null on an older server or for a guest.
+  /// The server's access verdict for this student (D-210); null on an older server or for a guest.
   final CourseAccess? access;
 
   /// The student's plan ran out (`access_expired`, or `access.reason == expired`).

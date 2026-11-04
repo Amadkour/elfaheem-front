@@ -107,7 +107,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   bool get _isLocked => widget.locked && !widget.isTeacher;
 
   void _showLockedMessage() {
-    // Why it is locked (D-190): an ENROLLED student is held by progress ("finish «X» first") or by an unpassed exam;
+    // Why it is locked (D-210): an ENROLLED student is held by progress ("finish «X» first") or by an unpassed exam;
     // only a student without access is told to subscribe / renew, with the server's exact reason.
     var message = 'session_locked_subscribe'.tr;
     if (!widget.isTeacher) {

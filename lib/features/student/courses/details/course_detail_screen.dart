@@ -386,7 +386,7 @@ class _CoursePageState extends State<_CoursePage> {
     // the next thing that can be taken (an ended live session with nothing recorded is skipped, H8)
     final next = p.nextPlayable;
     final spotlight = <Widget>[
-      // the plan ends within a week, or has ended: one calm line (D-190)
+      // the plan ends within a week, or has ended: one calm line (D-210)
       if (accessBannerText(c.access) != null) CourseAccessBanner(access: c.access),
       CourseArchiveSpot(hub: _hub, onOpenTab: (id) => _openTab(p, id)),
       // Join goes INTO the room (it used to switch to the Live tab only: on a wide window — the card sits in the side
