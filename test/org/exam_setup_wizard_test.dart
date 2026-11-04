@@ -63,6 +63,7 @@ class _Backend {
   Map<String, dynamic> setup;
   final puts = <Map<String, dynamic>>[];
   var report = _p('identifiers');
+  var orgTemplatesForbidden = false;   // the member has no exams right in the organization: 403 when org_id is sent
 
   FakeApi fake() => FakeApi({
         'GET /api/v1/exam/exams/1/setup': (_) => setup,
@@ -92,6 +93,7 @@ class _Backend {
         'GET /api/v1/exam/omr/templates': (o) {
           final base = _p('templates');
           if ('${o.queryParameters['org_id']}' != '1') return base;
+          if (orgTemplatesForbidden) return const FakeResponse(403, {'detail': {'code': 'org_forbidden', 'message': 'x', 'message_en': 'x'}});
           return {
             ...base,
             'items': [
@@ -233,6 +235,21 @@ void main() {
     expect(fake.calls.where((c) => c.method == 'PUT' && c.path.endsWith('/forms')), isEmpty);
     expect(result, isTrue, reason: 'Finish closes the wizard');
     expect(tester.takeException(), isNull);
+    await _done(tester);
+  });
+
+  testWidgets('no exams right in the organization: the global sheets still load (asked again without org_id)', (tester) async {
+    final b = _Backend(_p('setup_get_new'))..orgTemplatesForbidden = true;
+    AppConfig.disableList = ['exam.identifiers'];
+    final fake = await _open(tester, b, initialDelivery: 'paper');
+    await _tapPrimary(tester);
+    await tester.tap(find.byKey(const ValueKey('setup.format.bubble')));
+    await _frames(tester, 2);
+    await _tapPrimary(tester);
+    final asked = fake.calls.where((c) => c.path.endsWith('/omr/templates')).map((c) => c.query['org_id']).toList();
+    expect(asked, ['1', null], reason: 'first with the organization, then the global list');
+    expect(find.byKey(const ValueKey('setup.template.1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('setup.template.77')), findsNothing);
     await _done(tester);
   });
 

@@ -385,7 +385,9 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
 
   Future<void> _loadTemplates() async {
     setState(() => _templatesError = null);
-    final r = await _api.templates(orgId: _orgId);
+    var r = await _api.templates(orgId: _orgId);
+    // no exams right in the organization (403) or a suspended one (423): the global sheets still, without the org's
+    if (!r.ok && _orgId != null && (r.status == 403 || r.status == 423)) r = await _api.templates();
     if (!mounted) return;
     setState(() {
       if (r.ok) {
