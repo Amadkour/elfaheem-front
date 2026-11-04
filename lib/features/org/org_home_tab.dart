@@ -6,6 +6,7 @@
 //                 the services that department enabled) / quick links
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -186,7 +187,7 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
   Map<String, dynamic> get _org => asMapList(_mixData?['organizations']).firstWhere((o) => asInt(o['id']) == _orgId, orElse: () => const {});
 
   void _openSpace([int tab = 0]) => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: _org, initialTab: tab)))
+      .push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: _org, initialTab: tab)))
       .then((_) => _load());
 
   Future<void> _openRequired(Map<String, dynamic> r) async {

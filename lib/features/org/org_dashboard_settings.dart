@@ -11,6 +11,7 @@
 // Every sub-page opens through orgPush (the session carried along, the exit button in its bar).
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -114,7 +115,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             icon: Icons.workspace_premium_rounded,
             color: AdminPalette.orange.last,
             label: t('تصميمات الشهادات', 'Certificate designs'),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CertificateDesignsScreen(orgId: s.currentId)))),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCertificateDesigns(orgId: s.currentId)))),
       // Export Studio (D-130): scheduled exports and shared links; org admins also get the export log
       AppSettingsTile(
           icon: Icons.ios_share_rounded,

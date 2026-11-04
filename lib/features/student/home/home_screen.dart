@@ -38,7 +38,7 @@ import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
-import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show OrgMemberHome;
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
@@ -207,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: ListenableBuilder(
                       listenable: Listenable.merge([homeTabs, AppModeController.instance]),
                       builder: (context, _) => AppModeController.instance.isOrg
-                          ? const OrgMemberHome(showPickerInHero: false)
+                          ? deferredOrgMemberHome(showPickerInHero: false)
                           : ListenableBuilder(
                               listenable: MeHomeService.instance,
                               builder: (context, _) {

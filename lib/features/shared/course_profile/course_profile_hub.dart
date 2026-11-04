@@ -23,6 +23,7 @@
 // the last announcement seen on this device, once the profile is loaded.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -559,7 +560,7 @@ class _CoursePageLoaderState extends State<CoursePageLoader> {
         final course = TeacherCourse.fromJson(json);
         page = ChangeNotifierProvider(
           create: (_) => TeacherCourseScreenProvider(initialCourse: course),
-          child: TeacherSessionsScreen(profileHub: hub, initialTab: tab),
+          child: deferredTeacherSessionsScreen(profileHub: hub, initialTab: tab),
         );
       } else {
         page = CourseDetailScreen(course: CourseModel.fromJson(json), profileHub: hub, initialTab: tab);

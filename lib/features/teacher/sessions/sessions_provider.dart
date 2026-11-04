@@ -13,6 +13,7 @@
 //   • No other logic changed.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
@@ -28,7 +29,7 @@ import '../../shared/upload/upload_queue_manager.dart';
 import '../../student/courses/details/session_exam_gate.dart';
 import '../../student/models.dart';
 import '../home/teacher_models.dart';
-import 'live/prejoin.dart';
+import 'live/join_args.dart';
 import 'model/live_response_model.dart';
 import '../../shared/course_profile/course_profile_models.dart' show CoursePageState;
 import '../../shared/live/live_config.dart' show LiveConfig;
@@ -790,7 +791,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     final MyAuthProvider provider = context.read<MyAuthProvider>();
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PreJoinPage(
+        builder: (_) => deferredPreJoin(
           args: JoinArgs(
             isTeacher: provider.isTeacher,
             userId: provider.currentUser?.id ?? -1,

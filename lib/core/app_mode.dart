@@ -213,7 +213,12 @@ class AppModeController extends ChangeNotifier {
   void toggle() => setMode(isOrg ? AppMode.individual : AppMode.organization);
 
   /// Deep link / notification for an organization → open it in Organization mode.
-  Future<void> openOrg(int orgId) => setMode(AppMode.organization, orgId: orgId);
+  /// Once the person's organizations are known, an id that is not one of them (a typed `/org/<id>`) opens nothing:
+  /// neither the mode nor the remembered organization changes.
+  Future<void> openOrg(int orgId) {
+    if (loaded && !liveEntries.any((e) => _id(_map(e['organization'])['id']) == orgId)) return Future<void>.value();
+    return setMode(AppMode.organization, orgId: orgId);
+  }
 
   /// Logout.
   Future<void> reset() => bindUser(null);

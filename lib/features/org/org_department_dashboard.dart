@@ -22,6 +22,7 @@
 // the department tools). An older server without `tabs` → the `can` caps decide, as before.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -271,7 +272,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
           'complaints' when _isDept => (x.label, Icons.support_agent_rounded, 0, OrgComplaintsPage(deptId: id)),
           'materials' when _isDept => (x.label, Icons.folder_copy_rounded, 0, OrgMaterialsPage(deptId: id)),
           'workflow' when _isDept && govEnabled() => (x.label, Icons.account_tree_rounded, 0, govDeptItemsTab(context, oid, id)),
-          'certificates' => (x.label, Icons.workspace_premium_rounded, 0, CertificateDesignsScreen(orgId: oid)),
+          'certificates' => (x.label, Icons.workspace_premium_rounded, 0, deferredCertificateDesigns(orgId: oid)),
           _ => null, // councils · data_lab · a key this version does not know: no embeddable page (see the header)
         };
     return [

@@ -3,6 +3,126 @@
     "en": "All",
     "ar": "الكل"
   },
+  "ds_no_results": {
+    "en": "No results",
+    "ar": "لا توجد نتائج"
+  },
+  "ds_no_results_hint": {
+    "en": "Try another search or clear the filters.",
+    "ar": "جرّب بحثًا آخر أو امسح عوامل التصفية."
+  },
+  "ds_no_data": {
+    "en": "Nothing here yet",
+    "ar": "لا يوجد شيء هنا بعد"
+  },
+  "ds_loading": {
+    "en": "Loading…",
+    "ar": "جارٍ التحميل…"
+  },
+  "ds_error_title": {
+    "en": "Couldn't load this",
+    "ar": "تعذّر التحميل"
+  },
+  "ds_error_body": {
+    "en": "Check your connection and try again.",
+    "ar": "تحقّق من الاتصال ثم أعد المحاولة."
+  },
+  "ds_filters": {
+    "en": "Filters",
+    "ar": "التصفية"
+  },
+  "ds_clear_filters": {
+    "en": "Clear filters",
+    "ar": "مسح التصفية"
+  },
+  "ds_sort": {
+    "en": "Sort",
+    "ar": "الترتيب"
+  },
+  "ds_sort_asc": {
+    "en": "Ascending",
+    "ar": "تصاعدي"
+  },
+  "ds_sort_desc": {
+    "en": "Descending",
+    "ar": "تنازلي"
+  },
+  "ds_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "ds_apply": {
+    "en": "Apply",
+    "ar": "تطبيق"
+  },
+  "ds_reset": {
+    "en": "Reset",
+    "ar": "إعادة الضبط"
+  },
+  "ds_next_page": {
+    "en": "Next page",
+    "ar": "الصفحة التالية"
+  },
+  "ds_prev_page": {
+    "en": "Previous page",
+    "ar": "الصفحة السابقة"
+  },
+  "ds_page": {
+    "en": "Page",
+    "ar": "صفحة"
+  },
+  "ds_of": {
+    "en": "of",
+    "ar": "من"
+  },
+  "ds_rows_per_page": {
+    "en": "Rows per page",
+    "ar": "صفوف في الصفحة"
+  },
+  "ds_selected": {
+    "en": "selected",
+    "ar": "محدد"
+  },
+  "ds_select_all": {
+    "en": "Select all",
+    "ar": "تحديد الكل"
+  },
+  "ds_more_actions": {
+    "en": "More actions",
+    "ar": "إجراءات أخرى"
+  },
+  "ds_back": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "ds_open": {
+    "en": "Open",
+    "ar": "فتح"
+  },
+  "ds_updated": {
+    "en": "Updated",
+    "ar": "آخر تحديث"
+  },
+  "ds_vs_previous": {
+    "en": "vs previous period",
+    "ar": "مقارنة بالفترة السابقة"
+  },
+  "ds_unsaved_title": {
+    "en": "Discard your changes?",
+    "ar": "تجاهل التغييرات؟"
+  },
+  "ds_unsaved_body": {
+    "en": "You have changes that aren't saved yet.",
+    "ar": "لديك تغييرات لم تُحفظ بعد."
+  },
+  "ds_discard": {
+    "en": "Discard",
+    "ar": "تجاهل"
+  },
+  "ds_keep_editing": {
+    "en": "Keep editing",
+    "ar": "متابعة التعديل"
+  },
   "course_scope_personal": {
     "en": "Personal",
     "ar": "شخصي"

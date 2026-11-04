@@ -13,6 +13,7 @@
 // with the same content stacked vertically.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -145,7 +146,7 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
   /// Pick one of the saved designs (own / organization) for this certificate.
   Future<void> _openDesignLibrary() async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => CertificateDesignsScreen(orgId: widget.orgId, certificateId: widget.certificateId),
+      builder: (_) => deferredCertificateDesigns(orgId: widget.orgId, certificateId: widget.certificateId),
     ));
     await _loadDesign();
   }

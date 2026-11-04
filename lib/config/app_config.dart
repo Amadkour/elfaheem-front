@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/config/translation_source_stub.dart'
     if (dart.library.js_interop) 'package:flutter_education_app/config/translation_source_web.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -192,7 +193,9 @@ class LangProvider with ChangeNotifier {
   List<String> languages = ['ar', 'en'];
 
   Future<void> changeLang(String? newLang) async {
-    AppConfig.lang = newLang ?? languages.first;
+    final next = newLang ?? languages.first;
+    await AppFonts.ensureLanguage(next); // its UI font is registered before the switch (web: Inter is lazy)
+    AppConfig.lang = next;
     await _storage.saveLanguage(AppConfig.lang);
     notifyListeners();
   }

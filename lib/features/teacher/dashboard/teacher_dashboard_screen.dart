@@ -144,13 +144,9 @@ class _State extends State<TeacherDashboardScreen> {
         TeacherDashboardProvider provider = context
             .watch<TeacherDashboardProvider>();
         _consumeTabRequest(provider);
-        return PopScope(
-          // Back goes to the first tab, and only from there may it leave the app
-          // (canPop: false used to trap the user on the dashboard).
-          canPop: provider.currentTab == 0,
-          onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) provider.onChangeTab(0);
-          },
+        return KeyedSubtree(
+          // Back is the shell's alone (AppShell: the tab's pages, then the home tab, then out — D-081). A second
+          // PopScope here also jumped to the first tab on the same press: Back from a tab's page skipped its tab (D-170).
           child: Directionality(
             textDirection: Helpers.pageDirection,
             child: LayoutBuilder(

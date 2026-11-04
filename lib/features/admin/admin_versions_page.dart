@@ -2,6 +2,7 @@
 // and publishing a version is App versions (app_releases/, D-144), which fills this list when a version goes live.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
@@ -101,7 +102,7 @@ class _View extends StatelessWidget {
                 ? TextButton.icon(
                     onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                         settings: const RouteSettings(name: AppReleasesPage.routeName),
-                        builder: (_) => const AppReleasesPage())),
+                        builder: (_) => deferredAppReleases())),
                     icon: const Icon(Icons.rocket_launch_rounded),
                     label: Text(t('إصدارات التطبيق', 'App versions')),
                   )
