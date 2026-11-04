@@ -162,20 +162,21 @@ function init(root: HTMLElement) {
   const conn = (navigator as unknown as { connection?: Conn }).connection;
   const quiet = conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''));
   if (!quiet) {
+    const add = (f: string) => {
+      const l = document.createElement('link');
+      l.rel = 'prefetch';
+      l.href = `${app}/${f}`;
+      document.head.appendChild(l);
+    };
     const prefetch = () => {
-      [
-        'flutter_bootstrap.js',
-        'main.dart.js',
-        'canvaskit/canvaskit.wasm',
-        'canvaskit/canvaskit.js',
-        'assets/FontManifest.json',
-        'assets/assets/translation.json',
-      ].forEach((f) => {
-        const l = document.createElement('link');
-        l.rel = 'prefetch';
-        l.href = `${app}/${f}`;
-        document.head.appendChild(l);
-      });
+      // CanvasKit comes from Google's CDN (D-171), so it is not fetched from the app's folder here
+      ['assets/FontManifest.json', 'assets/assets/translation.json'].forEach(add);
+      // the build's post-processing gives the main script a content hash (main.dart.<hash8>.js, D-171): the
+      // bootstrap names it
+      fetch(`${app}/flutter_bootstrap.js`)
+        .then((r) => (r.ok ? r.text() : ''))
+        .then((t) => add(t.match(/main\.dart(\.[0-9a-f]{8})?\.js/)?.[0] ?? 'main.dart.js'))
+        .catch(() => {});
     };
     const idle = () =>
       'requestIdleCallback' in window

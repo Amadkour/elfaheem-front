@@ -39,6 +39,7 @@ import '../core/inbox_badge.dart';
 import '../features/auth/auth_provider.dart';
 import '../features/shared/guest/guest_state.dart';
 import '../features/shared/profile/update_account_widget.dart';
+import '../utils/widget/app_navigator.dart' show AppNavigator;
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
 import '../utils/widget/refresh_button.dart';
@@ -147,6 +148,7 @@ class _LazyTabStackState extends State<LazyTabStack> {
     if (items.isEmpty) return const SizedBox.shrink();
     final current = widget.index.clamp(0, items.length - 1);
     _visited.add(items[current].label);
+    _tabs.homeLabel = items.first.label; // the home's own URL; another tab is `<home>/<tab>` (D-170)
     _tabs.setActive(items[current].label);
     // Each tab's navigator draws its pages over a modal barrier, and a barrier BLOCKS the semantics of everything
     // painted before it in the same semantics container — the sidebar, the rail and the top bar (H12: at 1440 a
@@ -245,6 +247,20 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     AppShellNav.register(_tabs);
     _tabs.addListener(_changed);
+    AppNavigator.requestedTab.addListener(_onTabRequested);
+    // a request made before this shell existed (a `<home>/<tab>` URL, a refresh)
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onTabRequested());
+  }
+
+  /// A tab asked for by its key (`/admin_dashboard/users`, D-170): every role's home switches to it. The dashboards
+  /// that know other keys ('profile', 'last') answer those themselves.
+  void _onTabRequested() {
+    final id = AppNavigator.requestedTab.value;
+    if (id == null || !mounted) return;
+    final i = widget.items.indexWhere((e) => e.label == id);
+    if (i < 0) return;
+    AppNavigator.requestedTab.value = null; // consumed
+    if (i != _current) widget.onTap(i);
   }
 
   @override
@@ -256,6 +272,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _tabs.removeListener(_changed);
+    AppNavigator.requestedTab.removeListener(_onTabRequested);
     AppShellNav.unregister(_tabs);
     _tabs.dispose();
     super.dispose();

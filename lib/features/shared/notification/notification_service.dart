@@ -6,7 +6,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz;
+import 'package:flutter_education_app/core/app_time.dart' show AppTime;
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
@@ -128,7 +128,7 @@ class NotificationService {
   // users only ever get one page load per session, so this never affects
   // them.
   Future<void> init() async {
-    tz.initializeTimeZones();
+    AppTime.loadDatabase().ignore(); // the timezone data (web: an asset read in the background)
 
     // BUG 1 FIX: onBackgroundMessage is NOT supported on web — throws
     // UnimplementedError and crashes init() entirely on web.

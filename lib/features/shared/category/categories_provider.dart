@@ -254,7 +254,7 @@ class CategoriesProvider extends BaseProvider {
 
   /// The mode's side on GET /courses (the server's default is the personal account). An organization's side is
   /// for its members only, so that request goes signed in; the personal catalogue stays public (guests). The guest
-  /// explore sends no side at all: an explicit `scope` would cancel its `mode` (D-150).
+  /// explore sends no side at all: an explicit `scope` would cancel its `mode` (D-165).
   Map<String, dynamic> get _side => _exploreMode != null ? const {} : modeCourseScopeQuery();
   bool get _sideNeedsAuth => _side['scope'] == 'org';
 

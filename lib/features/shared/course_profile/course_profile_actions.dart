@@ -8,6 +8,7 @@
 // The server decides every capability (CpCaps) and enforces it on each call.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -59,7 +60,7 @@ class CpStaffActions extends StatelessWidget {
             icon: Icons.quiz_rounded,
             label: t('الاختبارات', 'Exams'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => TeacherExamHubScreen(courseId: p.id, courseTitle: p.name(AppConfig.lang == 'ar'))))),
+                builder: (_) => deferredTeacherExamHub(courseId: p.id, courseTitle: p.name(AppConfig.lang == 'ar'))))),
       if (p.caps.announce && !p.readOnly)
         AppPill(icon: Icons.campaign_rounded, label: t('إعلان للطلاب', 'Announce'), onTap: () => onOpenTab('announcements')),
       if (p.caps.archiveCourse && p.isOrg)

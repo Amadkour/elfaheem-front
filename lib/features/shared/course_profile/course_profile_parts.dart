@@ -7,6 +7,7 @@
 // the existing course studio (TeacherSessionsScreen), opened from here.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -46,7 +47,7 @@ Future<void> openCourseStudio(BuildContext context, int courseId) async {
   await Navigator.of(context).push(MaterialPageRoute(
     builder: (_) => ChangeNotifierProvider(
       create: (_) => TeacherCourseScreenProvider(initialCourse: course),
-      child: const TeacherSessionsScreen(),
+      child: deferredTeacherSessionsScreen(),
     ),
   ));
 }

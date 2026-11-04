@@ -23,6 +23,7 @@
 // a failure shows ErrorRetry (retried by itself when the connection comes back), pull-to-refresh via AppRefresh.
 // The screen is kept alive: it loads once per signed-in user (ensureLoaded), never again after a /login as the
 // same account. TeacherHomeBody takes plain values (test/ui/teacher_home_layout_test.dart).
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService, MeLiveRoom;
@@ -35,7 +36,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show Err
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
-import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show OrgMemberHome;
+// (OrgMemberHome is built through deferredOrgMemberHome)
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart' show CourseScope;
 import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart' show kInboxFeatureKey;
@@ -123,7 +124,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
         MaterialPageRoute(
           builder: (_) => ChangeNotifierProvider(
             create: (_) => TeacherCourseScreenProvider(initialCourse: course),
-            child: TeacherSessionsScreen(),
+            child: deferredTeacherSessionsScreen(),
           ),
         ),
       );
@@ -141,7 +142,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
     c == null ? _tab(1) : _openCourse(c);
   }
 
-  void _newCourse() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CourseFormScreen()));
+  void _newCourse() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCourseForm()));
 
   void _openEarnings() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TeacherPayoutsScreen()));
 
@@ -242,7 +243,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 8)),
                 if (AppModeController.instance.isOrg)
-                  const SliverToBoxAdapter(child: _Width(child: OrgMemberHome(showPickerInHero: false)))
+                  SliverToBoxAdapter(child: _Width(child: deferredOrgMemberHome(showPickerInHero: false)))
                 else
                   SliverToBoxAdapter(
                     child: _Width(

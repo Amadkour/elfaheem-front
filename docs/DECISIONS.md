@@ -2229,7 +2229,7 @@ between steps.
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
 
-## D-150 — A static landing site at the root; the web app moves to /app/; first-run onboarding in the apps · 2026-11-04 · accepted
+## D-165 — A static landing site at the root; the web app moves to /app/; first-run onboarding in the apps · 2026-11-04 · accepted
 
 **Context.** The site opened straight on the login screen, and so did a fresh install of the phone app: nothing showed
 what the platform offers before asking for an account. The owner asked for a welcoming page first (a sentence-builder
@@ -2273,6 +2273,69 @@ apps.
 
 **Consequences.** Every web build must use `--base-href /app/`, or `switch_web` refuses it. `firebase.json` (Firebase
 Hosting at its own root) was left as it is and does not match an `/app/` build; production is nginx.
+
+## D-170 — The browser's history follows the app's pages; one route registry · 2026-11-04 · accepted
+
+**Problem.** On the web, Home → page 2 → page 3 and browser Back left the site. Reproduced on a profile build against
+the local stack (teacher: My courses → Add a course → Back landed on the Home tab, the next Back left to about:blank).
+The root `MaterialApp`'s navigator pins Flutter's single-entry browser history (one entry; Back = one system back, else
+leave), the URL changed only for named root routes, and the pages opened inside a role tab (D-081) or pushed as plain
+`MaterialPageRoute`s (300+ call sites) never reached the browser at all.
+
+**Decision.** `MaterialApp.router` around the SAME root navigator (`lib/core/routing/app_router.dart`: same
+`navigatorKey`, observers, `_router`, start), so the navigator stops reporting to the engine, and
+`lib/core/routing/web_history.dart` keeps one browser entry per page the person can go back to
+(`AppShellNav.pageStack`: the root pages and, above a role shell, its visible tab's pages; dialogs and sheets are not
+entries). App pushes / pops / replaces are mirrored by `planHistory` (pure: go back over the entries that are gone,
+rewrite the top's URL on a tab switch, push the new ones), all through one queue. Browser Back runs the system back
+(live room, then the navigator → the shell pops its tab, then the home tab, D-081) once per entry; a step the app
+refuses is pushed again. A guard entry under the first page gives Back on the first page one more system back (the
+home tab) before it leaves the site; Forward re-opens a closed page that has a URL; an entry of an earlier page load
+opens its page or is skipped on the way out. Mobile is unchanged (no history; the hardware back as before; a warm app
+link is pushed by name, as WidgetsApp did).
+`lib/core/routing/app_routes.dart` is the ONE registry of pages with a URL: a stable id per page (also the Info
+button's and the assistant's `page_id`), its path pattern (`/courses/:courseId`, `/org/:orgId`), aliases, and the URL
+of a pushed route (`'/course-profile' + 12 → /courses/12`). A role home's tab is `<home>/<tab>`
+(`/dashboard/my-courses`; the tab key is the DashboardItem label). Refresh / a typed URL / Forward open registry pages
+over the home (`resolveWebEntry`), and a page opened signed out opens after the sign-in (`SignInReturn`).
+
+**Rejected.** go_router / a declarative page list: a rewrite of every call site and of the tab navigators (D-081
+rejected it for the same reason). The Router's own reporting (`currentConfiguration`): it can only push or replace, so
+every in-app Back would ADD a browser entry (Back then walks forward again).
+
+**Known limits.** A page pushed without a name keeps the URL of the page under it: Back / Forward step through it, but
+a refresh opens the page under it. Pages get their own URL by being added to the registry and opened by name. Back on
+the home tab's first page leaves the site, as on Android (the browser cannot be kept from leaving).
+## D-171 — Web start-up: the splash paints first, and only the fonts of the first frame are downloaded · 2026-11-04 · accepted
+
+**Context.** Cold on production the HTML splash painted at about 1.24 s (TTFB 0.74 s) because two classic scripts in
+`<head>` blocked it, and Flutter web downloaded EVERY family of `FontManifest.json` (3.5 MB) before its first frame.
+
+**Decision.** (1) `web/index.html`: `video_protection.js` and `recorder_compositor.js` load with `defer` (the first only
+patches `createElement` for the course player's `<video>`, the second is reached by Dart when a teacher starts a
+recording: neither is needed before Dart runs); the duplicated `flutter-first-frame` listener is gone; `preconnect` to
+gstatic (CanvasKit). (2) `scripts/web/prune_font_manifest.dart <build/web>` (post-build, idempotent) moves PaperPlex,
+bahji, tajawal, uiInter and moyasar's ReadexPro out of `assets/FontManifest.json` into `assets/LazyFontManifest.json`
+(the files stay in the build); `LazyFonts` (`lib/core/display/lazy_fonts.dart`) registers them with `FontLoader` on
+demand, a no-op off the web and on an unpruned build (`flutter run`, tests). Kept eager: MaterialIcons, CupertinoIcons,
+uiPlexArabic (the default Arabic UI font, which draws the Latin of the Arabic UI itself) and NotoSansSC (a 59 KB file
+whose NAME keeps the engine from fetching Noto Sans SC from Google for CJK glyphs).
+
+**Rules.** The UI font of the open language is loaded by `AppFonts.start(lang)` (reads the saved language itself: the
+language is applied after the `display` step) and `AppFonts.ensureLanguage` (before `LangProvider.changeLang`
+switches); the other language's choice loads in the background. A screen that draws with a lazy family awaits
+`LazyFonts.ensure` or sits under a `LazyFontGate` (admin filters, data lab, org report designer, the card form, the
+export previews). `LazyFonts.prefetchLater` fetches whatever is left 10 s after start-up, so a forgotten screen finds it
+loaded. A new family on the lazy list needs the same treatment.
+
+**Start-up chain.** The theme request (on a first visit the first real frame waits for it) starts right after the
+token store loads (`ThemeConfigProvider.prefetch`, taken by the first `load()`: still one request), and Firebase →
+Remote Config run beside display / identity / language instead of after them. Same steps, same limits, same order of
+effects; the start waits for the longest, not the sum. **Delivery** (front `scripts/web/postbuild.dart`, back
+`deploy/nginx/nextbrain.conf.example`): the main script and its deferred parts get a content hash and an `immutable`
+cache, every compressible file ≥ 1 KB a `.gz` / `.br` copy served by `gzip_static` / `brotli_static`, HTTP/2; no
+dynamic gzip, so API replies are unchanged. CanvasKit stays on Google's CDN (measured a wash; `--self-host-canvaskit`
+exists); the wasm renderer is not possible yet (`dart:html` in the checkout and data-lab web files).
 
 ## D-180 — One design system: the kit completed in lib/design, gradient as a touch with written rules · 2026-11-04 · accepted
 

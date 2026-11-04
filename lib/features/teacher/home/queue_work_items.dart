@@ -31,6 +31,7 @@
 //     across resorts instead of rebuilding by list position.
 // ─────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async';
 import 'dart:developer';
 import 'dart:math' as math;
@@ -51,7 +52,7 @@ import 'package:provider/provider.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../sessions/components/guest_link_sheet.dart';
-import '../sessions/live/prejoin.dart';
+import '../sessions/live/join_args.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -96,7 +97,7 @@ void openTeacherCourseSessions(BuildContext context, int courseId) => Navigator.
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
           create: (_) => TeacherCourseScreenProvider(initialCourse: TeacherCourse.dummy(courseId)),
-          child: TeacherSessionsScreen(expandDetails: true),
+          child: deferredTeacherSessionsScreen(expandDetails: true),
         ),
       ),
     );
@@ -106,7 +107,7 @@ void openTeacherPreJoin(BuildContext context, ScheduleSession session) {
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => PreJoinPage(
+      builder: (context) => deferredPreJoin(
         args: JoinArgs(
           sessionId: session.sessionId,
           courseId: session.courseId,

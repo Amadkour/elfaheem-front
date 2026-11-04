@@ -10,6 +10,7 @@
 // TeacherCourseScreenProvider.joinLive for a student. The pre-join page waits for Join (D-106).
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,7 +19,7 @@ import '../../../../utils/widget/view_as_state.dart';
 import '../../../auth/auth_provider.dart';
 import '../../../shared/live/live_controls_api.dart' show liveJoinRefusalText;
 import '../../../shared/live/live_room.dart' show JoinOutcome;
-import '../../../teacher/sessions/live/prejoin.dart';
+import '../../../teacher/sessions/live/join_args.dart';
 import '../../../teacher/sessions/model/live_response_model.dart';
 
 /// GET /live-sessions/{id}/join as a student: the room (LiveResponseModel), or the lobby outcome (202 waiting …).
@@ -57,7 +58,7 @@ Future<void> openCourseLiveRoom(
   final auth = context.read<MyAuthProvider>();
   final api = ApiClient();
   await Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => PreJoinPage(
+    builder: (_) => deferredPreJoin(
       args: JoinArgs(
         sessionId: sessionId,
         courseId: courseId,

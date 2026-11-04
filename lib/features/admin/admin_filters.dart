@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/display/lazy_fonts.dart';
 
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
@@ -99,7 +100,9 @@ class AdminFilterBar extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal'], child: _body(context));
+
+  Widget _body(BuildContext context) {
     final c = context.colors;
     final count = activeFilterCount(host, specs, quickKeys);
     final hasQuery = host.hasActiveQuery;
@@ -218,7 +221,9 @@ class _AdminSearchFieldState extends State<AdminSearchField> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal'], child: _body(context));
+
+  Widget _body(BuildContext context) {
     final c = context.colors;
     return TextField(
       controller: _c,

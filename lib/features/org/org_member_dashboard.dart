@@ -24,6 +24,7 @@
 // Layout test: test/ui/member_home_layout_test.dart.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -225,7 +226,7 @@ List<OrgQuickGroup> orgQuickGroups(BuildContext context, Map<String, dynamic> en
   final student = roles.contains('student');
   final teaching = roles.contains('teacher') || roles.contains('teacher_assistant');
   bool can(String m, [String a = 'view']) => admin || _has(perms, m, a);
-  void space(int tab) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: org, initialTab: tab)));
+  void space(int tab) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: org, initialTab: tab)));
 
   return [
     OrgQuickGroup(t('دراستي', 'My studies'), [
@@ -259,7 +260,7 @@ List<OrgQuickGroup> orgQuickGroups(BuildContext context, Map<String, dynamic> en
           if (w is _ActionCarrier) w.action,
         OrgQuickAction(icon: Icons.support_agent_rounded, label: t('شكوى أو استفسار', 'Complaint / question'), onTap: () => space(3)),
         OrgQuickAction(icon: Icons.inbox_rounded, label: t('تقارير وصلتني', 'Received reports'),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgReceivedReportsPage()))),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredOrgReceivedReports()))),
       ],
     ]),
     OrgQuickGroup(t('الإدارة', 'Manage'), [
@@ -747,7 +748,7 @@ class OrgMemberHomeBody extends StatelessWidget {
   static const _titlePad = EdgeInsets.fromLTRB(16, 0, 8, 4);
 
   static void _space(BuildContext context, Map<String, dynamic> org, int tab) =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: org, initialTab: tab)));
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: org, initialTab: tab)));
 
   static Future<void> _deptSheet(BuildContext context, int orgId, Map<String, dynamic> d) async {
     final mods = asMap(d['modules']);
