@@ -1051,7 +1051,10 @@ class _QuestionBankBrowserState extends State<QuestionBankBrowser> {
       if (_error != null) AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
       if (items == null) const SizedBox(height: 260, child: AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.zero)),
       if (items != null && items.isEmpty && _error == null)
-        AppEmpty(icon: Icons.quiz_outlined, title: t('البنك فارغ', 'The bank is empty'), message: t('أنشئ سؤالاً جديداً', 'Create a new question')),
+        // a search or a filter that finds nothing is not an empty bank
+        (_search.text.trim().isNotEmpty || _type != null || _levels.isNotEmpty)
+            ? AppEmpty(icon: Icons.search_off_rounded, title: t('لا أسئلة مطابقة', 'No questions match'), message: t('غيّر كلمات البحث أو أزل التصفية', 'Change the search words or clear the filters'))
+            : AppEmpty(icon: Icons.quiz_outlined, title: t('البنك فارغ', 'The bank is empty'), message: t('أنشئ سؤالاً جديداً', 'Create a new question')),
       if (items != null)
         for (final q in items)
           BankQuestionTile(question: q, trailing: widget.trailing?.call(q), onTap: widget.onTap == null ? null : () => widget.onTap!(q)),

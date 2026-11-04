@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show AutoDirText;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/core/screen_security.dart';
@@ -365,7 +366,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
       child: BasePage(
         key: const ValueKey('exam.taking'),
         appBar: AppBar(
-          title: Text(widget.examTitle, overflow: TextOverflow.ellipsis),
+          title: AutoDirText(widget.examTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
           actions: [
             if (widget.hasPaperFile && widget.examId != null)
               IconButton(onPressed: _downloadPaper, icon: const Icon(Icons.file_download_rounded), tooltip: t('ملف الامتحان', 'Exam file')),
