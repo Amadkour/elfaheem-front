@@ -43,12 +43,13 @@ import '../admin/admin_list.dart' show AdminAvatar;
 import 'home/org_home_departments.dart';
 import 'home/org_home_logic.dart';
 import 'home/org_home_tasks.dart';
+import 'home/org_setup_checklist.dart';
 import 'home/org_insights_section.dart';
 import 'insights/org_insights_api.dart' show OrgInsightsPrefetch, orgInsightsAllowedBy, orgInsightsToday;
 import 'org_academic_pages.dart' show OrgAcademicPage;
 import 'org_dashboard_model.dart';
 import 'org_dashboard_screen.dart' show OrgTabs;
-import 'org_dashboard_settings.dart' show showOrgSwitcher;
+import 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'org_page_header.dart' show OrgPageHeader, OrgPageRefresh, OrgPushedPage;
@@ -110,6 +111,7 @@ class OrgHomeBody extends StatelessWidget {
     this.onSeeAllUnits,
     this.insights = const SizedBox.shrink(),
     this.insightsWeight = 0,
+    this.setup,
   });
 
   final OrgHomeData data;
@@ -131,6 +133,9 @@ class OrgHomeBody extends StatelessWidget {
   final VoidCallback? onSeeAllUnits;
   final Widget insights;
   final int insightsWeight;
+
+  /// C5: the org admin's first-run checklist (OrgSetupChecklist), above the sections; null for everyone else.
+  final Widget? setup;
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +168,7 @@ class OrgHomeBody extends StatelessWidget {
           ],
         ];
     return LayoutBuilder(builder: (context, box) {
-      final top = <Widget>[?header, const SizedBox(height: AppSpace.xs)];
+      final top = <Widget>[?header, const SizedBox(height: AppSpace.xs), if (setup != null) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), child: setup!)];
       if (!homeIsWide(box.maxWidth)) {
         return ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [...top, ...spaced(order, 0)]);
       }
@@ -438,6 +443,20 @@ class _OrgHomePageState extends State<OrgHomePage> {
     dash.afterReturn(epoch);
   }
 
+  /// A checklist step's button: the edit sheet / join code, else the section (and sub-page) that does it.
+  void _openSetupStep(BuildContext context, OrgSetupStep step) {
+    final to = orgSetupTarget(step.key);
+    final s = context.read<OrgSession>();
+    switch (to.action) {
+      case 'edit_profile':
+        showOrgForm(context, edit: s.current);
+      case 'join_code':
+        showJoinCode(context);
+      default:
+        if (to.section != null) orgJump(context, to.section!, sub: to.sub);
+    }
+  }
+
   void _seeAllTasks(BuildContext context) {
     final home = context;
     orgPush(
@@ -500,6 +519,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
           onOpenUnit: (u) => _openUnit(context, u),
           onSeeAllUnits: tabs.has('people', 'departments') ? () => orgJump(context, 'people', sub: 'departments') : null,
           // its own call after the first frame (never part of the dashboard's); an older server → the 30-day trends
+          setup: s.isOrgAdmin ? OrgSetupChecklist(orgId: s.currentId, reloadToken: dash.loadedAt, onOpen: (x) => _openSetupStep(context, x)) : null,
           insights: OrgInsightsSection(orgId: s.currentId, fallback: d.trends.isEmpty ? null : OrgTrendRow(trends: d.trends)),
           insightsWeight: kOrgInsightsWeight,
         ),

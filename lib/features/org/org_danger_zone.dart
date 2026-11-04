@@ -180,7 +180,7 @@ class _OrgTransferAdminSheetState extends State<OrgTransferAdminSheet> {
     });
   }
 
-  bool get _canSend => _userId != null && (!widget.platform || orgReasonOk(_reason.text));
+  bool get _canSend => _userId != null && orgReasonOk(_reason.text);
 
   Future<void> _send() async {
     setState(() {
@@ -230,13 +230,15 @@ class _OrgTransferAdminSheetState extends State<OrgTransferAdminSheet> {
         AppSpace.gapSm,
         Text(t('ماذا يحدث للمدير الحالي؟', 'What happens to the current admin?'), style: AppType.bodyStrong(context)),
         AppSpace.gapXs,
+        Text(t('«إداري مساعد»: يبقى عضواً بصلاحيات أقل. «تنتهي عضويته»: يفقد الوصول إلى المؤسسة.', '"Administrative staff": stays a member with fewer rights. "Membership ends": loses access to the organization.'), style: AppType.meta(context)),
+        AppSpace.gapXs,
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           AppChoiceChip(
-              label: t('يبقى عضواً في الفريق', 'Stays as staff'),
+              label: t('يبقى كإداري مساعد', 'Stays as administrative staff'),
               selected: _old == 'staff',
               onTap: () => setState(() => _old = 'staff')),
           AppChoiceChip(
-              label: t('يُزال من الإدارة', 'Removed from the organization'),
+              label: t('تنتهي عضويته في المؤسسة', 'Membership ends (removed)'),
               selected: _old == 'remove',
               onTap: () => setState(() => _old = 'remove')),
         ]),
@@ -248,7 +250,7 @@ class _OrgTransferAdminSheetState extends State<OrgTransferAdminSheet> {
           maxLines: 4,
           onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
-              labelText: widget.platform ? t('السبب (5 أحرف على الأقل)', 'Reason (at least 5 characters)') : t('السبب (اختياري)', 'Reason (optional)')),
+              labelText: t('السبب (5 أحرف على الأقل)', 'Reason (at least 5 characters)')),
         ),
         if (_error != null) ...[
           AppSpace.gapSm,
