@@ -2228,3 +2228,25 @@ between steps.
 
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
+
+## D-150 — Web start-up: the splash paints first, and only the fonts of the first frame are downloaded · 2026-11-04 · accepted
+
+**Context.** Cold on production the HTML splash painted at about 1.24 s (TTFB 0.74 s) because two classic scripts in
+`<head>` blocked it, and Flutter web downloaded EVERY family of `FontManifest.json` (3.5 MB) before its first frame.
+
+**Decision.** (1) `web/index.html`: `video_protection.js` and `recorder_compositor.js` load with `defer` (the first only
+patches `createElement` for the course player's `<video>`, the second is reached by Dart when a teacher starts a
+recording: neither is needed before Dart runs); the duplicated `flutter-first-frame` listener is gone; `preconnect` to
+gstatic (CanvasKit). (2) `scripts/web/prune_font_manifest.dart <build/web>` (post-build, idempotent) moves PaperPlex,
+bahji, tajawal, uiInter and moyasar's ReadexPro out of `assets/FontManifest.json` into `assets/LazyFontManifest.json`
+(the files stay in the build); `LazyFonts` (`lib/core/display/lazy_fonts.dart`) registers them with `FontLoader` on
+demand, a no-op off the web and on an unpruned build (`flutter run`, tests). Kept eager: MaterialIcons, CupertinoIcons,
+uiPlexArabic (the default Arabic UI font, which draws the Latin of the Arabic UI itself) and NotoSansSC (a 59 KB file
+whose NAME keeps the engine from fetching Noto Sans SC from Google for CJK glyphs).
+
+**Rules.** The UI font of the open language is loaded by `AppFonts.start(lang)` (reads the saved language itself: the
+language is applied after the `display` step) and `AppFonts.ensureLanguage` (before `LangProvider.changeLang`
+switches); the other language's choice loads in the background. A screen that draws with a lazy family awaits
+`LazyFonts.ensure` or sits under a `LazyFontGate` (admin filters, data lab, org report designer, the card form, the
+export previews). `LazyFonts.prefetchLater` fetches whatever is left 10 s after start-up, so a forgotten screen finds it
+loaded. A new family on the lazy list needs the same treatment.
