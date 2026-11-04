@@ -22,11 +22,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/core/plural.dart' show daysText;
 
 import '../org/org_v3.dart' show orgCall, orgErrorText;
 import 'admin_common.dart' show asMap, t;
+import 'admin_page.dart';
 
 const kUsernameStatsFeatureKey = 'admin.username_stats';
 const kUsernameStatsPath = '/api/v1/admin/usernames/stats';
@@ -220,11 +220,12 @@ class _AdminUsernameStatsPageState extends State<AdminUsernameStatsPage> {
         ]),
       );
     }
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: title, actions: [AppRefreshAction(onRefresh: _load)]),
-      child: body,
+    return AdminPage(
+      title: title,
+      subtitle: t('هل يستخدم الناس اسم المستخدم الاختياري؟', 'Are people using the optional @username?'),
+      icon: Icons.alternate_email_rounded,
+      onRefresh: _loading ? null : _load,
+      body: body,
     );
   }
 }
@@ -251,11 +252,11 @@ class UsernameStatsContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = stats;
     final trend = usernameTrend(s.daily);
-    final windowLabel = t('آخر $days يوماً', 'Last $days days');
+    final windowLabel = t('آخر ${daysText(days)}', 'Last ${daysText(days)}');
 
     final chips = Wrap(spacing: 8, runSpacing: 8, children: [
       for (final d in kUsernameStatsWindows)
-        AppChoiceChip(label: t('$d يوماً', '$d days'), selected: d == days, onTap: () => onDays(d)),
+        AppChoiceChip(label: daysText(d), selected: d == days, onTap: () => onDays(d)),
     ]);
 
     final tiles = AppGrid(padding: EdgeInsets.zero, minTile: 160, children: [
@@ -354,8 +355,8 @@ class UsernameStatsContent extends StatelessWidget {
     final daily = _Section(
       title: t('على مدار الأيام', 'Day by day'),
       subtitle: trend.length < s.daily.length
-          ? t('كل عمود ${(s.daily.length / math.max(1, trend.length)).ceil()} أيام', 'Each bar is '
-              '${(s.daily.length / math.max(1, trend.length)).ceil()} days')
+          ? t('كل عمود ${daysText((s.daily.length / math.max(1, trend.length)).ceil())}', 'Each bar is '
+              '${daysText((s.daily.length / math.max(1, trend.length)).ceil())}')
           : windowLabel,
       child: trend.isEmpty
           ? _Quiet(t('لا بيانات بعد.', 'No data yet.'))
@@ -372,7 +373,7 @@ class UsernameStatsContent extends StatelessWidget {
 
     return AnimatedOpacity(
       opacity: loading ? 0.55 : 1,
-      duration: const Duration(milliseconds: 180),
+      duration: AppMotion.of(context).fast,
       child: LayoutBuilder(builder: (context, box) {
         final wide = box.maxWidth >= 760;
         Widget pair(Widget a, Widget b) => wide

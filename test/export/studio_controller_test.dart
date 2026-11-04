@@ -593,6 +593,122 @@ void main() {
       expect(c.editingId, isNull);
     });
   });
+
+  group('rotation, turned resize, layers, match size', () {
+    StudioController<String> turned() => StudioController<String>(
+          adapter: StudioMemoryAdapter<String>([
+            const StudioItem(id: 'r', rect: Rect.fromLTWH(200, 200, 100, 50), payload: 'r', rotation: 90),
+          ]),
+          page: const StudioPage(1000, 700),
+        )..select('r');
+
+    test('a turned item can be resized: the opposite side stays where it is on the page', () {
+      final c = turned();
+      expect(c.resizable, isNotNull);
+      expect(c.beginResize(StudioHandle.right), isTrue);
+      // the item's right handle points down on the page (turned 90 degrees): 30 down = 30 wider
+      c.updateResize(const Offset(0, 30));
+      c.endGesture();
+      final r = c.itemById('r')!.rect;
+      expect(r.width, closeTo(130, 1e-6));
+      expect(r.height, closeTo(50, 1e-6));
+      // the left edge (page point 250,175 before) is still at (250,175)
+      final centre = r.center;
+      final left = centre + const Offset(0, -65); // local (-65, 0) turned 90 degrees
+      expect(left.dx, closeTo(250, 1e-6));
+      expect(left.dy, closeTo(175, 1e-6));
+      expect(c.historyLength, 1);
+    });
+
+    test('rotating is one undo step, snaps to 15 degrees with shift and undo restores the angle', () {
+      final c = make([box('a', 100, 100, 100, 50)])..select('a');
+      expect(c.rotatable, isNotNull);
+      expect(c.beginRotate(0), isTrue);
+      expect(c.updateRotate(52, snap: true), 45);
+      expect(c.updateRotate(52), 52);
+      expect(c.rotationOf('a'), 52);
+      expect(c.itemById('a')!.rotation, 0, reason: 'nothing is stored before the gesture ends');
+      c.endGesture();
+      expect(c.itemById('a')!.rotation, 52);
+      expect(c.historyLength, 1);
+      expect(c.undoLabel, 'rotate');
+      c.undo();
+      expect(c.itemById('a')!.rotation, 0);
+    });
+
+    test('rotation is normalized to (-180, 180] and a locked item cannot be turned', () {
+      expect(StudioController.normalizeAngle(190), -170);
+      expect(StudioController.normalizeAngle(-180), 180);
+      expect(StudioController.normalizeAngle(360), 0);
+      final c = make([box('a', 100, 100, 100, 50, locked: true)])..select('a');
+      expect(c.rotatable, isNull);
+      expect(c.beginRotate(0), isFalse);
+    });
+
+    test('moveLayer reorders in one undo step; lock and hide work on any layer, not only the selection', () {
+      final c = make([box('a', 0, 0, 50, 50), box('b', 100, 0, 50, 50), box('c', 200, 0, 50, 50)]);
+      c.moveLayer('a', 2);
+      expect(order(c), ['b', 'c', 'a']);
+      expect(c.historyLength, 1);
+      c.undo();
+      expect(order(c), ['a', 'b', 'c']);
+
+      c.setLockedIds({'b'}, true);
+      expect(c.itemById('b')!.locked, isTrue);
+      expect(c.itemById('a')!.locked, isFalse);
+      c.select('a');
+      c.setVisibleIds({'a'}, false);
+      expect(c.itemById('a')!.visible, isFalse);
+      expect(c.isSelected('a'), isFalse, reason: 'a hidden layer leaves the selection');
+      c.undo();
+      expect(c.itemById('a')!.visible, isTrue);
+    });
+
+    test('selectRange selects the layers between two ids', () {
+      final c = make([box('a', 0, 0, 50, 50), box('b', 100, 0, 50, 50), box('c', 200, 0, 50, 50), box('d', 300, 0, 50, 50)]);
+      c.selectRange('b', 'd');
+      expect(c.selection, {'b', 'c', 'd'});
+    });
+
+    test('matchSize copies the first selected item size, an aspect item keeps its ratio', () {
+      final c = make([
+        box('a', 0, 0, 100, 50),
+        box('b', 300, 100, 300, 80),
+        box('p', 500, 300, 200, 100, resize: StudioResize.aspect),
+      ]);
+      c
+        ..select('a')
+        ..select('b', additive: true)
+        ..select('p', additive: true);
+      c.matchSize(width: true, height: true);
+      expect(rectOf(c, 'b'), const Rect.fromLTWH(300, 100, 100, 50));
+      final p = rectOf(c, 'p');
+      expect(p.width / p.height, closeTo(2, 1e-9));
+      expect(c.historyLength, 1);
+      c.undo();
+      expect(rectOf(c, 'b'), const Rect.fromLTWH(300, 100, 300, 80));
+    });
+
+    test('align can target the page or the selection explicitly', () {
+      final c = make([box('a', 100, 100, 50, 50), box('b', 400, 300, 50, 50)])
+        ..select('a')
+        ..select('b', additive: true);
+      c.align(StudioAlign.left, toPage: false);
+      expect(rectOf(c, 'b').left, 100);
+      c.align(StudioAlign.right, toPage: true);
+      expect(rectOf(c, 'a').right, 1000);
+    });
+
+    test('a repeated pointer position does not recompute the move', () {
+      final c = make([box('a', 100, 100, 100, 50), box('b', 400, 300, 100, 50)])..select('a');
+      c.beginMove();
+      final g1 = c.updateMove(const Offset(297, 0));
+      final g2 = c.updateMove(const Offset(297, 0));
+      expect(identical(g1, g2), isTrue);
+      c.endGesture();
+    });
+  });
+
 }
 
 /// An adapter that cannot lock (like the Export Hub's): no StudioLockAdapter.

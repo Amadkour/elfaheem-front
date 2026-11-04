@@ -7,9 +7,10 @@
 //                 tap = select (shift / ctrl / ⌘: add or remove) · tap the empty page = deselect ·
 //                 mouse drag on empty space = marquee · touch drag on empty space / wheel = pan ·
 //                 ctrl + wheel / pinch = zoom · double click (or long-press on touch) on a text item = edit it in
-//                 place (inlineText) · right click (or long-press on touch, non-text items) = context menu
+//                 place (inlineText) · the round knob above the selected item turns it (shift: 15° steps) ·
+//                 right click (or long-press on touch, non-text items) = context menu
 //   keyboard      arrows nudge (shift ×10) · Delete / Backspace · Ctrl/⌘+Z undo · Shift+Ctrl/⌘+Z or Ctrl+Y redo ·
-//                 Ctrl/⌘+D duplicate · Ctrl/⌘+A select all · Ctrl/⌘+C / X / V copy, cut, paste · Esc deselect.
+//                 [ / ] send backward / bring forward (Ctrl: to back / to front) · Ctrl/⌘+L lock · Ctrl/⌘+D duplicate · Ctrl/⌘+A select all · Ctrl/⌘+C / X / V copy, cut, paste · Esc deselect.
 //                 Only while the canvas has focus, and never while a text field has it.
 //   in-place edit the editor sits exactly over the item (the host's StudioInlineStyle: font, size, alignment,
 //                 direction); Enter confirms (Shift+Enter = new line when multiline), a click outside confirms,
@@ -67,7 +68,15 @@ class StudioCanvas<P> extends StatefulWidget {
     this.inlineStyle,
     this.onInlineCommit,
     this.contextMenu = true,
+    this.buildKey,
   });
+
+  /// A value that changes whenever the host's [itemBuilder] would draw something else for the SAME items (the page
+  /// font, the language, sample values …). When the builder is a stable method tear-off, the canvas keeps its
+  /// item widgets across host rebuilds and redraws them only when this key or the items change; a closure builder
+  /// (a new object every host build) keeps the old behaviour of redrawing every item. Null = compare the builder
+  /// only.
+  final Object? buildKey;
 
   final StudioController<P> controller;
   final StudioItemBuilder<P> itemBuilder;
@@ -124,7 +133,7 @@ class StudioCanvas<P> extends StatefulWidget {
   State<StudioCanvas<P>> createState() => _StudioCanvasState<P>();
 }
 
-enum _Mode { none, move, resize, marquee, view }
+enum _Mode { none, move, resize, rotate, marquee, view }
 
 class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
   FocusNode? _ownFocus;
@@ -176,7 +185,15 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
   @override
   void didUpdateWidget(covariant StudioCanvas<P> old) {
     super.didUpdateWidget(old);
-    _layer = null;
+    if (old.itemBuilder != widget.itemBuilder ||
+        old.buildKey != widget.buildKey ||
+        old.pageColor != widget.pageColor ||
+        old.pageBackground != widget.pageBackground ||
+        old.overlayBuilder != widget.overlayBuilder ||
+        old.paperInsets != widget.paperInsets ||
+        old.padding != widget.padding) {
+      _layer = null;
+    }
     if (old.contextMenu != widget.contextMenu) _holdBrowserMenu(widget.contextMenu);
   }
 
@@ -489,6 +506,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     if (_editingId.value != null) return;
     _ctl.cancelGesture();
     _mode = _Mode.none;
+    if (_onRotateKnob(d.localPosition)) return;
     final (h, id) = _hit(d.localPosition);
     if (h != null) return;
     if (id != null && _tryEdit(id)) return;
@@ -699,8 +717,10 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     if (r != null) {
       final rect = _ctl.rectOf(r.id)!;
       final screen = Rect.fromLTWH(o.dx + rect.left * _scale, o.dy + rect.top * _scale, rect.width * _scale, rect.height * _scale);
+      // a turned item's handles are turned with it: test the pointer in the item's own frame
+      final lp = studioUnrotate(local, screen.center, _ctl.rotationOf(r.id));
       for (final h in studioVisibleHandles(r.resize, screen.size, touch: _touch)) {
-        if (_handleHitBox(h, screen, _touch).contains(local)) return (h, null);
+        if (_handleHitBox(h, screen, _touch).contains(lp)) return (h, null);
       }
     }
     final p = _toPage(local);
@@ -708,9 +728,32 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     for (final it in _ctl.items.reversed) {
       if (!it.visible) continue;
       final rect = _ctl.rectOf(it.id) ?? it.rect;
-      if (rect.inflate(tol).contains(studioUnrotate(p, rect.center, it.rotation))) return (null, it.id);
+      if (rect.inflate(tol).contains(studioUnrotate(p, rect.center, _ctl.rotationOf(it.id)))) return (null, it.id);
     }
     return (null, null);
+  }
+
+  /// The screen rect of the rotatable item and the rotate knob's position, or null.
+  (Rect, Offset)? _rotateKnob() {
+    final it = _ctl.rotatable;
+    if (it == null) return null;
+    final rect = _ctl.rectOf(it.id)!;
+    final o = _origin ?? Offset.zero;
+    final screen = Rect.fromLTWH(o.dx + rect.left * _scale, o.dy + rect.top * _scale, rect.width * _scale, rect.height * _scale);
+    return (screen, studioRotateHandle(screen, _ctl.rotationOf(it.id), touch: _touch));
+  }
+
+  bool _onRotateKnob(Offset local) {
+    final k = _rotateKnob();
+    if (k == null) return false;
+    return (local - k.$2).distance <= (_touch ? AppTouch.min / 2 : 12);
+  }
+
+  /// The pointer's angle (degrees) about the centre of the item being turned.
+  double _angleAt(Offset local) {
+    final k = _rotateKnob();
+    final c = k?.$1.center ?? Offset.zero;
+    return math.atan2(local.dy - c.dy, local.dx - c.dx) * 180 / math.pi + 90;
   }
 
   bool get _additive {
@@ -736,7 +779,9 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     _setKind(e.kind);
     final (h, id) = _hit(e.localPosition);
     MouseCursor cur = SystemMouseCursors.basic;
-    if (h != null) {
+    if (_onRotateKnob(e.localPosition)) {
+      cur = SystemMouseCursors.grab;
+    } else if (h != null) {
       cur = switch (h) {
         StudioHandle.topLeft || StudioHandle.bottomRight => SystemMouseCursors.resizeUpLeftDownRight,
         StudioHandle.topRight || StudioHandle.bottomLeft => SystemMouseCursors.resizeUpRightDownLeft,
@@ -750,6 +795,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
   }
 
   void _onTapUp(TapUpDetails d) {
+    if (_onRotateKnob(d.localPosition)) return;
     final (h, id) = _hit(d.localPosition);
     if (h != null) return;
     if (id == null) {
@@ -781,6 +827,10 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
       _mode = _Mode.view;
       return;
     }
+    if (_onRotateKnob(_down)) {
+      _mode = _ctl.beginRotate(_angleAt(_down)) ? _Mode.rotate : _Mode.none;
+      return;
+    }
     final (h, id) = _hit(_down);
     if (h != null) {
       _mode = _ctl.beginResize(h) ? _Mode.resize : _Mode.none;
@@ -809,6 +859,8 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
         _ctl.updateMove((d.localFocalPoint - _down) / _scale, constrain: shift);
       case _Mode.resize:
         _ctl.updateResize((d.localFocalPoint - _down) / _scale, keepAspect: shift);
+      case _Mode.rotate:
+        _ctl.updateRotate(_angleAt(d.localFocalPoint), snap: shift);
       case _Mode.marquee:
         _marquee.value = Rect.fromPoints(_marqueeFrom, _toPage(d.localFocalPoint));
       case _Mode.view:
@@ -829,7 +881,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
 
   void _onScaleEnd(ScaleEndDetails d) {
     switch (_mode) {
-      case _Mode.move || _Mode.resize:
+      case _Mode.move || _Mode.resize || _Mode.rotate:
         _ctl.endGesture();
       case _Mode.marquee:
         final r = _marquee.value;
@@ -890,6 +942,15 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
       } else if (letter(LogicalKeyboardKey.keyV, PhysicalKeyboardKey.keyV)) {
         if (!_ctl.canPaste) return KeyEventResult.ignored;
         _ctl.paste();
+      } else if (letter(LogicalKeyboardKey.keyL, PhysicalKeyboardKey.keyL)) {
+        if (!_ctl.canLock) return KeyEventResult.ignored;
+        _ctl.toggleLock();
+      } else if (key == LogicalKeyboardKey.bracketRight || phys == PhysicalKeyboardKey.bracketRight) {
+        if (_ctl.selection.isEmpty) return KeyEventResult.ignored;
+        _ctl.bringToFront();
+      } else if (key == LogicalKeyboardKey.bracketLeft || phys == PhysicalKeyboardKey.bracketLeft) {
+        if (_ctl.selection.isEmpty) return KeyEventResult.ignored;
+        _ctl.sendToBack();
       } else {
         return KeyEventResult.ignored;
       }
@@ -906,6 +967,11 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     if (dx != 0 || dy != 0) {
       if (!hasSel) return KeyEventResult.ignored;
       _ctl.nudge(dx, dy, big: shift);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.bracketRight || key == LogicalKeyboardKey.bracketLeft) {
+      if (!hasSel) return KeyEventResult.ignored;
+      key == LogicalKeyboardKey.bracketRight ? _ctl.bringForward() : _ctl.sendBackward();
       return KeyEventResult.handled;
     }
     if ((key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.f2) && _ctl.single != null) {
@@ -975,7 +1041,7 @@ class _StudioScale extends InheritedWidget {
 }
 
 /// The page and its items. Rebuilt when the controller's structure changes (or the scale), never per pointer move.
-class _StudioPageLayer<P> extends StatelessWidget {
+class _StudioPageLayer<P> extends StatefulWidget {
   const _StudioPageLayer({
     required this.controller,
     required this.scale,
@@ -1001,18 +1067,58 @@ class _StudioPageLayer<P> extends StatelessWidget {
   final bool decorate;
 
   @override
+  State<_StudioPageLayer<P>> createState() => _StudioPageLayerState<P>();
+}
+
+class _StudioPageLayerState<P> extends State<_StudioPageLayer<P>> {
+  /// The item views of the last build. While the controller's item list is the same object (a selection change,
+  /// a zoom-free notification) an unchanged item keeps its widget INSTANCE, so Flutter skips it entirely: 150
+  /// items do not rebuild because one was selected.
+  final _cache = <String, _ItemView<P>>{};
+  List<StudioItem<P>>? _itemsAt;
+
+  @override
+  void didUpdateWidget(covariant _StudioPageLayer<P> old) {
+    super.didUpdateWidget(old);
+    _cache.clear();
+    _itemsAt = null;
+  }
+
+  _ItemView<P> _view(StudioItem<P> it, bool selected, bool hidden) {
+    final w = widget;
+    final cached = _cache[it.id];
+    if (cached != null && cached.selected == selected && cached.hidden == hidden) return cached;
+    return _cache[it.id] = _ItemView<P>(
+      key: ValueKey(it.id),
+      controller: w.controller,
+      item: it,
+      selected: selected,
+      scale: w.scale,
+      builder: w.builder,
+      hidden: hidden,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final controller = widget.controller, hidden = widget.hidden, scale = widget.scale;
+    final paper = widget.paper, background = widget.background, overlay = widget.overlay, decorate = widget.decorate;
     final shadow = AppShadow.card(context);
     return _StudioScale(
       scale: scale,
       child: ListenableBuilder(
         listenable: hidden == null ? controller : Listenable.merge([controller, hidden]),
-        builder: (context, _) => DecoratedBox(
+        builder: (context, _) {
+          if (!identical(_itemsAt, controller.items)) {
+            _cache.clear();
+            _itemsAt = controller.items;
+          }
+          return DecoratedBox(
           decoration: decorate ? BoxDecoration(color: paper, boxShadow: shadow) : const BoxDecoration(),
           child: ClipRect(
             child: Stack(clipBehavior: Clip.none, children: [
-              if (background != null) Positioned.fill(child: background!),
-              if (overlay != null) Positioned.fill(child: IgnorePointer(child: overlay!(context, scale))),
+              if (background != null) Positioned.fill(child: background),
+              if (overlay != null) Positioned.fill(child: IgnorePointer(child: overlay(context, scale))),
               if (controller.showGrid)
                 Positioned.fill(
                   child: IgnorePointer(
@@ -1026,19 +1132,11 @@ class _StudioPageLayer<P> extends StatelessWidget {
                   ),
                 ),
               for (final it in controller.items)
-                if (it.visible)
-                  _ItemView<P>(
-                    key: ValueKey(it.id),
-                    controller: controller,
-                    item: it,
-                    selected: controller.isSelected(it.id),
-                    scale: scale,
-                    builder: builder,
-                    hidden: hidden?.value == it.id,
-                  ),
+                if (it.visible) _view(it, controller.isSelected(it.id), hidden?.value == it.id),
             ]),
           ),
-        ),
+        );
+        },
       ),
     );
   }
@@ -1062,12 +1160,12 @@ class _ItemView<P> extends StatelessWidget {
   final StudioItemBuilder<P> builder;
   final bool hidden;
 
-  Widget _positioned(Rect r, Widget child) => Positioned(
+  Widget _positioned(Rect r, double rotation, Widget child) => Positioned(
         left: r.left * scale,
         top: r.top * scale,
         width: math.max(r.width * scale, 1),
         height: math.max(r.height * scale, 1),
-        child: item.rotation == 0 ? child : Transform.rotate(angle: item.rotation * math.pi / 180, child: child),
+        child: rotation == 0 && !selected ? child : Transform.rotate(angle: rotation * math.pi / 180, child: child),
       );
 
   @override
@@ -1075,14 +1173,15 @@ class _ItemView<P> extends StatelessWidget {
     Widget child = IgnorePointer(child: RepaintBoundary(child: builder(context, item, selected)));
     if (hidden) child = Opacity(opacity: 0, child: child);
     // Only a selected item can move: the others never listen to the live signal.
-    if (!selected) return _positioned(item.rect, child);
+    if (!selected) return _positioned(item.rect, item.rotation, child);
     return ListenableBuilder(
       listenable: controller.live,
       child: child,
       builder: (context, child) {
         final r = controller.rectOf(item.id) ?? item.rect;
-        if (r.size == item.rect.size) return _positioned(r, child!);
-        return _positioned(r, IgnorePointer(child: builder(context, item.copyWith(rect: r), selected)));
+        final rot = controller.rotationOf(item.id);
+        if (r.size == item.rect.size) return _positioned(r, rot, child!);
+        return _positioned(r, rot, IgnorePointer(child: RepaintBoundary(child: builder(context, item.copyWith(rect: r), selected))));
       },
     );
   }
@@ -1121,13 +1220,14 @@ class _OverlayPainter extends CustomPainter {
       if (!sel.contains(it.id) || !it.visible) continue;
       final r = _s(ctl.rectOf(it.id) ?? it.rect);
       frame.color = it.locked ? muted : primary;
-      if (it.rotation == 0) {
+      final rot = ctl.rotationOf(it.id);
+      if (rot == 0) {
         canvas.drawRect(r, frame);
       } else {
         canvas
           ..save()
           ..translate(r.center.dx, r.center.dy)
-          ..rotate(it.rotation * math.pi / 180)
+          ..rotate(rot * math.pi / 180)
           ..drawRect(Rect.fromCenter(center: Offset.zero, width: r.width, height: r.height), frame)
           ..restore();
       }
@@ -1154,6 +1254,14 @@ class _OverlayPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5
         ..color = primary;
+      final rot = ctl.rotationOf(res.id);
+      canvas.save();
+      if (rot != 0) {
+        canvas
+          ..translate(r.center.dx, r.center.dy)
+          ..rotate(rot * math.pi / 180)
+          ..translate(-r.center.dx, -r.center.dy);
+      }
       for (final h in studioVisibleHandles(res.resize, r.size, touch: touch)) {
         final p = h.pointOn(r);
         final box = RRect.fromRectAndRadius(
@@ -1164,7 +1272,31 @@ class _OverlayPainter extends CustomPainter {
           ..drawRRect(box, fill)
           ..drawRRect(box, ring);
       }
-      if (ctl.dragging) _sizeLabel(canvas, r, ctl.rectOf(res.id) ?? res.rect);
+      canvas.restore();
+      if (ctl.dragging && !ctl.rotating) _sizeLabel(canvas, r, ctl.rectOf(res.id) ?? res.rect);
+    }
+
+    final rotItem = ctl.rotatable;
+    if (rotItem != null) {
+      final r = _s(ctl.rectOf(rotItem.id) ?? rotItem.rect);
+      final rot = ctl.rotationOf(rotItem.id);
+      final from = studioRotateHandleBase(r, rot), to = studioRotateHandle(r, rot, touch: touch);
+      final stem = Paint()
+        ..strokeWidth = 1
+        ..color = primary;
+      canvas.drawLine(from, to, stem);
+      final knob = touch ? 8.0 : 6.0;
+      canvas
+        ..drawCircle(to, knob, Paint()..color = paper)
+        ..drawCircle(
+          to,
+          knob,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5
+            ..color = primary,
+        );
+      if (ctl.rotating) _angleLabel(canvas, to, rot);
     }
 
     final g = Paint()
@@ -1192,6 +1324,17 @@ class _OverlayPainter extends CustomPainter {
             ..color = primary.withValues(alpha: .7),
         );
     }
+  }
+
+  void _angleLabel(Canvas canvas, Offset at, double degrees) {
+    final tp = TextPainter(
+      text: TextSpan(text: '${degrees.round()}°', style: label),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    final w = tp.width + 12, h = tp.height + 6;
+    final box = RRect.fromRectAndRadius(Rect.fromLTWH(at.dx - w / 2, at.dy - 18 - h, w, h), Radius.circular(h / 2));
+    canvas.drawRRect(box, Paint()..color = primary);
+    tp.paint(canvas, Offset(box.left + 6, box.top + 3));
   }
 
   void _sizeLabel(Canvas canvas, Rect screen, Rect units) {
@@ -1283,6 +1426,22 @@ class _BorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _BorderPainter old) =>
       old.border != border || old.background != background || old.scale != scale;
+}
+
+/// Where the rotate handle's stem starts: the middle of the item's top edge, on the turned item (screen pixels).
+Offset studioRotateHandleBase(Rect screen, double degrees) =>
+    screen.center + _turn(Offset(0, -screen.height / 2), degrees);
+
+/// Where the rotate handle's knob sits: [studioRotateStem] pixels beyond the middle of the top edge.
+Offset studioRotateHandle(Rect screen, double degrees, {bool touch = false}) =>
+    screen.center + _turn(Offset(0, -screen.height / 2 - studioRotateStem(touch)), degrees);
+
+/// The stem's length: longer on touch so the knob clears the finger.
+double studioRotateStem(bool touch) => touch ? 34 : 24;
+
+Offset _turn(Offset d, double degrees) {
+  final a = degrees * math.pi / 180;
+  return Offset(d.dx * math.cos(a) - d.dy * math.sin(a), d.dx * math.sin(a) + d.dy * math.cos(a));
 }
 
 /// [p] turned back by [degrees] about [center]: where a point on a turned item lies on the item before the turn.

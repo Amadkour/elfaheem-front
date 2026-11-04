@@ -2,7 +2,7 @@
 //
 // ONE call, GET /api/v1/admin/overview, through AdminOverviewProvider (admin_providers.dart): the last payload is
 // kept in memory, so a re-created page draws at once; a coordinated AppListSkeleton only on the very first load;
-// ErrorRetry when there is nothing to show yet, a warning line when a refresh fails over shown numbers. It reloads
+// AppErrorState (Retry) when there is nothing to show yet, a warning line when a refresh fails over shown numbers. It reloads
 // on open, on resume, on pull (AppRefresh) and on the live events `attention_changed` / transfers / payouts /
 // payments (LiveEvents). The body is AdminHomeBody (admin_home_body.dart), presentational over AdminHomeData
 // (admin_home_data.dart); this file only wires the callbacks (tabs, pages, alert deep links). Beside the overview it
@@ -19,7 +19,6 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:provider/provider.dart';
 
@@ -27,10 +26,10 @@ import '../auth/auth_provider.dart';
 import '../shared/attendance/admin_data_lab_page.dart';
 import '../shared/rag/rag_admin_console.dart' show RagAdminApi, RagAdminConsole;
 import '../shared/rag/rag_alerts.dart' show RagAlertsApi, RagAlertsData, ragAdminAlert;
-import 'admin_common.dart';
 import 'admin_features_page.dart';
 import 'admin_home_body.dart';
 import 'admin_home_data.dart';
+import 'admin_page.dart' show AdminRefreshScope;
 import 'admin_income_breakdown.dart';
 import 'admin_organizations_page.dart';
 import 'admin_payouts_page.dart';
@@ -103,6 +102,21 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
     } // any other failure keeps the last numbers
   }
 
+  /// Live events arrive in bursts (a payout approved → payouts + attention + payments): one reload per window.
+  static const liveReloadWindow = Duration(seconds: 2);
+  Timer? _liveTimer;
+  bool _liveDecision = false;
+
+  void _onLive(LiveEvent e) {
+    _liveDecision = _liveDecision || DecisionRefresh.isLocal(e);
+    _liveTimer ??= Timer(liveReloadWindow, () {
+      _liveTimer = null;
+      final decision = _liveDecision;
+      _liveDecision = false;
+      _reloadQuietly(decision: decision);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -110,12 +124,20 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _sub = LiveEvents.instance.listen(
       {LiveEvents.attentionChanged, LiveEvents.transfers, LiveEvents.payouts, LiveEvents.payments},
-      (e) => _reloadQuietly(decision: DecisionRefresh.isLocal(e)),
+      _onLive,
     );
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // the shell's Refresh reloads this page in place (no re-creation: the provider keeps its numbers)
+    AdminRefreshScope.register(context, _refresh);
+  }
+
+  @override
   void dispose() {
+    _liveTimer?.cancel();
     _sub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -224,8 +246,8 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
     final home = p.home;
     if (home == null) {
       return p.error != null
-          ? ErrorRetry(message: p.error!, onRetry: p.load)
-          : const AppListSkeleton(items: 6);
+          ? Center(child: AppErrorState(message: p.error!, onRetry: () => p.load()))
+          : const AppLoadingState(shape: AppLoadingShape.kpis);
     }
     // Live count owned by the dashboard shell (same number as the Finance / More badge).
     final pendingPayouts = context.watch<AdminPendingPayoutsProvider>().count;
@@ -238,7 +260,6 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
         name: name,
         pendingPayouts: pendingPayouts,
         notice: p.error == null ? null : 'admin_home_stale'.tr,
-        headerActions: const [CalendarEntryIcon()],
         assistant: _assistant,
         actions: AdminHomeActions(
           openStudents: () => widget.onOpenTab(1),

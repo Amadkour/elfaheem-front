@@ -2229,6 +2229,52 @@ between steps.
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
 
+
+## D-164 — One design engine: layout v4 (computed fields, page mode, grids, page breaks) · 2026-11-04 · accepted
+
+**Context.** The owner's brief (session 6, "Unified design engine"): exports must pass through a design studio whose
+flow is poor, large lists lack layout control, there is no logic for computed columns, and the same engine must serve
+data exports, certificates, exam papers / covers, bubble sheets and the user-guide export. The audit
+(`docs/design_engine/AUDIT.md` in the front repo) found one shared canvas (`lib/design/studio/`) but two document
+models and two server renderers (layout v3 in mm via reportlab; certificates in 1000-unit space via Pillow).
+
+**Decision.** The layout document becomes THE engine document, version 4 = v3 + optional keys (contract
+`docs/design_engine.md` = front `docs/design_engine/ENGINE.md`): document-level **computed fields** (`calc.` keys;
+cases of nested all/any condition groups → a value expression of text / number / field / concat / math; first match
+wins, else a value; evaluated on the server per row before sort / group / totals, mirrored in the app for its row
+preview and checked against a parity fixture), **mode `page`** (one page per item), **list columns**, cards up to 4
+per line with **per_page / fill_page** (2×2, 3×3 grids), **items_per_page**, **group page breaks**, custom page sizes and
+background images, ellipse / opacity / photo shapes, letter spacing / line height / shrink / shadow. The server
+accepts schema 3 and 4 and keeps the version it was sent; older apps keep the unknown keys.
+- Computed fields are DATA from a closed vocabulary with depth / item / text caps — never code, never `eval`.
+- A computed key is not a source column: `referenced_fields` reports the source columns it reads (what the file may
+  reveal), so dataset column checks still apply.
+- Excel stays data-focused: page mode is refused, free-form elements are simplified with a note in the studio.
+- Image values may be an export asset id or a URL on the platform's own storage (the certificate rule), never another
+  host.
+
+**Not done here.** Exam papers, covers, bubble sheets and the guide export are not migrated by this job (the exam
+sessions own them); they get the API (`engine.py`, `design_engine.dart`).
+
+## D-165 — Certificates render through the design engine; the legacy renderer stays for unsaved designs · 2026-11-04 · accepted
+
+**Context.** Certificate designs are Pillow-rendered from `fields` / `fields_en` in a 1000-unit space. The audit found
+the Arabic / English saving problems (a background regenerate committed to the stored design behind the user's back
+and wiped theme keys; no save concurrency check; drafts dropped silently) and a designer that rebuilt everything per
+drag frame.
+
+**Decision.** `certificate_designs.document` (JSON, nullable) + `document_version` (migration 0045, reversible). A design
+saved by the new Certificate Studio holds a v4 page-mode document (one design per language, never an implicit English
+fallback) and renders through the engine (PDF, and PNG at the legacy pixel size); a design with no document renders
+with the legacy renderer exactly as before, and a legacy save clears `document` — whatever saved last renders.
+Saving sends `version`; a stale version answers 409 `design_conflict` instead of overwriting. The legacy designer stays
+reachable behind the kill switch `certificates.engine`. `scripts/migrate_cert_designs.py` converts legacy designs
+(dry run by default; writes only the new columns; rollback = `document` null). The draft endpoint no longer commits to
+a stored design and merges theme keys instead of replacing them.
+- Review (2026-11-04): the document save applies the legacy save's image rule to every image (stored in the design,
+  the user's own upload, an allowed host, an org logo for images — never someone else's signature); a legacy save
+  also moves `document_version` on, so a studio tab on the old version gets 409.
+
 ## D-240 — Results start as a draft; nothing unreviewed is ever published; the teacher picks what students see · 2026-11-04 · accepted
 
 **Context.** The owner's grading brief (session 9): grades start as draft, the teacher reviews, then publishes;
@@ -2537,6 +2583,41 @@ screens are untouched until they opt in):
 **Not done here.** Migrating the ~100 existing call sites of the older widgets (`PrimaryButton`, `SearchBox`,
 `StatusChip`, `PremiumHero` …): each session moves its own screens when it touches them; the Super Admin pages move in
 D-181.
+
+## D-181 — The Super Admin dashboard on the design system: one page frame, a real overview, global search · 2026-11-04 · accepted
+
+**Context.** The audit (`docs/admin/SUPER_ADMIN_AUDIT.md`) walked every Super Admin page: four header styles, the
+title drawn twice (app bar + hero), a doodle background behind tables, centred spinners, failed loads shown as "no
+data", `'$e'` error texts, red Activate buttons, ±1 steppers for values in the hundreds, deletes without a confirm or
+with one that does not name the item, money without thousands separators, and no way to find a person, course or
+payment without knowing which tab holds it.
+
+**Decision.**
+- Every pushed admin page is `AdminPage` (`lib/features/admin/admin_page.dart`): `AppPageHeader` once (title, ONE
+  primary action, secondary actions, Refresh with "Updated …"), `AppUnsavedGuard` through `dirty:`, a readable max
+  width, no doodle background. A shell tab registers its reload through `AdminRefreshScope.register`, so the shell's
+  Refresh reloads data instead of re-creating the page.
+- Records are `AppDataTable` (a table on wide screens, cards on phones, search / filter / sort / load-more); settings
+  are `AppSection` + `AppCard` groups with typed number fields next to any stepper; loading is a skeleton, a failed
+  load is `AppErrorState` with the server's text and Retry, a failed refresh keeps the data.
+- Overview: a greeting, the global search field, six KPIs (revenue 30 days is the one highlighted card), ONE "Needs
+  your attention" list whose rows deep-link, then charts, health and shortcuts.
+- Global search: `GET /api/v1/admin/search?q=&limit=` (backend `routers/admin_search_router.py`, admin-only; the
+  admins group is super-admin only; capped per group) plus the pages the viewer can open, in a command palette
+  (Ctrl+K or "/", a full sheet on phones) — `admin_global_search.dart`.
+- Hub tiles carry the brand tint only (no colour per service); labels renamed where the audit found them wrong
+  (Flags → "Student review & read flags", Terms → "About & terms", Requirements, Send message).
+- One money formatter, `money()` in `admin_common.dart` (thousands separators); amounts typed with Arabic digits or
+  "2,5" parse (`parseAmountLoose`).
+
+**Consolidated, nothing lost.** The owner asked for best practice ("premium and smart"): the duplicated entry points the
+audit found (R1–R8) were folded into one home each — one Fees page (Rates · Policy), one App versions page (Build &
+publish · Update prompt, each tab with its old role and kill-switch rules), one Parent linking page (Requests ·
+Settings), the Feature guide shows the app switch read-only and links to Features, the View-as and Teachers hub tiles
+went (their paths are the user rows, the Teachers tab and the search palette), and the Overview's hubs block became
+"Recently opened" (`AdminRecents`, per user, on this device; the palette shows the same as Recent). Every call, field,
+kill switch and role check of the old screens is kept, and the old page classes still open for any caller. Screens owned by other sessions (courses ↔ students, RAG, exams and the grading
+feedback store, organization flow) were not redesigned.
 
 ## D-210 — One course-access rule, expiry enforced, an organization's charge stops at its own courses · 2026-11-04 · accepted
 

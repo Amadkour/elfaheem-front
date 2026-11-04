@@ -77,7 +77,17 @@ Legend: **B** bug · **UX** usability · **M** missing · **R** redundant (→ t
 | Update prompt | raw platform codes · switch without busy state (**R2**) |
 | "Terms & conditions" | actually edits About + team + contacts + Terms · **B** raw `'$e'` everywhere, unguarded image picker, two sequential loads |
 
-## Redundant features — proposals, nothing removed (awaiting your approval)
+## Redundant features — consolidated 2026-11-04 (owner: "do the best practice")
+
+Done as proposed, with one rule: fold the duplicate into its natural home and keep every capability reachable (same
+calls, fields, kill switches and role visibility). R1 View as → the user rows / sheet and the search palette command
+"View as a user"; R2 → `AdminAppVersionsPage` (Build & publish tab for a super admin with the switch on, Update prompt
+for every admin); R3 → the Teachers tab; R4 → a link card to Payouts; R5 → `AdminParentLinkingPage` (Requests ·
+Settings); R6 → `AdminFeesPage` (Rates · Policy, plus the organization fees and ledger links); R7 → read-only state +
+"Change in Features"; R8 → "Recently opened" on the Overview and Recent in the search palette (`AdminRecents`, per user,
+on this device). The old page classes still work for any caller that pushes them.
+
+The proposals as written before the decision:
 
 | # | What | Why | Proposal |
 |---|---|---|---|
