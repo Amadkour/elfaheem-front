@@ -20,6 +20,7 @@
  "admin.export_log",
  "admin.fee_policy",
  "admin.help",
+ "admin.landing",
  "admin.live_settings",
  "admin.payouts",
  "admin.points",

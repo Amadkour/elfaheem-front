@@ -59,6 +59,8 @@ import 'enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
 import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
+import 'landing/admin_landing_page.dart' show AdminLandingPage, landingTitle;
+import 'landing/landing_admin_api.dart' show kLandingAdminFeatureKey;
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -417,6 +419,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           visible: isSuper,
           featureKey: kLiveSettingsFeatureKey,
           onTap: () => push(const LiveSettingsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_landing',
+          descKey: 'admin_landing_d',
+          label: landingTitle(),
+          desc: t('حد الطلبات على أرقام الصفحة الرئيسية، واختيار آراء الطلاب الحقيقية التي تظهر للزوار',
+              'The request limit on the landing page numbers, and which real student reviews visitors see'),
+          icon: Icons.web_rounded,
+          colors: AdminPalette.blue,
+          visible: isSuper,
+          featureKey: kLandingAdminFeatureKey,
+          onTap: () => push(const AdminLandingPage()),
         ),
         AdminService(
           labelKey: 'admin_recommendations',
