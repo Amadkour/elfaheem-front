@@ -2653,15 +2653,21 @@ organization (403 `role_cannot_join`); they follow their child's organization in
 ## D-284 — Printed legacy join codes live in `org_join_codes` · 2026-11-04 · accepted
 
 `Organization.join_code` was a second code system next to `org_join_codes` (keyed hashes, one unit per code). Lookups
-now read only `org_join_codes`; each organization's legacy code is copied there lazily and idempotently on a lookup miss
-(`join_service.sync_legacy_codes`), not by an Alembic data migration, because the hash is keyed with `SECRET_KEY` and
-codes written after deploy (organization creation, the old regenerate route kept for installed apps) must be copied too.
+now read only `org_join_codes`; each organization's legacy code is copied there idempotently
+(`join_service.sync_legacy_codes`): every organization once at start-up (owner engine), one organization when it is
+created or its code regenerated, and on a lookup miss at most once per 5 minutes per process — not by an Alembic data
+migration, because the hash is keyed with `SECRET_KEY` and codes written after deploy (organization creation, the old
+regenerate route kept for installed apps) must be copied too. Inside an `org_ctx` session only that organization is
+synced (RLS forbids writing another tree's rows). `OrgInvitation` stays in the frozen `ensure_org_tables` list on
+purpose: the e2e harness runs `create_all` before `org_models` is imported, so without it the table is missing there.
 Codes on posters keep working; regenerating through the old route retires the old code at once. The column stays.
 
 ## D-285 — Org file links expire; reports are shared with members only; members-only courses are enforced · 2026-11-04 · accepted
 
 `/org/files/{token}` tokens carry a signed expiry (7 days); tokens without one work until `org_files.legacy_until`
-(deploy + 30 days), then 410 `link_expired`; with no `SECRET_KEY` nothing is signed (503 `links_unavailable`, never the
+(deploy + 30 days), then 410 `link_expired`. A link STORED in the data (materials, term files, attachments, report files,
+form answers) is a durable reference: every API that returns it mints a fresh 7-day link (`file_links.fresh`), so only a
+link copied out of the app expires; with no `SECRET_KEY` nothing is signed (503 `links_unavailable`, never the
 old literal key). `POST …/reports/share` goes only to live members of the sharing organization or admins of
 organizations that consented to share with it (422 `share_target_not_allowed`; no free e-mail addresses; 20 per hour).
 A `members_only` organization course is enforced in `course_access.py` (D-210's one rule) on enroll and in
