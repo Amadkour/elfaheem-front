@@ -8,6 +8,7 @@ library;
 import '../config/app_config.dart';
 import 'api_client.dart';
 import 'app_time.dart';
+import 'course_access.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -104,6 +105,9 @@ String apiErrorText(ApiException e) {
               'You changed your username recently — you can change it again later, or remove it now')
           : _t('غيّرت اسم المستخدم مؤخراً — يمكنك تغييره مرة أخرى في ${AppTime.date(at)}',
               'You changed your username recently — you can change it again on ${AppTime.date(at)}');
+    case 'course_access_denied':                           // 403 on a course's content (D-171): reason, expires_at
+    case 'SUBSCRIPTION_REQUIRED':                          // 402 org_subscription_required
+      return accessDeniedText(e) ?? e.message;
     case 'USERNAME_INVALID':
       return d['message'] is String && AppConfig.lang == 'ar'
           ? d['message'] as String

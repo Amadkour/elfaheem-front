@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/widgets.dart' show StringCharacters;
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/course_access.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import '../shared/category/categories_provider.dart';
@@ -513,6 +514,12 @@ class CourseModel with DiscountInfo {
   final int studentsCount, sessionsCount;
   final bool isPublished;
   bool isEnrolled;
+
+  /// The server's access verdict for this student (D-171); null on an older server or for a guest.
+  final CourseAccess? access;
+
+  /// The student's plan ran out (`access_expired`, or `access.reason == expired`).
+  final bool accessExpired;
   bool isFavorite;
   bool isSubscribed;
   @override
@@ -570,6 +577,8 @@ class CourseModel with DiscountInfo {
     this.tools = const [],
     this.prerequisites = const [],
     required this.isEnrolled,
+    this.access,
+    this.accessExpired = false,
     this.teacher,
     required this.isPublished,
     required this.expectedHours,
@@ -652,6 +661,8 @@ class CourseModel with DiscountInfo {
         .map((e) => CoursePrerequisite.fromJson(e as Map<String, dynamic>))
         .toList(),
     isEnrolled: j['is_enrolled'],
+    access: CourseAccess.tryParse(j['access']),
+    accessExpired: j['access_expired'] == true || (j['access'] is Map && (j['access'] as Map)['reason'] == 'expired'),
     isPublished: j['is_published'],
     rateSummary: j.containsKey('rate') && j['rate'] != null
         ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
@@ -760,6 +771,8 @@ class CourseModel with DiscountInfo {
     tools: tools,
     prerequisites: prerequisites,
     isEnrolled: isEnrolled,
+    access: access,
+    accessExpired: accessExpired,
     isPublished: isPublished,
     nextCourses: nextCourses,
     recommendedCourses: recommendedCourses,

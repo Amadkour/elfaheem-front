@@ -2228,3 +2228,46 @@ between steps.
 
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
+
+## D-171 — One course-access rule, expiry enforced, an organization's charge stops at its own courses · 2026-11-04 · accepted
+
+**Context.** A student who paid for a six-month plan was told to "subscribe" again. The investigation (fix/subscriptions,
+Phase 1) found no expired or overwritten plan on the server: every six-month purchase of 20–29 Oct was active with the
+full 180 days. What it found instead: at least eight places decided course access on their own, all from
+`enrollments.status` and none from `expires_at` (an expired plan kept full access); an admin could drop a paid
+enrollment with no reason and no trace (student 228, course 9); the app told enrolled students whose next session was
+locked by progress to "complete the current session or subscribe"; and an organization with unset billing (the rule of
+2026-10-30) would 402 its student members on every call, including the courses they bought themselves.
+
+**Decision.**
+- `services/course_access.py` (`get_course_access` / `_many`) is the only rule. Order: staff → organization charge →
+  enrollment (ACTIVE / COMPLETED and now < `expires_at`; the expiry instant is expired) → pending / failed / refunded
+  payments. It returns `{has_access, reason, source, subscription_id, payment_id, plan, starts_at, expires_at, days_left,
+  status, flags}`; every course payload carries it as `access`, and `is_enrolled` means `access.reason == "enrolled"`.
+- Expiry is enforced. The app says "your plan ended on …, renew", never "subscribe", to someone who paid.
+- A course bought in the personal account stays open whatever an organization charges. An organization's account charge
+  gates only that organization's courses (402 `SUBSCRIPTION_REQUIRED`, reason `org_subscription_required`); the global
+  guard keeps 402-ing the whole app only for the platform-wide switch.
+- Every completed payment gets a plan (inferred from the price paid; the legacy single price was the yearly one). An
+  inferred end date in the past or within 14 days becomes now + 14 days, so nobody loses access on the day of the backfill.
+- Denied requests are refused with their exact reason: 403 `course_access_denied` + `reason`, logged as an
+  `access_denied` event (one per user, course and reason every 10 minutes).
+
+## D-172 — `subscription_events`: an append-only history of access and money state · 2026-11-04 · accepted
+
+One row per change (created, payment_succeeded, payment_failed, activated, renewed, expired, cancelled, refunded,
+admin_extended, admin_reactivated, admin_granted, plan_backfilled, access_denied), with the actor (system / admin /
+user / webhook), the reason and a before / after snapshot, written in the same transaction as the change.
+PostgreSQL refuses UPDATE and DELETE with a trigger and the app role loses those rights (the ledger's pattern, D-025).
+The past is backfilled once from payments, enrollments and platform subscriptions (`backfilled = true`, original times).
+Two types beyond the brief: `admin_granted` (access with no payment) and `plan_backfilled` (D-171's backfill).
+
+## D-173 — The Super Admin's Courses ↔ Students console · 2026-11-04 · accepted
+
+`/api/v1/admin/course-students/…` (super admin only; kill switch `admin.course_students`) and
+`lib/features/admin/course_students/`: courses with active / expiring / expired students, revenue and issues; each
+course's full roster with a status badge and the inconsistencies (paid without access, access without payment); a
+student drawer whose first block is the live access diagnostic per course, then the subscriptions, payments and the
+event timeline. Students are found by academic ID, national ID (shown masked), e-mail, phone or @username. Extend,
+reactivate, grant and cancel each need a reason and write one event plus a notification to the student. The older admin
+enroll / unenroll / re-subscribe calls keep working and now write events too.

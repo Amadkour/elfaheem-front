@@ -40,6 +40,7 @@ import '../../enrollment/enrollment_widgets.dart';
 import '../../enrollment/roadmap_enrollment_screen.dart';
 import '../../models.dart';
 import 'components/about.dart';
+import 'components/course_access_parts.dart';
 import 'components/course_detail_parts.dart';
 import 'components/session.dart';
 import 'components/share_link.dart';
@@ -385,6 +386,8 @@ class _CoursePageState extends State<_CoursePage> {
     // the next thing that can be taken (an ended live session with nothing recorded is skipped, H8)
     final next = p.nextPlayable;
     final spotlight = <Widget>[
+      // the plan ends within a week, or has ended: one calm line (D-171)
+      if (accessBannerText(c.access) != null) CourseAccessBanner(access: c.access),
       CourseArchiveSpot(hub: _hub, onOpenTab: (id) => _openTab(p, id)),
       // Join goes INTO the room (it used to switch to the Live tab only: on a wide window — the card sits in the side
       // column — with that tab already open, the click did nothing); a tap on the card opens the Live tab.
