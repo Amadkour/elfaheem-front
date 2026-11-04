@@ -28,7 +28,7 @@ const kWebDashboardRoutes = {
 const kWebUrlPages = {'/notifications', '/inbox', '/change-password', '/subscription', '/calendar', '/downloads', '/edit-account'};
 
 /// Registry pages (by id) with a path of their own that a signed-in person may open by URL, over the home.
-const kWebUrlRouteIds = {'course', 'org.member', 'exports', 'exports.log', 'exports.schedules', 'exports.links'};
+const kWebUrlRouteIds = {'course', 'org.member', 'org.memberships', 'exports', 'exports.log', 'exports.schedules', 'exports.links'};
 
 /// URLs that name a tab of the person's home (N10): the app starts on the home and switches to that tab
 /// (`/profile` is the account tab, not the edit-account form, which is `/edit-account`). Every home also has

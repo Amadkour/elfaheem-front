@@ -79,6 +79,8 @@ class AppRoutes {
       aliases: ['/course-profile/:courseId'], description: 'The course page (D-111), every role');
   static const orgMember =
       AppRouteDef('org.member', '/org/:orgId', description: "A student's organization page (Organization mode)");
+  static const orgMemberships = AppRouteDef('org.memberships', '/my-organizations',
+      description: 'My organizations: memberships, join requests and invitations (D-283)');
   static const calendar = AppRouteDef('calendar', '/calendar', description: 'The schedule page (D-085)');
   static const inbox = AppRouteDef('inbox', '/inbox', description: 'Inbox and notifications (`?tab=`)');
   static const notifications = AppRouteDef('inbox.notifications', '/notifications', description: 'The Notifications tab of the inbox');
@@ -108,7 +110,7 @@ class AppRoutes {
   static const all = <AppRouteDef>[
     login, register, forgotPassword,
     studentHome, teacherHome, adminHome, parentHome, orgHome,
-    course, orgMember, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
+    course, orgMember, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
     downloads, exports, exportLog, exportSchedules, exportLinks,
     courseLink, profileLink, liveLink, verifyLink, exportLink, orgJoinLink, orgInvitationLink,
   ];

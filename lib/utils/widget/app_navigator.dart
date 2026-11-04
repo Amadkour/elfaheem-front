@@ -5,6 +5,7 @@
 // its visible tab's navigator (D-081: the page keeps the tab bar; [_nav]). Org dashboards, sign-in and other role
 // homes still land on the root navigator (AppTabNavigator hands them up).
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
+import 'package:flutter_education_app/core/routing/app_routes.dart';
 import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
@@ -28,7 +29,6 @@ import '../top_route_observer.dart' show topRouteObserver;
 import 'view_as_state.dart';
 import '../../design/app_shell_nav.dart' show AppShellNav;
 import '../../design/context_switcher.dart' show closeOrgPages;
-import '../../features/org/org_member_pages.dart' show OrgMembershipScreen;
 import '../../features/org/org_providers.dart' show OrgSession;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
@@ -190,7 +190,7 @@ class AppNavigator {
         await nav.push(MaterialPageRoute(builder: (_) => deferredMyExams()));
         return;
       case 'org_invitations': // an invitation to join an organization (phone invites, push + notification tap) → My organizations, which shows the invitations card
-        await nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/org_invitations'), builder: (_) => const OrgMembershipScreen())); // ROUTE: org_invitations
+        await nav.pushNamed(AppRoutes.location(AppRoutes.orgMemberships.id));
         return;
       case 'org_reports': // a report sent to me → Received reports
         await nav.push(MaterialPageRoute(builder: (_) => deferredOrgReceivedReports()));

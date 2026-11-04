@@ -35,6 +35,7 @@ import '../../features/org/org_availability_pages.dart' deferred as org_availabi
 import '../../features/org/org_dashboard_screen.dart' deferred as org_dashboard;
 import '../../features/org/org_invitations_pages.dart' deferred as org_invitations_pages;
 import '../../features/org/org_member_dashboard.dart' deferred as org_member_dashboard;
+import '../../features/org/org_member_pages.dart' deferred as org_member_pages;
 import '../../features/org/org_member_space.dart' deferred as org_member_space;
 import '../../features/org/org_my_exams.dart' deferred as org_my_exams;
 import '../../features/org/org_reports/report_page.dart' deferred as org_report_page;
@@ -194,6 +195,10 @@ Widget deferredOrgMemberDashboard({int? orgId}) => DeferredPage(
     load: org_member_dashboard.loadLibrary,
     look: DeferredLook.splash,
     builder: (_) => org_member_dashboard.OrgMemberDashboardScreen(orgId: orgId));
+
+/// `/my-organizations` (D-283): memberships, join requests and the invitations waiting for me.
+Widget deferredOrgMemberships() => DeferredPage(
+    id: 'org_memberships', load: org_member_pages.loadLibrary, builder: (_) => org_member_pages.OrgMembershipScreen());
 
 /// `/j/<CODE>` (D-283): the join page with the code filled in; a signed-out visitor is asked to sign in first.
 Widget deferredOrgJoinLink({required String code}) => DeferredPage(

@@ -114,6 +114,7 @@ void main() {
 
   group('notification routing', () {
     testWidgets('org_invitations opens My organizations (no org_id needed)', (tester) async {
+      final opened = <String?>[];
       mockRequestPlugins();
       final storage = await StorageService.getInstance();
       await storage.saveUser({'id': 7, 'name': 'Sara', 'gmail': 's@example.test', 'role': 'student'});
@@ -127,11 +128,20 @@ void main() {
         value: auth,
         child: ThemeConfigScope(
           provider: ThemeConfigProvider(api: ApiClient()),
-          child: MaterialApp(navigatorKey: navigatorKey, home: const Scaffold(body: Text('home'))),
+          // the app opens it by its registry URL (D-170); main.dart's router builds the page, here a stand-in router
+          child: MaterialApp(
+            navigatorKey: navigatorKey,
+            home: const Scaffold(body: Text('home')),
+            onGenerateRoute: (s) {
+              opened.add(s.name);
+              return s.name == '/my-organizations' ? MaterialPageRoute(settings: s, builder: (_) => const OrgMembershipScreen()) : null;
+            },
+          ),
         ),
       ));
       await tester.runAsync(() async { AppNavigator.openFromPush({'type': 'org_invitation', 'id': '4', 'module': 'org_invitations'}); await Future<void>.delayed(const Duration(milliseconds: 1500)); });
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 200)); }
+      expect(opened, contains('/my-organizations'));
       expect(find.byType(OrgMembershipScreen), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });

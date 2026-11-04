@@ -804,6 +804,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         return _fade(OrgsGate(child: deferredOrgJoinLink(code: page!.params['code']!)), settings);
       case 'link.org_invitation':
         return _fade(OrgsGate(child: deferredOrgInvitation(token: page!.params['token']!)), settings);
+      case 'org.memberships':
+        return _fade(_Guard(child: OrgsGate(child: deferredOrgMemberships())), settings);
       case 'course':
         final id = page!.intParam('courseId');
         if (id != null) return _fade(_Guard(child: CoursePageLoader(courseId: id)), settings); // the one course page (D-111)
