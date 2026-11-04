@@ -476,6 +476,9 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
 
   void _scans({int? pageId}) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamScansScreen(examId: widget.examId, examTitle: widget.examTitle, openPageId: pageId)));
 
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label, {Key? key}) => PopupMenuItem<String>(
+      key: key, value: value, child: Row(children: [Icon(icon, size: 20), const SizedBox(width: 12), Flexible(child: Text(label))]));
+
   @override
   Widget build(BuildContext context) {
     final q = _queue;
@@ -492,15 +495,31 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
         IconButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamAnalyticsScreen(examId: widget.examId, examTitle: widget.examTitle))),
             icon: const Icon(Icons.insights_rounded), tooltip: t('التحليلات', 'Analytics')),
-        IconButton(
-            key: const ValueKey('review.gradeLog'),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamGradeLogScreen(examId: widget.examId, examTitle: widget.examTitle))),
-            icon: const Icon(Icons.history_rounded), tooltip: t('سجل الدرجات', 'Grade log')),
-        IconButton(onPressed: _policy, icon: const Icon(Icons.tune_rounded), tooltip: t('سياسة التصحيح', 'Grading policy')),
-        IconButton(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OfflineExamPanel(examId: widget.examId, title: widget.examTitle)))
-                .then((_) => _load()),
-            icon: const Icon(Icons.offline_pin_rounded), tooltip: t('الاختبار دون اتصال', 'Offline sitting')),
+        // the less frequent tools in one menu, so the bar fits a 320 px phone
+        PopupMenuButton<String>(
+          key: const ValueKey('review.more'),
+          tooltip: t('المزيد', 'More'),
+          icon: const Icon(Icons.more_vert_rounded),
+          onSelected: (v) {
+            switch (v) {
+              case 'log':
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamGradeLogScreen(examId: widget.examId, examTitle: widget.examTitle)));
+              case 'camera':
+                gradeReview(context, widget.examId, widget.examTitle);
+              case 'policy':
+                _policy();
+              case 'offline':
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => OfflineExamPanel(examId: widget.examId, title: widget.examTitle))).then((_) => _load());
+            }
+          },
+          itemBuilder: (_) => [
+            _menuItem('log', Icons.history_rounded, t('سجل الدرجات', 'Grade log'), key: const ValueKey('review.gradeLog')),
+            if (!AppConfig.disableList.contains('exam.grade_review'))
+              _menuItem('camera', Icons.fact_check_outlined, t('مراجعة الدرجات بالكاميرا', 'Grade review by camera'), key: const ValueKey('review.gradeReview')),
+            _menuItem('policy', Icons.tune_rounded, t('سياسة التصحيح', 'Grading policy')),
+            _menuItem('offline', Icons.offline_pin_rounded, t('الاختبار دون اتصال', 'Offline sitting')),
+          ],
+        ),
       ]),
       child: AppRefresh(
         onRefresh: _load,
@@ -512,16 +531,6 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
             AppChoiceChip(label: t('الكل', 'All'), selected: _state == 'all', onTap: () => setState(() { _state = 'all'; _load(); })),
           ]),
           const SizedBox(height: 10),
-          if (!AppConfig.disableList.contains('exam.grade_review'))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: AppBanner(
-                key: const ValueKey('review.gradeReview'),
-                icon: Icons.photo_camera_outlined,
-                text: t('راجع الدرجات المكتوبة على أوراق الطلاب بالكاميرا', 'Check the marks written on the students\' papers with the camera'),
-                action: TextButton(onPressed: () => gradeReview(context, widget.examId, widget.examTitle), child: Text(t('مراجعة الدرجات بالكاميرا', 'Grade review by camera'))),
-              ),
-            ),
           if (_error != null) AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
           if (q == null && _error == null) const AppListSkeleton(items: 3),
           if (q != null && !q.doubleMarking && q.approvable(q.threshold) > 0)
