@@ -237,11 +237,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         final keys = _keys;
         final items = [for (final k in keys) _byKey[k]!];
         final current = tabs.currentTab.clamp(0, items.length - 1);
-        return PopScope(
-          canPop: current == 0,
-          onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) tabs.onChangeTab(0);
-          },
+        return KeyedSubtree(
+          // Back is the shell's alone (AppShell: the tab's pages, then the home tab, then out — D-081). A second
+          // PopScope here also jumped to the first tab on the same press: Back from a tab's page skipped its tab (D-170).
           child: Directionality(
             textDirection: plIsAr ? TextDirection.rtl : TextDirection.ltr,
             child: LayoutBuilder(builder: (context, constraints) {

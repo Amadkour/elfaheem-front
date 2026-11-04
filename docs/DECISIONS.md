@@ -2228,3 +2228,36 @@ between steps.
 
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
+
+## D-170 — The browser's history follows the app's pages; one route registry · 2026-11-04 · accepted
+
+**Problem.** On the web, Home → page 2 → page 3 and browser Back left the site. Reproduced on a profile build against
+the local stack (teacher: My courses → Add a course → Back landed on the Home tab, the next Back left to about:blank).
+The root `MaterialApp`'s navigator pins Flutter's single-entry browser history (one entry; Back = one system back, else
+leave), the URL changed only for named root routes, and the pages opened inside a role tab (D-081) or pushed as plain
+`MaterialPageRoute`s (300+ call sites) never reached the browser at all.
+
+**Decision.** `MaterialApp.router` around the SAME root navigator (`lib/core/routing/app_router.dart`: same
+`navigatorKey`, observers, `_router`, start), so the navigator stops reporting to the engine, and
+`lib/core/routing/web_history.dart` keeps one browser entry per page the person can go back to
+(`AppShellNav.pageStack`: the root pages and, above a role shell, its visible tab's pages; dialogs and sheets are not
+entries). App pushes / pops / replaces are mirrored by `planHistory` (pure: go back over the entries that are gone,
+rewrite the top's URL on a tab switch, push the new ones), all through one queue. Browser Back runs the system back
+(live room, then the navigator → the shell pops its tab, then the home tab, D-081) once per entry; a step the app
+refuses is pushed again. A guard entry under the first page gives Back on the first page one more system back (the
+home tab) before it leaves the site; Forward re-opens a closed page that has a URL; an entry of an earlier page load
+opens its page or is skipped on the way out. Mobile is unchanged (no history; the hardware back as before; a warm app
+link is pushed by name, as WidgetsApp did).
+`lib/core/routing/app_routes.dart` is the ONE registry of pages with a URL: a stable id per page (also the Info
+button's and the assistant's `page_id`), its path pattern (`/courses/:courseId`, `/org/:orgId`), aliases, and the URL
+of a pushed route (`'/course-profile' + 12 → /courses/12`). A role home's tab is `<home>/<tab>`
+(`/dashboard/my-courses`; the tab key is the DashboardItem label). Refresh / a typed URL / Forward open registry pages
+over the home (`resolveWebEntry`), and a page opened signed out opens after the sign-in (`SignInReturn`).
+
+**Rejected.** go_router / a declarative page list: a rewrite of every call site and of the tab navigators (D-081
+rejected it for the same reason). The Router's own reporting (`currentConfiguration`): it can only push or replace, so
+every in-app Back would ADD a browser entry (Back then walks forward again).
+
+**Known limits.** A page pushed without a name keeps the URL of the page under it: Back / Forward step through it, but
+a refresh opens the page under it. Pages get their own URL by being added to the registry and opened by name. Back on
+the home tab's first page leaves the site, as on Android (the browser cannot be kept from leaving).

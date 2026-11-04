@@ -3,7 +3,13 @@
 // navigation, and the engine then resets `defaultRouteName` to `/` — so the real app never saw the URL and opened
 // the home. main() reads the URL BEFORE the splash ([webEntryRouteFromUri]) and the real app starts on it, when
 // [resolveWebEntry] says the person may open it there. Pure, unit-tested (test/ui/web_entry_route_test.dart).
+//
+// D-170: the pages of the route registry with a path of their own (`/courses/12`, `/org/5`, core/routing/app_routes
+// .dart) open the same way, a role home's tab has its URL (`/dashboard/my-courses`), and a page that needs an account
+// opened signed out comes back after the sign-in ([SignInReturn]).
 library;
+
+import '../core/routing/app_routes.dart';
 
 /// The dashboards: a URL never opens another role's home; the person's own home is used instead.
 const kWebDashboardRoutes = {
@@ -20,8 +26,12 @@ const kWebDashboardRoutes = {
 /// own guard): they open on top of the person's home, so Back leads there.
 const kWebUrlPages = {'/notifications', '/inbox', '/change-password', '/subscription', '/calendar', '/downloads', '/edit-account'};
 
+/// Registry pages (by id) with a path of their own that a signed-in person may open by URL, over the home.
+const kWebUrlRouteIds = {'course', 'org.member', 'exports', 'exports.log', 'exports.schedules', 'exports.links'};
+
 /// URLs that name a tab of the person's home (N10): the app starts on the home and switches to that tab
-/// (`/profile` is the account tab, not the edit-account form, which is `/edit-account`).
+/// (`/profile` is the account tab, not the edit-account form, which is `/edit-account`). Every home also has
+/// `<home>/<tab>` ([AppRoutes.splitTab]).
 const kWebTabPages = {'/profile': 'profile'};
 
 /// The sign-in pages, which a signed-out person may open by URL.
@@ -48,11 +58,40 @@ String? webEntryRouteFromUri(Uri base) {
   }
   if (kWebAuthRoutes.contains(path) || kWebDashboardRoutes.contains(path) || path == home) return null;
   if (kWebUrlPages.contains(path)) return (route: path, overHome: true);
+  final page = AppRoutes.match(entry);
+  if (page != null && kWebUrlRouteIds.contains(page.id)) return (route: path, overHome: true);
   return null; // unknown, a home tab ([webEntryTab]) or needs arguments: the home
 }
 
-/// The home tab a browser [entry] route names (`/profile` → 'profile'), for a signed-in start; else null.
+/// The home tab a browser [entry] route names (`/profile` → 'profile', `/dashboard/my-courses` → 'my_courses'), for a
+/// signed-in start; else null.
 String? webEntryTab(String? entry) {
   if (entry == null || entry.isEmpty) return null;
-  return kWebTabPages[Uri.tryParse(entry)?.path ?? entry];
+  return kWebTabPages[Uri.tryParse(entry)?.path ?? entry] ?? AppRoutes.splitTab(entry)?.tab;
+}
+
+/// A URL a signed-out person opened that needs an account: worth coming back to after the sign-in.
+bool needsSignInFirst(String entry) {
+  final path = Uri.tryParse(entry)?.path ?? entry;
+  if (kWebAuthRoutes.contains(path)) return false;
+  if (kWebUrlPages.contains(path) || kWebTabPages.containsKey(path) || AppRoutes.splitTab(entry) != null) return true;
+  final page = AppRoutes.match(entry);
+  return page != null && kWebUrlRouteIds.contains(page.id);
+}
+
+/// The page asked for by URL before the sign-in (D-170): opened once, by the first signed-in page ([consume] in
+/// main.dart's route guard), through [opener] (main.dart's `_openLocation`).
+class SignInReturn {
+  SignInReturn._();
+
+  static String? pending;
+  static Future<bool> Function(String location)? opener;
+
+  static void consume() {
+    final p = pending;
+    final open = opener;
+    if (p == null || open == null) return;
+    pending = null;
+    open(p);
+  }
 }

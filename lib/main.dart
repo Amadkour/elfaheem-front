@@ -28,6 +28,10 @@ import 'package:flutter_education_app/core/offline/offline_strings.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:flutter_education_app/core/app_time.dart' show AppTime;
 import 'package:flutter_education_app/utils/web_entry_route.dart';
+import 'package:flutter_education_app/core/routing/app_router.dart';
+import 'package:flutter_education_app/core/routing/app_routes.dart';
+import 'package:flutter_education_app/core/routing/web_history.dart';
+import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -407,10 +411,35 @@ class ElFaheemApp extends StatefulWidget {
 }
 
 class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
+  /// The root navigator under a Router (D-170): the same navigator, routes and start as before, while the browser
+  /// gets one history entry per page (core/routing/web_history.dart).
+  late final AppRouterDelegate _routerDelegate = AppRouterDelegate(
+    navigatorKey: navigatorKey,
+    observers: [topRouteObserver, if (kIsWeb) WebHistory.instance],
+    onGenerateRoute: _router,
+    // an app link that started the app wins, as with WidgetsApp
+    initialRoute: () {
+      final platform = WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+      return platform != Navigator.defaultRouteName ? platform : _startRoute;
+    },
+    initialRoutes: (name) => _startRoutes(name),
+  );
+
+  // The start, decided in build() before the navigator's first build reads it.
+  String _startRoute = '/login';
+  List<Route<dynamic>> Function(String name) _startRoutes = (_) => const [];
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (kIsWeb) {
+      WebHistory.instance
+        ..onBack = _systemBack
+        ..onOpen = _openLocation
+        ..enable();
+    }
+    SignInReturn.opener = _openLocation; // a page opened by URL while signed out, after the sign-in
 
     AttendancePush.instance.bind(navigatorKey);
     ViewAsBanner.onExit = () {
@@ -475,7 +504,44 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _routerDelegate.dispose();
     super.dispose();
+  }
+
+  /// The system back for the browser's Back (web): the live room first, then the navigator (whose role shell pops its
+  /// tab, then goes to the home tab — D-081). True when something handled it.
+  Future<bool> _systemBack() async {
+    if (await LiveRoomHost.handleBack()) return true;
+    return await navigatorKey.currentState?.maybePop() ?? false;
+  }
+
+  bool _isLink(String r) =>
+      guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || exportLinkTokenFromRoute(r) != null ||
+      DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null;
+
+  /// Opens a URL over what is shown (the browser's Forward to a closed page, an entry of an earlier page load, a page
+  /// asked for before the sign-in): the person's home or one of its tabs → back to the home on that tab; a page the
+  /// person may open by URL ([resolveWebEntry]) → pushed by name. True when something opened.
+  Future<bool> _openLocation(String location) async {
+    final nav = navigatorKey.currentState;
+    if (nav == null || !mounted) return false;
+    final auth = context.read<MyAuthProvider>();
+    final path = Uri.tryParse(location)?.path ?? location;
+    final tab = AppRoutes.splitTab(location);
+    if (auth.isAuthenticated && (path == auth.homeRoute || tab?.home == auth.homeRoute)) {
+      nav.popUntil((r) => r.isFirst);
+      AppShellNav.popVisibleToRoot();
+      final want = tab?.tab ?? AppShellNav.visibleShell()?.homeLabel;
+      if (want != null) {
+        AppNavigator.requestedTab.value = null; // re-fire for the same tab
+        AppNavigator.requestedTab.value = want;
+      }
+      return true;
+    }
+    final entry = resolveWebEntry(location, signedIn: auth.isAuthenticated, home: auth.homeRoute, isLink: _isLink);
+    if (entry == null) return false;
+    nav.pushNamed(entry.route);
+    return true;
   }
 
   @override
@@ -535,12 +601,11 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     // before this app starts: the URL (`/notifications`, `/c/12?ref=5`, an old `/#/live/x`) was read in main()
     // and is honoured here when the person may open it (resolveWebEntry: share links always, sign-in pages when
     // signed out, argument-free pages over the home when signed in; another role's dashboard → the own home).
-    final entry = resolveWebEntry(_webEntry,
-        signedIn: auth.isAuthenticated,
-        home: auth.homeRoute,
-        isLink: (r) =>
-            guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || exportLinkTokenFromRoute(r) != null ||
-            DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null);
+    final entry = resolveWebEntry(_webEntry, signedIn: auth.isAuthenticated, home: auth.homeRoute, isLink: _isLink);
+    // a page that needs an account, opened signed out: the login first, then that page (D-170)
+    if (entry == null && !auth.isAuthenticated && _webEntry != null && needsSignInFirst(_webEntry!)) {
+      SignInReturn.pending = _webEntry;
+    }
     final String initialRoute = entry?.route ??
         (!auth.isAuthenticated
         ? '/login'
@@ -557,6 +622,30 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         ? AppIdentity.instance.name
         : RemoteConfigService.instance.appName;
 
+    // Read by the navigator when it is first built (AppRouterDelegate); later builds change nothing.
+    _startRoute = initialRoute;
+    _startRoutes = (name) {
+      if (offlineStudentStart) {
+        // The dashboard reads this when it mounts and jumps to its last tab (profile).
+        AppNavigator.requestedTab.value = 'last';
+        // The Downloads page below is opened by the app → closed again when back online.
+        topRouteObserver.expectAutoDownloads();
+        return [
+          _router(const RouteSettings(name: '/dashboard'))!,
+          _router(const RouteSettings(name: '/downloads'))!,
+        ];
+      }
+      // `/profile` or `/dashboard/my-courses` by URL: the home, on that tab (N10, D-170) — the dashboard reads the
+      // request when it mounts.
+      final tab = auth.isAuthenticated ? webEntryTab(_webEntry) : null;
+      if (tab != null) AppNavigator.requestedTab.value = tab;
+      _webEntry = null; // one start only: a later Navigator (sign-out / sign-in) opens the usual way
+      if (entry != null && entry.overHome && name == entry.route) {
+        return [_router(RouteSettings(name: auth.homeRoute))!, _router(RouteSettings(name: name))!];
+      }
+      return [_router(RouteSettings(name: name))!];
+    };
+
     // The splash dissolves over the first app frame instead of being cut away.
     return SplashHandOff(child: AnnotatedRegion<SystemUiOverlayStyle>(
       // Light icons (time/battery/signal) in the status bar, on every
@@ -570,37 +659,17 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       ),
       child: ThemeConfigScope(
         provider: tc,
-        child: MaterialApp(
-          navigatorKey: navigatorKey,
-          navigatorObservers: [topRouteObserver],
+        // a Router around the app's one root navigator (core/routing/app_router.dart, D-170): navigatorKey, the
+        // observers, `_router` and the start live in _routerDelegate
+        child: MaterialApp.router(
+          routerDelegate: _routerDelegate,
+          routeInformationParser: const AppRouteInformationParser(),
           title: appName,
           debugShowCheckedModeBanner: false,
           scrollBehavior: const AppScrollBehavior(), // mouse / trackpad can drag every scrollable (web, desktop)
           theme: tc.materialTheme(dark: false),
           darkTheme: tc.materialTheme(dark: true),
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-          initialRoute: initialRoute,
-          onGenerateRoute: _router,
-          onGenerateInitialRoutes: (name) {
-            if (offlineStudentStart) {
-              // The dashboard reads this when it mounts and jumps to its last tab (profile).
-              AppNavigator.requestedTab.value = 'last';
-              // The Downloads page below is opened by the app → closed again when back online.
-              topRouteObserver.expectAutoDownloads();
-              return [
-                _router(const RouteSettings(name: '/dashboard'))!,
-                _router(const RouteSettings(name: '/downloads'))!,
-              ];
-            }
-            // `/profile` by URL: the home, on its account tab (N10) — the dashboard reads the request when it mounts.
-            final tab = auth.isAuthenticated ? webEntryTab(_webEntry) : null;
-            if (tab != null) AppNavigator.requestedTab.value = tab;
-            _webEntry = null; // one start only: a later Navigator (sign-out / sign-in) opens the usual way
-            if (entry != null && entry.overHome && name == entry.route) {
-              return [_router(RouteSettings(name: auth.homeRoute))!, _router(RouteSettings(name: name))!];
-            }
-            return [_router(RouteSettings(name: name))!];
-          },
           // Arabic or English as the person picked (core/app_locale.dart): the root semantics node reads Arabic
           // rows right to left, and Material's own labels / pickers speak the app language.
           locale: appLocale,
@@ -707,6 +776,20 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       }
       return _fade(_Guard(child: PublicProfileScreen(username: profile.username)), settings);
     }
+    // pages of the route registry that have a path of their own (core/routing/app_routes.dart, D-170): opened by URL,
+    // a refresh, the browser's Forward, the assistant's page links
+    final page = AppRoutes.match(settings.name);
+    switch (page?.id) {
+      case 'course':
+        final id = page!.intParam('courseId');
+        if (id != null) return _fade(_Guard(child: CoursePageLoader(courseId: id)), settings); // the one course page (D-111)
+      case 'org.member':
+        final id = page!.intParam('orgId');
+        if (id != null) return _fade(_Guard(child: OrgsGate(child: OrgMemberDashboardScreen(orgId: id))), settings);
+    }
+    // a role home on one of its tabs (`/dashboard/my-courses`): the person's own home, switched to that tab
+    final homeTab = AppRoutes.splitTab(settings.name);
+    if (homeTab != null) return _fade(_Guard(child: _RedirectHome(tab: homeTab.tab)), settings);
     // the inbox page — the inbox and the notifications on one page with tabs: '/inbox' (?tab= / an InboxTab
     // argument) on its tab, the old '/notifications' on the Notifications tab
     final inboxTab = inboxRouteTab(settings.name, settings.arguments);
@@ -1036,6 +1119,7 @@ class _GuardState extends State<_Guard> {
       }
       DeepLinkService.instance.consumePending(); // link opened while logged out
       ExportLinkPending.consume(Navigator.of(context)); // an export share link, likewise
+      SignInReturn.consume(); // any other page opened by URL while signed out (D-170)
       if (!ViewAsState.active) {
         AdminMessageDialogs.checkPending(); // dialogs sent by admins
       }
