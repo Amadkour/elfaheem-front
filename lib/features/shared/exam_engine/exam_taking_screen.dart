@@ -4,6 +4,7 @@
 // The screen talks to the engine through [ExamEngineApi]; the pure pieces live in exam_taking.dart.
 import 'dart:async';
 
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -481,7 +482,7 @@ class ExamProgressBar extends StatelessWidget {
 }
 
 class ExamQuestionCard extends StatefulWidget {
-  const ExamQuestionCard({super.key, required this.question, required this.section, required this.enabled, required this.onAnswer, this.onPickFile, this.attemptId, this.mediaApi});
+  const ExamQuestionCard({super.key, required this.question, required this.section, required this.enabled, required this.onAnswer, this.onPickFile, this.attemptId, this.mediaApi, this.imageBytes, this.imageOmitted = false});
   final PaperQuestion question;
   final PaperSection section;
   final bool enabled;
@@ -493,6 +494,11 @@ class ExamQuestionCard extends StatefulWidget {
   /// The attempt the paper belongs to: with it the question's image is shown (null = no image, e.g. offline sittings).
   final int? attemptId;
   final QuestionMediaApi? mediaApi;
+
+  /// Offline sittings: the image's bytes handed in directly (from the decrypted package), and [imageOmitted] when the
+  /// package left the image out, which shows its alt text. Used only when [attemptId] is null.
+  final Uint8List? imageBytes;
+  final bool imageOmitted;
 
   @override
   State<ExamQuestionCard> createState() => _ExamQuestionCardState();
@@ -545,6 +551,10 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
           if (q.image != null && widget.attemptId != null) ...[
             const SizedBox(height: 12),
             Center(child: QuestionImage.attempt(attemptId: widget.attemptId!, media: QuestionMedia(q.image!.id, q.image!.alt), api: widget.mediaApi)),
+          ],
+          if (q.image != null && widget.attemptId == null && (widget.imageBytes != null || widget.imageOmitted)) ...[
+            const SizedBox(height: 12),
+            Center(child: _InlineQuestionImage(bytes: widget.imageBytes, alt: q.image!.alt)),
           ],
           const SizedBox(height: 14),
           ..._body(context, q, a),
@@ -756,6 +766,37 @@ class ExamQuestionGrid extends StatelessWidget {
             ),
           )),
       ]),
+    );
+  }
+}
+
+/// An image given as bytes (no network): drawn at the same size as the online one; no bytes = the alt text in a calm tile.
+class _InlineQuestionImage extends StatelessWidget {
+  const _InlineQuestionImage({required this.bytes, required this.alt});
+  final Uint8List? bytes;
+  final String alt;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final label = alt.isEmpty ? t('صورة السؤال', 'Question image') : alt;
+    Widget missing() => Container(
+          constraints: const BoxConstraints(minWidth: 96),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.image_not_supported_outlined, color: c.textLight),
+            const SizedBox(width: 8),
+            Flexible(child: Text(alt.isEmpty ? t('الصورة غير متاحة دون اتصال', 'Image not available offline') : alt, style: appText(13, c: c.textMedium), maxLines: 4, overflow: TextOverflow.ellipsis)),
+          ]),
+        );
+    if (bytes == null) return missing();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 260),
+        child: Image.memory(bytes!, fit: BoxFit.contain, gaplessPlayback: true, height: 260, semanticLabel: label, errorBuilder: (_, _, _) => missing()),
+      ),
     );
   }
 }
