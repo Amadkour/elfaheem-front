@@ -102,7 +102,11 @@ class _CropperPageState extends State<_CropperPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
-        title: Text(_t('تعديل الصورة', 'Edit photo'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
+        // the theme's own app-bar title / icon colours are dark: on this black page the title and the icons vanished
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 20, color: Colors.white, fontWeight: FontWeight.w800),
+        title: Text(_t('تعديل الصورة', 'Edit photo')),
         actions: [
           // backgrounds, signatures, documents … sometimes must stay exactly as they are
           if (widget.allowOriginal)
