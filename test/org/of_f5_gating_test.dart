@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppErrorState;
 import 'package:flutter_education_app/features/org/home/org_setup_checklist.dart';
 import 'package:flutter_education_app/features/org/org_v3.dart';
 import 'package:flutter_education_app/features/parent/parent_org_view.dart';
@@ -162,15 +163,15 @@ void main() {
       await tester.pumpWidget(_host(const ParentOrgChildrenCard()));
       await _frames(tester);
       expect(api.calls, hasLength(1));
-      expect(find.text('Retry'), findsNothing);
+      expect(find.byType(AppErrorState), findsNothing);
       expect(find.textContaining("children's organizations"), findsNothing);
     });
 
-    testWidgets('a real failure (500) still offers Retry', (tester) async {
-      api = FakeApi({'GET /api/v1/org/parent/children': (_) => const FakeResponse(500, {'detail': 'boom'})}, latency: Duration.zero)..install();
-      await tester.pumpWidget(_host(const ParentOrgChildrenCard()));
+    testWidgets('a real failure still shows the compact error with its retry', (tester) async {
+      api = FakeApi({}, latency: Duration.zero)..install();
+      await tester.pumpWidget(_host(ParentOrgChildrenCard(loader: () async => throw Exception('boom'))));
       await _frames(tester);
-      expect(find.text('Retry'), findsOneWidget);
+      expect(find.byType(AppErrorState), findsOneWidget);
     });
   });
 
