@@ -67,7 +67,7 @@ void main() {
     ));
     await tester.tap(find.byKey(const ValueKey('open')));
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.byKey(const ValueKey('cc-preset-pass_fail')));
+    await tester.tap(find.byKey(const ValueKey('cc-preset-pass_fail')).first);
     await tester.pump(const Duration(milliseconds: 300));
 
     String shown(int i) => (tester.widget<Text>(find.byKey(ValueKey('cc-preview-$i')))).data!;

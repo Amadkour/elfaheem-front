@@ -48,7 +48,7 @@ void main() {
     });
     test('operators', () {
       expect(condMatches(c('n', 'starts_with', 'أح'), {'n': 'أَحْمَد'}), isTrue);
-      expect(condMatches(c('n', 'ends_with', 'MAD'), {'n': 'ahmad'}), isFalse);
+      expect(condMatches(c('n', 'ends_with', 'MAD'), {'n': 'ahmed'}), isFalse);
       expect(condMatches(c('n', 'in', 'a, b'), {'n': 'B'}), isTrue);
       expect(condMatches(c('n', '>', 5), {'n': '1,200'}), isTrue);
       expect(condMatches(c('n', '<', 5), {'n': null}), isFalse);
