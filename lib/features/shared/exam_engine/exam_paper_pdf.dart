@@ -38,14 +38,21 @@ Future<PaperPdfResult> examPaperPdfMany(List<ExamPaperDoc> docs, PaperTemplate t
     creator: 'NextBrain',
     theme: pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold), fontFallback: [pw.Font.helvetica()]),
   );
-  final pages = [for (final d in docs) _addPaper(doc, d, tpl)];
+  // each paper's own page count first, in a throwaway document (layout happens in addPage): the footer of the real
+  // document then prints a number that is fixed up front, whatever pdf's page context says
+  final theme = pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold), fontFallback: [pw.Font.helvetica()]);
+  final counts = [for (final d in docs) _addPaper(pw.Document(theme: theme), d, tpl, null, -1)];
+  final pages = [for (var i = 0; i < docs.length; i++) _addPaper(doc, docs[i], tpl, counts[i], i)];
   return PaperPdfResult(await doc.save(), pages);
 }
 
 /// The QR's side in the footer (points); a reserved slot takes the same room as a real one.
 const kPaperQrSize = 34.0;
 
-int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl) {
+/// Test hook: called with (paper index, page number, the paper's page count) for each footer drawn into a real document.
+void Function(int paper, int no, int total)? paperFooterProbe;
+
+int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTotal, int paperIndex) {
   var lastPage = 1;
   // pw.Context page numbers count the whole document: a paper in a merged PDF numbers its own pages from 1
   final offset = doc.document.pdfPageList.pages.length;
@@ -522,8 +529,11 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl) {
             ]),
           ),
     footer: (c) {
-      final no = c.pageNumber - offset, total = c.pagesCount - offset;
+      // c.pagesCount is the pages so far (layout) or the whole merged document (render): never this paper's own count
+      final no = c.pageNumber - offset;
       if (no > lastPage) lastPage = no;
+      final total = knownTotal ?? lastPage;
+      paperFooterProbe?.call(paperIndex, no, total);
       final payload = no <= d.qrPages.length ? d.qrPages[no - 1] : null;
       return pw.Container(
         margin: const pw.EdgeInsets.only(top: 8),

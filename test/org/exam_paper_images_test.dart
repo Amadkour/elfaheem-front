@@ -21,7 +21,7 @@ Map<String, dynamic> _q(int id, String type, Map<String, dynamic> body, Map<Stri
 
 ExamView _view({bool ar = true, int essays = 0}) => ExamView.fromJson({
       'id': 5, 'title': ar ? 'امتحان الأحياء' : 'Biology exam', 'status': 'published', 'duration_minutes': 60, 'max_attempts': 1,
-      'results_policy': 'when_published', 'allowed_platforms': ['web'], 'settings': {}, 'version': 1, 'max_score': 12,
+      'results_policy': 'when_published', 'allowed_platforms': ['web'], 'settings': {}, 'version': 1, 'max_score': 5 + 12 * essays,
       'sections': [
         {
           'id': 1, 'position': 0, 'title': '', 'mode': 'paper', 'weight': 1,
@@ -41,7 +41,7 @@ ExamView _view({bool ar = true, int essays = 0}) => ExamView.fromJson({
 
 ExamPaperDoc _doc({bool ar = true, int essays = 0, AnswerTablePlace table = AnswerTablePlace.none}) => ExamPaperDoc.fromView(_view(ar: ar, essays: essays),
     institution: ar ? 'مدرسة النور' : 'Al Noor', course: ar ? 'الأحياء' : 'Biology', dateText: '1/12/2026',
-    instructions: defaultPaperInstructions(rtl: ar, questions: 3, duration: '60'), rtl: ar, accentHex: '1E5AA8', answerTable: table);
+    instructions: defaultPaperInstructions(rtl: ar, questions: 3 + essays, duration: '60'), rtl: ar, accentHex: '1E5AA8', answerTable: table);
 
 Future<ByteData> _font(String p) async => ByteData.sublistView(await File(p).readAsBytes());
 
@@ -69,8 +69,23 @@ void main() {
     final regular = await _font('assets/fonts/plex/IBMPlexSansArabic-Regular.ttf'), bold = await _font('assets/fonts/plex/IBMPlexSansArabic-Bold.ttf');
     final one = (await examPaperPdfMany([_doc(essays: 4)], PaperTemplate.minimal, regular: regular, bold: bold)).pages.single;
     expect(one, greaterThanOrEqualTo(2));
+    final d4 = _doc(essays: 4);
+    expect(d4.total, 53);
+    expect(d4.instructions.any((l) => l.contains('7')), isTrue, reason: 'the instructions count the questions of the paper');
     final two = await examPaperPdfMany([_doc(essays: 4), _doc(essays: 4)], PaperTemplate.minimal, regular: regular, bold: bold);
     expect(two.pages, [one, one], reason: 'the second copy numbers its pages from 1 and ends where the first ends');
+    // the footer of EVERY copy says "of <its own count>" in the real document (regression: copy 1 printed the document total)
+    final seen = <int, List<(int, int)>>{};
+    paperFooterProbe = (p, no, total) {
+      if (p >= 0) (seen[p] ??= []).add((no, total));
+    };
+    addTearDown(() => paperFooterProbe = null);
+    await examPaperPdfMany([_doc(essays: 4), _doc(essays: 4)], PaperTemplate.minimal, regular: regular, bold: bold);
+    for (final p in [0, 1]) {
+      expect(seen[p], isNotEmpty);
+      expect(seen[p]!.every((e) => e.$2 == one), isTrue, reason: 'paper $p footers: ${seen[p]}');
+      expect(seen[p]!.map((e) => e.$1).toSet(), {for (var i = 1; i <= one; i++) i});
+    }
   });
 
   test('question images: media is carried, fetched once before laying out, a failed fetch becomes a placeholder', () async {
