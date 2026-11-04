@@ -238,7 +238,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
     ];
     if (json != null) {
       _options = parsed;
-      // A renewal starts on the plan the student had (D-171); otherwise the teacher's default.
+      // A renewal starts on the plan the student had (D-190); otherwise the teacher's default.
       final had = course.access?.plan;
       final def = parsed.any((o) => o.plan == had) ? had : json['default_plan'] as String?;
       _plan = parsed.any((o) => o.plan == def)

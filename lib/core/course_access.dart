@@ -1,4 +1,4 @@
-/// A student's access to ONE course, as the server decides it (D-171), and the texts that explain a refusal.
+/// A student's access to ONE course, as the server decides it (D-190), and the texts that explain a refusal.
 ///
 /// `CourseAccess` mirrors `CourseAccess.to_dict()` of the backend. Every part is optional: an older server sends no
 /// `access` block at all (the app then trusts `is_enrolled`), and an unknown `reason` / `status` is kept as the raw
