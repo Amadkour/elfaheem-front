@@ -109,7 +109,7 @@
         ]
       },
       {
-        "source": "/assets/{AssetManifest.bin,AssetManifest.bin.json,AssetManifest.json,FontManifest.json,assets/translation.json}",
+        "source": "/assets/{AssetManifest.bin,AssetManifest.bin.json,AssetManifest.json,FontManifest.json,LazyFontManifest.json,assets/translation.json}",
         "headers": [
           {
             "key": "Cache-Control",
