@@ -723,8 +723,11 @@ class _TopBar extends StatelessWidget {
       label: 'shell_top_bar'.tr,
       child: Container(
         height: 64,
+        // light: the hero gradient (D-180), so the bar and the brand sidebar read as one header — both start at
+        // primary on the reading-start side; dark: the card surface (a brand fill glares on a dark page)
         decoration: BoxDecoration(
-          color: c.isDark ? c.cardBg : c.primary,
+          color: c.isDark ? c.cardBg : null,
+          gradient: c.isDark ? null : c.heroGradient,
           border: Border(bottom: BorderSide(color: c.primary.withValues(alpha: 0.08))),
           boxShadow: c.cardShadow,
         ),
