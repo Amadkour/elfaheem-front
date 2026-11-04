@@ -24,7 +24,7 @@ class CertDocLoad {
 class CertConflict implements Exception {
   const CertConflict();
   @override
-  String toString() => 'design_conflict';
+  String toString() => 'CertConflict: 409 design_conflict';
 }
 
 /// One starter of the gallery (`GET /exports/layout/starters?purpose=certificate`).
