@@ -2612,7 +2612,7 @@ was final), and archived it when it had (D-025). The owner asked for a soft dele
 super admin deciding whether a course is deleted permanently. **Decision.** Every course delete (teacher
 `DELETE /api/v1/courses/{id}`, admin `DELETE /api/v1/admin/courses/{id}`) only archives the course
 (`courses.archived_at`, the flag every query already honours), drops its enrollments and removes its favourites;
-`course_deletions` (migration 0045, back `data/course_trash_models.py`) remembers each enrollment's old status, the
+`course_deletions` (migration 0046, back `data/course_trash_models.py`) remembers each enrollment's old status, the
 favourites, the published flag, who deleted it and why. The super admin's trash (`/api/v1/admin/course-trash`, app:
 Admin services → Deleted courses, kill switch `admin.course_trash`) restores a course exactly as it was (each
 enrollment back to its old status unless it changed since; an expired plan stays expired) or deletes it permanently
