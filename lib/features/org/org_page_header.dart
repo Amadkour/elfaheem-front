@@ -746,6 +746,7 @@ class _OrgPill extends StatelessWidget {
       icon: orgTypeIcons[org?['type']] ?? Icons.account_balance_rounded,
       tone: orgColor(context, org),
       label: session.name,
+      logoUrl: '${org?['logo_url'] ?? ''}',
       onTap: () => showOrgSwitcher(context),
     );
   }

@@ -34,6 +34,8 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppPrimaryButton;
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
+import 'package:flutter_education_app/design/app_states.dart' show AppErrorState;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_shell.dart' show AppShell, DashboardItem;
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
@@ -125,6 +127,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
   final _dash = OrgDashController();
   bool _movedToMember = false;
   bool _askedOverview = false;
+  bool _staleShown = false;
   late final OrgSession _session;
 
   int? get _uid {
@@ -231,6 +234,25 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
     final session = context.watch<OrgSession>();
     if (!session.loaded) {
       return const BasePage(child: AppListSkeleton(items: 5));
+    }
+    if (session.items.isEmpty && session.loadFailed) {
+      // /org/mine failed (offline / server error) with nothing known yet: an error with Retry, never "no organizations"
+      return BasePage(
+        child: Center(
+          child: AppErrorState(message: session.errorMessage, onRetry: () => session.load()),
+        ),
+      );
+    }
+    if (session.loadFailed && !_staleShown) {
+      // a refresh failed but the last known list stays on screen: say so once, with Retry
+      _staleShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showAppNotice(session.errorMessage ?? t('تعذّر تحديث المؤسسات', 'Could not refresh your organizations'),
+            error: true, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: () => session.load());
+      });
+    } else if (!session.loadFailed) {
+      _staleShown = false;
     }
     if (session.items.isEmpty) {
       // nothing listed: the membership overview decides (only read in this case) — D-103

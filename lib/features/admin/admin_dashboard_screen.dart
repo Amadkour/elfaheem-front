@@ -48,6 +48,8 @@ import 'admin_courses_page.dart';
 import 'admin_finance_page.dart' show AdminFinancePage;
 import 'admin_global_search.dart';
 import 'admin_organizations_page.dart' show AdminOrganizationsPage;
+import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
+import 'package:flutter_education_app/design/context_switcher.dart' show contextSwitchVisible, kContextSwitchFeature, showContextSwitcherSheet;
 import 'admin_page.dart' show AdminRefreshScope, AdminRefreshSlot;
 import 'admin_overview_page.dart';
 import 'admin_premium_widgets.dart';
@@ -517,6 +519,16 @@ class _MorePageState extends State<_MorePage> {
           title: 'settings'.tr,
           icon: Icons.settings_rounded,
           children: [
+            // organizations I belong to / manage: the one shared switcher (Personal <-> organization)
+            if (contextSwitchVisible(AppModeController.instance))
+              AppSettingsTile(
+                key: const ValueKey('admin.ctx.switch'),
+                featureKey: kContextSwitchFeature,
+                icon: Icons.swap_horiz_rounded,
+                color: AdminPalette.indigo.last,
+                label: 'ctx_switch_title'.tr,
+                onTap: () => showContextSwitcherSheet(context, allowPersonal: false),
+              ),
             const CalendarEntryTile(),
             AppSettingsTile(
               icon: Icons.manage_accounts_rounded,

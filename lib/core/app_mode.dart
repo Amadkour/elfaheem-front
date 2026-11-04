@@ -21,10 +21,19 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
+import '../design/app_notice.dart' show showAppNotice;
 import '../features/org/org_platform_context.dart';
+import '../features/org/org_ui.dart' show orgNameOf;
 import 'api_client.dart';
 
 enum AppMode { individual, organization }
+
+/// [AppModeController.resolveOrgId]: the organization to show, and whether the remembered one was gone.
+class OrgChoice {
+  const OrgChoice(this.orgId, this.fellBack);
+  final int? orgId;
+  final bool fellBack;
+}
 
 class AppModeController extends ChangeNotifier {
   AppModeController._() {
@@ -42,6 +51,10 @@ class AppModeController extends ChangeNotifier {
   bool _loading = false;
   bool loaded = false;
   Map<String, dynamic> _overview = const {};
+
+  /// The last refresh of the overview failed (offline / server error): the LAST KNOWN list is kept, and the screens
+  /// that show it offer Retry instead of looking like "no organizations".
+  bool refreshFailed = false;
 
   // ── what the server said ─────────────────────────────────────────────────
 
@@ -64,27 +77,54 @@ class AppModeController extends ChangeNotifier {
   Map<String, dynamic>? get current {
     final live = liveEntries;
     if (live.isEmpty) return null;
-    for (final e in live) {
-      if (_id(_map(e['organization'])['id']) == _orgId) return e;
-    }
-    final def = _id(_overview['default_org_id']);
-    for (final e in live) {
-      if (_id(_map(e['organization'])['id']) == def) return e;
-    }
-    return live.first;
+    final id = resolveOrgId(
+      remembered: _orgId,
+      liveIds: [for (final e in live) _id(_map(e['organization'])['id']) ?? -1],
+      defaultId: _id(_overview['default_org_id']),
+    ).orgId;
+    return live.firstWhere((e) => _id(_map(e['organization'])['id']) == id, orElse: () => live.first);
   }
+
+  /// Which organization is shown, pure: the remembered one while it is still listed, else the server's default,
+  /// else the first. [OrgChoice.fellBack] = the remembered one is GONE (removed / suspended / deleted), so whoever
+  /// shows the fallback must say so ([orgGoneText]) and never swap silently.
+  static OrgChoice resolveOrgId({required int? remembered, required List<int> liveIds, int? defaultId}) {
+    if (liveIds.isEmpty) return OrgChoice(null, remembered != null);
+    if (remembered != null && liveIds.contains(remembered)) return OrgChoice(remembered, false);
+    final id = defaultId != null && liveIds.contains(defaultId) ? defaultId : liveIds.first;
+    return OrgChoice(id, remembered != null);
+  }
+
+  /// The notice for [OrgChoice.fellBack]: [lostName] (null = unknown) is no longer available, [nowName] (null = no
+  /// organization left -> the personal space) is shown instead.
+  static String orgGoneText({String? lostName, String? nowName}) {
+    final lost = lostName == null || lostName.trim().isEmpty ? null : lostName.trim();
+    final now = nowName == null || nowName.trim().isEmpty ? null : nowName.trim();
+    final ar = StringBuffer(lost == null ? 'لم تعد المؤسسة السابقة متاحة لك' : 'لم تعد مؤسسة «$lost» متاحة لك');
+    final en = StringBuffer(lost == null ? 'Your previous organization is no longer available' : '«$lost» is no longer available to you');
+    if (now == null) {
+      ar.write(' — أنت الآن في حسابك الشخصي.');
+      en.write(' — you are in your personal space.');
+    } else {
+      ar.write(' — فتحنا «$now».');
+      en.write(' — opened «$now» instead.');
+    }
+    return AppConfig.lang == 'ar' ? ar.toString() : en.toString();
+  }
+
+  /// Shows the "organization gone" notice (also called by OrgSession). Replaceable in tests.
+  static void Function(String text) showGoneNotice = (text) => showAppNotice(text);
 
   int? get currentOrgId => current == null ? null : _id(_map(current!['organization'])['id']);
 
   /// Total of what waits in every organization (badge on the switcher while in Individual mode).
   int get pendingTotal => _id(_overview['pending_total']) ?? 0;
 
-  /// Loaded, and no organization gives this person any management right. No longer a routing input (D-103: every
-  /// non-student organization role opens '/org_dashboard'); kept as a plain fact about the overview.
-  bool get managesNothing => loaded && entries.isNotEmpty && entries.every((e) => e['manage'] == null);
-
-  /// Is [entry] (an overview item) an organization where I am NOT a student? Choosing it in the switcher opens the
-  /// organization dashboard (D-103); an organization where I study opens the member view, as before.
+  /// THE rule of "which home does this organization open?" (one answer for the switcher, a notification tap, a deep
+  /// link and a remembered Organization mode): [entry] (an overview item) is an organization where I am NOT a
+  /// student (staff of any kind: admin, teacher, assistant, any management right) -> the organization dashboard
+  /// ('/org_dashboard', D-103). Only an organization where I study opens the member home (Organization mode). So a
+  /// teacher who is also staff of an organization never lands on the student-style member home of that organization.
   static bool opensDashboard(Map<String, dynamic> entry) {
     final roles = entry['roles'];
     return !(roles is List && roles.any((r) => '$r' == 'student'));
@@ -112,7 +152,7 @@ class AppModeController extends ChangeNotifier {
   /// alone (in Organization mode the member view follows the same organization).
   Future<void> rememberDashboardOrg(int orgId, {int? userId}) async {
     final uid = userId ?? _userId;
-    if (_userId != null && uid == _userId && _orgId != orgId) {
+    if ((userId == null || userId == _userId) && _orgId != orgId) {
       _orgId = orgId;
       if (isOrg) notifyListeners();
     }
@@ -178,21 +218,66 @@ class AppModeController extends ChangeNotifier {
     if (_userId == null || _loading) return;
     _loading = true;
     try {
+      final before = {for (final e in liveEntries) _id(_map(e['organization'])['id']): orgNameOf(_map(e['organization']))};
       final r = await ApiClient().get(overviewPath);
       if (r is Map) {
         _overview = Map<String, dynamic>.from(r);
+        refreshFailed = false;
         if (!_remembered) {
           // first launch on this device → the smart default from the server
           _mode = _overview['suggested_mode'] == 'organization' ? AppMode.organization : AppMode.individual;
         }
+        _settleAfterOverview(before);
       }
     } catch (_) {
-      // offline / old server (404) / paywall: keep the last answer; with nothing loaded the switch stays hidden
+      // offline / old server (404) / paywall: keep the last answer (the list stays, Retry is offered)
+      refreshFailed = true;
     } finally {
       _loading = false;
       loaded = true;
       notifyListeners();
     }
+  }
+
+  /// A fresh overview arrived: (1) Organization mode is only ever the member home of an organization where I study
+  /// ([opensDashboard] = false) - a staff organization is entered through the dashboard; (2) a remembered
+  /// organization that is gone falls back WITH a visible notice, never silently.
+  void _settleAfterOverview(Map<int?, String> before) {
+    final live = liveEntries;
+    final liveIds = [for (final e in live) _id(_map(e['organization'])['id']) ?? -1];
+    final gone = _orgId != null && !liveIds.contains(_orgId);
+    if (gone && _mode == AppMode.organization) {
+      final lostName = before[_orgId];
+      final choice = resolveOrgId(remembered: _orgId, liveIds: liveIds, defaultId: _id(_overview['default_org_id']));
+      final nowEntry = choice.orgId == null
+          ? null
+          : live.firstWhere((e) => _id(_map(e['organization'])['id']) == choice.orgId);
+      _orgId = choice.orgId;
+      if (nowEntry == null) _mode = AppMode.individual;
+      showGoneNotice(orgGoneText(lostName: lostName, nowName: nowEntry == null ? null : orgNameOf(_map(nowEntry['organization']))));
+      _persist();
+    } else if (gone) {
+      _orgId = null; // not looking at it: forget it quietly
+      _persist();
+    }
+    final cur = current;
+    if (_mode == AppMode.organization && cur != null && opensDashboard(cur)) {
+      _mode = AppMode.individual; // rule: staff organizations open the dashboard, not the member home
+      _persist();
+    }
+  }
+
+  Future<void> _persist() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_modeKey, _mode.name);
+      if (_orgId != null) {
+        await p.setInt(_orgKey, _orgId!);
+      } else {
+        await p.remove(_orgKey);
+      }
+      if (_userId != null) await p.setBool(personalHomeKey(_userId!), _mode == AppMode.individual);
+    } catch (_) {}
   }
 
   /// The person switched. Instant (no network), remembered.
@@ -215,9 +300,23 @@ class AppModeController extends ChangeNotifier {
   /// Deep link / notification for an organization → open it in Organization mode.
   /// Once the person's organizations are known, an id that is not one of them (a typed `/org/<id>`) opens nothing:
   /// neither the mode nor the remembered organization changes.
-  Future<void> openOrg(int orgId) {
-    if (loaded && !liveEntries.any((e) => _id(_map(e['organization'])['id']) == orgId)) return Future<void>.value();
+  ///
+  /// An organization where I am staff ([opensDashboard]) is only remembered (the caller opens its dashboard); the
+  /// member home of Organization mode is for the ones where I study.
+  Future<void> openOrg(int orgId) async {
+    final entry = liveEntries.where((e) => _id(_map(e['organization'])['id']) == orgId).firstOrNull;
+    if (loaded && entry == null) return;
+    if (entry != null && opensDashboard(entry)) {
+      if (isOrg) await setMode(AppMode.individual, orgId: orgId);
+      return rememberDashboardOrg(orgId);
+    }
     return setMode(AppMode.organization, orgId: orgId);
+  }
+
+  /// Does [orgId] open the dashboard? (null = the overview does not list it: the caller decides from `/org/mine`.)
+  bool? opensDashboardFor(int orgId) {
+    final e = entries.where((e) => _id(_map(e['organization'])['id']) == orgId).firstOrNull;
+    return e == null ? null : opensDashboard(e);
   }
 
   /// Logout.

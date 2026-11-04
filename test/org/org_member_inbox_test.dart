@@ -66,7 +66,7 @@ void main() {
     expect(ctl.isOrg, isTrue);
     expect(ctl.currentOrgId, 9); // a pending organization is never opened in Organization mode
     expect(AppModeController.pendingOf(ctl.current!), 3);
-    expect(ctl.managesNothing, isFalse); // the admin of the pending org manages something
+
 
     AppConfig.orgsEnabled = false;
     expect(ctl.available, isFalse);
