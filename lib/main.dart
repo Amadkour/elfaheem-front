@@ -27,6 +27,7 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/core/offline/offline_strings.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:flutter_education_app/core/app_time.dart' show AppTime;
+import 'package:flutter_education_app/utils/web_base_path.dart';
 import 'package:flutter_education_app/utils/web_entry_route.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:provider/provider.dart';
@@ -118,7 +119,8 @@ Future<void> main() async {
     final base = Uri.base;
     _legacyHashRoute = legacyHashRoute(base);
     if (_legacyHashRoute != null) {
-      replaceBrowserUrl(base.removeFragment().resolve(_legacyHashRoute!.substring(1)).toString());
+      // under the app's <base href> (/app/, D-150): /app/#/payment/callback → /app/payment/callback
+      replaceBrowserUrl(base.removeFragment().resolve('$webBasePath${_legacyHashRoute!.substring(1)}').toString());
     }
     _webEntry = _legacyHashRoute ?? webEntryRouteFromUri(base);
   }
