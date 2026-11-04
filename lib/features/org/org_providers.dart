@@ -366,13 +366,25 @@ class OrgSession extends AdminBase {
     return r is Map ? Map<String, dynamic>.from(r) : null;
   }
 
+  /// Rotates the printed join code. The app uses the multi-code route on the code's own row (`legacy_code_id` of the
+  /// join settings, admins only); a server that does not send the id (older) keeps the legacy route.
   Future<String?> regenerateCode() async {
-    final r = await call(() => api.post('$base/join-code/regenerate'));
+    final cid = await legacyCodeId();
+    final r = await call(() => cid != null ? api.post('$base/join/codes/$cid/regenerate') : api.post('$base/join-code/regenerate'));
     if (r is Map) {
       await load();
-      return r['join_code']?.toString();
+      return regeneratedCodeOf(r);
     }
     return null;
+  }
+
+  Future<int?> legacyCodeId() async {
+    try {
+      final s = await api.get('$base/join/settings');
+      return legacyCodeIdOf(s);
+    } catch (_) {
+      return null;                              // settings unreadable: the legacy route still works
+    }
   }
 
   Future<Map<String, dynamic>?> overview() async {

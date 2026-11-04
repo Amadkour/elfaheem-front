@@ -95,7 +95,7 @@ Map<String, String> _codeTexts() => {
       'feature_locked_by_parent': t('أوقفتها المؤسسة الأم — تُدار من هناك', 'Switched off by the parent organization — managed there'),
       'bad_timezone': t('منطقة زمنية غير معروفة', 'Unknown timezone'),
       // organization review / access
-      'org_not_approved': t('المؤسسة بانتظار اعتماد إدارة المنصة', 'The organization is waiting for platform approval'),
+      'org_not_approved': t('هذه المؤسسة غير متاحة الآن — بانتظار اعتماد المنصة أو موقوفة أو محذوفة', 'This organization is not available now — it is waiting for approval, suspended or deleted'),
       'org_forbidden': t('لا تملك صلاحية لهذا الإجراء في هذه المؤسسة', 'You don\'t have the right to do this in this organization'),
       'org_admin_only': t('هذا الإجراء لمدير المؤسسة فقط', 'Only the organization admin can do this'),
       'not_member': t('لست عضواً نشطاً في هذه المؤسسة', 'You are not an active member of this organization'),
@@ -306,6 +306,12 @@ Map<String, String> _codeTexts() => {
       'not_org_admin': t('هذا الإجراء لمدير المؤسسة الحالي فقط', 'Only the organization\'s current administrator can do this'),
       'share_target_not_allowed': t('يمكن المشاركة مع أعضاء المؤسسة فقط', 'You can only share with members of the organization'),
       'members_only': t('هذا المحتوى لأعضاء المؤسسة فقط — انضم إليها أولاً', 'This is for members of the organization only — join it first'),
+      'file_url_not_allowed': t('رابط الملف غير مسموح — ارفع الملف من التطبيق أو استخدم رابطاً آمناً', 'This file link is not allowed — upload the file in the app or use a secure link'),
+      'share_rate_limited': t('أرسلت مشاركات كثيرة — حاول بعد قليل', 'You shared too many times — try again in a moment'),
+      'head_user_not_found': t('لم نجد مسؤول هذا القسم', 'We could not find the head of this department'),
+      'bad_filter': t('عوامل التصفية غير صالحة — عدّلها وأعد المحاولة', 'These filters are not valid — change them and try again'),
+      'links_unavailable': t('روابط الملفات غير متاحة الآن — حاول لاحقاً', 'File links are not available right now — try again later'),
+      'not_reachable': t('لا يمكنك الوصول إلى هذا العنصر', 'You cannot reach this item'),
       'account_disabled': t('هذا الحساب معطّل — تواصل مع الإدارة', 'This account is disabled — contact the administration'),
       'org_unavailable': t('هذه المؤسسة غير متاحة حالياً', 'This organization is not available right now'),
       'advisor_action_not_allowed': t('هذا الإجراء غير متاح للمرشد الأكاديمي', 'This action is not available to an academic advisor'),
@@ -348,6 +354,13 @@ String orgErrorText(ApiException e) {
   }
   return e.message;
 }
+
+/// The id of the printed join code's row in the join settings (`legacy_code_id`); null when the server lacks it
+/// (older server, or the caller is not the admin) → the legacy regenerate route is used.
+int? legacyCodeIdOf(dynamic settings) => settings is Map ? int.tryParse('${settings['legacy_code_id'] ?? ''}') : null;
+
+/// The new plain code in a regenerate answer: `code` from `/join/codes/{id}/regenerate`, `join_code` from the legacy route.
+String? regeneratedCodeOf(Map r) => (r['code'] ?? r['join_code'])?.toString();
 
 /// Eligibility reason codes (join_service.py REASONS).
 String joinReasonText(Map<String, dynamic> r) =>

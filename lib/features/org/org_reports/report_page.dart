@@ -149,6 +149,8 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
     if (cached != null) return cached;
     try {
       final res = await http.get(Uri.parse(orgFileUrl(url))).timeout(const Duration(seconds: 25));
+      // an org file link lives 7 days (410 link_expired afterwards): never keep a link, only the bytes of a good answer
+      if (res.statusCode == 410) toast(orgCodeText('link_expired'), error: true);
       if (res.statusCode != 200) return null;
       return _bytesCache[url] = res.bodyBytes;
     } catch (_) {
@@ -1012,16 +1014,14 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     try {
       final built = await _build();
       if (built == null || !mounted) return;
-      final meta = {
-        'dept_id': widget.deptId,
-        'title': _title.text.trim().isEmpty ? t('تقرير', 'Report') : _title.text.trim(),
-        'message': target.message,
-        'channel': target.channel,
-        'user_ids': target.userIds.toList(),
-        'dept_ids': target.deptIds.toList(),
-        'org_ids': target.orgIds.toList(),
-        'emails': target.emails,
-      };
+      final meta = reportShareMeta(
+          deptId: widget.deptId,
+          title: _title.text.trim().isEmpty ? t('تقرير', 'Report') : _title.text.trim(),
+          message: target.message,
+          channel: target.channel,
+          userIds: target.userIds,
+          deptIds: target.deptIds,
+          orgIds: target.orgIds);
       final r = await ApiClient().postMultipart('$_base/share',
           fields: {'meta': jsonEncode(meta)}, fileField: 'file', fileName: '$_fileBase.${built.$2}', fileBytes: built.$1);
       if (r is Map) {
@@ -1185,10 +1185,9 @@ class ReportItemTile extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _ShareTarget {
-  _ShareTarget({required this.channel, required this.userIds, required this.deptIds, required this.orgIds, required this.emails, this.message});
+  _ShareTarget({required this.channel, required this.userIds, required this.deptIds, required this.orgIds, this.message});
   final String channel;
   final Set<int> userIds, deptIds, orgIds;
-  final List<String> emails;
   final String? message;
 }
 
@@ -1204,7 +1203,7 @@ class _ShareSheet extends StatefulWidget {
 class _ShareSheetState extends State<_ShareSheet> {
   String _channel = 'app';
   final _people = <int, String>{}, _teams = <int, String>{}, _orgs = <int, String>{};
-  final _emails = TextEditingController(), _message = TextEditingController(), _q = TextEditingController();
+  final _message = TextEditingController(), _q = TextEditingController();
   String _tab = 'people';
   List<Map<String, dynamic>>? _results;
   List<Map<String, dynamic>> _depts = [];
@@ -1222,7 +1221,6 @@ class _ShareSheetState extends State<_ShareSheet> {
 
   @override
   void dispose() {
-    _emails.dispose();
     _message.dispose();
     _q.dispose();
     super.dispose();
@@ -1239,9 +1237,7 @@ class _ShareSheetState extends State<_ShareSheet> {
     setState(() => _results = r.ok ? asMapList(r.map['items']) : []);
   }
 
-  List<String> get _emailList => _emails.text.split(RegExp(r'[\s,;]+')).map((e) => e.trim()).where((e) => e.contains('@')).toList();
-
-  int get _count => _people.length + _teams.length + _orgs.length + (_channel == 'app' ? 0 : _emailList.length);
+  int get _count => _people.length + _teams.length + _orgs.length;
 
   @override
   Widget build(BuildContext context) {
@@ -1295,7 +1291,7 @@ class _ShareSheetState extends State<_ShareSheet> {
             onChanged: (_) => _search(),
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search_rounded),
-              hintText: _tab == 'orgs' ? t('ابحث عن مؤسسة', 'Search organizations') : t('ابحث بالاسم أو البريد', 'Search by name or e-mail'),
+              hintText: _tab == 'orgs' ? t('ابحث عن مؤسسة', 'Search organizations') : t('ابحث عن عضو بالاسم', 'Search members by name'),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               isDense: true,
             ),
@@ -1329,7 +1325,7 @@ class _ShareSheetState extends State<_ShareSheet> {
                                   value: _orgs.containsKey(id),
                                   secondary: const Icon(Icons.apartment_rounded),
                                   title: Text(orgNameOf(r), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  subtitle: Text(t('يصل لمديري المؤسسة', 'Goes to its admins'), style: const TextStyle(fontSize: 11)),
+                                  subtitle: Text(t('مؤسسة وافقت على استلام التقارير — يصل لمديريها', 'Accepts shared reports — goes to its admins'), style: const TextStyle(fontSize: 11)),
                                   contentPadding: EdgeInsets.zero,
                                   onChanged: (on) => setState(() => on == true ? _orgs[id] = orgNameOf(r) : _orgs.remove(id)),
                                 );
@@ -1347,10 +1343,7 @@ class _ShareSheetState extends State<_ShareSheet> {
                           ),
           ),
         ),
-        if (_channel != 'app') ...[
-          const SizedBox(height: 8),
-          AppField(controller: _emails, label: t('عناوين بريد إضافية (اختياري)', 'Extra e-mail addresses (optional)'), ltr: true, onChanged: (_) => setState(() {})),
-        ],
+        // no free e-mail field: the server only accepts members of the sharing organization (422 share_target_not_allowed)
         const SizedBox(height: 8),
         AppField(controller: _message, label: t('رسالة (اختياري)', 'Message (optional)'), maxLines: 2),
         const SizedBox(height: 12),
@@ -1366,7 +1359,6 @@ class _ShareSheetState extends State<_ShareSheet> {
                     userIds: _people.keys.toSet(),
                     deptIds: _teams.keys.toSet(),
                     orgIds: _orgs.keys.toSet(),
-                    emails: _channel == 'app' ? const [] : _emailList,
                     message: _message.text.trim().isEmpty ? null : _message.text.trim(),
                   )),
         ),
