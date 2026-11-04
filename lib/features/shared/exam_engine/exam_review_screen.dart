@@ -14,6 +14,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import 'exam_review.dart';
+import 'exam_grade_log_screen.dart' show ExamGradeLogScreen;
 import 'exam_authoring.dart' show ExamAuthoringApi, ExamView, examStatusLabel;
 import 'exam_authoring_screen.dart' show ExamEditorScreen, QuestionBankScreen;
 import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
@@ -342,9 +343,16 @@ class _GradingPolicySheetState extends State<GradingPolicySheet> {
 }
 
 class ExamReviewScreen extends StatefulWidget {
-  const ExamReviewScreen({super.key, required this.examId, required this.examTitle});
+  const ExamReviewScreen({super.key, required this.examId, required this.examTitle, this.onOpenGradeReview});
   final int examId;
   final String examTitle;
+
+  /// "Grade review by camera" (the marks sessions, agent FB2): the lead wires it at integration — either per screen
+  /// here or once through [openGradeReviewHook]. The button shows only when one of them is set.
+  final void Function(BuildContext context, int examId, String examTitle)? onOpenGradeReview;
+
+  /// The app-wide opener (set once by the code that owns `marks/**`).
+  static void Function(BuildContext context, int examId, String examTitle)? openGradeReviewHook;
 
   @override
   State<ExamReviewScreen> createState() => _ExamReviewScreenState();
@@ -470,6 +478,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
   Widget build(BuildContext context) {
     final q = _queue;
     final c = context.colors;
+    final gradeReview = widget.onOpenGradeReview ?? ExamReviewScreen.openGradeReviewHook;
     return BasePage(
       key: const ValueKey('exam.review'),
       appBar: AppBar(title: Text(t('مراجعة التصحيح', 'Review marking')), actions: [
@@ -481,6 +490,10 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
         IconButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamAnalyticsScreen(examId: widget.examId, examTitle: widget.examTitle))),
             icon: const Icon(Icons.insights_rounded), tooltip: t('التحليلات', 'Analytics')),
+        IconButton(
+            key: const ValueKey('review.gradeLog'),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamGradeLogScreen(examId: widget.examId, examTitle: widget.examTitle))),
+            icon: const Icon(Icons.history_rounded), tooltip: t('سجل الدرجات', 'Grade log')),
         IconButton(onPressed: _policy, icon: const Icon(Icons.tune_rounded), tooltip: t('سياسة التصحيح', 'Grading policy')),
         IconButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OfflineExamPanel(examId: widget.examId, title: widget.examTitle)))
@@ -497,6 +510,16 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
             AppChoiceChip(label: t('الكل', 'All'), selected: _state == 'all', onTap: () => setState(() { _state = 'all'; _load(); })),
           ]),
           const SizedBox(height: 10),
+          if (gradeReview != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: AppBanner(
+                key: const ValueKey('review.gradeReview'),
+                icon: Icons.photo_camera_outlined,
+                text: t('راجع الدرجات المكتوبة على أوراق الطلاب بالكاميرا', 'Check the marks written on the students\' papers with the camera'),
+                action: TextButton(onPressed: () => gradeReview(context, widget.examId, widget.examTitle), child: Text(t('مراجعة الدرجات بالكاميرا', 'Grade review by camera'))),
+              ),
+            ),
           if (_error != null) AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
           if (q == null && _error == null) const AppListSkeleton(items: 3),
           if (q != null && !q.doubleMarking && q.approvable(q.threshold) > 0)
