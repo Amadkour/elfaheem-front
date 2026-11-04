@@ -36,6 +36,7 @@ import 'org_common.dart';
 import 'org_creation_fee.dart' show OrgCreationFeePanel;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
+import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
 import 'org_ui.dart' show orgPickAndUpload;
@@ -101,6 +102,13 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             color: AdminPalette.orange.last,
             label: t('الشروط واللوائح', 'Terms & regulations'),
             onTap: () => open(t('الشروط واللوائح', 'Terms & regulations'), const OrgTermsAdminPage())),
+      if (s.isOrgAdmin)
+        AppSettingsTile(
+            icon: Icons.family_restroom_rounded,
+            featureKey: kParentVisibilityKey,
+            label: t('رؤية أولياء الأمور للدرجات', 'What parents see of grades'),
+            subtitle: t('اتبع إعداد المنصة أو حدّد قاعدة مؤسستك', 'Follow the platform setting or set your own rule'),
+            onTap: () => openParentGradeVisibility(context, orgId: s.currentId)),
       if (s.canAny('certificates') || s.isOrgAdmin)
         AppSettingsTile(
             icon: Icons.workspace_premium_rounded,
