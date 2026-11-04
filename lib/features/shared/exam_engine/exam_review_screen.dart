@@ -5,6 +5,7 @@
 // "#10"; answers read from a paper exam's scans (bubble marks, handwriting) lead to the OMR review page, where each
 // one is shown next to its crop.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_bidi.dart';
@@ -15,10 +16,12 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import 'exam_review.dart';
+import 'exam_grade_log_screen.dart' show ExamGradeLogScreen;
 import 'exam_authoring.dart' show ExamAuthoringApi, ExamView, authoringError, examStatusLabel;
 import 'exam_authoring_screen.dart' show ExamEditorScreen, QuestionBankScreen;
 import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
 import 'exam_scan_review.dart';
+import 'marks/marks_links.dart' show openGradeReviewForExam;
 import 'offline/offline_exam_teacher.dart';
 import 'exam_taking.dart' show examCodeText;
 import 'exam_quick_screen.dart' show openQuickExam;
@@ -343,9 +346,16 @@ class _GradingPolicySheetState extends State<GradingPolicySheet> {
 }
 
 class ExamReviewScreen extends StatefulWidget {
-  const ExamReviewScreen({super.key, required this.examId, required this.examTitle});
+  const ExamReviewScreen({super.key, required this.examId, required this.examTitle, this.onOpenGradeReview});
   final int examId;
   final String examTitle;
+
+  /// "Grade review by camera" (the marks sessions, agent FB2): the lead wires it at integration — either per screen
+  /// here or once through [openGradeReviewHook]. The button shows only when one of them is set.
+  final void Function(BuildContext context, int examId, String examTitle)? onOpenGradeReview;
+
+  /// The app-wide opener (set once by the code that owns `marks/**`).
+  static void Function(BuildContext context, int examId, String examTitle)? openGradeReviewHook;
 
   @override
   State<ExamReviewScreen> createState() => _ExamReviewScreenState();
@@ -467,10 +477,14 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
 
   void _scans({int? pageId}) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamScansScreen(examId: widget.examId, examTitle: widget.examTitle, openPageId: pageId)));
 
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label, {Key? key}) => PopupMenuItem<String>(
+      key: key, value: value, child: Row(children: [Icon(icon, size: 20), const SizedBox(width: 12), Flexible(child: Text(label))]));
+
   @override
   Widget build(BuildContext context) {
     final q = _queue;
     final c = context.colors;
+    final gradeReview = widget.onOpenGradeReview ?? ExamReviewScreen.openGradeReviewHook ?? openGradeReviewForExam;
     return BasePage(
       key: const ValueKey('exam.review'),
       appBar: AppBar(title: Text(t('مراجعة التصحيح', 'Review marking')), actions: [
@@ -482,11 +496,31 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
         IconButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamAnalyticsScreen(examId: widget.examId, examTitle: widget.examTitle))),
             icon: const Icon(Icons.insights_rounded), tooltip: t('التحليلات', 'Analytics')),
-        IconButton(onPressed: _policy, icon: const Icon(Icons.tune_rounded), tooltip: t('سياسة التصحيح', 'Grading policy')),
-        IconButton(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OfflineExamPanel(examId: widget.examId, title: widget.examTitle)))
-                .then((_) => _load()),
-            icon: const Icon(Icons.offline_pin_rounded), tooltip: t('الاختبار دون اتصال', 'Offline sitting')),
+        // the less frequent tools in one menu, so the bar fits a 320 px phone
+        PopupMenuButton<String>(
+          key: const ValueKey('review.more'),
+          tooltip: t('المزيد', 'More'),
+          icon: const Icon(Icons.more_vert_rounded),
+          onSelected: (v) {
+            switch (v) {
+              case 'log':
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamGradeLogScreen(examId: widget.examId, examTitle: widget.examTitle)));
+              case 'camera':
+                gradeReview(context, widget.examId, widget.examTitle);
+              case 'policy':
+                _policy();
+              case 'offline':
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => OfflineExamPanel(examId: widget.examId, title: widget.examTitle))).then((_) => _load());
+            }
+          },
+          itemBuilder: (_) => [
+            _menuItem('log', Icons.history_rounded, t('سجل الدرجات', 'Grade log'), key: const ValueKey('review.gradeLog')),
+            if (!AppConfig.disableList.contains('exam.grade_review'))
+              _menuItem('camera', Icons.fact_check_outlined, t('مراجعة الدرجات بالكاميرا', 'Grade review by camera'), key: const ValueKey('review.gradeReview')),
+            _menuItem('policy', Icons.tune_rounded, t('سياسة التصحيح', 'Grading policy')),
+            _menuItem('offline', Icons.offline_pin_rounded, t('الاختبار دون اتصال', 'Offline sitting')),
+          ],
+        ),
       ]),
       child: AppRefresh(
         onRefresh: _load,

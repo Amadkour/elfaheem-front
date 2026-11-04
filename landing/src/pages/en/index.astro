@@ -1,0 +1,8 @@
+---
+import Landing from '../../components/Landing.astro';
+import '../../styles/fonts-en.css';
+import latin400 from '@fontsource/inter/files/inter-latin-400-normal.woff2?url';
+import latin700 from '@fontsource/inter/files/inter-latin-700-normal.woff2?url';
+---
+
+<Landing lang="en" preload={[latin400, latin700]} />

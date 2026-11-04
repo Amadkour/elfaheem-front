@@ -1172,6 +1172,10 @@ class OmrScanApi {
   Future<EngineResult> upload(int examId, List<(String, Uint8List)> files, {int? batchId}) =>
       engineCall(() => _api.postFiles('$_b/exams/$examId/scans', files: files, fields: {'batch_id': ?batchId}));
 
+  /// The exam's scan issues (or one batch's): unreadable pages, duplicates, identifier / form review items.
+  Future<EngineResult> issues(int examId, {int? batchId}) =>
+      engineCall(() => _api.get('$_b/exams/$examId/omr/issues', queryParams: batchId == null ? null : {'batch_id': batchId}));
+
   Future<EngineResult> batch(int examId, int batchId) => engineCall(() => _api.get('$_b/exams/$examId/omr/batches/$batchId'));
 
   /// The exam's batches, newest first: [limit] at a time, [before] = a batch id (only older ones). An older server

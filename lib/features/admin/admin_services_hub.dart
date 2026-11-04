@@ -64,6 +64,7 @@ import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'app_releases/app_releases_page.dart';
+import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -503,6 +504,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           featureKey: 'exam.omr',
           visible: isSuper,
           onTap: () => openOmrTemplateLibrary(context),
+        ),
+        // grades (D-244): whether parents see their child's grades — always / when published / never
+        AdminService(
+          labelKey: 'svc_parent_grades',
+          descKey: 'svc_parent_grades_d',
+          label: t('رؤية أولياء الأمور للدرجات', 'What parents see of grades'),
+          desc: t('القاعدة الافتراضية للمنصة: دائماً، عند النشر، أو أبداً', 'The platform default: always, when published, or never'),
+          icon: Icons.family_restroom_rounded,
+          colors: AdminPalette.teal,
+          featureKey: kParentVisibilityKey,
+          visible: isSuper,
+          onTap: () => openParentGradeVisibility(context),
         ),
         AdminService(
           labelKey: 'admin_flags_title',

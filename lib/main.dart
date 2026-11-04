@@ -27,6 +27,7 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/core/offline/offline_strings.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:flutter_education_app/core/app_time.dart' show AppTime;
+import 'package:flutter_education_app/utils/web_base_path.dart';
 import 'package:flutter_education_app/utils/web_entry_route.dart';
 import 'package:flutter_education_app/core/routing/app_router.dart';
 import 'package:flutter_education_app/core/routing/app_routes.dart';
@@ -44,6 +45,12 @@ import 'core/providers.dart';
 import 'features/admin/admin_view_as_page.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
+import 'features/org/org_application_screen.dart';
+import 'features/onboarding/explore_entry_page.dart';
+import 'features/onboarding/guest_search_screen.dart';
+import 'features/onboarding/onboarding_screen.dart';
+import 'features/onboarding/onboarding_store.dart';
+import 'features/onboarding/start_route.dart';
 import 'features/auth/verified_screen.dart';
 import 'features/shared/attendance/attendance_offline_sync.dart';
 import 'features/shared/attendance/attendance_push.dart';
@@ -112,7 +119,8 @@ Future<void> main() async {
     final base = Uri.base;
     _legacyHashRoute = legacyHashRoute(base);
     if (_legacyHashRoute != null) {
-      replaceBrowserUrl(base.removeFragment().resolve(_legacyHashRoute!.substring(1)).toString());
+      // under the app's <base href> (/app/, D-165): /app/#/payment/callback → /app/payment/callback
+      replaceBrowserUrl(base.removeFragment().resolve('$webBasePath${_legacyHashRoute!.substring(1)}').toString());
     }
     _webEntry = _legacyHashRoute ?? webEntryRouteFromUri(base);
   }
@@ -169,6 +177,7 @@ Future<void> _bootstrap() async {
 Future<void> _initCore() async {
   // Essential: the app cannot run without storage.
   _storage = await StorageService.getInstance();
+  OnboardingStore.load(_storage);
   await ApiClient().primeSession(); // load the token store so MyAuthProvider.isAuthenticated is answered synchronously
   // the theme request (the first real frame waits for it on a first visit) runs while the steps below do (D-171)
   ThemeConfigProvider.prefetch(ApiClient());
@@ -520,7 +529,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
 
   bool _isLink(String r) =>
       guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || exportLinkTokenFromRoute(r) != null ||
-      DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null;
+      DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null ||
+      ExploreRequest.matches(r) || isInstitutionRoute(r) ||
+      // /register?role=teacher (the landing's teacher card) is a sign-in page: signed out only, like /register
+      (!context.read<MyAuthProvider>().isAuthenticated && registerRoleFromRoute(r) != null);
 
   /// Opens a URL over what is shown (the browser's Forward to a closed page, an entry of an earlier page load, a page
   /// asked for before the sign-in): the person's home or one of its tabs → back to the home on that tab; a page the
@@ -611,7 +623,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     }
     final String initialRoute = entry?.route ??
         (!auth.isAuthenticated
-        ? '/login'
+        ? (decideSignedOutStart(
+                isAuthenticated: false, isWeb: kIsWeb, onboardingSeen: OnboardingStore.seen, hasEntryLink: false) ??
+            '/login')
         : (offlineStudentStart
         ? '/dashboard'
         : (offlineStart ? '/downloads' : auth.homeRoute)));
@@ -795,6 +809,18 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     if (homeTab != null) return _fade(_Guard(child: _RedirectHome(tab: homeTab.tab)), settings);
     // the inbox page — the inbox and the notifications on one page with tabs: '/inbox' (?tab= / an InboxTab
     // argument) on its tab, the old '/notifications' on the Notifications tab
+    // the landing website's links (also reachable by URL while signed out): the explorer, an institution applying, a
+    // registration with a role preselected
+    if (ExploreRequest.matches(settings.name)) {
+      return _fade(ExploreEntryPage(request: ExploreRequest.parse(settings.name)), const RouteSettings(name: '/explore'));
+    }
+    if (isInstitutionRoute(settings.name)) {
+      return _fade(const OrgApplicationScreen(), const RouteSettings(name: '/start/institution'));
+    }
+    final regRole = registerRoleFromRoute(settings.name);
+    if (regRole != null) {
+      return _fade(RegisterScreen(initialRole: regRole), const RouteSettings(name: '/register'));
+    }
     final inboxTab = inboxRouteTab(settings.name, settings.arguments);
     if (inboxTab != null) return _fade(_Guard(child: InboxPage(initial: inboxTab)), settings);
     switch (settings.name) {
@@ -802,6 +828,14 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         return _fade(const LoginScreen(), settings);
       case '/register':
         return _fade(const RegisterScreen(), settings);
+      case '/onboarding':
+        return _fade(const OnboardingScreen(), settings);
+      case '/guest-search':
+        return _fade(const GuestSearchScreen(), settings);
+      case '/explore':
+        return _fade(ExploreEntryPage(request: ExploreRequest.parse(settings.name)), settings);
+      case '/start/institution':
+        return _fade(const OrgApplicationScreen(), settings);
       case '/otp':
         final args = settings.arguments;
         if (args is! List || args.length < 2) {

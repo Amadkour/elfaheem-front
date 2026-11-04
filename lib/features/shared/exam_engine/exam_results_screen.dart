@@ -12,6 +12,9 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import '../../admin/admin_money_p8.dart' show p8SaveBytes;
 import 'exam_authoring.dart';
+import 'exam_grade_log_screen.dart' show ExamGradeLogScreen;
+import 'exam_grading.dart';
+import 'exam_grading_widgets.dart';
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
 import 'exam_review.dart' show ExamReviewApi;
@@ -85,16 +88,56 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
 
   bool get _offline => _exam?.sections.any((s) => s.section.mode == 'paper') == true;
 
-  Future<void> _publishResults() async {
-    if (!await appConfirm(context, message: t('يرى كل طالب نتيجته الآن. متابعة؟', 'Every student will now see their result. Continue?'))) return;
+  PublishOutcome? _outcome;
+
+  /// Publish. A plain publish that the server refuses with `review_pending` opens the sheet: go and review, or publish
+  /// the reviewed attempts only (`graded_only`: the rest stay hidden from their students until a person resolves them).
+  Future<void> _publishResults({bool gradedOnly = false}) async {
+    if (!gradedOnly &&
+        !await appConfirm(context, message: t('يرى كل طالب نتيجته الآن. متابعة؟', 'Every student will now see their result. Continue?'))) {
+      return;
+    }
+    if (!mounted) return;
     setState(() => _busy = true);
-    final r = await _api.lifecycle(widget.examId, ExamAction.publishResults);
+    final r = await ExamGradingApi().publishResults(widget.examId, gradedOnly: gradedOnly);
     if (!mounted) return;
     setState(() => _busy = false);
+    final pending = ReviewPending.from(r);
+    if (pending != null) {
+      final pick = await showAppSheet<PublishChoice>(context, (_) => PublishBlockedSheet(pending: pending));
+      if (!mounted || pick == null) return;
+      if (pick == PublishChoice.publishReviewed) return _publishResults(gradedOnly: true);
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => ExamReviewScreen(examId: widget.examId, examTitle: widget.examTitle)));
+      if (mounted) _load();
+      return;
+    }
     if (!r.ok) return appToast(authoringError(r), error: true);
-    appToast(t('نُشرت النتائج', 'Results published'));
+    final out = PublishOutcome.fromJson(r.map);
+    setState(() => _outcome = out);
+    appToast(out.text);
     _load();
   }
+
+  Future<void> _unpublishResults() async {
+    if (!await appConfirm(context,
+        danger: true,
+        message: t('يختفي الاختبار من نتائج الطلاب وأولياء الأمور فوراً إلى أن تنشره مرة أخرى. متابعة؟',
+            'Students and parents stop seeing these results at once, until you publish them again. Continue?'))) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _busy = true);
+    final r = await ExamGradingApi().unpublishResults(widget.examId);
+    if (!mounted) return;
+    setState(() { _busy = false; if (r.ok) _outcome = null; });
+    if (!r.ok) return appToast(authoringError(r), error: true);
+    appToast(t('أُلغي نشر النتائج', 'Results unpublished'));
+    _load();
+  }
+
+  void _openGradeLog() => Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ExamGradeLogScreen(examId: widget.examId, examTitle: widget.examTitle, attemptNames: {for (final r in _rows ?? const <ResultRow>[]) r.attemptId: r.name})));
 
   Future<void> _downloadPaper(Map<String, dynamic> f) async {
     try {
@@ -106,7 +149,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
   }
 
   Future<void> _open(ResultRow r) async {
-    await showAppSheet<void>(context, (_) => AttemptAnswersSheet(attemptId: r.attemptId, title: r.name, api: _api));
+    await showAppSheet<void>(context, (_) => AttemptAnswersSheet(attemptId: r.attemptId, title: r.name, api: _api, examId: widget.examId, examTitle: widget.examTitle));
     _load();
   }
 
@@ -128,6 +171,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
     final avg = rows == null ? null : averagePercent(rows);
     final paper = v == null ? null : paperFileOf(v.exam.toJsonForCopy());
     final canPublishResults = v != null && v.exam.resultsPolicy == 'when_published' && v.exam.resultsPublishedAt == null && v.exam.status != 'draft';
+    final isPublished = v != null && v.exam.resultsPolicy == 'when_published' && v.exam.resultsPublishedAt != null;
     return BasePage(
       key: const ValueKey('exam.results'),
       appBar: AppBar(title: Text(widget.examTitle, maxLines: 1, overflow: TextOverflow.ellipsis)),
@@ -136,6 +180,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
           if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
           PaperExamEntry(examId: widget.examId, examTitle: widget.examTitle, onChanged: _load, margin: const EdgeInsets.only(bottom: 12)),
+          if (isPublished) Padding(padding: const EdgeInsets.only(bottom: 12), child: PublishedBanner(outcome: _outcome, publishedAt: v.exam.resultsPublishedAt, busy: _busy, onUnpublish: _unpublishResults)),
           if (rows == null && _error == null) const AppListSkeleton(items: 5),
           if (rows != null) ...[
             // the list already has its gutter (the grid's own 16 px indented the tiles past the cards); on a phone the
@@ -168,6 +213,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
                         .then((_) => _load())),
               if (_offline && _names.isNotEmpty) AppPill(icon: Icons.edit_note_rounded, label: t('إدخال الدرجات', 'Enter marks'), onTap: _enterMarks),
               if (canPublishResults) AppPill(icon: Icons.campaign_rounded, label: t('انشر النتائج للطلاب', 'Publish results to students'), onTap: _busy ? null : _publishResults),
+              AppPill(icon: Icons.history_rounded, label: t('سجل الدرجات', 'Grade log'), onTap: _openGradeLog),
               if (paper != null) AppPill(icon: Icons.download_rounded, label: t('ملف الامتحان', 'Exam file'), onTap: () => _downloadPaper(paper)),
               if (paper == null && v != null && v.questionCount > 0)
                 AppPill(icon: Icons.print_rounded, label: t('ورقة الامتحان للطباعة', 'Printable exam paper'), onTap: () => openExamPaper(context, examId: widget.examId)),
@@ -224,7 +270,9 @@ class ResultRowCard extends StatelessWidget {
 
 /// One attempt's answers, each with its grade and a way to change it.
 class AttemptAnswersSheet extends StatefulWidget {
-  const AttemptAnswersSheet({super.key, required this.attemptId, required this.title, required this.api});
+  const AttemptAnswersSheet({super.key, required this.attemptId, required this.title, required this.api, this.examId, this.examTitle = ''});
+  final int? examId;
+  final String examTitle;
   final int attemptId;
   final String title;
   final ExamAuthoringApi api;
@@ -296,6 +344,17 @@ class _AttemptAnswersSheetState extends State<AttemptAnswersSheet> {
       if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
       if (items == null && _error == null) const AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.zero),
       if (items != null && items.isEmpty) AppEmpty(icon: Icons.inbox_outlined, title: t('لا توجد إجابات', 'No answers')),
+      if (widget.examId != null)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            key: const ValueKey('attempt.gradeLog'),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ExamGradeLogScreen(examId: widget.examId!, examTitle: widget.examTitle, attemptId: widget.attemptId, attemptNames: {widget.attemptId: widget.title}))),
+            icon: const Icon(Icons.history_rounded, size: 18),
+            label: Text(t('سجل تغييرات الدرجات', 'Grade changes')),
+          ),
+        ),
       for (final it in items ?? const <Map<String, dynamic>>[])
         Padding(
           padding: const EdgeInsets.only(bottom: 8),

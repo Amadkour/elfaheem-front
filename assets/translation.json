@@ -12761,6 +12761,14 @@
     "en": "Import",
     "ar": "استيراد"
   },
+  "dl_grade_review": {
+    "en": "Review grades by camera",
+    "ar": "مراجعة الدرجات بالكاميرا"
+  },
+  "dl_grade_review_sub": {
+    "en": "Check recorded marks against the papers, or import marks from paper",
+    "ar": "طابق الدرجات المسجلة مع الأوراق، أو استورد الدرجات من الورق"
+  },
   "dl_export": {
     "en": "Export",
     "ar": "تصدير"
@@ -22308,6 +22316,110 @@
   "studio_insert_variable": {
     "en": "Insert a variable",
     "ar": "أدرج متغيرًا"
+  },
+  "ob_skip": {
+    "en": "Skip",
+    "ar": "تخطي"
+  },
+  "ob_next": {
+    "en": "Next",
+    "ar": "التالي"
+  },
+  "ob_start": {
+    "en": "Get started",
+    "ar": "هيا نبدأ"
+  },
+  "ob_p1_title": {
+    "en": "Learn with the best teachers",
+    "ar": "تعلّم مع أفضل المعلمين"
+  },
+  "ob_p1_body": {
+    "en": "Live classes and recorded lessons, in one place, whenever it suits you.",
+    "ar": "حصص مباشرة ودروس مسجّلة في مكان واحد، في الوقت الذي يناسبك."
+  },
+  "ob_p2_title": {
+    "en": "Study anywhere, safely",
+    "ar": "ادرس في أي مكان وبأمان"
+  },
+  "ob_p2_body": {
+    "en": "Protected videos, exams and your results, always at hand on your phone.",
+    "ar": "فيديوهات محمية واختبارات ونتائجك دائمًا بين يديك على هاتفك."
+  },
+  "ob_p3_title": {
+    "en": "Try it free first",
+    "ar": "جرّب أولًا بدون حساب"
+  },
+  "ob_p3_body": {
+    "en": "Browse courses as a guest, then create an account when you are ready.",
+    "ar": "تصفّح الدورات كزائر، ثم أنشئ حسابك عندما تكون مستعدًا."
+  },
+  "ob_page_of": {
+    "en": "Step {n} of {total}",
+    "ar": "الخطوة {n} من {total}"
+  },
+  "ob_search_title": {
+    "en": "What do you want to learn?",
+    "ar": "ماذا تريد أن تتعلّم؟"
+  },
+  "ob_search_sub": {
+    "en": "Pick a subject and we will show you matching courses.",
+    "ar": "اختر المادة وسنعرض لك الدورات المناسبة."
+  },
+  "ob_i_want": {
+    "en": "I want to learn",
+    "ar": "أريد أن أتعلّم"
+  },
+  "ob_subject_hint": {
+    "en": "Any subject",
+    "ar": "أي مادة"
+  },
+  "ob_for_level": {
+    "en": "for",
+    "ar": "للمستوى"
+  },
+  "ob_level_hint": {
+    "en": "Any level",
+    "ar": "أي مستوى"
+  },
+  "ob_how": {
+    "en": "and I prefer to study",
+    "ar": "وأفضّل أن أدرس"
+  },
+  "ob_mode_any": {
+    "en": "Anywhere",
+    "ar": "في أي مكان"
+  },
+  "ob_mode_online": {
+    "en": "Online",
+    "ar": "عن بُعد"
+  },
+  "ob_mode_center": {
+    "en": "At a center",
+    "ar": "في مركز"
+  },
+  "ob_show_courses": {
+    "en": "Show courses",
+    "ar": "اعرض الدورات"
+  },
+  "ob_count_courses_1": {
+    "en": "1 course",
+    "ar": "دورة واحدة"
+  },
+  "ob_count_teachers_1": {
+    "en": "1 teacher",
+    "ar": "معلم واحد"
+  },
+  "ob_have_account": {
+    "en": "Already have an account?",
+    "ar": "لديك حساب بالفعل؟"
+  },
+  "ob_subject_sheet": {
+    "en": "Subject",
+    "ar": "المادة"
+  },
+  "ob_level_sheet": {
+    "en": "Level",
+    "ar": "المستوى"
   },
   "course_renew_btn": {
     "en": "Renew",

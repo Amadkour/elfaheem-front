@@ -12,7 +12,6 @@ import '../../../../utils/helpers.dart';
 import '../../../student/models.dart';
 import '../components/exts.dart';
 import '../model/live_response_model.dart';
-import '../../../../core/api_client.dart';
 import '../sessions_provider.dart';
 import 'prejoin_layout.dart';
 import 'prejoin_mic_meter_stub.dart'

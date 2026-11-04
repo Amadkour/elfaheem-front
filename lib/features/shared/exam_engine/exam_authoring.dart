@@ -12,6 +12,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import 'exam_engine_api.dart';
+import 'exam_grading.dart' show resultsViews;
 import 'exam_media.dart';
 import 'exam_taking.dart' show examCodeText;
 
@@ -600,6 +601,9 @@ class ExamDraft {
   int appealDays = 14;
   int appealsPerAttempt = 5;
   bool independentReviewer = false;
+
+  /// What students see once published (`settings.results_view`): score · answers · answers_key.
+  String resultsView = 'score';
   DateTime? resultsPublishedAt;
 
   /// Every settings key as loaded (grading policy, granted retries …): a settings save never wipes them.
@@ -633,6 +637,7 @@ class ExamDraft {
       ..appealDays = asInt(ap['days'], 14)
       ..appealsPerAttempt = asInt(ap['per_attempt'], 5)
       ..independentReviewer = ap['independent_reviewer'] == true
+      ..resultsView = resultsViews.contains(s['results_view']) ? '${s['results_view']}' : 'score'
       ..resultsPublishedAt = parseEngineUtc(e['results_published_at'])
       ..settings = s;
   }
@@ -651,6 +656,7 @@ class ExamDraft {
         ...settings,
         'passing_percent': passingPercent,
         'show_per_question': showPerQuestion,
+        if (resultsView != 'score' || settings.containsKey('results_view')) 'results_view': resultsView,
         'appeals': {
           ...asMap(settings['appeals']),
           'enabled': appealsEnabled,
@@ -1073,7 +1079,7 @@ String authoringCodeText(String code) => switch (code) {
       'no_questions' => t('أضف أسئلة قبل النشر', 'Add questions before publishing'),
       'empty_section' => t('قسم إلكتروني بلا أسئلة', 'An online section has no questions'),
       'pool_too_small' => t('السحب العشوائي يطلب أسئلة أكثر مما في القسم', 'The random pool asks for more questions than the section has'),
-      'review_pending' => t('محاولات تنتظر مراجعة التصحيح قبل نشر النتائج', 'Attempts wait for marking review before results can be published'),
+      'review_pending' || 'review_items_open' => t('محاولات تنتظر مراجعة التصحيح قبل نشر النتائج', 'Attempts wait for marking review before results can be published'),
       'exam_draft' => t('الاختبار مسودة', 'The exam is a draft'),
       'exam_published' => t('الاختبار منشور بالفعل', 'The exam is already published'),
       'exam_closed' => t('الاختبار مغلق', 'The exam is closed'),

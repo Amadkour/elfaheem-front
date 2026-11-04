@@ -33,7 +33,6 @@ import '../../shared/roadmap/roadmap_api.dart' show RoadmapApi, kRoadmapPathKey,
 import '../../shared/roadmap/roadmap_editor.dart' show RoadmapLevelChips, RoadmapTagsInput, showRoadmapEditor;
 import '../../shared/roadmap/roadmap_tab.dart' show roadmapAllowedHere;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';

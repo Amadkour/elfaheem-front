@@ -20,8 +20,6 @@ import '../../student/models.dart' show DiscountInfoX;
 import '../home/teacher_home_provider.dart';
 import '../schedules/schedules_screen.dart';
 import '../sessions/sessions_provider.dart';
-import '../sessions/sessions_screen.dart';
-import 'course_form_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_infinite_scroll.dart';

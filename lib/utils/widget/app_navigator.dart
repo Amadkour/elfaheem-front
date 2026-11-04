@@ -16,7 +16,6 @@ import '../../core/api_client.dart';
 import '../../core/app_mode.dart';
 import '../../core/offline/downloads_availability.dart' show linkAvailableHere;
 import '../../core/attention/attention_service.dart' show AttentionService, OrgTabRequest;
-import '../../features/org/org_reports/report_page.dart' show OrgReceivedReportsPage;
 import '../../features/shared/course_profile/course_profile_hub.dart' show CoursePageLoader;
 import '../../features/shared/inbox/inbox_page.dart' show inboxTabFromName, InboxTab;
 import '../../features/shared/profile/compalints/complaint_provider.dart' show ComplaintProvider;
@@ -36,8 +35,8 @@ import '../../features/shared/points/points_wallet_page.dart' show PointsWalletP
 import '../../features/shared/rag/rag_admin_links.dart' deferred as rag_admin_links;
 import '../../features/shared/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
 import '../../features/shared/exam_engine/paper/exam_setup_wizard.dart' deferred as exam_setup_wizard;
+import '../../features/shared/exam_engine/exam_notice.dart' deferred as exam_notice;
 import '../../features/admin/app_releases/app_releases_page.dart' show AppReleasesPage, kAppReleasesFeatureKey;
-import '../../core/routing/deferred_screens.dart';
 
 class AppNavigator {
   AppNavigator._();
@@ -93,7 +92,10 @@ class AppNavigator {
   /// live_plan_renew_failed, Part 3 §15) | rag_learning · rag_alerts (platform admins only: the assistant's Learning
   /// page / the console's Alerts tab, `rag_admin_links.dart`; anyone else the notifications list) | app_release ·
   /// app_releases (super admins only, D-143: [targetId] = the release → its page, else App versions)
-  static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind}) async {
+  ///
+  /// exam_notice (D-247; also exam_appeal · exam_result): [data] is the push / notification target (`exam_id`, `attempt_id`,
+  /// `kind` …), else [targetId] is the exam.
+  static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind, Map<String, dynamic> data = const {}}) async {
     final root = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
     final nav = _nav;
@@ -162,6 +164,18 @@ class AppNavigator {
         return;
       case 'identity_requests': // a teacher needs an exam identifier → the student's dialog (D-150)
         return openIdentityRequestsFromLink(root);
+      case 'exam':
+      case 'exam_notice': // an appeal / results published / batch or session done (D-247): the screen it points at
+      case 'omr_batch': // scan batch done (data.module)
+      case 'mark_session': // grade-review session done
+      case 'exam_appeal':
+      case 'exam_result':
+      case 'exam_results':
+        if (!await _deferred('exam_notice', exam_notice.loadLibrary, () => exam_notice.openExamNotice(nav, exam_notice.ExamNotice.parse({...data, if (data['kind'] == null && kind != null) 'kind': kind, if (data['exam_id'] == null && data['data'] == null) 'exam_id': targetId, if (data['org_id'] == null) 'org_id': orgId}, module: module),
+            teacher: const ['teacher', 'org-admin', 'org-staff', 'admin', 'super-admin'].contains(ctx.read<MyAuthProvider>().currentUser?.role)))) {
+          await nav.pushNamed('/notifications');
+        }
+        return;
       case 'exam_identifiers': // a duplicate identifier → the exam's setup on its students step
         return _deferred('exam_setup_wizard', exam_setup_wizard.loadLibrary, () => exam_setup_wizard.openExamIdentifiersFromLink(nav, targetId));
       case 'calendar': // meeting invitation / answer → the calendar on that meeting
@@ -243,7 +257,8 @@ class AppNavigator {
       await openModule(module,
           targetId: courseId ?? int.tryParse('${r['target_id'] ?? ''}'),
           orgId: orgId,
-          kind: (r['kind'] ?? r['related_type'])?.toString());
+          kind: (r['kind'] ?? r['related_type'])?.toString(),
+          data: Map<String, dynamic>.from(r));
     } catch (_) {/* tapping must never crash */}
   }
 
@@ -303,14 +318,14 @@ class AppNavigator {
     final timetable = data['type'] == 'org_timetable';        // a draft timetable is ready (schedule_auto / autopilot)
     // the wallet and the plan push {type: points | live_plan | live_plan_expiring | live_plan_renewed | …} (spec §9, §15)
     final module = data['module']?.toString() ??
-        (profile ? 'course_profile' : (timetable ? 'org_timetable' : pointsModuleFor(data['type']?.toString())));
+        (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : pointsModuleFor(data['type']?.toString()))));
     final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
     final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) {
       return openModule(module,
-          targetId: target, orgId: orgId, kind: module == 'inbox' ? '${data['tab'] ?? data['segment'] ?? data['kind'] ?? ''}' : null);
+          targetId: target, orgId: orgId, kind: module == 'inbox' ? '${data['tab'] ?? data['segment'] ?? data['kind'] ?? ''}' : null, data: data);
     }
     if (target != null) return openCourse(target);
     await _nav?.pushNamed('/notifications');

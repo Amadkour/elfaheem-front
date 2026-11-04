@@ -28,10 +28,11 @@ GetAppEnv probeGetAppEnv() {
   );
 }
 
-/// The absolute URL of a file published at the site root (honours `<base href>`).
+/// The absolute URL of a file published at the site root (`/releases/…`). The web app itself lives under its
+/// `<base href>` (`/app/`, D-165), so the path is resolved from the origin's root, not from the base.
 String? getAppSiteFile(String path) {
   try {
-    return Uri.parse(web.document.baseURI).resolve(path).toString();
+    return Uri.parse(web.document.baseURI).resolve('/${path.startsWith('/') ? path.substring(1) : path}').toString();
   } catch (_) {
     return null;
   }

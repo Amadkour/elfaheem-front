@@ -354,7 +354,7 @@ String arNum(int n) => '$n';
 /// A row of `GET /omr/templates`: one VERSION of a bubble-sheet layout.
 class OmrTemplateItem {
   const OmrTemplateItem(
-      {required this.id, required this.version, required this.name, this.description, this.status = 'published', this.questions = 0, this.options, this.idZone});
+      {required this.id, required this.version, required this.name, this.description, this.status = 'published', this.questions = 0, this.options, this.idZone, this.kind = 'bubble'});
   final int id;
   final int version;
   final String name;
@@ -368,12 +368,18 @@ class OmrTemplateItem {
   /// The student-ID zone (`id_kind` + `id_digits` of the library row; null when the server does not send it).
   final IdZone? idZone;
 
+  /// `bubble` (a global bubble sheet) or `answer_table` (an organization's / the person's own mark-sheet template).
+  final String kind;
+
+  bool get isAnswerTable => kind == 'answer_table';
+
   static OmrTemplateItem fromJson(Map<String, dynamic> j) => OmrTemplateItem(
         id: asInt(j['id']),
         version: asInt(j['version'], 1),
         name: '${j['name'] ?? ''}',
         description: j['description'] == null || '${j['description']}'.trim().isEmpty ? null : '${j['description']}',
         status: '${j['status'] ?? ''}',
+        kind: j['kind'] == 'answer_table' ? 'answer_table' : 'bubble',
         questions: asInt(j['questions']),
         options: j['options'] is num ? (j['options'] as num).toInt() : null,
         idZone: j['id_kind'] == null ? null : IdZone('${j['id_kind']}', j['id_digits'] is num ? (j['id_digits'] as num).toInt() : 0),
@@ -890,7 +896,11 @@ class ExamSetupApi {
   /// Replaces the exam's forms.
   Future<EngineResult> putForms(int id, List<ExamFormDraft> forms) =>
       engineCall(() => _api.put('$_b/exams/$id/forms', body: {'forms': [for (final f in forms) f.toJson()]}));
-  Future<EngineResult> templates() => engineCall(() => _api.get('$_b/omr/templates'));
+
+  /// The bubble-sheet library. With [orgId] (the exam's own organization) the server adds that organization's published
+  /// answer tables (D-241, members with exams view rights); without it only the global bubble sheets.
+  Future<EngineResult> templates({int? orgId}) =>
+      engineCall(() => _api.get('$_b/omr/templates', queryParams: {if (orgId != null) 'org_id': orgId}));
   Future<EngineResult> identityFields() => engineCall(() => _api.get('/api/v1/identity-fields'));
 
   /// The course's Data Lab columns a student can be identified by (typed columns only); empty when the Data Lab is
