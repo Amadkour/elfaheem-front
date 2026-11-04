@@ -313,7 +313,9 @@ void main() {
 
   group('6 · the queue keeps the time whole', () {
     testWidgets('a desktop side list: a long file name gives way, the time does not', (tester) async {
-      final it = _quality({'id': 5, 'page_no': 1, 'page_label': '1', 'file_name': 'scaled_1000237462_from_the_phone_gallery.jpg'});
+      // scanned today ("Today, 1:29 PM"): the test must not depend on the day it runs - an older batch shows a full date
+      final now = DateTime.now().toUtc().toIso8601String().split('.').first;
+      final it = _quality({'id': 5, 'page_no': 1, 'page_label': '1', 'file_name': 'scaled_1000237462_from_the_phone_gallery.jpg', 'batch_created_at': now});
       await _pump(tester, Align(alignment: Alignment.topLeft, child: SizedBox(width: 320, child: OmrQueueList(items: [it], currentId: null, onTap: (_) {}))),
           width: 1440, height: 900);
       final tail = ' · ${it.whenText}';
