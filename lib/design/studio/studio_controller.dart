@@ -69,6 +69,7 @@ class StudioController<P> extends ChangeNotifier {
   List<StudioItem<P>> _items = const [];
   final _selection = <String>{};
   final _live = <String, Rect>{};
+  final _liveRot = <String, double>{};
   List<StudioGuide> _guides = const [];
   _Gesture? _gesture;
   final _undo = <_Step>[];
@@ -167,7 +168,7 @@ class StudioController<P> extends ChangeNotifier {
   /// The single selected item when it can be resized (shows the 8 handles).
   StudioItem<P>? get resizable {
     final s = single;
-    return s != null && s.visible && !s.locked && s.rotation == 0 && s.resize != StudioResize.none ? s : null;
+    return s != null && s.visible && !s.locked && s.resize != StudioResize.none ? s : null;
   }
 
   // ── Gestures (one undo step each) ───────────────────────────────────────────────────────────────────────
@@ -178,6 +179,7 @@ class StudioController<P> extends ChangeNotifier {
 
   /// Starts moving the editable selection. Returns false when nothing can move.
   bool beginMove() {
+    _lastMove = null;
     final ids = _editable;
     if (ids.isEmpty) return false;
     _gesture = _Gesture(
@@ -191,7 +193,11 @@ class StudioController<P> extends ChangeNotifier {
   /// the dominant axis. Returns the active guides.
   List<StudioGuide> updateMove(Offset delta, {bool constrain = false}) {
     final g = _gesture;
-    if (g == null || g.handle != null) return const [];
+    if (g == null || g.handle != null || g.rotating) return const [];
+    // the same pointer position again (a repeated event): the snap maths would give the same answer
+    if (_lastMove == delta && _lastConstrain == constrain) return _guides;
+    _lastMove = delta;
+    _lastConstrain = constrain;
     var d = delta;
     if (constrain) d = d.dx.abs() >= d.dy.abs() ? Offset(d.dx, 0) : Offset(0, d.dy);
     final b0 = _bounds(g.start.values)!;
@@ -226,6 +232,55 @@ class StudioController<P> extends ChangeNotifier {
     return true;
   }
 
+  // ── Rotation ─────────────────────────────────────────────────────────────────────────────────────────────
+  /// The single selected item when it may be turned: the adapter stores rotations ([StudioRotateAdapter]).
+  StudioItem<P>? get rotatable {
+    final s = single;
+    final Object a = adapter;
+    return a is StudioRotateAdapter && s != null && s.visible && !s.locked ? s : null;
+  }
+
+  /// A rotate gesture is in progress.
+  bool get rotating => _gesture?.rotating ?? false;
+
+  /// The rotation to draw: the live one while a rotate gesture turns the item, else the stored one.
+  double rotationOf(String id) => _liveRot[id] ?? itemById(id)?.rotation ?? 0;
+
+  /// Starts turning the rotatable item; [pointerAngle] is the pointer's angle (degrees) about the item's centre.
+  bool beginRotate(double pointerAngle) {
+    final it = rotatable;
+    if (it == null) return false;
+    _gesture = _Gesture(start: {it.id: it.rect}, targets: _targetsExcluding({it.id}), item: it, rotating: true, pointer0: pointerAngle);
+    return true;
+  }
+
+  /// [pointerAngle] is the pointer's current angle (degrees) about the item's centre; [snap] (shift) rounds the
+  /// result to [rotateSnap] degrees. Returns the new rotation, normalized to (-180, 180].
+  double? updateRotate(double pointerAngle, {bool snap = false}) {
+    final g = _gesture;
+    if (g == null || !g.rotating) return null;
+    final it = g.item!;
+    var a = it.rotation + (pointerAngle - g.pointer0);
+    if (snap) a = (a / rotateSnap).round() * rotateSnap;
+    a = normalizeAngle(a);
+    _liveRot
+      ..clear()
+      ..[it.id] = a;
+    _liveSignal.fire();
+    return a;
+  }
+
+  /// The step (degrees) a shift-rotate rounds to.
+  double rotateSnap = 15;
+
+  /// [a] in (-180, 180].
+  static double normalizeAngle(double a) {
+    var v = a % 360;
+    if (v > 180) v -= 360;
+    if (v <= -180) v += 360;
+    return v;
+  }
+
   /// [delta] is the TOTAL pointer travel since [beginResize] (page units). [keepAspect] (shift) keeps the ratio
   /// of any item; [StudioResize.aspect] items always keep it.
   List<StudioGuide> updateResize(Offset delta, {bool keepAspect = false}) {
@@ -233,21 +288,40 @@ class StudioController<P> extends ChangeNotifier {
     final h = g?.handle;
     if (g == null || h == null) return const [];
     final it = g.item!;
+    final start = g.start[it.id]!;
+    final turned = it.rotation != 0;
+    // A turned item is resized in its OWN frame (the pointer travel is turned back), without snapping or page
+    // clamping (those work on the upright box); the opposite edge / corner stays where it is on the page.
     final r = resizeRect(
-      start: g.start[it.id]!,
+      start: start,
       handle: h,
-      delta: delta,
+      delta: turned ? _rot(delta, -it.rotation) : delta,
       mode: it.resize,
       keepAspect: keepAspect,
       min: it.minSize ?? minSize,
-      targets: _snap ? g.targets : null,
+      targets: _snap && !turned ? g.targets : null,
+      clamp: turned ? false : null,
     );
+    final out = turned ? _turnedResult(start, r, it.rotation) : r;
     _live
       ..clear()
-      ..[it.id] = r;
-    _guides = _snap ? _guidesFor(r, g.targets) : const [];
+      ..[it.id] = out;
+    _guides = _snap && !turned ? _guidesFor(r, g.targets) : const [];
     _liveSignal.fire();
     return _guides;
+  }
+
+  /// The stored rect of a turned item resized in its own frame: [local] is the new box in the upright frame about
+  /// the centre of [start]; the box's centre is turned back onto the page so the anchored side does not move.
+  static Rect _turnedResult(Rect start, Rect local, double degrees) {
+    final c0 = start.center;
+    final c1 = c0 + _rot(local.center - c0, degrees);
+    return Rect.fromCenter(center: c1, width: local.width, height: local.height);
+  }
+
+  static Offset _rot(Offset d, double degrees) {
+    final a = degrees * math.pi / 180;
+    return Offset(d.dx * math.cos(a) - d.dy * math.sin(a), d.dx * math.sin(a) + d.dy * math.cos(a));
   }
 
   /// Ends the gesture: the live rects are written as ONE undo step (nothing when nothing moved).
@@ -258,21 +332,37 @@ class StudioController<P> extends ChangeNotifier {
       for (final e in _live.entries)
         if (g.start[e.key] != e.value) e.key: e.value,
     };
+    final turned = {
+      for (final e in _liveRot.entries)
+        if (itemById(e.key)?.rotation != e.value) e.key: e.value,
+    };
     _gesture = null;
     _live.clear();
+    _liveRot.clear();
     _guides = const [];
-    if (changed.isEmpty) {
+    _lastMove = null;
+    if (changed.isEmpty && turned.isEmpty) {
       _liveSignal.fire();
       return;
     }
-    record(g.handle == null ? label : 'resize', () => adapter.writeRects(changed));
+    final Object a = adapter;
+    if (turned.isNotEmpty && a is StudioRotateAdapter) {
+      record('rotate', () => a.writeRotations(turned));
+    } else {
+      record(g.handle == null ? label : 'resize', () => adapter.writeRects(changed));
+    }
     _liveSignal.fire();
   }
+
+  Offset? _lastMove;
+  bool _lastConstrain = false;
 
   /// Drops the gesture without changing anything.
   void cancelGesture() {
     if (_gesture == null) return;
     _gesture = null;
+    _lastMove = null;
+    _liveRot.clear();
     _live.clear();
     _guides = const [];
     _liveSignal.fire();
@@ -287,7 +377,9 @@ class StudioController<P> extends ChangeNotifier {
     bool keepAspect = false,
     Size? min,
     StudioSnapTargets? targets,
+    bool? clamp,
   }) {
+    final clampToPage = clamp ?? this.clampToPage;
     final mn = min ?? minSize;
     final minW = math.min(mn.width, _page.width), minH = math.min(mn.height, _page.height);
     final dx = mode == StudioResize.vertical ? 0.0 : delta.dx;
@@ -516,10 +608,12 @@ class StudioController<P> extends ChangeNotifier {
     notifyListeners();
   }
 
-  void align(StudioAlign a) {
+  /// [toPage] true aligns to the page, false to the selection's bounds, null follows [alignToPage] (a single item
+  /// always aligns to the page).
+  void align(StudioAlign a, {bool? toPage}) {
     final its = _editable;
     if (its.isEmpty) return;
-    final ref = (_alignToPage || its.length == 1) ? _page.rect : _bounds(its.map((i) => i.rect))!;
+    final ref = ((toPage ?? _alignToPage) || its.length == 1) ? _page.rect : _bounds(its.map((i) => i.rect))!;
     _writeRects('align', {
       for (final i in its)
         i.id: switch (a) {
@@ -670,6 +764,118 @@ class StudioController<P> extends ChangeNotifier {
   }
 
   void toggleLock() => setLocked(!selectionLocked);
+
+  // ── Layers (the layers panel's commands, one undo step each) ───────────────────────────────────────────────
+  /// The adapter can lock items from the layers panel.
+  bool get layersCanLock {
+    final Object a = adapter;
+    return a is StudioLockAdapter && a.canLock;
+  }
+
+  /// The adapter offers the eye toggle ([StudioLayersAdapter.canHide]).
+  bool get layersCanHide {
+    final Object a = adapter;
+    return a is StudioLayersAdapter && a.canHide;
+  }
+
+  /// The adapter offers the inline rename.
+  bool get layersCanRename {
+    final Object a = adapter;
+    return a is StudioLayersAdapter && a.canRename;
+  }
+
+  /// Locks or unlocks the layers [ids] (any items, selected or not).
+  void setLockedIds(Set<String> ids, bool locked) {
+    final Object a = adapter;
+    if (a is! StudioLockAdapter || !a.canLock) return;
+    final todo = {for (final i in _items) if (ids.contains(i.id) && i.locked != locked) i.id};
+    if (todo.isEmpty) return;
+    record(locked ? 'lock' : 'unlock', () => a.setLocked(todo, locked));
+  }
+
+  /// Shows or hides the layers [ids]. Hidden items drop out of the selection.
+  void setVisibleIds(Set<String> ids, bool visible) {
+    final Object a = adapter;
+    if (a is! StudioLayersAdapter || !a.canHide) return;
+    final todo = {for (final i in _items) if (ids.contains(i.id) && i.visible != visible) i.id};
+    if (todo.isEmpty) return;
+    if (a.hideIsUndoable) {
+      record(visible ? 'show' : 'hide', () => a.setVisible(todo, visible));
+    } else {
+      a.setVisible(todo, visible);
+      refresh();
+    }
+    if (!visible) {
+      _selection.removeAll(todo);
+      notifyListeners();
+    }
+  }
+
+  /// Renames the layer [id] (one undo step).
+  void renameLayer(String id, String name) {
+    final Object a = adapter;
+    if (a is! StudioLayersAdapter || !a.canRename || itemById(id) == null) return;
+    record('rename', () => a.rename(id, name.trim()));
+  }
+
+  /// Moves layer [id] to z index [toZ] (0 = bottom), keeping the others' order. One undo step.
+  void moveLayer(String id, int toZ) {
+    final before = [for (final i in _items) i.id];
+    if (!before.remove(id)) return;
+    before.insert(toZ.clamp(0, before.length), id);
+    if (listEquals(before, [for (final i in _items) i.id])) return;
+    record('arrange', () => adapter.reorder(before));
+  }
+
+  /// Selects exactly [ids] (visible items that exist).
+  void selectIds(Iterable<String> ids) {
+    final next = {for (final i in _items) if (i.visible && ids.contains(i.id)) i.id};
+    if (setEquals(next, _selection)) return;
+    _selection
+      ..clear()
+      ..addAll(next);
+    notifyListeners();
+  }
+
+  /// Selects every visible layer between [a] and [b] in z order (shift click in the layers panel).
+  void selectRange(String a, String b, {bool additive = false}) {
+    final za = zOf(a), zb = zOf(b);
+    if (za < 0 || zb < 0) return;
+    final lo = math.min(za, zb), hi = math.max(za, zb);
+    final ids = {for (var z = lo; z <= hi; z++) if (_items[z].visible) _items[z].id};
+    selectIds(additive ? {..._selection, ...ids} : ids);
+  }
+
+  // ── Match size ───────────────────────────────────────────────────────────────────────────────────────────
+  /// Two or more items can be given the same width / height.
+  bool get canMatchSize => _editable.length >= 2;
+
+  /// Gives every editable selected item the width and / or height of the FIRST selected one (the key object),
+  /// keeping each item's top-left corner. An item that cannot change that axis ([StudioResize]) keeps it.
+  void matchSize({bool width = false, bool height = false}) {
+    final its = _editable;
+    if (its.length < 2 || (!width && !height)) return;
+    final key = itemById(_selection.first) ?? its.first;
+    final out = <String, Rect>{};
+    for (final i in its) {
+      if (i.id == key.id) continue;
+      final canW = i.resize != StudioResize.vertical && i.resize != StudioResize.none;
+      final canH = i.resize != StudioResize.horizontal && i.resize != StudioResize.none;
+      var w = width && canW ? key.rect.width : i.rect.width;
+      var h = height && canH ? key.rect.height : i.rect.height;
+      if (i.resize == StudioResize.aspect && (width ^ height) && i.rect.width > 0 && i.rect.height > 0) {
+        final k = width ? w / i.rect.width : h / i.rect.height;
+        w = i.rect.width * k;
+        h = i.rect.height * k;
+      }
+      var r = Rect.fromLTWH(i.rect.left, i.rect.top, w, h);
+      if (clampToPage) {
+        r = r.shift(Offset(_clampShift(r.left, r.right, _page.width), _clampShift(r.top, r.bottom, _page.height)));
+      }
+      out[i.id] = r;
+    }
+    _writeRects('match size', out);
+  }
 
   // ── In-place text edit ──────────────────────────────────────────────────────────────────────────────────
   String? _editing;
@@ -935,7 +1141,9 @@ class _Target {
 }
 
 class _Gesture {
-  _Gesture({required this.start, required this.targets, this.handle, this.item});
+  _Gesture({required this.start, required this.targets, this.handle, this.item, this.rotating = false, this.pointer0 = 0});
+  final bool rotating;
+  final double pointer0;
   final Map<String, Rect> start;
   final StudioSnapTargets targets;
   final StudioHandle? handle;

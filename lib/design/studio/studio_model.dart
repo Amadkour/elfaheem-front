@@ -67,8 +67,9 @@ class StudioItem<P> {
   /// The smallest size in page units (null = the controller's [StudioController.minSize]).
   final Size? minSize;
 
-  /// Degrees, clockwise, about the centre of [rect]. A turned item is drawn and hit turned; it moves like any item
-  /// but shows no resize handles (its size is edited in the host's properties).
+  /// Degrees, clockwise, about the centre of [rect]. A turned item is drawn and hit turned, moves like any item
+  /// and is resized in its own frame (the opposite side stays put). A host whose adapter is a [StudioRotateAdapter]
+  /// also gets the rotate knob.
   final double rotation;
 
   StudioItem<P> copyWith({
@@ -218,6 +219,33 @@ abstract class StudioLockAdapter {
   void setLocked(Set<String> ids, bool locked);
 }
 
+/// Optional, next to [StudioAdapter]: the layers panel's extras. A host without it still gets the panel (select,
+/// reorder, lock when it is a [StudioLockAdapter]); the eye and the inline rename appear only when it says so.
+abstract class StudioLayersAdapter {
+  /// The eye toggle is offered.
+  bool get canHide;
+
+  /// true: visibility is part of the design (its [StudioAdapter.snapshot]), so hiding is ONE undo step; false: it
+  /// is an editor-only view setting and is not recorded in the history.
+  bool get hideIsUndoable;
+
+  /// Shows or hides [ids] (a hidden item is not drawn, hit or snapped to on the canvas).
+  void setVisible(Set<String> ids, bool visible);
+
+  /// The inline rename is offered.
+  bool get canRename;
+
+  /// Stores [name] for the layer [id] (an empty name = the kind's default name).
+  void rename(String id, String name);
+}
+
+/// Optional, next to [StudioAdapter]: a host whose items can be turned on the canvas (the rotate handle). Without
+/// it the item shows no rotate handle.
+abstract class StudioRotateAdapter {
+  /// Stores new rotations (degrees, clockwise, about the rect's centre): id to angle.
+  void writeRotations(Map<String, double> rotations);
+}
+
 /// How the canvas's in-place text editor looks for one item: the item's own font, size, colour, alignment and
 /// direction at the canvas scale (screen pixels), so the text does not jump when the editor opens.
 @immutable
@@ -250,7 +278,7 @@ class StudioInlineStyle {
 
 /// An adapter over a plain list of items: for tests, previews and hosts without a model of their own.
 /// Payloads are kept as they are: give [copyPayload] when they are mutable.
-class StudioMemoryAdapter<P> implements StudioAdapter<P>, StudioLockAdapter {
+class StudioMemoryAdapter<P> implements StudioAdapter<P>, StudioLockAdapter, StudioLayersAdapter, StudioRotateAdapter {
   StudioMemoryAdapter(Iterable<StudioItem<P>> items, {P Function(P payload)? copyPayload, String idPrefix = 'item'})
       : items = List.of(items),
         _copy = copyPayload,
@@ -316,6 +344,33 @@ class StudioMemoryAdapter<P> implements StudioAdapter<P>, StudioLockAdapter {
   void setLocked(Set<String> ids, bool locked) {
     for (var i = 0; i < items.length; i++) {
       if (ids.contains(items[i].id)) items[i] = items[i].copyWith(locked: locked);
+    }
+  }
+
+  @override
+  bool get canHide => true;
+
+  @override
+  bool get hideIsUndoable => true;
+
+  @override
+  void setVisible(Set<String> ids, bool visible) {
+    for (var i = 0; i < items.length; i++) {
+      if (ids.contains(items[i].id)) items[i] = items[i].copyWith(visible: visible);
+    }
+  }
+
+  @override
+  bool get canRename => false;
+
+  @override
+  void rename(String id, String name) {}
+
+  @override
+  void writeRotations(Map<String, double> rotations) {
+    for (var i = 0; i < items.length; i++) {
+      final r = rotations[items[i].id];
+      if (r != null) items[i] = items[i].copyWith(rotation: r);
     }
   }
 

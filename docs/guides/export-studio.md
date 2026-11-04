@@ -27,3 +27,24 @@ export), `layout_canvas.dart` (the row card and each band on the shared studio e
 pages and the file. Phones get the simple form (starters, field picking, toggles); the canvas needs 720 px. Tests:
 `test/export/layout_model_test.dart`, `layout_flow_test.dart` (FakeApi server in `layout_fake.dart`),
 `test/ui/layout_flow_layout_test.dart`.
+
+**Design engine, layout v4 (D-164 / D-165, contract `docs/design_engine/ENGINE.md`, tracker `docs/design_engine/PROGRESS.md`)** —
+the layout document is THE engine document for exports and certificates (exam papers / covers, bubble sheets and the
+guide export get the API, their sessions migrate them). v4 = v3 + optional keys: document-level computed columns
+(`calc.` keys; worked out per row on the server before sort / group / totals, mirrored in `layout_computed.dart` and
+checked against `test/fixtures/design_engine/computed_parity.json` — regenerate with
+`../back/tests/contract/dump_computed_parity.py`), mode `page`, list columns, cards up to 4 per line with grids,
+`items_per_page` / group page breaks, custom page size + background image, ellipse / opacity / photo shapes, letter
+spacing / line height / shrink / shadow. Colours are `#RRGGBB` or `#AARRGGBB`, never `#RRGGBBAA`. The visual rule
+builder is `showComputedFieldsEditor` (`layout_computed_builder.dart`). The flow opens on a start screen
+(`layout_start.dart`: format, language, design gallery from `GET /exports/layout/starters`, Export now) and the
+designer has three steps (`layout_arrange.dart`: Layout · Design · Preview, a live preview pane from 1100 px). Other
+callers open the engine through `DesignEngine.open` / `DesignEngine.export` (`lib/design/engine/design_engine.dart`).
+The canvas engine adds layers, a rotate knob and match size (`studio_layers.dart`). Certificates: the Certificate
+studio (`lib/features/teacher/certificates/studio/`) saves a v4 page-mode document per language through
+`GET` / `PUT /certificate-designs/{id}/document` (PUT sends `version`; 409 `design_conflict` → Reload / Keep mine) and
+`POST /certificate-designs/preview-document`; a design with no document still renders and edits with the legacy
+designer, reachable from the studio's More › Classic designer and for everyone while the kill switch
+`certificates.engine` is disabled. Tests: `test/export/layout_computed_test.dart`, `studio_controller_test.dart`,
+`test/ui/layout_computed_builder_layout_test.dart`, `studio_layers_test.dart`, `layout_element_view_test.dart`,
+`test/org/cert_engine_studio_test.dart`, `test/ui/cert_engine_studio_layout_test.dart`.

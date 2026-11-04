@@ -15,6 +15,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../core/live/event_wait.dart';
@@ -121,6 +122,53 @@ class LayoutTemplate {
   }
 }
 
+/// A server starter design (`GET /exports/layout/starters`): a ready document the gallery offers.
+class LayoutStarter {
+  const LayoutStarter({required this.key, this.purpose = 'export', required this.nameAr, required this.nameEn, this.descAr = '', this.descEn = '', this.mode = 'table', this.document});
+  final String key, purpose, nameAr, nameEn, descAr, descEn, mode;
+  final LayoutDocument? document;
+
+  String name(String lang) => lang == 'ar' ? (nameAr.isEmpty ? nameEn : nameAr) : (nameEn.isEmpty ? nameAr : nameEn);
+  String description(String lang) => lang == 'ar' ? (descAr.isEmpty ? descEn : descAr) : (descEn.isEmpty ? descAr : descEn);
+
+  factory LayoutStarter.fromJson(Map<String, dynamic> j) {
+    final d = j['document'];
+    LayoutDocument? doc;
+    try {
+      doc = d is Map && d['designs'] is Map ? LayoutDocument.fromJson(d.map((k, v) => MapEntry('$k', v))) : null;
+    } catch (_) {
+      doc = null;
+    }
+    return LayoutStarter(
+      key: '${j['key'] ?? ''}',
+      purpose: '${j['purpose'] ?? 'export'}',
+      nameAr: '${j['name_ar'] ?? ''}',
+      nameEn: '${j['name_en'] ?? ''}',
+      descAr: '${j['description_ar'] ?? ''}',
+      descEn: '${j['description_en'] ?? ''}',
+      mode: '${j['mode'] ?? 'table'}',
+      document: doc,
+    );
+  }
+}
+
+/// The server's limits on `POST /rows` (413 above them): rows and bytes.
+const kLayoutMaxRows = 50000;
+const kLayoutMaxUploadBytes = 20 * 1024 * 1024;
+
+/// A cheap estimate of the JSON size of [rows] sent as [fields] (a sample of rows, scaled): the real encode of
+/// 50 000 rows would cost as much as the upload.
+int layoutEstimateUploadBytes(List<LayoutField> fields, List<Map<String, Object?>> rows, String lang) {
+  if (rows.isEmpty) return 0;
+  final n = rows.length < 200 ? rows.length : 200;
+  final step = rows.length / n;
+  var sample = 0;
+  for (var i = 0; i < n; i++) {
+    sample += utf8.encode(jsonEncode(layoutJsonRow(rows[(i * step).floor()], fields, lang))).length + 1;
+  }
+  return (sample / n * rows.length * 1.05).ceil() + 2048;
+}
+
 Map<String, dynamic> _map(Object? v) => v is Map ? v.map((k, x) => MapEntry('$k', x)) : <String, dynamic>{};
 List<Map<String, dynamic>> _maps(Object? v) => v is List ? [for (final x in v) if (x is Map) _map(x)] : const [];
 List<LayoutIssue> _issues(Object? v) => [for (final j in _maps(v)) LayoutIssue.fromJson(j)];
@@ -191,12 +239,43 @@ class LayoutApi {
 
   /// `POST /rows` — an app table with no server dataset: its columns (key, labels, type) and rows. → upload id.
   /// The values are what the table shows in [lang] ([layoutJsonRow]: wall-clock dates, status labels).
-  Future<ExportResult<String>> uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows, {String lang = 'ar'}) => _call(
+  Future<ExportResult<String>> uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows, {String lang = 'ar', void Function(int sent, int total)? onProgress}) {
+    // the server refuses more than 50 000 rows / 20 MB: say so before sending anything
+    if (rows.length > kLayoutMaxRows) {
+      final n = rows.length;
+      return Future.value(ExportResult.fail(
+          AppConfig.lang == 'ar'
+              ? 'عدد الصفوف ($n) أكبر من المسموح ($kLayoutMaxRows صف كحد أقصى): قلّل الصفوف بالتصفية ثم أعد التصدير'
+              : 'Too many rows for one export: $n rows, $kLayoutMaxRows at most. Filter the table and export again',
+          code: 'rows_too_many'));
+    }
+    final bytes = layoutEstimateUploadBytes(fields, rows, lang);
+    if (bytes > kLayoutMaxUploadBytes) {
+      String mb(int b) => (b / 1048576).toStringAsFixed(1);
+      return Future.value(ExportResult.fail(
+          AppConfig.lang == 'ar'
+              ? 'حجم الصفوف ${mb(bytes)} ميجابايت وهو أكبر من المسموح (${mb(kLayoutMaxUploadBytes)} ميجابايت): قلّل الصفوف أو الأعمدة'
+              : 'The rows are too large to send: ${mb(bytes)} MB, ${mb(kLayoutMaxUploadBytes)} MB at most. Remove rows or columns',
+          code: 'rows_too_big'));
+    }
+    return _uploadRows(fields, rows, lang, onProgress);
+  }
+
+  Future<ExportResult<String>> _uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows, String lang, void Function(int, int)? onProgress) => _call(
         () => api.post('$_base/rows', body: {
           'columns': [for (final f in fields) f.toJson()],
           'rows': [for (final r in rows) layoutJsonRow(r, fields, lang)],
-        }),
+        }, onSendProgress: onProgress),
         (r) => '${_map(r)['upload_id'] ?? ''}',
+      );
+
+  /// `GET /starters?purpose=` — the server's ready designs for the gallery (older servers: `missing`).
+  Future<ExportResult<List<LayoutStarter>>> starters({String purpose = 'export'}) => _call(
+        () => api.get('$_base/starters', queryParams: {'purpose': purpose}),
+        (r) {
+          final items = r is List ? _maps(r) : _maps(_map(r)['items'] ?? _map(r)['starters']);
+          return [for (final j in items) LayoutStarter.fromJson(j)]..removeWhere((x) => x.key.isEmpty || x.document == null);
+        },
       );
 
   /// `GET /api/v1/exports/datasets/{key}/columns` — the dataset's columns the caller may see with [params]
@@ -233,7 +312,7 @@ class LayoutApi {
         () => api.get(_templates, queryParams: {'page_key': exportPageKey(pageKey), 'org_id': ?orgId}),
         (r) {
           final m = _map(r);
-          final items = [for (final j in _maps(m['items'])) if ((LayoutTemplate.versionOf(j) ?? 3) == kLayoutSchemaVersion) LayoutTemplate.fromJson(j)];
+          final items = [for (final j in _maps(m['items'])) if (kLayoutSchemaVersions.contains(LayoutTemplate.versionOf(j) ?? 3)) LayoutTemplate.fromJson(j)];
           final last = m['last_used_id'];
           return (items, last is num ? last.toInt() : null);
         },

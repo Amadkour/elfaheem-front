@@ -16,6 +16,7 @@ import '../app_kit.dart' show appText;
 import '../app_tokens.dart';
 import '../export/export_fonts.dart' show ExportFonts;
 import 'studio_controller.dart';
+import 'studio_layers.dart' show studioTr;
 import 'studio_model.dart';
 
 class StudioToolbar extends StatefulWidget {
@@ -343,6 +344,15 @@ class _ZoomMenu extends StatelessWidget {
   }
 }
 
+/// The text of a menu key: the engine's own new labels live here (no translation file entry needed), the rest comes
+/// from the translation file.
+String _menuText(String key) => switch (key) {
+      'studio_match_width' => studioTr('مطابقة العرض', 'Match width'),
+      'studio_match_height' => studioTr('مطابقة الارتفاع', 'Match height'),
+      'studio_match_size' => studioTr('مطابقة الحجم', 'Match size'),
+      _ => translate(key),
+    };
+
 class _AlignMenu extends StatelessWidget {
   const _AlignMenu({required this.controller, required this.showLabel});
   final StudioController<Object?> controller;
@@ -358,7 +368,7 @@ class _AlignMenu extends StatelessWidget {
           child: Row(children: [
             Icon(icon, size: 20, color: on ? c.textMedium : c.textLight),
             const SizedBox(width: AppSpace.sm),
-            Flexible(child: Text(translate(key), style: appText(14, c: on ? c.textDark : c.textLight))),
+            Flexible(child: Text(_menuText(key), style: appText(14, c: on ? c.textDark : c.textLight))),
           ]),
         );
     return PopupMenuButton<String>(
@@ -372,6 +382,12 @@ class _AlignMenu extends StatelessWidget {
             controller.distribute(StudioAxis.vertical);
           case 'page':
             controller.alignToPage = !controller.alignToPage;
+          case 'mw':
+            controller.matchSize(width: true);
+          case 'mh':
+            controller.matchSize(height: true);
+          case 'ms':
+            controller.matchSize(width: true, height: true);
           default:
             controller.align(StudioAlign.values.byName(v));
         }
@@ -387,6 +403,10 @@ class _AlignMenu extends StatelessWidget {
         const PopupMenuDivider(),
         row('dh', Icons.horizontal_distribute_rounded, 'studio_distribute_h', on: controller.canDistribute),
         row('dv', Icons.vertical_distribute_rounded, 'studio_distribute_v', on: controller.canDistribute),
+        const PopupMenuDivider(),
+        row('mw', Icons.swap_horiz_rounded, 'studio_match_width', on: controller.canMatchSize),
+        row('mh', Icons.swap_vert_rounded, 'studio_match_height', on: controller.canMatchSize),
+        row('ms', Icons.aspect_ratio_rounded, 'studio_match_size', on: controller.canMatchSize),
         const PopupMenuDivider(),
         CheckedPopupMenuItem<String>(
           value: 'page',

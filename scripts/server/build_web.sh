@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# The server's web deploy (run on the server, e.g. through the owner's srv.py): pull organizations, build the web app
+# The server's web deploy (run on the server, e.g. through the owner's srv.py): pull $NB_BRANCH (default organizations;
+# the release pipeline passes production), build the web app
 # NEXT TO the live folder, post-process it (scripts/web/postbuild.dart, D-171: a content-hashed main script and .gz /
 # .br copies for nginx gzip_static / brotli_static), swap it in, smoke test the live site, and roll back to the
 # previous build when a check fails. The live folder is never half-written: a failed build or postbuild leaves it alone.
@@ -21,7 +22,9 @@ echo "live web: $LIVE"
 [ "$LIVE" = "$FRONT/build/web" ] || die "app_releases/web/current -> $LIVE, not $FRONT/build/web: publish a web release instead"
 
 git checkout --theirs . || true
-git pull origin organizations || die "git pull failed"
+BRANCH="${NB_BRANCH:-organizations}"
+case "$BRANCH" in ""|*[!A-Za-z0-9._/-]*) die "bad NB_BRANCH: $BRANCH" ;; esac
+git pull origin "$BRANCH" || die "git pull failed"
 git checkout --theirs . || true
 git log --oneline -1
 flutter pub get > /tmp/nb-pubget.log 2>&1 || { tail -20 /tmp/nb-pubget.log; die "pub get failed"; }

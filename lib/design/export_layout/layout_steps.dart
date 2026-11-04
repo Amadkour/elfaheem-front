@@ -1,20 +1,17 @@
 // lib/design/export_layout/layout_steps.dart
 //
-// The five steps of the v3 export page, each a widget over the [LayoutFlowController]:
+// The building blocks of the designer's steps, each a widget over the [LayoutFlowController]:
 //
-//   LayoutFormatStep    1  PDF / Excel / Word + Arabic / English / both (each language its own design)
-//   LayoutModeStep      2  "How do you want to show your items?" List · Table · Custom card (1 / 2 / 3 per line),
-//                          each with a small drawing of the result; the saved templates in one click
-//   LayoutItemsStep     3  the Row Designer (custom: canvas + properties + live row preview with the item browser)
-//                          or the field editor (list / table); the row options (zebra, separator, keep together,
-//                          per line, sort, group by, totals)
-//   LayoutBandsStep     4  the fixed parts: header / before items / after items / footer on the same canvas engine,
-//                          their placement, the page (size, orientation, font, frame, watermark)
-//   LayoutPreviewStep   5  the server's pages (first, middle, last), the notes, Export with progress / cancel /
-//                          download, save as a template
+//   layout_start.dart   the start screen (format, language, gallery, Export now), thumbnails, the run panel
+//   layout_arrange.dart the Layout step, the Design step (items + fixed parts behind one switcher), the live pane
+//   here                LayoutItemsStep (the Row Designer: canvas + live row preview with the item browser, or the
+//                       field editor for list / table), LayoutRowOptions (zebra, separator, keep together, per line),
+//                       LayoutSortGroupTotals, LayoutBandPart (one fixed part on the canvas), LayoutPageOptions
+//                       (size, orientation, font, frame, watermark), LayoutPreviewStep (the server's pages, the
+//                       notes, Export with progress / cancel, save as a template)
 //
-// Phones (< 720 px) get the simple form of steps 3 and 4: starter designs, field picking, toggles — the canvas is
-// for tablets and desktops.
+// Phones (< 720 px) get the simple form of the items and the fixed parts: starter designs, field picking, toggles —
+// the canvas is for tablets and desktops.
 library;
 
 import 'package:flutter/material.dart';
@@ -26,8 +23,6 @@ import '../../features/admin/admin_common.dart' show t;
 import '../app_kit.dart';
 import '../app_notice.dart';
 import '../app_tokens.dart';
-import '../export/export_studio_model.dart' show exportLtr;
-import '../export_hub/export_flow_parts.dart' show ExportFormatCard;
 import '../studio/studio.dart';
 import 'layout_canvas.dart';
 import 'layout_element_view.dart';
@@ -35,6 +30,7 @@ import 'layout_flow_controller.dart';
 import 'layout_logic.dart';
 import 'layout_model.dart';
 import 'layout_props.dart';
+import 'layout_start.dart' show LayoutExcelNote, LayoutRunPanel;
 
 /// Wide enough for the canvas (else the simple phone form).
 const double kLayoutCanvasMin = 720;
@@ -47,7 +43,7 @@ const double kLayoutStepperWidth = 170, kLayoutPickWidth = 180, kLayoutLabelWidt
 const double kLayoutSwitchWidth = 260, kLayoutPlacementWidth = 240, kLayoutPreviewSide = 380, kLayoutPreviewHeight = 460;
 
 List<LayoutFieldOption> layoutFieldOptions(LayoutFlowController f) =>
-    [for (final x in f.fields) (key: x.key, label: x.label(f.lang), numeric: x.numeric)];
+    [for (final x in f.allFields) (key: x.key, label: x.label(f.lang), numeric: x.numeric)];
 
 /// A titled card of a step.
 class LayoutSection extends StatelessWidget {
@@ -136,176 +132,21 @@ class LayoutCardGrid extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
         final n = (box.maxWidth / min).floor().clamp(1, children.length);
         final w = (box.maxWidth - AppSpace.sm * (n - 1)) / n;
-        return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [for (final c in children) SizedBox(width: w, child: c)]);
-      });
-}
-
-// ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-//  Step 1 — format + language
-// ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-
-class LayoutFormatStep extends StatelessWidget {
-  const LayoutFormatStep({super.key, required this.flow, this.formats = AppExportFormat.values});
-  final LayoutFlowController flow;
-  final List<AppExportFormat> formats;
-
-  @override
-  Widget build(BuildContext context) {
-    final langs = flow.doc.languages;
-    String key = langs.length > 1 ? 'both' : langs.first;
-    Widget lang(String id, String title, String hint, IconData icon) => LayoutChoiceCard(
-          key: ValueKey('layout-lang-$id'),
-          title: title,
-          hint: hint,
-          icon: icon,
-          selected: key == id,
-          onTap: () => flow.setLanguages(id == 'both' ? const ['ar', 'en'] : [id]),
-        );
-    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-      LayoutSection(title: t('صيغة الملف', 'File format'), children: [
-        LayoutCardGrid(min: 150, children: [
-          for (final f in formats)
-            ExportFormatCard(key: ValueKey('layout-format-${f.ext}'), format: f, selected: flow.doc.format == f.ext, onTap: () => flow.setFormat(f.ext)),
-        ]),
-      ]),
-      LayoutSection(
-        title: t('اللغة', 'Language'),
-        subtitle: t('لكل لغة تصميمها الخاص: العربي من اليمين والإنجليزي من اليسار.', 'Each language has its own design: Arabic reads from the right, English from the left.'),
-        children: [
-          LayoutCardGrid(min: 170, children: [
-            lang('ar', t('العربية', 'Arabic'), t('ملف عربي', 'An Arabic file'), Icons.translate_rounded),
-            lang('en', t('الإنجليزية', 'English'), t('ملف إنجليزي', 'An English file'), Icons.language_rounded),
-            lang('both', t('كلتاهما', 'Both'), flow.doc.format == 'xlsx' ? t('ورقتان في ملف واحد', 'Two sheets in one file') : t('ملفان في ملف مضغوط', 'Two files in a zip'), Icons.g_translate_rounded),
-          ]),
-        ],
-      ),
-    ]);
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-//  Step 2 — how to show the items
-// ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-
-/// The small drawings on the mode cards (paper colours: they show a document).
-class LayoutModePicture extends StatelessWidget {
-  const LayoutModePicture({super.key, required this.mode, this.perLine = 1});
-  final String mode;
-  final int perLine;
-
-  @override
-  Widget build(BuildContext context) {
-    const ink = Color(0xFF98A2B3), soft = Color(0xFFE4E7EC), head = Color(0xFFD0D5DD);
-    Widget bar(double w, {Color color = ink, double h = 5}) => FractionallySizedBox(
-          widthFactor: w,
-          alignment: AlignmentDirectional.centerStart,
-          child: Container(height: h, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
-        );
-    final Widget body = switch (mode) {
-      'list' => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (var i = 0; i < 5; i++) ...[bar(i.isEven ? .9 : .7), const SizedBox(height: 5)],
-        ]),
-      'table' => Column(children: [
-          Container(height: 8, color: head),
-          for (var i = 0; i < 4; i++)
-            Container(
-              height: 8,
-              color: i.isOdd ? soft : null,
-              child: Row(children: [for (var j = 0; j < 3; j++) Expanded(flex: j == 0 ? 2 : 1, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: bar(.8, h: 3)))]),
+        // rows of equal height: a card with a longer hint no longer sticks out of its row
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var i = 0; i < children.length; i += n) ...[
+            if (i > 0) const SizedBox(height: AppSpace.sm),
+            IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (var j = i; j < i + n; j++) ...[
+                  if (j > i) const SizedBox(width: AppSpace.sm),
+                  SizedBox(width: w, child: j < children.length ? children[j] : null),
+                ],
+              ]),
             ),
-        ]),
-      _ => Column(children: [
-          for (var r = 0; r < (perLine == 1 ? 3 : 2); r++) ...[
-            Row(children: [
-              for (var j = 0; j < perLine; j++) ...[
-                if (j > 0) const SizedBox(width: 4),
-                Expanded(
-                  child: Container(
-                    height: perLine == 1 ? 14 : 18,
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(border: Border.all(color: head), borderRadius: BorderRadius.circular(2)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [bar(.7, h: 3), const SizedBox(height: 2), bar(.45, color: head, h: 2)]),
-                  ),
-                ),
-              ],
-            ]),
-            const SizedBox(height: 4),
           ],
-        ]),
-    };
-    return Container(
-      height: 76,
-      padding: const EdgeInsets.all(AppSpace.xs),
-      decoration: BoxDecoration(color: kStudioPaper, borderRadius: AppRadius.chipAll, border: Border.all(color: soft)),
-      child: ClipRect(child: body),
-    );
-  }
-}
-
-class LayoutModeStep extends StatelessWidget {
-  const LayoutModeStep({super.key, required this.flow, required this.onTemplates});
-  final LayoutFlowController flow;
-  final VoidCallback onTemplates;
-
-  @override
-  Widget build(BuildContext context) {
-    final d = flow.design;
-    final c = context.colors;
-    Widget mode(String m, int perLine, String title, String hint) => LayoutChoiceCard(
-          key: ValueKey('layout-mode-$m${m == 'custom' ? perLine : ''}'),
-          title: title,
-          hint: hint,
-          picture: LayoutModePicture(mode: m, perLine: perLine),
-          selected: d.mode == m && (m != 'custom' || d.row.perLine == perLine),
-          onTap: () => flow.pickMode(m, perLine: perLine),
-        );
-    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-      LayoutSection(
-        title: t('كيف تريد عرض عناصرك؟', 'How do you want to show your items?'),
-        subtitle: t('اختر شكلًا جاهزًا، ثم عدّله كما تحب في الخطوة التالية.', 'Pick a ready shape, then change it as you like in the next step.'),
-        children: [
-          LayoutCardGrid(min: 150, children: [
-            mode('list', 1, t('قائمة', 'List'), t('سطر لكل عنصر، الحقول متتالية', 'One line per item, fields in a row')),
-            mode('table', 1, t('جدول', 'Table'), t('أعمدة بعناوين، مناسب للأرقام', 'Columns with headings, good for figures')),
-            mode('custom', 1, t('بطاقة مخصّصة', 'Custom card'), t('صمّم بطاقة العنصر بنفسك', 'Design the item\'s card yourself')),
-            mode('custom', 2, t('بطاقتان في السطر', 'Two cards per line'), t('بطاقات متجاورة', 'Cards side by side')),
-            mode('custom', 3, t('ثلاث بطاقات في السطر', 'Three cards per line'), t('بطاقات صغيرة متجاورة', 'Small cards side by side')),
-          ]),
-        ],
-      ),
-      LayoutSection(
-        title: t('قوالبك المحفوظة', 'Your saved templates'),
-        trailing: TextButton.icon(onPressed: onTemplates, icon: const Icon(Icons.folder_open_rounded, size: 18), label: Text(t('الكل', 'All'))),
-        children: [
-          if (flow.templatesLoading)
-            const AppSkeletonBox(width: double.infinity, height: 40)
-          else if (flow.templatesError != null)
-            AppBanner(icon: Icons.cloud_off_rounded, text: flow.templatesError!, color: c.danger, action: TextButton(onPressed: flow.loadTemplates, child: Text(t('إعادة المحاولة', 'Retry'))))
-          else if (flow.templates.isEmpty)
-            Text(
-              flow.templatesMissing
-                  ? t('القوالب تحتاج تحديث الخادم.', 'Templates need a server update.')
-                  : t('لا قوالب بعد: احفظ تصميمك من خطوة المعاينة لتستعمله بنقرة.', 'No templates yet: save your design from the preview step to use it in one click.'),
-              style: appText(12.5, c: c.textMedium),
-            )
-          else
-            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-              for (final tp in flow.templates.take(8))
-                ActionChip(
-                  key: ValueKey('layout-tpl-${tp.id}'),
-                  avatar: Icon(tp.isOrg ? Icons.apartment_rounded : Icons.person_outline_rounded, size: 18),
-                  label: Text(tp.name),
-                  side: tp.id == flow.templateId ? BorderSide(color: c.primary, width: 1.5) : null,
-                  onPressed: () async {
-                    final err = await flow.loadTemplate(tp.id);
-                    showAppNotice(err ?? '${t('فُتح القالب', 'Opened')} «${tp.name}»', error: err != null);
-                  },
-                ),
-            ]),
-        ],
-      ),
-    ]);
-  }
+        ]);
+      });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -314,7 +155,7 @@ class LayoutModeStep extends StatelessWidget {
 
 /// The add menu of the Row Designer.
 List<LayoutAddOption> layoutRowAddOptions(LayoutFlowController f) {
-  final first = f.fields.isEmpty ? null : f.fields.first;
+  final first = f.allFields.isEmpty ? null : f.allFields.first;
   return [
     LayoutAddOption(t('حقل', 'Field'), Icons.data_object_rounded,
         (id) => LayoutElement(id: id, kind: 'field', y: 2, w: 40, h: 6, name: first?.label(f.lang), bind: first?.bind(), style: LayoutStyle(maxLines: 1))),
@@ -329,6 +170,7 @@ List<LayoutAddOption> layoutRowAddOptions(LayoutFlowController f) {
         (id) => LayoutElement(id: id, kind: 'line', y: 1, w: 60, h: 1, style: LayoutStyle(border: LayoutBorder(width: .3, color: '#D0D5DD')))),
     LayoutAddOption(t('مربع', 'Box'), Icons.crop_square_rounded,
         (id) => LayoutElement(id: id, kind: 'rect', y: 1, w: 20, h: 10, style: LayoutStyle(bg: '#F2F4F7', radius: 1.5, padding: 0))),
+    layoutEllipseAddOption(),
   ];
 }
 
@@ -342,20 +184,19 @@ class LayoutItemsStep extends StatefulWidget {
 }
 
 class _LayoutItemsStepState extends State<LayoutItemsStep> {
-  bool _options = false;
 
   @override
   Widget build(BuildContext context) {
     final f = widget.flow;
     final d = f.design;
-    if (d.mode != 'custom') {
+    if (d.mode == 'list' || d.mode == 'table') {
       return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
         LayoutSection(
           title: d.mode == 'list' ? t('حقول السطر', 'Fields of the line') : t('أعمدة الجدول', 'Table columns'),
           subtitle: t('اختر الحقول ورتّبها بالسحب.', 'Pick the fields and drag to order them.'),
           children: [LayoutFieldsEditor(flow: f)],
         ),
-        LayoutSection(title: t('معاينة مباشرة', 'Live preview'), children: [LayoutItemsPreview(flow: f)]),
+        LayoutSection(title: t('معاينة سريعة', 'Quick look'), children: [LayoutItemsPreview(flow: f)]),
         LayoutRowOptions(flow: f),
       ]);
     }
@@ -376,55 +217,34 @@ class _LayoutItemsStepState extends State<LayoutItemsStep> {
     return Padding(
       padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: SizedBox(
-            width: 360,
-            child: StudioSegmented<bool>(
-              segments: [
-                StudioSegment(value: false, label: t('تصميم البطاقة', 'Card design')),
-                StudioSegment(value: true, label: t('خيارات الصفوف', 'Row options')),
-              ],
-              value: _options,
-              onChanged: (v) => setState(() => _options = v),
-            ),
+        Expanded(
+          child: LayoutCanvasEditor(
+            key: ValueKey('row-${f.lang}'),
+            elements: row.elements,
+            width: cw,
+            height: d.mode == 'page' ? mm(d.page.contentHeight) : row.height,
+            rtl: d.page.rtl,
+            pageFont: d.page.font,
+            pageFontSize: d.page.fontSize,
+            lang: f.lang,
+            fields: layoutFieldOptions(f),
+            addOptions: layoutRowAddOptions(f),
+            newId: () => d.newId('r'),
+            onChanged: f.changed,
+            upload: (b, n) => layoutUpload(f, b, n),
+            vars: f.varsFor(f.lang),
+            fieldOf: f.fieldOf,
+            background: row.background,
+            border: row.border,
+            radius: row.radius,
+            wide: widget.width >= kLayoutDockMin,
           ),
         ),
         const SizedBox(height: AppSpace.sm),
-        Expanded(
-          child: _options
-              ? ListView(children: [LayoutRowOptions(flow: f)])
-              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Expanded(
-                    child: LayoutCanvasEditor(
-                      key: ValueKey('row-${f.lang}'),
-                      elements: row.elements,
-                      width: cw,
-                      height: row.height,
-                      rtl: d.page.rtl,
-                      pageFont: d.page.font,
-                      pageFontSize: d.page.fontSize,
-                      lang: f.lang,
-                      fields: layoutFieldOptions(f),
-                      addOptions: layoutRowAddOptions(f),
-                      newId: () => d.newId('r'),
-                      onChanged: f.changed,
-                      upload: (b, n) => layoutUpload(f, b, n),
-                      vars: f.varsFor(f.lang),
-                      fieldOf: f.fieldOf,
-                      background: row.background,
-                      border: row.border,
-                      radius: row.radius,
-                      wide: widget.width >= kLayoutDockMin,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpace.sm),
-                  Container(
-                    padding: const EdgeInsets.all(AppSpace.sm),
-                    decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
-                    child: LayoutRowPreview(flow: f, maxHeight: 150),
-                  ),
-                ]),
+        Container(
+          padding: const EdgeInsets.all(AppSpace.sm),
+          decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
+          child: LayoutRowPreview(flow: f, maxHeight: 150),
         ),
       ]),
     );
@@ -598,7 +418,7 @@ class LayoutFieldsEditor extends StatelessWidget {
     final c = context.colors;
     final table = d.mode == 'table';
     final picked = table ? [for (final col in d.table.columns) col.field.field] : [for (final b in d.list.fields) b.field];
-    final order = [...picked, for (final x in f.fields) if (!picked.contains(x.key)) x.key];
+    final order = [...picked, for (final x in f.allFields) if (!picked.contains(x.key)) x.key];
 
     void rebalance() {
       final cols = d.table.columns;
@@ -649,7 +469,7 @@ class LayoutFieldsEditor extends StatelessWidget {
             key: ValueKey('layout-field-${order[i]}'),
             margin: const EdgeInsets.only(bottom: AppSpace.xxs),
             decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
-            child: Column(children: [
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Checkbox(value: i < picked.length, onChanged: (v) => toggle(order[i], v ?? false)),
                 Expanded(
@@ -750,7 +570,7 @@ class LayoutCardFieldsEditor extends StatelessWidget {
             ? null
             : () {
                 final used = {for (final e in slots) e.bind!.field};
-                final pick = f.fields.firstWhere((x) => !used.contains(x.key), orElse: () => f.fields.first);
+                final pick = f.allFields.firstWhere((x) => !used.contains(x.key), orElse: () => f.allFields.first);
                 final cw = d.row.cardWidth(d.page.contentWidth);
                 final y = d.row.height;
                 d.row.height = mm(y + 7);
@@ -778,8 +598,11 @@ class LayoutCardFieldsEditor extends StatelessWidget {
 /// Row options: per line, height, zebra, separator, border, keep together (custom) / numbering (list) / header
 /// repeat (table) — then sort, group by and totals for every mode.
 class LayoutRowOptions extends StatelessWidget {
-  const LayoutRowOptions({super.key, required this.flow});
+  const LayoutRowOptions({super.key, required this.flow, this.rows = true, this.sortGroup = false});
   final LayoutFlowController flow;
+
+  /// Which sections: the rows' look (design step) and / or sort, group and totals (layout step).
+  final bool rows, sortGroup;
 
   @override
   Widget build(BuildContext context) {
@@ -804,19 +627,21 @@ class LayoutRowOptions extends StatelessWidget {
         );
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      LayoutSection(title: t('شكل الصفوف', 'Rows'), children: [
+      if (rows && d.mode != 'page') LayoutSection(title: t('شكل الصفوف', 'Rows'), children: [
         if (d.mode == 'custom') ...[
           StudioPropField(
             label: t('البطاقات في السطر', 'Cards per line'),
             child: StudioSegmented<int>(
-              segments: const [StudioSegment(value: 1, label: '1'), StudioSegment(value: 2, label: '2'), StudioSegment(value: 3, label: '3')],
+              segments: const [StudioSegment(value: 1, label: '1'), StudioSegment(value: 2, label: '2'), StudioSegment(value: 3, label: '3'), StudioSegment(value: 4, label: '4')],
               value: row.perLine,
               onChanged: (n) => set(() => layoutSetPerLine(d, n)),
             ),
           ),
           const SizedBox(height: AppSpace.xs),
           Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [
-            SizedBox(width: kLayoutStepperWidth, child: StudioStepper(label: t('ارتفاع البطاقة (مم)', 'Card height (mm)'), value: row.height, min: 4, max: 120, step: .5, decimals: 1, onChanged: (v) => set(() => row.height = v))),
+            // a grid that fills the page sizes its cards itself
+            if (!row.fillPage)
+              SizedBox(width: kLayoutStepperWidth, child: StudioStepper(label: t('ارتفاع البطاقة (مم)', 'Card height (mm)'), value: row.height, min: 4, max: 120, step: .5, decimals: 1, onChanged: (v) => set(() => row.height = v))),
             if (row.perLine > 1)
               SizedBox(width: kLayoutStepperWidth, child: StudioStepper(label: t('المسافة بين البطاقات', 'Gap (mm)'), value: row.gap, min: 0, max: 20, step: .5, decimals: 1, onChanged: (v) => set(() => row.gap = v))),
           ]),
@@ -838,7 +663,7 @@ class LayoutRowOptions extends StatelessWidget {
           StudioTextProp(label: t('الفاصل بين الحقول', 'Between the fields'), value: d.list.separator, onChanged: (v) => set(() => d.list.separator = v)),
         ],
       ]),
-      LayoutSection(title: t('الترتيب والتجميع', 'Sort and group'), children: [
+      if (sortGroup) LayoutSection(title: t('الترتيب والتجميع', 'Sort and group'), children: [
         fieldDrop(d.sort.isEmpty ? null : d.sort.first.field, t('رتّب حسب', 'Sort by'), (v) => set(() {
               d.sort.clear();
               if (v != null) d.sort.add(LayoutSort(field: v));
@@ -852,22 +677,29 @@ class LayoutRowOptions extends StatelessWidget {
           ),
         ],
         const SizedBox(height: AppSpace.sm),
-        fieldDrop(d.group?.field, t('جمّع حسب', 'Group by'), (v) => set(() => d.group = v == null ? null : LayoutGroup(field: v, header: d.group?.header)), none: true),
-        if (d.group != null)
+        fieldDrop(d.group?.field, t('جمّع حسب', 'Group by'), (v) => set(() => d.group = v == null ? null : LayoutGroup(field: v, header: d.group?.header, pageBreak: d.group?.pageBreak ?? false, extra: d.group?.extra)), none: true),
+        if (d.group != null) ...[
           AppSwitchTile(
             title: t('عنوان لكل مجموعة', 'A heading for each group'),
             value: d.group!.header != null,
             onChanged: (v) => set(() => d.group!.header = v ? layoutGroupHeader(d, f.lang) : null),
           ),
+          AppSwitchTile(
+            key: const ValueKey('layout-group-page-break'),
+            title: t('صفحة جديدة لكل مجموعة', 'A new page for each group'),
+            value: d.group!.pageBreak,
+            onChanged: (v) => set(() => d.group!.pageBreak = v),
+          ),
+        ],
       ]),
-      LayoutSection(
+      if (sortGroup) LayoutSection(
         title: t('المجاميع', 'Totals'),
         trailing: TextButton.icon(
           key: const ValueKey('layout-add-total'),
           onPressed: opts.isEmpty
               ? null
               : () => set(() {
-                    final num = f.fields.where((x) => x.numeric).firstOrNull ?? f.fields.first;
+                    final num = f.allFields.where((x) => x.numeric).firstOrNull ?? f.allFields.first;
                     d.totals.add(LayoutTotal(field: num.key, fn: num.numeric ? 'sum' : 'count', label: t('الإجمالي', 'Total')));
                   }),
           icon: const Icon(Icons.add_rounded, size: 18),
@@ -908,17 +740,13 @@ class LayoutRowOptions extends StatelessWidget {
       };
 }
 
-/// Changes the cards per line: the card's elements stretch / shrink with the card's new width.
-void layoutSetPerLine(LayoutDesign d, int n) {
-  final row = d.row;
-  final w = d.page.contentWidth;
-  final before = row.cardWidth(w);
-  row.perLine = n.clamp(1, 3);
-  final k = row.cardWidth(w) / before;
-  for (final e in row.elements) {
-    e.x = mm(e.x * k);
-    e.w = mm(e.w * k);
-  }
+/// Sort, group (with "a new page for each group") and totals: the layout step's part of [LayoutRowOptions].
+class LayoutSortGroupTotals extends StatelessWidget {
+  const LayoutSortGroupTotals({super.key, required this.flow});
+  final LayoutFlowController flow;
+
+  @override
+  Widget build(BuildContext context) => LayoutRowOptions(flow: flow, rows: false, sortGroup: true);
 }
 
 /// The group heading band: `{{group}}` in bold at the start side.
@@ -969,52 +797,26 @@ List<LayoutAddOption> layoutBandAddOptions(LayoutFlowController f) {
     LayoutAddOption(t('نص', 'Text'), Icons.text_fields_rounded, (id) => text(id, t('نص', 'Text'), t('نص', 'Text'))),
     LayoutAddOption(t('خط', 'Line'), Icons.horizontal_rule_rounded,
         (id) => LayoutElement(id: id, kind: 'line', y: 1, w: 120, h: 1, name: t('خط', 'Line'), style: LayoutStyle(border: LayoutBorder(width: .4, color: '#D0D5DD')))),
+    layoutEllipseAddOption(),
   ];
 }
 
-class LayoutBandsStep extends StatefulWidget {
-  const LayoutBandsStep({super.key, required this.flow, required this.width});
+/// One fixed part (header / before the items / after the items / footer) on the canvas engine, with its switch,
+/// placement and height; the simple list form on phones.
+class LayoutBandPart extends StatelessWidget {
+  const LayoutBandPart({super.key, required this.flow, required this.slot, required this.width});
   final LayoutFlowController flow;
+  final LayoutBandSlot slot;
   final double width;
 
   @override
-  State<LayoutBandsStep> createState() => _LayoutBandsStepState();
-}
-
-class _LayoutBandsStepState extends State<LayoutBandsStep> {
-  /// null = the page settings.
-  LayoutBandSlot? _slot = LayoutBandSlot.header;
-
-  @override
   Widget build(BuildContext context) {
-    final f = widget.flow;
+    final f = flow;
     final d = f.design;
-    final canvas = widget.width >= kLayoutCanvasMin;
-    final chips = Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-      for (final s in LayoutBandSlot.values)
-        ChoiceChip(
-          key: ValueKey('layout-band-${s.key}'),
-          label: Text(layoutSlotLabel(s)),
-          selected: _slot == s,
-          onSelected: (_) => setState(() => _slot = s),
-        ),
-      ChoiceChip(
-        key: const ValueKey('layout-band-page'),
-        avatar: const Icon(Icons.description_outlined, size: 18),
-        label: Text(t('الصفحة', 'Page')),
-        selected: _slot == null,
-        onSelected: (_) => setState(() => _slot = null),
-      ),
-    ]);
-    final slot = _slot;
-    if (slot == null) {
-      return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [chips, const SizedBox(height: AppSpace.md), LayoutPageOptions(flow: f)]);
-    }
+    final canvas = width >= kLayoutCanvasMin;
     final band = d.band(slot);
     final enabled = band != null && (band.height > 0 || band.elements.isNotEmpty);
     final head = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      chips,
-      const SizedBox(height: AppSpace.sm),
       Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
         SizedBox(
           width: kLayoutSwitchWidth,
@@ -1089,7 +891,7 @@ class _LayoutBandsStepState extends State<LayoutBandsStep> {
             vars: f.varsFor(f.lang),
             fieldOf: f.fieldOf,
             background: band.background,
-            wide: widget.width >= kLayoutDockMin,
+            wide: width >= kLayoutDockMin,
           ),
         ),
       ]),
@@ -1236,21 +1038,25 @@ class LayoutPageOptions extends StatelessWidget {
   }
 }
 
+
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-//  Step 5 — preview + export
+//  Preview + export
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 class LayoutPreviewStep extends StatelessWidget {
-  const LayoutPreviewStep({super.key, required this.flow, required this.width, required this.onSaveTemplate});
+  const LayoutPreviewStep({super.key, required this.flow, required this.width, required this.onSaveTemplate, this.onSaveDesign});
   final LayoutFlowController flow;
   final double width;
   final VoidCallback onSaveTemplate;
 
+  /// A design-only page: "Save the design" instead of Export.
+  final VoidCallback? onSaveDesign;
+
   @override
   Widget build(BuildContext context) {
-    final pages = _LayoutPages(flow: flow);
+    final pages = LayoutPreviewPages(flow: flow);
     final side = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      LayoutExportCard(flow: flow, onSaveTemplate: onSaveTemplate),
+      LayoutExportCard(flow: flow, onSaveTemplate: onSaveTemplate, onSaveDesign: onSaveDesign),
       LayoutIssuesCard(issues: flow.issues),
     ]);
     if (width >= kLayoutDockMin) {
@@ -1267,8 +1073,11 @@ class LayoutPreviewStep extends StatelessWidget {
   }
 }
 
-class _LayoutPages extends StatelessWidget {
-  const _LayoutPages({required this.flow});
+/// The server's pages of the current language: previous / next, refresh. While a new preview is made the old pages
+/// stay (with a thin progress line), and the page the person is on is kept; an error over an old preview is a banner,
+/// not a blank.
+class LayoutPreviewPages extends StatelessWidget {
+  const LayoutPreviewPages({super.key, required this.flow});
   final LayoutFlowController flow;
 
   @override
@@ -1281,20 +1090,20 @@ class _LayoutPages extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: child,
         );
-    if (f.previewLoading) {
+    if (f.previewLoading && p == null) {
       return frame(AppShimmer(
         child: Center(
           child: AspectRatio(aspectRatio: f.design.page.width / f.design.page.height, child: const Padding(padding: EdgeInsets.all(AppSpace.lg), child: AppSkeletonBox(width: double.infinity, height: double.infinity))),
         ),
       ));
     }
-    if (f.previewError != null || p == null) {
+    if (p == null) {
       return frame(Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpace.lg),
           child: AppEmpty(
             icon: f.previewMissing ? Icons.system_update_alt_rounded : Icons.image_not_supported_outlined,
-            title: f.previewMissing ? t('المعاينة تحتاج تحديث الخادم', 'The preview needs a server update') : t('تعذّرت المعاينة', 'Could not show the preview'),
+            title: f.previewMissing ? t('المعاينة تحتاج تحديث الخادم', 'The preview needs a server update') : (f.previewError == null ? t('المعاينة قيد التجهيز', 'Preparing the preview') : t('تعذّرت المعاينة', 'Could not show the preview')),
             message: f.previewError,
             actionLabel: t('إعادة المحاولة', 'Retry'),
             onAction: f.refreshPreview,
@@ -1308,22 +1117,30 @@ class _LayoutPages extends StatelessWidget {
     final i = f.previewPage.clamp(0, p.pages.length - 1);
     final page = p.pages[i];
     return frame(Column(children: [
+      if (f.previewLoading) LinearProgressIndicator(minHeight: 2, backgroundColor: c.divider, color: c.primary),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
         child: Row(children: [
-          IconButton(tooltip: t('الصفحة السابقة', 'Previous page'), onPressed: i > 0 ? () => _go(i - 1) : null, icon: const Icon(Icons.chevron_left_rounded)),
+          IconButton(tooltip: t('الصفحة السابقة', 'Previous page'), onPressed: i > 0 ? () => f.showPreviewPage(i - 1) : null, icon: const Icon(Icons.chevron_left_rounded)),
           Expanded(
             child: Text(
               '${t('صفحة', 'Page')} ${page.index} ${t('من', 'of')} ${page.total}',
               key: const ValueKey('layout-page-label'),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: appText(13, w: FontWeight.w600, c: c.textDark),
             ),
           ),
-          IconButton(tooltip: t('الصفحة التالية', 'Next page'), onPressed: i < p.pages.length - 1 ? () => _go(i + 1) : null, icon: const Icon(Icons.chevron_right_rounded)),
+          IconButton(tooltip: t('الصفحة التالية', 'Next page'), onPressed: i < p.pages.length - 1 ? () => f.showPreviewPage(i + 1) : null, icon: const Icon(Icons.chevron_right_rounded)),
           IconButton(tooltip: t('تحديث المعاينة', 'Refresh the preview'), onPressed: f.refreshPreview, icon: const Icon(Icons.refresh_rounded)),
         ]),
       ),
+      if (f.previewError != null)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.xs, 0, AppSpace.xs, AppSpace.xs),
+          child: AppBanner(icon: Icons.error_outline_rounded, text: f.previewError!, color: c.danger),
+        ),
       Expanded(
         child: InteractiveViewer(
           maxScale: 4,
@@ -1332,8 +1149,33 @@ class _LayoutPages extends StatelessWidget {
       ),
     ]));
   }
+}
 
-  void _go(int i) => flow.showPreviewPage(i);
+/// The server's notes for the current design, one per line (no card around them).
+class LayoutIssuesList extends StatelessWidget {
+  const LayoutIssuesList({super.key, required this.issues});
+  final List<LayoutIssue> issues;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final lang = AppConfig.lang;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (final i in issues)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(
+              i.severity == 'error' ? Icons.error_outline_rounded : (i.severity == 'warning' ? Icons.warning_amber_rounded : Icons.info_outline_rounded),
+              size: 18,
+              color: i.severity == 'error' ? c.danger : c.textMedium,
+            ),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(i.message(lang), style: appText(12.5, c: c.textDark))),
+          ]),
+        ),
+    ]);
+  }
 }
 
 class LayoutIssuesCard extends StatelessWidget {
@@ -1341,82 +1183,42 @@ class LayoutIssuesCard extends StatelessWidget {
   final List<LayoutIssue> issues;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final lang = AppConfig.lang;
-    return LayoutSection(
-      title: t('ملاحظات', 'Notes'),
-      subtitle: issues.isEmpty ? t('لا ملاحظات: الملف سيطابق المعاينة.', 'No notes: the file will match the preview.') : null,
-      children: [
-        for (final i in issues)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpace.xs),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(
-                i.severity == 'error' ? Icons.error_outline_rounded : (i.severity == 'warning' ? Icons.warning_amber_rounded : Icons.info_outline_rounded),
-                size: 18,
-                color: i.severity == 'error' ? c.danger : c.textMedium,
-              ),
-              const SizedBox(width: AppSpace.xs),
-              Expanded(child: Text(i.message(lang), style: appText(12.5, c: c.textDark))),
-            ]),
-          ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => LayoutSection(
+        title: t('ملاحظات', 'Notes'),
+        subtitle: issues.isEmpty ? t('لا ملاحظات: الملف سيطابق المعاينة.', 'No notes: the file will match the preview.') : null,
+        children: [LayoutIssuesList(issues: issues)],
+      );
 }
 
 class LayoutExportCard extends StatelessWidget {
-  const LayoutExportCard({super.key, required this.flow, required this.onSaveTemplate});
+  const LayoutExportCard({super.key, required this.flow, required this.onSaveTemplate, this.onSaveDesign});
   final LayoutFlowController flow;
   final VoidCallback onSaveTemplate;
+  final VoidCallback? onSaveDesign;
 
   @override
   Widget build(BuildContext context) {
     final f = flow;
-    final c = context.colors;
-    final run = f.run;
     final phase = f.phase;
-    final progress = run == null ? null : run.progress / 100;
-    final status = switch (phase) {
-      LayoutRunPhase.preparing => t('يجهّز التصدير…', 'Preparing the export…'),
-      LayoutRunPhase.running => '${t('يُنشئ الملف', 'Creating the file')} · ${run?.progress ?? 0}%${run?.rows == null ? '' : ' · ${run!.rows} ${t('عنصر', 'items')}'}',
-      LayoutRunPhase.downloading => t('يُنزّل الملف…', 'Downloading the file…'),
-      LayoutRunPhase.done => '${t('تم الحفظ', 'Saved')}: ${exportLtr(f.savedName ?? '')}',
-      LayoutRunPhase.failed => f.runError ?? '',
-      LayoutRunPhase.cancelled => t('أُلغي التصدير', 'The export was cancelled'),
-      LayoutRunPhase.idle => '${exportLtr(f.fileName)} · ${f.export.rows.length} ${t('عنصر', 'items')}',
-    };
-    return LayoutSection(title: t('التصدير', 'Export'), children: [
-      Text(status, key: const ValueKey('layout-run-status'), style: appText(13, w: FontWeight.w500, c: phase == LayoutRunPhase.failed ? c.danger : c.textDark)),
-      if (f.busy) ...[
-        const SizedBox(height: AppSpace.sm),
-        ClipRRect(
-          borderRadius: AppRadius.chipAll,
-          child: LinearProgressIndicator(value: phase == LayoutRunPhase.running ? progress : null, minHeight: 6, backgroundColor: c.divider, color: c.primary),
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (onSaveDesign == null) ...[
+        if (f.isXlsx) const Padding(padding: EdgeInsets.only(bottom: AppSpace.md), child: LayoutExcelNote()),
+        LayoutRunPanel(flow: f),
+        if (!f.busy)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: AppPrimaryButton(
+              key: const ValueKey('layout-run-start'),
+              label: phase == LayoutRunPhase.done ? t('تصدير مرة أخرى', 'Export again') : t('تصدير', 'Export'),
+              icon: Icons.file_download_outlined,
+              onPressed: () => f.startRun(),
+            ),
+          ),
+      ] else
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: AppPrimaryButton(key: const ValueKey('layout-save-design'), label: t('حفظ التصميم', 'Save the design'), icon: Icons.check_rounded, onPressed: onSaveDesign),
         ),
-        const SizedBox(height: AppSpace.sm),
-        OutlinedButton.icon(
-          key: const ValueKey('layout-run-cancel'),
-          onPressed: f.cancelRun,
-          icon: const Icon(Icons.close_rounded),
-          label: Text(t('إلغاء', 'Cancel')),
-          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
-        ),
-      ] else ...[
-        const SizedBox(height: AppSpace.sm),
-        AppPrimaryButton(
-          key: const ValueKey('layout-run-start'),
-          label: phase == LayoutRunPhase.done ? t('تصدير مرة أخرى', 'Export again') : t('تصدير', 'Export'),
-          icon: Icons.file_download_outlined,
-          onPressed: () => f.startRun(),
-        ),
-        if (phase == LayoutRunPhase.done) ...[
-          const SizedBox(height: AppSpace.xs),
-          TextButton.icon(onPressed: f.downloadAgain, icon: const Icon(Icons.download_rounded), label: Text(t('تنزيل الملف مجددًا', 'Download the file again'))),
-        ],
-      ],
-      const SizedBox(height: AppSpace.xs),
       OutlinedButton.icon(
         key: const ValueKey('layout-save-template'),
         onPressed: onSaveTemplate,
@@ -1424,6 +1226,7 @@ class LayoutExportCard extends StatelessWidget {
         label: Text(t('حفظ كقالب', 'Save as a template')),
         style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
       ),
+      const SizedBox(height: AppSpace.md),
     ]);
   }
 }
