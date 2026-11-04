@@ -13,6 +13,10 @@ import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_member_form.dart';
+import 'org_access_page.dart' show OrgPersonAccess;
+import 'org_invitations.dart' show invitationsFeatureKey;
+import 'org_invitations_pages.dart' show OrgInvitationsPage, showOrgInviteSheet;
+import 'package:flutter_education_app/config/app_config.dart';
 import 'org_v3.dart';
 import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -117,6 +121,19 @@ class _MembersView extends StatelessWidget {
         onChanged: p.setStatusFilter,
       ),
       more: [
+        if (s.can(module, 'insert') && !AppConfig.disableList.contains(invitationsFeatureKey)) ...[
+          OrgMenuItem(
+            icon: Icons.mail_outline_rounded,
+            label: t('دعوة بالبريد أو الهاتف', 'Invite by e-mail or phone'),
+            onTap: () => showOrgInviteSheet(context, orgId: s.currentId ?? 0, orgName: s.name, initialRole: kind == 'students' ? 'student' : kind == 'teachers' ? 'teacher' : 'staff'),
+          ),
+          OrgMenuItem(
+            icon: Icons.mark_email_unread_outlined,
+            label: t('الدعوات المرسلة', 'Sent invitations'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgInvitationsPage(orgId: s.currentId ?? 0, orgName: s.name)))), // ROUTE: org.invitations
+          ),
+        ],
         if (s.can(module, 'insert')) ...[
           OrgMenuItem(
             icon: Icons.upload_file_rounded,
@@ -201,6 +218,9 @@ class _MemberTile extends StatelessWidget {
             PopupMenuButton<String>(
               onSelected: (v) async {
                 switch (v) {
+                  case 'access':
+                    await Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgPersonAccess(userId: asInt(u['id']))))); // ROUTE: org.person_access
                   case 'perm':
                     await _permissions(context, p, row);
                   case 'code':
@@ -229,6 +249,7 @@ class _MemberTile extends StatelessWidget {
                 if (s.can(module, 'update'))
                   PopupMenuItem(value: 'extend', child: Text(ended ? t('تمديد / إعادة تفعيل', 'Extend / reactivate') : t('تمديد العضوية', 'Extend membership'))),
                 if (s.can(module, 'update') && !ended) PopupMenuItem(value: 'suspend', child: Text(t('إيقاف العضوية', 'Suspend membership'))),
+                if (s.can('roles') && !pending) PopupMenuItem(value: 'access', child: Text(t('ما يستطيع فعله', 'Effective permissions'))),
                 if (role == 'admin_assistant' && s.isOrgAdmin) PopupMenuItem(value: 'perm', child: Text(t('الصلاحيات', 'Permissions'))),
                 if (role == 'student' && s.can(module, 'update')) PopupMenuItem(value: 'code', child: Text(t('الرقم الجامعي', 'Student number'))),
                 if (s.can(module, 'update')) PopupMenuItem(value: 'toggle', child: Text(u['is_active'] == false ? t('تفعيل الحساب', 'Enable account') : t('تعطيل الحساب', 'Disable account'))),

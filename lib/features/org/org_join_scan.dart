@@ -7,7 +7,7 @@
 //
 // Payloads understood: the bare code the Codes panel encodes (QrImageView(data: code), maybe grouped
 // "ABCD-2345-XY"), the shared invitation text ("… الكود: CODE" / "… the code: CODE") and a link carrying
-// ?code= / ?join_code= (also inside a #/ fragment). Codes are normalised like the server does (upper-case,
+// ?code= / ?join_code= (also inside a #/ fragment), or the share link https://nextbrain.site/j/<CODE>. Codes are normalised like the server does (upper-case,
 // letters and digits only).
 library;
 
@@ -23,6 +23,9 @@ import 'package:permission_handler/permission_handler.dart' show openAppSettings
 import '../admin/admin_common.dart' show t;
 
 bool get joinScannerAvailable => !kIsWeb;
+
+/// The share link of a join code: opens the Join page with the code filled in (also signed out).
+String joinLinkFor(String code) => 'https://nextbrain.site/j/${code.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '')}';
 
 final _scheme = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.\-]*://');
 final _sharedText = RegExp(r'[:：]\s*([A-Za-z0-9][A-Za-z0-9 \-]{2,48}?)\s*[.!]?\s*$');
@@ -40,6 +43,9 @@ String? parseJoinQr(String? raw) {
   if (_scheme.hasMatch(s)) {
     final uri = Uri.tryParse(s);
     if (uri == null) return null;
+    // a join link: https://nextbrain.site/j/<CODE>
+    final seg = uri.pathSegments;
+    if (seg.length == 2 && seg[0] == 'j') return _norm(seg[1]);
     String? pick(Map<String, String> q) => q['code'] ?? q['join_code'];
     var v = pick(uri.queryParameters);
     final frag = uri.fragment;
