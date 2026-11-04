@@ -9,6 +9,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_sessions_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_capture.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_screen.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_rows.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_start.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -138,6 +139,30 @@ void main() {
       expect(s.counts.pending, 2);
       expect(gradeConversionText(50, 20), 'Marks will be converted /50 → /20');
       expect(gradeCounterText(12, 9, 2), '12 sheets · 9 read · 2 waiting');
+    });
+
+    test('every issue code the server sends has a text, and the server text wins when present', () {
+      const codes = [
+        'mark_above_max', 'unreadable_mark', 'mark_blank', 'total_unreadable', 'paper_sum_error', 'scaled', 'student_unreadable',
+        'unknown_student', 'student_ambiguous', 'name_unconfirmed', 'student_twice', 'not_recorded',
+      ];
+      for (final lang in ['ar', 'en']) {
+        AppConfig.lang = lang;
+        for (final code in codes) {
+          expect(gradeIssueText(code), isNot(code), reason: '$code ($lang)');
+        }
+      }
+      final withTexts = _row(5, issues: ['name_unconfirmed'])
+        ..['issue_texts'] = [
+          {'code': 'name_unconfirmed', 'ar': 'نص الخادم', 'en': 'Server text'}
+        ];
+      final row = MarkRow.fromJson(withTexts);
+      AppConfig.lang = 'en';
+      expect(gradeRowIssueText(row, 'name_unconfirmed'), 'Server text');
+      AppConfig.lang = 'ar';
+      expect(gradeRowIssueText(row, 'name_unconfirmed'), 'نص الخادم');
+      expect(gradeRowIssueText(MarkRow.fromJson(_row(6)), 'scaled'), gradeIssueText('scaled'), reason: 'an older server: the built-in text');
+      AppConfig.lang = 'en';
     });
 
     test('a clean row has a student, readable marks and only informational issues', () {

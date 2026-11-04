@@ -145,6 +145,7 @@ class MarkRow {
     this.recorded,
     this.diff,
     this.issues = const [],
+    this.issueTexts = const {},
     this.status = 'open',
   });
 
@@ -156,6 +157,9 @@ class MarkRow {
   final List<MarkPart> marks;
   final double? written, computed, used, scaled, recorded, diff;
   final List<String> issues;
+
+  /// The server's own wording per issue code (`issue_texts`: code -> (ar, en)); empty from an older server.
+  final Map<String, ({String ar, String en})> issueTexts;
 
   /// open | applied | kept | dismissed
   final String status;
@@ -189,6 +193,10 @@ class MarkRow {
       recorded: _num(j['recorded']),
       diff: _num(j['diff']),
       issues: [for (final i in (j['issues'] as List?) ?? const []) '$i'],
+      issueTexts: {
+        for (final i in (j['issue_texts'] as List?) ?? const [])
+          if (i is Map && i['code'] != null) '${i['code']}': (ar: '${i['ar'] ?? ''}', en: '${i['en'] ?? ''}'),
+      },
       status: '${j['status'] ?? 'open'}',
     );
   }
