@@ -170,7 +170,6 @@ class LayoutItemsStep extends StatefulWidget {
 }
 
 class _LayoutItemsStepState extends State<LayoutItemsStep> {
-  bool _options = false;
 
   @override
   Widget build(BuildContext context) {
@@ -204,57 +203,34 @@ class _LayoutItemsStepState extends State<LayoutItemsStep> {
     return Padding(
       padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: SizedBox(
-            width: 360,
-            child: StudioSegmented<bool>(
-              segments: [
-                StudioSegment(value: false, label: t('تصميم البطاقة', 'Card design')),
-                StudioSegment(value: true, label: t('خيارات الصفوف', 'Row options')),
-              ],
-              value: _options,
-              onChanged: (v) => setState(() => _options = v),
-            ),
+        Expanded(
+          child: LayoutCanvasEditor(
+            key: ValueKey('row-${f.lang}'),
+            elements: row.elements,
+            width: cw,
+            height: d.mode == 'page' ? mm(d.page.contentHeight) : row.height,
+            rtl: d.page.rtl,
+            pageFont: d.page.font,
+            pageFontSize: d.page.fontSize,
+            lang: f.lang,
+            fields: layoutFieldOptions(f),
+            addOptions: layoutRowAddOptions(f),
+            newId: () => d.newId('r'),
+            onChanged: f.changed,
+            upload: (b, n) => layoutUpload(f, b, n),
+            vars: f.varsFor(f.lang),
+            fieldOf: f.fieldOf,
+            background: row.background,
+            border: row.border,
+            radius: row.radius,
+            wide: widget.width >= kLayoutDockMin,
           ),
         ),
         const SizedBox(height: AppSpace.sm),
-        Expanded(
-          // both stay mounted: switching to the row options and back must not drop the canvas's undo history
-          child: IndexedStack(index: _options ? 1 : 0, children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(
-                child: LayoutCanvasEditor(
-                  key: ValueKey('row-${f.lang}'),
-                  elements: row.elements,
-                  width: cw,
-                  height: d.mode == 'page' ? mm(d.page.contentHeight) : row.height,
-                  rtl: d.page.rtl,
-                  pageFont: d.page.font,
-                  pageFontSize: d.page.fontSize,
-                  lang: f.lang,
-                  fields: layoutFieldOptions(f),
-                  addOptions: layoutRowAddOptions(f),
-                  newId: () => d.newId('r'),
-                  onChanged: f.changed,
-                  upload: (b, n) => layoutUpload(f, b, n),
-                  vars: f.varsFor(f.lang),
-                  fieldOf: f.fieldOf,
-                  background: row.background,
-                  border: row.border,
-                  radius: row.radius,
-                  wide: widget.width >= kLayoutDockMin,
-                ),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              Container(
-                padding: const EdgeInsets.all(AppSpace.sm),
-                decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
-                child: LayoutRowPreview(flow: f, maxHeight: 150),
-              ),
-            ]),
-            ListView(children: [LayoutRowOptions(flow: f)]),
-          ]),
+        Container(
+          padding: const EdgeInsets.all(AppSpace.sm),
+          decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
+          child: LayoutRowPreview(flow: f, maxHeight: 150),
         ),
       ]),
     );

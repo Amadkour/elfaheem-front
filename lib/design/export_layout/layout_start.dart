@@ -171,6 +171,8 @@ class LayoutStartStep extends StatelessWidget {
     final gallery = flow.gallery;
     final selected = flow.selectedGalleryId;
     return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
+      // the export in progress is the first thing on the screen: it must never hide below the gallery
+      if (flow.phase != LayoutRunPhase.idle) LayoutRunPanel(key: const ValueKey('layout-start-run'), flow: flow),
       LayoutSection(title: t('صيغة الملف', 'File format'), children: [
         LayoutCardGrid(min: 150, children: [
           for (final f in formats)
@@ -217,7 +219,6 @@ class LayoutStartStep extends StatelessWidget {
           ],
         ],
       ),
-      if (flow.phase != LayoutRunPhase.idle) LayoutRunPanel(key: const ValueKey('layout-start-run'), flow: flow),
     ]);
   }
 }

@@ -223,6 +223,9 @@ class _LayoutDesignStepState extends State<LayoutDesignStep> {
   final _built = <String, Widget>{};
   int _epoch = -1;
 
+  /// The rows' look (zebra, separator, gap …) on a canvas page: its own chip, so the canvas keeps the whole height.
+  bool _rowOptionsChip(LayoutFlowController f) => (f.design.mode == 'custom') && widget.width >= kLayoutCanvasMin;
+
   String _partLabel(int p, LayoutFlowController f) => switch (p) {
         0 => switch (f.design.mode) {
               'list' => t('الحقول', 'Fields'),
@@ -231,6 +234,7 @@ class _LayoutDesignStepState extends State<LayoutDesignStep> {
               _ => t('بطاقة العنصر', 'Item card'),
             },
         5 => t('الصفحة', 'Page'),
+        6 => t('خيارات الصفوف', 'Row options'),
         _ => layoutSlotLabel(LayoutBandSlot.values[p - 1]),
       };
 
@@ -238,6 +242,7 @@ class _LayoutDesignStepState extends State<LayoutDesignStep> {
     final part = int.parse(key.split('|').last);
     if (part == 0) return LayoutItemsStep(flow: f, width: widget.width);
     if (part == 5) return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [LayoutPageOptions(flow: f)]);
+    if (part == 6) return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [LayoutRowOptions(flow: f)]);
     return LayoutBandPart(flow: f, slot: LayoutBandSlot.values[part - 1], width: widget.width);
   }
 
@@ -249,19 +254,31 @@ class _LayoutDesignStepState extends State<LayoutDesignStep> {
       _built.clear();
       _epoch = f.designEpoch;
     }
+    if (_part == 6 && !_rowOptionsChip(f)) _part = 0;
     final cur = '${f.lang}|$_part';
     _opened.add(cur);
+    final parts = [0, if (_rowOptionsChip(f)) 6, 1, 2, 3, 4, 5];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
-        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          for (var p = 0; p <= 5; p++)
-            ChoiceChip(
-              key: ValueKey(p == 0 ? 'layout-part-items' : (p == 5 ? 'layout-band-page' : 'layout-band-${LayoutBandSlot.values[p - 1].key}')),
-              avatar: p == 5 ? const Icon(Icons.description_outlined, size: 18) : null,
-              label: Text(_partLabel(p, f)),
-              selected: _part == p,
-              onSelected: (_) => setState(() => _part = p),
+      // ONE line, scrolling sideways: the canvas below keeps the height on small windows
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 0),
+        child: Row(children: [
+          for (final p in parts)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+              child: ChoiceChip(
+                key: ValueKey(switch (p) {
+                  0 => 'layout-part-items',
+                  5 => 'layout-band-page',
+                  6 => 'layout-part-rows',
+                  _ => 'layout-band-${LayoutBandSlot.values[p - 1].key}',
+                }),
+                avatar: p == 5 ? const Icon(Icons.description_outlined, size: 18) : null,
+                label: Text(_partLabel(p, f)),
+                selected: _part == p,
+                onSelected: (_) => setState(() => _part = p),
+              ),
             ),
           LayoutComputedEntry(flow: f, onOpen: widget.onComputed, compact: true),
         ]),

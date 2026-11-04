@@ -84,6 +84,8 @@ void main() {
       () => ExportLayoutPage(export: layoutTestExport(), liveStream: kNoStream, saveFile: (_, _, _) async {}, initialStep: 1),
       frames: 8,
       act: (tester) async {
+        await tester.ensureVisible(find.byKey(const ValueKey('layout-kind-list')));
+        await tester.pump();
         await tester.tap(find.byKey(const ValueKey('layout-kind-list')));
         await tester.pump();
         await tester.tap(find.byKey(const ValueKey('layout-next')));
@@ -105,6 +107,8 @@ void main() {
       () => ExportLayoutPage(export: layoutTestExport(), liveStream: kNoStream, saveFile: (_, _, _) async {}, initialStep: 1),
       frames: 8,
       act: (tester) async {
+        await tester.ensureVisible(find.byKey(const ValueKey('layout-kind-grid')));
+        await tester.pump();
         await tester.tap(find.byKey(const ValueKey('layout-kind-grid')));
         await tester.pump(const Duration(milliseconds: 200));
       },
