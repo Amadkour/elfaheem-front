@@ -31,7 +31,6 @@ import '../../../teacher/sessions/components/guest_link_sheet.dart';
 import '../../../student/courses/details/course_detail_provider.dart';
 import '../../../student/models.dart';
 import '../../../teacher/analysis/attendance/teacher_attendance_screen.dart';
-import '../../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../../../teacher/home/teacher_models.dart';
 import '../../../teacher/sessions/sessions_provider.dart';
 import 'components/add_material_sheet.dart';

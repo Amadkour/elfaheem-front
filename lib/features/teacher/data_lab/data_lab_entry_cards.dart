@@ -14,7 +14,6 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../student/analysis/student_analytics_profile_screen.dart';
 import 'data_lab_api.dart';
 import 'data_lab_models.dart';
-import 'data_lab_screen.dart';
 import 'data_lab_widgets.dart';
 
 class DataLabEntryCard extends StatefulWidget {
