@@ -40,6 +40,7 @@ import 'parent_children_page.dart';
 import 'parent_link_providers.dart';
 import 'parent_link_screen.dart';
 import 'parent_overview.dart';
+import 'parent_org_view.dart' show ParentOrgChildrenCard;
 import 'parent_overview_page.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
@@ -142,11 +143,22 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         _lazy(
           'today',
           BasePage(
-            child: ParentOverviewPage(
-              onOpenAlerts: (childId) => _go('alerts', childId: childId),
-              onOpenLink: () => _go('link'),
-              onOpenChildren: () => _go('children'),
-            ),
+            // SWITCHER: f1 — the context switcher for the parent home goes here (above the overview's header)
+            child: Column(children: [
+              Expanded(
+                child: ParentOverviewPage(
+                  onOpenAlerts: (childId) => _go('alerts', childId: childId),
+                  onOpenLink: () => _go('link'),
+                  onOpenChildren: () => _go('children'),
+                ),
+              ),
+              // C2: my children's organizations — a slim strip under the overview, nothing at all when no child is in
+              // one (kill switch parent.org_view, one call: GET /org/parent/children). Scrolls on its own when it grows.
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 240),
+                child: const SingleChildScrollView(child: ParentOrgChildrenCard()),
+              ),
+            ]),
           ),
         ),
         attentionKeys: const [AttentionTabs.home], // badges: GET /me/attention, drawn at the leaf
