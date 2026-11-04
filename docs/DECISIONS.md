@@ -2723,7 +2723,7 @@ through the context switcher (D-286).
 
 ## D-283 — Organization invitations by e-mail or phone, and join links · 2026-11-04 · accepted
 
-Table `org_invitations` (migration 0045, RLS like 0003, reversible). Only the sha256 of the link token is stored, so a
+Table `org_invitations` (migration 0047, RLS like 0003, reversible). Only the sha256 of the link token is stored, so a
 resend issues a new link and the old one stops working. Inviting needs the insert right of the invited role (students /
 teachers / staff). The invitation page `https://nextbrain.site/i/<token>` opens signed out; accepting or declining
 needs a signed-in account whose VERIFIED e-mail / phone equals the contact. There is no SMS provider: a phone invitation
