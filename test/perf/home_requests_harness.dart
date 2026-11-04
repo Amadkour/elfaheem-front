@@ -37,20 +37,17 @@ typedef HomeBudget = ({int open, int duplicates, int depth, int refresh, int ref
 // notifications bell on every width (the shell top bar is off), and its unread count is the same ONE
 // GET /notifications every other role shell makes (no server field carries it); `/org/mine` gained `?members=1`
 // (same call). The membership overview is NOT loaded on open — only when the header's switcher is used.
-// 2026-11-04, RAG job: +1 open for super admin, org admin and org member — the Info button's help catalogue
-// (GET /help/pages, once per session, then cached by GET /help/version); super admin depth 1 → 2 because it waits for
-// the user to be known. The other roles' budgets were not affected.
 const homeBudgets = <String, HomeBudget>{
   'student': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'teacher': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
-  'super-admin': (open: 8, duplicates: 0, depth: 2, refresh: 4, refreshDepth: 1),
+  'super-admin': (open: 7, duplicates: 0, depth: 1, refresh: 4, refreshDepth: 1),
   'parent': (open: 3, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
   // +1 = the lazy Insights section (D-103): GET …/insights, started in parallel with the dashboard (no waterfall)
-  'org-admin': (open: 7, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
+  'org-admin': (open: 6, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
   // 2026-10-31: open 3 → 4 — GET /me/home carries the mode's side (scope / org_id, the server's default is the
   // personal account). On a first launch the mode is only known from the overview's smart default, so the home asked
   // in parallel is the personal side's: its course block is dropped and the organization's home is asked once more.
-  'org-member': (open: 5, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
+  'org-member': (open: 4, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
 };
 
 class HomeMetrics {

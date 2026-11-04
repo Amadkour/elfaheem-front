@@ -119,6 +119,47 @@ void main() {
     expect(remote.pageCalls, 3);
   });
 
+  test('no request until a tap: the bundled index and the cache are read locally', () async {
+    final s = HelpService(remote: remote, clock: () => now, indexLoader: () async => '{"version":1,"pages":[["home.student","student"],["org.members","org_admin"]]}');
+    await s.loadLocal(userKey: '7');
+    expect(s.has('home.student'), isTrue); // from the bundled index
+    expect(s.has('org.members'), isTrue);
+    expect(s.has('nope'), isFalse);
+    expect(s.entry('home.student'), isNull); // no content yet: the tour waits
+    expect(remote.pageCalls + remote.versionCalls, 0);
+    await s.ensure(userKey: '7'); // the tap
+    expect(remote.pageCalls, 1);
+    expect(s.entry('home.student'), isNotNull);
+    expect(s.has('org.members'), isFalse); // the cached catalogue overrides the index
+    expect(s.has('home.student'), isTrue);
+  });
+
+  test('a cached catalogue from an earlier session is used without any request', () async {
+    await make().ensure(userKey: '7');
+    remote.pageCalls = remote.versionCalls = 0;
+    final s2 = HelpService(remote: remote, clock: () => now, indexLoader: () async => '{"pages":[["other","student"]]}');
+    await s2.loadLocal(userKey: '7');
+    expect(s2.has('home.student'), isTrue);
+    expect(s2.has('other'), isFalse);
+    expect(s2.entry('home.student'), isNotNull);
+    expect(remote.pageCalls + remote.versionCalls, 0);
+    await s2.ensure(userKey: '7'); // first tap of the session: version check, 304 keeps
+    expect(remote.versionCalls, 1);
+    expect(remote.pageCalls, 0);
+  });
+
+  test('a missing or damaged index shows nothing and never throws', () async {
+    final s = HelpService(remote: remote, indexLoader: () async => throw Exception('no asset'));
+    await s.loadLocal(userKey: '7');
+    expect(s.has('home.student'), isFalse);
+  });
+
+  test('the real bundled index loads', () async {
+    final s = HelpService(remote: remote);
+    await s.loadIndex();
+    expect(s.has('home.student'), isTrue);
+  });
+
   test('the tour is remembered per person per page', () async {
     final s = make();
     expect(await s.tourSeen('7', 'home.student'), isFalse);

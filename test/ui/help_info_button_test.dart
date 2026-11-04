@@ -16,10 +16,18 @@ import 'layout_harness.dart';
 
 class _Remote implements HelpRemote {
   final Map<String, dynamic> entry = jsonDecode(File('test/fixtures/help_entry_home_student.json').readAsStringSync());
+  int calls = 0;
   @override
-  Future<int?> version({String? etag}) async => null;
+  Future<int?> version({String? etag}) async {
+    calls++;
+    return null;
+  }
+
   @override
-  Future<Map<String, dynamic>> pages({int? orgId}) async => {'version': 1, 'role': 'student', 'pages': [entry]};
+  Future<Map<String, dynamic>> pages({int? orgId}) async {
+    calls++;
+    return {'version': 1, 'role': 'student', 'pages': [entry]};
+  }
 }
 
 HelpEntry _entry() => HelpEntry.fromJson(jsonDecode(File('test/fixtures/help_entry_home_student.json').readAsStringSync()));
@@ -27,12 +35,14 @@ HelpEntry _entry() => HelpEntry.fromJson(jsonDecode(File('test/fixtures/help_ent
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final saved = helpUserKeyOf;
+  late _Remote remote;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     AppConfig.lang = 'en';
     helpUserKeyOf = (_) => '7';
-    HelpService.debugReplace(HelpService(remote: _Remote()));
+    remote = _Remote();
+    HelpService.debugReplace(HelpService(remote: remote));
   });
   tearDown(() {
     helpUserKeyOf = saved;
@@ -40,8 +50,9 @@ void main() {
   });
 
   Future<void> pumpButton(WidgetTester tester, String id) async {
+    await tester.runAsync(() => HelpService.instance.loadIndex()); // the bundled asset is read in the real zone
     await tester.pumpWidget(layoutHost(Center(child: HelpInfoButton(pageId: id, autoTour: false))));
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 600)));
     await tester.pump(const Duration(milliseconds: 100));
   }
 
@@ -51,6 +62,13 @@ void main() {
     expect(find.bySemanticsLabel('About this page'), findsWidgets);
     final size = tester.getSize(find.byType(ChromeIconButton));
     expect(size.width >= 48 && size.height >= 48, isTrue);
+  });
+
+  testWidgets('shown from the bundled index with no request at all', (tester) async {
+    await pumpButton(tester, 'home.student');
+    expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+    expect(remote.calls, 0);
+    expect(HelpService.instance.entry('home.student'), isNull); // no content, so no tour either
   });
 
   testWidgets('hidden when there is no entry for the page', (tester) async {
@@ -82,6 +100,7 @@ void main() {
     expect(find.text('Ask about this page'), findsOneWidget);
     expect(find.text('Take the tour'), findsOneWidget);
     expect(find.text('Live or next session'), findsOneWidget);
+    expect(remote.calls, 1); // the tap fetched the catalogue
   });
 
   testWidgets('HelpEntryView has no layout error at any size / language / text scale', (tester) async {

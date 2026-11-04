@@ -8,7 +8,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'live_control_bar.dart';
 import 'live_palette.dart';
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show helpEntryForMenu, showHelpFor;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show helpAvailableForMenu, showHelpForPage;
 import 'package:flutter_education_app/features/shared/help/help_service.dart' show HelpService;
 import 'android_share.dart' show LiveMicGate;
 import 'ios_share.dart' show IosShareNative;
@@ -527,14 +527,13 @@ class ControlsWidgetState extends State<ControlsWidget> {
         : null;
 
     // The room has no header (D-059): the page's Info button lives in the "More" menu.
-    final helpEntry = helpEntryForMenu(context, 'live.room');
-    final help = helpEntry == null
+    final help = !helpAvailableForMenu(context, 'live.room')
         ? null
         : LiveControlAction(
             key: const ValueKey('live_room.help'),
             icon: Icons.info_outline_rounded,
             label: AppConfig.lang == 'ar' ? 'معلومات عن هذه الصفحة' : 'About this page',
-            onTap: () => unawaited(showHelpFor(context, helpEntry)),
+            onTap: () => unawaited(showHelpForPage(context, 'live.room')),
           );
 
     final end = LiveControlAction(

@@ -119,6 +119,8 @@ flutter:
   assets:
     - assets/images/
     - assets/translation.json
+    # (page_id, role) pairs that have help: the Info button shows from it with no request (tool/gen_help_index.dart)
+    - assets/help/help_index.json
     # the timezone database for the web (lib/core/tz_database_web.dart); a copy of package:timezone lib/data/latest.tzf
     - assets/tz/latest.tzf
     # UI fonts the person can choose (lib/core/display/app_fonts.dart): loaded by FontLoader when chosen

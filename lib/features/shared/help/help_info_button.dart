@@ -2,7 +2,10 @@
 // panel on wide screens): title, summary, the sections with what each button does, "Ask about this page" and, when
 // the entry has one, "Take the tour".
 //
-//   HelpInfoButton(pageId: 'home.student')      // hidden when the server has no entry for this page and role
+//   HelpInfoButton(pageId: 'home.student')      // hidden when the page has no help (bundled index / cached catalogue)
+//
+// Showing the button costs no request (HelpService.has reads the bundled index); the catalogue is fetched when the
+// button is TAPPED ([showHelpForPage]): the sheet opens at once from the cache, else with a skeleton.
 //
 // Headers take an optional `helpPageId` and draw this button (ScreenAppBar, OrgPageHeader, HomeHeader, the shell's
 // top bar); a page whose id has no entry shows nothing. Kill switch `help.info` (ParentComponent featureKey).
@@ -88,7 +91,7 @@ class _HelpInfoButtonState extends State<HelpInfoButton> {
       _tourChecked = false;
     }
     if (u != null && !AppConfig.disableList.contains(helpInfoFeatureKey)) {
-      unawaited(HelpService.instance.ensure(userKey: u, orgId: _orgOfContext()));
+      unawaited(HelpService.instance.loadLocal(userKey: u, orgId: _orgOfContext())); // local only: no request
     }
   }
 
@@ -102,7 +105,7 @@ class _HelpInfoButtonState extends State<HelpInfoButton> {
     if (mounted) setState(() {});
   }
 
-  HelpEntry? get _entry => _user == null ? null : HelpService.instance.entry(widget.pageId);
+  bool get _has => _user != null && HelpService.instance.has(widget.pageId);
 
   Future<void> _maybeAutoTour(HelpEntry e) async {
     if (_tourChecked || !widget.autoTour || !e.hasTour || _user == null) return;
@@ -120,18 +123,21 @@ class _HelpInfoButtonState extends State<HelpInfoButton> {
 
   @override
   Widget build(BuildContext context) {
-    final e = _entry;
-    if (e == null) return const SizedBox.shrink();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_maybeAutoTour(e));
-    });
+    if (!_has) return const SizedBox.shrink();
+    // The tour only starts from an entry already cached (no fetch on open); it waits for the first tap's fetch.
+    final cached = HelpService.instance.entry(widget.pageId);
+    if (cached != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_maybeAutoTour(cached));
+      });
+    }
     final label = AppConfig.lang == 'ar' ? 'معلومات عن هذه الصفحة' : 'About this page';
     return ParentComponent(
       featureKey: helpInfoFeatureKey,
       child: ChromeIconButton(
         icon: Icons.info_outline_rounded,
         label: label,
-        onTap: () => showHelpFor(context, e),
+        onTap: () => unawaited(showHelpForPage(context, widget.pageId)),
       ),
     );
   }
@@ -141,11 +147,21 @@ class _HelpInfoButtonState extends State<HelpInfoButton> {
 const helpPanelFrom = 900.0;
 
 /// Opens [entry] as a bottom sheet (phones) or a side panel (wide screens).
-Future<void> showHelpFor(BuildContext context, HelpEntry entry) {
+Future<void> showHelpFor(BuildContext context, HelpEntry entry) =>
+    _present(context, (ctx) => HelpEntryView(entry: entry, onClose: () => Navigator.pop(ctx), host: context));
+
+/// The Info button's tap: opens the help of [pageId] and fetches the catalogue now (this is the ONLY place that asks
+/// the server): from the cache at once when there is one, else a skeleton and then the content.
+Future<void> showHelpForPage(BuildContext context, String pageId) {
+  final user = helpUserKeyOf(context);
+  if (user == null) return Future.value();
+  final org = _orgOfContext();
+  return _present(context, (ctx) => HelpPageBody(pageId: pageId, userKey: user, orgId: org, host: context, onClose: () => Navigator.pop(ctx)));
+}
+
+Future<void> _present(BuildContext context, Widget Function(BuildContext ctx) body) {
   final wide = MediaQuery.sizeOf(context).width >= helpPanelFrom;
-  if (!wide) {
-    return showAppSheet<void>(context, (ctx) => HelpEntryView(entry: entry, onClose: () => Navigator.pop(ctx), host: context));
-  }
+  if (!wide) return showAppSheet<void>(context, body);
   final ar = AppConfig.lang == 'ar';
   return showGeneralDialog<void>(
     context: context,
@@ -163,9 +179,7 @@ Future<void> showHelpFor(BuildContext context, HelpEntry entry) {
           child: Material(
             color: ctx.colors.cardBg,
             child: SafeArea(
-              child: SingleChildScrollView(
-                child: HelpEntryView(entry: entry, onClose: () => Navigator.pop(ctx), host: context),
-              ),
+              child: SingleChildScrollView(child: body(ctx)),
             ),
           ),
         ),
@@ -173,6 +187,87 @@ Future<void> showHelpFor(BuildContext context, HelpEntry entry) {
     ),
     transitionBuilder: (ctx, a, _, child) => FadeTransition(opacity: a, child: child),
   );
+}
+
+/// The sheet of one page: shows the cached entry at once, else a skeleton while [HelpService.ensure] fetches the
+/// catalogue, else a friendly "not available" line with Retry (offline, or the page has no entry for this person).
+class HelpPageBody extends StatefulWidget {
+  const HelpPageBody({super.key, required this.pageId, required this.userKey, this.orgId, required this.onClose, this.host});
+
+  final String pageId, userKey;
+  final int? orgId;
+  final VoidCallback onClose;
+  final BuildContext? host;
+
+  @override
+  State<HelpPageBody> createState() => _HelpPageBodyState();
+}
+
+class _HelpPageBodyState extends State<HelpPageBody> {
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    HelpService.instance.addListener(_changed);
+    _load(false);
+  }
+
+  @override
+  void dispose() {
+    HelpService.instance.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  void _load(bool force) {
+    _loading = true;
+    unawaited(HelpService.instance
+        .ensure(userKey: widget.userKey, orgId: widget.orgId, force: force)
+        .whenComplete(() => mounted ? setState(() => _loading = false) : null));
+    if (mounted && context.mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final e = HelpService.instance.entry(widget.pageId);
+    if (e != null) return HelpEntryView(entry: e, onClose: widget.onClose, host: widget.host);
+    final ar = AppConfig.lang == 'ar';
+    final c = context.colors;
+    final title = ar ? 'معلومات عن هذه الصفحة' : 'About this page';
+    if (_loading) {
+      return AppSheetContent(title: title, children: [
+        Semantics(
+          label: ar ? 'جارٍ التحميل' : 'Loading',
+          child: Column(children: [
+            for (final w in const [1.0, 0.9, 0.6]) ...[
+              FractionallySizedBox(
+                widthFactor: w,
+                child: Container(
+                    height: 16, decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip))),
+              ),
+              AppSpace.gapSm,
+            ],
+          ]),
+        ),
+      ]);
+    }
+    return AppSheetContent(title: title, children: [
+      Text(
+        ar ? 'المساعدة غير متاحة الآن. تأكد من الاتصال بالإنترنت ثم حاول مرة أخرى.' : 'Help is not available right now. Check your connection and try again.',
+        style: appText(15, c: c.textMedium, h: 1.6),
+      ),
+      AppSpace.gapMd,
+      OutlinedButton(
+        style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+        onPressed: () => _load(true),
+        child: Text(ar ? 'إعادة المحاولة' : 'Retry'),
+      ),
+    ]);
+  }
 }
 
 /// The help content: pure over [entry] (the layout test pumps it directly).
@@ -265,12 +360,11 @@ class HelpEntryView extends StatelessWidget {
 void helpAskAboutPage(BuildContext context, HelpEntry entry) =>
     openAssistantForPage(context, pageId: entry.pageId, pageTitle: entry.title.of(AppConfig.lang));
 
-/// The help entry of [pageId] for a menu item where a header has no room for the Info button (the live room's
-/// "More" menu). Null for guests, when `help.info` is off, or while the catalogue is not loaded (it loads on the
-/// way; the caller rebuilds on [HelpService]).
-HelpEntry? helpEntryForMenu(BuildContext context, String pageId) {
+/// Whether a menu item for [pageId] should be offered (the live room's "More" menu, a course space's top actions):
+/// false for guests, when `help.info` is off, or when the page has no help. No request; open it with [showHelpForPage].
+bool helpAvailableForMenu(BuildContext context, String pageId) {
   final u = helpUserKeyOf(context);
-  if (u == null || AppConfig.disableList.contains(helpInfoFeatureKey)) return null;
-  unawaited(HelpService.instance.ensure(userKey: u, orgId: _orgOfContext()));
-  return HelpService.instance.entry(pageId);
+  if (u == null || AppConfig.disableList.contains(helpInfoFeatureKey)) return false;
+  unawaited(HelpService.instance.loadLocal(userKey: u, orgId: _orgOfContext()));
+  return HelpService.instance.has(pageId);
 }
