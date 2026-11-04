@@ -159,6 +159,7 @@
   "GET /api/v1/admin/recommendations/stats",
   "GET /api/v1/admin/required-documents",
   "GET /api/v1/admin/requirements",
+  "GET /api/v1/admin/search",
   "GET /api/v1/admin/settings",
   "GET /api/v1/admin/subscription-plans",
   "GET /api/v1/admin/subscriptions",
