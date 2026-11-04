@@ -401,14 +401,12 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     }
   }
 
-  /// A server template always becomes a NEW design on the server (both languages, backgrounds uploaded). The studio
-  /// keeps ITS design id and version: the template's copy is created, its [lang] page is read through the document
-  /// endpoint and adopted here (like a starter), and the copy is deleted again. Null when it failed (the error is shown).
+  /// A server template's [lang] page, adopted into THIS design (like a starter): the server hands the template over as
+  /// a document and stores no design, so the studio keeps its design id and version. Null when it failed (the error
+  /// is shown).
   Future<LayoutDesign?> _designFromTemplate(CertServerTemplate tp, String colorHex, String lang) async {
-    int? copy;
     try {
-      copy = await _api.createFromTemplate(tp.key, orgId: widget.orgId, themeColor: colorHex);
-      final r = await _api.load(copy);
+      final r = await _api.templateDocument(tp.key, orgId: widget.orgId, themeColor: colorHex);
       final own = r.document.designs[lang];
       if (own != null) return own;
       final other = r.document.designs.values.isEmpty ? null : r.document.designs.values.first;
@@ -416,9 +414,6 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     } catch (e) {
       if (mounted) certNotifyError(e);
       return null;
-    } finally {
-      // the images stay on the server (they are referenced by url); only the throw-away design goes
-      if (copy != null) unawaited(_api.delete(copy).catchError((Object _) {}));
     }
   }
 

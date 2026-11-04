@@ -186,17 +186,11 @@ class CertEngineApi {
     ];
   }
 
-  /// My own NEW design from template [key] (both languages, backgrounds uploaded); its id. [themeColor] is "#RRGGBB".
-  Future<int> createFromTemplate(String key, {int? orgId, String? name, String? themeColor}) async {
-    final r = _map(await api.post('$_base/templates/$key', body: {'org_id': orgId, 'name': ?name, 'theme_color': ?themeColor}));
-    final id = r['id'];
-    if (id is! num) throw const ApiException(statusCode: 0, message: 'create failed');
-    return id.toInt();
-  }
-
-  /// Removes a design of mine (the temporary copy a template pick leaves behind).
-  Future<void> delete(int id) async {
-    await api.delete('$_base/$id');
+  /// Template [key] as an engine document (both languages; its backgrounds are uploaded to my own folder, so saving
+  /// it into a design is accepted); no design is created. [themeColor] is "#RRGGBB".
+  Future<CertDocLoad> templateDocument(String key, {int? orgId, String? themeColor}) async {
+    final r = _map(await api.post('$_base/templates/$key/document', body: {'org_id': orgId, 'theme_color': ?themeColor}));
+    return CertDocLoad(document: LayoutDocument.fromJson(_map(r['document'])), version: 0, converted: true);
   }
 
   /// A new, empty design (the legacy create call); its id.

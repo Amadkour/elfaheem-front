@@ -25,9 +25,9 @@ Ported since (I1): rename, watermark (text / image), signature upload through th
 signature again" (ink / strength), Generate a background (per language), preview sample values for custom variables;
 each language already has its own page (orientation, background).
 Ported since (I4): the server template gallery (`GET /certificate-designs/templates`; the gallery shows "Ready-made
-designs" above the starters; a pick creates the template's copy with `theme_color`, reads its page for the current
-language through the document endpoint, adopts it into the OPEN design, which keeps its id and version, and deletes the
-copy), the draft wizard's theme colour (swatches from the app theme + a hex box) and dark flag in "Generate a background"
+designs" above the starters; a pick reads the template as a document, `POST /certificate-designs/templates/{key}/
+document` with `theme_color`, which stores no design, and adopts its page for the current language into the OPEN
+design, which keeps its id and version), the draft wizard's theme colour (swatches from the app theme + a hex box) and dark flag in "Generate a background"
 (and the colour of a template pick), and "Clean signature again" for a signature saved earlier (its image is fetched and
 sent through the signature endpoint; the server keeps only the cleaned PNG, so it works on the cleaned image). Nothing is
 left that only the legacy designer does, except what the conversion cannot carry:  text underline, shadow blur, the photo's white ring, tiled watermarks.

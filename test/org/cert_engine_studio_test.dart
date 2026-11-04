@@ -93,11 +93,15 @@ void main() {
       },
       'GET /api/v1/exports/layout/starters': (_) => <Object>[],
       'GET /api/v1/certificate-designs/templates': (_) => templates,
-      'POST /api/v1/certificate-designs/templates/gold': (o) {
+      'POST /api/v1/certificate-designs/templates/gold/document': (o) {
         (calls['template'] ??= []).add(body(o));
+        return {'document': _doc(both: true, ar: [_el('t1', 'من القالب')], en: [_el('t2', 'From the template')]), 'version': 0, 'converted': true};
+      },
+      // a template pick must create (and delete) no design
+      'POST /api/v1/certificate-designs/templates/gold': (o) {
+        (calls['created'] ??= []).add(body(o));
         return {'id': 21};
       },
-      'GET /api/v1/certificate-designs/21/document': (_) => {'document': _doc(both: true, ar: [_el('t1', 'من القالب')], en: [_el('t2', 'From the template')]), 'version': 1, 'converted': true},
       'DELETE /api/v1/certificate-designs/21': (_) {
         (calls['delete'] ??= []).add({});
         return null;
@@ -383,7 +387,7 @@ void main() {
     AppConfig.disableList = [];
   });
 
-  testWidgets('the gallery lists the server templates apart from the starters; a pick creates from the template and lands in this design', (tester) async {
+  testWidgets('the gallery lists the server templates apart from the starters; a pick reads the template as a document and lands in this design', (tester) async {
     await open(tester);
     await tester.tap(find.byKey(const ValueKey('cert-menu')));
     await settle(tester, 300);
@@ -399,7 +403,8 @@ void main() {
     final b = calls['template']!.single;
     expect(b['theme_color'], matches(r'^#[0-9A-F]{6}$'), reason: 'the theme colour goes with the pick');
     expect(b['org_id'], isNull);
-    expect(calls['delete'], hasLength(1), reason: 'the throw-away copy is removed again');
+    expect(calls['created'], isNull, reason: 'no design is created for a pick');
+    expect(calls['delete'], isNull);
     await save(tester);
     // the studio keeps ITS design: saved on 7 over version 5, with the template page for the current language
     expect(puts.single['version'], 5);
@@ -480,7 +485,8 @@ void main() {
     expect(t.single.key, 'gold');
     expect(t.single.name('ar'), 'ذهبي');
     expect(t.single.preview('en'), isNotNull);
-    expect(await api.createFromTemplate('gold', orgId: 3, themeColor: '#112233'), 21);
+    final doc = await api.templateDocument('gold', orgId: 3, themeColor: '#112233');
+    expect(doc.document.designs.keys, containsAll(['ar', 'en']));
     expect(calls['template']!.single, {'org_id': 3, 'theme_color': '#112233'});
   });
 
