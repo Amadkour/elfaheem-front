@@ -369,7 +369,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
       ]),
       const SizedBox(height: 8),
       Text(
-        _tpl == PaperTemplate.auto ? '${paperTemplateHint(_tpl)} → ${paperTemplateLabel(resolved)}' : paperTemplateHint(_tpl),
+        _tpl == PaperTemplate.auto ? '${paperTemplateHint(_tpl)} ${t('← الآن:', '→ now:')} ${paperTemplateLabel(resolved)}' : paperTemplateHint(_tpl),
         style: appText(12.5, c: c.textMedium),
       ),
       if (_tpl == PaperTemplate.custom)
@@ -486,7 +486,7 @@ class PaperTemplateCard extends StatelessWidget {
               if (selected) const SizedBox(width: 4),
               Expanded(
                   child: Text(paperTemplateLabel(template),
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.textDark))),
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.textDark))),
             ]),
             if (subtitle != null) Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10.5, c: c.textLight)),
           ]),
