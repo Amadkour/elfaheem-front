@@ -29,3 +29,6 @@ by the conversion of a legacy design: text underline, shadow blur, the photo's w
 ## Integration notes
 - Colours: `#RRGGBB` / `#AARRGGBB` only (FB had `#RRGGBBAA` for shadows; fixed in the app, the contract example too).
 - `generate_draft` with a design id no longer saves the design: older apps must save after "regenerate background".
+- **Migration number at rebase:** `feat/grading-review` (wave 1) also adds `0043_grade_visibility.py` (revision "0043" ←
+  "0042"). When it is on `organizations`, rename ours to `0044_cert_design_document.py` with revision "0044" ←
+  "0043" and update the "0043" mentions (D-165, FLUTTER_API_CHANGES.md, this tracker); never two "0043" heads.
