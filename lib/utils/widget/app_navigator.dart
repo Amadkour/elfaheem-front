@@ -4,6 +4,7 @@
 // or a shared link. Everything goes through navigatorKey (main.dart) — and, while a role shell is on screen, into
 // its visible tab's navigator (D-081: the page keeps the tab bar; [_nav]). Org dashboards, sign-in and other role
 // homes still land on the root navigator (AppTabNavigator hands them up).
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
@@ -15,7 +16,6 @@ import '../../core/api_client.dart';
 import '../../core/app_mode.dart';
 import '../../core/offline/downloads_availability.dart' show linkAvailableHere;
 import '../../core/attention/attention_service.dart' show AttentionService, OrgTabRequest;
-import '../../features/org/org_my_exams.dart' show MyExamsScreen;
 import '../../features/org/org_reports/report_page.dart' show OrgReceivedReportsPage;
 import '../../features/shared/course_profile/course_profile_hub.dart' show CoursePageLoader;
 import '../../features/shared/inbox/inbox_page.dart' show inboxTabFromName, InboxTab;
@@ -28,17 +28,16 @@ import '../../main.dart';
 import '../top_route_observer.dart' show topRouteObserver;
 import 'view_as_state.dart';
 import '../../design/app_shell_nav.dart' show AppShellNav;
-import '../../features/org/governance/gov_wiring.dart' show govOpenAssignmentsLink, govOpenDelegationLink, govOpenItemLink, govOpenSessionLink;
+import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
 import '../../features/shared/points/points_api.dart' show kPointsFeatureKey, pointsModuleFor;
 import '../../features/shared/points/points_wallet_page.dart' show PointsWalletPage;
-import '../../features/shared/rag/rag_admin_links.dart' show openRagAdminModule;
+import '../../features/shared/rag/rag_admin_links.dart' deferred as rag_admin_links;
 import '../../features/shared/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
-import '../../features/shared/exam_engine/paper/exam_setup_wizard.dart' show openExamIdentifiersFromLink;
-import '../../features/shared/exam_engine/paper/exam_setup.dart' show examIdFromRef;
-import '../../features/admin/app_releases/app_release_detail.dart' show AppReleaseDetailPage;
+import '../../features/shared/exam_engine/paper/exam_setup_wizard.dart' deferred as exam_setup_wizard;
 import '../../features/admin/app_releases/app_releases_page.dart' show AppReleasesPage, kAppReleasesFeatureKey;
+import '../../core/routing/deferred_screens.dart';
 
 class AppNavigator {
   AppNavigator._();
@@ -56,6 +55,18 @@ class AppNavigator {
 
   /// The org dashboard is the root navigator's top (its own tab pages included).
   static bool get _onOrgDashboard => topRouteObserver.rootRoute?.settings.name == '/org_dashboard';
+
+  /// Runs [run] once the deferred part [id] is loaded (web: downloaded on the first deep link into it).
+  static Future<T> _deferred<T>(String id, Future<void> Function() load, Future<T> Function() run) async {
+    await loadDeferred(id, load);
+    return run();
+  }
+
+  /// `exam:<id>` → the engine exam id (a copy of exam_setup.dart's `examIdFromRef`, which sits in a deferred part).
+  static int? _examIdFromRef(Object? ref) {
+    final m = RegExp(r'^exam:(\d+)$').firstMatch('${ref ?? ''}');
+    return m == null ? null : int.tryParse(m.group(1)!);
+  }
 
   static Future<void> openCourse(int courseId, {int? ref}) async {
     await _nav?.push(MaterialPageRoute(
@@ -90,7 +101,7 @@ class AppNavigator {
     // Not logged in (or an admin is only LOOKING at a user's app): never navigate on that user's behalf.
     if (!ctx.read<MyAuthProvider>().isAuthenticated || ViewAsState.active) return;
     // The assistant's notices to platform admins (rag_learning · rag_alerts): their own pages, else the list.
-    if (await openRagAdminModule(nav, module, role: ctx.read<MyAuthProvider>().currentUser?.role)) return;
+    if (await _deferred('rag_admin_links', rag_admin_links.loadLibrary, () => rag_admin_links.openRagAdminModule(nav, module, role: ctx.read<MyAuthProvider>().currentUser?.role))) return;
     if (!ctx.mounted) return;
     // the Downloads page lives in the phone / desktop app only: on the web such a link stays where it is
     if (!linkAvailableHere(module)) return;
@@ -135,9 +146,9 @@ class AppNavigator {
           await nav.pushNamed('/notifications');
         } else if (targetId != null) {
           await nav.push(MaterialPageRoute(
-              settings: RouteSettings(name: '${AppReleasesPage.routeName}/$targetId'), builder: (_) => AppReleaseDetailPage(id: targetId)));
+              settings: RouteSettings(name: '${AppReleasesPage.routeName}/$targetId'), builder: (_) => deferredAppReleaseDetail(targetId)));
         } else {
-          await nav.push(MaterialPageRoute(settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => const AppReleasesPage()));
+          await nav.push(MaterialPageRoute(settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => deferredAppReleases()));
         }
         return;
       case 'notifications':
@@ -152,15 +163,15 @@ class AppNavigator {
       case 'identity_requests': // a teacher needs an exam identifier → the student's dialog (D-150)
         return openIdentityRequestsFromLink(root);
       case 'exam_identifiers': // a duplicate identifier → the exam's setup on its students step
-        return openExamIdentifiersFromLink(nav, targetId);
+        return _deferred('exam_setup_wizard', exam_setup_wizard.loadLibrary, () => exam_setup_wizard.openExamIdentifiersFromLink(nav, targetId));
       case 'calendar': // meeting invitation / answer → the calendar on that meeting
         await nav.pushNamed('/calendar', arguments: targetId);
         return;
       case 'org_exams': // "exam timetable published" → My exams (the organization is already open)
-        await nav.push(MaterialPageRoute(builder: (_) => const MyExamsScreen()));
+        await nav.push(MaterialPageRoute(builder: (_) => deferredMyExams()));
         return;
       case 'org_reports': // a report sent to me → Received reports
-        await nav.push(MaterialPageRoute(builder: (_) => const OrgReceivedReportsPage()));
+        await nav.push(MaterialPageRoute(builder: (_) => deferredOrgReceivedReports()));
         return;
       case 'org_timetable': // a draft timetable is ready / failed → the org dashboard's Timetable section on it
         if (orgId == null) {
@@ -176,16 +187,16 @@ class AppNavigator {
         return;
       // governance (D-057): an item · a council session · a delegation · a form I must answer
       case 'org_work':
-        if (targetId != null) await govOpenItemLink(nav, ctx, targetId, orgId: orgId);
+        if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenItemLink(nav, ctx, targetId, orgId: orgId));
         return;
       case 'org_council':
-        if (targetId != null) await govOpenSessionLink(nav, ctx, targetId, orgId: orgId);
+        if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenSessionLink(nav, ctx, targetId, orgId: orgId));
         return;
       case 'org_delegations':
-        await govOpenDelegationLink(nav, ctx, null, orgId: orgId);
+        await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenDelegationLink(nav, ctx, null, orgId: orgId));
         return;
       case 'org_assignments':
-        await govOpenAssignmentsLink(nav);
+        await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenAssignmentsLink(nav));
         return;
       case 'live_lobby': // someone waits at the door of a room I host → the meeting / session with its lobby sheet
         await openLiveLobby(LiveRoomRef.parse(kind, targetId));
@@ -294,7 +305,7 @@ class AppNavigator {
     final module = data['module']?.toString() ??
         (profile ? 'course_profile' : (timetable ? 'org_timetable' : pointsModuleFor(data['type']?.toString())));
     final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}') ?? examIdFromRef(data['exam_ref']);
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) {

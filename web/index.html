@@ -9,8 +9,12 @@
   };
 </script>
   <base href="$FLUTTER_BASE_HREF">
+  <!-- CanvasKit (the renderer) comes from gstatic: open the connection while the page is still being parsed -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <!-- after <base>: a relative src before it resolved against the page (e.g. /c/11 → /c/video_protection.js) -->
-  <script src="video_protection.js"></script>
+  <!-- defer: a blocking script in <head> holds the first paint (the splash below). It only patches createElement for the
+       <video> elements the course player makes much later, and runs before DOMContentLoaded, long before Dart starts. -->
+  <script src="video_protection.js" defer></script>
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -104,7 +108,8 @@
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
   
   
-  <script src="recorder_compositor.js"></script>
+  <!-- defer, like video_protection.js: Dart reaches window._elfaheemCompositor only when a teacher starts a recording -->
+  <script src="recorder_compositor.js" defer></script>
 
   
   
@@ -118,12 +123,6 @@
   
   
   
-  <script>
-    // Remove the splash as soon as Flutter has drawn its first frame.
-    window.addEventListener('flutter-first-frame', function () {
-      removeSplashFromWeb();
-    });
-  </script>
   <script>
     // Remove the splash as soon as Flutter has drawn its first frame.
     window.addEventListener('flutter-first-frame', function () {

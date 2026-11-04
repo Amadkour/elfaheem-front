@@ -275,6 +275,9 @@ class ShellTabs extends ChangeNotifier {
   /// The route the shell is drawn in (the dashboard's route).
   ModalRoute<dynamic>? hostRoute;
 
+  /// The key of the shell's first tab (its home): that tab adds nothing to the home's URL.
+  String? homeLabel;
+
   /// The kind of shell on screen and the height of its bottom bar (0 without one), for the floating assistant.
   double bottomBar = 0;
 
@@ -357,6 +360,34 @@ class AppShellNav {
   static void unregister(ShellTabs s) {
     _shells.remove(s);
     changes.value++;
+  }
+
+  /// The pages Back walks through, bottom first (the browser's history, lib/core/routing/web_history.dart): each page
+  /// of [rootRoutes] and, right above a page that draws a role shell, the pages of its visible tab above the tab's own
+  /// first page (nested shells too). Dialogs, sheets and menus are not pages.
+  static List<Route<dynamic>> pageStack(List<Route<dynamic>> rootRoutes) {
+    final out = <Route<dynamic>>[];
+    void walk(Iterable<Route<dynamic>> routes, int depth) {
+      for (final r in routes) {
+        if (r is! PageRoute) continue;
+        out.add(r);
+        final s = _shellIn(r);
+        final tab = s?.active;
+        if (tab != null && depth < 4) walk(tab.routes.skip(1), depth + 1);
+      }
+    }
+
+    walk(rootRoutes, 0);
+    return out;
+  }
+
+  /// The tab a role shell drawn in [route] shows, when it is not the shell's first (home) tab: its key
+  /// ('my_courses'), else null.
+  static String? tabOf(Route<dynamic> route) {
+    final s = _shellIn(route);
+    final label = s?.active?.label;
+    if (s == null || label == null || label == s.homeLabel) return null;
+    return label;
   }
 
   /// The shell drawn in [route], if any.

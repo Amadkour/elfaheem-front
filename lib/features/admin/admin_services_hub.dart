@@ -8,6 +8,7 @@
 // So an icon / label / page is changed in exactly one place.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
@@ -510,7 +511,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           featureKey: kAppReleasesFeatureKey,
           visible: isSuper,
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => const AppReleasesPage())),
+              settings: const RouteSettings(name: AppReleasesPage.routeName), builder: (_) => deferredAppReleases())),
         ),
         AdminService(
           labelKey: 'versions',

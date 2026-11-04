@@ -22,7 +22,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../config/app_config.dart';
 import 'app_fonts.dart';
+import 'lazy_fonts.dart';
 
 @immutable
 class DisplayPrefs {
@@ -195,16 +197,20 @@ class DisplaySettings extends ChangeNotifier {
 
   /// Reads the saved preferences and loads the chosen fonts (start-up; never throws).
   Future<void> load() async {
+    // the language is applied later (LangProvider): read the saved one now, to load ITS font before the first frame
+    var lang = AppConfig.lang;
     try {
       final sp = await SharedPreferences.getInstance();
       final raw = sp.getString(_key);
       if (raw != null && raw.isNotEmpty) _prefs = DisplayPrefs.fromJson(jsonDecode(raw) as Map<String, dynamic>);
       _updatedAt = DateTime.tryParse(sp.getString(_atKey) ?? '')?.toUtc();
+      lang = sp.getString('lang') ?? lang;
     } catch (e) {
       debugPrint('[DisplaySettings] load failed: $e');
     }
     AppFonts.setChoices(arabic: _prefs.arabicFont, latin: _prefs.latinFont);
-    await AppFonts.select(arabic: _prefs.arabicFont, latin: _prefs.latinFont);
+    await AppFonts.start(lang);
+    LazyFonts.prefetchLater();
     notifyListeners();
   }
 

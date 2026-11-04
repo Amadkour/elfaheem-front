@@ -20,10 +20,10 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
-import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../config/app_config.dart';
+import 'tz_database_io.dart' if (dart.library.js_interop) 'tz_database_web.dart';
 
 /// A selectable timezone. [region] orders the picker: Egypt, Saudi Arabia, UAE, other Arab countries, the world.
 class AppZone {
@@ -114,6 +114,7 @@ class AppTime {
   static String? _valid(String? zone) {
     if (zone == null || zone.isEmpty) return null;
     _ensureDb();
+    if (!_tzReady) return zone; // web, data still on its way: checked again in [_tzLoaded]
     try {
       tz.getLocation(zone);
       return zone;
@@ -122,19 +123,55 @@ class AppTime {
     }
   }
 
-  static bool _db = false;
+  static bool _db = false, _tzReady = false;
+  static Future<void>? _tzLoad;
+
+  /// Starts loading the timezone database (a no-op once started). Phone / desktop / tests have it at once; on the
+  /// web it is read from `assets/tz/latest.tzf` (see tz_database_web.dart) and every listener of [version] is told
+  /// when it lands, so a label drawn before that (device clock) is redrawn in the platform zone.
+  static Future<void> loadDatabase() {
+    _ensureDb();
+    return _loadTz();
+  }
+
+  static DateTime? _tzFailedAt;
+
+  static Future<void> _loadTz() => _tzLoad ??= tzInitAsync().then((_) => _tzLoaded(), onError: (Object _) {
+        _tzLoad = null; // retried by the next use of a zone, at most every 10 s ([_ensureDb])
+        _tzFailedAt = DateTime.now();
+      });
+
+  static void _tzLoaded() {
+    final wasReady = _tzReady;
+    _tzReady = true;
+    if (wasReady) return;
+    // zones set before the data arrived were accepted unchecked
+    if (_platformZone != null && _valid(_platformZone) == null) _platformZone = null;
+    if (_orgZone != null && _valid(_orgZone) == null) _orgZone = null;
+    version.value++;
+  }
+
   static void _ensureDb() {
-    if (_db) return;
+    if (_db) {
+      final failed = _tzFailedAt;
+      if (kTzDataIsAsync && !_tzReady && _tzLoad == null && (failed == null || DateTime.now().difference(failed).inSeconds >= 10)) {
+        _loadTz().ignore();
+      }
+      return;
+    }
+    _db = true;
     try {
-      tzdata.initializeTimeZones();
+      tzInitSync();
+      if (!kTzDataIsAsync) _tzReady = true;
       initializeDateFormatting(); // local symbol data loads synchronously; enables Arabic month names
     } catch (_) {}
     useLatinDigits();
-    _db = true;
+    if (kTzDataIsAsync) _loadTz().ignore();
   }
 
   /// Every DateFormat made from now on writes Western digits for the Arabic locales (M24). Idempotent.
   static void useLatinDigits() {
+    if (!_db) _ensureDb(); // start-up: also starts the timezone data load on the web
     for (final l in const ['ar', 'ar_EG', 'ar_SA', 'ar_AR', 'fa', 'ur']) {
       DateFormat.useNativeDigitsByDefaultFor(l, false);
     }

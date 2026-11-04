@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
     switch (out) {
       case BiometricOutcome.session:
         auth.loadCachedUser();
-        Navigator.of(context).pushNamed(auth.homeRoute);
+        Navigator.of(context).pushNamedAndRemoveUntil(auth.homeRoute, (_) => false); // no sign-in page under the home (D-170)
       case BiometricOutcome.mfa:
         await openMfaStep(Navigator.of(context), auth);
       default:
@@ -111,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // "Sign in with your fingerprint next time?" — once per account on this phone (D-082)
       await maybeOfferBiometric(context, authProvider, identifier: _identifier);
       if (mounted) {
-        Navigator.of(context).pushNamed(authProvider.homeRoute);
+        Navigator.of(context).pushNamedAndRemoveUntil(authProvider.homeRoute, (_) => false); // no sign-in page under the home (D-170)
       }
     } else if (authProvider.mfaStep.kind != MfaStepKind.none) {
       // two-step verification: the code (or, when the role requires it, the enrollment) comes first
