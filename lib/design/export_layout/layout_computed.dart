@@ -103,11 +103,13 @@ bool condMatches(LayoutCond c, Map<String, Object?> row) {
   }
   if (op == 'contains' || op == 'not_contains' || op == 'starts_with' || op == 'ends_with') {
     final hay = _norm(v), needle = _norm(want);
-    final hit = (op == 'contains' || op == 'not_contains')
-        ? hay.contains(needle)
-        : op == 'starts_with'
-            ? hay.startsWith(needle)
-            : hay.endsWith(needle);
+    // A blank needle matches nothing (an unfinished "contains" must not match every row) — as the server.
+    final hit = needle.isNotEmpty &&
+        ((op == 'contains' || op == 'not_contains')
+            ? hay.contains(needle)
+            : op == 'starts_with'
+                ? hay.startsWith(needle)
+                : hay.endsWith(needle));
     return op == 'not_contains' ? !hit : hit;
   }
   if (_empty(v) && op != '!=') return false;

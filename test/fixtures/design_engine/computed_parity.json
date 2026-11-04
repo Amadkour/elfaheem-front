@@ -314,6 +314,52 @@
     }
    ],
    "else": null
+  },
+  {
+   "key": "calc.blank",
+   "label_ar": "",
+   "label_en": "",
+   "type": "text",
+   "cases": [
+    {
+     "when": {
+      "match": "all",
+      "items": [
+       {
+        "field": "name",
+        "op": "contains",
+        "value": ""
+       }
+      ]
+     },
+     "value": {
+      "text": "hit"
+     }
+    }
+   ],
+   "else": {
+    "text": "miss"
+   }
+  },
+  {
+   "key": "calc.bad_op",
+   "label_ar": "",
+   "label_en": "",
+   "type": "text",
+   "cases": [
+    {
+     "when": {
+      "match": "all",
+      "items": []
+     },
+     "value": {
+      "text": "all"
+     }
+    }
+   ],
+   "else": {
+    "text": "none"
+   }
   }
  ],
  "rows": [
@@ -403,7 +449,9 @@
    "calc.math": 173,
    "calc.div": null,
    "calc.date_check": "old",
-   "calc.always": "ناجح"
+   "calc.always": "ناجح",
+   "calc.blank": "miss",
+   "calc.bad_op": "all"
   },
   {
    "calc.result": "راسب",
@@ -414,7 +462,9 @@
    "calc.math": null,
    "calc.div": null,
    "calc.date_check": "new",
-   "calc.always": "راسب"
+   "calc.always": "راسب",
+   "calc.blank": "miss",
+   "calc.bad_op": "all"
   },
   {
    "calc.result": "غائب",
@@ -425,7 +475,9 @@
    "calc.math": null,
    "calc.div": null,
    "calc.date_check": "?",
-   "calc.always": "غائب"
+   "calc.always": "غائب",
+   "calc.blank": "miss",
+   "calc.bad_op": "all"
   },
   {
    "calc.result": "ناجح",
@@ -436,7 +488,9 @@
    "calc.math": -850.5,
    "calc.div": 37.5,
    "calc.date_check": "new",
-   "calc.always": "ناجح"
+   "calc.always": "ناجح",
+   "calc.blank": "miss",
+   "calc.bad_op": "all"
   },
   {
    "calc.result": "راسب",
@@ -447,7 +501,9 @@
    "calc.math": null,
    "calc.div": null,
    "calc.date_check": "?",
-   "calc.always": "راسب"
+   "calc.always": "راسب",
+   "calc.blank": "miss",
+   "calc.bad_op": "all"
   }
  ]
 }

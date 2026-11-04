@@ -2271,3 +2271,6 @@ Saving sends `version`; a stale version answers 409 `design_conflict` instead of
 reachable behind the kill switch `certificates.engine`. `scripts/migrate_cert_designs.py` converts legacy designs
 (dry run by default; writes only the new columns; rollback = `document` null). The draft endpoint no longer commits to
 a stored design and merges theme keys instead of replacing them.
+- Review (2026-11-04): the document save applies the legacy save's image rule to every image (stored in the design,
+  the user's own upload, an allowed host, an org logo for images — never someone else's signature); a legacy save
+  also moves `document_version` on, so a studio tab on the old version gets 409.
