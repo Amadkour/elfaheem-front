@@ -41,7 +41,9 @@ const homeBudgets = <String, HomeBudget>{
   'student': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'teacher': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'super-admin': (open: 7, duplicates: 0, depth: 1, refresh: 4, refreshDepth: 1),
-  'parent': (open: 3, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
+  // 2026-11-04, D-267: parent open 3 → 4 — the children's organizations card (GET /org/parent/children), in parallel
+  // with the overview (no waterfall), not refreshed with it; nothing at all is drawn when no child is in one.
+  'parent': (open: 4, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
   // +1 = the lazy Insights section (D-103): GET …/insights, started in parallel with the dashboard (no waterfall)
   'org-admin': (open: 6, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
   // 2026-10-31: open 3 → 4 — GET /me/home carries the mode's side (scope / org_id, the server's default is the
@@ -77,6 +79,7 @@ Map<String, FakeHandler> homeRoutes({bool memberOfOrg = false}) => {
       'GET /api/v1/me/home': (_) => payload(memberOfOrg ? 'me_home_student.json' : 'me_home_student_no_org.json'),
       'GET /api/v1/admin/overview': (_) => payload('admin_overview.json'),
       'GET /api/v1/parent/overview': (_) => payload('parent_overview.json'),
+      'GET /api/v1/org/parent/children': (_) => {'children': []},
       // an org admin sees Insights (D-103), so its call is really measured
       'GET /api/v1/org/orgs/1/dashboard': (_) => {...(payload('org_dashboard.json') as Map), 'can_insights': true},
       'GET /api/v1/org/orgs/1/insights': (_) => payload('org_insights.json'),

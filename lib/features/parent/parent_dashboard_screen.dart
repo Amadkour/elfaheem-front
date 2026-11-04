@@ -143,7 +143,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         _lazy(
           'today',
           BasePage(
-            // SWITCHER: f1 — the context switcher for the parent home goes here (above the overview's header)
+            // No context switcher here (D-267): parents cannot join an organization (403 role_cannot_join), so the pill
+            // would only open a join flow that refuses them. A parent reaches an organization through the child's card.
             child: Column(children: [
               Expanded(
                 child: ParentOverviewPage(
