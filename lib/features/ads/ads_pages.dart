@@ -467,7 +467,7 @@ class AdminAdsPage extends StatelessWidget {
         return BasePage(
           useWebCard: true,
           maxWith: 960,
-          appBar: ScreenAppBar(title: t('الإعلانات', 'Ads'), actions: [
+          appBar: ScreenAppBar(helpPageId: 'admin.ads', title: t('الإعلانات', 'Ads'), actions: [
             IconButton(tooltip: t('إعدادات إعلانات المعلمين', 'Teacher ads settings'), onPressed: () => _settings(context), icon: const Icon(Icons.tune_rounded)),
             IconButton(tooltip: t('إعلان جديد', 'New ad'), onPressed: () async {
               if (await showAdEditor(context, base: '/api/v1/admin/ads')) p.refresh();

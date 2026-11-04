@@ -36,7 +36,9 @@ import '../config/theme/theme_config_provider.dart';
 import '../core/app_identity.dart';
 import '../core/attention/attention_service.dart';
 import '../core/inbox_badge.dart';
+import '../core/routing/app_routes.dart' show AppRoutes;
 import '../features/auth/auth_provider.dart';
+import '../features/shared/help/help_info_button.dart';
 import '../features/shared/guest/guest_state.dart';
 import '../features/shared/profile/update_account_widget.dart';
 import '../utils/widget/app_navigator.dart' show AppNavigator;
@@ -476,6 +478,7 @@ class WideShell extends StatelessWidget {
                     title: dashboardItems[current].label.tr,
                     unread: unreadCount,
                     onRefresh: dashboardItems[current].onRefresh,
+                    helpPageId: shellHelpPageId(context, dashboardItems[current].label, current == 0),
                   ),
                 // the top bar already sits under the status bar: the pages below must not pad for it again
                 Expanded(
@@ -702,14 +705,29 @@ class _SidebarTile extends StatelessWidget {
   }
 }
 
+/// The help entry of a role home's tab: `home.student` for the first tab, `home.student/my_courses` for the others
+/// (the role from the signed-in person's home route); null for a guest or a tab-less shell.
+String? shellHelpPageId(BuildContext context, String tabKey, bool first) {
+  try {
+    final route = Provider.of<MyAuthProvider>(context, listen: false).homeRoute;
+    for (final h in AppRoutes.homes) {
+      if (h.path == route) return first ? h.id : '${h.id}/$tabKey';
+    }
+  } on ProviderNotFoundException {
+    return null;
+  }
+  return null;
+}
+
 // ── Top bar (wide + rail) ─────────────────────────────────────────────────────
 
 class _TopBar extends StatelessWidget {
   final String title;
   final int unread;
   final Future<void> Function()? onRefresh;
+  final String? helpPageId;
 
-  const _TopBar({required this.title, required this.unread, required this.onRefresh});
+  const _TopBar({required this.title, required this.unread, required this.onRefresh, this.helpPageId});
 
   @override
   Widget build(BuildContext context) {
@@ -762,6 +780,7 @@ class _TopBar extends StatelessWidget {
                         label: 'assistant_entry_title'.tr,
                         onTap: AppAssistant.openPanel,
                       ),
+                    if (helpPageId != null && !pushed) HelpInfoButton(pageId: helpPageId!),
                     NotificationIcon(unreadCount: unread),
                   ]),
                 ),
@@ -881,6 +900,7 @@ class RailShell extends StatelessWidget {
                     title: dashboardItems[current].label.tr,
                     unread: unreadCount,
                     onRefresh: dashboardItems[current].onRefresh,
+                    helpPageId: shellHelpPageId(context, dashboardItems[current].label, current == 0),
                   ),
                 // the top bar already sits under the status bar: the pages below must not pad for it again
                 Expanded(

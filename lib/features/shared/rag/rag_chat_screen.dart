@@ -95,7 +95,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
   Widget _page(BuildContext context) {
     return BasePage(
       key: const ValueKey('rag.assistant'),
-      appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
+      appBar: ScreenAppBar(helpPageId: 'rag.chat', title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
           actions: [
             if (_sessions) IconButton(tooltip: 'rag_new_chat'.tr, icon: const Icon(Icons.add_comment_outlined), onPressed: () => _chat.currentState?.newChat()),
             if (_sessions) IconButton(tooltip: 'rag_chats'.tr, icon: const Icon(Icons.history_rounded), onPressed: () => _chat.currentState?.showSessions()),

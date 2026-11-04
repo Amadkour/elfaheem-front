@@ -165,7 +165,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
       key: const ValueKey('rag.library'),
       useWebCard: true,
       maxWith: 1000,
-      appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مستندات التطبيق', 'App documents') : t('مكتبة المستندات', 'Documents library')), actions: [
+      appBar: ScreenAppBar(helpPageId: 'rag.library', title: widget.title ?? (widget.app ? t('مستندات التطبيق', 'App documents') : t('مكتبة المستندات', 'Documents library')), actions: [
         if (widget.app && lib?.manager == true)
           IconButton(tooltip: t('تحديث من صفحات التطبيق', 'Update from the app\'s pages'), icon: const Icon(Icons.sync_rounded), onPressed: _syncApp),
         // curated Q&A (Track E.2): the app's pairs for platform admins, the organization's for its library managers

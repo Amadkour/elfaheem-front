@@ -128,7 +128,7 @@ class _UsersView extends StatelessWidget {
       enableFooterWidget: !embedded,
       appBar: embedded
           ? null
-          : ScreenAppBar(
+          : ScreenAppBar(helpPageId: 'admin.users', 
               title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
             ),
       floatingActionButton: fab,

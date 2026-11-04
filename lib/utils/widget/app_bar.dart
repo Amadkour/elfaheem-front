@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/parent/parent_widgets.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 
 class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -10,6 +11,9 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? background;
   final Color? titleColor;
 
+  /// The page id of the Info button (help entry); null = no button.
+  final String? helpPageId;
+
   const ScreenAppBar({
     super.key,
     required this.title,
@@ -17,6 +21,7 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.showBack = true,
     this.background,
     this.titleColor,
+    this.helpPageId,
   });
 
   @override
@@ -53,7 +58,7 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
           textAlign: TextAlign.start,
           style: c.h2.copyWith(fontFamily: AppFonts.display,color: titleColor),
         ),
-        actions: actions,
+        actions: [...?actions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!)],
       ),
     );
   }

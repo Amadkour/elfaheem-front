@@ -454,7 +454,7 @@ class _AdminRequiredDocumentsPageState
 
     return BasePage(
       useWebCard: true,
-      appBar: ScreenAppBar(title: 'required_documents_title'.tr),
+      appBar: ScreenAppBar(helpPageId: 'admin.teacher_documents', title: 'required_documents_title'.tr),
       floatingActionButton: (_loading || _error != null)
           ? null
           : FloatingActionButton.extended(

@@ -59,6 +59,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart' show t;
+import '../shared/help/help_info_button.dart';
 import 'org_common.dart' show orgColor, orgTypeIcons;
 import 'org_dashboard_settings.dart' show showOrgSwitcher;
 import 'org_providers.dart';
@@ -256,8 +257,11 @@ class OrgPushedPage extends StatefulWidget {
     this.primaryAction,
     this.refresh,
     this.maxWidth = 1100,
+    this.helpPageId,
   });
 
+  /// The page id of the Info button (help entry); null = no button.
+  final String? helpPageId;
   final String title;
   final String? subtitle;
   final Widget? primaryAction;
@@ -325,7 +329,7 @@ class _OrgPushedPageState extends State<OrgPushedPage> {
         useWebCard: true,
         maxWith: widget.maxWidth,
         child: Column(children: [
-          OrgPageHeader(title: widget.title, subtitle: widget.subtitle, primaryAction: widget.primaryAction, back: true),
+          OrgPageHeader(title: widget.title, subtitle: widget.subtitle, primaryAction: widget.primaryAction, back: true, helpPageId: widget.helpPageId),
           Expanded(child: body),
         ]),
       ),
@@ -339,7 +343,10 @@ class _OrgPushedPageState extends State<OrgPushedPage> {
 
 class OrgPageHeader extends StatelessWidget {
   const OrgPageHeader(
-      {super.key, required this.title, this.subtitle, this.primaryAction, this.searchBar = false, this.back = false});
+      {super.key, required this.title, this.subtitle, this.primaryAction, this.searchBar = false, this.back = false, this.helpPageId});
+
+  /// The page id of the Info button (help entry); null = no button.
+  final String? helpPageId;
 
   final String title;
 
@@ -381,6 +388,7 @@ class OrgPageHeader extends StatelessWidget {
       final tools = <Widget>[
         if (refresh != null && !wide) _RefreshIcon(refresh: refresh),
         const CalendarEntryIcon(),
+        if (helpPageId != null) HelpInfoButton(pageId: helpPageId!),
         NotificationIcon(unreadCount: unread),
       ];
       final titleBlock = _TitleBlock(
