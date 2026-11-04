@@ -2335,18 +2335,22 @@ found by its table border / page edges / feature matching / QR (D-242).
 photos: 18 of 21 read (was 15), 0 wrong; students identified by QR unchanged (7 of 21). The erasure margin is thin
 (tuned on synthetic sheets; real sheets use one pen, likely easier). Notes: BE.md, BE2.md.
 
-## D-250 — Handwritten numbers: a second, independent reader; a number is accepted only when both agree · 2026-11-04 · accepted
-The digits CNN alone accepted numbers at 0.993+ and sent ~40 % of mark-sheet fields to a person. A second reader of a
-different family (PaddleOCR PP-OCRv5 English + Arabic text-line recognisers, ONNX on CPU, loaded through
-`mlkit.registry.resolve`; `mlkit/marksheet/second.py`) now reads every number; `ok` needs the same value from both AND the
-CNN at `digit_pair_min` 0.7 AND every old rule (max, step, crossed out, alignment, faint ink, sum). A total accepted only on
-the second reader's word needs the sum rule verified (`sum_unverified` otherwise). Missing model or
-`MARKSHEET_SECOND_READER=off` = exactly the old behaviour; a failing read = review. Measured (bench n=45 × seeds
-1001/2002/3003): wrong-but-accepted 0 / 0 / 0; question-mark numbers auto 31→38 / 22→26 / 22→23 %; on 232 crops without a max
-rule the CNN alone accepted 14 wrong, both readers 3. Cost ~50 ms CPU per number. The stray-mark tolerance it also adds
-ships OFF (`stray_area_frac` 0): +6 fields of 542 is not worth loosening a rule before real teacher handwriting is checked.
-Limits: a missed decimal point ("4.5" → "45") is a shared blind spot (only the max rule stops it); Arabic-Indic digits gain
-less. Notes: `docs/grading/notes/G1.md`.
+## D-250 — Handwritten numbers: a second, independent reader that can veto; nothing is accepted on one doubtful opinion · 2026-11-04 · accepted
+The digits CNN alone accepted numbers at 0.993+; on 232 crops without a max rule it accepted 14 WRONG numbers that way
+(the bench's max / sum rules caught them, real sheets do not always have them). A second reader of a different family
+(PaddleOCR PP-OCRv5 English + Arabic text-line recognisers, ONNX on CPU, loaded through `mlkit.registry.resolve`;
+`mlkit/marksheet/second.py`) now reads every number. `ok` needs: the same value from both readers, the second reader itself
+at `second_min_conf` 0.5 or more (a line reader always emits something - a 0.05 match is no opinion, note `second_unsure`),
+the CNN at `digit_pair_min` 0.7, every old rule (max, step, crossed out, alignment, faint ink, sum), AND - for any number
+accepted below the old solo bar - the sum rule verified (parts and total read and adding up; `sum_unverified` otherwise,
+for parts as well as the total: the independent review found a sheet without a readable total would else auto-accept
+every part at the lower floor). Missing model or `MARKSHEET_SECOND_READER=off` = exactly the old behaviour; a failing read
+= review. Measured (bench n=45 × seeds 1001 / 2002 / 3003): wrong-but-accepted 0 / 0 / 0 before and after; fields to a
+person 38.4 / 41.1 / 42.3 % before → 39.9 / 42.6 / 44.0 % after - the reader buys SAFETY (its veto; 14 → 3 wrong on the
+crop check), not automation. Cost ~50 ms CPU per number. The stray-mark tolerance ships OFF (`stray_area_frac` 0).
+Limits: a missed decimal point ("4.5" → "45") is a shared blind spot (only the max rule stops it); Arabic-Indic digits are
+read less well by the second reader. Fewer reviews need a better digits model trained on real teacher handwriting.
+Notes: `docs/grading/notes/G1.md`.
 
 ## D-251 — Tiny printed QR codes read with the sheet's known geometry; heavy erasures get a second sheet rule · 2026-11-04 · accepted
 In chat-app photos the student QR is 56–72 px (1.5–1.9 px per module) and neither OpenCV detector finds it.
@@ -2366,7 +2370,8 @@ A model-hub library row is unique per ref, so the generation Qwen could not also
 double RAM and CPU on the CPU-only server for a ≤ 6-token yes/no check. The role now has a mode: `shared` (default when it has
 no own model: the same loaded object, generation's queue and limits with the `grading` priority class), `own` (a dedicated
 model, today's flow; activating one sets it) or `off`. Kept in the role's hidden `limits["_mode"]` slot, no schema change.
-Shared with no generation model = off. Safety unchanged: the check never changes a score or raises a confidence, ≤ 2 per
+Shared with no generation model = off. The hub runs ONE worker by design (the models live in that process) and caches the mode 5 s, so a
+change applies at once; activating a model for the role (also a roll-back) sets `own`, overriding `off` on purpose. Safety unchanged: the check never changes a score or raises a confidence, ≤ 2 per
 answer, 30 / minute. `PUT /api/v1/models/roles/exam_grading/mode` (super admin, audited `set_mode`); the AI Models page shows
 "Model source". Notes: `docs/grading/notes/G3.md`.
 
@@ -2375,7 +2380,8 @@ answer, 30 / minute. `PUT /api/v1/models/roles/exam_grading/mode` (super admin, 
 request's caller (the per-request context `org_gate` already uses), only when the row's `actor_id` IS that caller; the
 system actor, jobs outside a request and rows written for someone else stay null, and old rows stay null (append-only):
 the app keeps its `u<id>` fallback for those. Every writer of `ManualChange` gets it without passing it. Closes review
-finding 11a. Notes: `docs/grading/notes/G3.md`.
+finding 11a. Privacy: the name is kept in an append-only audit table (a grade record names who changed it);
+a user erasure leaves the row with the `actor_id` and needs a DBA-run redaction. Notes: `docs/grading/notes/G3.md`.
 
 ## D-170 — The browser's history follows the app's pages; one route registry · 2026-11-04 · accepted
 
