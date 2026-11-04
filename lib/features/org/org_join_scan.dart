@@ -24,8 +24,13 @@ import '../admin/admin_common.dart' show t;
 
 bool get joinScannerAvailable => !kIsWeb;
 
-/// The share link of a join code: opens the Join page with the code filled in (also signed out).
-String joinLinkFor(String code) => 'https://nextbrain.site/j/${code.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '')}';
+/// The share link of a join code: opens the Join page with the code filled in (also signed out). `?code=` repeats
+/// the code for installed apps that predate `/j/` links: their scanner reads a link's `?code=` (D-283), so one
+/// printed QR works in old and new apps.
+String joinLinkFor(String code) {
+  final c = code.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+  return 'https://nextbrain.site/j/$c?code=$c';
+}
 
 final _scheme = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.\-]*://');
 final _sharedText = RegExp(r'[:：]\s*([A-Za-z0-9][A-Za-z0-9 \-]{2,48}?)\s*[.!]?\s*$');

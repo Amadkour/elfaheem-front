@@ -186,7 +186,9 @@ void main() {
       expect(parseJoinQr('https://nextbrain.site/j/ABCD-2345-XY'), 'ABCD2345XY');
       expect(parseJoinQr('https://nextbrain.site/j/AB'), isNull);
       expect(parseJoinQr(joinLinkFor('abcd2345xy')), 'ABCD2345XY');
-      expect(joinLinkFor('abcd-2345'), 'https://nextbrain.site/j/ABCD2345');
+      expect(joinLinkFor('abcd-2345'), 'https://nextbrain.site/j/ABCD2345?code=ABCD2345');
+      // an installed app from before /j/ links reads only `?code=`: the same link must still give the code
+      expect(parseJoinQr('https://nextbrain.site/x?code=ABCD2345'), 'ABCD2345');
     });
   });
 

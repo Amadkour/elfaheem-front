@@ -41,7 +41,7 @@ const homeBudgets = <String, HomeBudget>{
   'student': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'teacher': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
   'super-admin': (open: 7, duplicates: 0, depth: 1, refresh: 4, refreshDepth: 1),
-  // 2026-11-04, D-267: parent open 3 → 4 — the children's organizations card (GET /org/parent/children), in parallel
+  // 2026-11-04, D-287: parent open 3 → 4 — the children's organizations card (GET /org/parent/children), in parallel
   // with the overview (no waterfall), not refreshed with it; nothing at all is drawn when no child is in one.
   'parent': (open: 4, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
   // +1 = the lazy Insights section (D-103): GET …/insights, started in parallel with the dashboard (no waterfall)

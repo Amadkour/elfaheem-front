@@ -2604,7 +2604,7 @@ event timeline. Students are found by academic ID, national ID (shown masked), e
 reactivate, grant and cancel each need a reason and write one event plus a notification to the student. The older admin
 enroll / unenroll / re-subscribe calls keep working and now write events too.
 
-## D-260 — Tenant isolation in the organization modules is checked by the application, object by object · 2026-11-04 · accepted
+## D-280 — Tenant isolation in the organization modules is checked by the application, object by object · 2026-11-04 · accepted
 
 **Problem.** The org-flow audit (2026-11-04, `feat/organizations-flow`) found routes that loaded an object by id and
 never compared it with the organization in the path: an advisor could run any registrar action through an advisee's
@@ -2619,7 +2619,7 @@ organization; advisors may only accept / reject / edit within the decision's own
 test that fails without it (`tests/org_v2/e2e_of_b1_*` … `e2e_of_b6_*`: two organizations, B's ids through A's routes,
 B's rows unchanged, plus the legitimate path).
 
-## D-261 — Shared system roles are copied on write by a sub-organization · 2026-11-04 · accepted
+## D-281 — Shared system roles are copied on write by a sub-organization · 2026-11-04 · accepted
 
 System roles (teacher, student, …) are stored on the ROOT organization. Platform admins and the root's own admin edit
 them in place; a faculty admin who edits one gets a copy with the same key in their own organization, and the
@@ -2628,7 +2628,7 @@ original. A later edit through the original id lands on the existing copy (`_rol
 `copy_on_write` on the role tells the app a copy will be made. Rejected: editing in place (one faculty changed every
 faculty's rights) and read-only system roles (the owner wants organization admins to manage their roles).
 
-## D-262 — An organization admin suspends the membership, never the account; the admin seat is handed over · 2026-11-04 · accepted
+## D-282 — An organization admin suspends the membership, never the account; the admin seat is handed over · 2026-11-04 · accepted
 
 `PUT …/members/{mid} {is_active}` sets the membership `suspended` / `active` (re-activation needs `requests.approve`);
 `User.is_active` belongs to the platform. Department staff / head seats need the rights they hand out
@@ -2637,9 +2637,9 @@ faculty's rights) and read-only system roles (the owner wants organization admin
 the old admin stays as administrative staff or leaves; leaving ENDS the membership (status `removed`, `ended_at`),
 the role assignments (`valid_to`) and grants (`expires_at`) rather than deleting them, so the history stays (only the
 department seat, which has no end date, is removed). The new admin's global account role is unchanged; they reach the dashboard
-through the context switcher (D-266).
+through the context switcher (D-286).
 
-## D-263 — Organization invitations by e-mail or phone, and join links · 2026-11-04 · accepted
+## D-283 — Organization invitations by e-mail or phone, and join links · 2026-11-04 · accepted
 
 Table `org_invitations` (migration 0045, RLS like 0003, reversible). Only the sha256 of the link token is stored, so a
 resend issues a new link and the old one stops working. Inviting needs the insert right of the invited role (students /
@@ -2648,9 +2648,9 @@ needs a signed-in account whose VERIFIED e-mail / phone equals the contact. Ther
 is found by the invitee in `GET /org/public/me/invitations` (and an in-app notice when the account exists) and staff share
 the link. `https://nextbrain.site/j/<CODE>` opens the join-by-code flow with the code filled, kept through sign-in.
 Accepting places the person directly (no department join policy: the organization chose them). Parents cannot join an
-organization (403 `role_cannot_join`); they follow their child's organization instead (D-267).
+organization (403 `role_cannot_join`); they follow their child's organization instead (D-287).
 
-## D-264 — Printed legacy join codes live in `org_join_codes` · 2026-11-04 · accepted
+## D-284 — Printed legacy join codes live in `org_join_codes` · 2026-11-04 · accepted
 
 `Organization.join_code` was a second code system next to `org_join_codes` (keyed hashes, one unit per code). Lookups
 now read only `org_join_codes`; each organization's legacy code is copied there lazily and idempotently on a lookup miss
@@ -2658,7 +2658,7 @@ now read only `org_join_codes`; each organization's legacy code is copied there 
 codes written after deploy (organization creation, the old regenerate route kept for installed apps) must be copied too.
 Codes on posters keep working; regenerating through the old route retires the old code at once. The column stays.
 
-## D-265 — Org file links expire; reports are shared with members only; members-only courses are enforced · 2026-11-04 · accepted
+## D-285 — Org file links expire; reports are shared with members only; members-only courses are enforced · 2026-11-04 · accepted
 
 `/org/files/{token}` tokens carry a signed expiry (7 days); tokens without one work until `org_files.legacy_until`
 (deploy + 30 days), then 410 `link_expired`; with no `SECRET_KEY` nothing is signed (503 `links_unavailable`, never the
@@ -2667,7 +2667,7 @@ organizations that consented to share with it (422 `share_target_not_allowed`; n
 A `members_only` organization course is enforced in `course_access.py` (D-210's one rule) on enroll and in
 `PaymentService.assert_can_purchase` (every payment path): 403 `members_only`.
 
-## D-266 — One rule for where an organization opens, and switching clears the previous one · 2026-11-04 · accepted
+## D-286 — One rule for where an organization opens, and switching clears the previous one · 2026-11-04 · accepted
 
 `AppModeController.opensDashboard`: any non-student membership or management right opens `/org_dashboard` (D-103), a
 student membership opens the member home — in the switcher, notification / link taps, and the start-up overview alike.
@@ -2676,7 +2676,7 @@ B is selected in both `AppModeController` and `OrgSession` (a notification for B
 A remembered organization that disappears is replaced with a notice naming both; a failed `/org/mine` keeps the last
 list with Retry instead of looking like "no organizations". The admin home's More page carries the switcher too.
 
-## D-267 — Parents follow their child's organization; organization admins see setup and billing; soft delete · 2026-11-04 · accepted
+## D-287 — Parents follow their child's organization; organization admins see setup and billing; soft delete · 2026-11-04 · accepted
 
 - Parent view (`/api/v1/org/parent/children[/{sid}/orgs/{org_id}]`, kill switch `parent.org_view`): read-only, computed
   AS the child (today, next 7 days with one-date changes, announcements the child received, approved grades,
