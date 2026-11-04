@@ -8,7 +8,7 @@
 //  Tab 2 · Fees     → platform fee, student VAT, teacher VAT and the gateway fee of every
 //                     method (AdminFeeRatesSection — percent, fixed amount, or both)
 //
-// The platform fee % is edited ONLY in the Fees tab (one place = no stale overwrites).
+// The platform fee % is edited ONLY on the Fees page (AdminFeesPage; one place = no stale overwrites).
 // Devices live in admin_devices_page.dart.
 library;
 
@@ -17,15 +17,14 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../design/app_switch.dart';
-import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_fee_rates.dart';
+import 'admin_fees_page.dart';
+import 'admin_page.dart';
 import 'admin_providers.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,13 +110,25 @@ class _View extends StatefulWidget {
 class _ViewState extends State<_View> {
   int _tab = 0;
 
-  // Gateway choice saves the moment it is tapped; this shows the new value while the request runs.
+  // Gateway choice saves once confirmed; this shows the new value while the request runs.
   bool _gwBusy = false;
   bool _hasPending = false;
   String? _pending;
 
+  String _gatewayName(String? g) =>
+      g == null ? 'admin_server_default'.tr : (g == 'moyasar' ? 'Moyasar' : 'Paymob');
+
   Future<void> _pickGateway(AdminSettingsProvider s, String? value) async {
     if (_gwBusy || value == s.defaultProvider) return;
+    // the default gateway decides where every later card payment goes
+    final ok = await appConfirm(
+      context,
+      message: _t(
+        'ستُوجَّه كل مدفوعات البطاقة القادمة عبر «${_gatewayName(value)}» بدلًا من «${_gatewayName(s.defaultProvider)}» (إلا الكورسات التي لها بوابة خاصة). متابعة؟',
+        'Every new card payment will go through "${_gatewayName(value)}" instead of "${_gatewayName(s.defaultProvider)}" (except courses with their own gateway). Continue?',
+      ),
+    );
+    if (!ok || !mounted) return;
     setState(() {
       _pending = value;
       _hasPending = true;
@@ -132,6 +143,13 @@ class _ViewState extends State<_View> {
     }
   }
 
+  Future<void> _reload() async {
+    final s = context.read<AdminSettingsProvider>();
+    final pm = context.read<AdminPaymentMethodsProvider>();
+    final fr = context.read<AdminFeeRatesProvider>();
+    await Future.wait([s.load(), pm.load(), fr.load()]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AdminSettingsProvider>();
@@ -140,248 +158,49 @@ class _ViewState extends State<_View> {
 
     Widget body;
     if (s.values.isEmpty && s.isLoading) {
-      body = const AppListSkeleton();
+      body = const AppLoadingState(shape: AppLoadingShape.cards);
     } else if (s.values.isEmpty) {
-      body = ErrorRetry(message: s.error ?? 'admin_could_not_load_data'.tr, onRetry: s.load);
+      body = AppErrorState(message: s.error ?? 'admin_could_not_load_data'.tr, onRetry: s.load);
     } else {
       final gateway = _hasPending ? _pending : s.defaultProvider;
       final enabledCount = pm.items.where((m) => asBool(m['enabled'])).length;
       final platformPct = fr.platform.isNotEmpty ? fr.platform['percent'] : s.platformFee;
 
-      body = ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 32), children: [
-        _Hero(
-          stats: [
-            _Stat(Icons.check_circle_rounded, 'apm_enabled'.tr, '$enabledCount/${pm.items.length}'),
-            _Stat(Icons.payments_rounded, _t('البوابة', 'Gateway'), _gatewayName(gateway)),
-            _Stat(Icons.percent_rounded, _t('رسوم المنصة', 'Platform fee'),
-                platformPct == null ? 'admin_server_default'.tr : '${_pct(platformPct)}%'),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _Segments(
-          index: _tab,
-          onChanged: (i) => setState(() => _tab = i),
-          items: [
-            (Icons.credit_card_rounded, 'admin_payment_methods'.tr),
-            (Icons.receipt_long_rounded, 'admin_fee_rates'.tr),
-          ],
-        ),
-        const SizedBox(height: 16),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          child: KeyedSubtree(
-            key: ValueKey(_tab),
-            child: _tab == 0
-                ? _MethodsTab(gateway: gateway, busy: _gwBusy, onPick: (v) => _pickGateway(s, v))
-                : const _FeesTab(),
+      body = ListView(padding: AdminPage.bodyPadding(context), children: [
+        AppKpiGrid(maxColumns: 3, children: [
+          AppKpiCard(
+              label: 'apm_enabled'.tr, value: '$enabledCount/${pm.items.length}', icon: Icons.check_circle_rounded),
+          AppKpiCard(label: _t('البوابة', 'Gateway'), value: _gatewayName(gateway), icon: Icons.payments_rounded),
+          AppKpiCard(
+              label: _t('رسوم المنصة', 'Platform fee'),
+              value: platformPct == null ? 'admin_server_default'.tr : '${_pct(platformPct)}%',
+              icon: Icons.percent_rounded),
+        ]),
+        AppSpace.gapMd,
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: AppTabs(
+            index: _tab,
+            onChanged: (i) => setState(() => _tab = i),
+            items: [
+              AppTabItem('admin_payment_methods'.tr, icon: Icons.credit_card_rounded),
+              AppTabItem('admin_fee_rates'.tr, icon: Icons.receipt_long_rounded),
+            ],
           ),
         ),
+        AppSpace.gapMd,
+        _tab == 0
+            ? _MethodsTab(gateway: gateway, busy: _gwBusy, onPick: (v) => _pickGateway(s, v))
+            : const _FeesTab(),
       ]);
     }
 
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: 'admin_payments'.tr),
-      child: body,
-    );
-  }
-
-  String _gatewayName(String? g) =>
-      g == null ? 'admin_server_default'.tr : (g == 'moyasar' ? 'Moyasar' : 'Paymob');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Hero + segmented tabs
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _Stat {
-  const _Stat(this.icon, this.label, this.value);
-  final IconData icon;
-  final String label;
-  final String value;
-}
-
-class _Hero extends StatelessWidget {
-  const _Hero({required this.stats});
-  final List<_Stat> stats;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary, c.primary.withValues(alpha: .7)],
-        ),
-        boxShadow: [
-          BoxShadow(color: c.primary.withValues(alpha: .3), blurRadius: 26, offset: const Offset(0, 12)),
-        ],
-      ),
-      child: Stack(children: [
-        // soft decorative circles
-        PositionedDirectional(
-          top: -40,
-          end: -30,
-          child: Container(
-            width: 150,
-            height: 150,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: c.onHero.withValues(alpha: .08)),
-          ),
-        ),
-        PositionedDirectional(
-          bottom: -50,
-          start: -20,
-          child: Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: c.onHero.withValues(alpha: .06)),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: c.onHero.withValues(alpha: .2),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Icon(Icons.account_balance_wallet_rounded, color: c.onHero, size: 26),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('admin_payments'.tr,
-                      style: TextStyle(
-                          fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 20, color: c.onHero)),
-                  const SizedBox(height: 2),
-                  Text('admin_payments_hero_hint'.tr,
-                      style: TextStyle(
-                          fontFamily: AppFonts.family, fontSize: 12.5, color: c.onHero.withValues(alpha: .85))),
-                ]),
-              ),
-            ]),
-            const SizedBox(height: 18),
-            Row(children: [
-              for (var i = 0; i < stats.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(child: _StatTile(stats[i])),
-              ],
-            ]),
-          ]),
-        ),
-      ]),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile(this.s);
-  final _Stat s;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-    decoration: BoxDecoration(
-      color: context.colors.onHero.withValues(alpha: .16),
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Icon(s.icon, size: 14, color: context.colors.onHero.withValues(alpha: .9)),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(s.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.onHero.withValues(alpha: .85))),
-        ),
-      ]),
-      const SizedBox(height: 6),
-      Text(s.value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-              fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w900, color: context.colors.onHero)),
-    ]),
-  );
-}
-
-class _Segments extends StatelessWidget {
-  const _Segments({required this.index, required this.onChanged, required this.items});
-  final int index;
-  final ValueChanged<int> onChanged;
-  final List<(IconData, String)> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: c.divider),
-      ),
-      child: Row(children: [
-        for (var i = 0; i < items.length; i++)
-          Expanded(
-            child: Material(
-              color: i == index ? c.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => onChanged(i),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(items[i].$1, size: 18, color: i == index ? c.onHero : c.textLight),
-                    const SizedBox(width: 7),
-                    Flexible(
-                      child: Text(items[i].$2,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13.5,
-                              color: i == index ? c.onHero : c.textLight)),
-                    ),
-                  ]),
-                ),
-              ),
-            ),
-          ),
-      ]),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title, {this.subtitle});
-  final String title;
-  final String? subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title,
-            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
-        if (subtitle != null) ...[
-          const SizedBox(height: 3),
-          Text(subtitle!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
-        ],
-      ]),
+    return AdminPage(
+      title: 'apm_title'.tr,
+      subtitle: 'admin_payments_hero_hint'.tr,
+      icon: Icons.account_balance_wallet_rounded,
+      onRefresh: _reload,
+      body: body,
     );
   }
 }
@@ -402,10 +221,11 @@ class _MethodsTab extends StatelessWidget {
     final c = context.colors;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _SectionTitle('admin_default_card_gateway'.tr,
-          subtitle: _t('اضغط لتغيير البوابة — يُحفظ فوراً. يمكن لكل كورس تخصيصها.',
-              'Tap to switch — saved instantly. Each course can override it.')),
-      Row(children: [
+      AppSection(
+        title: 'admin_default_card_gateway'.tr,
+        subtitle: _t('اضغط لتغيير البوابة — يُطلب تأكيدك ثم يُحفظ. يمكن لكل كورس تخصيصها.',
+            'Tap to switch — you confirm, then it is saved. Each course can override it.'),
+        child: Row(children: [
         for (final (i, g) in <(String?, IconData, String)>[
           (null, Icons.dns_rounded, 'admin_server_default'.tr),
           ('moyasar', Icons.payments_rounded, 'Moyasar'),
@@ -422,21 +242,22 @@ class _MethodsTab extends StatelessWidget {
             ),
           ),
         ],
-      ]),
-      const SizedBox(height: 22),
-      _SectionTitle('admin_payment_methods'.tr,
-          subtitle: _t('فعّل الطريقة أو اضغط على البطاقة لتعديل كل تفاصيلها.',
-              'Switch a method on/off, or tap a card to edit all its details.')),
-      if (pm.items.isEmpty && pm.isLoading)
-        const AppListSkeleton(items: 3)
-      else if (pm.items.isEmpty)
-        ErrorRetry(message: pm.error ?? 'admin_could_not_load'.tr, onRetry: pm.load)
-      else
-        for (final m in pm.items) _MethodCard(m),
-      const SizedBox(height: 4),
+      ])),
+      AppSpace.gapLg,
+      AppSection(
+        title: 'admin_payment_methods'.tr,
+        subtitle: _t('فعّل الطريقة أو اضغط على البطاقة لتعديل كل تفاصيلها.',
+            'Switch a method on/off, or tap a card to edit all its details.'),
+        child: pm.items.isEmpty && pm.isLoading
+            ? const AppLoadingState(shape: AppLoadingShape.cards, items: 3)
+            : pm.items.isEmpty
+                ? AppErrorState(message: pm.error ?? 'admin_could_not_load'.tr, onRetry: pm.load)
+                : Column(children: [for (final m in pm.items) _MethodCard(m)]),
+      ),
+      AppSpace.gapXs,
       Text(
-        _t('إنستاباي يظهر للطلاب بالجنيه المصري فقط. Apple Pay / Google Pay تظهر على الجوال فقط، وعندما تدعمها بوابة الدفع. رسومها من تبويب الرسوم.',
-            'InstaPay is only shown to students paying in EGP. Apple Pay / Google Pay show on mobile only, and only when the gateway supports them. Set their fees in the Fees tab.'),
+        _t('إنستاباي يظهر للطلاب بالجنيه المصري فقط. Apple Pay / Google Pay تظهر على الجوال فقط، وعندما تدعمها بوابة الدفع. رسومها من صفحة الرسوم.',
+            'InstaPay is only shown to students paying in EGP. Apple Pay / Google Pay show on mobile only, and only when the gateway supports them. Set their fees on the Fees page.'),
         style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight),
       ),
     ]);
@@ -504,35 +325,31 @@ class _FeesTab extends StatelessWidget {
   const _FeesTab();
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: c.primary.withValues(alpha: .07),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: c.primary.withValues(alpha: .2)),
-        ),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(Icons.info_outline_rounded, size: 20, color: c.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              _t('كل رسم يمكن ضبطه كنسبة مئوية، أو مبلغ ثابت، أو الاثنين معاً. '
-                  'لكل رسم قيمة افتراضية يمكنك الرجوع إليها.',
-                  'Every fee can be set as a percent, a fixed amount, or both. '
-                      'Each one has a default you can reset to.'),
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, height: 1.45, color: c.textDark),
-            ),
-          ),
-        ]),
+  Widget build(BuildContext context) => AppCard(
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(_t('الرسوم انتقلت إلى صفحة الرسوم', 'Fees moved to the Fees page'), style: AppType.section(context)),
+      AppSpace.gapXs,
+      Text(
+        _t('نسب الرسوم (طرق الدفع والمنصة والضريبة) وسياسة من يتحمّلها في مكان واحد.',
+            'Fee rates (payment methods, platform, VAT) and the policy of who bears them, in one place.'),
+        style: AppType.meta(context),
       ),
-      const SizedBox(height: 14),
-      const AdminFeeRatesSection(),
-    ]);
-  }
+      AppSpace.gapSm,
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: AppButton.secondary(
+          label: _t('فتح صفحة الرسوم', 'Open the Fees page'),
+          icon: Icons.percent_rounded,
+          // back from the Fees page: the platform-fee figure on this page shows the new rate at once
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeesPage())).then((_) {
+            if (context.mounted) context.read<AdminFeeRatesProvider>().load();
+          }),
+        ),
+      ),
+    ]),
+  );
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Method card: header (icon, summary, status, switch) that expands into the editor
@@ -548,6 +365,33 @@ class _MethodCard extends StatefulWidget {
 
 class _MethodCardState extends State<_MethodCard> {
   bool _open = false;
+  bool _busy = false; // a save is in flight: the switch ignores taps (no double fire)
+
+  Future<void> _toggle(AdminPaymentMethodsProvider p, String method, String label, bool v, bool incomplete) async {
+    if (_busy) return;
+    if (v && incomplete) {
+      toast('admin_method_details_required'.tr, error: true);
+      setState(() => _open = true);
+      return;
+    }
+    if (!v) {
+      // a live method disappears from checkout at once
+      final ok = await appConfirm(
+        context,
+        danger: true,
+        message: _t('ستختفي «$label» من صفحة الدفع فورًا ولن يتمكن الطلاب من الدفع بها. تعطيلها؟',
+            'Students will no longer see "$label" at checkout. Disable it?'),
+        confirmLabel: _t('تعطيل', 'Disable'),
+      );
+      if (!ok || !mounted) return;
+    }
+    setState(() => _busy = true);
+    try {
+      await p.save(method, {'enabled': v});
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   /// One-line, human summary + whether required details are missing.
   ({String text, bool incomplete}) _summary(Map<String, dynamic> m, String method) {
@@ -629,21 +473,18 @@ class _MethodCardState extends State<_MethodCard> {
                       ),
                     ]),
                     const SizedBox(height: 6),
-                    _StatusPill(enabled: enabled),
+                    AppStatusBadge(
+                        label: enabled ? 'apm_enabled'.tr : 'apm_disabled'.tr,
+                        tone: enabled ? AppTone.success : AppTone.danger,
+                        dot: true,
+                        dense: true),
                   ]),
                 ),
                 const SizedBox(width: 8),
                 AppSwitch(
                   value: enabled,
                   activeColor: c.primary,
-                  onChanged: (v) {
-                    if (v && summary.incomplete) {
-                      toast('admin_method_details_required'.tr, error: true);
-                      setState(() => _open = true);
-                      return;
-                    }
-                    p.save(method, {'enabled': v});
-                  },
+                  onChanged: _busy ? null : (v) => _toggle(p, method, asStr(m['label']), v, summary.incomplete),
                 ),
                 AnimatedRotation(
                   turns: _open ? .5 : 0,
@@ -669,27 +510,6 @@ class _MethodCardState extends State<_MethodCard> {
           ),
         ]),
       ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.enabled});
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final color = enabled ? c.success : c.danger;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(20)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
-        const SizedBox(width: 6),
-        Text(enabled ? 'apm_enabled'.tr : 'apm_disabled'.tr,
-            style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
-      ]),
     );
   }
 }

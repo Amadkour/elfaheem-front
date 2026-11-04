@@ -13,7 +13,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import 'admin_common.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, appErrorMessage;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 Future<void> showIncomeBreakdown(BuildContext context) =>
@@ -49,7 +49,7 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
     } on ApiException catch (e) {
       error = e.message;
     } catch (e) {
-      error = '$e';
+      error = appErrorMessage(e);
     }
     if (mounted) setState(() => loading = false);
   }

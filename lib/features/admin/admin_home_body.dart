@@ -1,25 +1,27 @@
 // lib/features/admin/admin_home_body.dart — the super admin's home, presentational (plain values, no network),
 // Track B.2. The page (admin_overview_page.dart) feeds it ONE payload (AdminHomeData) and the callbacks.
 //
-// Order, top to bottom (one column on phones; from Breakpoints.desktop two columns under the pulse):
-//   1. HomeHeader                       greeting · name · calendar
-//   2. platform pulse                   users · courses · organizations · revenue as AppTrendTiles (sparkline from
-//                                       `series`, delta = last 15 days vs the 15 before)
-//   3. "Needs you"                      alerts[] + pending transfers / payouts / subscriptions / org approvals as a
-//                                       HomeActionGrid with deep links — a count the alerts already carry is drawn
-//                                       ONCE; all clear → a calm banner + the to-do card
-//   4. charts                           AppBarChart signups vs enrollments per day (last 14) · AppDonut organizations
-//                                       by type · AppDonut revenue by currency (30 days)
-//   5. activity & health                live events 24 h · failed jobs 24 h · live sessions · complaints · subscribers
-//                                       + the "AI assistant" card (AdminAssistantCard, Track E.7: questions 7 d, no-answer
-//                                       rate, p50, link to the console) when the page has the RAG summary and
-//                                       `rag.assistant` is on
-//   6. hubs                             Data Lab · organizations · AI assistant console · features · teachers · income
+// Order, top to bottom (one column on phones; from Breakpoints.desktop the attention list + charts and the health
+// column sit side by side under the KPIs):
+//   1. greeting + search       AppType.display greeting with the admin's name, today's date (AppTime), and the
+//                              search field that opens the global search (admin_global_search.dart)
+//   2. KPIs                    AppKpiGrid: revenue 30 d (the ONE highlight) · students · teachers · courses ·
+//                              organizations · subscribers, each opening its tab or page
+//   3. "Needs you"             ONE AppSection: alerts[] + pending transfers / payouts / subscriptions / org
+//                              approvals / my to-dos as rows with deep links — a count the alerts already carry is
+//                              drawn ONCE; "Nothing waits for you" only when there is none
+//   4. charts                  AppBarChart signups vs enrollments per day (last 14) · AppDonut organizations by type ·
+//                              AppDonut revenue by currency (30 days), each in an AppSection + AppCard
+//   5. health                  live events 24 h · failed jobs 24 h · live sessions · complaints · subscribers + the
+//                              "AI assistant" card (AdminAssistantCard, Track E.7) when the page has the RAG summary
+//                              and `rag.assistant` is on
+//   6. shortcuts               Data Lab · organizations · AI assistant console · features · teachers · income
 // A block the server does not send (older server) is left out; nothing crashes. Colours: context.colors only.
 // Layout test: test/ui/admin_home_layout_test.dart.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -28,7 +30,12 @@ import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 
 import '../org/org_common.dart' show orgTypeLabels;
+import 'admin_common.dart' show t;
+import 'admin_global_search.dart';
 import 'admin_home_data.dart';
+import 'admin_recents.dart';
+import 'admin_services_hub.dart' show AdminService, AdminServiceGroup, adminServiceGroups;
+import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'admin_models.dart' show moneyByCurrency;
 
 /// What the home can open. Every callback is optional (null in tests and previews).
@@ -107,10 +114,10 @@ class AdminHomeBody extends StatelessWidget {
     required this.name,
     this.pendingPayouts = 0,
     this.actions = const AdminHomeActions(),
-    this.headerActions = const [],
     this.notice,
     this.todoTabKey = AttentionTabs.adminSupport,
     this.assistant,
+    this.search,
   });
 
   final AdminHomeData data;
@@ -120,15 +127,15 @@ class AdminHomeBody extends StatelessWidget {
   final int pendingPayouts;
   final AdminHomeActions actions;
 
-  /// Trailing widgets of the header (the calendar icon).
-  final List<Widget> headerActions;
-
-  /// A line above the pulse, e.g. "showing the last numbers, refresh failed".
+  /// A line above the numbers, e.g. "showing the last numbers, refresh failed".
   final String? notice;
   final String todoTabKey;
 
   /// The RAG monitoring summary (null: an older server, a failed call, or the assistant switched off → no card).
   final AdminAssistantHealth? assistant;
+
+  /// The search field under the greeting; default: [AdminSearchLauncher] (opens the global search).
+  final Widget? search;
 
   static const _maxWidth = 1180.0;
 
@@ -136,75 +143,52 @@ class AdminHomeBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, box) {
       final twoColumns = box.maxWidth >= Breakpoints.desktop;
-      final sections = <Widget>[
-        HomeEntrance(
-          index: 0,
-          child: HomeHeader(
-            name: name,
-            subtitle: 'home_admin_sub'.tr,
-            actions: headerActions,
-            padding: const EdgeInsets.fromLTRB(6, 6, 6, 16),
-          ),
-        ),
-        if (notice != null) ...[
-          AppBanner(icon: Icons.cloud_off_rounded, text: notice!, color: context.colors.warning),
-          const SizedBox(height: 16),
-        ],
-        HomeEntrance(index: 1, child: _Pulse(data: data, actions: actions)),
-        const SizedBox(height: 24),
-      ];
-      final needs = _NeedsYou(data: data, pendingPayouts: pendingPayouts, actions: actions, todoTabKey: todoTabKey);
-      final bars = _ActivityChart(data: data);
-      final donuts = _Donuts(data: data, stacked: !twoColumns);
+      final g = AppSpace.gutter(box.maxWidth);
       final showAi = assistant != null && !AppConfig.disableList.contains('rag.assistant');
-      final health = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      final needs = _NeedsYou(data: data, pendingPayouts: pendingPayouts, actions: actions, todoTabKey: todoTabKey);
+      final charts = <Widget>[
+        if (data.hasSeries) _ActivityChart(data: data),
+        if (data.hasSeries || data.hasOrganizations) _Donuts(data: data),
+      ];
+      final side = <Widget>[
         _Health(data: data, actions: actions),
-        if (showAi) ...[
-          const SizedBox(height: 16),
+        if (showAi)
           AdminAssistantCard(
               health: assistant!, onOpen: AppConfig.disableList.contains('rag.admin') ? null : actions.openAssistant),
+        const _Recents(),
+      ];
+      Widget stack(List<Widget> l) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (var i = 0; i < l.length; i++) ...[if (i > 0) AppSpace.gapLg, l[i]],
+          ]);
+      final sections = <Widget>[
+        _Greeting(name: name),
+        AppSpace.gapMd,
+        search ?? const AdminSearchLauncher(),
+        AppSpace.gapMd,
+        if (notice != null) ...[
+          AppBanner(icon: Icons.cloud_off_rounded, text: notice!, color: context.colors.warning),
+          AppSpace.gapMd,
         ],
-      ]);
-      final hubs = _Hubs(actions: actions);
-      if (twoColumns) {
-        sections.add(HomeEntrance(
-          index: 2,
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              flex: 3,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                needs,
-                if (data.hasSeries) ...[const SizedBox(height: 24), bars],
-              ]),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 2,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                if (data.hasSeries || data.hasOrganizations) ...[donuts, const SizedBox(height: 24)],
-                health,
-                const SizedBox(height: 24),
-                hubs,
-              ]),
-            ),
-          ]),
-        ));
-      } else {
-        sections.addAll([
-          HomeEntrance(index: 2, child: needs),
-          if (data.hasSeries) ...[const SizedBox(height: 24), HomeEntrance(index: 3, child: bars)],
-          if (data.hasSeries || data.hasOrganizations) ...[const SizedBox(height: 16), HomeEntrance(index: 4, child: donuts)],
-          const SizedBox(height: 24),
-          HomeEntrance(index: 5, child: health),
-          const SizedBox(height: 24),
-          HomeEntrance(index: 6, child: hubs),
-        ]);
-      }
-      sections.add(const SizedBox(height: 32));
+        _Kpis(data: data, actions: actions),
+        AppSpace.gapLg,
+        if (twoColumns)
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(flex: 3, child: stack([needs, ...charts])),
+            AppSpace.gapMd,
+            Expanded(flex: 2, child: stack(side)),
+          ])
+        else
+          stack([needs, ...charts, ...side]),
+      ];
       return ListView(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.fromLTRB(g, AppSpace.md, g, AppSpace.xl),
         children: [
-          Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: _maxWidth), child: Column(children: sections))),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: _maxWidth),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sections),
+            ),
+          ),
         ],
       );
     });
@@ -212,90 +196,126 @@ class AdminHomeBody extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Pulse
+// 1. Greeting
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _Pulse extends StatelessWidget {
-  const _Pulse({required this.data, required this.actions});
+/// "Good morning, Ahmed" (display size) over today's date, in the platform / organization timezone.
+class _Greeting extends StatelessWidget {
+  const _Greeting({required this.name});
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return ValueListenableBuilder<int>(
+      valueListenable: AppTime.version,
+      builder: (context, _, _) {
+        final greet = homeGreetingKey(homeNow().hour).tr;
+        final who = name.trim();
+        final title = who.isEmpty ? greet : '$greet${AppConfig.lang == 'ar' ? '،' : ','} $who';
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Semantics(
+            header: true,
+            child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.display(context)),
+          ),
+          const SizedBox(height: AppSpace.xxs),
+          Text(AppTime.date(DateTime.now().toUtc(), pattern: 'EEEE d MMMM y'),
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textMedium)),
+        ]);
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. KPIs
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The platform in six figures, from the numbers the overview already carries. ONE highlighted card (the revenue
+/// of the last 30 days; the first card when there is no sale), each opening its tab or page.
+class _Kpis extends StatelessWidget {
+  const _Kpis({required this.data, required this.actions});
   final AdminHomeData data;
   final AdminHomeActions actions;
 
   @override
   Widget build(BuildContext context) {
-    final palette = appChartPalette(context);
     final spark = data.hasSeries;
-    final tiles = <Widget>[
-      AppTrendTile(
-        label: 'admin_home_users'.tr,
-        value: appCompactNumber(data.users),
-        delta: spark ? data.signupsDelta : null,
-        spark: spark ? data.signupsSpark : null,
-        deltaHint: 'admin_home_signups_hint'.tr,
-        icon: Icons.people_alt_rounded,
-        color: palette[0],
-        onTap: actions.openStudents,
-      ),
-      AppTrendTile(
-        label: 'courses'.tr,
-        value: appCompactNumber(data.courses),
-        delta: spark ? data.enrollmentsDelta : null,
-        spark: spark ? data.enrollmentsSpark : null,
-        deltaHint: 'admin_home_enrollments_hint'.tr,
-        icon: Icons.menu_book_rounded,
-        color: palette[2 % palette.length],
-        onTap: actions.openCourses,
-      ),
-      if (data.hasOrganizations)
-        AppTrendTile(
-          label: 'admin_home_organizations'.tr,
-          value: appCompactNumber(data.orgTotal ?? 0),
-          icon: Icons.domain_rounded,
-          color: palette[3 % palette.length],
-          onTap: actions.openOrganizations,
-        ),
-      if (spark && data.mainCurrency != null)
-        AppTrendTile(
+    final main = data.mainCurrency;
+    final cards = <AppKpiCard>[
+      if (spark && main != null)
+        AppKpiCard(
           label: 'admin_home_revenue_30d'.tr,
-          value: _money(data.revenue30ByCurrency[data.mainCurrency!] ?? 0, data.mainCurrency),
-          delta: data.revenueDelta,
-          spark: data.revenueSpark,
-          deltaHint: 'admin_home_vs_prev_half'.tr,
+          value: _money(data.revenue30ByCurrency[main] ?? 0, main),
           icon: Icons.payments_rounded,
-          color: palette[1 % palette.length],
+          delta: data.revenueDelta == null ? null : data.revenueDelta! / 100,
+          deltaLabel: 'admin_home_vs_prev_half'.tr,
+          spark: data.revenueSpark,
           onTap: actions.openIncome,
         )
       else if (data.incomeByCurrency.isNotEmpty)
-        AppTrendTile(
+        AppKpiCard(
           label: 'admin_course_income_after_discounts'.tr,
           value: moneyByCurrency(data.incomeByCurrency),
           icon: Icons.payments_rounded,
-          color: palette[1 % palette.length],
           onTap: actions.openIncome,
         ),
+      AppKpiCard(
+        label: 'admin_students'.tr,
+        value: appCompactNumber(data.students),
+        icon: Icons.school_rounded,
+        delta: spark && data.signupsDelta != null ? data.signupsDelta! / 100 : null,
+        deltaLabel: 'admin_home_signups_hint'.tr,
+        footnote: spark && data.signups30 > 0 ? t('${data.signups30} تسجيلاً جديداً في 30 يوماً', '${data.signups30} new sign-ups in 30 days') : null,
+        onTap: actions.openStudents,
+      ),
+      AppKpiCard(
+        label: 'teachers'.tr,
+        value: appCompactNumber(data.teachers),
+        icon: Icons.co_present_rounded,
+        onTap: actions.openTeachers,
+      ),
+      AppKpiCard(
+        label: 'courses'.tr,
+        value: appCompactNumber(data.courses),
+        icon: Icons.auto_stories_rounded,
+        footnote: data.courses > 0 ? t('${data.publishedCourses} منشورة', '${data.publishedCourses} published') : null,
+        onTap: actions.openCourses,
+      ),
+      if (data.hasOrganizations)
+        AppKpiCard(
+          label: 'admin_home_organizations'.tr,
+          value: appCompactNumber(data.orgTotal ?? 0),
+          icon: Icons.domain_rounded,
+          footnote: t('${data.orgActive} نشطة', '${data.orgActive} active'),
+          onTap: actions.openOrganizations,
+        ),
+      AppKpiCard(
+        label: 'admin_active_subscribers'.tr,
+        value: appCompactNumber(data.activeSubscriptions),
+        icon: Icons.card_membership_rounded,
+        onTap: actions.openSubscriptions,
+      ),
     ];
-    return LayoutBuilder(builder: (context, box) {
-      final cols = box.maxWidth >= Breakpoints.mobile ? 4 : 2;
-      const gap = 10.0;
-      final rows = <Widget>[];
-      for (var i = 0; i < tiles.length; i += cols) {
-        final row = tiles.sublist(i, i + cols > tiles.length ? tiles.length : i + cols);
-        rows.add(IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (var k = 0; k < cols; k++) ...[
-              if (k > 0) const SizedBox(width: gap),
-              Expanded(child: k < row.length ? row[k] : const SizedBox.shrink()),
-            ],
-          ]),
-        ));
-        if (i + cols < tiles.length) rows.add(const SizedBox(height: gap));
-      }
-      return Column(children: rows);
-    });
+    // exactly ONE highlight: the first card
+    final first = cards.first;
+    cards[0] = AppKpiCard(
+      label: first.label,
+      value: first.value,
+      icon: first.icon,
+      delta: first.delta,
+      deltaLabel: first.deltaLabel,
+      spark: first.spark,
+      footnote: first.footnote,
+      onTap: first.onTap,
+      highlight: true,
+    );
+    return AppKpiGrid(maxColumns: 3, children: cards);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Needs you
+// 3. Needs your attention
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NeedsYou extends StatelessWidget {
@@ -309,84 +329,155 @@ class _NeedsYou extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     Color tone(AdminAlert a) => a.isDanger ? c.danger : (a.isWarning ? c.warning : c.primary);
-    final cards = <Widget>[
+    // a kind this app does not know yet (no translation): a plain "New alert", never the raw server key
+    String alertTitle(String key) {
+      final k = adminAlertTitleKey(key);
+      final text = k.tr;
+      return text == k ? t('تنبيه جديد', 'New alert') : text;
+    }
+
+    final rows = <_AttentionRow>[
       for (final a in data.alerts)
-        HomeActionCard(
+        _AttentionRow(
           icon: adminAlertIcon(a.key),
-          title: a.title ?? adminAlertTitleKey(a.key).tr,
+          title: a.title ?? alertTitle(a.key),
           subtitle: adminAlertHint(a),
           count: a.key == 'otp_provider_unconfigured' || a.isRag ? null : a.count,
-          tone: tone(a),
-          attentionKey: a.key == 'transfers_pending' ? AttentionTabs.adminFinance : null,
+          color: tone(a),
           onTap: actions.openAlert == null ? null : () => actions.openAlert!(a),
         ),
       if (!data.transfersInAlerts && data.pendingTransfers > 0)
-        HomeActionCard(
+        _AttentionRow(
           icon: Icons.pending_actions_rounded,
           title: 'admin_pending_transfers'.tr,
           count: data.pendingTransfers,
-          tone: c.danger,
-          attentionKey: AttentionTabs.adminFinance,
+          color: c.danger,
           onTap: actions.openTransfers,
         ),
       if (pendingPayouts > 0)
-        HomeActionCard(
+        _AttentionRow(
           icon: Icons.account_balance_wallet_rounded,
           title: 'admin_pending_payouts'.tr,
           count: pendingPayouts,
-          tone: c.warning,
+          color: c.warning,
           onTap: actions.openPayouts,
         ),
       if (data.pendingSubscriptions > 0)
-        HomeActionCard(
+        _AttentionRow(
           icon: Icons.hourglass_top_rounded,
           title: 'admin_pending_subscriptions'.tr,
           count: data.pendingSubscriptions,
-          tone: c.purple,
+          color: c.purple,
           onTap: actions.openSubscriptions,
         ),
       if (data.hasOrganizations && !data.orgApprovalsInAlerts && data.orgPendingApproval > 0)
-        HomeActionCard(
+        _AttentionRow(
           icon: Icons.domain_verification_rounded,
           title: 'admin_home_org_approvals'.tr,
           count: data.orgPendingApproval,
-          tone: c.warning,
+          color: c.warning,
           onTap: actions.openOrganizations,
         ),
     ];
-    final total = data.queueTotal(pendingPayouts);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      HomeSectionTitle('home_needs_you'.tr, count: total, padding: const EdgeInsets.fromLTRB(6, 0, 0, 10)),
-      if (cards.isEmpty) ...[
-        AppBanner(icon: Icons.check_circle_rounded, text: 'admin_home_all_clear'.tr, color: c.success),
-        const SizedBox(height: 10),
-      ],
-      HomeActionGrid(padding: EdgeInsets.zero, children: [...cards, HomeTodoCard(tabKey: todoTabKey)]),
-    ]);
+    final svc = AttentionService.instance;
+    return ListenableBuilder(
+      listenable: svc,
+      builder: (context, _) {
+        // the personal to-do list (forms, replies, requirements …) is one more row, only while it holds something
+        final todo = svc.count(todoTabKey);
+        final all = [
+          ...rows,
+          if (todo > 0)
+            _AttentionRow(
+              icon: Icons.task_alt_rounded,
+              title: 'home_todo'.tr,
+              subtitle: 'home_todo_hint'.tr,
+              count: todo,
+              color: c.danger,
+              onTap: () => showAttentionItems(context, todoTabKey),
+            ),
+        ];
+        final total = data.queueTotal(pendingPayouts) + todo;
+        return AppSection(
+          title: 'home_needs_you'.tr,
+          trailing: total > 0 ? AppCountBadge(count: total) : null,
+          child: all.isEmpty
+              ? AppBanner(icon: Icons.check_circle_rounded, text: 'admin_home_all_clear'.tr, color: c.success)
+              : AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(children: [
+                    for (var i = 0; i < all.length; i++) ...[
+                      if (i > 0) Divider(height: 1, thickness: 1, color: c.divider),
+                      all[i],
+                    ],
+                  ]),
+                ),
+        );
+      },
+    );
+  }
+}
+
+/// One line of "Needs your attention": a tinted icon, the title and hint, the count, a chevron. Tapping opens the
+/// page that resolves it.
+class _AttentionRow extends StatelessWidget {
+  const _AttentionRow({required this.icon, required this.title, required this.color, this.subtitle, this.count, this.onTap});
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final int? count;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final n = count ?? 0;
+    return Semantics(
+      button: onTap != null,
+      label: '$title${n > 0 ? ': $n' : ''}${subtitle == null ? '' : '. $subtitle'}',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.primary),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+            child: Row(children: [
+              Container(
+                width: AppTouch.min - AppSpace.sm,
+                height: AppTouch.min - AppSpace.sm,
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+                child: Icon(icon, size: AppIconSize.md, color: appInk(context, color)),
+              ),
+              AppSpace.gapSm,
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                  if (subtitle != null && subtitle!.isNotEmpty)
+                    Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                ]),
+              ),
+              if (n > 0) ...[
+                AppSpace.gapSm,
+                AppCountBadge(count: n, tone: color == c.danger ? AppTone.danger : (color == c.warning ? AppTone.warning : AppTone.neutral)),
+              ],
+              if (onTap != null) ...[
+                AppSpace.gapXs,
+                Icon(Icons.arrow_forward_ios_rounded, size: AppIconSize.xs, color: c.textLight),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. Charts
 // ─────────────────────────────────────────────────────────────────────────────
-
-class _ChartCard extends StatelessWidget {
-  const _ChartCard({required this.title, required this.child});
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return AppCard(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark)),
-        const SizedBox(height: 12),
-        child,
-      ]),
-    );
-  }
-}
 
 class _ActivityChart extends StatelessWidget {
   const _ActivityChart({required this.data});
@@ -395,72 +486,70 @@ class _ActivityChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recent = data.recent(14);
-    return _ChartCard(
+    return AppSection(
       title: 'admin_home_activity_title'.tr,
-      child: data.hasActivity
-          ? AppBarChart(
-              title: 'admin_home_activity_title'.tr,
-              labels: [for (final p in recent) p.dayLabel],
-              series: [
-                AppChartSeries('admin_home_signups'.tr, [for (final p in recent) p.signups.toDouble()]),
-                AppChartSeries('admin_home_enrollments'.tr, [for (final p in recent) p.enrollments.toDouble()]),
-              ],
-            )
-          : AppEmpty(
-              icon: Icons.insights_rounded,
-              title: 'admin_home_no_activity'.tr,
-              message: 'admin_home_no_activity_hint'.tr,
-            ),
+      child: AppCard(
+        child: data.hasActivity
+            ? AppBarChart(
+                title: 'admin_home_activity_title'.tr,
+                labels: [for (final p in recent) p.dayLabel],
+                series: [
+                  AppChartSeries('admin_home_signups'.tr, [for (final p in recent) p.signups.toDouble()]),
+                  AppChartSeries('admin_home_enrollments'.tr, [for (final p in recent) p.enrollments.toDouble()]),
+                ],
+              )
+            : AppEmpty(
+                icon: Icons.insights_rounded,
+                title: 'admin_home_no_activity'.tr,
+                message: 'admin_home_no_activity_hint'.tr,
+              ),
+      ),
     );
   }
 }
 
 class _Donuts extends StatelessWidget {
-  const _Donuts({required this.data, required this.stacked});
+  const _Donuts({required this.data});
   final AdminHomeData data;
-
-  /// true: one under the other (phones and the right column); false is unused for now but keeps the API honest.
-  final bool stacked;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final cards = <Widget>[
       if (data.hasOrganizations)
-        _ChartCard(
+        AppSection(
           title: 'admin_home_orgs_by_type'.tr,
-          child: data.orgByType.values.any((n) => n > 0)
-              ? AppDonut(
-                  title: 'admin_home_orgs_by_type'.tr,
-                  parts: [
-                    for (final e in data.orgByType.entries)
-                      if (e.value > 0) AppChartPart(orgTypeLabels()[e.key] ?? e.key, e.value.toDouble()),
-                  ],
-                )
-              : Text('admin_home_no_orgs'.tr, style: appText(13, c: c.textLight)),
+          child: AppCard(
+            child: data.orgByType.values.any((n) => n > 0)
+                ? AppDonut(
+                    title: 'admin_home_orgs_by_type'.tr,
+                    parts: [
+                      for (final e in data.orgByType.entries)
+                        if (e.value > 0) AppChartPart(orgTypeLabels()[e.key] ?? e.key, e.value.toDouble()),
+                    ],
+                  )
+                : Text('admin_home_no_orgs'.tr, style: AppType.body(context).copyWith(color: c.textLight)),
+          ),
         ),
       if (data.hasSeries)
-        _ChartCard(
+        AppSection(
           title: 'admin_home_revenue_by_currency'.tr,
-          child: data.revenue30ByCurrency.isNotEmpty
-              ? AppDonut(
-                  title: 'admin_home_revenue_by_currency'.tr,
-                  parts: [for (final e in data.revenue30ByCurrency.entries) AppChartPart(e.key, e.value)],
-                  format: (v) => _money(v),
-                  // amounts in different currencies never add up: the centre names the main currency's share
-                  center: _CurrencyShare(byCurrency: data.revenue30ByCurrency),
-                )
-              : Text('admin_home_no_revenue'.tr, style: appText(13, c: c.textLight)),
+          child: AppCard(
+            child: data.revenue30ByCurrency.isNotEmpty
+                ? AppDonut(
+                    title: 'admin_home_revenue_by_currency'.tr,
+                    parts: [for (final e in data.revenue30ByCurrency.entries) AppChartPart(e.key, e.value)],
+                    format: (v) => _money(v),
+                    // amounts in different currencies never add up: the centre names the main currency's share
+                    center: _CurrencyShare(byCurrency: data.revenue30ByCurrency),
+                  )
+                : Text('admin_home_no_revenue'.tr, style: AppType.body(context).copyWith(color: c.textLight)),
+          ),
         ),
     ];
     if (cards.isEmpty) return const SizedBox.shrink();
-    if (stacked || cards.length == 1) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        for (var i = 0; i < cards.length; i++) ...[if (i > 0) const SizedBox(height: 16), cards[i]],
-      ]);
-    }
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      for (var i = 0; i < cards.length; i++) ...[if (i > 0) const SizedBox(width: 16), Expanded(child: cards[i])],
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (var i = 0; i < cards.length; i++) ...[if (i > 0) AppSpace.gapLg, cards[i]],
     ]);
   }
 }
@@ -478,12 +567,9 @@ class _Health extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final failed = data.jobsFailed24h;
-    // folds from its title (HomeSection, remembered per user on the device)
-    return HomeSection(
-      id: 'admin.health',
+    return AppSection(
       title: 'admin_home_health'.tr,
-      titlePadding: const EdgeInsets.fromLTRB(6, 0, 0, 4),
-      child: AppGrid(minTile: 160, children: [ // 160: two per row in the side column — three cut every label
+      child: AppGrid(minTile: 160, padding: EdgeInsets.zero, children: [ // 160: two per row in the side column — three cut every label
         if (data.hasRealtime)
           AppStatTile(
             icon: Icons.bolt_rounded,
@@ -504,7 +590,7 @@ class _Health extends StatelessWidget {
             icon: Icons.sensors_rounded,
             label: 'admin_home_live_sessions_30d'.tr,
             value: data.liveSessions30,
-            color: c.purple,
+            color: c.primary,
           ),
           AppStatTile(
             icon: Icons.support_agent_rounded,
@@ -517,7 +603,7 @@ class _Health extends StatelessWidget {
           icon: Icons.card_membership_rounded,
           label: 'admin_active_subscribers'.tr,
           value: data.activeSubscriptions,
-          color: c.accent2,
+          color: c.primary,
           onTap: actions.openSubscriptions,
         ),
       ]),
@@ -554,7 +640,7 @@ class AdminAssistantCard extends StatelessWidget {
           AppStatTile(icon: Icons.forum_rounded, label: 'admin_home_ai_questions'.tr, value: appCompactNumber(h.questions), color: c.primary),
           AppStatTile(icon: Icons.search_off_rounded, label: 'admin_home_ai_no_answer'.tr, value: h.noAnswerText, color: bad ? c.warning : c.success),
           // an LTR isolate keeps "11.4 s" in order inside Arabic
-          AppStatTile(icon: Icons.timer_outlined, label: 'admin_home_ai_p50'.tr, value: '\u2066${h.p50Text}\u2069', color: c.purple),
+          AppStatTile(icon: Icons.timer_outlined, label: 'admin_home_ai_p50'.tr, value: '\u2066${h.p50Text}\u2069', color: c.primary),
         ]),
         if (h.questions > 0) ...[
           const SizedBox(height: 10),
@@ -605,23 +691,125 @@ class _CurrencyShare extends StatelessWidget {
   }
 }
 
-class _Hubs extends StatelessWidget {
-  const _Hubs({required this.actions});
-  final AdminHomeActions actions;
+/// "Recently opened": the admin pages this person opened last on this device (local, no request). Not drawn at all
+/// with no history; a kill-switched or role-hidden service never shows (resolved through [adminServiceGroups]).
+class _Recents extends StatefulWidget {
+  const _Recents();
+
+  @override
+  State<_Recents> createState() => _RecentsState();
+}
+
+class _RecentsState extends State<_Recents> {
+  @override
+  void initState() {
+    super.initState();
+    AdminRecents.instance.addListener(_changed);
+    String? uid;
+    try {
+      uid = context.read<MyAuthProvider>().currentUser?.id.toString();
+    } catch (_) {}
+    AdminRecents.instance.use(uid);
+  }
+
+  @override
+  void dispose() {
+    AdminRecents.instance.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  List<AdminService> _resolve() {
+    final keys = AdminRecents.instance.keys;
+    if (keys.isEmpty) return const [];
+    List<AdminServiceGroup> groups;
+    try {
+      groups = adminServiceGroups(context, watch: false);
+    } catch (_) {
+      return const []; // no providers above (a preview): nothing to resolve against
+    }
+    final byKey = <String, AdminService>{};
+    for (final g in groups) {
+      for (final s in g.visibleServices) {
+        if (s.featureKey != null && AppConfig.disableList.contains(s.featureKey)) continue;
+        byKey.putIfAbsent(s.labelKey, () => s);
+      }
+    }
+    return [for (final k in keys) if (byKey[k] != null) byKey[k]!].take(AdminRecents.shown).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    void none() {}
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      HomeSectionTitle('admin_home_hubs'.tr, padding: const EdgeInsets.fromLTRB(6, 0, 0, 10)),
-      HomeShortcuts(padding: EdgeInsets.zero, items: [
-        HomeShortcut(icon: Icons.science_rounded, label: 'dl_admin_title'.tr, featureKey: 'data_lab.admin', onTap: actions.openDataLab ?? none),
-        HomeShortcut(icon: Icons.domain_rounded, label: 'svc_organizations'.tr, onTap: actions.openOrganizations ?? none),
-        HomeShortcut(icon: Icons.auto_awesome_rounded, label: 'admin_home_assistant'.tr, featureKey: 'rag.admin', onTap: actions.openAssistant ?? none),
-        HomeShortcut(icon: Icons.tune_rounded, label: 'features'.tr, onTap: actions.openFeatures ?? none),
-        HomeShortcut(icon: Icons.co_present_rounded, label: 'admin_teachers'.tr, onTap: actions.openTeachers ?? none),
-        HomeShortcut(icon: Icons.request_quote_rounded, label: 'admin_home_income'.tr, onTap: actions.openIncome ?? none),
-      ]),
-    ]);
+    final items = _resolve();
+    if (items.isEmpty) return const SizedBox.shrink();
+    return AppSection(
+      title: t('فُتحت مؤخراً', 'Recently opened'),
+      child: LayoutBuilder(builder: (context, box) {
+        final cols = box.maxWidth >= 360 ? 2 : 1;
+        final w = (box.maxWidth - AppSpace.sm * (cols - 1)) / cols;
+        return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
+          for (final s in items)
+            SizedBox(
+              width: w,
+              child: _RecentTile(
+                icon: s.icon,
+                label: s.labelText,
+                onTap: () {
+                  AdminRecents.instance.record(s.labelKey);
+                  s.onTap();
+                },
+              ),
+            ),
+        ]);
+      }),
+    );
+  }
+}
+
+class _RecentTile extends StatelessWidget {
+  const _RecentTile({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(color: c.divider, width: AppBorder.hairline),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.primary),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+              child: Row(children: [
+                Container(
+                  width: AppTouch.min - AppSpace.sm,
+                  height: AppTouch.min - AppSpace.sm,
+                  decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+                  child: Icon(icon, size: AppIconSize.md, color: c.primary),
+                ),
+                AppSpace.gapSm,
+                Expanded(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

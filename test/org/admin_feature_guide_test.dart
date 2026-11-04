@@ -85,7 +85,7 @@ void main() {
       await expectNoLayoutErrors(
           tester,
           () => ListView(children: [
-                GuideFeatureTile(feature: feature('downloads', roles: roles.keys.toList()), roleNames: roles, onApp: (_) {}, onRag: (_) {}),
+                GuideFeatureTile(feature: feature('downloads', roles: roles.keys.toList()), roleNames: roles, onRag: (_) {}),
                 GuideFeatureTile(feature: feature('partial', state: 'partial', hiddenOn: ['android', 'ios', 'web']), roleNames: roles),
                 GuideFeatureTile(feature: feature('hidden', state: 'hidden', edited: true), roleNames: roles),
                 GuideFeatureTile(feature: feature('custom', state: 'none', rag: false, source: 'custom'), roleNames: roles),
