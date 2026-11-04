@@ -16,11 +16,11 @@ library;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton, AppButtonSize;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -297,8 +297,8 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
               Field(controller: help, label: t('توضيح يساعد المتقدم (اختياري)', 'Helper text (optional)')),
               OrgSwitchRow(title: t('إجباري', 'Required'), value: f['required'] == true, onChanged: (v) => set(() => f['required'] = v)),
               const SizedBox(height: 8),
-              PrimaryButton(
-                isLoading: false,
+              AppButton.primary(
+                busy: false,
                 label: t('تم', 'Done'),
                 onPressed: () {
                   if (label.text.trim().isEmpty) return toast(t('اكتب السؤال', 'Write the question'), error: true);
@@ -504,7 +504,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
         ],
         const SizedBox(height: 14),
         if (_error != null) _banner(context, Icons.error_outline_rounded, c.danger, _error!),
-        PrimaryButton(isLoading: _busy, enable: _dirty, label: t('حفظ سياسة الانضمام', 'Save join policy'), onPressed: _dirty ? _save : null),
+        AppButton.primary(busy: _busy, label: t('حفظ سياسة الانضمام', 'Save join policy'), onPressed: _dirty ? _save : null),
         if (_dirty)
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -624,8 +624,8 @@ class _CodesTabState extends State<_CodesTab> {
               if (!oneTime)
                 Field(controller: maxC, label: t('أقصى عدد استخدامات (فارغ = بلا حد)', 'Maximum uses (empty = unlimited)'), keyboard: TextInputType.number, ltr: true),
               if (err != null) _banner(ctx, Icons.error_outline_rounded, c.danger, err!),
-              PrimaryButton(
-                isLoading: busy,
+              AppButton.primary(
+                busy: busy,
                 label: row == null ? t('إنشاء الكود', 'Create code') : t('حفظ', 'Save'),
                 onPressed: () async {
                   if (from != null && until != null && !from!.isBefore(until!)) {
@@ -888,8 +888,8 @@ class JoinRequestCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Wrap(spacing: 8, children: [
-                FilledButton.icon(onPressed: () => _decide(context, true), icon: const Icon(Icons.check_rounded), label: Text(t('قبول', 'Accept'))),
-                OutlinedButton.icon(onPressed: () => _decide(context, false), icon: const Icon(Icons.close_rounded), label: Text(t('رفض', 'Reject'))),
+                AppButton.secondary(size: AppButtonSize.sm, onPressed: () => _decide(context, true), icon: Icons.check_rounded, label: t('قبول', 'Accept')),
+                AppButton.ghost(size: AppButtonSize.sm, onPressed: () => _decide(context, false), icon: Icons.close_rounded, label: t('رفض', 'Reject')),
               ]),
             ),
         ]),
@@ -962,11 +962,7 @@ class _UnitMembersTabState extends State<_UnitMembersTab> {
                         alignment: AlignmentDirectional.centerEnd,
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 8),
-                          child: FilledButton.icon(
-                            onPressed: _addManually,
-                            icon: const Icon(Icons.person_add_alt_1_rounded),
-                            label: Text(t('إضافة يدوية', 'Add manually')),
-                          ),
+                          child: AppButton.tonal(size: AppButtonSize.sm, onPressed: _addManually, icon: Icons.person_add_alt_1_rounded, label: t('إضافة يدوية', 'Add manually')),
                         ),
                       ),
                     if (rows.isEmpty) OrgEmpty(icon: Icons.groups_rounded, title: t('لا أعضاء بعد', 'No members yet')),
@@ -1101,8 +1097,8 @@ class _ManualAddSheetState extends State<_ManualAddSheet> {
           ),
         ),
         const SizedBox(height: 8),
-        PrimaryButton(
-          isLoading: false,
+        AppButton.primary(
+          busy: false,
           label: t('إضافة (${_picked.length})', 'Add (${_picked.length})'),
           onPressed: _picked.isEmpty ? null : () => Navigator.pop(context, {..._picked}),
         ),
@@ -1183,8 +1179,8 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
                 decoration: InputDecoration(hintText: 'ABCD234567', errorText: err, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
               ),
               const SizedBox(height: 12),
-              PrimaryButton(
-                isLoading: busy,
+              AppButton.primary(
+                busy: busy,
                 label: t('انضمام', 'Join'),
                 onPressed: () async {
                   if (code.text.trim().length < 4) return set(() => err = t('أدخل الكود', 'Enter the code'));
@@ -1499,8 +1495,8 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
                 label: Text(t('هل أستطيع الانضمام؟', 'Can I join?')),
               ),
             const SizedBox(height: 8),
-            PrimaryButton(
-              isLoading: _busy,
+            AppButton.primary(
+              busy: _busy,
               label: unitNeedsApproval(pol) ? t('إرسال الطلب', 'Send request') : t('انضمام', 'Join'),
               onPressed: _busy || _check?['status'] == 'ineligible' ? null : _join,
             ),
@@ -1551,7 +1547,7 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
           textAlign: TextAlign.center,
           style: orgText(context, color: c.textMedium)),
       const SizedBox(height: 16),
-      PrimaryButton(isLoading: false, label: t('تم', 'Done'), onPressed: () => Navigator.of(context).pop(true)),
+      AppButton.primary(busy: false, label: t('تم', 'Done'), onPressed: () => Navigator.of(context).pop(true)),
     ]);
   }
 }

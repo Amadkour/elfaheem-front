@@ -9,9 +9,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -294,8 +294,8 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                 decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
                 child: Text(err!, style: orgText(ctx, size: 12.5, color: c.danger)),
               ),
-            PrimaryButton(
-              isLoading: busy,
+            AppButton.primary(
+              busy: busy,
               label: edit == null ? t('إضافة', 'Add') : t('حفظ', 'Save'),
               onPressed: () async {
                 if (edit == null && !email.text.contains('@')) return set(() => err = t('أدخل بريداً صحيحاً', 'Enter a valid email'));
@@ -416,8 +416,8 @@ Future<Map<String, dynamic>?> showMembershipExtend(BuildContext context, Map<Str
             Field(controller: note, label: t('ملاحظة للسجل (اختياري)', 'Note for the log (optional)')),
             if (err != null) Text(err!, style: orgText(ctx, size: 12.5, color: c.danger)),
             const SizedBox(height: 8),
-            PrimaryButton(
-              isLoading: busy,
+            AppButton.primary(
+              busy: busy,
               label: t('حفظ', 'Save'),
               onPressed: () async {
                 if (!permanent && until == null) return set(() => err = t('اختر تاريخ الانتهاء', 'Pick the end date'));
