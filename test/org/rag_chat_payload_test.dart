@@ -366,4 +366,55 @@ void main() {
       expect(a.chunks.length, 1);
     });
   });
+
+  group('real server tool shapes', () {
+    final now = DateTime.utc(2026, 11, 4, 10);
+    test('subscriptions: platform plans and course subscriptions', () {
+      final rows = ragSubscriptionRows({
+        'platform': [
+          {'kind': 'platform', 'plan_code': 'pro', 'plan_name': {'ar': 'احترافي', 'en': 'Pro'}, 'status': 'active', 'starts_at': '2026-10-01T00:00:00Z', 'ends_at': '2026-11-10T00:00:00Z', 'days_left': 6}
+        ],
+        'has_active': true,
+        'courses': [
+          {'course_id': 3, 'title': {'ar': 'رياضيات', 'en': 'Math'}, 'plan': 'x', 'ends_at': '2026-10-20T00:00:00Z', 'expired': true, 'days_left': null}
+        ],
+        'now': '2026-11-04T10:00:00Z',
+      }, now);
+      expect(rows.map((r) => r.title), ['Pro', 'Math']);
+      expect(rows[0].detail, contains('6 days left'));
+      expect(rows[0].warn, true);
+      expect(rows[1].warn, true);
+    });
+    test('courses: teacher and null progress', () {
+      final rows = ragCourseRows({
+        'courses': [
+          {'course_id': 1, 'title': {'ar': 'أ', 'en': 'A'}, 'teacher': 'Dr X', 'progress': 40},
+          {'course_id': 2, 'title': {'ar': 'ب', 'en': 'B'}, 'teacher': null, 'progress': null},
+        ],
+        'org_id': null,
+      });
+      expect(rows[0].detail, 'Dr X · 40%');
+      expect(rows[0].progress, 0.4);
+      expect(rows[1].progress, isNull);
+    });
+    test('schedule items with course and location', () {
+      final rows = ragScheduleRows({
+        'items': [
+          {'source': 'session', 'title': 'Lesson 1', 'title_auto': false, 'course': 'Math', 'starts_at': '2026-11-05T09:00:00Z', 'ends_at': '2026-11-05T10:00:00Z', 'mode': 'online', 'location': 'Room 2'}
+        ],
+        'truncated': false,
+      });
+      expect(rows.single.detail, allOf(contains('Math'), contains('Room 2')));
+    });
+    test('progress: done/total and the next exam', () {
+      final rows = ragProgressRows({
+        'courses': [
+          {'course_id': 1, 'title': {'ar': 'أ', 'en': 'A'}, 'done': 3, 'total': 10, 'progress': 30, 'last_activity': null,
+           'upcoming_exams': [{'exam_id': 1, 'title': 'Final', 'starts_at': '2026-11-20T09:00:00Z'}]}
+        ]
+      });
+      expect(rows.single.detail, startsWith('3 / 10 · Exam: Final'));
+      expect(rows.single.progress, 0.3);
+    });
+  });
 }

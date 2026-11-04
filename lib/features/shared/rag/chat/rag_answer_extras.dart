@@ -173,13 +173,18 @@ class RagToolRow {
 /// How many rows a card shows.
 const int kRagToolMaxRows = 5;
 
-/// Subscriptions: plan, end date and days left.
+/// Subscriptions (`{platform:[{plan_name, ends_at, days_left}], courses:[{title, plan, ends_at, expired, days_left}]}`):
+/// plan, end date and days left. An older shape (`items`, or one flat object) is still read.
 List<RagToolRow> ragSubscriptionRows(Map<String, dynamic> data, DateTime now) {
-  var items = ragToolItems(data, const ['subscriptions']);
+  var items = [
+    ...ragToolItems({'x': data['platform']}, const ['x']),
+    ...ragToolItems({'x': data['courses']}, const ['x']),
+    if (data['platform'] is! List && data['courses'] is! List) ...ragToolItems(data, const ['subscriptions']),
+  ];
   if (items.isEmpty && data.keys.any(const {'plan', 'plan_name', 'ends_at', 'end_date', 'expires_at'}.contains)) items = [data];
   final out = <RagToolRow>[];
   for (final s in items) {
-    final plan = ragPickStr(s, const ['plan_name', 'plan', 'name', 'title', 'course_title', 'course']);
+    final plan = ragPickStr(s, const ['plan_name', 'title', 'plan', 'name', 'course_title', 'course']);
     final end = ragPickTime(s, const ['ends_at', 'end_date', 'expires_at', 'end', 'valid_until', 'expiry']);
     if (plan.isEmpty && end == null) continue;
     var detail = '';
@@ -187,7 +192,7 @@ List<RagToolRow> ragSubscriptionRows(Map<String, dynamic> data, DateTime now) {
     if (end != null) {
       final left = ragDaysLeft(end, now);
       final date = AppTime.date(end);
-      if (left < 0) {
+      if (left < 0 || s['expired'] == true) {
         detail = t('انتهى في $date', 'Ended $date');
         warn = true;
       } else {
@@ -201,41 +206,58 @@ List<RagToolRow> ragSubscriptionRows(Map<String, dynamic> data, DateTime now) {
   return out;
 }
 
-/// Courses: title with a progress bar.
+/// Courses (`{courses:[{title, teacher, progress 0..100|null}]}`): title, teacher, progress bar.
 List<RagToolRow> ragCourseRows(Map<String, dynamic> data) {
   final out = <RagToolRow>[];
   for (final c in ragToolItems(data, const ['courses'])) {
     final title = ragPickStr(c, const ['title', 'name', 'course_title']);
     if (title.isEmpty) continue;
     final p = ragPickFraction(c, const ['progress', 'progress_percent', 'percent', 'completion']);
-    out.add(RagToolRow(title, detail: p == null ? '' : '${(p * 100).round()}%', progress: p));
+    final teacher = ragPickStr(c, const ['teacher']);
+    final detail = [if (teacher.isNotEmpty) teacher, if (p != null) '${(p * 100).round()}%'].join(' · ');
+    out.add(RagToolRow(title, detail: detail, progress: p));
     if (out.length == kRagToolMaxRows) break;
   }
   return out;
 }
 
-/// Schedule: the next items with their times.
+/// Schedule (`{items:[{title, course, starts_at, location}]}`): the next items with their times.
 List<RagToolRow> ragScheduleRows(Map<String, dynamic> data) {
   final out = <RagToolRow>[];
-  for (final s in ragToolItems(data, const ['sessions', 'events', 'schedule', 'upcoming'])) {
+  for (final s in ragToolItems(data, const ['items', 'sessions', 'events', 'schedule', 'upcoming'])) {
     final title = ragPickStr(s, const ['title', 'name', 'course_title', 'course', 'subject']);
     final at = ragPickTime(s, const ['starts_at', 'start_at', 'start', 'start_time', 'at', 'time', 'scheduled_at', 'date']);
     if (title.isEmpty && at == null) continue;
-    out.add(RagToolRow(title.isEmpty ? t('موعد', 'Event') : title, detail: at == null ? '' : AppTime.dateTime(at)));
+    final course = ragPickStr(s, const ['course']);
+    final place = ragPickStr(s, const ['location']);
+    final detail = [if (at != null) AppTime.dateTime(at), if (course.isNotEmpty && course != title) course, if (place.isNotEmpty) place].join(' · ');
+    out.add(RagToolRow(title.isEmpty ? t('موعد', 'Event') : title, detail: detail));
     if (out.length == kRagToolMaxRows) break;
   }
   return out;
 }
 
-/// Progress: an overall bar when the data carries one, else the per-course bars.
+/// Progress (`{courses:[{title, done, total, progress, upcoming_exams:[{title, starts_at}]}]}`): a bar per course
+/// with "done / total" and the next exam; an overall bar first when the data carries one.
 List<RagToolRow> ragProgressRows(Map<String, dynamic> data) {
   final out = <RagToolRow>[];
-  final overall = ragPickFraction(data, const ['overall', 'progress', 'percent', 'completion']);
+  final overall = ragPickFraction(data, const ['overall']);
   if (overall != null) out.add(RagToolRow(t('التقدّم العام', 'Overall progress'), detail: '${(overall * 100).round()}%', progress: overall));
-  final rest = ragCourseRows(data);
-  for (final r in rest) {
+  for (final c in ragToolItems(data, const ['courses'])) {
     if (out.length == kRagToolMaxRows) break;
-    out.add(r);
+    final title = ragPickStr(c, const ['title', 'name', 'course_title']);
+    if (title.isEmpty) continue;
+    final p = ragPickFraction(c, const ['progress', 'progress_percent', 'percent', 'completion']);
+    final done = c['done'], total = c['total'];
+    final exams = ragToolItems(c, const ['upcoming_exams']);
+    final exam = exams.isEmpty ? null : exams.first;
+    final examAt = exam == null ? null : ragPickTime(exam, const ['starts_at']);
+    final examTitle = exam == null ? '' : ragPickStr(exam, const ['title']);
+    final detail = [
+      if (done is num && total is num) '${done.toInt()} / ${total.toInt()}' else if (p != null) '${(p * 100).round()}%',
+      if (examTitle.isNotEmpty) '${t('امتحان', 'Exam')}: $examTitle${examAt == null ? '' : ' ${AppTime.dateTime(examAt)}'}',
+    ].join(' · ');
+    out.add(RagToolRow(title, detail: detail, progress: p));
   }
   return out;
 }
