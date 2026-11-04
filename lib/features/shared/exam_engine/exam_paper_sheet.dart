@@ -21,6 +21,7 @@ import '../../admin/admin_common.dart' show asInt, asMap, t;
 import '../../org/org_ui.dart' show orgFileUrl;
 import '../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../teacher/data_lab/data_lab_saver_web.dart' as saver;
 import 'exam_authoring.dart';
+import 'exam_media.dart' show bankQuestionBytes;
 import 'exam_paper.dart';
 import 'exam_paper_docx.dart';
 import 'exam_paper_pdf.dart';
@@ -145,13 +146,11 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
   Future<void> _editVersions() async {
     final id = widget.view.exam.id;
     if (id == null) return;
-    final r = await openExamVersions(context, examId: id, current: _versions, api: _vApi, bubble: _setup?.paperFormat == 'bubble' || _setup?.paperFormat == 'both');
-    if (r != null && mounted) {
-      setState(() {
-        _versions = r;
-        if (_version != null && r.byCode(_version) == null) _version = null;
-      });
-    }
+    await openExamVersions(context, examId: id, current: _versions, api: _vApi, bubble: _setup?.paperFormat == 'bubble' || _setup?.paperFormat == 'both');
+    // whatever the sheet returned (or a swipe away after a generate with warnings): the server holds the truth
+    if (!mounted) return;
+    await _loadExtras();
+    if (mounted && _version != null && _versions.byCode(_version) == null) setState(() => _version = null);
   }
 
   /// The paper's answer area follows the exam's paper | bubble | both setting.
@@ -246,7 +245,9 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     }
   }
 
-  Future<ExamPaperDoc> _baseDoc({required bool answerKey}) async => ExamPaperDoc.fromView(widget.view,
+  Future<ExamPaperDoc> _baseDoc({required bool answerKey}) async => attachPaperImages(await _plainDoc(answerKey: answerKey), bankQuestionBytes);
+
+  Future<ExamPaperDoc> _plainDoc({required bool answerKey}) async => ExamPaperDoc.fromView(widget.view,
       institution: _institution.text,
       course: _course.text,
       dateText: _date.text.trim(),
@@ -269,6 +270,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     try {
       final base = await _baseDoc(answerKey: false);
       final word = _word;
+      if (word && base.hasImages) appToast(wordNoImagesText);
       var tpl = resolvePaperTemplate(_tpl, highStakes: widget.view.exam.highStakes);
       if (tpl == PaperTemplate.custom) tpl = resolvePaperTemplate(PaperTemplate.auto, highStakes: widget.view.exam.highStakes);
       final style = PaperStyle.of(tpl);
@@ -282,6 +284,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         final name = '${base.title} - ${t('نسخ الطلاب', 'student copies')}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
         final path = await saver.dlSaveBytes(res.bytes!, '$name.${word ? 'zip' : 'pdf'}', word ? 'application/zip' : 'application/pdf');
         appToast(path == null ? t('جاهز للطباعة', 'Ready to print') : '${t('حُفظ في', 'Saved to')} $path');
+        if (res.warning != null) appToast(res.warning!, error: true);
       }
     } catch (e) {
       debugPrint('exam copies failed: $e');
@@ -301,6 +304,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         return;
       }
       var d = await _baseDoc(answerKey: answerKey);
+      if ((_word || _tpl == PaperTemplate.custom) && d.hasImages) appToast(wordNoImagesText);
       if (v != null) {
         d = applyVersion(d, v);
         final id = widget.view.exam.id;
@@ -311,7 +315,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
             setState(() => _busy = null);
             return;
           }
-          d = d.copyWith(keySummary: keyLinesOf(answerKeyItems(k.map)));
+          d = d.copyWith(keySummary: keyLinesForPaper(d, answerKeyItems(k.map)));
         }
       }
       final tpl = resolvePaperTemplate(_tpl, highStakes: widget.view.exam.highStakes);
@@ -563,11 +567,23 @@ class PaperPreview extends StatelessWidget {
 }
 
 
+/// Word copies carry a "[image: …]" line where a question has a picture.
+String get wordNoImagesText => t('ملفات Word لا تتضمن صور الأسئلة (يظهر سطر بدلاً منها). استخدم PDF لطباعة الصور.', 'Word copies do not include question images (a placeholder line shows instead). Use PDF to print the images.');
+
+/// The most pages per copy the print plan gives a QR to.
+const kMaxQrPages = 40;
+
+String get qrPagesWarningText => t('بعض صفحات النسخ بلا رمز QR (عدد الصفحات تغيّر أو تجاوز $kMaxQrPages). راجع الملف قبل الطباعة.',
+    'Some pages have no QR code (a copy has more pages than planned, or over $kMaxQrPages). Check the file before printing.');
+
 /// What a per-student print produced: the file, or the reason it could not be made.
 class PaperCopiesResult {
-  const PaperCopiesResult({this.bytes, this.error, this.copies = 0, this.pages = 0});
+  const PaperCopiesResult({this.bytes, this.error, this.copies = 0, this.pages = 0, this.warning});
   final Uint8List? bytes;
   final String? error;
+
+  /// The file was made but some pages may have no QR (a copy's real page count differs from the plan's, or it is over [kMaxQrPages]).
+  final String? warning;
   final int copies, pages;
 }
 
@@ -612,7 +628,11 @@ Future<PaperCopiesResult> buildPaperCopies({
     return PaperCopiesResult(bytes: Uint8List.fromList(ZipEncoder().encodeBytes(zip)), copies: docs.length);
   }
   final out = await examPaperPdfMany(docs, tpl, regular: regular, bold: bold);
-  return PaperCopiesResult(bytes: out.bytes, copies: docs.length, pages: out.pages.fold(0, (a, b) => a + b));
+  var mismatch = out.pages.length != plan.items.length || out.pages.any((p) => p > kMaxQrPages);
+  for (var i = 0; !mismatch && i < out.pages.length; i++) {
+    if (out.pages[i] != docs[i].qrPages.length) mismatch = true; // the QRs the copy got (plan.items[i].pages cut to its own count)
+  }
+  return PaperCopiesResult(bytes: out.bytes, copies: docs.length, pages: out.pages.fold(0, (a, b) => a + b), warning: mismatch ? qrPagesWarningText : null);
 }
 
 /// Versions of the paper: which one to print, and the sheet that makes them.
@@ -644,7 +664,11 @@ class PaperVersionsSection extends StatelessWidget {
           if (versions.items.isNotEmpty) AppChoiceChip(label: t('ترتيب الاختبار', 'Exam order'), selected: selected == null, onTap: () => onSelect(null)),
           for (final v in versions.items)
             AppChoiceChip(label: '${t('نموذج', 'Version')} ${v.code}', selected: selected == v.code, onTap: () {
-                  if (!v.stale) onSelect(v.code);
+                  if (v.stale) {
+                    appToast(versionsStaleText, error: true);
+                  } else {
+                    onSelect(v.code);
+                  }
                 }),
           OutlinedButton.icon(
             key: const ValueKey('paper.versions.edit'),

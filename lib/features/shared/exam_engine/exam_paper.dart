@@ -18,6 +18,7 @@ import 'dart:typed_data';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, t;
 import 'exam_authoring.dart' show ExamView, fmtPoints;
+import 'exam_media.dart' show mediaOfBody;
 import 'paper/omr_counts.dart';
 
 enum PaperTemplate { auto, classic, modern, minimal, custom }
@@ -100,7 +101,7 @@ class PaperStyle {
 class PaperQuestion {
   PaperQuestion({required this.number, required this.type, required this.prompt, required this.points, this.options = const [],
       this.correct = const {}, this.left = const [], this.right = const [], this.pairs = const {}, this.items = const [], this.order = const [],
-      this.blanks = 0, this.tfCorrect, this.answerText = '', this.id});
+      this.blanks = 0, this.tfCorrect, this.answerText = '', this.id, this.mediaId, this.mediaAlt = '', this.image, this.imageFailed = false});
   final int number;
 
   /// The engine question's id (versions order questions by it); null for a hand-built question.
@@ -119,6 +120,23 @@ class PaperQuestion {
   final List<String> items, order;
   final int blanks;
   final bool? tfCorrect;
+
+  /// The question's image (the body's `media`): its id and alt text, and once fetched ([attachPaperImages]) the bytes.
+  /// [imageFailed]: the fetch failed, the writers print a placeholder line.
+  final String? mediaId;
+  final String mediaAlt;
+  final Uint8List? image;
+  final bool imageFailed;
+
+  bool get hasMedia => mediaId != null;
+
+  PaperQuestion withImage(Uint8List? bytes, {bool failed = false}) => PaperQuestion(
+      id: id, number: number, type: type, prompt: prompt, points: points, options: options, correct: correct, left: left, right: right,
+      pairs: pairs, items: items, order: order, blanks: blanks, tfCorrect: tfCorrect, answerText: answerText, mediaId: mediaId, mediaAlt: mediaAlt,
+      image: bytes, imageFailed: failed);
+
+  /// What a writer without pictures prints instead.
+  String get imagePlaceholder => mediaAlt.isEmpty ? '[image]' : ['[image: ', mediaAlt, ']'].join();
 
   /// What the answer key prints for open / numeric / blank questions.
   final String answerText;
@@ -183,6 +201,9 @@ class ExamPaperDoc {
 
   int get questionCount => sections.fold(0, (s, x) => s + x.questions.length);
 
+  /// Whether any question carries an image.
+  bool get hasImages => sections.any((s) => s.questions.any((q) => q.hasMedia));
+
   /// The manager's exam view → the paper. Questions are numbered across sections; empty sections are left out.
   static ExamPaperDoc fromView(ExamView v, {required String institution, String course = '', String? dateText, required List<String> instructions,
       required bool rtl, Uint8List? logo, String accentHex = '0F7B5F', bool showPoints = true, bool seatNumber = true, bool answerKey = false,
@@ -221,6 +242,39 @@ List<String> _strings(dynamic v) => [for (final x in (v as List?) ?? const []) x
 
 /// One engine question (body + key) as printed.
 PaperQuestion paperQuestion(int number, String type, Map<String, dynamic> body, Map<String, dynamic> key, double points, {int? id}) {
+  final q = _paperQuestion(number, type, body, key, points, id);
+  final m = mediaOfBody(body);
+  return m == null ? q : PaperQuestion(
+      id: q.id, number: q.number, type: q.type, prompt: q.prompt, points: q.points, options: q.options, correct: q.correct, left: q.left,
+      right: q.right, pairs: q.pairs, items: q.items, order: q.order, blanks: q.blanks, tfCorrect: q.tfCorrect, answerText: q.answerText,
+      mediaId: m.id, mediaAlt: m.alt);
+}
+
+/// Fetches every question image of [d] (through [fetch], by question id and media id) BEFORE the page-count and render passes,
+/// so both lay out the same. A failed fetch keeps the question and marks it [PaperQuestion.imageFailed]. Same bytes are fetched once.
+Future<ExamPaperDoc> attachPaperImages(ExamPaperDoc d, Future<Uint8List> Function(int questionId, String mediaId) fetch) async {
+  if (!d.hasImages) return d;
+  final sections = <PaperSection>[];
+  for (final s in d.sections) {
+    final qs = <PaperQuestion>[];
+    for (final q in s.questions) {
+      if (!q.hasMedia || q.id == null) {
+        qs.add(q);
+        continue;
+      }
+      try {
+        final b = await fetch(q.id!, q.mediaId!);
+        qs.add(b.isEmpty ? q.withImage(null, failed: true) : q.withImage(b));
+      } catch (_) {
+        qs.add(q.withImage(null, failed: true));
+      }
+    }
+    sections.add(PaperSection(title: s.title, instructions: s.instructions, questions: qs));
+  }
+  return d.copyWith(sections: sections);
+}
+
+PaperQuestion _paperQuestion(int number, String type, Map<String, dynamic> body, Map<String, dynamic> key, double points, int? id) {
   final prompt = '${body['prompt'] ?? ''}'.trim();
   switch (type) {
     case 'mcq_single':

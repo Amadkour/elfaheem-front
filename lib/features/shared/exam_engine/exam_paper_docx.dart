@@ -90,6 +90,8 @@ String _questionsXml(ExamPaperDoc d, _W w, {required String accent, required Str
           before: 200,
           after: 60,
           keepNext: true));
+      // Word copies carry a placeholder line, not the picture
+      if (q.hasMedia) out.write(w.para(w.run(q.imagePlaceholder, color: '6B7280', size: 10, italic: true), ind: 560, after: 60));
       switch (q.type) {
         case 'mcq_single':
         case 'mcq_multi':

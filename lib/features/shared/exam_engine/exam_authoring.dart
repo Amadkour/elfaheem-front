@@ -335,6 +335,8 @@ class QuestionDraft {
       ..points = points
       ..tags = List.of(tags)
       ..difficulty = difficulty;
+    final m = media;
+    if (m != null) d.media = m;
     if ((next == 'mcq_single' || next == 'mcq_multi') && options.isNotEmpty) d.options = options;
     if (openQuestionTypes.contains(next)) {
       d.model = model;

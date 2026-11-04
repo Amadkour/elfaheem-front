@@ -77,7 +77,7 @@ class VersionsForm extends StatelessWidget {
           for (final v in versions)
             Chip(
               label: Text('${t('نموذج', 'Version')} ${v.code}${v.copies == null ? '' : ' · ${v.copies}'}', overflow: TextOverflow.ellipsis),
-              avatar: Icon(v.shuffled ? Icons.shuffle_rounded : Icons.format_list_numbered_rounded, size: 16),
+              avatar: Icon(versionShuffled(v, versions.first) ? Icons.shuffle_rounded : Icons.format_list_numbered_rounded, size: 16),
             ),
         ]),
       ],
@@ -128,7 +128,7 @@ class _ExamVersionsSheetState extends State<ExamVersionsSheet> {
       _busy = false;
       _result = v;
       _made = v.items;
-      _warnings = [for (final w in (r.map['warnings'] as List?) ?? const []) w is Map ? '${w['message'] ?? w['code'] ?? ''}' : '$w'];
+      _warnings = [for (final w in (r.map['warnings'] as List?) ?? const []) versionWarningText(w is Map ? '${w['message'] ?? w['code'] ?? ''}' : '$w')];
     });
     if (_warnings.isEmpty) {
       appToast(t('أُنشئت النماذج', 'Versions created'));

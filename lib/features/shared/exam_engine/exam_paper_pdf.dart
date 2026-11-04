@@ -273,8 +273,30 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl) {
         child: txt(s.isEmpty ? '—' : s, size: 10.5, color: PdfColors.red900),
       );
 
+  // the question's image under its prompt (bounded, never stretched); a failed fetch or an undecodable file prints a placeholder line
+  pw.Widget? imageOf(PaperQuestion q) {
+    if (!q.hasMedia) return null;
+    if (q.image != null) {
+      try {
+        final image = pw.MemoryImage(q.image!);
+        return pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 3, bottom: 5),
+          child: pw.Align(
+            alignment: d.rtl ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
+            child: pw.ConstrainedBox(constraints: const pw.BoxConstraints(maxWidth: 300, maxHeight: 170), child: pw.Image(image, fit: pw.BoxFit.contain)),
+          ),
+        );
+      } catch (_) {
+        // falls through to the placeholder
+      }
+    }
+    return pw.Padding(padding: const pw.EdgeInsets.only(top: 3, bottom: 4), child: txt(q.imagePlaceholder, size: 9.5, color: muted));
+  }
+
   List<pw.Widget> body(PaperQuestion q) {
     final out = <pw.Widget>[];
+    final img = imageOf(q);
+    if (img != null) out.add(img);
     switch (q.type) {
       case 'mcq_single':
       case 'mcq_multi':
@@ -506,7 +528,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl) {
       return pw.Container(
         margin: const pw.EdgeInsets.only(top: 8),
         child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
-          pw.Expanded(child: txt(no < total ? w.turnOver : '', size: 8.5, color: muted)),
+          pw.Expanded(child: txt(paperTurnOver(no, total) ? w.turnOver : '', size: 8.5, color: muted)),
           txt(w.page(no, total), size: 8.5, color: muted),
           if (d.qrReserved) ...[
             pw.SizedBox(width: 10),
@@ -522,6 +544,9 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl) {
   ));
   return lastPage;
 }
+
+/// "Please turn over" belongs on every page of a paper but its last ([total] = that paper's own page count).
+bool paperTurnOver(int no, int total) => no < total;
 
 bool tplIsMinimal(PaperTemplate t) => t == PaperTemplate.minimal;
 

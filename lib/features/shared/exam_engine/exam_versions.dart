@@ -81,6 +81,24 @@ class ExamVersions {
   }
 }
 
+/// A version's icon says "shuffled" only when it differs from version A (the first one, the exam's own order).
+bool versionShuffled(ExamVersion v, ExamVersion? a) {
+  if (v.optionOrders.isNotEmpty) return true;
+  final o = v.questionOrder, base = a?.questionOrder;
+  if (o == null) return false;
+  if (base == null || base.length != o.length) return true;
+  for (var i = 0; i < o.length; i++) {
+    if (o[i] != base[i]) return true;
+  }
+  return false;
+}
+
+/// The words for a warning code of `POST /exams/{id}/versions` (an unknown code is not shown raw).
+String versionWarningText(String code) => switch (code) {
+      'nothing_shuffled' => t('لم يتغيّر شيء بين النماذج: فعّل خلط الأسئلة أو الاختيارات وأنشئ مرة أخرى.', 'Nothing differs between the versions: turn on shuffling the questions or the choices and generate again.'),
+      _ => code.contains(' ') ? code : t('تنبيه من الخادم عند إنشاء النماذج. راجع النماذج قبل الطباعة.', 'The server raised a warning while making the versions. Check them before printing.'),
+    };
+
 /// The text of a failed versions / answer-key / print-plan call (`versions_stale` and the bubble rule in words).
 String versionsErrorText(EngineResult r) => switch (r.code) {
       'versions_stale' => versionsStaleText,
@@ -116,6 +134,27 @@ List<AnswerKeyItem> answerKeyItems(Map<String, dynamic> j) => [
 
 List<PaperKeyLine> keyLinesOf(List<AnswerKeyItem> items) => [for (final i in items) PaperKeyLine(i.n, i.display)];
 
+/// The key summary printed with [d]: numbered by the paper's own numbering (matched on question id, the server's `n`
+/// counts paper sections only) and, for choice questions, drawn with the paper's own letters and its remapped correct index.
+/// Other types keep the server's display text. Questions the server's key lacks are left out.
+List<PaperKeyLine> keyLinesForPaper(ExamPaperDoc d, List<AnswerKeyItem> items) {
+  final byId = {for (final i in items) i.questionId: i};
+  final out = <PaperKeyLine>[];
+  for (final s in d.sections) {
+    for (final q in s.questions) {
+      final item = byId[q.id];
+      if (item == null) continue;
+      if (q.isChoice && q.correct.isNotEmpty) {
+        final letters = ([...q.correct]..sort()).map((i) => choiceLetter(i, rtl: d.rtl));
+        out.add(PaperKeyLine(q.number, letters.join(d.rtl ? '، ' : ', ')));
+      } else {
+        out.add(PaperKeyLine(q.number, item.display));
+      }
+    }
+  }
+  return out;
+}
+
 /// The paper in [v]'s order: questions reordered inside each section (sections stay in order) and numbered again,
 /// choices in the version's option order (the key follows). A version without orders returns the paper as it is.
 ExamPaperDoc applyVersion(ExamPaperDoc d, ExamVersion v) {
@@ -150,7 +189,8 @@ PaperQuestion _reorder(PaperQuestion q, int number, List<int>? optionOrder) {
   }
   return PaperQuestion(
       id: q.id, number: number, type: q.type, prompt: q.prompt, points: q.points, options: options, correct: correct, left: q.left, right: q.right,
-      pairs: q.pairs, items: q.items, order: q.order, blanks: q.blanks, tfCorrect: q.tfCorrect, answerText: q.answerText);
+      pairs: q.pairs, items: q.items, order: q.order, blanks: q.blanks, tfCorrect: q.tfCorrect, answerText: q.answerText, mediaId: q.mediaId,
+      mediaAlt: q.mediaAlt, image: q.image, imageFailed: q.imageFailed);
 }
 
 // ── print plan ──

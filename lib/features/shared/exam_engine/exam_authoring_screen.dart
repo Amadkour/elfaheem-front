@@ -1675,7 +1675,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     _load(side: false);
   }
 
-  /// Drag / up / down inside a section: the list moves at once; a refused order puts the old one back.
+  /// Drag / up / down inside a section: the list moves at once; a refused order reloads the exam from the server.
   Future<void> _reorderQuestions(SectionDraft s, int oldIndex, int newIndex) async {
     final v = _view;
     if (v == null) return;
@@ -1693,10 +1693,9 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     if (r.ok) {
       setState(() => _apply(r.map));
     } else {
-      setState(() => sv.questions
-        ..clear()
-        ..addAll(before));
+      // not a snapshot taken before the await (a second quick drag would roll back against a stale one): the server's order
       appToast(authoringError(r), error: true);
+      _load(side: false);
     }
   }
 
@@ -1718,7 +1717,11 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     final dest = v.sections.firstWhere((x) => x.section.id == target.id);
     final r = await _api.movePlacement(v.exam.id!, q.placementId, sectionId: target.id, position: dest.questions.length);
     if (!mounted) return;
-    if (!r.ok) return appToast(authoringError(r), error: true);
+    if (!r.ok) {
+      appToast(authoringError(r), error: true);
+      _load(side: false);
+      return;
+    }
     setState(() => _apply(r.map));
   }
 

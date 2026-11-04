@@ -79,8 +79,12 @@ List<String> validateMediaList(Object? media) {
 /// A small LRU of image bytes by key (a question / attempt scope plus the media id), so a list rebuild or a page flip
 /// never downloads the same image twice. In flight loads are shared.
 class MediaBytesCache {
-  MediaBytesCache({this.maxEntries = 40});
+  MediaBytesCache({this.maxEntries = 40, this.maxBytes = 32 * 1024 * 1024});
   final int maxEntries;
+
+  /// The total size of the cached bytes; the oldest go first (one image alone may exceed it and is kept alone).
+  final int maxBytes;
+  int _bytes = 0;
   final LinkedHashMap<String, Uint8List> _done = LinkedHashMap();
   final Map<String, Future<Uint8List>> _pending = {};
 
@@ -93,20 +97,29 @@ class MediaBytesCache {
   }
 
   void put(String key, Uint8List bytes) {
-    _done.remove(key);
+    final old = _done.remove(key);
+    if (old != null) _bytes -= old.length;
     _done[key] = bytes;
-    while (_done.length > maxEntries) {
-      _done.remove(_done.keys.first);
+    _bytes += bytes.length;
+    while (_done.length > maxEntries || (_bytes > maxBytes && _done.length > 1)) {
+      final oldest = _done.keys.first;
+      _bytes -= _done.remove(oldest)!.length;
     }
   }
 
-  void remove(String key) => _done.remove(key);
+  void remove(String key) {
+    final old = _done.remove(key);
+    if (old != null) _bytes -= old.length;
+  }
+
   void clear() {
     _done.clear();
     _pending.clear();
+    _bytes = 0;
   }
 
   int get length => _done.length;
+  int get totalBytes => _bytes;
 
   Future<Uint8List> load(String key, Future<Uint8List> Function() fetch) {
     final hit = peek(key);
@@ -136,6 +149,10 @@ class QuestionMediaApi {
   Future<Uint8List> questionBytes(int questionId, String mediaId) => _api.getBytes('$base/questions/$questionId/media/$mediaId');
   Future<Uint8List> attemptBytes(int attemptId, String mediaId) => _api.getBytes('$base/attempts/$attemptId/media/$mediaId');
 }
+
+/// A bank question's image bytes through the real API and the shared cache (printed papers fetch before laying out).
+Future<Uint8List> bankQuestionBytes(int questionId, String mediaId) =>
+    MediaBytesCache.instance.load(questionMediaKey(questionId, mediaId), () => QuestionMediaApi().questionBytes(questionId, mediaId));
 
 /// Cache key + loader of a bank question's image.
 String questionMediaKey(int questionId, String mediaId) => 'q$questionId/$mediaId';
@@ -307,7 +324,8 @@ class _QuestionImageFieldState extends State<QuestionImageField> {
       _busy = false;
       _error = err;
     });
-    if (m != null) widget.onChanged(m.withAlt(widget.media?.alt ?? ''));
+    // a replaced image starts with an empty description (the old one described the old picture)
+    if (m != null) widget.onChanged(m);
   }
 
   @override
