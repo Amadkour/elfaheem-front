@@ -659,6 +659,8 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
                 unawaited(_mirrorIntoCurrent());
               case 'variable':
                 unawaited(_newVariable());
+              case 'classic':
+                unawaited(_openClassic());
             }
           },
           itemBuilder: (_) => [
@@ -668,10 +670,29 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
             if (doc.languages.length > 1)
               _item('mirror', Icons.flip_rounded, _lang == 'en' ? t('ابدأ الإنجليزي من العربي', 'Start English from the Arabic design') : t('ابدأ العربي من الإنجليزي', 'Start Arabic from the English design')),
             _item('variable', Icons.data_object_rounded, t('متغيّر جديد', 'New variable')),
+            if (_id != null) _item('classic', Icons.history_edu_outlined, t('المصمم الكلاسيكي', 'Classic designer')),
           ],
         ),
       ],
     );
+  }
+
+  /// The legacy designer stays reachable (its draft wizard, signature cleanup, watermark… have no studio equivalent
+  /// yet, D-165). It edits the design's older layout, and saving there makes that layout the one that renders.
+  Future<void> _openClassic() async {
+    final id = _id;
+    if (id == null) return;
+    final ok = await appConfirm(
+      context,
+      message: t('يفتح المصمم الكلاسيكي التخطيط القديم لهذا التصميم. الحفظ هناك يجعل ذلك التخطيط هو المستخدم بدلاً من تصميم الاستوديو، وتبقى تعديلاتك غير المحفوظة هنا مسودة.',
+          'The classic designer opens this design\'s older layout. Saving there makes that layout the one used instead of the studio design; your unsaved changes here stay as a draft.'),
+      confirmLabel: t('فتح', 'Open'),
+    );
+    if (!ok || !mounted) return;
+    if (_dirty.value) await _flushDraft();
+    if (!mounted) return;
+    await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+        builder: (_) => CertificateDesignerScreen(designId: id, certificateId: widget.certificateId, orgId: widget.orgId)));
   }
 
   PopupMenuItem<String> _item(String v, IconData icon, String label) => PopupMenuItem(
@@ -723,6 +744,9 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   }
 
   /// One canvas per language, all alive (an IndexedStack): switching keeps each one's selection and undo history.
+  /// The page's margins (mm): the canvas draws the whole paper, its background image included, around the content box.
+  static EdgeInsets _marginsOf(LayoutPage p) => EdgeInsets.fromLTRB(p.margins.left, p.margins.top, p.margins.right, p.margins.bottom);
+
   Widget _editors() {
     final custom = certCustomKeysOf(doc);
     return LayoutBuilder(
@@ -748,6 +772,9 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
               vars: certSampleValues(l, custom),
               fieldOf: (k) => certFieldOf(l, k),
               background: doc.designs[l]!.page.background,
+              backgroundImage: doc.designs[l]!.page.backgroundImage,
+              backgroundFit: doc.designs[l]!.page.backgroundFit,
+              pageMargins: _marginsOf(doc.designs[l]!.page),
               wide: box.maxWidth >= 900,
             ),
         ],

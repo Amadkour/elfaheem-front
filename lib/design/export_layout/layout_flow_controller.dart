@@ -23,6 +23,7 @@ import '../../core/live/event_wait.dart';
 import '../export/export_studio_model.dart' show exportFileName;
 import '../export/table_export_model.dart' show AppTableExport;
 import 'layout_api.dart';
+import 'layout_computed.dart' show applyComputed;
 import 'layout_logic.dart';
 import 'layout_model.dart';
 
@@ -530,12 +531,16 @@ class LayoutFlowController extends ChangeNotifier {
 
   // ── the items the row preview browses ──────────────────────────────────────────────────────────────────────
   /// The table's rows as the server gets them ([layoutRowValue]: wall-clock dates, status labels in [valueLang]), so
-  /// the row preview prints and rules exactly as the file.
+  /// the row preview prints and rules exactly as the file; the document's computed columns are worked out first, as
+  /// the server does before sort / group / totals.
   List<Map<String, Object?>> get items {
     final l = valueLang;
-    final rows = [
-      for (final r in export.rows) {for (final e in r.entries) e.key: layoutRowValue(fieldOf(e.key), e.value, l)},
-    ];
+    final specs = doc.computed;
+    Map<String, Object?> row(Map<String, Object?> r) {
+      final v = <String, Object?>{for (final e in r.entries) e.key: layoutRowValue(fieldOf(e.key), e.value, l)};
+      return specs.isEmpty ? v : applyComputed(v, specs);
+    }
+    final rows = [for (final r in export.rows) row(r)];
     final sort = design.sort;
     if (sort.isEmpty) return rows;
     final s = List.of(rows);

@@ -157,6 +157,7 @@ List<LayoutAddOption> layoutRowAddOptions(LayoutFlowController f) {
         (id) => LayoutElement(id: id, kind: 'line', y: 1, w: 60, h: 1, style: LayoutStyle(border: LayoutBorder(width: .3, color: '#D0D5DD')))),
     LayoutAddOption(t('مربع', 'Box'), Icons.crop_square_rounded,
         (id) => LayoutElement(id: id, kind: 'rect', y: 1, w: 20, h: 10, style: LayoutStyle(bg: '#F2F4F7', radius: 1.5, padding: 0))),
+    layoutEllipseAddOption(),
   ];
 }
 
@@ -783,6 +784,7 @@ List<LayoutAddOption> layoutBandAddOptions(LayoutFlowController f) {
     LayoutAddOption(t('نص', 'Text'), Icons.text_fields_rounded, (id) => text(id, t('نص', 'Text'), t('نص', 'Text'))),
     LayoutAddOption(t('خط', 'Line'), Icons.horizontal_rule_rounded,
         (id) => LayoutElement(id: id, kind: 'line', y: 1, w: 120, h: 1, name: t('خط', 'Line'), style: LayoutStyle(border: LayoutBorder(width: .4, color: '#D0D5DD')))),
+    layoutEllipseAddOption(),
   ];
 }
 
