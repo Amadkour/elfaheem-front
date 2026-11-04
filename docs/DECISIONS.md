@@ -2228,3 +2228,33 @@ between steps.
 
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
+
+## D-180 — One design system: the kit completed in lib/design, gradient as a touch with written rules · 2026-11-04 · accepted
+
+**Context.** The owner: "a harmonious colour gradient touch across the whole app; many current designs are weak", and
+other sessions (subscriptions, RAG, exams, organizations) build on the result. The audit
+(`docs/admin/SUPER_ADMIN_AUDIT.md`) found the kit real but incomplete: tokens without an elevation, icon or full type
+scale; no data table, button variants, shared search field, error state, tabs, drawer or KPI card; three search boxes,
+three chip widgets, two steppers and four page-header styles in the admin pages alone; the D-136 gradient used without
+a stated rule.
+
+**Decision.** Complete the kit in `lib/design/` (additive — no existing widget changes behaviour, so other sessions'
+screens are untouched until they opt in):
+- tokens: `AppElevation` (0–4; dark mode adds a hairline instead of a heavier shadow), `AppIconSize`, `AppBorder`, and
+  `AppType` grown to display · headline · pageTitle · section · body · bodyStrong · row · label · meta · overline ·
+  figure · figureLarge (same sizes in Arabic and English, w400–w600, D-102);
+- `app_gradients.dart`: the roles (`brand`, `hero`, `heroGlow`, `wash`, `strip`, `chart`) and the RULE — headers, the
+  one primary action, the selected tab/pill, key chart series and one highlighted KPI; never behind text, forms, lists
+  or tables, never two gradient fills side by side, never the legacy accent/teal/gold getters in new UI;
+  `AppGradientSurface`, `AppAccentStrip`, `AppGradientText` (plain primary under high contrast);
+- components: `AppButton` (primary/secondary/tonal/ghost/danger, busy blocks double submit), `AppIconButton`,
+  `AppButtonRow`, `AppStatusBadge`/`AppCountBadge` (`AppTone`), `AppTabs`/`AppUnderlineTabs`, `AppSearchField` (350 ms),
+  `AppPagination`, `AppDataTable` (controlled, server-paging friendly; a real table on wide screens, cards on phones —
+  never a sideways-scrolling table on a phone), `AppErrorState`/`AppLoadingState`/`AppStateView` (a failed refresh keeps
+  the data), `appErrorMessage` (never `'$e'`), `showAppDialog`, `showAppDrawer` (end-side panel, sheet on phones),
+  `AppUnsavedGuard`, `AppKpiCard`/`AppKpiGrid`, `AppPageHeader`/`AppSection`. All exported by `app_kit.dart`;
+  documented with examples in `lib/design/README.md`.
+
+**Not done here.** Migrating the ~100 existing call sites of the older widgets (`PrimaryButton`, `SearchBox`,
+`StatusChip`, `PremiumHero` …): each session moves its own screens when it touches them; the Super Admin pages move in
+D-181.
