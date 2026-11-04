@@ -2229,6 +2229,52 @@ between steps.
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
 
+
+## D-164 — One design engine: layout v4 (computed fields, page mode, grids, page breaks) · 2026-11-04 · accepted
+
+**Context.** The owner's brief (session 6, "Unified design engine"): exports must pass through a design studio whose
+flow is poor, large lists lack layout control, there is no logic for computed columns, and the same engine must serve
+data exports, certificates, exam papers / covers, bubble sheets and the user-guide export. The audit
+(`docs/design_engine/AUDIT.md` in the front repo) found one shared canvas (`lib/design/studio/`) but two document
+models and two server renderers (layout v3 in mm via reportlab; certificates in 1000-unit space via Pillow).
+
+**Decision.** The layout document becomes THE engine document, version 4 = v3 + optional keys (contract
+`docs/design_engine.md` = front `docs/design_engine/ENGINE.md`): document-level **computed fields** (`calc.` keys;
+cases of nested all/any condition groups → a value expression of text / number / field / concat / math; first match
+wins, else a value; evaluated on the server per row before sort / group / totals, mirrored in the app for its row
+preview and checked against a parity fixture), **mode `page`** (one page per item), **list columns**, cards up to 4
+per line with **per_page / fill_page** (2×2, 3×3 grids), **items_per_page**, **group page breaks**, custom page sizes and
+background images, ellipse / opacity / photo shapes, letter spacing / line height / shrink / shadow. The server
+accepts schema 3 and 4 and keeps the version it was sent; older apps keep the unknown keys.
+- Computed fields are DATA from a closed vocabulary with depth / item / text caps — never code, never `eval`.
+- A computed key is not a source column: `referenced_fields` reports the source columns it reads (what the file may
+  reveal), so dataset column checks still apply.
+- Excel stays data-focused: page mode is refused, free-form elements are simplified with a note in the studio.
+- Image values may be an export asset id or a URL on the platform's own storage (the certificate rule), never another
+  host.
+
+**Not done here.** Exam papers, covers, bubble sheets and the guide export are not migrated by this job (the exam
+sessions own them); they get the API (`engine.py`, `design_engine.dart`).
+
+## D-165 — Certificates render through the design engine; the legacy renderer stays for unsaved designs · 2026-11-04 · accepted
+
+**Context.** Certificate designs are Pillow-rendered from `fields` / `fields_en` in a 1000-unit space. The audit found
+the Arabic / English saving problems (a background regenerate committed to the stored design behind the user's back
+and wiped theme keys; no save concurrency check; drafts dropped silently) and a designer that rebuilt everything per
+drag frame.
+
+**Decision.** `certificate_designs.document` (JSON, nullable) + `document_version` (migration 0045, reversible). A design
+saved by the new Certificate Studio holds a v4 page-mode document (one design per language, never an implicit English
+fallback) and renders through the engine (PDF, and PNG at the legacy pixel size); a design with no document renders
+with the legacy renderer exactly as before, and a legacy save clears `document` — whatever saved last renders.
+Saving sends `version`; a stale version answers 409 `design_conflict` instead of overwriting. The legacy designer stays
+reachable behind the kill switch `certificates.engine`. `scripts/migrate_cert_designs.py` converts legacy designs
+(dry run by default; writes only the new columns; rollback = `document` null). The draft endpoint no longer commits to
+a stored design and merges theme keys instead of replacing them.
+- Review (2026-11-04): the document save applies the legacy save's image rule to every image (stored in the design,
+  the user's own upload, an allowed host, an org logo for images — never someone else's signature); a legacy save
+  also moves `document_version` on, so a studio tab on the old version gets 409.
+
 ## D-240 — Results start as a draft; nothing unreviewed is ever published; the teacher picks what students see · 2026-11-04 · accepted
 
 **Context.** The owner's grading brief (session 9): grades start as draft, the teacher reviews, then publishes;
@@ -2383,7 +2429,7 @@ the app keeps its `u<id>` fallback for those. Every writer of `ManualChange` get
 finding 11a. Privacy: the name is kept in an append-only audit table (a grade record names who changed it);
 a user erasure leaves the row with the `actor_id` and needs a DBA-run redaction. Notes: `docs/grading/notes/G3.md`.
 
-## D-165 — A static landing site at the root; the web app moves to /app/; first-run onboarding in the apps · 2026-11-04 · accepted
+## D-270 — A static landing site at the root; the web app moves to /app/; first-run onboarding in the apps · 2026-11-04 · accepted
 
 **Context.** The site opened straight on the login screen, and so did a fresh install of the phone app: nothing showed
 what the platform offers before asking for an account. The owner asked for a welcoming page first (a sentence-builder
@@ -2427,6 +2473,18 @@ apps.
 
 **Consequences.** Every web build must use `--base-href /app/`, or `switch_web` refuses it. `firebase.json` (Firebase
 Hosting at its own root) was left as it is and does not match an `/app/` build; production is nginx.
+
+**Round 2 (2026-11-04, the owner's follow-up).** Testimonials: the owner asked for them "generated with premium
+touches"; they are NOT generated — invented quotes under real-looking names would mislead visitors. The section shows
+real reviews students wrote (`rates.review`, course or teacher, 15+ characters) that the super admin picked and ordered
+in the app's new "Landing page" screen (services hub, kill switch `admin.landing`), as "Ahmed M." + stars + course;
+hidden while none is picked. The public landing routes are rate limited per visitor IP (`X-Real-IP`, the API listens
+on 127.0.0.1 only), default 120 a minute (a school behind one address makes many visits), editable there (10 – 600,
+or off). The desktop hero's second column is a live preview of up to 3 real public courses
+(`GET /public/landing/highlights`, one request per view), an abstract drawing when it cannot load. Firebase Hosting
+gets the same layout (`scripts/build_firebase_hosting.sh`: landing at /, app at /app/, share links as 302s, every other
+old URL through 404.html, `PUBLIC_LANDING_API_BASE` for the landing's requests). The app builder runs
+`scripts/web/postbuild.dart` like the server build. Contract: `../back/docs/landing/CONTRACT.md`.
 
 ## D-170 — The browser's history follows the app's pages; one route registry · 2026-11-04 · accepted
 
@@ -2603,6 +2661,30 @@ student drawer whose first block is the live access diagnostic per course, then 
 event timeline. Students are found by academic ID, national ID (shown masked), e-mail, phone or @username. Extend,
 reactivate, grant and cancel each need a reason and write one event plus a notification to the student. The older admin
 enroll / unenroll / re-subscribe calls keep working and now write events too.
+
+## D-260 — Course delete is a soft delete; the super admin restores or deletes for good · 2026-11-04 · accepted
+
+**Context.** A course delete erased the course and everything under it when it had no payments (a teacher's mistake
+was final), and archived it when it had (D-025). The owner asked for a soft delete everywhere, with the platform's
+super admin deciding whether a course is deleted permanently. **Decision.** Every course delete (teacher
+`DELETE /api/v1/courses/{id}`, admin `DELETE /api/v1/admin/courses/{id}`) only archives the course
+(`courses.archived_at`, the flag every query already honours), drops its enrollments and removes its favourites;
+`course_deletions` (migration 0046, back `data/course_trash_models.py`) remembers each enrollment's old status, the
+favourites, the published flag, who deleted it and why. The super admin's trash (`/api/v1/admin/course-trash`, app:
+Admin services → Deleted courses, kill switch `admin.course_trash`) restores a course exactly as it was (each
+enrollment back to its old status unless it changed since; an expired plan stays expired) or deletes it permanently
+after a reason and the typed course id. A permanent delete never removes money or certificate records: when payments,
+earnings or issued certificates point at the course, the row stays as a tombstone (state `purged`: name, teacher,
+price, enrollments and every money row kept, content and files removed); otherwise everything is erased (`erased`).
+What hangs from a course is read from the models' foreign keys, so a new table is covered without a code change, and
+a money row found deeper stops the delete (409 `purge_blocked`, nothing removed). Access: a course in the trash
+answers `course_deleted` to everyone but the platform staff, its teacher included. Every change writes
+`subscription_events` (`cancelled` / `admin_reactivated`, meta `by`). **Consequence.** Nothing a teacher or an admin
+does can erase a course. Courses archived before this (no `course_deletions` row) show as "legacy": a restore brings
+the course back but not its students (their old status was never recorded; Courses & students can reactivate them).
+An organization's DELETE `/orgs/{id}/courses/{cid}` is unchanged: it unlinks the course from the organization and
+never deleted the course. Files are removed after the commit and only when no other row still uses the same URL; the
+RAG documents of a course are not touched.
 
 ## D-280 — Tenant isolation in the organization modules is checked by the application, object by object · 2026-11-04 · accepted
 

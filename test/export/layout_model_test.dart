@@ -41,7 +41,7 @@ void main() {
       (j['designs']['ar']['header'] as Map)['sticky'] = true;
       final back = LayoutDocument.fromJson(j).toJson();
       expect(back, _deep(j));
-      expect(back['schema_version'], 3);
+      expect(back['schema_version'], 4);
     });
 
     test('defaults: an empty map reads as a usable design', () {

@@ -1,5 +1,7 @@
 // Vanilla client script: hero sentence builder, live numbers, sticky CTA, app prefetch.
 // Every network call fails soft: the page never depends on the API.
+import { initHighlights, type HlCtx } from './highlights';
+
 type Lv = { id: string | number; name_ar: string; name_en: string; courses?: number };
 type Subj = Lv & { levels?: Lv[] };
 type Plural = { one: string; two: string; few: string; many: string; other: string };
@@ -21,13 +23,23 @@ function init(root: HTMLElement) {
     empty: string;
     anyLevel: string;
     anySubject: string;
+    preview: HlCtx['dict']['preview'];
+    quotes: HlCtx['dict']['quotes'];
   };
 
+  // After a 429 no landing call is made until Retry-After has passed (defaults stay on screen, no retry loop).
+  let blockedUntil = 0;
   const getJson = async <T>(path: string): Promise<T | null> => {
+    if (Date.now() < blockedUntil) return null;
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 4000);
     try {
       const r = await fetch(api + path, { signal: ctl.signal, headers: { Accept: 'application/json' } });
+      if (r.status === 429) {
+        const s = parseInt(r.headers.get("Retry-After") || "", 10);
+        blockedUntil = Date.now() + (s > 0 ? Math.min(s, 300) : 60) * 1000;
+        return null;
+      }
       return r.ok ? ((await r.json()) as T) : null;
     } catch {
       return null;
@@ -44,6 +56,9 @@ function init(root: HTMLElement) {
     return fmt.format(Math.floor(n / mag) * mag) + '+';
   };
 
+  // ---- hero preview + testimonials (one /highlights request)
+  const hl = initHighlights({ root, lang, app, locale, dict, getJson });
+
   // ---- stats
   const statEls = root.querySelectorAll<HTMLElement>('[data-stat]');
   const hasBaked = Array.from(statEls).some((e) => e.dataset.baked === '1');
@@ -51,6 +66,7 @@ function init(root: HTMLElement) {
     getJson<Record<string, number>>('/stats').then((s) => {
       if (!s) return;
       statEls.forEach((e) => (e.textContent = approx(s[e.dataset.stat || ''])));
+      hl.chips();
     });
   }
 
@@ -98,6 +114,7 @@ function init(root: HTMLElement) {
     const m = await getJson<{ courses: number; teachers: number }>('/match?' + p.toString());
     if (id !== reqId || !result) return;
     if (!m || typeof m.courses !== 'number' || typeof m.teachers !== 'number') {
+      if (Date.now() < blockedUntil) return; // rate limited: keep what is shown
       result.textContent = dict.empty;
       return;
     }

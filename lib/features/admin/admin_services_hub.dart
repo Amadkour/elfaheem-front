@@ -35,8 +35,6 @@ import 'admin_finance_page.dart';
 import 'admin_mfa_page.dart';
 import 'admin_flags_settings_page.dart';
 import 'admin_organizations_page.dart';
-import 'admin_parent_link_settings_page.dart';
-import 'admin_parent_requests_page.dart';
 import 'admin_payment_page.dart';
 import 'admin_payouts_page.dart';
 import 'admin_premium_widgets.dart';
@@ -45,24 +43,24 @@ import 'admin_required_documents_page.dart';
 import 'admin_send_message_page.dart';
 import 'admin_subscriptions_page.dart';
 import 'course_students/cs_pages.dart';
+import 'course_trash/trash_page.dart';
 import 'admin_points_page.dart';
 import 'admin_recs_page.dart';
 import '../shared/roadmap/roadmap_api.dart' show kRecsAdminKey;
 import '../shared/points/points_api.dart' show kAdminPointsFeatureKey;
 import 'admin_theme_page.dart';
-import 'admin_users_page.dart';
 import 'admin_app_versions_page.dart';
 import 'admin_fees_page.dart';
 import 'admin_parent_linking_page.dart';
 import 'admin_recents.dart';
-import 'admin_view_as_page.dart';
 import 'live_settings/live_settings_page.dart' show LiveSettingsPage, kLiveSettingsFeatureKey, liveSettingsTitle;
 import 'enrollment_request/teacher_transfers_provider.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
-import 'app_releases/app_releases_page.dart';
 import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
+import 'landing/admin_landing_page.dart' show AdminLandingPage, landingTitle;
+import 'landing/landing_admin_api.dart' show kLandingAdminFeatureKey;
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -265,6 +263,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           onTap: () => push(const CourseStudentsPage()),
         ),
         AdminService(
+          labelKey: 'admin_course_trash',
+          descKey: 'admin_course_trash_d',
+          label: t('الكورسات المحذوفة', 'Deleted courses'),
+          desc: t('سلة الكورسات المحذوفة: استرجاع الكورس بطلابه أو حذفه نهائياً مع السجل',
+              'The trash of deleted courses: restore a course with its students, or delete it permanently, with the history'),
+          icon: Icons.delete_sweep_outlined,
+          colors: AdminPalette.rose,
+          featureKey: 'admin.course_trash',
+          visible: isSuper,
+          onTap: () => push(const CourseTrashPage()),
+        ),
+        AdminService(
           labelKey: 'admin_points',
           descKey: 'admin_points_d',
           label: t('النقاط والمحافظ', 'Points & wallets'),
@@ -409,6 +419,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           visible: isSuper,
           featureKey: kLiveSettingsFeatureKey,
           onTap: () => push(const LiveSettingsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_landing',
+          descKey: 'admin_landing_d',
+          label: landingTitle(),
+          desc: t('حد الطلبات على أرقام الصفحة الرئيسية، واختيار آراء الطلاب الحقيقية التي تظهر للزوار',
+              'The request limit on the landing page numbers, and which real student reviews visitors see'),
+          icon: Icons.web_rounded,
+          colors: AdminPalette.blue,
+          visible: isSuper,
+          featureKey: kLandingAdminFeatureKey,
+          onTap: () => push(const AdminLandingPage()),
         ),
         AdminService(
           labelKey: 'admin_recommendations',

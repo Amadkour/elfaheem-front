@@ -852,8 +852,8 @@
     "ar": "حذف"
   },
   "course_deleted": {
-    "en": "Course deleted successfully",
-    "ar": "تم حذف الدورة"
+    "en": "Course moved to the trash",
+    "ar": "تم نقل الدورة إلى سلة المحذوفات"
   },
   "publish_course": {
     "en": "Publish Course",
@@ -5526,8 +5526,8 @@
     "ar": "تم إنشاء الكورس"
   },
   "admin_course_deleted": {
-    "en": "Course deleted",
-    "ar": "تم حذف الكورس"
+    "en": "Course moved to the trash",
+    "ar": "تم نقل الكورس إلى سلة المحذوفات"
   },
   "admin_payment_settings_saved": {
     "en": "Payment settings saved",
@@ -22476,5 +22476,17 @@
   "dl_access_remove": {
     "en": "Remove download",
     "ar": "حذف التحميل"
+  },
+  "course_trash_confirm": {
+    "en": "Move this course to the trash? Students lose access right away, and nothing is erased. Only the platform's super admin can restore it or delete it permanently.",
+    "ar": "هل تريد نقل هذا الكورس إلى سلة المحذوفات؟ سيفقد الطلاب الوصول إليه فوراً ولن يُمسح شيء. المشرف العام للمنصة وحده يستطيع استرجاعه أو حذفه نهائياً."
+  },
+  "course_trash_note": {
+    "en": "It moves to the trash: students lose access right away, and nothing is erased. Only the platform's super admin can restore it or delete it permanently.",
+    "ar": "سينتقل إلى سلة المحذوفات: يفقد الطلاب الوصول فوراً ولا يُمسح شيء. المشرف العام للمنصة وحده يستطيع استرجاعه أو حذفه نهائياً."
+  },
+  "course_move_to_trash": {
+    "en": "Move to trash",
+    "ar": "نقل إلى السلة"
   }
 }

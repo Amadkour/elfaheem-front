@@ -15,7 +15,9 @@ async function getJson<T>(url: string): Promise<T | null> {
 }
 
 export async function loadBuildData(): Promise<{ stats: Stats | null; options: Options | null }> {
-  const origin = (process.env.LANDING_API_ORIGIN || '').replace(/\/+$/, '');
+  // build time (Node): the shell's LANDING_API_ORIGIN, read without pulling in @types/node
+  const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
+  const origin = (env.LANDING_API_ORIGIN || '').replace(/\/+$/, '');
   if (!origin) return { stats: null, options: null };
   const base = `${origin}/api/api/v1/public/landing`;
   const [stats, options] = await Promise.all([
