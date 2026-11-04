@@ -43,7 +43,7 @@ DateTime? hubTime(Object? v) {
 
 /// The roles in the order the server lists them (mlkit/providers.ROLES).
 const kHubRoles = [
-  'embedding', 'generation', 'generation.chat', 'generation.exam', 'grading', 'reranker', 'nli', 'ocr_det', 'ocr_rec_ar', 'ocr_rec_en', 'handwriting_en', 'digits',
+  'embedding', 'generation', 'reranker', 'nli', 'ocr_det', 'ocr_rec_ar', 'ocr_rec_en', 'handwriting_en', 'digits',
   'vision_language',
 ];
 
