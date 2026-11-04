@@ -1,4 +1,4 @@
-// Templates for the teacher's OWN paper sheets (D-171, contract docs/grading/CONTRACT.md §3 + §4): covers, mark
+// Templates for the teacher's OWN paper sheets (D-241, contract docs/grading/CONTRACT.md §3 + §4): covers, mark
 // sheets and MCQ answer tables. The pure part: the library rows, the MarkSheetSpec (fields with boxes normalised 0..1
 // on the blank reference), the detect proposals, the plain-words validation, the test reading and the engine calls.
 // No widget here; templates/ draws it.

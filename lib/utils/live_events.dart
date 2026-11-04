@@ -124,7 +124,7 @@ class LiveEvents {
   static const appReleaseUpdated = 'app_release_updated';
   static const appReleaseLive = 'app_release_live';
 
-  /// An exam notice for me (D-177): an appeal was filed / decided, results were published, a scan batch or a grade-review
+  /// An exam notice for me (D-247): an appeal was filed / decided, results were published, a scan batch or a grade-review
   /// session finished — `{kind, exam_id, attempt_id?, …}`. Lists of exams / appeals refresh on it; a tap goes through
   /// AppNavigator (module `exam_notice`). The name matches the backend's `exam_notice`.
   static const examNotice = 'exam_notice';

@@ -282,7 +282,7 @@ class _Act extends StatelessWidget {
 }
 
 /// Apply: the old and the new value side by side, an optional reason, and the confirmation. The grade is written only
-/// when this is confirmed (D-173: the system never changes a grade by itself).
+/// when this is confirmed (D-243: the system never changes a grade by itself).
 class GradeApplySheet extends StatefulWidget {
   const GradeApplySheet({super.key, required this.row, required this.columnLabel, required this.onConfirm});
   final MarkRow row;

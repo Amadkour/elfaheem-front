@@ -479,7 +479,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           visible: isSuper,
           onTap: () => openOmrTemplateLibrary(context),
         ),
-        // grades (D-174): whether parents see their child's grades — always / when published / never
+        // grades (D-244): whether parents see their child's grades — always / when published / never
         AdminService(
           labelKey: 'svc_parent_grades',
           descKey: 'svc_parent_grades_d',

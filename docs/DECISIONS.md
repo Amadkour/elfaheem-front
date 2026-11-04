@@ -2229,7 +2229,7 @@ between steps.
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
 
-## D-170 — Results start as a draft; nothing unreviewed is ever published; the teacher picks what students see · 2026-11-04 · accepted
+## D-240 — Results start as a draft; nothing unreviewed is ever published; the teacher picks what students see · 2026-11-04 · accepted
 
 **Context.** The owner's grading brief (session 9): grades start as draft, the teacher reviews, then publishes;
 low-confidence results are never published unreviewed; a setting for score only / + own answers / + correct answers.
@@ -2247,7 +2247,7 @@ student has no attempt left; `answers_key` with `after_submit` needs an end time
 `exam.results.visibility`; a one-time resync (`grading.visibility_resync_v1`, jobs.tick) corrects rows written before
 this. Notes: docs/grading/notes/BA.md, FX.md.
 
-## D-171 — Organization paper templates: covers, mark sheets and answer tables, published by the org's teachers · 2026-11-04 · accepted
+## D-241 — Organization paper templates: covers, mark sheets and answer tables, published by the org's teachers · 2026-11-04 · accepted
 
 **Decision.** `omr_templates` gains `org_id` (NULL = global, D-155 unchanged) and `kind` = `bubble` | `answer_table` |
 `mark_sheet` | `cover` (migration exam_0009). Org templates need no super-admin approval and every teacher of the org
@@ -2258,7 +2258,7 @@ rule) → test on one filled sheet (identifier masked) before batch scanning. A 
 theirs. Answer-table templates can be an exam's sheet (the wizard list returns them with `kind`); mark sheets and
 covers cannot. Exams the system generates keep their own layout and skip registration. Notes: BD.md.
 
-## D-172 — How a handwritten mark is read: two readers or a very sure one, and never from a misplaced box · 2026-11-04 · accepted
+## D-242 — How a handwritten mark is read: two readers or a very sure one, and never from a misplaced box · 2026-11-04 · accepted
 
 **Decision.** `mlkit.marksheet` (pure library): numbers by component segmentation + the digits CNN (D-157), "7.5",
 "7,5", "½", "7½", Arabic-Indic digits; `ok` only when a second reader agrees above 0.95 or the digit CNN alone is above
@@ -2271,7 +2271,7 @@ within 2 px, and each field's printed lines are matched locally (± 2 % of the p
 3003 fresh); ~38-42 % of fields to a person (most numbers: no second reader yet); answer rows ~86-88 % automatic.
 No real teacher sheets measured yet. Notes: BC.md.
 
-## D-173 — Grade review by camera ("Moraga'a"): the system compares and proposes, a person changes the grade · 2026-11-04 · accepted
+## D-243 — Grade review by camera ("Moraga'a"): the system compares and proposes, a person changes the grade · 2026-11-04 · accepted
 
 **Decision.** A session = course + gradebook column + registered template (mark sheet / cover) + optional exam. The
 phone only captures (quality gate synchronous: 422 with the exact reason, 409 duplicate); reading runs on the server at
@@ -2284,14 +2284,14 @@ is a person's action through the core (`expect_old`; 409 `value_changed`; row lo
 same session in `import` mode fills marks from paper, still per person decision (bulk apply only for clean rows).
 Notes: BD.md, FX.md.
 
-## D-174 — What parents see of exam grades: a platform default, an organization override · 2026-11-04 · accepted
+## D-244 — What parents see of exam grades: a platform default, an organization override · 2026-11-04 · accepted
 
 **Decision.** Super admin `grades.parents_see` = `always` | `when_published` (default) | `never`; an org admin may
 override (`inherit` | …) through `GET/PUT /api/v1/org/orgs/{id}/grades/visibility`. The effective value gates every
 parent-facing grade read (overview, child report, profile strip, alerts). `when_published` shows an Exam Engine result
 only when `exam_results.results_visible` (migration 0043) is true. Notes: BB.md.
 
-## D-175 — Cancelling a question recalculates every attempt, logged · 2026-11-04 · accepted
+## D-245 — Cancelling a question recalculates every attempt, logged · 2026-11-04 · accepted
 
 **Decision.** `POST /exams/{id}/questions/{qid}/void {reason, mode}`: `remove` takes the question out of score AND max,
 `full_marks` gives everyone its points; restore undoes it. Stored in `exam.settings.voided_questions`; every attempt
@@ -2299,21 +2299,21 @@ recomputed; every changed score a grade-log row. Item analysis adds per-option s
 distractors and `key_suspect`; `options` stays the old counts map for installed apps, the new list is `option_stats`.
 Notes: BA.md.
 
-## D-176 — One grade log: every score change is a manual_changes row · 2026-11-04 · accepted
+## D-246 — One grade log: every score change is a manual_changes row · 2026-11-04 · accepted
 
 **Decision.** Teacher marks, bulk approve (one row per answer), appeal decisions, OMR / OCR fixes, void / restore,
 recompute changes, automatic regrade (actor 0, `regrade`) and the first automatic acceptance (actor 0, `auto_accept`)
 all write `manual_changes` (who, when, old, new, reason). `GET /exams/{id}/grade-log` (managers; the student is hidden
 under anonymous grading). `actor_name` is null for now (the engine has no cheap name lookup). Notes: BA.md.
 
-## D-177 — Exam notices: one outbox topic, the core delivers · 2026-11-04 · accepted
+## D-247 — Exam notices: one outbox topic, the core delivers · 2026-11-04 · accepted
 
 **Decision.** The engine emits `exam.notify {user_ids, kind, title / body ar + en, data (flat scalars)}`; the core
 consumer writes the in-app notification, sends the push and the live event `exam_notice`, deduplicated by event id.
 Kinds: `appeal_created`, `appeal_decided`, `results_published`, `batch_done` (scan batch finished),
 `mark_session_done`. Notes: BB.md.
 
-## D-178 — "Exam grading" is a model-hub task · 2026-11-04 · accepted
+## D-248 — "Exam grading" is a model-hub task · 2026-11-04 · accepted
 
 **Decision.** New hub role `exam_grading` (a generation model, optional, no fallback); the models list carries
 `tasks: [{task: "exam_grading", roles: ["exam_grading", "nli", "embedding"]}]`. When active, the open-answer grader
@@ -2321,7 +2321,7 @@ asks it a yes / no per undecided criterion; it can only lower confidence (a disa
 never raise a score. Inactive = the previous behaviour. A library row is unique per ref, so it needs a model other
 than the `generation` one. Notes: BE.md.
 
-## D-179 — Bubble-sheet accuracy: blurry-but-placed photos and heavy erasures go to a person · 2026-11-04 · accepted
+## D-249 — Bubble-sheet accuracy: blurry-but-placed photos and heavy erasures go to a person · 2026-11-04 · accepted
 
 **Context.** Measured at the start of the job on the production code: real photos 15 of 21 read, 0 wrong; the old
 synthetic bench (seed 1001, 224 sheets) **188 wrong of 9 900 auto-graded**, all in heavy erasures (D-163's known limit).
@@ -2329,11 +2329,53 @@ synthetic bench (seed 1001, 224 sheets) **188 wrong of 9 900 auto-graded**, all 
 `photo_blurry`) instead of refused. (2) A sheet with heavy-erasure evidence (lopsided mark pairs AND erased residues
 above per-sheet shares) sends every clear / multiple answer to review (`erasures`). (3) OMR wall budgets scale with
 `OMR_BUDGET_SCALE` (default 1) — benches on a loaded machine must raise it. (4) A mark sheet without corner marks is
-found by its table border / page edges / feature matching / QR (D-172).
+found by its table border / page edges / feature matching / QR (D-242).
 **Measured.** Old bench wrong auto-grades 188 / 202 / 195 → **0 / 0 / 0** (seeds 1001 tuned, 2002, 3003); review
 13.2 % → 17.2 % overall, all of it in heavy erasures (~90 % of that condition), every other condition unchanged. Real
 photos: 18 of 21 read (was 15), 0 wrong; students identified by QR unchanged (7 of 21). The erasure margin is thin
 (tuned on synthetic sheets; real sheets use one pen, likely easier). Notes: BE.md, BE2.md.
+
+## D-250 — Handwritten numbers: a second, independent reader; a number is accepted only when both agree · 2026-11-04 · accepted
+The digits CNN alone accepted numbers at 0.993+ and sent ~40 % of mark-sheet fields to a person. A second reader of a
+different family (PaddleOCR PP-OCRv5 English + Arabic text-line recognisers, ONNX on CPU, loaded through
+`mlkit.registry.resolve`; `mlkit/marksheet/second.py`) now reads every number; `ok` needs the same value from both AND the
+CNN at `digit_pair_min` 0.7 AND every old rule (max, step, crossed out, alignment, faint ink, sum). A total accepted only on
+the second reader's word needs the sum rule verified (`sum_unverified` otherwise). Missing model or
+`MARKSHEET_SECOND_READER=off` = exactly the old behaviour; a failing read = review. Measured (bench n=45 × seeds
+1001/2002/3003): wrong-but-accepted 0 / 0 / 0; question-mark numbers auto 31→38 / 22→26 / 22→23 %; on 232 crops without a max
+rule the CNN alone accepted 14 wrong, both readers 3. Cost ~50 ms CPU per number. The stray-mark tolerance it also adds
+ships OFF (`stray_area_frac` 0): +6 fields of 542 is not worth loosening a rule before real teacher handwriting is checked.
+Limits: a missed decimal point ("4.5" → "45") is a shared blind spot (only the max rule stops it); Arabic-Indic digits gain
+less. Notes: `docs/grading/notes/G1.md`.
+
+## D-251 — Tiny printed QR codes read with the sheet's known geometry; heavy erasures get a second sheet rule · 2026-11-04 · accepted
+In chat-app photos the student QR is 56–72 px (1.5–1.9 px per module) and neither OpenCV detector finds it.
+`mlkit/omr/qrgrid.py` cuts it with the sheet's homography, finds the three finder patterns, samples the module grid
+(unsharp mask + a self-trained linear equaliser scored on the modules the standard fixes) and hands the clean matrix to
+`QRCodeDetector.decode`: Reed-Solomon still decides, the payload checks are unchanged, so a wrong student is practically
+impossible. Real photos: students identified 7/21 → 11/21, wrong IDs 0 (the other 10: sheet not placed, code outside or cut
+by the frame, blur). Budget `QR_GRID_BUDGET_S` 1.2 s full / 0.4 s quick × `OMR_BUDGET_SCALE`. Erasures: 78 new synthetic
+erasure scenarios showed the D-249 rule never fires on pen sheets with heavy residue; a second arm (≥ 3 questions and ≥ 8 %
+of them whose lighter mark is under 0.7 of the darker) cuts wrong auto-grades there 523 → 389 and keeps the old bench at 0
+wrong; review on the old bench 17 → 22 % (all in its simulated `double_marks`, whose pen/pencil mix a real student does not
+make). The remaining cases are lone heavy residues no bubble measurement separates (AUC ≤ 0.83): real erasure photos are
+needed to go further. Switch: `erasure.strict_share` 9999 turns the arm off. Notes: `docs/grading/notes/G2.md`.
+
+## D-252 — "Exam grading" shares the generation model by default · 2026-11-04 · accepted
+A model-hub library row is unique per ref, so the generation Qwen could not also serve `exam_grading`: a second LLM would
+double RAM and CPU on the CPU-only server for a ≤ 6-token yes/no check. The role now has a mode: `shared` (default when it has
+no own model: the same loaded object, generation's queue and limits with the `grading` priority class), `own` (a dedicated
+model, today's flow; activating one sets it) or `off`. Kept in the role's hidden `limits["_mode"]` slot, no schema change.
+Shared with no generation model = off. Safety unchanged: the check never changes a score or raises a confidence, ≤ 2 per
+answer, 30 / minute. `PUT /api/v1/models/roles/exam_grading/mode` (super admin, audited `set_mode`); the AI Models page shows
+"Model source". Notes: `docs/grading/notes/G3.md`.
+
+## D-253 — The grade log records who by name, at write time · 2026-11-04 · accepted
+`manual_changes.actor_name` (nullable, engine migration `exam_0010`, reversible) is filled by a column default from the
+request's caller (the per-request context `org_gate` already uses), only when the row's `actor_id` IS that caller; the
+system actor, jobs outside a request and rows written for someone else stay null, and old rows stay null (append-only):
+the app keeps its `u<id>` fallback for those. Every writer of `ManualChange` gets it without passing it. Closes review
+finding 11a. Notes: `docs/grading/notes/G3.md`.
 
 ## D-170 — The browser's history follows the app's pages; one route registry · 2026-11-04 · accepted
 

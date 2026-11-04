@@ -94,7 +94,7 @@ class AppNavigator {
   /// page / the console's Alerts tab, `rag_admin_links.dart`; anyone else the notifications list) | app_release ·
   /// app_releases (super admins only, D-143: [targetId] = the release → its page, else App versions)
   ///
-  /// exam_notice (D-177; also exam_appeal · exam_result): [data] is the push / notification target (`exam_id`, `attempt_id`,
+  /// exam_notice (D-247; also exam_appeal · exam_result): [data] is the push / notification target (`exam_id`, `attempt_id`,
   /// `kind` …), else [targetId] is the exam.
   static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind, Map<String, dynamic> data = const {}}) async {
     final root = navigatorKey.currentState;
@@ -166,7 +166,7 @@ class AppNavigator {
       case 'identity_requests': // a teacher needs an exam identifier → the student's dialog (D-150)
         return openIdentityRequestsFromLink(root);
       case 'exam':
-      case 'exam_notice': // an appeal / results published / batch or session done (D-177): the screen it points at
+      case 'exam_notice': // an appeal / results published / batch or session done (D-247): the screen it points at
       case 'omr_batch': // scan batch done (data.module)
       case 'mark_session': // grade-review session done
       case 'exam_appeal':

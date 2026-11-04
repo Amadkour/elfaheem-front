@@ -1,4 +1,4 @@
-// Whether parents see their child's grades (D-174): the platform default (super admin: always / when published / never)
+// Whether parents see their child's grades (D-244): the platform default (super admin: always / when published / never)
 // and an organization's own choice (org admin: inherit / when published / never / always). Server contract:
 // ../back/docs/grading/CONTRACT.md §2 — `GET/PUT /api/v1/admin/grades/visibility {parents_see}` and
 // `GET/PUT /api/v1/org/orgs/{org_id}/grades/visibility {parents_see, effective, platform_default}`. Kill switch

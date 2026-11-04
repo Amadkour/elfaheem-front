@@ -48,7 +48,7 @@ class AiModelsActions {
   final void Function(HubRole r)? onRollback, onLimits, onReview, onCancelPending, onReindexNow;
   final VoidCallback? onAdd;
 
-  /// Switches Exam grading between shared / own / off (D-196).
+  /// Switches Exam grading between shared / own / off (D-252).
   final void Function(HubRole r, String mode)? onGradingMode;
 }
 
@@ -261,7 +261,7 @@ class HubRoleCard extends StatelessWidget {
   }
 }
 
-/// Exam grading's model source (D-196): shared with the generation model, its own, or off.
+/// Exam grading's model source (D-252): shared with the generation model, its own, or off.
 class _GradingModeBox extends StatelessWidget {
   const _GradingModeBox({required this.role, required this.onChanged});
 

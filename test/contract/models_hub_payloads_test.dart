@@ -50,7 +50,7 @@ void main() {
     for (final name in overviews) {
       final raw = hub(name) as Map<String, dynamic>;
       final roles = (raw['roles'] as List).cast<Map<String, dynamic>>();
-      // a capture from before D-178 / D-196 has no exam_grading row (re-record with tests/modelhub/e2e_modelhub.py)
+      // a capture from before D-248 / D-252 has no exam_grading row (re-record with tests/modelhub/e2e_modelhub.py)
       final expected = [for (final k in kHubRoles) if (k != 'exam_grading' || roles.any((r) => r['role'] == k)) k];
       expect(roles.map((r) => r['role']).toList(), expected, reason: name);
       for (final r in roles) {

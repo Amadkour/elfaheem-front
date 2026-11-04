@@ -1,4 +1,4 @@
-// Exam grading model source on the AI Models page (D-196) over FakeApi: the role shares the generation model by
+// Exam grading model source on the AI Models page (D-252) over FakeApi: the role shares the generation model by
 // default, the super admin switches it to its own model or off (PUT /models/roles/exam_grading/mode), an older server
 // without `mode` shows no control, and the cards have no overflow at any size.
 import 'dart:convert';
@@ -24,7 +24,7 @@ import 'layout_harness.dart';
 Object? hub(String name) =>
     (jsonDecode(File('test/fixtures/payloads/models_hub/$name.json').readAsStringSync()) as Map<String, dynamic>)['payload'];
 
-/// The recorded overview plus the exam_grading row and the task, as the D-196 server sends them (built here so the
+/// The recorded overview plus the exam_grading row and the task, as the D-252 server sends them (built here so the
 /// recorded fixtures stay as the backend captured them).
 Map<String, dynamic> overviewWith({String? mode, String? active, String? sharedActive = 'qwen3-1.7b@int4-3231b52'}) {
   final base = Map<String, dynamic>.from(hub('overview') as Map);

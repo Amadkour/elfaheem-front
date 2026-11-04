@@ -386,7 +386,7 @@ class HubRole {
         pending: HubPending.fromJson(j['pending']),
         limits: HubLimits.fromJson(_map(j['limits'])),
         models: [for (final m in _maps(j['models'])) HubModel.fromJson(m)],
-        // additive (D-196, the exam_grading row only): an older server sends none of these
+        // additive (D-252, the exam_grading row only): an older server sends none of these
         mode: _str(j['mode']),
         sharedFrom: _str(j['shared_from']),
         sharedActive: _str(j['shared_active']),
@@ -723,7 +723,7 @@ class ModelsHubApi {
   Future<HubLimits> setLimits(String role, Map<String, dynamic> body) async =>
       HubLimits.fromJson(_map(_map(await _api.put('$base/roles/$role/limits', body: body))['limits']));
 
-  /// D-196: Exam grading follows the generation model (`shared`), uses its own (`own`) or is `off`.
+  /// D-252: Exam grading follows the generation model (`shared`), uses its own (`own`) or is `off`.
   Future<void> setGradingMode(String mode) async => _api.put('$base/roles/exam_grading/mode', body: {'mode': mode});
 
   Future<HubStep> reindexEmbedding() async => HubStep.fromJson(await _api.post('$base/roles/embedding/reindex'));

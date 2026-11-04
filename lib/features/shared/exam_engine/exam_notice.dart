@@ -1,4 +1,4 @@
-// Exam notices (D-177): the core turns the engine's `exam.notify` into an in-app notification, an FCM push and the live
+// Exam notices (D-247): the core turns the engine's `exam.notify` into an in-app notification, an FCM push and the live
 // event `exam_notice` (LiveEvents.examNotice). A tap lands here through AppNavigator (module `exam_notice`, or a push
 // whose data has `type: exam_notice`). Kinds: appeal_created (→ the exam's managers: the appeals queue),
 // appeal_decided and results_published (→ the student: their result), batch_done (scan batch finished) and

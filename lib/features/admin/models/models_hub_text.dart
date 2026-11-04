@@ -43,7 +43,7 @@ String hubRoleHint(String role) => switch (role) {
       _ => '',
     };
 
-/// The label of an Exam grading mode (D-196).
+/// The label of an Exam grading mode (D-252).
 String hubGradingModeLabel(String mode) => switch (mode) {
       'shared' => t('مشترك مع نموذج التوليد', 'Shared with the generation model'),
       'own' => t('نموذج خاص', 'Own model'),

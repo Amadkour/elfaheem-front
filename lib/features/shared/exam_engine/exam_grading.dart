@@ -1,4 +1,4 @@
-// Results publishing, what students see, cancelling a question, the grade log (D-170, D-175, D-176). Server
+// Results publishing, what students see, cancelling a question, the grade log (D-240, D-245, D-246). Server
 // contract: ../back/docs/grading/CONTRACT.md §1. Pure parts (unit-tested: test/org/exam_publish_flow_test.dart,
 // exam_question_void_test.dart, exam_grade_log_test.dart): [PublishOutcome], [ReviewPending], [ResultAnswer],
 // [GradeLogEntry], [GradeLogPage], the texts, and [ExamGradingApi]. The widgets are in exam_grading_widgets.dart.

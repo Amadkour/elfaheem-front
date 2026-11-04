@@ -98,7 +98,7 @@ class ItemStat {
   final List<OptionStat> optionStats;
   final List<String> unusedDistractors;
 
-  /// The question was cancelled (D-175).
+  /// The question was cancelled (D-245).
   final bool voided;
 
   factory ItemStat.fromJson(Map<String, dynamic> j) {
