@@ -58,6 +58,8 @@ Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, Qui
           onExamPaper: q.isFile ? null : () => openExamPaper(context, examId: id, course: course));
       return id;
     }
+    // the wizard's "Online" step: the exam is taken in the app after all, so no printable paper
+    if (s != null && s.delivery == 'online') return id;
   }
   if (id != null && q.mode == QuickMode.offline && !q.isFile && context.mounted) await openExamPaper(context, examId: id, course: course);
   return id;
