@@ -6,6 +6,7 @@
 //   OrgTimetableScreen    my weekly timetable from the published schedule (teacher · assistant · student)
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -163,7 +164,7 @@ class _OrgCard extends StatelessWidget {
     return RowCard(
       accent: col,
       onTap: status == 'active'
-          ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: o)))
+          ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: o)))
           : null,
       child: Row(children: [
         IconBadge(orgTypeIcons[o['type']] ?? Icons.domain_rounded, col, size: 46),

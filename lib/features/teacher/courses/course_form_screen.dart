@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:typed_data';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -2286,7 +2287,7 @@ class _CertificateDesignsLink extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CertificateDesignsScreen())),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCertificateDesigns())),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(

@@ -119,6 +119,8 @@ flutter:
   assets:
     - assets/images/
     - assets/translation.json
+    # the timezone database for the web (lib/core/tz_database_web.dart); a copy of package:timezone lib/data/latest.tzf
+    - assets/tz/latest.tzf
     # UI fonts the person can choose (lib/core/display/app_fonts.dart): loaded by FontLoader when chosen
     - assets/fonts/ui/readex/
     - assets/fonts/ui/noto_kufi/

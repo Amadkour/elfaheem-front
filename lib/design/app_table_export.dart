@@ -42,7 +42,8 @@ import 'export/table_export_docx.dart';
 import 'export/table_export_model.dart';
 import 'export/table_export_pdf.dart';
 import 'export/table_export_xlsx.dart';
-import 'export_hub/export_flow.dart' show showExportFlow;
+import '../core/routing/deferred_screens.dart' show loadDeferred;
+import 'export_hub/export_flow.dart' deferred as export_flow;
 
 export 'export/table_export_model.dart'
     show AppTableExport, AppExportColumn, AppColType, AppColAlign, AppTotal, AppExportFormat, AppStatusTone, cellText, bilingualExport;
@@ -77,5 +78,8 @@ Future<bool> exportAppTable(AppTableExport e, AppExportFormat format, {List<Stri
 
 /// The Export Studio flow for [export] (format, fields, language, design, export — or "Quick export"). Returns true
 /// when a file was produced.
-Future<bool> showAppExportSheet(BuildContext context, AppTableExport export, {List<AppExportFormat> formats = AppExportFormat.values}) =>
-    showExportFlow(context, export, formats: formats);
+Future<bool> showAppExportSheet(BuildContext context, AppTableExport export, {List<AppExportFormat> formats = AppExportFormat.values}) async {
+  await loadDeferred('export_flow', export_flow.loadLibrary); // the studio is a deferred part on the web
+  if (!context.mounted) return false;
+  return export_flow.showExportFlow(context, export, formats: formats);
+}
