@@ -19,7 +19,34 @@ import 'exam_paper.dart';
 PdfColor _pc(String hex) => PdfColor.fromInt(0xFF000000 | int.parse(hex, radix: 16));
 
 /// [tpl] must be resolved (not auto / custom). [regular] / [bold]: the template's fonts (PaperStyle.of).
-Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required ByteData regular, required ByteData bold}) async {
+Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required ByteData regular, required ByteData bold}) async =>
+    (await examPaperPdfMany([d], tpl, regular: regular, bold: bold)).bytes;
+
+/// Several papers (per-student copies, versions) in ONE PDF; [pages] holds each paper's page count in order. A paper
+/// with [ExamPaperDoc.qrPages] draws page p's QR in its footer; with [ExamPaperDoc.qrSlots] it only reserves the room,
+/// so a counting pass lays out exactly like the real copy.
+class PaperPdfResult {
+  const PaperPdfResult(this.bytes, this.pages);
+  final Uint8List bytes;
+  final List<int> pages;
+}
+
+Future<PaperPdfResult> examPaperPdfMany(List<ExamPaperDoc> docs, PaperTemplate tpl, {required ByteData regular, required ByteData bold}) async {
+  final doc = pw.Document(
+    title: docs.isEmpty ? '' : docs.first.title,
+    author: docs.isEmpty || docs.first.institution.isEmpty ? 'NextBrain' : docs.first.institution,
+    creator: 'NextBrain',
+    theme: pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold), fontFallback: [pw.Font.helvetica()]),
+  );
+  final pages = [for (final d in docs) _addPaper(doc, d, tpl)];
+  return PaperPdfResult(await doc.save(), pages);
+}
+
+/// The QR's side in the footer (points); a reserved slot takes the same room as a real one.
+const kPaperQrSize = 34.0;
+
+int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl) {
+  var lastPage = 1;
   final style = PaperStyle.of(tpl);
   final w = PaperWords(d.rtl);
   final accentHex = style.color ? d.accentHex : '1F2933';
@@ -31,8 +58,8 @@ Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required Byte
   final logo = d.logo == null ? null : pw.MemoryImage(d.logo!);
   List<T> rtlCols<T>(List<T> cols) => d.rtl ? cols.reversed.toList() : cols;
 
-  pw.Widget txt(String s, {double size = fs, bool bold = false, PdfColor? color, pw.TextAlign? align, double? height}) => pw.Text(s,
-      textAlign: align, style: pw.TextStyle(fontSize: size, fontWeight: bold ? pw.FontWeight.bold : null, color: color ?? ink, lineSpacing: height));
+  pw.Widget txt(String s, {double size = fs, bool bold = false, PdfColor? color, pw.TextAlign? align, double? height, int? maxLines}) => pw.Text(s,
+      textAlign: align, maxLines: maxLines, style: pw.TextStyle(fontSize: size, fontWeight: bold ? pw.FontWeight.bold : null, color: color ?? ink, lineSpacing: height));
 
   // ── the crest: the logo, or the institution's initials in a ring
   pw.Widget crest(double size) {
@@ -58,10 +85,12 @@ Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required Byte
         ),
       );
 
+  pw.Widget versionCell() => pw.Padding(padding: const pw.EdgeInsets.symmetric(vertical: 2), child: txt(w.version(d.version!), size: 11.5, bold: true, color: accentDark));
+
   // ── page-1 header
   pw.Widget header() {
     final infoStart = [infoCell(w.course, d.course), infoCell(w.date, d.dateText)];
-    final infoEnd = [infoCell(w.duration, d.durationText), infoCell(w.total, fmtTotal(d.total))];
+    final infoEnd = [infoCell(w.duration, d.durationText), infoCell(w.total, fmtTotal(d.total)), if (d.version != null) versionCell()];
     if (classic) {
       return pw.Column(children: [
         pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
@@ -116,6 +145,7 @@ Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required Byte
           chip(w.date, d.dateText),
           chip(w.duration, d.durationText),
           chip(w.total, fmtTotal(d.total)),
+          if (d.version != null) pw.Container(margin: const pw.EdgeInsets.only(top: 6), padding: const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 4), child: versionCell()),
         ]),
       ]);
     }
@@ -139,18 +169,18 @@ Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required Byte
 
   // ── the student's box (two rows of label + writing space)
   pw.Widget studentBox() {
-    pw.Widget field(String label) => pw.Container(
+    pw.Widget field(String label, [String name = '']) => pw.Container(
           height: 26,
           padding: const pw.EdgeInsets.symmetric(horizontal: 8),
           alignment: d.rtl ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
-          child: txt('$label:', size: 10, color: muted),
+          child: txt(name.isEmpty ? '$label:' : '$label: $name', size: 10, color: muted, maxLines: 1),
         );
     final border = pw.TableBorder.all(color: classic ? accent : line, width: classic ? .9 : .6);
     return pw.Table(
       border: border,
       columnWidths: {0: const pw.FlexColumnWidth(3), 1: const pw.FlexColumnWidth(2)},
       children: [
-        pw.TableRow(children: rtlCols([field(w.name), field(w.id)])),
+        pw.TableRow(children: rtlCols([field(w.name, d.studentName), field(w.id)])),
         pw.TableRow(children: rtlCols([field(w.group), field(d.seatNumber ? w.seat : w.score)])),
       ],
     );
@@ -328,11 +358,58 @@ Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required Byte
         decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: line, width: .6, style: pw.BorderStyle.dotted))),
       );
 
+  // ── the answer table: question numbers x the letters to circle (choice questions)
+  pw.Widget answerTable() {
+    final rows = answerTableRows(answerTableEntries(d));
+    if (rows.isEmpty) return pw.SizedBox();
+    pw.Widget entry(AnswerTableEntry e) => pw.Expanded(
+          child: pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 4),
+            child: pw.Row(children: [
+              pw.SizedBox(width: 20, child: txt('${e.number}', size: 9.5, bold: true)),
+              for (var i = 0; i < e.letters.length; i++)
+                pw.Container(
+                  width: 15, height: 15, margin: const pw.EdgeInsets.only(right: 3), alignment: pw.Alignment.center,
+                  decoration: pw.BoxDecoration(
+                      shape: e.multi ? pw.BoxShape.rectangle : pw.BoxShape.circle,
+                      color: d.answerKey && e.correct.contains(i) ? accent : null,
+                      border: pw.Border.all(color: d.answerKey && e.correct.contains(i) ? accent : ink, width: .7)),
+                  child: txt(e.letters[i], size: 8, color: d.answerKey && e.correct.contains(i) ? PdfColors.white : ink),
+                ),
+            ]),
+          ),
+        );
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(6),
+      decoration: pw.BoxDecoration(border: pw.Border.all(color: classic ? accent : line, width: .7), borderRadius: pw.BorderRadius.circular(4)),
+      child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+        txt(w.answerTableTitle, size: 10.5, bold: true, color: accentDark),
+        pw.SizedBox(height: 4),
+        for (final r in rows)
+          pw.Row(children: [for (var i = 0; i < 3; i++) i < r.length ? entry(r[i]) : pw.Expanded(child: pw.SizedBox())]),
+      ]),
+    );
+  }
+
+  // ── a version's key (display strings from the server), the teacher's summary
+  pw.Widget keySummary() => pw.Container(
+        padding: const pw.EdgeInsets.all(8),
+        decoration: pw.BoxDecoration(color: _pc('FDF2F2'), border: pw.Border.all(color: PdfColors.red200, width: .6), borderRadius: pw.BorderRadius.circular(6)),
+        child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+          txt(w.keySummaryTitle, size: 10.5, bold: true, color: PdfColors.red900),
+          pw.SizedBox(height: 3),
+          pw.Wrap(spacing: 14, runSpacing: 2, children: [for (final k in d.keySummary) txt('${k.n}: ${k.display}', size: 10, color: PdfColors.red900)]),
+        ]),
+      );
+
+  final tableOn = d.answerTable != AnswerTablePlace.none && answerTableEntries(d).isNotEmpty;
   final content = <pw.Widget>[
     pw.SizedBox(height: 10),
     if (!d.answerKey) ...[studentBox(), pw.SizedBox(height: 9)],
     instructions(),
     if (!d.answerKey && !tplIsMinimal(tpl)) ...[pw.SizedBox(height: 9), marksTable()],
+    if (d.answerKey && d.keySummary.isNotEmpty) ...[pw.SizedBox(height: 9), keySummary()],
+    if (tableOn && d.answerTable == AnswerTablePlace.start) ...[pw.SizedBox(height: 9), answerTable()],
     pw.SizedBox(height: 12),
   ];
   for (var si = 0; si < d.sections.length; si++) {
@@ -379,6 +456,7 @@ Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required Byte
       }
     }
   }
+  if (tableOn && d.answerTable == AnswerTablePlace.end) content.addAll([pw.SizedBox(height: 14), answerTable()]);
   content.add(pw.Padding(
     padding: const pw.EdgeInsets.only(top: 22),
     child: pw.Row(children: [
@@ -388,12 +466,6 @@ Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required Byte
     ]),
   ));
 
-  final doc = pw.Document(
-    title: d.title,
-    author: d.institution.isEmpty ? 'NextBrain' : d.institution,
-    creator: 'NextBrain',
-    theme: pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold), fontFallback: [pw.Font.helvetica()]),
-  );
   doc.addPage(pw.MultiPage(
     pageTheme: pw.PageTheme(
       pageFormat: PdfPageFormat.a4,
@@ -420,19 +492,32 @@ Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required Byte
             decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: classic || modern ? accent : ink, width: .8))),
             child: pw.Row(children: [
               pw.Expanded(child: txt(d.title, size: 9.5, bold: true, color: accentDark)),
-              if (d.course.isNotEmpty) txt(d.course, size: 9, color: muted),
+              if (d.studentName.isNotEmpty) txt(d.studentName, size: 9, bold: true),
+              if (d.version != null) ...[pw.SizedBox(width: 8), txt(w.version(d.version!), size: 9, bold: true, color: accentDark)],
+              if (d.course.isNotEmpty) ...[pw.SizedBox(width: 8), txt(d.course, size: 9, color: muted)],
             ]),
           ),
-    footer: (c) => pw.Container(
-      margin: const pw.EdgeInsets.only(top: 8),
-      child: pw.Row(children: [
-        pw.Expanded(child: txt(c.pageNumber < c.pagesCount ? w.turnOver : '', size: 8.5, color: muted)),
-        txt(w.page(c.pageNumber, c.pagesCount), size: 8.5, color: muted),
-      ]),
-    ),
+    footer: (c) {
+      if (c.pageNumber > lastPage) lastPage = c.pageNumber;
+      final payload = c.pageNumber <= d.qrPages.length ? d.qrPages[c.pageNumber - 1] : null;
+      return pw.Container(
+        margin: const pw.EdgeInsets.only(top: 8),
+        child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
+          pw.Expanded(child: txt(c.pageNumber < c.pagesCount ? w.turnOver : '', size: 8.5, color: muted)),
+          txt(w.page(c.pageNumber, c.pagesCount), size: 8.5, color: muted),
+          if (d.qrReserved) ...[
+            pw.SizedBox(width: 10),
+            pw.SizedBox(
+              width: kPaperQrSize, height: kPaperQrSize,
+              child: payload == null ? null : pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: payload, drawText: false, color: PdfColors.black),
+            ),
+          ],
+        ]),
+      );
+    },
     build: (_) => content,
   ));
-  return doc.save();
+  return lastPage;
 }
 
 bool tplIsMinimal(PaperTemplate t) => t == PaperTemplate.minimal;
