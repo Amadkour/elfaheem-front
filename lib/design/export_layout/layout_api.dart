@@ -15,6 +15,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../core/live/event_wait.dart';
@@ -238,18 +239,33 @@ class LayoutApi {
 
   /// `POST /rows` — an app table with no server dataset: its columns (key, labels, type) and rows. → upload id.
   /// The values are what the table shows in [lang] ([layoutJsonRow]: wall-clock dates, status labels).
-  Future<ExportResult<String>> uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows, {String lang = 'ar'}) {
+  Future<ExportResult<String>> uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows, {String lang = 'ar', void Function(int sent, int total)? onProgress}) {
     // the server refuses more than 50 000 rows / 20 MB: say so before sending anything
-    if (rows.length > kLayoutMaxRows) return Future.value(ExportResult.fail(layoutErrorText('rows_too_many'), code: 'rows_too_many'));
-    if (layoutEstimateUploadBytes(fields, rows, lang) > kLayoutMaxUploadBytes) return Future.value(ExportResult.fail(layoutErrorText('rows_too_big'), code: 'rows_too_big'));
-    return _uploadRows(fields, rows, lang);
+    if (rows.length > kLayoutMaxRows) {
+      final n = rows.length;
+      return Future.value(ExportResult.fail(
+          AppConfig.lang == 'ar'
+              ? 'عدد الصفوف ($n) أكبر من المسموح ($kLayoutMaxRows صف كحد أقصى): قلّل الصفوف بالتصفية ثم أعد التصدير'
+              : 'Too many rows for one export: $n rows, $kLayoutMaxRows at most. Filter the table and export again',
+          code: 'rows_too_many'));
+    }
+    final bytes = layoutEstimateUploadBytes(fields, rows, lang);
+    if (bytes > kLayoutMaxUploadBytes) {
+      String mb(int b) => (b / 1048576).toStringAsFixed(1);
+      return Future.value(ExportResult.fail(
+          AppConfig.lang == 'ar'
+              ? 'حجم الصفوف ${mb(bytes)} ميجابايت وهو أكبر من المسموح (${mb(kLayoutMaxUploadBytes)} ميجابايت): قلّل الصفوف أو الأعمدة'
+              : 'The rows are too large to send: ${mb(bytes)} MB, ${mb(kLayoutMaxUploadBytes)} MB at most. Remove rows or columns',
+          code: 'rows_too_big'));
+    }
+    return _uploadRows(fields, rows, lang, onProgress);
   }
 
-  Future<ExportResult<String>> _uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows, String lang) => _call(
+  Future<ExportResult<String>> _uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows, String lang, void Function(int, int)? onProgress) => _call(
         () => api.post('$_base/rows', body: {
           'columns': [for (final f in fields) f.toJson()],
           'rows': [for (final r in rows) layoutJsonRow(r, fields, lang)],
-        }),
+        }, onSendProgress: onProgress),
         (r) => '${_map(r)['upload_id'] ?? ''}',
       );
 

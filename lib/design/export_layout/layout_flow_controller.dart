@@ -794,6 +794,20 @@ class LayoutFlowController extends ChangeNotifier {
   bool uploading = false;
   int uploadCount = 0;
 
+  /// The share of the rows upload already sent (0 – 1); null = indeterminate (no size yet, or no upload running).
+  /// Listeners are told at most every ~100 ms.
+  double? uploadProgress;
+  DateTime? _progressAt;
+
+  void _onUploadProgress(int sent, int total) {
+    uploadProgress = total > 0 ? (sent / total).clamp(0.0, 1.0) : null;
+    final now = DateTime.now();
+    final last = _progressAt;
+    if (last != null && now.difference(last) < const Duration(milliseconds: 100) && (uploadProgress ?? 0) < 1) return;
+    _progressAt = now;
+    _notify();
+  }
+
   /// What the uploaded rows were made of: language, field keys and the rows themselves (count + a few samples). A
   /// different signature means the server's copy is out of date.
   String _sourceSig(String l) {
@@ -834,9 +848,12 @@ class LayoutFlowController extends ChangeNotifier {
   Future<String?> _upload(String l, String sig) async {
     uploading = true;
     uploadCount = export.rows.length;
+    uploadProgress = null;
+    _progressAt = null;
     _notify();
-    final r = await api.uploadRows(fields, export.rows, lang: l);
+    final r = await api.uploadRows(fields, export.rows, lang: l, onProgress: _onUploadProgress);
     uploading = false;
+    uploadProgress = null;
     _notify();
     if (!r.ok) return r.error;
     if (r.data!.isEmpty) return AppConfig.lang == 'ar' ? 'تعذّر رفع الصفوف' : 'Could not upload the rows';
