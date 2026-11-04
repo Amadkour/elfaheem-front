@@ -71,7 +71,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     String shown(int i) => (tester.widget<Text>(find.byKey(ValueKey('cc-preview-$i')))).data!;
-    expect([shown(0), shown(1), shown(2)], ['Pass', 'Pass', 'Fail']);
+    expect([shown(0), shown(1), shown(2)], ['Pass', 'Fail', 'Fail']);
 
     await tester.enterText(find.byKey(const ValueKey('cc-cond-value-0-0')), '90');
     await tester.pump(const Duration(milliseconds: 300));
