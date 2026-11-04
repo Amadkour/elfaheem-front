@@ -41,3 +41,24 @@ dev PC (link ≈ 8–9 Mbit/s to the server). Back-button behaviour on a profile
   → Back landed on the Home tab, the next Back left to about:blank.
 
 Fix: D-170 (routing) and the perf work tracked in `docs/perf/deferred-loading.md` and the build / nginx changes.
+
+## After (2026-11-04, branch fix/routing-performance)
+
+Same machine and the same cold-load script (cache off, 390×844, `ar`), the `/login` page. "Before" is the old release
+build served like production today (HTTP/1.1, no compression). "After" is the merged branch's release build after
+`scripts/web/postbuild.dart`, served like the new nginx config (HTTP/2, `brotli_static`). Both are local servers, so the
+numbers show the ratio and are not production timings. The 4G rows are the median of 3 runs. The first "after" run had a
+2.4 s first byte from the local TLS server and is left out.
+
+| | before | after |
+|---|---|---|
+| `main.dart.js` (raw / on the wire) | 18.2 MB / 18.2 MB | 9.05 MB / 1.87 MB (br) |
+| deferred parts | none | 141 files, fetched when their screen opens |
+| fonts downloaded at start-up | 3.5 MB | ≈ 0.6 MB on the wire |
+| requests / bytes, cold `/login` | 62–66 / 24.9 MB | 48 / 4.5–5.3 MB |
+| first paint (HTML splash), 4G | 0.34–1.05 s | 0.20–0.21 s |
+| Flutter first frame, 4G (9 Mbit/s, 60 ms) | 28.5–30.8 s | 8.3–9.1 s |
+| Flutter first frame, no throttling | 8.8 s | 6.5 s |
+
+The login page renders the same in both builds. The only visible difference is the identifier label (email → email,
+phone or username), which comes from the newer base branch (D-071), not from this work.
