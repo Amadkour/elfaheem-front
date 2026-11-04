@@ -82,27 +82,29 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   }
 
-  testWidgets('steps: format → list → table → custom card with the canvas and the item browser', (tester) async {
+  testWidgets('steps: start → layout (list, table, cards, grid) → design with the canvas and the item browser', (tester) async {
     await open(tester);
     expect(find.text('File format'), findsOneWidget);
+    expect(find.byKey(const ValueKey('layout-gallery')), findsOneWidget);
     await _tap(tester, find.byKey(const ValueKey('layout-format-docx')));
     await _tap(tester, find.byKey(const ValueKey('layout-lang-both')));
-    await _tap(tester, find.byKey(const ValueKey('layout-next')));
-    expect(find.text('How do you want to show your items?'), findsOneWidget);
+    await _tap(tester, find.byKey(const ValueKey('layout-customize')));
+    expect(find.text('How do you want to lay the items out?'), findsOneWidget);
     expect(find.byKey(const ValueKey('layout-tab-ar')), findsOneWidget, reason: 'two languages = two design tabs');
 
-    await _tap(tester, find.byKey(const ValueKey('layout-mode-list')));
+    await _tap(tester, find.byKey(const ValueKey('layout-kind-list')));
     await _tap(tester, find.byKey(const ValueKey('layout-next')));
     expect(find.text('Fields of the line'), findsOneWidget);
     expect(find.byKey(const ValueKey('layout-field-email')), findsOneWidget);
 
     await _tap(tester, find.byKey(const ValueKey('layout-back')));
-    await _tap(tester, find.byKey(const ValueKey('layout-mode-table')));
+    await _tap(tester, find.byKey(const ValueKey('layout-kind-table')));
     await _tap(tester, find.byKey(const ValueKey('layout-next')));
     expect(find.text('Table columns'), findsOneWidget);
 
     await _tap(tester, find.byKey(const ValueKey('layout-back')));
-    await _tap(tester, find.byKey(const ValueKey('layout-mode-custom2')));
+    await _tap(tester, find.byKey(const ValueKey('layout-kind-cards')));
+    await _tap(tester, find.byKey(const ValueKey('layout-cards-per-line')).evaluate().isEmpty ? find.text('2') : find.descendant(of: find.byKey(const ValueKey('layout-cards-per-line')), matching: find.text('2')));
     await _tap(tester, find.byKey(const ValueKey('layout-next')));
     expect(find.byType(StudioCanvas<LayoutElement>), findsOneWidget);
     expect(find.text('Item 1 of 120'), findsOneWidget);
@@ -116,10 +118,31 @@ void main() {
     await _tap(tester, find.byKey(const ValueKey('layout-tab-ar')));
     expect(find.byType(StudioCanvas<LayoutElement>), findsOneWidget);
 
-    await _tap(tester, find.byKey(const ValueKey('layout-next')));
+    // the fixed parts are one switcher away, on the same step
     expect(find.byKey(const ValueKey('layout-band-header')), findsOneWidget);
     await _tap(tester, find.byKey(const ValueKey('layout-band-page')));
     expect(find.byKey(const ValueKey('layout-watermark')), findsOneWidget);
+    await _tap(tester, find.byKey(const ValueKey('layout-next')));
+    expect(find.byKey(const ValueKey('layout-save-template')), findsOneWidget);
+    await close(tester);
+  });
+
+  testWidgets('each language keeps its canvas (and its undo history) while the tabs are switched', (tester) async {
+    await open(tester, step: 2);
+    final flow = (tester.state(find.byType(ExportLayoutPage)) as dynamic).flow as LayoutFlowController;
+    flow.setLanguages(['ar', 'en']);
+    flow.pickMode('custom');
+    await _settle(tester);
+    StudioController<LayoutElement> ctl() => tester.widget<StudioCanvas<LayoutElement>>(find.byType(StudioCanvas<LayoutElement>)).controller;
+    final en = ctl();
+    en.select(en.items.first.id);
+    en.deleteSelection();
+    expect(en.canUndo, isTrue);
+    await _tap(tester, find.byKey(const ValueKey('layout-tab-ar')));
+    expect(ctl(), isNot(same(en)));
+    await _tap(tester, find.byKey(const ValueKey('layout-tab-en')));
+    expect(ctl(), same(en), reason: 'the same controller: the undo history survived the switch');
+    expect(en.canUndo, isTrue);
     await close(tester);
   });
 
@@ -178,16 +201,16 @@ void main() {
   });
 
   testWidgets('templates: v3 ones listed (v2 left out), one click opens, save sends schema_version 4 without the source', (tester) async {
-    await open(tester, step: 1);
+    await open(tester);
     expect(find.byKey(const ValueKey('layout-tpl-5')), findsOneWidget);
     expect(find.byKey(const ValueKey('layout-tpl-6')), findsNothing);
     await _tap(tester, find.byKey(const ValueKey('layout-tpl-5')));
+    await _tap(tester, find.byKey(const ValueKey('layout-customize')));
     await _tap(tester, find.byKey(const ValueKey('layout-next')));
     expect(find.text('Fields of the line'), findsOneWidget, reason: 'the template is a list design');
     expect(api.calls.where((c) => c.path == '/api/v1/exports/templates/5/used'), isNotEmpty);
 
     // save as a template from the preview step
-    await _tap(tester, find.byKey(const ValueKey('layout-next')));
     await _tap(tester, find.byKey(const ValueKey('layout-next')));
     await _settle(tester);
     await _tap(tester, find.byKey(const ValueKey('layout-save-template')));
@@ -207,7 +230,7 @@ void main() {
   });
 
   testWidgets('preview: rows uploaded once, server pages with the page indicator and the Excel notes', (tester) async {
-    await open(tester, step: 4);
+    await open(tester, step: 3);
     await _until(tester, () => find.byKey(const ValueKey('layout-page-label')).evaluate().isNotEmpty);
     expect(find.text('Page 1 of 5'), findsOneWidget);
     expect(find.text('Excel shows one card per line'), findsOneWidget);
@@ -222,7 +245,7 @@ void main() {
   });
 
   testWidgets('a page with a server dataset sends the dataset, never the rows', (tester) async {
-    await open(tester, step: 4, export: layoutTestExport(dataset: 'course.students'));
+    await open(tester, step: 3, export: layoutTestExport(dataset: 'course.students'));
     await _until(tester, () => server.posted['preview'] != null);
     expect(server.posted['rows'], isNull);
     final prev = server.posted['preview']!.single as Map<String, dynamic>;
@@ -247,7 +270,7 @@ void main() {
   });
 
   testWidgets('previews are stale per language: a change refreshes the other tab when it is opened again', (tester) async {
-    await open(tester, step: 4);
+    await open(tester, step: 3);
     await _until(tester, () => server.posted['preview'] != null);
     final page = tester.state(find.byType(ExportLayoutPage)) as dynamic;
     final flow = page.flow as LayoutFlowController;
@@ -271,7 +294,7 @@ void main() {
   });
 
   testWidgets('a run sends the title (not the file name) as the document name; the draft goes after the export', (tester) async {
-    await open(tester, step: 4);
+    await open(tester, step: 3);
     await _until(tester, () => server.posted['preview'] != null);
     final page = tester.state(find.byType(ExportLayoutPage)) as dynamic;
     final flow = page.flow as LayoutFlowController;
@@ -315,7 +338,7 @@ void main() {
 
   testWidgets('export: background run with progress, then the file is downloaded and saved', (tester) async {
     server.runSteps = 3;
-    await open(tester, step: 4);
+    await open(tester, step: 3);
     await _until(tester, () => server.posted['preview'] != null);
     await _tap(tester, find.byKey(const ValueKey('layout-run-start')));
     await _until(tester, () => find.textContaining('Creating the file').evaluate().isNotEmpty, step: const Duration(milliseconds: 50));
@@ -333,7 +356,7 @@ void main() {
 
   testWidgets('export: cancel stops the run on the server', (tester) async {
     server.runSteps = 1000;
-    await open(tester, step: 4);
+    await open(tester, step: 3);
     await _until(tester, () => server.posted['preview'] != null);
     await _tap(tester, find.byKey(const ValueKey('layout-run-start')));
     await _until(tester, () => find.byKey(const ValueKey('layout-run-cancel')).evaluate().isNotEmpty && server.runPolls > 0);
@@ -347,7 +370,7 @@ void main() {
 
   testWidgets('export: a failed run shows its error and saves nothing', (tester) async {
     server.runFails = true;
-    await open(tester, step: 4);
+    await open(tester, step: 3);
     await _until(tester, () => server.posted['preview'] != null);
     await _tap(tester, find.byKey(const ValueKey('layout-run-start')));
     await _until(tester, () => find.text('Disk full').evaluate().isNotEmpty);
@@ -359,7 +382,7 @@ void main() {
     server.previewBusy = true;
     server.runFails = true;
     server.runError = 'render_timeout';
-    await open(tester, step: 4);
+    await open(tester, step: 3);
     await _until(tester, () => find.textContaining('A preview is already being prepared').evaluate().isNotEmpty);
     server.previewBusy = false;
     await _tap(tester, find.text('Retry'));
@@ -381,6 +404,235 @@ void main() {
     await open(tester);
     final excel = tester.widget<Semantics>(find.descendant(of: find.byKey(const ValueKey('layout-format-xlsx')), matching: find.byType(Semantics)).first);
     expect(excel.properties.selected, isTrue);
+    await close(tester);
+  });
+
+  LayoutFlowController flowOf(WidgetTester tester) => (tester.state(find.byType(ExportLayoutPage)) as dynamic).flow as LayoutFlowController;
+
+  testWidgets('quick path: a server starter and "Export now" run without opening the designer or asking for a preview', (tester) async {
+    server.starters = [layoutTestStarter()];
+    await open(tester);
+    expect(server.posted['starters']!.single, {'purpose': 'export'});
+    expect(find.byKey(const ValueKey('layout-starter-list2col')), findsOneWidget);
+    expect(find.text('Two-column list'), findsOneWidget);
+    await _tap(tester, find.byKey(const ValueKey('layout-starter-list2col')));
+    await _tap(tester, find.byKey(const ValueKey('layout-export-now')));
+    await _until(tester, () => saved.isNotEmpty, step: const Duration(milliseconds: 500));
+    final run = server.posted['runs']!.single as Map<String, dynamic>;
+    final design = ((run['document'] as Map)['designs'] as Map)['en'] as Map;
+    expect(design['mode'], 'list');
+    expect((design['list'] as Map)['columns'], 2);
+    expect(server.posted['preview'], isNull, reason: 'the quick path never renders a preview');
+    await close(tester);
+  });
+
+  testWidgets('an older server (no starters route): the local presets fill the gallery; a grid preset sets per line, per page and fill', (tester) async {
+    await open(tester);
+    expect(find.byKey(const ValueKey('layout-preset-table')), findsOneWidget);
+    await _tap(tester, find.byKey(const ValueKey('layout-preset-grid2')));
+    final flow = flowOf(tester);
+    expect(flow.design.mode, 'custom');
+    expect((flow.design.row.perLine, flow.design.row.perPage, flow.design.row.fillPage), (2, 4, true));
+    await _tap(tester, find.byKey(const ValueKey('layout-customize')));
+    final chip = tester.widget<ChoiceChip>(find.byKey(const ValueKey('layout-grid-2-2')));
+    expect(chip.selected, isTrue);
+    await _tap(tester, find.byKey(const ValueKey('layout-back')));
+    await _tap(tester, find.byKey(const ValueKey('layout-export-now')));
+    await _until(tester, () => saved.isNotEmpty, step: const Duration(milliseconds: 500));
+    final run = server.posted['runs']!.single as Map<String, dynamic>;
+    final row = (((run['document'] as Map)['designs'] as Map)['en'] as Map)['row'] as Map;
+    expect((row['per_line'], row['per_page'], row['fill_page']), (2, 4, true));
+    await close(tester);
+  });
+
+  testWidgets('layout step: list columns and "a new page for each group" apply to the design', (tester) async {
+    await open(tester, step: 1);
+    await _tap(tester, find.byKey(const ValueKey('layout-kind-list')));
+    await _tap(tester, find.descendant(of: find.byKey(const ValueKey('layout-list-columns')), matching: find.text('3')));
+    final flow = flowOf(tester);
+    expect(flow.design.list.columns, 3);
+    flow.design.group = LayoutGroup(field: 'status');
+    flow.changed();
+    await _settle(tester, 2);
+    await _tap(tester, find.byKey(const ValueKey('layout-group-page-break')));
+    expect(flow.design.group!.pageBreak, isTrue);
+    await close(tester);
+  });
+
+  testWidgets('Excel: the note shows, "one page per item" is not offered, and a page design falls back to cards', (tester) async {
+    await open(tester);
+    expect(find.byKey(const ValueKey('layout-excel-note')), findsNothing);
+    await _tap(tester, find.byKey(const ValueKey('layout-format-xlsx')));
+    expect(find.textContaining('Excel keeps the data and its formatting'), findsOneWidget);
+    expect(find.byKey(const ValueKey('layout-preset-page')), findsNothing);
+    await _tap(tester, find.byKey(const ValueKey('layout-customize')));
+    expect(find.byKey(const ValueKey('layout-kind-page')), findsNothing);
+    await _tap(tester, find.byKey(const ValueKey('layout-back')));
+    await _tap(tester, find.byKey(const ValueKey('layout-format-pdf')));
+    expect(find.byKey(const ValueKey('layout-excel-note')), findsNothing);
+    await _tap(tester, find.byKey(const ValueKey('layout-customize')));
+    await _tap(tester, find.byKey(const ValueKey('layout-kind-page')));
+    final flow = flowOf(tester);
+    expect(flow.design.mode, 'page');
+    flow.setFormat('xlsx');
+    expect(flow.design.mode, 'custom', reason: 'Excel has no page mode');
+    await close(tester);
+  });
+
+  testWidgets('computed columns: the entry calls the editor with the fields and sample rows; the new field joins the pickers', (tester) async {
+    (int, int, String)? seen;
+    Future<bool> editor(BuildContext context, {required LayoutDocument doc, required List<LayoutField> fields, required List<Map<String, Object?>> sampleRows, required String lang}) async {
+      seen = (fields.length, sampleRows.length, lang);
+      doc.computed.add(LayoutComputedField(key: 'calc.result', labelEn: 'Result', labelAr: 'النتيجة'));
+      return true;
+    }
+
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1400, 900);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_host(ExportLayoutPage(export: layoutTestExport(), liveStream: kNoStream, initialStep: 1, computedEditor: editor, saveFile: (b, n, m) async {})));
+    await _settle(tester);
+    await _tap(tester, find.byKey(const ValueKey('layout-computed-open')));
+    expect(seen, (5, 20, 'en'));
+    final flow = flowOf(tester);
+    expect([for (final f in flow.allFields) f.key], contains('calc.result'));
+    expect(flow.fieldOf('calc.result')!.label('en'), 'Result');
+    await _tap(tester, find.byKey(const ValueKey('layout-kind-list')));
+    await _tap(tester, find.byKey(const ValueKey('layout-next')));
+    expect(find.byKey(const ValueKey('layout-field-calc.result')), findsOneWidget, reason: 'list fields offer the computed column');
+    await close(tester);
+  });
+
+  testWidgets('live preview: edits are debounced into ONE request, and the page the person is on is kept', (tester) async {
+    await open(tester, step: 1);
+    expect(find.byKey(const ValueKey('layout-preview-pane')), findsOneWidget, reason: 'wide: the preview sits next to the editing');
+    final flow = flowOf(tester);
+    await _until(tester, () => !flow.previewStale('en') && !flow.previewLoading);
+    final before = server.previewCalls;
+    flow.showPreviewPage(1);
+    for (var i = 0; i < 3; i++) {
+      flow.design.page.fontSize = 10.0 + i;
+      flow.changed();
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(server.previewCalls, before, reason: 'nothing is asked for while the edits keep coming');
+    await _until(tester, () => server.previewCalls > before && !flow.previewLoading, step: const Duration(milliseconds: 200));
+    await _settle(tester, 5);
+    expect(server.previewCalls, before + 1);
+    expect(flow.previewPage, 1);
+    expect(find.text('Page 3 of 5'), findsOneWidget);
+    await close(tester);
+  });
+
+  testWidgets('preview requests are coalesced: asking while one is in flight runs one more after it, never two at once', (tester) async {
+    await open(tester, step: 3);
+    final flow = flowOf(tester);
+    await _until(tester, () => !flow.previewStale('en') && !flow.previewLoading);
+    final before = server.previewCalls;
+    flow.changed();
+    unawaited(flow.refreshPreview());
+    unawaited(flow.refreshPreview());
+    unawaited(flow.refreshPreview());
+    await _until(tester, () => !flow.previewStale('en') && !flow.previewLoading);
+    await _settle(tester, 6);
+    expect(server.previewCalls - before, lessThanOrEqualTo(2));
+    await close(tester);
+  });
+
+  testWidgets('the uploaded rows are sent again when the rows or the field set change (and only then)', (tester) async {
+    await open(tester, step: 3);
+    final flow = flowOf(tester);
+    await _until(tester, () => !flow.previewStale('en') && !flow.previewLoading);
+    expect(server.posted['rows'], hasLength(1));
+    unawaited(flow.refreshPreview());
+    await _settle(tester, 6);
+    expect(server.posted['rows'], hasLength(1), reason: 'unchanged: the upload is reused');
+    flow.export.rows.add({'name': 'New student', 'score': 5, 'status': 'active', 'joined': DateTime.utc(2026, 9, 2), 'email': 'n@example.com'});
+    unawaited(flow.refreshPreview());
+    await _until(tester, () => server.posted['rows']!.length == 2);
+    expect(((server.posted['rows']!.last as Map)['rows'] as List), hasLength(121));
+    await _until(tester, () => !flow.previewLoading);
+    flow.fields = flow.fields.take(3).toList();
+    unawaited(flow.refreshPreview());
+    await _until(tester, () => server.posted['rows']!.length == 3);
+    await _until(tester, () => !flow.previewLoading);
+    await close(tester);
+  });
+
+  testWidgets('size guard: too many rows or too many bytes is refused with a clear message before anything is sent', (tester) async {
+    await open(tester, step: 3, export: layoutTestExport(rows: 50001));
+    await _until(tester, () => find.textContaining('Too many rows').evaluate().isNotEmpty);
+    expect(server.posted['rows'], isNull);
+    await close(tester);
+
+    final big = layoutTestExport(rows: 100);
+    for (final r in big.rows) {
+      r['name'] = 'x' * 300000;
+    }
+    await open(tester, step: 3, export: big);
+    await _until(tester, () => find.textContaining('too large to send').evaluate().isNotEmpty);
+    expect(server.posted['rows'], isNull);
+    await close(tester);
+  });
+
+  testWidgets('while the rows are sent the run panel says how many; the progress shows rows done / in all', (tester) async {
+    server.runSteps = 4;
+    await open(tester);
+    final flow = flowOf(tester);
+    unawaited(flow.startRun());
+    await tester.pump();
+    expect(find.textContaining('Sending 120 rows'), findsOneWidget);
+    await _until(tester, () => find.textContaining('/ 120 rows').evaluate().isNotEmpty, step: const Duration(milliseconds: 50));
+    expect(find.byKey(const ValueKey('layout-run-hint')), findsOneWidget);
+    await _until(tester, () => saved.isNotEmpty, step: const Duration(milliseconds: 500));
+    await close(tester);
+  });
+
+  Future<void> pushed(WidgetTester tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1400, 900);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_host(Scaffold(
+      body: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => ExportLayoutPage(export: layoutTestExport(), liveStream: kNoStream, saveFile: (b, n, m) async => saved.add((n, b.length))),
+          )),
+          child: const Text('go'),
+        ),
+      ),
+    )));
+    await tester.tap(find.text('go'));
+    await _settle(tester);
+  }
+
+  testWidgets('leaving while the file is made: "keep working" lets the run finish and save the file', (tester) async {
+    server.runSteps = 4;
+    await pushed(tester);
+    final flow = flowOf(tester);
+    unawaited(flow.startRun());
+    await _until(tester, () => flow.phase == LayoutRunPhase.running && server.runPolls > 0, step: const Duration(milliseconds: 50));
+    await tester.binding.handlePopRoute();
+    await _settle(tester, 3);
+    await _tap(tester, find.byKey(const ValueKey('layout-leave-background')));
+    await _settle(tester, 3);
+    expect(find.byType(ExportLayoutPage), findsNothing);
+    await _until(tester, () => saved.isNotEmpty, step: const Duration(milliseconds: 500));
+    expect(saved.single.$1, 'Students.pdf');
+    await close(tester);
+  });
+
+  testWidgets('leaving while the file is made: "cancel" stops the run on the server', (tester) async {
+    server.runSteps = 1000;
+    await pushed(tester);
+    final flow = flowOf(tester);
+    unawaited(flow.startRun());
+    await _until(tester, () => flow.phase == LayoutRunPhase.running && server.runPolls > 0, step: const Duration(milliseconds: 50));
+    await tester.binding.handlePopRoute();
+    await _settle(tester, 3);
+    await _tap(tester, find.byKey(const ValueKey('layout-leave-cancel')));
+    await _settle(tester, 10);
+    expect(server.posted['cancel'], isNotNull);
     await close(tester);
   });
 

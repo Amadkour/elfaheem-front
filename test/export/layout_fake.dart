@@ -58,6 +58,12 @@ class LayoutFakeServer {
   /// The next preview answers 429 preview_busy.
   bool previewBusy = false;
   final posted = <String, List<Object?>>{};
+
+  /// The server's starters (null = an older server: the route answers FastAPI's bare 404, the app offers presets).
+  List<Map<String, dynamic>>? starters;
+
+  /// How many previews were asked for.
+  int previewCalls = 0;
   final savedTemplates = <Map<String, dynamic>>[];
 
   Map<String, dynamic> _body(Object? data) {
@@ -74,6 +80,11 @@ class LayoutFakeServer {
               ],
               'default': 'tajawal',
             },
+        'GET /api/v1/exports/layout/starters': (o) {
+          (posted['starters'] ??= []).add(o.uri.queryParameters);
+          final s = starters;
+          return s == null ? const FakeResponse(404, {'detail': 'Not Found'}) : {'items': s};
+        },
         'GET /api/v1/exports/templates': (_) => {
               'items': [
                 {'id': 5, 'name': 'Roster cards', 'scope': 'user', 'lang': 'en', 'format': 'pdf', 'schema_version': 3},
@@ -129,6 +140,7 @@ class LayoutFakeServer {
         'POST /api/v1/exports/layout/validate': (_) => const {'ok': true, 'issues': []},
         'POST /api/v1/exports/layout/preview': (o) {
           (posted['preview'] ??= []).add(_body(o.data));
+          previewCalls++;
           if (previewBusy) {
             return const FakeResponse(429, {'detail': {'code': 'preview_busy', 'message': 'معاينة أخرى قيد التجهيز', 'message_en': 'Another preview is running'}});
           }
@@ -162,3 +174,26 @@ class LayoutFakeServer {
         },
       };
 }
+
+/// A server starter (`GET /exports/layout/starters`): a one-language list design in two columns.
+Map<String, dynamic> layoutTestStarter({String key = 'list2col', String mode = 'list'}) => {
+      'key': key,
+      'purpose': 'export',
+      'name_ar': 'قائمة بعمودين',
+      'name_en': 'Two-column list',
+      'description_ar': 'قائمة مضغوطة',
+      'description_en': 'A compact list',
+      'mode': mode,
+      'document': {
+        'schema_version': 4,
+        'format': 'pdf',
+        'languages': ['en'],
+        'designs': {
+          'en': {
+            'mode': mode,
+            'page': {'rtl': false},
+            'list': {'fields': ['name', 'score'], 'numbered': false, 'columns': 2, 'column_gap': 6},
+          },
+        },
+      },
+    };
