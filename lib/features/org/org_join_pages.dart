@@ -880,7 +880,10 @@ class JoinRequestCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Wrap(spacing: 6, runSpacing: 4, children: [
-                for (final e in answers.entries) OrgPill('${e.key}: ${e.value is List ? (e.value as List).join('، ') : e.value}', color: c.textMedium),
+                // the form field's own label (`answer_labels`, sent by the server); an older server sends only the key
+                for (final e in answers.entries)
+                  OrgPill('${asMap(row['answer_labels'])[e.key] ?? e.key}: ${e.value is List ? (e.value as List).join('، ') : e.value}',
+                      color: c.textMedium),
               ]),
             ),
           if ('${row['note'] ?? ''}'.isNotEmpty) Text('💬 ${row['note']}', style: orgText(context, size: 12.5)),
