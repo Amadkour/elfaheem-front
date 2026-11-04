@@ -24,6 +24,7 @@ import 'package:flutter_education_app/features/student/analysis/exam/student_cou
 import 'package:flutter_education_app/features/student/analysis/exam/student_exam_provider.dart';
 
 import '../../../../config/app_config.dart';
+import '../../../../core/course_access.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/rating_widget.dart';
 import '../../course/course_space/course_sessions.dart';
@@ -105,23 +106,21 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   bool get _isLocked => widget.locked && !widget.isTeacher;
 
   void _showLockedMessage() {
-    // NOTE: hardcoded Arabic string (mirrors the pattern already used
-    // elsewhere in this file, e.g. delete_confirm_message fallback text).
-    // Move this to your translations file under a proper key if you'd
-    // rather keep all student-facing strings in one place. Kept generic
-    // (rather than branching on enrollment) since TeacherCourse doesn't
-    // necessarily expose an isEnrolled flag.
-    var message =
-        'هذه الجلسة مقفلة — أكمل الجلسة الحالية أو اشترك في الكورس لفتحها';
-    // Locked because of an unpassed exam → say WHICH exam.
+    // Why it is locked (D-210): an ENROLLED student is held by progress ("finish «X» first") or by an unpassed exam;
+    // only a student without access is told to subscribe / renew, with the server's exact reason.
+    var message = 'session_locked_subscribe'.tr;
     if (!widget.isTeacher) {
       try {
         final cd = context.read<CourseDetailProvider>();
         final idx = cd.sessions.indexWhere((s) => s.id == _session.id);
         final blocking = idx < 0 ? null : cd.blockingExamFor(idx);
-        if (blocking != null) {
-          message = '${'session_exam_must_pass'.tr}: ${blocking.name}';
-        }
+        final kind = lockedSessionKind(enrolled: cd.course.isEnrolled, hasBlockingExam: blocking != null, access: cd.course.access);
+        message = lockedSessionMessage(
+          kind,
+          previousName: idx < 0 ? null : cd.previousSessionOf(idx)?.name,
+          examName: blocking?.name,
+          access: cd.course.access,
+        );
       } catch (_) {}
     }
     Helpers.showMessage(message, isError: true);

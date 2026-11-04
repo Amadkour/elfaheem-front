@@ -220,7 +220,7 @@ class _CourseList extends StatelessWidget {
                     onRetry: () => provider.loadMore(retry: true),
                     onRefresh: provider.refresh,
                     onTap: (CourseModel c) {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => CourseDetailScreen(course: c)));
+                      Navigator.push(context, MaterialPageRoute(settings: RouteSettings(name: '/course-detail', arguments: c), builder: (_) => CourseDetailScreen(course: c)));
                     },
                     isTeacher: false,
                     pageName: 'My-courses-profile-filtered',

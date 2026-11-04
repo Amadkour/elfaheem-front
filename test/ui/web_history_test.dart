@@ -79,7 +79,13 @@ void main() {
       expect(AppRoutes.locationOf('/course-profile', 12), '/courses/12');
       expect(AppRoutes.locationOf('/org_member', 5), '/org/5');
       expect(AppRoutes.locationOf('/calendar', {'org_id': 3}), '/calendar');
-      expect(AppRoutes.locationOf('/course-detail', Object()), isNull, reason: 'built from an object: no URL of its own');
+      expect(AppRoutes.locationOf('/course-detail', Object()), isNull, reason: 'an object without a known course id');
+      expect(AppRoutes.locationOf('/course-detail', 7), '/courses/7');
+      final was = AppRoutes.courseIdOf;
+      AppRoutes.courseIdOf = (a) => a is String ? int.tryParse(a) : null;
+      expect(AppRoutes.locationOf('/course-detail', '9'), '/courses/9', reason: 'the course object gives its id');
+      expect(AppRoutes.locationOf('/course-detail', 'x'), isNull);
+      AppRoutes.courseIdOf = was;
       expect(AppRoutes.locationOf(null, null), isNull, reason: 'a MaterialPageRoute keeps the URL under it');
     });
 
