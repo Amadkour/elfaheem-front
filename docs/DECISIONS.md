@@ -2293,7 +2293,9 @@ effects; the start waits for the longest, not the sum. **Delivery** (front `scri
 `deploy/nginx/nextbrain.conf.example`): the main script and its deferred parts get a content hash and an `immutable`
 cache, every compressible file ≥ 1 KB a `.gz` / `.br` copy served by `gzip_static` / `brotli_static`, HTTP/2; no
 dynamic gzip, so API replies are unchanged. CanvasKit stays on Google's CDN (measured a wash; `--self-host-canvaskit`
-exists); the wasm renderer is not possible yet (`dart:html` in the checkout and data-lab web files).
+exists). No `dart:html` is left (the checkout and data-lab web files use `package:web`), so `flutter build web
+--wasm` compiles; production stays on the JS build until a measured trial (the skwasm renderer, the plugins' JS
+interop under wasm, and postbuild hashing / caching `main.dart.wasm` / `.mjs`).
 
 ## D-180 — One design system: the kit completed in lib/design, gradient as a touch with written rules · 2026-11-04 · accepted
 
