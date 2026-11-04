@@ -11,6 +11,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_table_export.dart';
 import 'package:flutter_education_app/design/export_hub/export_flow.dart' show ExportFlowSheet;
+import 'package:flutter_education_app/design/export/export_studio_api.dart' show ExportResult;
+import 'package:flutter_education_app/design/export_layout/layout_api.dart';
+import 'package:flutter_education_app/design/export_layout/layout_logic.dart';
 import 'package:flutter_education_app/design/export_layout/layout_canvas.dart';
 import 'package:flutter_education_app/design/export_layout/layout_flow_controller.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
@@ -663,4 +666,43 @@ void main() {
       await close(tester);
     });
   });
+
+  group('upload progress and the size pre-check', () {
+    test('the controller exposes the upload fraction, throttled to ~100 ms', () async {
+      final c = LayoutFlowController(export: layoutTestExport(rows: 5), api: _ProgressApi(), saveFile: null);
+      final seen = <double?>[];
+      c.addListener(() => seen.add(c.uploadProgress));
+      expect(await c.ensureSource(), isNull);
+      expect(c.uploadProgress, isNull, reason: 'cleared when the upload ends');
+      expect(seen.whereType<double>().isNotEmpty, isTrue);
+      expect(seen.whereType<double>().last, 1.0);
+      // 50 events fired back to back: far fewer notifications than events
+      expect(seen.length, lessThan(10));
+      c.dispose();
+    });
+
+    test('the rows pre-check names the exact counts in both languages', () async {
+      final big = layoutTestExport(rows: kLayoutMaxRows + 3);
+      final fields = layoutFieldsOf(big.columns);
+      AppConfig.lang = 'en';
+      var r = await LayoutApi(api: ApiClient()).uploadRows(fields, big.rows);
+      expect(r.code, 'rows_too_many');
+      expect(r.error, contains('${kLayoutMaxRows + 3}'));
+      AppConfig.lang = 'ar';
+      r = await LayoutApi(api: ApiClient()).uploadRows(fields, big.rows);
+      expect(r.error, contains('${kLayoutMaxRows + 3}'));
+    });
+  });
+}
+
+class _ProgressApi extends LayoutApi {
+  @override
+  Future<ExportResult<String>> uploadRows(List<LayoutField> fields, List<Map<String, Object?>> rows,
+      {String lang = 'ar', void Function(int sent, int total)? onProgress}) async {
+    onProgress?.call(0, 0); // size unknown yet
+    for (var i = 1; i <= 50; i++) {
+      onProgress?.call(i * 2, 100);
+    }
+    return ExportResult.ok('up1');
+  }
 }
