@@ -54,6 +54,7 @@ import 'org_common.dart' show OrgHero, orgColor, orgTypeIcons;
 import 'org_courses_page.dart' show OrgCoursesPage;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'org_member_pages.dart' show OrgCoursesScreen, OrgTimetableScreen;
+import 'org_member_parts.dart' show MemberRow;
 import 'org_my_exams.dart' show openMyExams;
 import 'org_member_today.dart' show OrgTodayAgenda, orgTodayEpoch;
 import 'org_people_page.dart' show OrgPeoplePage;
@@ -202,8 +203,11 @@ class OrgQuickGroup {
   bool get isEmpty => actions.isEmpty;
 }
 
-/// At most this many pills per group on the home; the rest sit behind "More".
-const orgQuickPillsMax = 6;
+/// At most this many pills per group on the home (D-102: calm); the rest sit behind "More".
+const orgQuickPillsMax = 4;
+
+/// A section title's padding on the member home (the body of the section carries the side gutter).
+const _titlePad = EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.xs, AppSpace.xxs);
 
 /// govMemberPills builds widgets; this one only carries the action out of it.
 class _ActionCarrier extends StatelessWidget {
@@ -311,8 +315,8 @@ class OrgQuickGroupView extends StatelessWidget {
     final shown = group.actions.take(max).toList();
     final rest = group.actions.length - shown.length;
     final pills = Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Wrap(spacing: 8, runSpacing: 8, children: [
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final a in shown) AppPill(icon: a.icon, label: a.label, color: a.color, onTap: a.onTap),
           if (rest > 0)
             AppPill(
@@ -329,12 +333,12 @@ class OrgQuickGroupView extends StatelessWidget {
         id: foldId!,
         title: group.title,
         count: group.actions.length,
-        titlePadding: const EdgeInsets.fromLTRB(16, 0, 8, 4),
+        titlePadding: _titlePad,
         child: pills,
       );
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      HomeSectionTitle(group.title, padding: const EdgeInsets.fromLTRB(16, 0, 8, 8)),
+      HomeSectionTitle(group.title, padding: _titlePad),
       pills,
     ]);
   }
@@ -342,16 +346,16 @@ class OrgQuickGroupView extends StatelessWidget {
   Future<void> _more(BuildContext context) => showAppSheet<void>(context, (ctx) {
         final c = ctx.colors;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSheetHeader(group.title),
             for (final a in group.actions)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: AppActionCard(
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                child: MemberRow(
                   icon: a.icon,
                   title: a.label,
-                  color: a.color ?? c.primary,
+                  tone: a.color ?? c.primary,
                   onTap: () {
                     Navigator.pop(ctx);
                     a.onTap();
@@ -368,8 +372,11 @@ class OrgQuickGroupView extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class OrgMemberHome extends StatelessWidget {
-  const OrgMemberHome({super.key, this.showPickerInHero = true});
+  const OrgMemberHome({super.key, this.showPickerInHero = true, this.showHero = true});
   final bool showPickerInHero;
+
+  /// False on the standalone page: its header already names the organization and the role, so no second banner.
+  final bool showHero;
 
   @override
   Widget build(BuildContext context) {
@@ -395,13 +402,14 @@ class OrgMemberHome extends StatelessWidget {
         final me = svc.home;
         final data = me?.orgEntry(orgId) ?? entry;
         return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 260),
+          duration: AppMotion.of(context).base,
           switchInCurve: Curves.easeOutCubic,
           transitionBuilder: (child, a) => FadeTransition(
               opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, 0.02), end: Offset.zero).animate(a), child: child)),
           child: OrgMemberHomeBody(
             key: ValueKey('org-$orgId'),
             entry: data,
+            showHero: showHero,
             showPicker: showPickerInHero && ctl.liveEntries.length > 1,
             today: me?.todayOf(orgId),
             inbox: me?.inboxPreviewOf(orgId),
@@ -416,10 +424,10 @@ class OrgMemberHome extends StatelessWidget {
             todayFallback: me == null ? OrgTodayAgenda(key: ValueKey('today-$orgId'), orgId: orgId) : null,
             inboxFallback: me == null
                 ? InboxEntryCard(
-                    key: ValueKey('inbox-$orgId'), orgId: orgId, title: orgNameOf(_orgOf(entry)), padding: const EdgeInsets.symmetric(horizontal: 16))
+                    key: ValueKey('inbox-$orgId'), orgId: orgId, title: orgNameOf(_orgOf(entry)), padding: const EdgeInsets.symmetric(horizontal: AppSpace.md))
                 : null,
             news: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
               child: OrgAnnouncementFeed(orgId: orgId, limit: 3, compact: true),
             ),
           ),
@@ -445,7 +453,11 @@ class OrgMemberHomeBody extends StatelessWidget {
     this.inboxFallback,
     this.news,
     this.liveNow = const [],
+    this.showHero = true,
   });
+
+  /// The organization banner (name + my role + the switch). The standalone page's header says it already: false there.
+  final bool showHero;
 
   /// The rooms live right now that I may join (MeHomeService.liveNow): the "Live now" banner under the hero.
   final List<MeLiveRoom> liveNow;
@@ -508,32 +520,37 @@ class OrgMemberHomeBody extends StatelessWidget {
     void openTimetable() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgTimetableScreen(orgId: orgId)));
 
     final top = <Widget>[
-      OrgHero(
-        org: org,
-        subtitle: orgRolesLine(entry),
-        trailing: showPicker
-            ? IconButton(
-                tooltip: t('تبديل المؤسسة', 'Switch organization'),
-                onPressed: onPick,
-                icon: Icon(Icons.swap_horiz_rounded, color: c.onHero))
-            : null,
-      ),
-      if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(16, 0, 16, 16)),
+      if (showHero)
+        OrgHero(
+          org: org,
+          subtitle: orgRolesLine(entry),
+          trailing: showPicker
+              ? IconButton(
+                  tooltip: t('تبديل المؤسسة', 'Switch organization'),
+                  onPressed: onPick,
+                  icon: Icon(Icons.swap_horiz_rounded, color: c.onHero))
+              : null,
+        )
+      else
+        AppSpace.gapSm,
+      if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md)),
       if ('${org['status']}' != 'approved')
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
           child: AppBanner(
             icon: Icons.hourglass_top_rounded,
             color: c.warning,
             text: t('المؤسسة قيد المراجعة — تابع حالتها من لوحة الإدارة', 'This organization is under review — follow it from the dashboard'),
-            action: TextButton(onPressed: () => openOrgManagement(context, orgId), child: Text(t('فتح', 'Open'))),
+            action: manage == null
+                ? null
+                : AppPill(label: t('فتح لوحة الإدارة', 'Open the dashboard'), icon: Icons.dashboard_customize_rounded, onTap: () => openOrgManagement(context, orgId)),
           ),
         ),
 
       // ── the numbers, once: one card of small tiles (the same strip as the personal homes) — only while one counts
       if (stats.any((x) => x.count > 0)) ...[
-        HomeStatStrip(items: stats, padding: const EdgeInsets.symmetric(horizontal: 16)),
-        const SizedBox(height: 24),
+        HomeStatStrip(items: stats, padding: const EdgeInsets.symmetric(horizontal: AppSpace.md)),
+        AppSpace.gapLg,
       ],
 
     ];
@@ -555,7 +572,7 @@ class OrgMemberHomeBody extends StatelessWidget {
                 onAction: openTimetable,
                 titlePadding: _titlePad,
                 child: HomeAgenda(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                   nowMin: nowMin,
                   items: [for (final e in todayList) homeAgendaItemOf(context, e, nowUtc, onTap: () => onOpenEvent?.call(e))],
                   emptyTitle: 'home_no_classes_today'.tr,
@@ -577,7 +594,7 @@ class OrgMemberHomeBody extends StatelessWidget {
     final Widget? needsBlock = needsFallback
         ? inboxFallback!
         : (inboxRows != null && inboxEntryShown(inboxCounts))
-            ? InboxEntry(counts: inboxCounts, onTap: openInbox, padding: const EdgeInsets.symmetric(horizontal: 16))
+            ? InboxEntry(counts: inboxCounts, onTap: openInbox, padding: const EdgeInsets.symmetric(horizontal: AppSpace.md))
             : null;
 
     // ── decisions (managers)
@@ -591,7 +608,7 @@ class OrgMemberHomeBody extends StatelessWidget {
             count: asInt(ap['total']),
             titlePadding: _titlePad,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
               child: Column(children: [
                 for (final (k, icon, label) in [
                   ('form_responses', Icons.fact_check_rounded, t('طلبات تنتظر مراجعتك', 'Requests to review')),
@@ -601,10 +618,10 @@ class OrgMemberHomeBody extends StatelessWidget {
                 ])
                   if (asInt(ap[k]) > 0)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: AppActionCard(
+                      padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                      child: MemberRow(
                         icon: icon,
-                        color: k == 'complaints' && asInt(ap['overdue_complaints']) > 0 ? c.danger : c.primary,
+                        tone: k == 'complaints' && asInt(ap['overdue_complaints']) > 0 ? c.danger : c.primary,
                         title: label,
                         subtitle: k == 'complaints'
                             ? [
@@ -612,7 +629,8 @@ class OrgMemberHomeBody extends StatelessWidget {
                                 if (asInt(ap['assigned_to_me']) > 0) t('${ap['assigned_to_me']} مسندة إليك', '${ap['assigned_to_me']} assigned to you'),
                               ].join(' · ')
                             : null,
-                        badge: asInt(ap[k]),
+                        count: asInt(ap[k]),
+                        countTone: k == 'complaints' && asInt(ap['overdue_complaints']) > 0 ? AppTone.danger : AppTone.brand,
                         onTap: () => openOrgApproval(context, orgId, k),
                       ),
                     ),
@@ -630,14 +648,14 @@ class OrgMemberHomeBody extends StatelessWidget {
             titlePadding: _titlePad,
             subtitle: admin ? t('صلاحيات كاملة على المؤسسة', 'Full rights on the organization') : t('حسب الصلاحيات الممنوحة لك', 'Based on the rights you were given'),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
               child: Column(children: [
                 for (final d in depts)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: AppActionCard(
+                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                    child: MemberRow(
                       icon: Icons.apartment_rounded,
-                      color: hexColor(d['color'], c.primary),
+                      tone: hexColor(d['color'], c.primary),
                       title: orgNameOf(d),
                       subtitle: asMap(d['modules']).keys.map(_moduleLabel).join(' · '),
                       onTap: () => _deptSheet(context, orgId, d),
@@ -645,10 +663,10 @@ class OrgMemberHomeBody extends StatelessWidget {
                   ),
                 for (final o in subOrgs)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: AppActionCard(
+                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                    child: MemberRow(
                       icon: orgTypeIcons[o['type']] ?? Icons.account_tree_rounded,
-                      color: orgColor(context, o),
+                      tone: orgColor(context, o),
                       title: orgNameOf(o),
                       subtitle: '${o['status']}' == 'approved' ? t('مؤسسة فرعية', 'Sub-organization') : statusLabel('${o['status']}'),
                       onTap: () => openOrgManagement(context, asInt(o['id'])),
@@ -677,13 +695,13 @@ class OrgMemberHomeBody extends StatelessWidget {
     // phone / narrow window: one column, in reading order (unchanged since Track B.4)
     final narrow = <Widget>[
       ...top,
-      if (todayBlock != null) ...[todayBlock, const SizedBox(height: 24)],
-      if (needsBlock != null) ...[needsBlock, const SizedBox(height: 24)],
-      if (decisionsBlock != null) ...[decisionsBlock, const SizedBox(height: 16)],
-      if (manageBlock != null) ...[manageBlock, const SizedBox(height: 16)],
-      for (final q in quickBlocks) ...[q, const SizedBox(height: 16)],
+      if (todayBlock != null) ...[todayBlock, AppSpace.gapLg],
+      if (needsBlock != null) ...[needsBlock, AppSpace.gapLg],
+      if (decisionsBlock != null) ...[decisionsBlock, AppSpace.gapMd],
+      if (manageBlock != null) ...[manageBlock, AppSpace.gapMd],
+      for (final q in quickBlocks) ...[q, AppSpace.gapMd],
       ?newsBlock,
-      const SizedBox(height: 24),
+      AppSpace.gapLg,
     ];
 
     // A desktop window, the student / teacher homes' HomeDashboard: today leads the wide main column and "What
@@ -748,8 +766,6 @@ class OrgMemberHomeBody extends StatelessWidget {
     return 48.0 + 48 * (pills / perRow).ceil();
   }
 
-  static const _titlePad = EdgeInsets.fromLTRB(16, 0, 8, 4);
-
   static void _space(BuildContext context, Map<String, dynamic> org, int tab) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: org, initialTab: tab)));
 
@@ -766,13 +782,13 @@ class OrgMemberHomeBody extends StatelessWidget {
     await showAppSheet<void>(context, (ctx) {
       final c = ctx.colors;
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AppSheetHeader(name),
           for (final m in mods.keys)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: AppActionCard(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: MemberRow(
                 icon: _moduleIcon(m),
                 title: _moduleLabel(m),
                 subtitle: [
@@ -788,7 +804,7 @@ class OrgMemberHomeBody extends StatelessWidget {
                       _ => '',
                     }
                 ].where((a) => a.isNotEmpty).join(' · '),
-                color: c.primary,
+                tone: c.primary,
                 onTap: () {
                   Navigator.pop(ctx);
                   final page = pages[m];
@@ -884,16 +900,16 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
                 if (ctl.currentOrgId != null)
                   ParentComponent(
                     featureKey: 'rag.assistant',
-                    child: IconButton(
+                    child: AppIconButton(
                         tooltip: t('مساعد المستندات', 'Documents assistant'),
                         onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RagChatScreen(orgId: ctl.currentOrgId))),
-                        icon: const Icon(Icons.auto_stories_outlined)),
+                        icon: Icons.auto_stories_outlined),
                   ),
                 if (AppConfig.orgsEnabled)
-                  IconButton(
+                  AppIconButton(
                       tooltip: t('صندوق الوارد', 'Inbox'),
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InboxScreen())),
-                      icon: const Icon(Icons.inbox_rounded)),
+                      icon: Icons.inbox_rounded),
               ],
               // Personal included: leaving replaces this root page with the personal dashboard (leaveToPersonal)
               bottom: const Row(children: [Expanded(child: ContextSwitcher()), ContextExitButton()]),
@@ -909,7 +925,7 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xl),
-              children: const [OrgMemberHome(showPickerInHero: false)],
+              children: const [OrgMemberHome(showPickerInHero: false, showHero: false)],
             ),
           ),
         ),

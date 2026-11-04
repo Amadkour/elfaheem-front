@@ -121,7 +121,7 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
     void openWeek() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgTimetableScreen()));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       HomeSectionTitle('home_today'.tr,
-          count: rows.length, actionLabel: 'home_full_timetable'.tr, onAction: openWeek, padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 8, 10)),
+          count: rows.length, actionLabel: 'home_full_timetable'.tr, onAction: openWeek, padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.xs, AppSpace.xs)),
       if (_failed)
         Padding(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
@@ -136,10 +136,10 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
               }),
         ),
       if (pauses.isNotEmpty)
-        Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: examPauseBanner(context, pauses, padding: EdgeInsets.zero)),
+        Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs), child: examPauseBanner(context, pauses, padding: EdgeInsets.zero)),
       for (final x in upcoming)
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
           child: OccurrenceCard(
             change: x,
             busy: _busy == x.id,
@@ -150,7 +150,7 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
         ),
       HomeAgenda(
         loading: _loading,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
         nowMin: nowMin,
         emptyTitle: 'home_no_classes_today'.tr,
         emptyMessage: 'home_no_classes_hint'.tr,
