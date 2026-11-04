@@ -15,7 +15,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/landing/landing_admin_api.dart';
 import 'package:flutter_education_app/features/admin/landing/landing_admin_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
