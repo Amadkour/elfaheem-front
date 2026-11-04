@@ -37,6 +37,7 @@ class AiModelsActions {
     this.onCancelPending,
     this.onReindexNow,
     this.onAdd,
+    this.onGradingMode,
   });
 
   final void Function(HubModel m)? onDownload, onActivate, onTest, onDelete;
@@ -46,6 +47,9 @@ class AiModelsActions {
   final void Function(HubDownload d)? onPause, onResume, onCancelDownload;
   final void Function(HubRole r)? onRollback, onLimits, onReview, onCancelPending, onReindexNow;
   final VoidCallback? onAdd;
+
+  /// Switches Exam grading between shared / own / off (D-196).
+  final void Function(HubRole r, String mode)? onGradingMode;
 }
 
 Color hubStatusColor(BuildContext context, String status) {
@@ -97,6 +101,8 @@ class AiModelsView extends StatelessWidget {
     final roles = overview.roles;
     final active = roles.where((r) => r.activeId != null).length;
     final s = system;
+    final task = overview.task('exam_grading');
+    final taskRoles = hubTaskLine(task) == null ? const <String>{} : task!.roles.toSet();
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= kModelsTableWidth;
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -111,17 +117,22 @@ class AiModelsView extends StatelessWidget {
           if (s?.cpuCount != null)
             _Fact(icon: Icons.developer_board_rounded, value: '${s!.cpuCount}', label: t('أنوية', 'cores')),
         ]),
-        if (hubTaskLine(overview.task('exam_grading')) case final line?) ...[
-          const SizedBox(height: AppSpace.sm),
-          AppBanner(key: const ValueKey('models.task.exam_grading'), icon: Icons.fact_check_outlined, text: line),
-        ],
         for (final a in alerts) ...[
           const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.warning_amber_rounded, color: context.colors.warning, text: _alertText(a)),
         ],
-        for (final r in roles) ...[
+        // the roles of the Exam grading task sit together under its banner (the others keep the server's order)
+        for (final r in roles.where((r) => !taskRoles.contains(r.role))) ...[
           const SizedBox(height: AppSpace.md),
           HubRoleCard(role: r, wide: wide, downloads: downloads, busy: busy, actions: actions),
+        ],
+        if (hubTaskLine(task) case final line?) ...[
+          const SizedBox(height: AppSpace.md),
+          AppBanner(key: const ValueKey('models.task.exam_grading'), icon: Icons.fact_check_outlined, text: line),
+          for (final r in roles.where((r) => taskRoles.contains(r.role))) ...[
+            const SizedBox(height: AppSpace.md),
+            HubRoleCard(role: r, wide: wide, downloads: downloads, busy: busy, actions: actions),
+          ],
         ],
       ]);
     });
@@ -199,9 +210,19 @@ class HubRoleCard extends StatelessWidget {
         ]),
         const SizedBox(height: AppSpace.sm),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          if (r.active != null)
+          if (r.mode == 'shared')
+            AppBadgePill(
+              r.sharedActive == null
+                  ? t('مشترك مع التوليد: لا نموذج', 'Shared with generation: no model')
+                  : '${t('مشترك مع التوليد', 'Shared with generation')}: ${bidiIsolate(r.sharedActive!)}',
+              color: r.sharedActive == null ? c.textLight : c.primary,
+              icon: Icons.link_rounded,
+            )
+          else if (r.mode == 'off')
+            AppBadgePill(t('متوقف', 'Off'), color: c.textLight, icon: Icons.block_rounded),
+          if (r.active != null && r.mode != 'off')
             AppBadgePill('${t('المُفعّل', 'Active')}: ${hubModelLabel(r.activeModel, role: r, ref: r.active)}', color: c.success, icon: Icons.check_circle_rounded)
-          else
+          else if (!r.hasMode)
             AppBadgePill(t('لا نموذج مُفعّل', 'No active model'), color: c.textLight, icon: Icons.radio_button_unchecked_rounded),
           if (r.fallback != null)
             AppBadgePill('${t('الاحتياطي', 'Fallback')}: ${hubModelLabel(r.byId(r.fallbackId), role: r, ref: r.fallback)}', color: c.primary, icon: Icons.shield_outlined),
@@ -213,6 +234,10 @@ class HubRoleCard extends StatelessWidget {
             icon: Icons.speed_rounded,
           ),
         ]),
+        if (r.hasMode && actions.onGradingMode != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          _GradingModeBox(role: r, onChanged: (m) => actions.onGradingMode!(r, m)),
+        ],
         if (r.pending != null) ...[
           const SizedBox(height: AppSpace.sm),
           _PendingStrip(role: r, actions: actions),
@@ -233,6 +258,34 @@ class HubRoleCard extends StatelessWidget {
           ],
       ]),
     );
+  }
+}
+
+/// Exam grading's model source (D-196): shared with the generation model, its own, or off.
+class _GradingModeBox extends StatelessWidget {
+  const _GradingModeBox({required this.role, required this.onChanged});
+
+  final HubRole role;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = role.mode ?? 'shared';
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppDropdown<String>(
+        key: const ValueKey('grading_mode'),
+        value: mode,
+        decoration: InputDecoration(labelText: t('مصدر النموذج', 'Model source')),
+        items: [
+          for (final m in const ['shared', 'own', 'off']) DropdownMenuItem(value: m, child: Text(hubGradingModeLabel(m))),
+        ],
+        onChanged: (v) {
+          if (v != null && v != mode) onChanged(v);
+        },
+      ),
+      const SizedBox(height: AppSpace.xxs),
+      Text(hubGradingModeHint(mode, sharedActive: role.sharedActive, active: role.active), style: AppType.meta(context)),
+    ]);
   }
 }
 
