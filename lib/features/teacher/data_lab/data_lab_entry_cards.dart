@@ -5,6 +5,7 @@
 // Both hide themselves when the admin switched Data Lab off for that course.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -42,7 +43,7 @@ class _DataLabEntryCardState extends State<DataLabEntryCard> {
           sub: 'dl_entry_sub'.tr,
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => DataLabScreen(courseId: widget.courseId, courseTitle: widget.courseTitle)),
+            MaterialPageRoute(builder: (_) => deferredDataLab(courseId: widget.courseId, courseTitle: widget.courseTitle)),
           ),
         ),
       );

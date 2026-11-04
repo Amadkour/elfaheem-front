@@ -77,14 +77,10 @@ import 'features/shared/profile/change_password_widget.dart';
 import 'features/shared/profile/update_account_widget.dart';
 import 'features/shared/subscription/subscription_screen.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
-import 'features/org/org_dashboard_screen.dart';
-import 'features/org/org_member_dashboard.dart' show OrgMemberDashboardScreen;
 import 'features/org/orgs_unavailable_gate.dart';
 import 'features/student/courses/details/course_link_loader.dart';
 import 'features/shared/public_profile/public_profile_page.dart' show PublicProfileScreen;
-import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
-import 'features/admin/admin_dashboard_screen.dart';
-import 'features/parent/parent_dashboard_screen.dart';
+import 'core/routing/deferred_screens.dart';
 import 'features/shared/profile/profile_provider.dart';
 import 'firebase_options.dart';
 import 'core/display/display_settings.dart';
@@ -833,15 +829,15 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           settings,
         );
       case '/teacher_dashboard':
-        return _fade(const _Guard(child: TeacherDashboardScreen()), settings);
+        return _fade(_Guard(child: deferredTeacherDashboard()), settings);
       case '/admin_dashboard':
-        return _fade(const _Guard(child: AdminDashboardScreen()), settings);
+        return _fade(_Guard(child: deferredAdminDashboard()), settings);
       case '/org_member': // the student's organization page (Organization mode as a page); arguments: org id (deep link)
-        return _fade(_Guard(child: OrgsGate(child: OrgMemberDashboardScreen(orgId: settings.arguments is int ? settings.arguments as int : null))), settings);
+        return _fade(_Guard(child: OrgsGate(child: deferredOrgMemberDashboard(orgId: settings.arguments is int ? settings.arguments as int : null))), settings);
       case '/org_dashboard': // ONE dashboard for every non-student org role (D-103); a student sees OrgStaffOnlyPage
-        return _fade(const _Guard(child: OrgsGate(child: OrgDashboardScreen())), settings);
+        return _fade(_Guard(child: OrgsGate(child: deferredOrgDashboard())), settings);
       case '/parent_dashboard':
-        return _fade(const _Guard(child: ParentDashboardScreen()), settings);
+        return _fade(_Guard(child: deferredParentDashboard()), settings);
       case '/subscription':
         return _fade(const _Guard(child: SubscriptionScreen()), settings);
       case '/profile': // the role's account tab (N10); the edit-account form is '/edit-account'

@@ -19,6 +19,7 @@
 //   • the attendance spotlight selects (type, session count) on its own.
 // ─────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
@@ -214,7 +215,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     final provider = _provider;
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => CourseFormScreen(course: provider.course)),
+      MaterialPageRoute(builder: (_) => deferredCourseForm(course: provider.course)),
     );
     // Refresh header + sessions after editing
     await provider.refresh();
@@ -425,7 +426,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           color: c.accent,
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => TeacherExamHubScreen(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
+            MaterialPageRoute(builder: (_) => deferredTeacherExamHub(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
           ),
         ),
         if (_dataLab)
@@ -437,7 +438,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             color: c.success,
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => DataLabScreen(courseId: course.id, courseTitle: title)),
+              MaterialPageRoute(builder: (_) => deferredDataLab(courseId: course.id, courseTitle: title)),
             ),
           ),
         if (course.type != 'recorded')

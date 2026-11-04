@@ -7,6 +7,7 @@
 //                        (a tab exists only when the service is switched on AND I have the right in that department)
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
@@ -601,7 +602,7 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
       if (f.contains('data_lab') && can('data_lab')) (t('مختبر البيانات', 'Data Lab'), Icons.science_rounded, _DeptDataLab(deptId: _id)),
       if (f.contains('certificates') && can('certificates'))
         (t('الشهادات', 'Certificates'), Icons.workspace_premium_rounded,
-            CertificateDesignsScreen(orgId: asInt(s.currentId))),
+            deferredCertificateDesigns(orgId: asInt(s.currentId))),
       if (f.contains('members') && (can('team') || canConfigureUnit(s, 'dept', _id)))
         (t('الانضمام', 'Joining'), Icons.group_add_rounded,
             OrgUnitJoinHub(unitType: 'dept', unitId: _id, title: orgNameOf(_d), features: f.toList(), embedded: true)),
@@ -943,7 +944,7 @@ class _DeptDataLabState extends State<_DeptDataLab> {
                             '${r['can_edit'] == true ? '' : ' · ${t('عرض فقط', 'view only')}'}',
                         onTap: r['enabled'] == true
                             ? () => Navigator.of(context).push(MaterialPageRoute(
-                                builder: (_) => DataLabScreen(courseId: asInt(r['course_id']), courseTitle: '${r['title']}')))
+                                builder: (_) => deferredDataLab(courseId: asInt(r['course_id']), courseTitle: '${r['title']}')))
                             : () => toast(t('مختبر البيانات مغلق لهذا المقرر', 'Data Lab is off for this course'), error: true),
                       ),
                     ),
