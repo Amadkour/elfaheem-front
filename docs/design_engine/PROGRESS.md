@@ -16,8 +16,9 @@ Agent branches `de/<id>` in worktrees `D:/platform/nextbrain/wt-de-<id>`, merged
 | 7 | Export flow: quick path, layout presets, live preview, computed entry, Excel note, bugs, `design_engine.dart` | FC | `layout_page/steps/flow_controller/api.dart` + `layout_start/arrange.dart`, `design_engine.dart` | done |
 | 8 | Certificate Studio on the engine (kill switch `certificates.engine`) | FD | `lib/features/teacher/certificates/studio/` | done (parity gaps listed below, owner decides) |
 | 9 | Merge + integration (snapshots, features guide, docs) | lead | — | done (all 7 branches merged; server suites ✓; front gate running) |
-| 10 | Independent review (correctness, security, tenant isolation) | reviewer agent | — | running |
-| 11 | Merge → organizations → production, deploy, smoke | lead | — | pending (wave 2: after sessions 1, 2, 3, 5) |
+| 10 | Independent review (correctness, security, tenant isolation) | reviewer agent | — | done (2 high, 2 medium, 4 low: all fixed + tested) |
+| 10b | Improvements: studio parity (I1, I4), visual pass (I2), export plumbing (I3), smoke test + automatic rollback (B5, D-166), template as a document | agents + lead | — | done |
+| 11 | Merge → organizations → production, deploy, smoke | lead | — | waiting: `organizations` merged in on 2026-11-04 (design system, routing / perf, exam creation); `feat/landing` and `fix/subscriptions` (wave 1) not landed yet |
 
 ## Certificate studio vs the legacy designer (owner decides; nothing removed)
 The legacy designer stays reachable (studio › More › Classic designer; everyone while `certificates.engine` is off).
@@ -35,6 +36,16 @@ left that only the legacy designer does, except what the conversion cannot carry
 ## Integration notes
 - Colours: `#RRGGBB` / `#AARRGGBB` only (FB had `#RRGGBBAA` for shadows; fixed in the app, the contract example too).
 - `generate_draft` with a design id no longer saves the design: older apps must save after "regenerate background".
-- **Migration number at rebase:** `feat/grading-review` (wave 1) also adds `0043_grade_visibility.py` (revision "0043" ←
-  "0042"). When it is on `organizations`, rename ours to `0044_cert_design_document.py` with revision "0044" ←
-  "0043" and update the "0043" mentions (D-165, FLUTTER_API_CHANGES.md, this tracker); never two "0043" heads.
+- **Migration number at merge:** `fix/subscriptions` (wave 1) adds `0043_subscription_events.py` and `feat/grading-review`
+  (wave 3) adds `0043_grade_visibility.py`, both on "0042". Whichever lands on `organizations` first keeps "0043": when
+  subscriptions has landed, rename ours to `0044_cert_design_document.py` (revision "0044" ← "0043") and update the
+  "0043" mentions (D-165, FLUTTER_API_CHANGES.md, `scripts/migrate_cert_designs.py`, this tracker); never two heads.
+  The revision is idempotent (`add_column_if_missing`), so a database that already ran it under another number is safe.
+- Updating from `organizations` is a merge (`Merge origin/organizations into feat/design-engine`, the repo's
+  convention), not a rebase: replaying 40+ agent commits would re-open their resolved conflicts.
+- Fixed on the way (not design-engine code, needed for a green gate): `omr_final_polish_test` pinned a fixed date that
+  failed from the next day on (now today's time); a selected chip's label was 1.9:1 in dark mode app-wide (theme now
+  lifts it to AA, `test/ui/chip_contrast_test.dart`).
+- Deploy (D-166, back): the pipeline records `.release_prev`, builds the web into `build/web.next` and swaps, runs
+  `scripts/ops/smoke_test.py` (needs `NEXTBRAIN_SMOKE_IDENTIFIER` / `NEXTBRAIN_SMOKE_PASSWORD`), and on any failure
+  rolls back: web swapped back, code reset, `alembic_version` stamped (never downgraded), health check again.
