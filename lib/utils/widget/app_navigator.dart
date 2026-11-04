@@ -28,6 +28,7 @@ import '../top_route_observer.dart' show topRouteObserver;
 import 'view_as_state.dart';
 import '../../design/app_shell_nav.dart' show AppShellNav;
 import '../../design/context_switcher.dart' show closeOrgPages;
+import '../../features/org/org_member_pages.dart' show OrgMembershipScreen;
 import '../../features/org/org_providers.dart' show OrgSession;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
@@ -94,6 +95,8 @@ class AppNavigator {
   /// live_plan_renew_failed, Part 3 §15) | rag_learning · rag_alerts (platform admins only: the assistant's Learning
   /// page / the console's Alerts tab, `rag_admin_links.dart`; anyone else the notifications list) | app_release ·
   /// app_releases (super admins only, D-143: [targetId] = the release → its page, else App versions)
+  ///
+  /// org_invitations (a push / notification for a phone invitation; no org_id, I am not a member yet) → My organizations with the invitations card.
   ///
   /// exam_notice (D-247; also exam_appeal · exam_result): [data] is the push / notification target (`exam_id`, `attempt_id`,
   /// `kind` …), else [targetId] is the exam.
@@ -185,6 +188,9 @@ class AppNavigator {
         return;
       case 'org_exams': // "exam timetable published" → My exams (the organization is already open)
         await nav.push(MaterialPageRoute(builder: (_) => deferredMyExams()));
+        return;
+      case 'org_invitations': // an invitation to join an organization (phone invites, push + notification tap) → My organizations, which shows the invitations card
+        await nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/org_invitations'), builder: (_) => const OrgMembershipScreen())); // ROUTE: org_invitations
         return;
       case 'org_reports': // a report sent to me → Received reports
         await nav.push(MaterialPageRoute(builder: (_) => deferredOrgReceivedReports()));
