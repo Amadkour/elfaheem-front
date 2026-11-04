@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_studio.dart';
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_panels.dart';
+import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_api.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -67,13 +68,16 @@ void main() {
         builder: (context) => Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             ElevatedButton(onPressed: () => showCertPageSheet(context, design: LayoutDocument.fromJson({'designs': {'ar': _design(true)}}).designs['ar']!, onChanged: () {}, pickBackground: () async => null), child: const Text('page')),
+            ElevatedButton(onPressed: () => showCertPageSheet(context, design: LayoutDocument.fromJson({'designs': {'ar': _design(true)}}).designs['ar']!, onChanged: () {}, pickBackground: () async => null, generateBackground: (_, _, _) async => null), child: const Text('generate')),
+            ElevatedButton(onPressed: () => showCertGallery(context, starters: const [], templates: [for (var i = 0; i < 3; i++) CertServerTemplate(key: 'k$i', nameAr: 'تصميم ذهبي طويل الاسم جدًا $i', nameEn: 'A very long ready-made design name $i', orientation: i == 1 ? 'portrait' : 'landscape')], lang: 'en'), child: const Text('gallery')),
+            ElevatedButton(onPressed: () => showCertSignatureClean(context, fromSaved: true), child: const Text('sig')),
             ElevatedButton(onPressed: () => showCertStartChoice(context, lang: 'en', canMirror: true), child: const Text('start')),
             ElevatedButton(onPressed: () => showCertConflictDialog(context), child: const Text('conflict')),
           ]),
         ),
       ),
       act: (t) async {
-        for (final k in ['page', 'start', 'conflict']) {
+        for (final k in ['page', 'generate', 'gallery', 'sig', 'start', 'conflict']) {
           await t.tap(find.text(k));
           await t.pump(const Duration(milliseconds: 500));
           await t.tapAt(const Offset(2, 2));

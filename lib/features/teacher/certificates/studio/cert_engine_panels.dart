@@ -20,41 +20,125 @@ import '../../../admin/admin_common.dart' show t;
 import 'cert_engine_api.dart';
 import 'cert_engine_presets.dart';
 
-// ── starters ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// ── starters and ready-made designs ──────────────────────────────────────────────────────────────────────────────
 
-/// The gallery of starting designs. Null when closed without a pick.
-Future<CertStarter?> showCertStarterGallery(BuildContext context, List<CertStarter> starters, {required String lang}) {
-  final usable = [for (final s in starters) if (s.mode == 'page' || s.mode.isEmpty) s];
-  return showAppSheet<CertStarter>(
+/// What the gallery returned: a starter (a document) or a server template, with the theme colour the person chose.
+class CertGalleryPick {
+  const CertGalleryPick.starter(CertStarter this.starter, this.colorHex) : template = null;
+  const CertGalleryPick.template(CertServerTemplate this.template, this.colorHex) : starter = null;
+  final CertStarter? starter;
+  final CertServerTemplate? template;
+
+  /// "#RRGGBB" — sent as `theme_color` when a template is picked.
+  final String colorHex;
+}
+
+/// The theme colour as "#RRGGBB" (the legacy wizard's default).
+String certThemeHex(BuildContext context) => layoutHex(context.colors.primary);
+
+/// The swatches of the colour pickers: the app's theme colour first, then the generator's palette.
+List<Color> certSwatches(BuildContext context) => [context.colors.primary, for (final h in kCertGenColors) layoutColor(h)!];
+
+/// A theme colour field: swatches + a hex box for a custom colour. Plain values in, plain values out.
+class CertThemeColorField extends StatelessWidget {
+  const CertThemeColorField({super.key, required this.hex, required this.onChanged, this.label});
+  final String hex;
+  final String? label;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => StudioColorField(
+        value: layoutColor(hex),
+        label: label,
+        swatches: certSwatches(context),
+        onChanged: (c) {
+          if (c != null) onChanged(layoutHex(c));
+        },
+      );
+}
+
+/// The gallery: the server's ready-made designs, then the starters. Null when closed without a pick.
+Future<CertGalleryPick?> showCertGallery(BuildContext context, {required List<CertStarter> starters, required List<CertServerTemplate> templates, required String lang}) {
+  final color = certThemeHex(context);
+  return showAppSheet<CertGalleryPick>(
     context,
-    (ctx) => AppSheetContent(
-      title: t('اختر تصميمًا للبدء', 'Pick a design to start from'),
-      children: [
-        if (usable.isEmpty)
-          AppEmpty(icon: Icons.dashboard_customize_outlined, title: t('لا توجد تصاميم جاهزة الآن', 'No ready designs right now'))
-        else ...[
-          Text(
-            t('سيحلّ التصميم المختار محلّ التصميم الحالي لهذه اللغة.', 'The design you pick replaces the current design of this language.'),
-            style: appText(12.5, c: ctx.colors.textMedium),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          for (final s in usable) _StarterCard(starter: s, lang: lang),
-        ],
-      ],
-    ),
+    (ctx) => _GallerySheet(starters: [for (final s in starters) if (s.mode == 'page' || s.mode.isEmpty) s], templates: templates, lang: lang, initialColor: color),
   );
 }
 
-class _StarterCard extends StatelessWidget {
-  const _StarterCard({required this.starter, required this.lang});
-  final CertStarter starter;
+class _GallerySheet extends StatefulWidget {
+  const _GallerySheet({required this.starters, required this.templates, required this.lang, required this.initialColor});
+  final List<CertStarter> starters;
+  final List<CertServerTemplate> templates;
   final String lang;
+  final String initialColor;
+
+  @override
+  State<_GallerySheet> createState() => _GallerySheetState();
+}
+
+class _GallerySheetState extends State<_GallerySheet> {
+  late String _color = widget.initialColor;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final d = starter.document.designs[lang] ?? (starter.document.designs.values.isEmpty ? null : starter.document.designs.values.first);
-    final landscape = d?.page.landscape ?? true;
+    final lang = widget.lang;
+    Widget heading(String text) => Padding(
+          padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xs),
+          child: Text(text, style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
+        );
+    return AppSheetContent(
+      title: t('اختر تصميمًا للبدء', 'Pick a design to start from'),
+      children: [
+        if (widget.starters.isEmpty && widget.templates.isEmpty)
+          AppEmpty(icon: Icons.dashboard_customize_outlined, title: t('لا توجد تصاميم جاهزة الآن', 'No ready designs right now'))
+        else ...[
+          Text(
+            t('سيحلّ التصميم المختار محلّ التصميم الحالي لهذه اللغة.', 'The design you pick replaces the current design of this language.'),
+            style: appText(12.5, c: c.textMedium),
+          ),
+          if (widget.templates.isNotEmpty) ...[
+            heading(t('تصاميم جاهزة', 'Ready-made designs')),
+            CertThemeColorField(label: t('لون التصميم', 'Design colour'), hex: _color, onChanged: (h) => setState(() => _color = h)),
+            const SizedBox(height: AppSpace.xs),
+            for (final tp in widget.templates)
+              _GalleryCard(
+                key: ValueKey('cert-template-${tp.key}'),
+                title: tp.name(lang),
+                subtitle: tp.orientation == 'portrait' ? t('طولي', 'Portrait') : t('أفقي', 'Landscape'),
+                preview: tp.preview(lang),
+                landscape: tp.orientation != 'portrait',
+                onTap: () => Navigator.pop(context, CertGalleryPick.template(tp, _color)),
+              ),
+          ],
+          if (widget.starters.isNotEmpty) ...[
+            heading(t('نماذج للبدء', 'Starters')),
+            for (final s in widget.starters)
+              _GalleryCard(
+                key: ValueKey('cert-starter-${s.key}'),
+                title: s.name(lang),
+                subtitle: s.description(lang),
+                landscape: (s.document.designs[lang] ?? (s.document.designs.values.isEmpty ? null : s.document.designs.values.first))?.page.landscape ?? true,
+                onTap: () => Navigator.pop(context, CertGalleryPick.starter(s, _color)),
+              ),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+class _GalleryCard extends StatelessWidget {
+  const _GalleryCard({super.key, required this.title, required this.subtitle, required this.landscape, required this.onTap, this.preview});
+  final String title, subtitle;
+  final bool landscape;
+  final Uint8List? preview;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Material(
@@ -62,24 +146,26 @@ class _StarterCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider)),
         child: InkWell(
           borderRadius: AppRadius.cardAll,
-          onTap: () => Navigator.pop(context, starter),
+          onTap: onTap,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: AppTouch.min),
             child: Padding(
               padding: const EdgeInsets.all(AppSpace.sm),
               child: Row(children: [
                 Container(
-                  width: 56,
+                  width: 72,
                   height: 56,
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(color: c.primary.withValues(alpha: .08), borderRadius: BorderRadius.circular(AppRadius.chip)),
-                  child: Icon(landscape ? Icons.crop_landscape_rounded : Icons.crop_portrait_rounded, color: c.primary),
+                  child: preview != null
+                      ? Image.memory(preview!, fit: BoxFit.cover, gaplessPlayback: true, excludeFromSemantics: true, errorBuilder: (_, _, _) => Icon(Icons.crop_landscape_rounded, color: c.primary))
+                      : Icon(landscape ? Icons.crop_landscape_rounded : Icons.crop_portrait_rounded, color: c.primary),
                 ),
                 const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(starter.name(lang), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
-                    if (starter.description(lang).isNotEmpty)
-                      Text(starter.description(lang), maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
+                    Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
+                    if (subtitle.isNotEmpty) Text(subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
                   ]),
                 ),
               ]),
@@ -182,7 +268,7 @@ Future<void> showCertPageSheet(
   required LayoutDesign design,
   required VoidCallback onChanged,
   required Future<String?> Function() pickBackground,
-  Future<String?> Function(String style, String color)? generateBackground,
+  Future<String?> Function(String style, String color, bool dark)? generateBackground,
 }) =>
     showAppSheet<void>(context, (ctx) => _PageSheet(design: design, onChanged: onChanged, pickBackground: pickBackground, generateBackground: generateBackground));
 
@@ -191,7 +277,7 @@ class _PageSheet extends StatefulWidget {
   final LayoutDesign design;
   final VoidCallback onChanged;
   final Future<String?> Function() pickBackground;
-  final Future<String?> Function(String style, String color)? generateBackground;
+  final Future<String?> Function(String style, String color, bool dark)? generateBackground;
 
   @override
   State<_PageSheet> createState() => _PageSheetState();
@@ -201,11 +287,13 @@ class _PageSheetState extends State<_PageSheet> {
   LayoutPage get p => widget.design.page;
   bool _generating = false;
   String _style = 'classic';
-  String _color = kCertGenColors.first;
+  /// Null = the app's theme colour (the legacy wizard's default).
+  String? _color;
+  bool _dark = false;
 
   Future<void> _generate() async {
     setState(() => _generating = true);
-    final url = await widget.generateBackground!(_style, _color);
+    final url = await widget.generateBackground!(_style, _color ?? certThemeHex(context), _dark);
     if (!mounted) return;
     setState(() => _generating = false);
     if (url != null) _plain(() => p.backgroundImage = url);
@@ -317,28 +405,14 @@ class _PageSheetState extends State<_PageSheet> {
                   ChoiceChip(key: ValueKey('cert-gen-$k'), label: Text(t(ar, en)), selected: _style == k, onSelected: (_) => setState(() => _style = k)),
               ]),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-                for (final hex in kCertGenColors)
-                  Semantics(
-                    button: true,
-                    selected: _color == hex,
-                    label: hex,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(AppRadius.chip),
-                      onTap: () => setState(() => _color = hex),
-                      child: Container(
-                        width: AppTouch.min,
-                        height: AppTouch.min,
-                        alignment: Alignment.center,
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(color: layoutColor(hex), shape: BoxShape.circle, border: Border.all(color: _color == hex ? c.textDark : c.divider, width: _color == hex ? 3 : 1)),
-                        ),
-                      ),
-                    ),
-                  ),
-              ]),
+              CertThemeColorField(label: t('لون السمة', 'Theme colour'), hex: _color ?? certThemeHex(context), onChanged: (h) => setState(() => _color = h)),
+              AppSwitchTile(
+                key: const ValueKey('cert-gen-dark'),
+                title: t('ألوان داكنة', 'Dark colours'),
+                subtitle: t('خلفية بدرجات داكنة بدل الفاتحة.', 'A background in dark tones instead of light ones.'),
+                value: _dark,
+                onChanged: (v) => setState(() => _dark = v),
+              ),
               const SizedBox(height: AppSpace.xs),
               FilledButton.icon(
                 key: const ValueKey('cert-gen-go'),
@@ -411,12 +485,16 @@ Future<String?> showCertRenameDialog(BuildContext context, String current) {
 }
 
 /// Clean a signature again: ink colour (null = keep the original ink) and strength. Null = cancelled.
-Future<({String? ink, double strength})?> showCertSignatureClean(BuildContext context) => showAppSheet<({String? ink, double strength})>(
+/// [fromSaved]: the original photo is not at hand, so it works on the cleaned image saved in the design.
+Future<({String? ink, double strength})?> showCertSignatureClean(BuildContext context, {bool fromSaved = false}) => showAppSheet<({String? ink, double strength})>(
       context,
-      (ctx) => _SigCleanSheet(),
+      (ctx) => _SigCleanSheet(fromSaved: fromSaved),
     );
 
 class _SigCleanSheet extends StatefulWidget {
+  const _SigCleanSheet({required this.fromSaved});
+  final bool fromSaved;
+
   @override
   State<_SigCleanSheet> createState() => _SigCleanSheetState();
 }
@@ -443,7 +521,13 @@ class _SigCleanSheetState extends State<_SigCleanSheet> {
           label: t('قوة إزالة الخلفية', 'Background removal strength'),
           child: Slider(value: _strength, onChanged: (v) => setState(() => _strength = v)),
         ),
-        Text(t('تُعاد المعالجة من الصورة التي رفعتها في هذه الجلسة.', 'It is processed again from the photo you uploaded in this session.'), style: appText(12, c: c.textMedium)),
+        Text(
+          widget.fromSaved
+              ? t('الخادم يحتفظ بالصورة المنظَّفة فقط، فتُعاد المعالجة من الصورة المحفوظة في التصميم (وهي منظَّفة أصلًا).', 'The server keeps only the cleaned image, so this works on the image saved in the design (already cleaned).')
+              : t('تُعاد المعالجة من الصورة التي رفعتها في هذه الجلسة.', 'It is processed again from the photo you uploaded in this session.'),
+          key: const ValueKey('cert-sig-hint'),
+          style: appText(12, c: c.textMedium),
+        ),
         const SizedBox(height: AppSpace.sm),
         FilledButton(
           key: const ValueKey('cert-ink-go'),

@@ -55,6 +55,37 @@ class CertStarter {
   }
 }
 
+/// One ready-made design of the server gallery (`GET /certificate-designs/templates`): names and small JPEG previews.
+class CertServerTemplate {
+  const CertServerTemplate({required this.key, required this.nameAr, required this.nameEn, required this.orientation, this.previewAr, this.previewEn});
+  final String key, nameAr, nameEn, orientation;
+  final Uint8List? previewAr, previewEn;
+
+  String name(String lang) => lang == 'ar' ? (nameAr.isEmpty ? nameEn : nameAr) : (nameEn.isEmpty ? nameAr : nameEn);
+  Uint8List? preview(String lang) => lang == 'ar' ? (previewAr ?? previewEn) : (previewEn ?? previewAr);
+
+  static Uint8List? _img(Object? v) {
+    if (v is! String || v.isEmpty) return null;
+    try {
+      return base64Decode(v.contains(',') ? v.substring(v.indexOf(',') + 1) : v);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static CertServerTemplate? tryParse(Object? j) {
+    if (j is! Map || '${j['key'] ?? ''}'.isEmpty) return null;
+    return CertServerTemplate(
+      key: '${j['key']}',
+      nameAr: '${j['name_ar'] ?? ''}',
+      nameEn: '${j['name_en'] ?? ''}',
+      orientation: j['orientation'] == 'portrait' ? 'portrait' : 'landscape',
+      previewAr: _img(j['preview_ar']),
+      previewEn: _img(j['preview_en']),
+    );
+  }
+}
+
 class CertEngineApi {
   CertEngineApi({ApiClient? api}) : _api = api;
   final ApiClient? _api;
@@ -144,6 +175,28 @@ class CertEngineApi {
       if (items is List)
         for (final j in items) ?CertStarter.tryParse(j),
     ];
+  }
+
+  /// The server's template gallery (names + previews, ar / en).
+  Future<List<CertServerTemplate>> templates() async {
+    final r = await api.get('$_base/templates');
+    return [
+      if (r is List)
+        for (final j in r) ?CertServerTemplate.tryParse(j),
+    ];
+  }
+
+  /// My own NEW design from template [key] (both languages, backgrounds uploaded); its id. [themeColor] is "#RRGGBB".
+  Future<int> createFromTemplate(String key, {int? orgId, String? name, String? themeColor}) async {
+    final r = _map(await api.post('$_base/templates/$key', body: {'org_id': orgId, 'name': ?name, 'theme_color': ?themeColor}));
+    final id = r['id'];
+    if (id is! num) throw const ApiException(statusCode: 0, message: 'create failed');
+    return id.toInt();
+  }
+
+  /// Removes a design of mine (the temporary copy a template pick leaves behind).
+  Future<void> delete(int id) async {
+    await api.delete('$_base/$id');
   }
 
   /// A new, empty design (the legacy create call); its id.

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_screen.dart';
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_api.dart';
+import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_panels.dart' show CertThemeColorField;
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_presets.dart';
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_studio.dart';
 import 'package:flutter_education_app/design/export_layout/layout_canvas.dart' show LayoutAddOption;
@@ -50,6 +51,7 @@ void main() {
   var loadVersion = 5;
   var converted = false;
   late Map<String, dynamic> served;
+  var templates = <Object>[];
   final calls = <String, List<Map<String, dynamic>>>{};
   Map<String, dynamic> body(RequestOptions o) => (o.data as Map).cast<String, dynamic>();
 
@@ -65,6 +67,9 @@ void main() {
     putAnswers = [];
     loadVersion = 5;
     converted = false;
+    templates = [
+      {'key': 'gold', 'name_ar': 'ذهبي', 'name_en': 'Gold frame', 'orientation': 'landscape', 'style': 'classic', 'preview_ar': _png, 'preview_en': 'data:image/png;base64,$_png'},
+    ];
     served = _doc();
     fake = FakeApi({
       'GET /api/v1/certificate-designs/7/document': (_) => {'document': served, 'version': loadVersion, 'converted': converted},
@@ -86,6 +91,17 @@ void main() {
         (calls['signature'] ??= []).add(body(o));
         return {'url': 'https://x/sig.png', 'width': 1, 'height': 1};
       },
+      'GET /api/v1/exports/layout/starters': (_) => <Object>[],
+      'GET /api/v1/certificate-designs/templates': (_) => templates,
+      'POST /api/v1/certificate-designs/templates/gold': (o) {
+        (calls['template'] ??= []).add(body(o));
+        return {'id': 21};
+      },
+      'GET /api/v1/certificate-designs/21/document': (_) => {'document': _doc(both: true, ar: [_el('t1', 'من القالب')], en: [_el('t2', 'From the template')]), 'version': 1, 'converted': true},
+      'DELETE /api/v1/certificate-designs/21': (_) {
+        (calls['delete'] ??= []).add({});
+        return null;
+      },
       'POST /api/v1/certificate-designs/preview-document': (o) {
         (calls['preview'] ??= []).add(body(o));
         return {'png_b64': _png};
@@ -101,7 +117,7 @@ void main() {
     }
   }
 
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(WidgetTester tester, {CertImageLoader? imageLoader}) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1400, 900);
     addTearDown(() {
@@ -109,7 +125,7 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
     await tester.pumpWidget(layoutHost(
-      CertEngineStudio(designId: 7, drafts: drafts, userId: 'u1', imageLoader: (_) async => null),
+      CertEngineStudio(designId: 7, drafts: drafts, userId: 'u1', imageLoader: imageLoader ?? (_) async => null),
       scaffold: false,
       scale: 1,
     ));
@@ -365,6 +381,107 @@ void main() {
     AppConfig.disableList = ['certificates.engine'];
     expect(certificateDesignerPage(designId: 7), isA<CertificateDesignerScreen>());
     AppConfig.disableList = [];
+  });
+
+  testWidgets('the gallery lists the server templates apart from the starters; a pick creates from the template and lands in this design', (tester) async {
+    await open(tester);
+    await tester.tap(find.byKey(const ValueKey('cert-menu')));
+    await settle(tester, 300);
+    await tester.tap(find.text('Ready designs'));
+    await settle(tester, 300);
+    await tester.tap(find.text('Replace'));
+    await settle(tester, 400);
+    expect(find.text('Ready-made designs'), findsOneWidget);
+    expect(find.text('ذهبي', skipOffstage: false), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('cert-template-gold')));
+    await tester.tap(find.byKey(const ValueKey('cert-template-gold')));
+    await settle(tester, 800);
+    final b = calls['template']!.single;
+    expect(b['theme_color'], matches(r'^#[0-9A-F]{6}$'), reason: 'the theme colour goes with the pick');
+    expect(b['org_id'], isNull);
+    expect(calls['delete'], hasLength(1), reason: 'the throw-away copy is removed again');
+    await save(tester);
+    // the studio keeps ITS design: saved on 7 over version 5, with the template page for the current language
+    expect(puts.single['version'], 5);
+    final els = ((((puts.single['document'] as Map)['designs'] as Map)['ar'] as Map)['row'] as Map)['elements'] as List;
+    expect((els.single as Map)['value'], 'من القالب');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the gallery falls back to the starters when the templates cannot be loaded', (tester) async {
+    templates = [];
+    await open(tester);
+    await tester.tap(find.byKey(const ValueKey('cert-menu')));
+    await settle(tester, 300);
+    await tester.tap(find.text('Ready designs'));
+    await settle(tester, 300);
+    await tester.tap(find.text('Replace'));
+    await settle(tester, 400);
+    expect(find.text('Ready-made designs'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the generator sends the chosen theme colour and the dark flag', (tester) async {
+    await open(tester);
+    await tester.tap(find.byKey(const ValueKey('cert-menu')));
+    await settle(tester, 300);
+    await tester.tap(find.text('Page and background'));
+    await settle(tester, 300);
+    await tester.ensureVisible(find.text('Dark colours'));
+    await tester.tap(find.text('Dark colours'));
+    await tester.pump();
+    final hexBox = find.descendant(of: find.byType(CertThemeColorField), matching: find.byType(TextField));
+    await tester.ensureVisible(hexBox);
+    await tester.enterText(hexBox, '0F766E');
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey('cert-gen-go')));
+    await tester.tap(find.byKey(const ValueKey('cert-gen-go')));
+    await settle(tester);
+    expect(calls['draft']!.single['theme_color'], '#0F766E');
+    expect(calls['draft']!.single['dark'], true);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a signature saved earlier is fetched, sent through the signature endpoint and replaced', (tester) async {
+    served = _doc(ar: [
+      {'id': 's1', 'kind': 'signature', 'x': 20, 'y': 30, 'w': 60, 'h': 25, 'value': 'https://x/old-sig.png', 'name': 'sig1'},
+    ]);
+    final fetched = <String>[];
+    await open(tester, imageLoader: (u) async {
+      fetched.add(u);
+      return Uint8List.fromList([9, 8, 7]);
+    });
+    fetched.clear();
+    await tester.tap(find.byIcon(Icons.layers_outlined));
+    await settle(tester, 300);
+    await tester.tap(find.text('sig1'));
+    await settle(tester, 300);
+    await tester.tap(find.byIcon(Icons.tune_rounded).first);
+    await settle(tester, 300);
+    await tester.ensureVisible(find.byKey(const ValueKey('cert-sig-clean')));
+    await tester.tap(find.byKey(const ValueKey('cert-sig-clean')));
+    await settle(tester, 400);
+    expect(find.textContaining('keeps only the cleaned image'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('cert-ink-go')));
+    await settle(tester, 600);
+    expect(fetched, contains('https://x/old-sig.png'));
+    final sent = calls['signature']!.single;
+    expect(sent['image_base64'], base64Encode([9, 8, 7]));
+    expect(sent['strength'], .5);
+    await save(tester);
+    final els = ((((puts.single['document'] as Map)['designs'] as Map)['ar'] as Map)['row'] as Map)['elements'] as List;
+    expect((els.single as Map)['value'], 'https://x/sig.png');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  test('the templates parse: previews decode, a bad row is skipped', () async {
+    final api = CertEngineApi();
+    final t = await api.templates();
+    expect(t.single.key, 'gold');
+    expect(t.single.name('ar'), 'ذهبي');
+    expect(t.single.preview('en'), isNotNull);
+    expect(await api.createFromTemplate('gold', orgId: 3, themeColor: '#112233'), 21);
+    expect(calls['template']!.single, {'org_id': 3, 'theme_color': '#112233'});
   });
 
   test('the preview decodes the server png and the starters parse', () async {
