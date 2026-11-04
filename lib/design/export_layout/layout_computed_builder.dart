@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import '../../core/plural.dart';
 import '../../features/admin/admin_common.dart' show t;
 import '../app_kit.dart';
 import '../app_notice.dart';
@@ -163,8 +164,8 @@ final List<ComputedPreset> computedPresets = [
   ),
   ComputedPreset(
     id: 'grade_bands',
-    labelAr: 'تقدير (أ / ب / ج)',
-    labelEn: 'Grade bands (A / B / C)',
+    labelAr: 'تقدير (أ / ب / ج / د)',
+    labelEn: 'Grade bands (A / B / C / D)',
     hintAr: 'حدود على درجة',
     hintEn: 'Cut-offs on a score',
     icon: Icons.grade_outlined,
@@ -522,7 +523,7 @@ class _ColumnTile extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-                Text('${_typeLabel(spec.type)} · ${spec.cases.length} ${t('حالة', 'cases')}',
+                Text('${_typeLabel(spec.type)} · ${countText(spec.cases.length, ar1: 'حالة واحدة', ar2: 'حالتان', arFew: '{n} حالات', arMany: '{n} حالة', en1: '1 case', en: '{n} cases', ar0: 'بلا حالات', en0: 'no cases')}',
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: warn ? c.danger : c.textMedium)),
               ]),
             ),
