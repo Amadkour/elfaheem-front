@@ -16,6 +16,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -28,6 +29,10 @@ import '../org/org_v3.dart' show orgParseUtc;
 
 /// The kill switch of this whole surface.
 const parentOrgViewKey = 'parent.org_view';
+
+/// Whether the parent home may ask the server for the children's organizations: organizations are on and the kill
+/// switch is not in the disable list (no request otherwise).
+bool parentOrgAllowed() => AppConfig.orgsEnabled && !AppConfig.disableList.contains(parentOrgViewKey);
 
 String _s(dynamic v) => v == null ? '' : '$v';
 
@@ -249,12 +254,15 @@ class _ParentOrgChildrenCardState extends State<ParentOrgChildrenCard> {
   }
 
   Future<void> _load() async {
+    if (!parentOrgAllowed()) return;
     if (_error != null) setState(() => _error = null);
     try {
       final r = await (widget.loader ?? ParentOrgApi.children)();
       if (mounted) setState(() => _children = r);
     } catch (e) {
-      if (mounted) setState(() => _error = e);
+      // the super admin switched organizations off (403 orgs_disabled): nothing to show, and no error strip either
+      final off = ApiException.from(e).code == 'orgs_disabled';
+      if (mounted) setState(() => off ? _children = const [] : _error = e);
     }
   }
 

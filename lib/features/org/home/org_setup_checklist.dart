@@ -14,14 +14,44 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
-import '../org_v3.dart' show orgCall;
+import '../org_v3.dart' show OrgCall, orgCall;
 
 const orgSetupFeatureKey = 'org.setup_checklist';
+
+/// Whether the checklist may ask the server at all: organizations are on and its kill switch is not in the disable list.
+bool orgSetupAllowed() => AppConfig.orgsEnabled && !AppConfig.disableList.contains(orgSetupFeatureKey);
+
+/// `GET …/setup` started by the home IN PARALLEL with the dashboard call (no waterfall); the widget takes the answer
+/// once (D-287: the checklist is one extra request on open, none on pull-to-refresh).
+abstract final class OrgSetupPrefetch {
+  static const maxAge = Duration(seconds: 30);
+  static final Map<int, (DateTime, Future<OrgCall>)> _inflight = {};
+
+  static Future<OrgCall> _get(int orgId) => orgCall(() => ApiClient().get('/api/v1/org/orgs/$orgId/setup'), quiet: true);
+
+  static void start(int orgId) {
+    if (!orgSetupAllowed()) return;
+    final have = _inflight[orgId];
+    if (have != null && DateTime.now().difference(have.$1) < maxAge) return;
+    _inflight[orgId] = (DateTime.now(), _get(orgId));
+  }
+
+  /// The prefetched answer (taken once), else a new call.
+  static Future<OrgCall> take(int orgId) {
+    final hit = _inflight.remove(orgId);
+    if (hit != null && DateTime.now().difference(hit.$1) < maxAge) return hit.$2;
+    return _get(orgId);
+  }
+
+  @visibleForTesting
+  static void reset() => _inflight.clear();
+}
 
 /// The server's step order; a key not in this list is not drawn (an unknown future step has no label yet).
 const orgSetupOrder = ['profile', 'departments', 'join_method', 'people', 'term', 'courses', 'timetable'];
@@ -214,7 +244,8 @@ class OrgSetupChecklist extends StatefulWidget {
   /// Opens the page of a step (the home maps [orgSetupTarget] onto its navigation).
   final void Function(OrgSetupStep step) onOpen;
 
-  /// Changes whenever the home reloaded (so a step done on another page flips here).
+  /// Changes whenever the home reloaded. The checklist asks again only if a step's page was opened meanwhile (a step
+  /// done there flips here); a plain pull-to-refresh costs no request.
   final Object? reloadToken;
 
   @override
@@ -224,6 +255,7 @@ class OrgSetupChecklist extends StatefulWidget {
 class _OrgSetupChecklistState extends State<OrgSetupChecklist> {
   OrgSetupData? _data;
   bool _dismissing = false;
+  bool _stepOpened = false;
 
   @override
   void initState() {
@@ -236,27 +268,32 @@ class _OrgSetupChecklistState extends State<OrgSetupChecklist> {
     super.didUpdateWidget(old);
     if (old.orgId != widget.orgId) {
       _data = null;
+      _dismissing = false;
+      _stepOpened = false;
       _load();
-    } else if (old.reloadToken != widget.reloadToken) {
-      _load();
+    } else if (old.reloadToken != widget.reloadToken && _stepOpened) {
+      _stepOpened = false;
+      _load(fresh: true);
     }
   }
 
   String get _base => '/api/v1/org/orgs/${widget.orgId}/setup';
 
-  Future<void> _load() async {
+  Future<void> _load({bool fresh = false}) async {
     final id = widget.orgId;
-    if (id == null) return;
-    final r = await orgCall(() => ApiClient().get(_base), quiet: true);
+    if (id == null || !orgSetupAllowed()) return;
+    final r = fresh ? await orgCall(() => ApiClient().get(_base), quiet: true) : await OrgSetupPrefetch.take(id);
     if (!mounted || id != widget.orgId) return;
-    // an older server (no route), a 403 or a failure: draw nothing, never an error on the Home
+    // an older server (no route), a 403 (also orgs_disabled) or a failure: draw nothing, never an error on the Home
     setState(() => _data = r.ok ? OrgSetupData.fromJson(asMap(r.data)) : null);
   }
 
   Future<void> _dismiss() async {
+    final id = widget.orgId;
     setState(() => _dismissing = true);
     final r = await orgCall(() => ApiClient().post('$_base/dismiss'), quiet: true);
-    if (!mounted) return;
+    // the admin switched to another organization meanwhile: the answer is not for this card any more
+    if (!mounted || id != widget.orgId) return;
     setState(() {
       _dismissing = false;
       if (r.ok) _data = _data?.dismissedCopy();
@@ -273,7 +310,10 @@ class _OrgSetupChecklistState extends State<OrgSetupChecklist> {
       featureKey: orgSetupFeatureKey,
       child: Padding(
         padding: const EdgeInsets.only(bottom: AppSpace.lg),
-        child: OrgSetupCard(data: d!, onOpen: widget.onOpen, onDismiss: _dismiss, dismissing: _dismissing),
+        child: OrgSetupCard(data: d!, onOpen: (x) {
+          _stepOpened = true;
+          widget.onOpen(x);
+        }, onDismiss: _dismiss, dismissing: _dismissing),
       ),
     );
   }

@@ -67,7 +67,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
             FittedBox(
               child: SelectableText(code,
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(fontFamily: AppFonts.display, fontSize: 30, letterSpacing: 5, fontWeight: FontWeight.w800, color: c.primary)),
+                  style: AppType.display(context).copyWith(fontFamily: AppFonts.display, letterSpacing: 5, color: c.primary)),
             ),
             const SizedBox(height: 6),
             Wrap(spacing: 6, runSpacing: 6, alignment: WrapAlignment.center, children: [

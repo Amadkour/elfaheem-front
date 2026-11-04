@@ -355,15 +355,18 @@ class AppNavigator {
     } catch (_) {/* no provider in scope */}
     bool? staff;
     try {
+      // cold start: the memberships are not known yet - wait for them (bounded) before deciding staff or student
+      if (!ctl.loaded) await ctl.ready();
       await ctl.openOrg(orgId);
       staff = ctl.opensDashboardFor(orgId);
-      // the overview may not list it yet (cold start): the dashboard's own list decides
-      if (staff == null && session != null && session.loaded) {
-        final item = session.items.where((o) => o['id'] == orgId).firstOrNull;
-        staff = item != null;
+      // the overview does not list it (it failed / is slow): the dashboard's own list decides
+      if (staff == null && session != null) {
+        if (!session.loaded) await session.load().timeout(const Duration(seconds: 6), onTimeout: () {});
+        if (session.loaded && !session.loadFailed) staff = session.items.any((o) => o['id'] == orgId);
       }
       final other = session != null && session.currentId != null && session.currentId != orgId;
-      session?.open(orgId);
+      // an organization where I only study is never selected in the dashboard's session
+      if (staff != false) session?.open(orgId);
       if (other) {
         // org A -> org B: A's pages go, B is selected (OrgSession.select clears A's context)
         final root = navigatorKey.currentState;

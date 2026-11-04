@@ -45,7 +45,10 @@ const homeBudgets = <String, HomeBudget>{
   // with the overview (no waterfall), not refreshed with it; nothing at all is drawn when no child is in one.
   'parent': (open: 4, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
   // +1 = the lazy Insights section (D-103): GET …/insights, started in parallel with the dashboard (no waterfall)
-  'org-admin': (open: 6, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
+  // 2026-11-05, D-287 (f5): open 6 → 7 — the setup checklist (GET /orgs/{id}/setup), started in PARALLEL with the
+  // dashboard call (OrgSetupPrefetch, no waterfall: depth stays 2) and NOT asked again on pull-to-refresh (only after
+  // a checklist step's page was opened); nothing at all when organizations or `org.setup_checklist` are off.
+  'org-admin': (open: 7, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
   // 2026-10-31: open 3 → 4 — GET /me/home carries the mode's side (scope / org_id, the server's default is the
   // personal account). On a first launch the mode is only known from the overview's smart default, so the home asked
   // in parallel is the personal side's: its course block is dropped and the organization's home is asked once more.
