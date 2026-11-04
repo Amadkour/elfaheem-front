@@ -24,6 +24,7 @@ import '../../admin/admin_common.dart' show asInt, asMap, asStr, shortDateTime, 
 import '../../admin/admin_money_p8.dart' show draftErrorText, p8SaveBytes;
 import '../exam_engine/exam_engine_api.dart' show EngineResult;
 import '../../admin/admin_feature_guide.dart' show AdminFeatureGuidePage;
+import 'admin/rag_feedback_review.dart' show RagFeedbackReviewPage;
 import 'rag_chat_screen.dart' show RagChatScreen;
 import 'rag_library.dart';
 import 'rag_learning_page.dart' show RagLearningPage;
@@ -191,7 +192,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
           IconButton(
               tooltip: t('الإجابات غير المفيدة', 'Unhelpful answers'),
               icon: const Icon(Icons.thumb_down_alt_outlined),
-              onPressed: () => showAppSheet<void>(context, (_) => RagFeedbackSheet(api: _api, orgId: widget.orgId!))),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RagFeedbackReviewPage(orgId: widget.orgId)))),
         if (widget.orgId != null)
           IconButton(
               tooltip: t('إعدادات الإجابة', 'Answer settings'),
