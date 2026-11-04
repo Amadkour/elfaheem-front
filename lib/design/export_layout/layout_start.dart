@@ -174,7 +174,7 @@ class LayoutStartStep extends StatelessWidget {
       // the export in progress is the first thing on the screen: it must never hide below the gallery
       if (flow.phase != LayoutRunPhase.idle) LayoutRunPanel(key: const ValueKey('layout-start-run'), flow: flow),
       LayoutSection(title: t('صيغة الملف', 'File format'), children: [
-        LayoutCardGrid(min: 150, children: [
+        LayoutCardGrid(min: 104, children: [
           for (final f in formats)
             ExportFormatCard(key: ValueKey('layout-format-${f.ext}'), format: f, selected: flow.doc.format == f.ext, onTap: () => flow.setFormat(f.ext)),
         ]),

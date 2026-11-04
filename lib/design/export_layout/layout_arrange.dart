@@ -156,6 +156,7 @@ class LayoutLayoutStep extends StatelessWidget {
                 ChoiceChip(
                   key: ValueKey('layout-grid-$n-$r'),
                   label: Text('$n×$r'),
+                  labelStyle: appText(12.5, w: FontWeight.w700, c: context.colors.textDark),
                   selected: d.row.perLine == n && d.row.perPage == n * r,
                   onSelected: (_) => f.setLayout('custom', perLine: n, perPage: n * r, fill: true),
                 ),
@@ -276,6 +277,7 @@ class _LayoutDesignStepState extends State<LayoutDesignStep> {
                 }),
                 avatar: p == 5 ? const Icon(Icons.description_outlined, size: 18) : null,
                 label: Text(_partLabel(p, f)),
+                labelStyle: appText(12.5, w: FontWeight.w700, c: context.colors.textDark),
                 selected: _part == p,
                 onSelected: (_) => setState(() => _part = p),
               ),

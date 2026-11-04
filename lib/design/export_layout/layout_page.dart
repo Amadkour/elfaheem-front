@@ -260,6 +260,7 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
           ChoiceChip(
             key: ValueKey('layout-tab-$l'),
             label: Text(l == 'ar' ? t('التصميم العربي', 'Arabic design') : t('التصميم الإنجليزي', 'English design')),
+            labelStyle: appText(12.5, w: FontWeight.w700, c: c.textDark),
             selected: _flow.lang == l,
             onSelected: (_) => _flow.setTab(l),
           ),

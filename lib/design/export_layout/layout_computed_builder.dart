@@ -1097,6 +1097,7 @@ class _ExprEditor extends StatelessWidget {
           ChoiceChip(
             key: ValueKey('cc-mode-$depth-${m.name}-${identityHashCode(expr)}'),
             label: Text(_label(m)),
+            labelStyle: appText(12.5, w: FontWeight.w700, c: context.colors.textDark),
             selected: m == mode,
             onSelected: (_) => onChanged(() => _setMode(m)),
           ),
