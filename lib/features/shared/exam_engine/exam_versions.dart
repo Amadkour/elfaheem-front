@@ -96,6 +96,11 @@ bool versionShuffled(ExamVersion v, ExamVersion? a) {
 /// The words for a warning code of `POST /exams/{id}/versions` (an unknown code is not shown raw).
 String versionWarningText(String code) => switch (code) {
       'nothing_shuffled' => t('لم يتغيّر شيء بين النماذج: فعّل خلط الأسئلة أو الاختيارات وأنشئ مرة أخرى.', 'Nothing differs between the versions: turn on shuffling the questions or the choices and generate again.'),
+      'identifier_not_set' => t('لم تحدّد كيف يُعرَّف الطالب على الورقة بعد: افتح «إعداد الاختبار الورقي» واختر طريقة.', 'How a student is identified on the paper isn\'t set yet: open the paper setup and choose a way.'),
+      'form_markers_required' => t('لكل نموذج علامة تميّزه على الورقة (رمز QR أو رقم مطبوع أو فقاعة): اختر طريقة في إعداد الاختبار الورقي.', 'Each version needs a mark that tells it apart on the paper (a QR code, a printed number or a bubble): choose one in the paper setup.'),
+      'form_markers_unused' => t('هناك علامات للنماذج لكن يوجد نموذج واحد فقط، فلن تُستخدم.', 'Version marks are set but there is only one version, so they won\'t be used.'),
+      'identifier_zone_mismatch' => t('خانة رقم الطالب في ورقة التظليل لا تتسع لمعرّف الطلاب: اختر نوع ورقة آخر أو طريقة تعريف أخرى.', 'The student-ID area of the bubble sheet cannot hold the identifier of the students: pick another sheet type or another way to identify them.'),
+      'identifier_zone_may_not_fit' => t('قد لا تتسع خانة رقم الطالب في ورقة التظليل لبعض المعرّفات: راجع الإعداد.', 'The student-ID area of the bubble sheet may not fit some identifiers: check the setup.'),
       _ => code.contains(' ') ? code : t('تنبيه من الخادم عند إنشاء النماذج. راجع النماذج قبل الطباعة.', 'The server raised a warning while making the versions. Check them before printing.'),
     };
 
