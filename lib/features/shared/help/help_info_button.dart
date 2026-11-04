@@ -22,7 +22,7 @@ import '../../../design/chrome_button.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../../auth/auth_provider.dart';
 import '../guest/guest_state.dart';
-import '../rag/app_assistant.dart' show AppAssistant;
+import '../rag/chat/assistant_page_context.dart' show openAssistantForPage;
 import 'help_models.dart';
 import 'help_service.dart';
 import 'help_tour.dart';
@@ -247,7 +247,7 @@ class HelpEntryView extends StatelessWidget {
 
   void _ask(BuildContext context) {
     onClose();
-    helpAskAboutPage(entry);
+    helpAskAboutPage(host ?? context, entry);
   }
 
   void _tour(BuildContext context) {
@@ -262,12 +262,5 @@ class HelpEntryView extends StatelessWidget {
 }
 
 /// "Ask about this page": opens the app assistant on a new chat with a question about the page typed in.
-///
-/// Workstream f1 adds `openAssistantForPage(context, pageId:, pageTitle:)` (rag/chat/assistant_page_context.dart) on
-/// another branch; until that merges this fallback uses the assistant's existing public API ([AppAssistant.ask]).
-/// TODO(merge): switch to `openAssistantForPage` once the file is in the tree.
-void helpAskAboutPage(HelpEntry entry) {
-  final title = entry.title.of(AppConfig.lang);
-  final ar = AppConfig.lang == 'ar';
-  AppAssistant.ask(ar ? 'اشرح لي صفحة "$title" وما يفعله كل زر فيها.' : 'Explain the "$title" page and what each button does.');
-}
+void helpAskAboutPage(BuildContext context, HelpEntry entry) =>
+    openAssistantForPage(context, pageId: entry.pageId, pageTitle: entry.title.of(AppConfig.lang));
