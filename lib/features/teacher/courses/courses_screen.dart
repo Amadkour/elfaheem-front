@@ -451,9 +451,9 @@ class _TeacherCourseCard extends StatelessWidget {
     final title = (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? '';
     final ok = await appConfirm(
       context,
-      message: '${'delete_course_confirm'.tr} "$title"${AppConfig.lang == 'ar' ? '؟' : '?'}',
+      message: '${'delete_course_confirm'.tr} "$title"${AppConfig.lang == 'ar' ? '؟' : '?'}\n${'course_trash_note'.tr}',
       danger: true,
-      confirmLabel: 'delete'.tr,
+      confirmLabel: 'course_move_to_trash'.tr,
     );
     if (!ok || !context.mounted) return;
     final deleted = await context.read<TeacherCoursesProvider>().deleteCourse(c.id);

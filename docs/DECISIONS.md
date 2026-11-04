@@ -2661,3 +2661,28 @@ student drawer whose first block is the live access diagnostic per course, then 
 event timeline. Students are found by academic ID, national ID (shown masked), e-mail, phone or @username. Extend,
 reactivate, grant and cancel each need a reason and write one event plus a notification to the student. The older admin
 enroll / unenroll / re-subscribe calls keep working and now write events too.
+
+
+## D-260 — Course delete is a soft delete; the super admin restores or deletes for good · 2026-11-04 · accepted
+
+**Context.** A course delete erased the course and everything under it when it had no payments (a teacher's mistake
+was final), and archived it when it had (D-025). The owner asked for a soft delete everywhere, with the platform's
+super admin deciding whether a course is deleted permanently. **Decision.** Every course delete (teacher
+`DELETE /api/v1/courses/{id}`, admin `DELETE /api/v1/admin/courses/{id}`) only archives the course
+(`courses.archived_at`, the flag every query already honours), drops its enrollments and removes its favourites;
+`course_deletions` (migration 0046, back `data/course_trash_models.py`) remembers each enrollment's old status, the
+favourites, the published flag, who deleted it and why. The super admin's trash (`/api/v1/admin/course-trash`, app:
+Admin services → Deleted courses, kill switch `admin.course_trash`) restores a course exactly as it was (each
+enrollment back to its old status unless it changed since; an expired plan stays expired) or deletes it permanently
+after a reason and the typed course id. A permanent delete never removes money or certificate records: when payments,
+earnings or issued certificates point at the course, the row stays as a tombstone (state `purged`: name, teacher,
+price, enrollments and every money row kept, content and files removed); otherwise everything is erased (`erased`).
+What hangs from a course is read from the models' foreign keys, so a new table is covered without a code change, and
+a money row found deeper stops the delete (409 `purge_blocked`, nothing removed). Access: a course in the trash
+answers `course_deleted` to everyone but the platform staff, its teacher included. Every change writes
+`subscription_events` (`cancelled` / `admin_reactivated`, meta `by`). **Consequence.** Nothing a teacher or an admin
+does can erase a course. Courses archived before this (no `course_deletions` row) show as "legacy": a restore brings
+the course back but not its students (their old status was never recorded; Courses & students can reactivate them).
+An organization's DELETE `/orgs/{id}/courses/{cid}` is unchanged: it unlinks the course from the organization and
+never deleted the course. Files are removed after the commit and only when no other row still uses the same URL; the
+RAG documents of a course are not touched.
