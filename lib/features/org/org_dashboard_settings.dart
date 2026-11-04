@@ -18,7 +18,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppSwitch, appRoleLabel;
+    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppSwitch, appRoleLabel, showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -34,10 +34,9 @@ import '../admin/admin_common.dart';
 import '../admin/admin_premium_widgets.dart' show AdminPalette;
 import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_common.dart';
-import 'org_billing_page.dart' show OrgBillingPage, orgBillingFeatureKey;
 import 'org_creation_fee.dart' show OrgCreationFeePanel;
 import 'org_danger_zone.dart';
-import 'org_v3.dart' show orgCall;
+import 'org_v3.dart' show orgCall, orgCodeText;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
 import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
@@ -155,11 +154,11 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             // C3: what students and staff pay, the creation fee and the payments — read-only
             AppSettingsTile(
                 icon: Icons.receipt_long_rounded,
-                featureKey: orgBillingFeatureKey,
+                featureKey: 'org.billing_view', // = orgBillingFeatureKey (the page itself is a deferred part)
                 label: t('الفوترة والرسوم', 'Billing'),
                 subtitle: t('ما يدفعه الطلاب والموظفون وإيصالات المؤسسة', "What students and staff pay, and the organization's receipts"),
                 keywords: 'billing fees plans payments receipt رسوم اشتراك مدفوعات',
-                onTap: () => open(t('الفوترة والرسوم', 'Billing'), OrgBillingPage(orgId: s.currentId))),
+                onTap: () => open(t('الفوترة والرسوم', 'Billing'), deferredOrgBillingPage(orgId: s.currentId))),
           ],
           if (s.can('sub_orgs', 'insert') || s.isOrgAdmin)
             AppSettingsTile(
@@ -208,6 +207,9 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
   }
 }
 
+/// Teacher assistants and admin assistants cannot leave on their own: the server refuses with `staff_cannot_leave`.
+bool orgStaffCannotLeave(String? myRole) => myRole == 'teacher_assistant' || myRole == 'admin_assistant';
+
 /// Danger zone: the org admin transfers the admin seat or closes the organization (typed-name confirmation); anyone
 /// else can leave it. Every action names what it does and asks first.
 AppSettingsGroup _dangerGroup(BuildContext context, OrgSession s) {
@@ -233,7 +235,15 @@ AppSettingsGroup _dangerGroup(BuildContext context, OrgSession s) {
           label: t('إغلاق / حذف المؤسسة', 'Close / delete the organization'),
           subtitle: t('يتطلب كتابة اسم المؤسسة', "You will type the organization's name to confirm"),
           onTap: () => _closeOrg(context, s)),
-    ] else
+    ] else if (orgStaffCannotLeave('${s.current?['my_role']}'))
+      // the server refuses (403 staff_cannot_leave): say so up front instead of after a confirmation
+      AppSettingsTile(
+          key: const ValueKey('danger.leave_blocked'),
+          icon: DirIcons.logout,
+          label: t('مغادرة المؤسسة', 'Leave the organization'),
+          subtitle: orgCodeText('staff_cannot_leave'),
+          onTap: () => showAppNotice(orgCodeText('staff_cannot_leave')))
+    else
       AppSettingsTile(
           key: const ValueKey('danger.leave'),
           icon: DirIcons.logout,

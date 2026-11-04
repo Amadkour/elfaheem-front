@@ -223,7 +223,9 @@ class OrgSession extends AdminBase {
       final asked = _wanted;
       final pick = [_wanted, if (keepSelection) currentId, prefer].where(listed).firstOrNull;
       currentId = pick ?? (items.isEmpty ? null : asInt(items.first['id']));
-      if (listed(_wanted)) _wanted = null;
+      // one load answers the request: an organization /mine does not list (one where I only study) must not stay
+      // wanted and be selected by some later listing
+      _wanted = null;
       // the organization I was in (or chose last) is gone: say so, never show another one silently
       final ctl = AppModeController.instance;
       final wasId = keepSelection ? (before ?? prefer) : null;

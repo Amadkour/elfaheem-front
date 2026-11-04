@@ -40,7 +40,7 @@ import 'parent_children_page.dart';
 import 'parent_link_providers.dart';
 import 'parent_link_screen.dart';
 import 'parent_overview.dart';
-import 'parent_org_view.dart' show ParentOrgChildrenCard;
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredParentOrgChildrenCard;
 import 'parent_overview_page.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
@@ -157,7 +157,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
               // one (kill switch parent.org_view, one call: GET /org/parent/children). Scrolls on its own when it grows.
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 240),
-                child: const SingleChildScrollView(child: ParentOrgChildrenCard()),
+                child: SingleChildScrollView(child: deferredParentOrgChildrenCard()),
               ),
             ]),
           ),

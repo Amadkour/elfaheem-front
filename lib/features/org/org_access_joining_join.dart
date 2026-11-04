@@ -254,7 +254,7 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                 autocorrect: false,
                 onSubmitted: (_) => _joinCode(),
                 onChanged: (_) => _codeError == null ? null : setState(() => _codeError = null),
-                style: TextStyle(fontFamily: AppFonts.display, fontSize: 20, letterSpacing: 4, fontWeight: FontWeight.w800, color: c.textDark),
+                style: AppType.pageTitle(context).copyWith(fontFamily: AppFonts.display, letterSpacing: 4, color: c.textDark),
                 decoration: InputDecoration(
                   hintText: 'ABCD2345XY',
                   errorText: _codeError,
@@ -459,7 +459,7 @@ class JoinLinkSignedOut extends StatelessWidget {
           Text(t('دعوة للانضمام إلى مؤسسة', 'You have a link to join an organization'), textAlign: TextAlign.center, style: AppType.pageTitle(context)),
           AppSpace.gapSm,
           FittedBox(
-            child: Text(code, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.display, fontSize: 26, letterSpacing: 4, fontWeight: FontWeight.w800, color: c.primary)),
+            child: Text(code, textDirection: TextDirection.ltr, style: AppType.display(context).copyWith(fontFamily: AppFonts.display, letterSpacing: 4, color: c.primary)),
           ),
           AppSpace.gapSm,
           Text(t('سجّل الدخول أو أنشئ حساباً وسنكمل الانضمام بهذا الكود.', 'Sign in or create an account and we continue joining with this code.'),

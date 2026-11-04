@@ -365,6 +365,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
     final id = s.currentId;
     if (id == null || id == _insightsAskedFor || !orgInsightsEnabled) return;
     _insightsAskedFor = id;
+    if (s.isOrgAdmin) OrgSetupPrefetch.start(id);
     if (s.access != 'admin' || !orgInsightsAllowedBy(access: s.access, canAnyView: (m) => s.canAny(m))) return;
     OrgInsightsPrefetch.start(id, orgInsightsToday());
   }

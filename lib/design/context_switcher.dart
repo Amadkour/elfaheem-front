@@ -100,6 +100,25 @@ Future<void> switchOrganization(BuildContext context, int orgId, {OrgSession? se
   }
 }
 
+/// "Open the organization" right after I joined it (an accepted invitation, an approved request): the SAME rule as
+/// the switcher and a notification tap - an organization where I am NOT a student ([AppModeController.opensDashboardFor];
+/// [staff] is the fallback while the overview does not list it yet) opens the dashboard on it, one where I study the
+/// member home (Organization mode). Everything above the root closes first. Never throws.
+Future<void> openJoinedOrganization(BuildContext context, int orgId, {bool? staff}) async {
+  final nav = Navigator.of(context, rootNavigator: true);
+  final ctl = AppModeController.instance;
+  final asStaff = ctl.opensDashboardFor(orgId) ?? staff ?? false;
+  try {
+    if (asStaff) {
+      await switchOrganization(context, orgId);
+      nav.pushNamedAndRemoveUntil('/org_dashboard', (_) => false);
+    } else {
+      await ctl.setMode(AppMode.organization, orgId: orgId);
+      nav.pushNamedAndRemoveUntil(AppModeController.personalRoute, (_) => false);
+    }
+  } catch (_) {/* never block the tap */}
+}
+
 /// Closes every page above the organization dashboard (or the app root), in the root navigator and in the tab on screen.
 void closeOrgPages(NavigatorState nav) {
   nav.popUntil((r) => r.isFirst || r.settings.name == '/org_dashboard' || r.settings.name == '/org_member');

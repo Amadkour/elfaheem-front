@@ -17,6 +17,7 @@
 // to do + approvals counters). Everything is read with null-safe helpers: a failed call keeps the last answer.
 library;
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -311,6 +312,23 @@ class AppModeController extends ChangeNotifier {
       return rememberDashboardOrg(orgId);
     }
     return setMode(AppMode.organization, orgId: orgId);
+  }
+
+  /// Waits (bounded) until the first overview answered, asking for it when nothing is on its way: a notification
+  /// tapped from a terminated app must not decide staff-or-student before the memberships are known.
+  Future<void> ready({Duration timeout = const Duration(seconds: 6)}) async {
+    if (loaded || _userId == null) return;
+    final done = Completer<void>();
+    void check() {
+      if (loaded && !done.isCompleted) done.complete();
+    }
+    addListener(check);
+    if (!_loading) unawaited(refresh());
+    try {
+      await done.future.timeout(timeout);
+    } catch (_) {/* slow / offline: the caller decides with what it has */} finally {
+      removeListener(check);
+    }
   }
 
   /// Does [orgId] open the dashboard? (null = the overview does not list it: the caller decides from `/org/mine`.)

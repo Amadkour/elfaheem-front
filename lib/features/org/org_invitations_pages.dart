@@ -12,23 +12,29 @@
 // Plain-value widgets (`InviteResultView`, `OrgInvitationCard`, `InviteeView`) are what the layout harness pumps.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
 import 'package:flutter_education_app/core/plural.dart' show countText;
+import 'package:flutter_education_app/design/context_switcher.dart' show openJoinedOrganization;
+import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/web_entry_route.dart' show SignInReturn;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../admin/admin_common.dart' show asMap, asMapList, asInt, t;
 import 'org_invitations.dart';
 import 'org_page_header.dart' show OrgPushedPage;
 import 'org_page_kit.dart' show OrgFilterButton, OrgPageBody, OrgPrimaryAction;
-import 'org_providers.dart' show orgBase;
+import 'org_providers.dart' show OrgSession, orgBase;
 import 'org_ui.dart' show orgNameOf;
 import 'org_v3.dart';
 
@@ -695,7 +701,30 @@ class _OrgInviteePageState extends State<OrgInviteePage> {
           ? t('أصبحت عضواً في «${lk?.orgName ?? ''}».', 'You are now a member of "${lk?.orgName ?? ''}".')
           : t('رفضت الدعوة.', 'You declined the invitation.');
     });
-    if (accept && lk != null) widget.onAccepted?.call(lk.orgId);
+    if (accept && lk != null) {
+      _afterAccepted();
+      widget.onAccepted?.call(lk.orgId);
+    }
+  }
+
+  bool _accepted = false;
+
+  /// I am a member now: the memberships (the switcher, the mode) and the dashboard's organizations reload.
+  void _afterAccepted() {
+    _accepted = true;
+    unawaited(AppModeController.instance.refresh());
+    try {
+      unawaited(context.read<OrgSession>().load());
+    } catch (_) {/* no OrgSession in scope (a signed-in app always has one) */}
+  }
+
+  /// "Open the organization": the one switching rule (dashboard for staff, member home for a student).
+  Future<void> _openOrg() async {
+    final lk = _lookup;
+    if (lk == null) return;
+    await AppModeController.instance.ready();
+    if (!mounted) return;
+    await openJoinedOrganization(context, lk.orgId, staff: lk.role != 'student');
   }
 
   @override
@@ -717,6 +746,7 @@ class _OrgInviteePageState extends State<OrgInviteePage> {
           doneText: _doneText,
           onAccept: () => _answer(true),
           onDecline: () => _answer(false),
+          onOpenOrg: _accepted ? _openOrg : null,
           onSignIn: () => _signIn('/login'),
           onRegister: () => _signIn('/register'),
           onRetry: _load,
@@ -741,6 +771,7 @@ class InviteeView extends StatelessWidget {
     this.doneText,
     this.onAccept,
     this.onDecline,
+    this.onOpenOrg,
     this.onSignIn,
     this.onRegister,
     this.onRetry,
@@ -751,7 +782,7 @@ class InviteeView extends StatelessWidget {
   final bool loading, signedIn, busy;
   final String? error, mismatchMasked, doneText;
   final String myContact;
-  final VoidCallback? onAccept, onDecline, onSignIn, onRegister, onRetry, onClose;
+  final VoidCallback? onAccept, onDecline, onOpenOrg, onSignIn, onRegister, onRetry, onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -785,7 +816,12 @@ class InviteeView extends StatelessWidget {
       if (doneText != null) ...[
         AppBanner(icon: Icons.check_circle_rounded, color: c.success, text: doneText!),
         AppSpace.gapMd,
-        AppButton.primary(label: t('تم', 'Done'), expand: true, onPressed: onClose),
+        if (onOpenOrg != null) ...[
+          AppButton.primary(key: const ValueKey('org.invitee.open'), label: t('فتح المؤسسة', 'Open the organization'), expand: true, onPressed: onOpenOrg),
+          AppSpace.gapXs,
+          AppButton.secondary(label: t('تم', 'Done'), expand: true, onPressed: onClose),
+        ] else
+          AppButton.primary(label: t('تم', 'Done'), expand: true, onPressed: onClose),
       ] else if (!lk.pending) ...[
         AppBanner(
           icon: Icons.info_outline_rounded,
@@ -816,9 +852,9 @@ class InviteeView extends StatelessWidget {
             secondary: [AppButton.secondary(key: const ValueKey('org.invitee.decline'), label: t('رفض', 'Decline'), onPressed: busy ? null : onDecline)],
           )
         else ...[
-          AppBanner(icon: Icons.login_rounded, color: c.primary, text: t('سجّل الدخول أو أنشئ حساباً لقبول الدعوة، ثم نعود إلى هذه الصفحة.', 'Sign in or create an account to answer, then you come back to this page.')),
+          AppBanner(icon: DirIcons.login, color: c.primary, text: t('سجّل الدخول أو أنشئ حساباً لقبول الدعوة، ثم نعود إلى هذه الصفحة.', 'Sign in or create an account to answer, then you come back to this page.')),
           AppSpace.gapMd,
-          AppButton.primary(key: const ValueKey('org.invitee.sign_in'), label: t('تسجيل الدخول', 'Sign in'), icon: Icons.login_rounded, expand: true, onPressed: onSignIn),
+          AppButton.primary(key: const ValueKey('org.invitee.sign_in'), label: t('تسجيل الدخول', 'Sign in'), icon: DirIcons.login, expand: true, onPressed: onSignIn),
           AppSpace.gapXs,
           AppButton.secondary(key: const ValueKey('org.invitee.register'), label: t('إنشاء حساب', 'Create an account'), expand: true, onPressed: onRegister),
         ],

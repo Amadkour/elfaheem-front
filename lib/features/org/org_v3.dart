@@ -303,6 +303,10 @@ Map<String, String> _codeTexts() => {
       'link_expired': t('انتهت صلاحية هذا الرابط — اطلب رابطاً جديداً', 'This link has expired — ask for a new one'),
       'confirm_name_mismatch': t('اسم المؤسسة المكتوب لا يطابق الاسم الحقيقي', 'The name you typed doesn\'t match the organization\'s name'),
       'not_a_member': t('هذا الشخص ليس عضواً نشطاً في المؤسسة', 'This person is not an active member of the organization'),
+      'admin_only': t('هذا الإجراء لمدير المؤسسة فقط', "Only the organization's admin can do this"),
+      // leaving (DELETE /org/public/{org}/leave): a staff role is ended by the admin, the admin transfers first
+      'staff_cannot_leave': t('اطلب من مدير مؤسستك إنهاء عضويتك', "Ask your organization's admin to end your membership"),
+      'admin_cannot_leave': t('انقل إدارة المؤسسة إلى عضو آخر قبل المغادرة', 'Transfer the administration to another member before leaving'),
       'not_org_admin': t('هذا الإجراء لمدير المؤسسة الحالي فقط', 'Only the organization\'s current administrator can do this'),
       'share_target_not_allowed': t('يمكن المشاركة مع أعضاء المؤسسة فقط', 'You can only share with members of the organization'),
       'members_only': t('هذا المحتوى لأعضاء المؤسسة فقط — انضم إليها أولاً', 'This is for members of the organization only — join it first'),

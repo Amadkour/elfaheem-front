@@ -15,7 +15,7 @@ import 'org_ui.dart';
 import 'org_member_form.dart';
 import 'org_access_page.dart' show OrgPersonAccess;
 import 'org_invitations.dart' show invitationsFeatureKey;
-import 'org_invitations_pages.dart' show OrgInvitationsPage, showOrgInviteSheet;
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredOrgInvitationsPage, showDeferredOrgInviteSheet;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'org_v3.dart';
 import 'org_page_kit.dart';
@@ -126,13 +126,13 @@ class _MembersView extends StatelessWidget {
           OrgMenuItem(
             icon: Icons.mail_outline_rounded,
             label: t('دعوة بالبريد أو الهاتف', 'Invite by e-mail or phone'),
-            onTap: () => showOrgInviteSheet(context, orgId: s.currentId ?? 0, orgName: s.name, initialRole: kind == 'students' ? 'student' : kind == 'teachers' ? 'teacher' : 'staff'),
+            onTap: () => showDeferredOrgInviteSheet(context, orgId: s.currentId ?? 0, orgName: s.name, initialRole: kind == 'students' ? 'student' : kind == 'teachers' ? 'teacher' : 'staff'),
           ),
           OrgMenuItem(
             icon: Icons.mark_email_unread_outlined,
             label: t('الدعوات المرسلة', 'Sent invitations'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgInvitationsPage(orgId: s.currentId ?? 0, orgName: s.name)))), // ROUTE: org.invitations
+                builder: (_) => ChangeNotifierProvider.value(value: s, child: deferredOrgInvitationsPage(orgId: s.currentId ?? 0, orgName: s.name)))), // ROUTE: org.invitations
           ),
         ],
         if (s.can(module, 'insert')) ...[

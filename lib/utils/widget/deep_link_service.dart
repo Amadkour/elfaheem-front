@@ -4,9 +4,6 @@
 // Opening one lands on `/c/<id>?ref=<uid>` (Flutter's default deep linking feeds it to onGenerateRoute).
 // Profile links (D-074): https://nextbrain.site/@<username> → `/@<username>` → the public profile page
 // (features/shared/public_profile/; parsed by `profileLinkFrom`).
-// Organization links (org-flow overhaul): https://nextbrain.site/j/<CODE> opens the join-by-code page with the code
-// filled in; https://nextbrain.site/i/<token> opens an invitation (C1). Both open signed out too (the page asks for the
-// sign-in itself); [parseOrg] reads them, and a native cold start keeps one in [setPendingOrg] until the guard runs.
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -24,16 +21,6 @@ class CourseLink {
   const CourseLink(this.courseId, this.ref);
 }
 
-/// A `/j/<CODE>` join link (`kind` j, `value` = the code, upper-cased) or a `/i/<token>` invitation link (`kind` i).
-class OrgLink {
-  final String kind;
-  final String value;
-  const OrgLink(this.kind, this.value);
-
-  /// The in-app location of the link (what the router and SignInReturn open).
-  String get location => '/$kind/$value';
-}
-
 class DeepLinkService {
   DeepLinkService._();
   static final DeepLinkService instance = DeepLinkService._();
@@ -42,7 +29,6 @@ class DeepLinkService {
 
   CourseLink? _pending;
   ProfileLink? _pendingProfile;
-  OrgLink? _pendingOrg;
 
   /// `/c/12?ref=5` (or a full URL) → CourseLink, else null.
   static CourseLink? parse(String? routeName) {
@@ -57,19 +43,6 @@ class DeepLinkService {
     return null;
   }
 
-  /// `/j/ABCD2345XY`, `/i/<token>` or the full URL → OrgLink, else null.
-  static OrgLink? parseOrg(String? routeName) {
-    if (routeName == null) return null;
-    final seg = Uri.tryParse(routeName)?.pathSegments ?? const <String>[];
-    if (seg.length != 2) return null;
-    if (seg[0] == 'j') {
-      final code = seg[1].toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-      return code.length >= 4 && code.length <= 40 ? OrgLink('j', code) : null;
-    }
-    if (seg[0] == 'i' && RegExp(r'^[A-Za-z0-9_-]{8,200}$').hasMatch(seg[1])) return OrgLink('i', seg[1]);
-    return null;
-  }
-
   /// `/@ahmed`, `@Ahmed` or `https://nextbrain.site/@ahmed` → ProfileLink, else null (D-074).
   static ProfileLink? parseProfile(String? routeName) => profileLinkFrom(routeName);
 
@@ -77,30 +50,15 @@ class DeepLinkService {
   void setPending(CourseLink l) {
     _pending = l;
     _pendingProfile = null;
-    _pendingOrg = null;
   }
 
   /// Same for a profile link (the last link opened wins).
   void setPendingProfile(ProfileLink l) {
     _pendingProfile = l;
     _pending = null;
-    _pendingOrg = null;
-  }
-
-  /// Same for an organization link (the last link opened wins).
-  void setPendingOrg(OrgLink l) {
-    _pendingOrg = l;
-    _pending = null;
-    _pendingProfile = null;
   }
 
   void consumePending() {
-    final o = _pendingOrg;
-    if (o != null) {
-      _pendingOrg = null;
-      navigatorKey.currentState?.pushNamed(o.location); // ROUTE: org.join_code / org.invitation (the lead registers /j/:code and /i/:token)
-      return;
-    }
     final p = _pendingProfile;
     if (p != null) {
       _pendingProfile = null;

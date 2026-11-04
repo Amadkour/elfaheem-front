@@ -28,7 +28,6 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_academic_pages.dart' show orgCourseGate;
 import 'org_access_joining.dart' show openOrgJoin;
-import 'org_invitations_pages.dart' show OrgMyInvitationsCard;
 import 'org_v3.dart' show membershipStatusLabels, orgCodeText;
 import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton, AppButtonSize;
@@ -133,11 +132,11 @@ class _MembershipView extends StatelessWidget {
           ? const AppListSkeleton()
           : p.mine.isEmpty
               ? ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
-                  OrgMyInvitationsCard(onChanged: (_) => p.loadMine()),
+                  deferredOrgMyInvitationsCard(onChanged: p.loadMine),
                   OrgEmpty(icon: Icons.domain_rounded, title: t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet")),
                 ])
               : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
-                  OrgMyInvitationsCard(onChanged: (_) => p.loadMine()),
+                  deferredOrgMyInvitationsCard(onChanged: p.loadMine),
                   for (final m in p.mine)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
