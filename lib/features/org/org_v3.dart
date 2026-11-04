@@ -414,6 +414,7 @@ Map<String, String> membershipStatusLabels() => {
       'expired': t('منتهية', 'Expired'),
       'suspended': t('موقوفة', 'Suspended'),
       'rejected': t('مرفوض', 'Rejected'),
+      'removed': t('أُزيل', 'Removed'), // the membership was ended (an admin handed over with "remove", D-282)
     };
 
 /// One sentence that explains a member row's period.

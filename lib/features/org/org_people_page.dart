@@ -407,4 +407,4 @@ Future<void> _permissions(BuildContext context, OrgMembersProvider p, Map<String
 }
 
 /// A member's status text; "removed" (an admin ended the membership, D-282) is not in the shared table.
-String _memberStatusLabel(String eff) => eff == 'removed' ? t('أُزيل', 'Removed') : membershipStatusLabels()[eff] ?? eff;
+String _memberStatusLabel(String eff) => membershipStatusLabels()[eff] ?? eff;
