@@ -183,7 +183,7 @@ class CategoriesProvider extends BaseProvider {
     isLoadingCourse = true;
     notifyListeners();
 
-    final params = <String, dynamic>{'search': q, 'limit': 30, 'skip': 0, ..._side};
+    final params = <String, dynamic>{'search': q, 'limit': 30, 'skip': 0, ..._side, ..._explore};
     if (_selectedId != null) params['category_id'] = _selectedId;
 
     final result = await run(
@@ -209,8 +209,8 @@ class CategoriesProvider extends BaseProvider {
 
   // ── selectCategory ──────────────────────────────────────────────────────
 
-  Future<void> selectCategory(String id) async {
-    if (_selectedId == id) {
+  Future<void> selectCategory(String id, {bool force = false}) async {
+    if (_selectedId == id && !force) {
       await clearSelection();
       return;
     }
@@ -241,6 +241,16 @@ class CategoriesProvider extends BaseProvider {
 
   // ── Private ──────────────────────────────────────────────────────────────
 
+  /// The guest search's "explore" filter: null = off (every other caller); else 'any' / 'online' / 'center'.
+  String? _exploreMode;
+  String? get exploreMode => _exploreMode;
+  void setExploreMode(String? mode) => _exploreMode = mode;
+
+  /// `mode` (not for 'any') and, with a category, its sub-categories too (a subject lists its levels' courses).
+  Map<String, dynamic> get _explore => _exploreMode == null
+      ? const {}
+      : {if (_exploreMode != 'any') 'mode': _exploreMode, if (_selectedId != null) 'with_subcategories': true};
+
   /// The mode's side on GET /courses (the server's default is the personal account). An organization's side is
   /// for its members only, so that request goes signed in; the personal catalogue stays public (guests).
   Map<String, dynamic> get _side => modeCourseScopeQuery();
@@ -252,7 +262,7 @@ class CategoriesProvider extends BaseProvider {
     final result = await run(
       () => _api.get(
         '/api/v1/courses',
-        queryParams: {'category_id': categoryId, 'limit': 20, 'skip': 0, ..._side},
+        queryParams: {'category_id': categoryId, 'limit': 20, 'skip': 0, ..._side, ..._explore},
         auth: _sideNeedsAuth,
       ),
     );
@@ -267,7 +277,7 @@ class CategoriesProvider extends BaseProvider {
     final result = await run(
       () => _api.get(
         '/api/v1/courses',
-        queryParams: {'limit': 20, 'skip': 0, ..._side},
+        queryParams: {'limit': 20, 'skip': 0, ..._side, ..._explore},
         auth: _sideNeedsAuth,
       ),
     );
