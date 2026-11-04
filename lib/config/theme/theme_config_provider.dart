@@ -710,6 +710,10 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     // 2:1 on the dark surfaces, so its lightness is moved until it reaches WCAG AA (4.5:1) on all of them, hue
     // kept. A primary that already passes (the light theme) is unchanged. Fills and borders keep the raw primary.
     final pText = ensureContrast(p, [bg, card, surface]);
+    // The same for a selected chip's label and check: it sits on the 14 % primary tint, where the raw indigo was
+    // 1.9:1 in dark (every selected ChoiceChip / FilterChip); light is unchanged (6.6:1 already).
+    final chipTint = p.withValues(alpha: 0.14);
+    final pOnChip = ensureContrast(p, [for (final s in [bg, card, surface, input]) Color.alphaBlend(chipTint, s)]);
 
     TextStyle ts(double size, [FontWeight w = FontWeight.w600, Color? c]) =>
         TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: c);
@@ -847,13 +851,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
           activeTrackColor: p, thumbColor: p, inactiveTrackColor: p.withValues(alpha: 0.18)),
       chipTheme: ChipThemeData(
         backgroundColor: input,
-        selectedColor: p.withValues(alpha: 0.14),
-        secondarySelectedColor: p.withValues(alpha: 0.14),
-        checkmarkColor: p,
+        selectedColor: chipTint,
+        secondarySelectedColor: chipTint,
+        checkmarkColor: pOnChip,
         side: BorderSide(color: divider),
         shape: const StadiumBorder(),
         labelStyle: ts(12.5, FontWeight.w600, text),
-        secondaryLabelStyle: ts(12.5, FontWeight.w800, p),
+        secondaryLabelStyle: ts(12.5, FontWeight.w800, pOnChip),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
