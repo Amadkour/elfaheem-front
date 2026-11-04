@@ -616,6 +616,12 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
             padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: t('لا يمكن إنشاء اختبار الآن: $_reason', 'Can\'t create an exam right now: $_reason')),
           ),
+        if (_ready && _items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+            child: Text(t('لا اختبارات لهذا المقرر بعد. أنشئ أولها بزر +', 'No exams for this course yet. Create the first one with the + button'),
+                style: appText(13, c: c.textMedium)),
+          ),
         // every exam at its natural height: the hub scrolls them with the rest of the tab (a box of a quarter of the
         // screen cut the list after two and a half rows, with empty space under it)
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
