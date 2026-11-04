@@ -25,6 +25,8 @@ import '../../admin/admin_money_p8.dart' show draftErrorText, p8SaveBytes;
 import '../exam_engine/exam_engine_api.dart' show EngineResult;
 import '../../admin/admin_feature_guide.dart' show AdminFeatureGuidePage;
 import 'admin/rag_feedback_review.dart' show RagFeedbackReviewPage;
+import 'library/rag_doc_status.dart';
+import 'library/rag_upload_scope.dart';
 import 'rag_chat_screen.dart' show RagChatScreen;
 import 'rag_library.dart';
 import 'rag_learning_page.dart' show RagLearningPage;
@@ -387,9 +389,14 @@ class RagDocumentCard extends StatelessWidget {
         ]),
         if (doc.createdAt != null)
           Padding(padding: const EdgeInsets.only(top: 6), child: Text(shortDateTime(doc.createdAt), style: appText(11.5, c: c.textLight))),
-        if (doc.status == 'failed' && (doc.error ?? '').isNotEmpty)
-          Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: doc.error!)),
-        if (doc.busy) const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator(minHeight: 3)),
+        if (doc.status == 'failed' && ragDocErrorText(doc.error).isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: ragDocErrorText(doc.error))),
+        RagWarningChips(warnings: doc.warnings),
+        RagExcludedText(excluded: doc.excluded),
+        if (doc.showProgress)
+          RagProgressRow(done: doc.progressDone, total: doc.progressTotal)
+        else if (doc.busy)
+          const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator(minHeight: 3)),
         const SizedBox(height: 6),
         Wrap(spacing: 4, runSpacing: 0, children: [
           TextButton.icon(onPressed: working ? null : onDownload, icon: const Icon(Icons.download_rounded, size: 18), label: Text(t('تنزيل', 'Download'))),
@@ -434,7 +441,13 @@ class _RagUploadSheetState extends State<RagUploadSheet> {
     });
     final r = await widget.api.upload(d, orgId: widget.orgId, courseId: widget.courseId);
     if (!mounted) return;
-    if (r.ok) {
+    if (r.ok && asStr(r.map['status']) == 'failed') {
+      final e = ragDocErrorText(asStr(r.map['error']));
+      setState(() {
+        _busy = false;
+        _err = e.isEmpty ? ragStatusText('failed') : e;
+      });
+    } else if (r.ok) {
       appToast(t('رُفع المستند وسيُفهرس قريباً', 'Uploaded — it will be indexed shortly'));
       Navigator.pop(context, true);
     } else {
@@ -460,7 +473,8 @@ class _RagUploadSheetState extends State<RagUploadSheet> {
 
 /// Title · scope · (course) · replaces · file. Presentational: [onSubmit] gets a validated draft.
 class RagUploadForm extends StatefulWidget {
-  const RagUploadForm({super.key, required this.onSubmit, this.orgId, this.courseId, this.library, this.replaces, this.busy = false, this.error, this.pickFile});
+  const RagUploadForm({super.key, required this.onSubmit, this.orgId, this.courseId, this.library, this.replaces, this.busy = false, this.error, this.pickFile, this.ocrScanned});
+  final bool? ocrScanned;
   final void Function(RagUploadDraft draft) onSubmit;
   final int? orgId;
   final int? courseId;
@@ -479,7 +493,7 @@ class RagUploadForm extends StatefulWidget {
 class _RagUploadFormState extends State<RagUploadForm> {
   late final RagUploadDraft _d = RagUploadDraft(
       title: widget.replaces?.title ?? '',
-      scope: widget.replaces?.scope ?? (widget.orgId == null ? 'course' : 'org'),
+      scope: widget.replaces?.scope ?? (widget.orgId == null || widget.courseId != null ? 'course' : 'org'),
       replaces: widget.replaces?.id);
   late final _title = TextEditingController(text: _d.title);
   final _course = TextEditingController();
@@ -528,24 +542,25 @@ class _RagUploadFormState extends State<RagUploadForm> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final scopes = widget.replaces?.scope == 'app' ? const ['app'] : (widget.orgId == null ? const ['course'] : ragScopes);
+    final scopes = widget.replaces != null && (widget.replaces!.scope == 'app' || widget.replaces!.scope == 'global')
+        ? [widget.replaces!.scope]
+        : ragScopeOptions(ragUploaderRole(manager: true, orgId: widget.orgId, courseId: widget.courseId ?? (widget.orgId == null ? 0 : null)));
     final replaceable = widget.library?.replaceable(_d.scope, courseId: widget.courseId ?? _d.courseIdValue) ?? const <RagDocument>[];
     final locked = widget.replaces != null;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppField(controller: _title, label: t('العنوان', 'Title')),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final s in scopes)
-          AppChoiceChip(
-              label: ragScopeText(s),
-              selected: _d.scope == s,
-              onTap: locked ? () {} : () => setState(() {
-                    _d.scope = s;
-                    _d.replaces = null;
-                  })),
-      ]),
-      const SizedBox(height: 12),
-      if (_d.scope == 'course' && widget.courseId == null)
-        AppField(controller: _course, label: t('رقم المقرر', 'Course id'), keyboard: TextInputType.number),
+      RagScopePicker(
+          options: scopes,
+          scope: _d.scope,
+          busy: locked,
+          onScope: (s) => setState(() {
+                _d.scope = s;
+                _d.replaces = null;
+              }),
+          roles: _d.roles,
+          onRoles: locked ? null : (r) => setState(() => _d.roles.contains(r) ? _d.roles.remove(r) : _d.roles.add(r)),
+          fixedCourse: widget.courseId != null,
+          courseField: AppField(controller: _course, label: t('رقم المقرر', 'Course id'), keyboard: TextInputType.number)),
       if (!locked && replaceable.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -563,6 +578,7 @@ class _RagUploadFormState extends State<RagUploadForm> {
           onPressed: widget.busy ? null : _choose,
           icon: const Icon(Icons.attach_file_rounded, size: 18),
           label: Text(_d.fileName ?? t('اختر ملفاً (PDF, DOCX, TXT, MD, HTML, صور)', 'Pick a file (PDF, DOCX, TXT, MD, HTML, images)'), maxLines: 2, overflow: TextOverflow.ellipsis)),
+      RagUploadHint(ocrScanned: widget.ocrScanned),
       if (_d.fileBytes != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(ragSizeText(_d.fileBytes!.length), style: appText(11.5, c: c.textLight))),
       if (_err != null || widget.error != null)
         Padding(padding: const EdgeInsets.only(top: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err ?? widget.error!)),
@@ -806,7 +822,7 @@ class _Stat extends StatelessWidget {
 /// nothing is touched) · merge (same name → new version) · replace (the old ones are archived only after every upload
 /// succeeded, so a failed upload never empties the library). [RagBatchUploadForm] is the presentational part.
 class RagBatchUploadSheet extends StatefulWidget {
-  const RagBatchUploadSheet({super.key, required this.api, this.orgId, this.courseId, this.app = false, this.library, this.pickFiles});
+  const RagBatchUploadSheet({super.key, required this.api, this.orgId, this.courseId, this.app = false, this.library, this.pickFiles, this.ocrScanned});
   final RagLibraryApi api;
   final int? orgId;
   final int? courseId;
@@ -816,19 +832,37 @@ class RagBatchUploadSheet extends StatefulWidget {
   /// test hook / platform seam: the picked (name, bytes)
   final Future<List<(String, Uint8List)>> Function()? pickFiles;
 
+  /// reading scanned pages is on (null = not known): changes the hint
+  final bool? ocrScanned;
+
   @override
   State<RagBatchUploadSheet> createState() => _RagBatchUploadSheetState();
 }
 
 class _RagBatchUploadSheetState extends State<RagBatchUploadSheet> {
   final List<(String, Uint8List)> _files = [];
-  late String _scope = widget.app ? 'app' : (widget.orgId == null ? 'course' : 'org');
+  late final RagUploaderRole _role = ragUploaderRole(manager: widget.library?.manager ?? true, app: widget.app, orgId: widget.orgId, courseId: widget.courseId);
+  late final List<String> _options = ragScopeOptions(_role);
+  late String _scope = _options.isEmpty ? 'course' : _options.first;
+  final Set<String> _roles = {};
+  int? _pickedCourse;
+  List<RagCourseChoice> _courses = const [];
   RagConflictMode _mode = ragConflictDefault;
   bool _busy = false;
   int _done = 0;
   String? _err;
 
-  List<RagDocument> get _existing => widget.library?.replaceable(_scope, courseId: widget.courseId) ?? const [];
+  List<RagDocument> get _existing => widget.library?.replaceable(_scope, courseId: widget.courseId ?? _pickedCourse) ?? const [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (_role == RagUploaderRole.orgAdmin && widget.orgId != null) {
+      widget.api.orgCourses(widget.orgId!).then((c) {
+        if (mounted) setState(() => _courses = c);
+      });
+    }
+  }
 
   Future<List<(String, Uint8List)>> _pick() async {
     final picked = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ragUploadExtensions);
@@ -854,10 +888,13 @@ class _RagBatchUploadSheetState extends State<RagBatchUploadSheet> {
         RagUploadDraft(
             title: ragTitleOf(f.$1),
             scope: _scope,
+            courseId: _pickedCourse == null ? '' : '$_pickedCourse',
+            roles: _scope == 'org' ? _roles : null,
             fileName: f.$1,
             fileBytes: f.$2,
             onConflict: plan.ask ? _mode : null),
     ];
+    if (_options.isEmpty) return setState(() => _err = ragLibraryCodeText('not_library_manager', ''));
     for (final d in drafts) {
       final e = d.validate(orgId: widget.orgId, fixedCourseId: widget.courseId);
       if (e != null) return setState(() => _err = '${d.fileName}: ${ragLibraryCodeText(e, draftErrorText(e))}');
@@ -882,6 +919,17 @@ class _RagBatchUploadSheetState extends State<RagBatchUploadSheet> {
         if (outcomes.isNotEmpty) appToast(ragOutcomeSummary(outcomes));
         return;
       }
+      // an identical file that failed before comes back as that failed document: say why, don't say "uploaded"
+      if (asStr(r.map['status']) == 'failed') {
+        final why = ragDocErrorText(asStr(r.map['error']));
+        setState(() {
+          _busy = false;
+          _err = '${d.fileName}: ${why.isEmpty ? ragStatusText('failed') : why}';
+          _files.removeRange(0, _done);
+        });
+        if (outcomes.isNotEmpty) appToast(ragOutcomeSummary(outcomes));
+        return;
+      }
       outcomes.add(asStr(r.map['outcome'], 'added'));
       kept.add(asInt(r.map['id']));
       setState(() => _done++);
@@ -899,7 +947,7 @@ class _RagBatchUploadSheetState extends State<RagBatchUploadSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final scopes = widget.app ? const ['app'] : (widget.orgId == null ? const ['course'] : ragScopes);
+    final scopes = _options;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -908,6 +956,13 @@ class _RagBatchUploadSheetState extends State<RagBatchUploadSheet> {
           files: [for (final f in _files) (f.$1, f.$2.length)],
           scopes: scopes,
           scope: _scope,
+          roles: _roles,
+          onRoles: (r) => setState(() => _roles.contains(r) ? _roles.remove(r) : _roles.add(r)),
+          courses: _courses,
+          courseId: _pickedCourse,
+          onCourse: (v) => setState(() => _pickedCourse = v),
+          fixedCourse: widget.courseId != null,
+          ocrScanned: widget.ocrScanned,
           plan: RagConflictPlan.of(_existing, [for (final f in _files) f.$1]),
           mode: _mode,
           busy: _busy,
@@ -944,7 +999,24 @@ class RagBatchUploadForm extends StatelessWidget {
     this.busy = false,
     this.done = 0,
     this.error,
+    this.roles = const {},
+    this.onRoles,
+    this.courses = const [],
+    this.courseId,
+    this.onCourse,
+    this.fixedCourse = false,
+    this.ocrScanned,
+    this.maxMb,
   });
+
+  final Set<String> roles;
+  final ValueChanged<String>? onRoles;
+  final List<RagCourseChoice> courses;
+  final int? courseId;
+  final ValueChanged<int?>? onCourse;
+  final bool fixedCourse;
+  final bool? ocrScanned;
+  final int? maxMb;
 
   /// (name, size in bytes)
   final List<(String, int)> files;
@@ -965,14 +1037,17 @@ class RagBatchUploadForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (scopes.length > 1) ...[
-        Text(t('من يرى هذه المستندات؟', 'Who sees these documents?'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
-        const SizedBox(height: 6),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final s in scopes) AppChoiceChip(label: ragScopeText(s), selected: scope == s, onTap: busy ? () {} : () => onScope(s)),
-        ]),
-        const SizedBox(height: 12),
-      ],
+      RagScopePicker(
+          options: scopes,
+          scope: scope,
+          onScope: onScope,
+          roles: roles,
+          onRoles: onRoles,
+          courses: courses,
+          courseId: courseId,
+          onCourse: onCourse,
+          fixedCourse: fixedCourse,
+          busy: busy),
       for (var i = 0; i < files.length; i++)
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
@@ -989,11 +1064,7 @@ class RagBatchUploadForm extends StatelessWidget {
           onPressed: busy ? null : onPick,
           icon: const Icon(Icons.attach_file_rounded, size: 18),
           label: Text(files.isEmpty ? t('اختر ملفاً أو أكثر', 'Choose one or more files') : t('أضف ملفات', 'Add files'))),
-      Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Text(t('الأفضل: Word أو PDF نصي — يُقرأ بدقة. الصور والملفات الممسوحة تُقرأ بالتعرف الضوئي وقد تفقد كلمات.',
-            'Best: Word or a text PDF — read exactly. Photos and scans go through OCR and may lose words.'), style: appText(11.5, c: c.textLight)),
-      ),
+      RagUploadHint(ocrScanned: ocrScanned, maxMb: maxMb),
       if (files.isNotEmpty && plan.ask) ...[
         const SizedBox(height: 14),
         RagConflictQuestion(plan: plan, mode: mode, onMode: busy ? null : onMode),
