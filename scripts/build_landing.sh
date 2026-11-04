@@ -4,6 +4,8 @@
 #   - no node / LANDING_BUILD_DOCKER=1 -> the same inside a pinned node image (the server has Docker only)
 # The previous build stays in landing/dist-prev for rollback. LANDING_API_ORIGIN (optional) bakes the
 # public stats and options in at build time; a failure to fetch them never fails the build.
+# PUBLIC_LANDING_API_BASE (optional, e.g. https://nextbrain.site) is the origin the page's own requests go to when it is
+# served from another host (Firebase Hosting, scripts/build_firebase_hosting.sh); empty = the same origin.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,7 +20,7 @@ if [ "${LANDING_BUILD_DOCKER:-0}" = "1" ] || ! command -v node >/dev/null 2>&1; 
   echo "building in $NODE_IMAGE"
   docker run --rm \
     -v "$LANDING:/w" -w /w \
-    -e LANDING_API_ORIGIN="${LANDING_API_ORIGIN:-}" \
+    -e LANDING_API_ORIGIN="${LANDING_API_ORIGIN:-}"     -e PUBLIC_LANDING_API_BASE="${PUBLIC_LANDING_API_BASE:-}" \
     "$NODE_IMAGE" sh -c 'npm ci --no-audit --no-fund && npm run build -- --outDir dist-new'
   # Docker on a server runs as root; hand the output back to whoever runs this script.
   if [ "$(id -u)" != "0" ]; then

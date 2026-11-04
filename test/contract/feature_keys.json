@@ -17,6 +17,8 @@
  "admin.app_releases",
  "admin.course_students",
  "admin.export_log",
+ "admin.fee_policy",
+ "admin.landing",
  "admin.live_settings",
  "admin.payouts",
  "admin.points",

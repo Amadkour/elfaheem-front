@@ -28,7 +28,7 @@ page fetches them in the browser and shows "—" until they arrive.
 | `/ar/`, `/en/` | the landing (`src/components/Landing.astro`); the `#/` hash forward is also in their `<head>` |
 | `/sitemap.xml`, `/robots.txt`, `/og.png`, icons | `public/` |
 | `/app/…` | the Flutter web build (login, explore, register, start/institution) |
-| `/api/api/v1/public/landing/{stats,options,match}` | backend, same origin, plain `fetch`, 4 s timeout, fails soft |
+| `/api/api/v1/public/landing/{stats,options,match,highlights}` | backend, same origin, plain `fetch`, 4 s timeout, fails soft. On another host (Firebase Hosting) set `PUBLIC_LANDING_API_BASE=https://nextbrain.site` at build time (absolute origin, no trailing slash) so every landing call goes there; `/app/...` links stay relative |
 
 ## Where content lives
 

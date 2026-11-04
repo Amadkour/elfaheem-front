@@ -17,6 +17,7 @@ flutter test test/org/ test/export/ test/ui/ test/auth/ test/perf/ test/contract
 flutter test test/some_test.dart --plain-name "name"   # run a single test
 MSYS_NO_PATHCONV=1 flutter build web --release --base-href /app/   # web (the env var stops Git Bash rewriting /app/)
 scripts/build_landing.sh             # the landing site: landing/dist (npm, or Docker node when node is missing)
+scripts/build_firebase_hosting.sh && firebase deploy --only hosting   # Firebase Hosting copy: landing at /, app at /app/ (build/hosting)
 scripts/build_release.sh apk|appbundle|ipa|web   # release builds (bash): obfuscated, symbols in build/debug-info/<version>/ (keep them: `flutter symbolize -i trace.txt -d build/debug-info/<version>/app.android-arm64.symbols` is the only way to read a stack trace); signing from android/key.properties / env (never committed)
 dart run flutter_launcher_icons      # regenerate app icons
 dart run flutter_native_splash:create  # regenerate splash screens (android/ios drawables + assets/images/splash*.png)

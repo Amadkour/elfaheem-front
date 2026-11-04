@@ -2274,6 +2274,18 @@ apps.
 **Consequences.** Every web build must use `--base-href /app/`, or `switch_web` refuses it. `firebase.json` (Firebase
 Hosting at its own root) was left as it is and does not match an `/app/` build; production is nginx.
 
+**Round 2 (2026-11-04, the owner's follow-up).** Testimonials: the owner asked for them "generated with premium
+touches"; they are NOT generated — invented quotes under real-looking names would mislead visitors. The section shows
+real reviews students wrote (`rates.review`, course or teacher, 15+ characters) that the super admin picked and ordered
+in the app's new "Landing page" screen (services hub, kill switch `admin.landing`), as "Ahmed M." + stars + course;
+hidden while none is picked. The public landing routes are rate limited per visitor IP (`X-Real-IP`, the API listens
+on 127.0.0.1 only), default 120 a minute (a school behind one address makes many visits), editable there (10 – 600,
+or off). The desktop hero's second column is a live preview of up to 3 real public courses
+(`GET /public/landing/highlights`, one request per view), an abstract drawing when it cannot load. Firebase Hosting
+gets the same layout (`scripts/build_firebase_hosting.sh`: landing at /, app at /app/, share links as 302s, every other
+old URL through 404.html, `PUBLIC_LANDING_API_BASE` for the landing's requests). The app builder runs
+`scripts/web/postbuild.dart` like the server build. Contract: `../back/docs/landing/CONTRACT.md`.
+
 ## D-170 — The browser's history follows the app's pages; one route registry · 2026-11-04 · accepted
 
 **Problem.** On the web, Home → page 2 → page 3 and browser Back left the site. Reproduced on a profile build against
