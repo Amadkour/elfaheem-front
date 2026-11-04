@@ -182,8 +182,8 @@ export function initHighlights(ctx: HlCtx) {
     prev.addEventListener('click', () => go(-1));
     next.addEventListener('click', () => go(1));
     track.addEventListener('scroll', syncNav, { passive: true });
-    if ('ResizeObserver' in window) new ResizeObserver(syncNav).observe(track);
-    else window.addEventListener('resize', syncNav);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(syncNav).observe(track);
+    else addEventListener('resize', syncNav);
   };
 
   const paintQuotes = () => {
