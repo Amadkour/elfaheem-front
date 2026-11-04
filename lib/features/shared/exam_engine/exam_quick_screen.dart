@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, t;
@@ -58,6 +59,8 @@ Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, Qui
           onExamPaper: q.isFile ? null : () => openExamPaper(context, examId: id, course: course));
       return id;
     }
+    // the wizard's "Online" step: the exam is taken in the app after all, so no printable paper
+    if (s != null && s.delivery == 'online') return id;
   }
   if (id != null && q.mode == QuickMode.offline && !q.isFile && context.mounted) await openExamPaper(context, examId: id, course: course);
   return id;
@@ -136,26 +139,73 @@ class SlotExamSheet extends StatelessWidget {
 
 // ═══════════════════════════════════════ Online or Offline ═══════════════════════════════════════════════════════
 
-/// The first and main question (plain values; under the layout harness).
-class QuickModeChooser extends StatelessWidget {
-  const QuickModeChooser({super.key, required this.onPick});
+/// How the creator starts: write the questions, have them generated, or upload a ready file.
+enum QuickStart { manual, generate, file }
+
+IconData quickTypeIcon(String type) => switch (type) {
+      'true_false' => Icons.rule_rounded,
+      'fill_blank' => Icons.space_bar_rounded,
+      'short_answer' => Icons.short_text_rounded,
+      'matching' => Icons.compare_arrows_rounded,
+      'essay' => Icons.notes_rounded,
+      _ => Icons.radio_button_checked_rounded,
+    };
+
+/// The first question of a new exam (plain values; under the layout harness).
+class QuickStartChooser extends StatelessWidget {
+  const QuickStartChooser({super.key, required this.onPick, required this.canGenerate});
+  final ValueChanged<QuickStart> onPick;
+  final bool canGenerate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppSectionTitle(t('كيف تريد إنشاء الاختبار؟', 'How do you want to create it?')),
+      _ModeCard(
+        icon: Icons.edit_note_rounded,
+        title: t('أنشئه يدوياً', 'Create manually'),
+        text: t('اكتب الأسئلة بنفسك: اختيار من متعدد، صح / خطأ، أكمل، مطابقة وغيرها', 'Write the questions yourself: multiple choice, true / false, complete, matching and more'),
+        onTap: () => onPick(QuickStart.manual),
+      ),
+      const SizedBox(height: AppSpace.sm),
+      _ModeCard(
+        icon: Icons.auto_awesome_rounded,
+        title: t('أنشئه لي', 'Generate for me'),
+        text: canGenerate
+            ? t('أسئلة من مستندات المقرر، تراجعها وتعدّلها قبل النشر', 'Questions written from the course documents; you review and edit them before publishing')
+            : t('يحتاج إلى مقرر: افتح الاختبار من داخل مقرر', 'Needs a course: start the exam from inside a course'),
+        onTap: canGenerate ? () => onPick(QuickStart.generate) : null,
+      ),
+      const SizedBox(height: AppSpace.sm),
+      _ModeCard(
+        icon: Icons.upload_file_rounded,
+        title: t('ارفع ملف امتحان جاهز', 'Upload a ready exam file'),
+        text: t('PDF أو Word أو صورة', 'A PDF, Word file or photo'),
+        onTap: () => onPick(QuickStart.file),
+      ),
+    ]);
+  }
+}
+
+/// The last question, once the questions are in: how will students take it (plain values; under the layout harness).
+class QuickDeliveryChooser extends StatelessWidget {
+  const QuickDeliveryChooser({super.key, required this.onPick});
   final ValueChanged<QuickMode> onPick;
 
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppSectionTitle(t('أين سيؤدي الطلاب الاختبار؟', 'Where will students sit the exam?')),
       _ModeCard(
         icon: Icons.devices_rounded,
-        title: t('إلكتروني', 'Online'),
+        title: quickModeTitle(QuickMode.online),
         text: t('يجيب الطلاب في التطبيق، والتصحيح تلقائي', 'Students answer in the app, grading is automatic'),
         onTap: () => onPick(QuickMode.online),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       _ModeCard(
-        icon: Icons.description_outlined,
-        title: t('ورقي', 'Offline'),
-        text: t('على الورق في القاعة، وتُدخل الدرجات بعدها', 'On paper in the room; you enter the marks after'),
+        icon: Icons.print_outlined,
+        title: quickModeTitle(QuickMode.offline),
+        text: t('ورقة للقاعة، وتُدخل الدرجات أو تمسح الإجابات بعدها', 'A paper for the room; you enter the marks or scan the answers after'),
         onTap: () => onPick(QuickMode.offline),
       ),
     ]);
@@ -166,12 +216,12 @@ class _ModeCard extends StatelessWidget {
   const _ModeCard({required this.icon, required this.title, required this.text, required this.onTap});
   final IconData icon;
   final String title, text;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return AppCard(
+    return Opacity(opacity: onTap == null ? .55 : 1, child: AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(18),
       child: Row(children: [
@@ -190,7 +240,7 @@ class _ModeCard extends StatelessWidget {
         ),
         Icon(Icons.chevron_right_rounded, color: c.textLight),
       ]),
-    );
+    ));
   }
 }
 
@@ -211,6 +261,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
   late final _title = TextEditingController(text: q.title);
   bool _busy = false;
   bool _tried = false;
+  late bool _started = q.questions.isNotEmpty || q.isFile;
   final _review = ExamGenReview();
   late final _learning = LearningApi();
 
@@ -253,15 +304,39 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     appToast(t('أُضيف ${got.items.length} سؤالاً — راجعها وعدّلها قبل النشر', '${got.items.length} questions added — review and edit them before publishing'));
   }
 
+  void _start(QuickStart s) {
+    setState(() {
+      _started = true;
+      if (s == QuickStart.file) q.source = QuickSource.file;
+    });
+    if (s == QuickStart.generate) _generate();
+  }
+
+  /// The last question: how will students take it.
+  Future<QuickMode?> _askDelivery() => showAppSheet<QuickMode>(
+      context,
+      (ctx) => AppSheetContent(
+          title: t('كيف سيؤدي الطلاب الاختبار؟', 'How will students take it?'),
+          children: [QuickDeliveryChooser(onPick: (m) => Navigator.pop(ctx, m))]));
+
   /// [editor]: save a draft and continue in the full editor (questions may still be missing there).
   Future<void> _save({required bool publish, bool editor = false}) async {
     q.title = _title.text;
+    if (editor) q.mode ??= QuickMode.online;
     final (all, perQ) = q.validate();
-    final errors = editor ? all.where((e) => e != 'no_questions' && e != 'file_required').toList() : all;
+    final errors = [
+      for (final e in all)
+        if (e != 'mode_required' && !(editor && (e == 'no_questions' || e == 'file_required'))) e
+    ];
     if (editor && q.isFile && !q.hasFile) q.source = QuickSource.questions;
     if (errors.isNotEmpty || perQ.isNotEmpty) {
       setState(() => _tried = true);
       return appToast(errors.isNotEmpty ? quickCodeText(errors.first) : t('أكمل الأسئلة المعلّمة', 'Complete the marked questions'), error: true);
+    }
+    if (q.mode == null) {
+      final m = await _askDelivery();
+      if (m == null || !mounted) return;
+      q.mode = m;
     }
     setState(() => _busy = true);
     final r = await createQuickExam(_api, q, publish: publish);
@@ -289,21 +364,18 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final (errors, perQ) = _tried ? q.validate() : (const <String>[], const <int, List<String>>{});
+    final (rawErrors, perQ) = _tried ? q.validate() : (const <String>[], const <int, List<String>>{});
+    final errors = rawErrors.where((e) => e != 'mode_required').toList();
     return BasePage(
       key: const ValueKey('exam.quick'),
       appBar: AppBar(title: Text(t('اختبار جديد', 'New exam')), actions: const [HelpInfoButton(pageId: 'teacher.exam_quick')]),
-      child: q.mode == null
-          ? SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), child: QuickModeChooser(onPick: (m) => setState(() => q.mode = m)))
+      child: !_started
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              child: QuickStartChooser(onPick: _start, canGenerate: q.courseId != null))
           : Column(children: [
               Expanded(
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), children: [
-                  Row(children: [
-                    AppBadgePill(q.mode == QuickMode.online ? t('إلكتروني', 'Online') : t('ورقي', 'Offline'),
-                        icon: q.mode == QuickMode.online ? Icons.devices_rounded : Icons.description_outlined),
-                    const SizedBox(width: 6),
-                    TextButton(onPressed: _busy ? null : () => setState(() => q.mode = null), child: Text(t('تغيير', 'Change'))),
-                  ]),
                   AppField(controller: _title, label: t('اسم الاختبار', 'Exam name'), onChanged: (v) => q.title = v),
                   const SizedBox(height: 12),
                   Wrap(spacing: 8, runSpacing: 8, children: [
@@ -348,12 +420,11 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                       ),
                     if (q.questions.isEmpty)
                       AppEmpty(icon: Icons.post_add_rounded, title: t('أضف أول سؤال', 'Add the first question'),
-                          message: t('اختيار من متعدد أو مقالي', 'Multiple choice or essay')),
+                          message: t('اختر نوع السؤال من الأسفل', 'Pick a question type below')),
                     const SizedBox(height: 6),
                     Wrap(spacing: 8, runSpacing: 8, children: [
-                      AppPill(icon: Icons.radio_button_checked_rounded, label: t('اختيار من متعدد', 'Multiple choice'),
-                          onTap: () => setState(() => q.questions.add(QuickQuestion.mcq()))),
-                      AppPill(icon: Icons.notes_rounded, label: t('مقالي', 'Essay'), onTap: () => setState(() => q.questions.add(QuickQuestion.essay()))),
+                      for (final ty in quickQuestionTypes)
+                        AppPill(icon: quickTypeIcon(ty), label: quickTypeLabel(ty), onTap: () => setState(() => q.questions.add(QuickQuestion.ofType(ty)))),
                     ]),
                   ],
                   const SizedBox(height: 14),
@@ -461,9 +532,12 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
   late final _key = TextEditingController(text: q.keyText);
   late final Map<int, TextEditingController> _opts = {for (final o in q.options) o.uid: TextEditingController(text: o.text)};
 
+  final Map<String, TextEditingController> _more = {};
+  TextEditingController _ctl(String key, String init) => _more.putIfAbsent(key, () => TextEditingController(text: init));
+
   @override
   void dispose() {
-    for (final x in [_prompt, _points, _key, ..._opts.values]) {
+    for (final x in [_prompt, _points, _key, ..._opts.values, ..._more.values]) {
       x.dispose();
     }
     super.dispose();
@@ -496,7 +570,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
           AppBadgePill('${widget.index + 1}', color: c.primary),
           const SizedBox(width: 8),
           Expanded(
-              child: Text(q.isEssay ? t('مقالي', 'Essay') : t('اختيار من متعدد', 'Multiple choice'),
+              child: Text(quickTypeLabel(q.type),
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textMedium))),
           SizedBox(
             width: 84,
@@ -519,12 +593,23 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
             controller: _prompt,
             minLines: 1,
             maxLines: 5,
-            decoration: InputDecoration(hintText: t('اكتب السؤال', 'Write the question')),
-            onChanged: (v) => q.prompt = v,
+            decoration: InputDecoration(
+                hintText: q.type == 'fill_blank' ? t('اكتب السؤال وضع ___ مكان كل فراغ', 'Write the text and put ___ where each blank goes') : t('اكتب السؤال', 'Write the question')),
+            onChanged: (v) {
+              q.prompt = v;
+              if (q.type == 'fill_blank') setState(() {});
+            },
           ),
         ),
         const SizedBox(height: 8),
-        if (!q.isEssay) ..._options(context) else ..._essay(context),
+        ...switch (q.type) {
+          'true_false' => _trueFalse(context),
+          'fill_blank' => _blanks(context),
+          'matching' => _pairs(context),
+          'mcq_single' => _options(context),
+          _ => _essay(context),
+        },
+        _difficulty(context),
         if (widget.errors.isNotEmpty)
           Padding(
             padding: const EdgeInsetsDirectional.only(top: 6, end: 8),
@@ -532,6 +617,127 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
           ),
       ]),
     );
+  }
+
+  Widget _difficulty(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(top: AppSpace.sm, end: AppSpace.xs),
+      child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text(t('الصعوبة', 'Difficulty'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+        for (var i = 1; i <= 5; i++)
+          AppChoiceChip(
+              label: '$i',
+              selected: q.difficulty == i,
+              onTap: () {
+                setState(() => q.difficulty = i);
+                widget.onChanged();
+              }),
+      ]),
+    );
+  }
+
+  List<Widget> _trueFalse(BuildContext context) {
+    final d = q.engine!;
+    void pick(bool v) {
+      setState(() => d.tfCorrect = v);
+      widget.onChanged();
+    }
+
+    return [
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        AppChoiceChip(label: t('صح', 'True'), icon: Icons.check_rounded, selected: d.tfCorrect == true, onTap: () => pick(true)),
+        AppChoiceChip(label: t('خطأ', 'False'), icon: Icons.close_rounded, selected: d.tfCorrect == false, onTap: () => pick(false)),
+      ]),
+    ];
+  }
+
+  List<Widget> _blanks(BuildContext context) {
+    final c = context.colors;
+    final d = q.engine!;
+    final marks = blankMarkers(q.prompt);
+    return [
+      if (marks > 0 && marks != d.blanks.length)
+        Padding(
+          padding: const EdgeInsetsDirectional.only(bottom: AppSpace.xs, end: AppSpace.xs),
+          child: Text(t('في النص $marks فراغات و${d.blanks.length} إجابات', 'The text has $marks blanks and ${d.blanks.length} answer lists'),
+              style: appText(12.5, c: c.warning)),
+        ),
+      for (var i = 0; i < d.blanks.length; i++)
+        Row(key: ValueKey('blank.${d.blanks[i].uid}'), children: [
+          Expanded(
+            child: TextField(
+              controller: _ctl('blank.${d.blanks[i].uid}', d.blanks[i].text),
+              decoration: InputDecoration(isDense: true, labelText: t('الفراغ ${i + 1}: الإجابات المقبولة', 'Blank ${i + 1}: accepted answers')),
+              onChanged: (v) {
+                d.blanks[i].text = v;
+                widget.onChanged();
+              },
+            ),
+          ),
+          if (d.blanks.length > 1)
+            IconButton(
+                onPressed: () {
+                  setState(() => _more.remove('blank.${d.blanks[i].uid}')?.dispose());
+                  setState(() => d.blanks.removeAt(i));
+                  widget.onChanged();
+                },
+                tooltip: t('حذف', 'Remove'),
+                icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+        ]),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(onPressed: () => setState(() => d.blanks.add(TextItem())), icon: const Icon(Icons.add_rounded, size: 18), label: Text(t('فراغ', 'Blank'))),
+      ),
+      Text(t('افصل الإجابات المقبولة بفواصل', 'Separate accepted answers with commas'), style: appText(12, c: c.textLight)),
+    ];
+  }
+
+  List<Widget> _pairs(BuildContext context) {
+    final c = context.colors;
+    final d = q.engine!;
+    return [
+      for (final p in d.pairs)
+        Row(key: ValueKey('pair.${p.uid}'), children: [
+          Expanded(
+            child: TextField(
+              controller: _ctl('pl.${p.uid}', p.left),
+              decoration: InputDecoration(isDense: true, hintText: t('العنصر', 'Item')),
+              onChanged: (v) {
+                p.left = v;
+                widget.onChanged();
+              },
+            ),
+          ),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.swap_horiz_rounded, size: 18, color: c.textLight)),
+          Expanded(
+            child: TextField(
+              controller: _ctl('pr.${p.uid}', p.right),
+              decoration: InputDecoration(isDense: true, hintText: t('يطابق', 'Matches')),
+              onChanged: (v) {
+                p.right = v;
+                widget.onChanged();
+              },
+            ),
+          ),
+          if (d.pairs.length > 2)
+            IconButton(
+                onPressed: () {
+                  setState(() {
+                    d.pairs.remove(p);
+                    _more.remove('pl.${p.uid}')?.dispose();
+                    _more.remove('pr.${p.uid}')?.dispose();
+                  });
+                  widget.onChanged();
+                },
+                tooltip: t('حذف', 'Remove'),
+                icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+        ]),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(onPressed: () => setState(() => d.pairs.add(MatchPair())), icon: const Icon(Icons.add_rounded, size: 18), label: Text(t('زوج', 'Pair'))),
+      ),
+    ];
   }
 
   List<Widget> _options(BuildContext context) {

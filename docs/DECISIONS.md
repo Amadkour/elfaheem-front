@@ -2229,6 +2229,51 @@ between steps.
 **Not done.** A real Windows (`flutter build windows`) or Android build through the runner: this PC has no Visual
 Studio, and the release keystore is not here. The first real ones run on the owner's PC.
 
+## D-165 — A static landing site at the root; the web app moves to /app/; first-run onboarding in the apps · 2026-11-04 · accepted
+
+**Context.** The site opened straight on the login screen, and so did a fresh install of the phone app: nothing showed
+what the platform offers before asking for an account. The owner asked for a welcoming page first (a sentence-builder
+search with live counts, trust numbers, how it works, features, FAQ, entry points for students, teachers and
+institutions), fast and well indexed in Arabic and English, and for 2–3 onboarding screens plus a guest search in the
+apps.
+
+**Decision** (the owner's brief, 2026-11-04).
+- **Landing = a separate static site** (`landing/`, Astro, no client framework, self-hosted fonts), built by
+  `scripts/build_landing.sh` (Docker `node` image when the machine has no node, as on the server). `/ar/` and `/en/`
+  are separate pages with hreflang, canonical, Open Graph, JSON-LD and a sitemap; `/` picks the language (saved choice,
+  then the browser) and first forwards a hash route (`/#/payment/callback`, still what `FLUTTER_APP_URL` callbacks
+  use) and an installed PWA started at `/` to `/app/`. Flutter web was not used for it: its first paint is a
+  multi-megabyte download, which a page meant to be found and opened cold cannot afford. The page prefetches the app's
+  bundle when idle, so `/app/` opens fast afterwards.
+- **The web app lives under `/app/`** (`--base-href /app/` in every web build: `scripts/build_release.sh`,
+  `codemagic.yaml`, the owner's `build_web.sh`). `lib/utils/web_base_path.dart` reads `<base href>`, and the start-URL
+  parsers strip it, so routes stay `/c/12`, `/login`. Share links keep their root form (`/c/<id>`, `/@name`,
+  `/verify/<t>`, `/live/<t>`): nginx sends a person on to `/app/…` (302, query kept) and every other unknown root path
+  too, so printed certificates and old mails keep working; `.well-known/*`, `/flutter_service_worker.js`,
+  `/firebase-messaging-sw.js` and `/releases/` stay at the root, and the landing ships a self-unregistering `/sw.js` for
+  browsers that registered the app's worker at `/`. The served build is still the live web release
+  (`/root/nextbrain/www/app` → `app_releases/web/current`), and `switch_web` refuses a build whose `<base href>` is not
+  `APP_WEB_BASE_HREF` (default `/app/`, code `web_base_href_mismatch`), so a rollback to a release built for the root
+  cannot blank the site. nginx: `../back/deploy/nginx/nextbrain.conf.example`; the live cutover is `deploy_landing.sh`
+  in the workspace root (backup, build, swap, `nginx -t`, smoke test, automatic rollback).
+- **Numbers come from three public, read-only routes** (`../back/routers/public_landing_router.py`): `stats`
+  (students, teachers, courses), `options` (subjects = top-level categories, levels = their children, only those with
+  public courses) and `match` (courses and distinct teachers for subject / level / mode). Counts only, cached 300 s per
+  process and by `Cache-Control`. "A course" is always the anonymous catalogue (`public_catalog_filter`: published,
+  not private, not archived, not a members-only organization course) — the same rule as an anonymous `GET /courses`,
+  so no organization's private course is counted. There is no "level" or "center" field on a course: level is the
+  sub-category, and `mode=center` means the course belongs to an organization (`OrgCourse`), `online` that it does not.
+  `GET /courses` takes the same `mode` plus `with_subcategories`.
+- **Apps:** a signed-out start on a phone / desktop opens the onboarding once (device-local flag), then the guest
+  search (the same sentence builder, live counts) with Log in / Create account; signed-in people never see it. On the
+  web the landing does the pitch, so a signed-out start stays on the login, and `/app/explore?subject=&level=&mode=&lang=`
+  (the landing's button) starts guest mode with those filters.
+- **Not invented:** testimonials come from `landing/src/content/testimonials.json`, empty until the owner adds real
+  ones (the section is hidden while empty); the trust badges name real features only.
+
+**Consequences.** Every web build must use `--base-href /app/`, or `switch_web` refuses it. `firebase.json` (Firebase
+Hosting at its own root) was left as it is and does not match an `/app/` build; production is nginx.
+
 ## D-170 — The browser's history follows the app's pages; one route registry · 2026-11-04 · accepted
 
 **Problem.** On the web, Home → page 2 → page 3 and browser Back left the site. Reproduced on a profile build against
@@ -2259,8 +2304,11 @@ rejected it for the same reason). The Router's own reporting (`currentConfigurat
 every in-app Back would ADD a browser entry (Back then walks forward again).
 
 **Known limits.** A page pushed without a name keeps the URL of the page under it: Back / Forward step through it, but
-a refresh opens the page under it. Pages get their own URL by being added to the registry and opened by name. Back on
+a refresh opens the page under it. Pages get their own URL by being added to the registry and opened by name. The course
+page has one wherever it opens from (`/courses/<id>`: `'/course-profile'` with the id, or `'/course-detail'` with the
+`CourseModel`, read through `AppRoutes.courseIdOf`). Back on
 the home tab's first page leaves the site, as on Android (the browser cannot be kept from leaving).
+
 ## D-171 — Web start-up: the splash paints first, and only the fonts of the first frame are downloaded · 2026-11-04 · accepted
 
 **Context.** Cold on production the HTML splash painted at about 1.24 s (TTFB 0.74 s) because two classic scripts in
@@ -2290,7 +2338,9 @@ effects; the start waits for the longest, not the sum. **Delivery** (front `scri
 `deploy/nginx/nextbrain.conf.example`): the main script and its deferred parts get a content hash and an `immutable`
 cache, every compressible file ≥ 1 KB a `.gz` / `.br` copy served by `gzip_static` / `brotli_static`, HTTP/2; no
 dynamic gzip, so API replies are unchanged. CanvasKit stays on Google's CDN (measured a wash; `--self-host-canvaskit`
-exists); the wasm renderer is not possible yet (`dart:html` in the checkout and data-lab web files).
+exists). No `dart:html` is left (the checkout and data-lab web files use `package:web`), so `flutter build web
+--wasm` compiles; production stays on the JS build until a measured trial (the skwasm renderer, the plugins' JS
+interop under wasm, and postbuild hashing / caching `main.dart.wasm` / `.mjs`).
 
 ## D-180 — One design system: the kit completed in lib/design, gradient as a touch with written rules · 2026-11-04 · accepted
 
@@ -2321,3 +2371,46 @@ screens are untouched until they opt in):
 **Not done here.** Migrating the ~100 existing call sites of the older widgets (`PrimaryButton`, `SearchBox`,
 `StatusChip`, `PremiumHero` …): each session moves its own screens when it touches them; the Super Admin pages move in
 D-181.
+
+## D-210 — One course-access rule, expiry enforced, an organization's charge stops at its own courses · 2026-11-04 · accepted
+
+**Context.** A student who paid for a six-month plan was told to "subscribe" again. The investigation (fix/subscriptions,
+Phase 1) found no expired or overwritten plan on the server: every six-month purchase of 20–29 Oct was active with the
+full 180 days. What it found instead: at least eight places decided course access on their own, all from
+`enrollments.status` and none from `expires_at` (an expired plan kept full access); an admin could drop a paid
+enrollment with no reason and no trace (student 228, course 9); the app told enrolled students whose next session was
+locked by progress to "complete the current session or subscribe"; and an organization with unset billing (the rule of
+2026-10-30) would 402 its student members on every call, including the courses they bought themselves.
+
+**Decision.**
+- `services/course_access.py` (`get_course_access` / `_many`) is the only rule. Order: staff → organization charge →
+  enrollment (ACTIVE / COMPLETED and now < `expires_at`; the expiry instant is expired) → pending / failed / refunded
+  payments. It returns `{has_access, reason, source, subscription_id, payment_id, plan, starts_at, expires_at, days_left,
+  status, flags}`; every course payload carries it as `access`, and `is_enrolled` means `access.reason == "enrolled"`.
+- Expiry is enforced. The app says "your plan ended on …, renew", never "subscribe", to someone who paid.
+- A course bought in the personal account stays open whatever an organization charges. An organization's account charge
+  gates only that organization's courses (402 `SUBSCRIPTION_REQUIRED`, reason `org_subscription_required`); the global
+  guard keeps 402-ing the whole app only for the platform-wide switch.
+- Every completed payment gets a plan (inferred from the price paid; the legacy single price was the yearly one). An
+  inferred end date in the past or within 14 days becomes now + 14 days, so nobody loses access on the day of the backfill.
+- Denied requests are refused with their exact reason: 403 `course_access_denied` + `reason`, logged as an
+  `access_denied` event (one per user, course and reason every 10 minutes).
+
+## D-211 — `subscription_events`: an append-only history of access and money state · 2026-11-04 · accepted
+
+One row per change (created, payment_succeeded, payment_failed, activated, renewed, expired, cancelled, refunded,
+admin_extended, admin_reactivated, admin_granted, plan_backfilled, access_denied), with the actor (system / admin /
+user / webhook), the reason and a before / after snapshot, written in the same transaction as the change.
+PostgreSQL refuses UPDATE and DELETE with a trigger and the app role loses those rights (the ledger's pattern, D-025).
+The past is backfilled once from payments, enrollments and platform subscriptions (`backfilled = true`, original times).
+Two types beyond the brief: `admin_granted` (access with no payment) and `plan_backfilled` (D-210's backfill).
+
+## D-212 — The Super Admin's Courses ↔ Students console · 2026-11-04 · accepted
+
+`/api/v1/admin/course-students/…` (super admin only; kill switch `admin.course_students`) and
+`lib/features/admin/course_students/`: courses with active / expiring / expired students, revenue and issues; each
+course's full roster with a status badge and the inconsistencies (paid without access, access without payment); a
+student drawer whose first block is the live access diagnostic per course, then the subscriptions, payments and the
+event timeline. Students are found by academic ID, national ID (shown masked), e-mail, phone or @username. Extend,
+reactivate, grant and cancel each need a reason and write one event plus a notification to the student. The older admin
+enroll / unenroll / re-subscribe calls keep working and now write events too.

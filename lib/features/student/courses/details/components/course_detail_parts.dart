@@ -19,6 +19,8 @@ import '../../../../shared/course/course_price_tag.dart';
 import '../../../../shared/course/course_space/course_space.dart';
 import '../../../models.dart';
 import '../growth_tr.dart';
+import '../../../../../core/course_access.dart';
+import 'course_access_parts.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -79,16 +81,19 @@ class CoursePriceBlock extends StatelessWidget {
 
 /// The gradient call to action ("Enroll now" / "Enroll for free").
 class CourseEnrollButton extends StatelessWidget {
-  const CourseEnrollButton({super.key, required this.free, required this.onTap});
+  const CourseEnrollButton({super.key, required this.free, required this.onTap, this.label});
 
   final bool free;
+
+  /// Overrides the default "Enroll now" (the renewal bar says "Renew").
+  final String? label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     // The price is right next to the button, so the label only carries the action.
-    final label = free ? gt('سجّل مجاناً الآن', 'Enroll for free') : gt('انضم الآن', 'Enroll now');
+    final label = this.label ?? (free ? gt('سجّل مجاناً الآن', 'Enroll for free') : gt('انضم الآن', 'Enroll now'));
     return Container(
       constraints: const BoxConstraints(minHeight: 52),
       decoration: BoxDecoration(
@@ -183,10 +188,13 @@ class CourseIncludedList extends StatelessWidget {
 
 /// Desktop side card before enrolling: price · payment status · enroll · what is included.
 class CourseBuyCard extends StatelessWidget {
-  const CourseBuyCard({super.key, required this.course, required this.onEnroll, this.status});
+  const CourseBuyCard({super.key, required this.course, required this.onEnroll, this.status, this.onSupport});
 
   final CourseModel course;
   final VoidCallback onEnroll;
+
+  /// "Contact support" for a cancelled / refunded course (null → the note only).
+  final VoidCallback? onSupport;
 
   /// The pending / rejected payment notice (ManualTransferStatusBanner), right above the button.
   final Widget? status;
@@ -202,7 +210,7 @@ class CourseBuyCard extends StatelessWidget {
           CoursePriceBlock(course: course),
           const SizedBox(height: 16),
           ?status,
-          CourseEnrollButton(free: (course.finalPrice ?? 0) == 0, onTap: onEnroll),
+          ..._accessActions(course, onEnroll, onSupport),
           const SizedBox(height: 18),
           Divider(height: 1, color: c.divider),
           const SizedBox(height: 14),
@@ -263,12 +271,56 @@ class CourseEnrolledCard extends StatelessWidget {
   }
 }
 
+/// The enroll button, or "Renew" when the plan ended (with the end date under it).
+Widget _renewOrEnrollButton(CourseModel course, VoidCallback onEnroll) {
+  final mode = enrollBarMode(enrolled: course.isEnrolled, access: course.access);
+  final free = (course.finalPrice ?? 0) == 0;
+  if (mode != EnrollBarMode.renew) return CourseEnrollButton(free: free, onTap: onEnroll);
+  final sub = renewSubtitle(course.access);
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      CourseEnrollButton(free: false, label: 'course_renew_btn'.tr, onTap: onEnroll),
+      if (sub != null)
+        Builder(
+          builder: (context) => Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              sub,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.textMedium),
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
+/// What stands where the buy button was: the button (subscribe / renew), or a note (payment review, support).
+List<Widget> _accessActions(CourseModel course, VoidCallback onEnroll, VoidCallback? onSupport) {
+  final mode = enrollBarMode(enrolled: course.isEnrolled, access: course.access);
+  if (mode == EnrollBarMode.pending || mode == EnrollBarMode.support) {
+    return [
+      CourseAccessNote(mode: mode, access: course.access),
+      if (mode == EnrollBarMode.support && onSupport != null) ...[
+        const SizedBox(height: 8),
+        TextButton(onPressed: onSupport, child: Text('course_access_support_btn'.tr)),
+      ],
+    ];
+  }
+  return [_renewOrEnrollButton(course, onEnroll)];
+}
+
 /// Phones: the sticky price + enroll bar (the caller hides it once enrolled).
 class CourseBuyBar extends StatelessWidget {
-  const CourseBuyBar({super.key, required this.course, required this.onEnroll, this.status});
+  const CourseBuyBar({super.key, required this.course, required this.onEnroll, this.status, this.onSupport});
 
   final CourseModel course;
   final VoidCallback onEnroll;
+  final VoidCallback? onSupport;
   final Widget? status;
 
   @override
@@ -286,13 +338,17 @@ class CourseBuyBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           ?status,
-          Row(
-            children: [
-              Expanded(flex: 5, child: CoursePriceBlock(course: course, compact: true)),
-              const SizedBox(width: 14),
-              Expanded(flex: 6, child: CourseEnrollButton(free: (course.finalPrice ?? 0) == 0, onTap: onEnroll)),
-            ],
-          ),
+          if (enrollBarMode(enrolled: course.isEnrolled, access: course.access) == EnrollBarMode.subscribe ||
+              enrollBarMode(enrolled: course.isEnrolled, access: course.access) == EnrollBarMode.renew)
+            Row(
+              children: [
+                Expanded(flex: 5, child: CoursePriceBlock(course: course, compact: true)),
+                const SizedBox(width: 14),
+                Expanded(flex: 6, child: _renewOrEnrollButton(course, onEnroll)),
+              ],
+            )
+          else
+            ..._accessActions(course, onEnroll, onSupport),
         ],
       ),
     );

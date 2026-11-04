@@ -11,6 +11,8 @@ import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNa
 import 'package:flutter/services.dart';
 import 'package:floating/floating.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
+import 'package:flutter_education_app/core/course_access.dart';
+import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:provider/provider.dart';
@@ -384,6 +386,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         final local = await OfflineVideoService.instance
             .localVariant(_current.sessionId, _current.id);
         if (!mounted) return;
+        if (local != null && await _accessEndedForCopy()) return; // refused: the plan ended (D-210)
+        if (!mounted) return;
         if (local != null) {
           setState(() {
             _isOffline = true;
@@ -433,6 +437,38 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     await _initPlayer(_activeVariant, autoPlay: widget.autoPlay);
   }
 
+  /// Online + the server DEFINITELY says the plan ended / was cancelled / refunded → the downloaded copy stays on the
+  /// device but does not play; the student is told why and may remove it. Offline, a network error, a timeout or a
+  /// copy whose course is unknown → plays (the copy's own 30-day rule still applies).
+  Future<bool> _accessEndedForCopy() async {
+    final online = AppConnectivity.instance.isOnline;
+    if (!online) return false;
+    final courseId = await OfflineVideoService.instance.courseIdOf(_current.sessionId, _current.id);
+    if (courseId == null) return false;
+    CourseAccess? access;
+    try {
+      access = await CourseAccessApi().one(courseId).timeout(const Duration(seconds: 6));
+    } catch (_) {
+      access = null; // fail open
+    }
+    if (offlineVerdict(online: online, courseKnown: true, access: access) != OfflineVerdict.refuse) return false;
+    if (!mounted) return true;
+    final remove = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('dl_access_ended_title'.tr),
+        content: Text(accessReasonText(access!)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(offlineT('dl_ok'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('dl_access_remove'.tr)),
+        ],
+      ),
+    );
+    if (remove == true) await OfflineVideoService.instance.delete(_current.sessionId, _current.id);
+    if (mounted) Navigator.of(context).maybePop();
+    return true;
+  }
+
   Future<void> _handlePlayError(ApiException e) async {
     if (e.isDeviceBlocked) {
       final p = DeviceSecurityProvider();
@@ -462,7 +498,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         ),
       );
     } else {
-      Helpers.showMessage(e.message);
+      Helpers.showMessage(accessDeniedText(e) ?? e.message);
     }
     if (mounted) Navigator.of(context).maybePop();
   }
@@ -1380,6 +1416,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         title: _mat.name,
         description: _mat.description,
         captionsUrl: _mat.captionsUrl,
+        courseId: int.tryParse(_progressProvider?.course.id.toString() ?? ''),
         variant: _activeVariant,
       );
       if (!mounted) return;

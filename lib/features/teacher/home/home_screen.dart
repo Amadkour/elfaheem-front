@@ -42,7 +42,6 @@ import 'package:flutter_education_app/features/shared/course/course_scope.dart' 
 import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart' show kInboxFeatureKey;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
     show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
-import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart' show HomeLiveNow;
 import 'package:flutter_education_app/features/student/home/home_screen.dart' show orgModeDaySummary;
@@ -64,7 +63,6 @@ import '../../student/dashboard/dashboard_screen.dart';
 import '../courses/component/teacher_stats.dart';
 import '../home/teacher_models.dart';
 import '../sessions/sessions_provider.dart';
-import '../sessions/sessions_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 

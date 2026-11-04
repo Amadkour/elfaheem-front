@@ -242,6 +242,8 @@ String releaseErrorText(String? code, String fallback, {Map<String, dynamic> ext
       'not_publishable' => t('الإصدار ليس جاهزاً للنشر', 'This version is not ready to go live'),
       'not_live' => t('هذا الإصدار ليس المنشور الآن', 'This version is not the live one'),
       'rollback_unavailable' => t('لا يوجد إصدار سابق منشور (أو حُذفت ملفاته) للرجوع إليه', 'There is no earlier live version (or its files are gone) to go back to'),
+      'web_base_href_mismatch' => t('نسخة الويب هذه بُنيت لمسار غير /app/ (قبل نقل التطبيق تحت /app) فلن تعمل — ابنِ إصداراً جديداً',
+          'This web build was made for a path other than /app/ (before the app moved under /app) and would not load — build a new version'),
       'artifacts_missing' => t('انتهى البناء دون كل الملفات المطلوبة', 'The build ended without every required file'),
       'channel_not_configured' => t('هذه القناة غير مُعدّة بعد على الخادم — ما ينقصها مذكور أعلى الزر', 'This channel is not set up on the server yet — what is missing is listed above the button'),
       'channel_invalid' => t('هذه القناة لا تناسب المنصة', 'This channel does not fit the platform'),

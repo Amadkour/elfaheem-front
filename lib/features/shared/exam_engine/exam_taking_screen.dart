@@ -22,6 +22,7 @@ import 'exam_consent_screen.dart';
 import 'exam_engine_api.dart';
 import 'exam_integrity.dart';
 import 'exam_result_screen.dart';
+import 'exam_media.dart';
 import 'exam_taking.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/core/api_error_text.dart';
@@ -388,6 +389,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
                       enabled: !_locked && !_finished,
                       onAnswer: (a) => _answer(q, a),
                       onPickFile: () => _uploadFile(q),
+                      attemptId: _attemptId,
                     ),
                   ),
                 ),
@@ -481,7 +483,7 @@ class ExamProgressBar extends StatelessWidget {
 }
 
 class ExamQuestionCard extends StatefulWidget {
-  const ExamQuestionCard({super.key, required this.question, required this.section, required this.enabled, required this.onAnswer, this.onPickFile});
+  const ExamQuestionCard({super.key, required this.question, required this.section, required this.enabled, required this.onAnswer, this.onPickFile, this.attemptId, this.mediaApi});
   final PaperQuestion question;
   final PaperSection section;
   final bool enabled;
@@ -489,6 +491,10 @@ class ExamQuestionCard extends StatefulWidget {
 
   /// `file_upload`: pick and upload the answer file.
   final VoidCallback? onPickFile;
+
+  /// The attempt the paper belongs to: with it the question's image is shown (null = no image, e.g. offline sittings).
+  final int? attemptId;
+  final QuestionMediaApi? mediaApi;
 
   @override
   State<ExamQuestionCard> createState() => _ExamQuestionCardState();
@@ -538,6 +544,10 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
             const SizedBox(width: 8),
             Text(t('${q.points} د', '${q.points} pt'), style: appText(12.5, c: c.textLight)),
           ]),
+          if (q.image != null && widget.attemptId != null) ...[
+            const SizedBox(height: 12),
+            Center(child: QuestionImage.attempt(attemptId: widget.attemptId!, media: QuestionMedia(q.image!.id, q.image!.alt), api: widget.mediaApi)),
+          ],
           const SizedBox(height: 14),
           ..._body(context, q, a),
         ]),

@@ -54,7 +54,6 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../sessions/components/guest_link_sheet.dart';
 import '../sessions/live/join_args.dart';
 import '../sessions/sessions_provider.dart';
-import '../sessions/sessions_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -10,6 +10,8 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/course_access.dart';
+import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
@@ -42,6 +44,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   final OfflineVideoService _svc = OfflineVideoService.instance;
   List<OfflineItem> _items = const [];
   bool _loading = true;
+  final Set<int> _endedCourses = {}; // courses whose plan ended / was withdrawn (server answer, online only)
   int _tab = 0; // 0 = Downloads, 1 = Attendance (works offline, courses stored locally)
 
   @override
@@ -64,6 +67,27 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       _items = items;
       _loading = false;
     });
+    _refreshAccess(items);
+  }
+
+  /// Online: ONE bulk call for every downloaded course; a definite "no access" marks its videos "Access ended".
+  /// A network error, a timeout or no connection changes nothing (fail open).
+  Future<void> _refreshAccess(List<OfflineItem> items) async {
+    if (!AppConnectivity.instance.isOnline) return;
+    final ids = {for (final i in items) ?i.courseId};
+    if (ids.isEmpty) return;
+    try {
+      final map = await CourseAccessApi().many(ids).timeout(const Duration(seconds: 8));
+      if (!mounted) return;
+      setState(() {
+        _endedCourses
+          ..clear()
+          ..addAll([
+            for (final e in map.entries)
+              if (offlineVerdict(online: true, courseKnown: true, access: e.value) == OfflineVerdict.refuse) e.key,
+          ]);
+      });
+    } catch (_) {}
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -242,6 +266,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                           item: it,
                           sizeLabel: _fmtSize(it.sizeBytes),
                           expiryLabel: _fmtExpiry(it.expiresAt),
+                          accessEnded: it.courseId != null && _endedCourses.contains(it.courseId),
                           onTap: () => _open(it),
                           onDelete: () => _delete(it),
                         ),
@@ -379,6 +404,7 @@ class _DownloadTile extends StatelessWidget {
     required this.item,
     required this.sizeLabel,
     required this.expiryLabel,
+    this.accessEnded = false,
     required this.onTap,
     required this.onDelete,
   });
@@ -386,6 +412,7 @@ class _DownloadTile extends StatelessWidget {
   final OfflineItem item;
   final String sizeLabel;
   final String expiryLabel;
+  final bool accessEnded;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
@@ -439,6 +466,7 @@ class _DownloadTile extends StatelessWidget {
                       _Chip(item.tier.label, c.primary),
                       _Chip(sizeLabel, c.textMedium),
                       _Chip(expiryLabel, c.textLight),
+                      if (accessEnded) _Chip('dl_access_ended'.tr, c.danger),
                     ]),
                   ],
                 ),

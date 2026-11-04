@@ -38,7 +38,6 @@ import '../../student/courses/details/course_detail_screen.dart' show CourseDeta
 import '../../student/models.dart' show CourseModel;
 import '../../teacher/home/teacher_models.dart' show TeacherCourse;
 import '../../teacher/sessions/sessions_provider.dart' show TeacherCourseScreenProvider;
-import '../../teacher/sessions/sessions_screen.dart' show TeacherSessionsScreen;
 import '../course/course_space/course_space.dart';
 import '../rag/rag_chat_screen.dart' show RagChatScreen;
 import 'course_profile_announcements.dart';
@@ -571,7 +570,7 @@ class _CoursePageLoaderState extends State<CoursePageLoader> {
     }
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(settings: const RouteSettings(name: '/course-detail'), builder: (_) => page),
+      MaterialPageRoute(settings: RouteSettings(name: '/course-detail', arguments: widget.courseId), builder: (_) => page),
     );
   }
 

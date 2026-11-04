@@ -1,0 +1,287 @@
+---
+import Base from '../layouts/Base.astro';
+import { ar } from '../i18n/ar';
+import { en } from '../i18n/en';
+import { SITE, APP, API, jsonForScript } from '../config';
+import testimonials from '../content/testimonials.json';
+import { loadBuildData } from '../data/remote';
+import logo from '../assets/logo_mark.png';
+import { Image } from 'astro:assets';
+
+interface Props {
+  lang: 'ar' | 'en';
+  preload: string[];
+}
+const { lang, preload } = Astro.props;
+const t = lang === 'ar' ? ar : en;
+const other = t.switchTo.lang;
+const base = `/${lang}/`;
+const q = `lang=${lang}`;
+const explore = `${APP}/explore?${q}`;
+const year = new Date().getFullYear();
+
+const { stats, options } = await loadBuildData();
+
+// Rounded down, "1,200+" style (same rule as the client script).
+const fmt = new Intl.NumberFormat(t.locale);
+function approx(n: unknown): string {
+  if (typeof n !== 'number' || !isFinite(n) || n <= 0) return '—';
+  if (n < 10) return fmt.format(n);
+  const mag = Math.pow(10, Math.floor(Math.log10(n)) - (n >= 100 ? 1 : 0));
+  return fmt.format(Math.floor(n / mag) * mag) + '+';
+}
+const statKeys = ['students', 'teachers', 'courses'] as const;
+
+const entryHref: Record<string, string> = {
+  student: explore,
+  teacher: `${APP}/register?role=teacher&${q}`,
+  institution: `${APP}/start/institution?${q}`,
+};
+
+const items = (testimonials as Array<Record<string, string>>) || [];
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'NextBrain',
+    alternateName: 'نكست برين',
+    url: SITE,
+    logo: `${SITE}/logo-512.png`,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'NextBrain',
+    url: SITE,
+    inLanguage: lang,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    inLanguage: lang,
+    mainEntity: t.faq.items.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  },
+];
+
+const dictForScript = {
+  courses: t.hero.courses,
+  teachers: t.hero.teachers,
+  resultLine: t.hero.resultLine,
+  empty: t.hero.resultEmpty,
+  anyLevel: t.hero.anyLevel,
+  anySubject: t.hero.anySubject,
+};
+
+const icons = [
+  'M4 5h16v11H4zM8 20h8M12 16v4', // live: screen
+  'M5 4l14 8-14 8z', // play
+  'M5 4h14v16H5zM9 9h6M9 13h6', // exam
+  'M4 12l5 5L20 6', // attendance
+  'M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z', // ai
+  'M4 20V9l8-5 8 5v11zM9 20v-6h6v6', // institution
+];
+---
+
+<Base lang={lang} title={t.title} description={t.description} path={base} ogAlt={t.ogAlt} jsonLd={jsonLd} preload={preload}>
+  <a class="skip" href="#main">{t.skip}</a>
+  <header class="header">
+    <div class="wrap header__in">
+      <a class="brand" href={base} aria-label={t.name}>
+        <Image src={logo} alt="" width={96} height={54} loading="eager" />
+        <span>{t.name}</span>
+      </a>
+      <nav class="nav" aria-label={t.menuLabel}>
+        <a href="#how">{t.nav.how}</a>
+        <a href="#features">{t.nav.features}</a>
+        <a href="#start">{t.nav.entry}</a>
+        <a href="#faq">{t.nav.faq}</a>
+      </nav>
+      <div class="header__end">
+        <a class="langsw" href={`/${other}/`} hreflang={other} lang={other} title={t.switchTo.title} data-setlang={other}
+          >{t.switchTo.label}</a
+        >
+        <a class="btn" href={`${APP}/login`}>{t.login}</a>
+      </div>
+    </div>
+  </header>
+
+  <main
+    id="nb"
+    data-lang={lang}
+    data-api={API}
+    data-app={APP}
+    data-dict={JSON.stringify(dictForScript)}
+  >
+    <section id="main" class="hero" aria-labelledby="hero-title">
+      <div class="wrap">
+        <span class="hero__kicker">{t.hero.kicker}</span>
+        <h1 id="hero-title">{t.hero.title}</h1>
+        <form class="sentence" onsubmit="return false" aria-label={t.hero.title}>
+          <span>{t.hero.iWant}</span>
+          <label>
+            <span class="sr">{t.hero.subject}</span>
+            <select id="nb-subject" name="subject">
+              <option value="">{t.hero.anySubject}</option>
+              {options?.subjects?.map((s) => (
+                <option value={String(s.id)}>{lang === 'ar' ? s.name_ar : s.name_en}</option>
+              ))}
+            </select>
+          </label>
+          <span id="nb-level-wrap" hidden>
+            <span>{t.hero.forLevel}</span>
+            <label>
+              <span class="sr">{t.hero.level}</span>
+              <select id="nb-level" name="level">
+                <option value="">{t.hero.anyLevel}</option>
+              </select>
+            </label>
+          </span>
+          <label>
+            <span class="sr">{t.hero.mode}</span>
+            <select id="nb-mode" name="mode">
+              <option value="any">{t.hero.modes.any}</option>
+              <option value="online">{t.hero.modes.online}</option>
+              <option value="center">{t.hero.modes.center}</option>
+            </select>
+          </label>
+        </form>
+        <p id="nb-result" class="hero__result" aria-live="polite" aria-atomic="true">{t.hero.resultEmpty}</p>
+        <div class="hero__actions">
+          <a id="nb-cta" class="btn" href={explore}>{t.hero.cta}</a>
+          <a class="btn btn--ghost" href={explore}>{t.hero.browse}</a>
+        </div>
+        {options?.subjects?.length ? (
+          <script type="application/json" id="nb-options" set:html={jsonForScript(options)} />
+        ) : null}
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="trust-t">
+      <div class="wrap">
+        <h2 id="trust-t">{t.trust.title}</h2>
+        <ul class="stats">
+          {statKeys.map((k) => (
+            <li class="stat">
+              <b data-stat={k} data-baked={stats ? '1' : '0'}>{stats ? approx(stats[k]) : '—'}</b>
+              <span>{t.trust.stats[k]}</span>
+            </li>
+          ))}
+        </ul>
+        <ul class="badges">
+          {t.trust.badges.map((b) => <li>{b}</li>)}
+        </ul>
+      </div>
+    </section>
+
+    <section id="how" class="section section--alt" aria-labelledby="how-t">
+      <div class="wrap">
+        <h2 id="how-t">{t.how.title}</h2>
+        <ol class="grid grid--3">
+          {t.how.steps.map((s, i) => (
+            <li class="card">
+              <span class="num" aria-hidden="true">{i + 1}</span>
+              <h3>{s.t}</h3>
+              <p>{s.d}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    <section id="features" class="section" aria-labelledby="feat-t">
+      <div class="wrap">
+        <h2 id="feat-t">{t.features.title}</h2>
+        <ul class="grid grid--3">
+          {t.features.items.map((f, i) => (
+            <li class="card">
+              <span class="ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d={icons[i]} />
+                </svg>
+              </span>
+              <h3>{f.t}</h3>
+              <p>{f.d}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    {items.length > 0 && (
+      <section class="section section--alt" aria-labelledby="test-t">
+        <div class="wrap">
+          <h2 id="test-t">{t.testimonials.title}</h2>
+          <ul class="grid grid--3">
+            {items.map((x) => (
+              <li class="card quote">
+                <blockquote style="margin:0">
+                  <p>{lang === 'ar' ? x.quote_ar : x.quote_en}</p>
+                  <footer>{x.name} · {lang === 'ar' ? x.role_ar : x.role_en}</footer>
+                </blockquote>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )}
+
+    <section id="start" class="section entry" aria-labelledby="start-t">
+      <div class="wrap">
+        <h2 id="start-t">{t.entry.title}</h2>
+        <ul class="grid grid--3">
+          {t.entry.cards.map((c) => (
+            <li class="card">
+              <h3>{c.t}</h3>
+              <p>{c.d}</p>
+              <a class="btn" href={entryHref[c.k]}>{c.cta}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <section id="faq" class="section section--alt" aria-labelledby="faq-t">
+      <div class="wrap">
+        <h2 id="faq-t">{t.faq.title}</h2>
+        <div class="faq">
+          {t.faq.items.map((f) => (
+            <details>
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer__in">
+      <div>
+        <strong>{t.name}</strong>
+        <small>{t.footer.tagline}</small>
+        <small>© {year} {t.name}. {t.footer.rights}.</small>
+      </div>
+      <nav aria-label={t.footer.links}>
+        <a href="#how">{t.nav.how}</a>
+        <a href="#features">{t.nav.features}</a>
+        <a href="#faq">{t.nav.faq}</a>
+        <a href={`${APP}/login`}>{t.login}</a>
+        <a href={`/${other}/`} hreflang={other} lang={other} data-setlang={other}>{t.switchTo.label}</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div id="nb-sticky" class="sticky">
+    <a id="nb-sticky-cta" class="btn" href={explore}>{t.sticky}</a>
+  </div>
+
+  <script>
+    import '../scripts/landing.ts';
+  </script>
+</Base>

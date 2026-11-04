@@ -21,9 +21,11 @@ import 'package:flutter_education_app/design/app_display.dart' show syncMotionLo
 const double _kWideBreakpoint = 840;
 
 class CategoriesScreen extends StatefulWidget {
-  const CategoriesScreen({super.key, this.selectedId});
+  const CategoriesScreen({super.key, this.selectedId, this.mode});
 
   final String? selectedId;
+  /// The guest search's filter ('any' / 'online' / 'center'); null for every other caller.
+  final String? mode;
 
   @override
   State<CategoriesScreen> createState() => _CategoriesScreenState();
@@ -35,12 +37,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   void initState() {
     super.initState();
+    context.read<CategoriesProvider>().setExploreMode(widget.mode);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoriesProvider>().fetchCategories();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.selectedId != null) {
-        context.read<CategoriesProvider>().selectCategory(widget.selectedId!);
+        context.read<CategoriesProvider>().selectCategory(widget.selectedId!, force: widget.mode != null);
       } else {
         context.read<CategoriesProvider>().clearSelection();
       }
@@ -694,13 +697,15 @@ class _CourseCardState extends State<_CourseCard> {
       onExit: (_) => setState(() => _hovering = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CourseDetailScreen(
-              course: CourseModel.fromCategoryModel(course),
+        onTap: () {
+          final model = CourseModel.fromCategoryModel(course);
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              settings: RouteSettings(name: '/course-detail', arguments: model),
+              builder: (_) => CourseDetailScreen(course: model),
             ),
-          ),
-        ),
+          );
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           transform: Matrix4.translationValues(0, _hovering ? -4 : 0, 0),
