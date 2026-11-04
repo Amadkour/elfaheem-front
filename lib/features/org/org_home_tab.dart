@@ -11,21 +11,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppErrorState, AppListSkeleton, AppRefresh, AppSpace, AppTime;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../admin/admin_common.dart';
-import 'org_academic_pages.dart' show MyAcademicPathPage;
 import 'org_availability_pages.dart' show AvailabilityRequestScreen;
 import 'org_common.dart';
 import 'org_departments_page.dart' show DeptLogo, featureLabels;
+import 'org_member_parts.dart';
 import 'org_member_space.dart' show OrgFormFillScreen, showComplaintComposer;
 import 'org_my_exams.dart' show appToday, examPauseBanner, examPauseOn, examPausesOf;
 import 'org_providers.dart' show orgBase;
 import 'org_ui.dart';
-import 'home_org_mix.dart' show showPlatformRequirement;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'home_org_mix.dart' show academicPathRoute, showPlatformRequirement;
 
 /// 0 = my courses · 1 = my organization (kept while the app runs)
 final ValueNotifier<int> homeTab = ValueNotifier(0);
@@ -47,7 +44,7 @@ Future<Map<String, dynamic>?> _mix({bool refresh = false}) async {
 }
 
 class HomeTabsBar extends StatefulWidget {
-  const HomeTabsBar({super.key, this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 14)});
+  const HomeTabsBar({super.key, this.padding = const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.sm)});
   final EdgeInsetsGeometry padding;
 
   @override
@@ -79,45 +76,20 @@ class _HomeTabsBarState extends State<HomeTabsBar> {
           return const SizedBox.shrink();
         }
         if (!homeInOrg.value) return const SizedBox.shrink();
-        final c = context.colors;
         final org = asMapList(_mixCache?['organizations']).firstOrNull ?? const {};
-        Widget tab(int i, IconData icon, String label) {
-          final on = homeTab.value == i;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => homeTab.value = i,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: on ? LinearGradient(colors: [c.primary, c.primaryDark]) : null,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: on ? [BoxShadow(color: c.primary.withValues(alpha: 0.28), blurRadius: 14, offset: const Offset(0, 6))] : null,
-                ),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(icon, size: 19, color: on ? c.onHero : c.textMedium),
-                  const SizedBox(width: 8),
-                  Flexible(child: Text(label, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: on ? c.onHero : c.textMedium))),
-                ]),
-              ),
-            ),
-          );
-        }
         return Padding(
           padding: widget.padding,
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 640),
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: c.divider), boxShadow: c.cardShadow),
-                child: Row(children: [
-                  tab(0, Icons.auto_stories_rounded, t('كورساتي', 'My courses')),
-                  tab(1, Icons.account_balance_rounded, org.isEmpty ? t('مؤسستي', 'My organization') : orgNameOf(org)),
-                ]),
+              child: AppTabs(
+                expand: true,
+                index: homeTab.value,
+                onChanged: (i) => homeTab.value = i,
+                items: [
+                  AppTabItem(t('كورساتي', 'My courses'), icon: Icons.auto_stories_rounded),
+                  AppTabItem(org.isEmpty ? t('مؤسستي', 'My organization') : orgNameOf(org), icon: Icons.account_balance_rounded),
+                ],
               ),
             ),
           ),
@@ -205,8 +177,7 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
       case 'platform':
         await showPlatformRequirement(context, r);
       case 'department_choice':
-        await nav.push(MaterialPageRoute(builder: (_) => BasePage(useWebCard: true, maxWith: 760,
-            appBar: ScreenAppBar(title: t('مساري الأكاديمي', 'My academic path')), child: MyAcademicPathPage(orgId: asInt(r['org_id'])))));
+        await nav.push(academicPathRoute(asInt(r['org_id'])));
       default:
         _openSpace(4);                                   // regulations
     }
@@ -240,151 +211,183 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
     final todayStr = day.toIso8601String().substring(0, 10); // the AppTime day, like the classes above
     final todayExtras = _extras.where((e) => e['date'] == todayStr).toList();
     final upcoming = _extras.where((e) => '${e['date']}'.compareTo(todayStr) > 0).take(3).toList();
+    final logo = '${org['logo_url'] ?? ''}';
+    final col = orgColor(context, org);
     return AppRefresh(
       onRefresh: _load,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xl),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1000),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              // ── who ──
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  gradient: LinearGradient(begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd,
-                      colors: [orgColor(context, org), c.heroEnd(orgColor(context, org), 0.35)]),
-                ),
-                child: Row(children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(color: c.onHero, borderRadius: BorderRadius.circular(16)),
-                    clipBehavior: Clip.antiAlias,
-                    child: '${org['logo_url'] ?? ''}'.isEmpty
-                        ? Icon(orgTypeIcons[org['type']] ?? Icons.account_balance_rounded, color: orgColor(context, org))
-                        : Image.network('${org['logo_url']}', fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Icon(Icons.account_balance_rounded, color: orgColor(context, org))),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(orgNameOf(org), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 18, fontWeight: FontWeight.w800)),
-                    Text(orgTypeLabels()[org['type']] ?? '', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero.withValues(alpha: 0.85))),
-                  ])),
-                  if (orgs.length > 1)
-                    PopupMenuButton<int>(
-                      icon: Icon(Icons.swap_horiz_rounded, color: c.onHero),
-                      onSelected: (v) {
-                        _orgId = v;
-                        _load();
-                      },
-                      itemBuilder: (_) => [for (final o in orgs) PopupMenuItem(value: asInt(o['id']), child: Text(orgNameOf(o)))],
+              // ── who: a calm card (the tab above already names it; the gradient belongs to the page header) ──
+              AppCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(children: [
+                    Container(
+                      width: AppTouch.primary,
+                      height: AppTouch.primary,
+                      decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.card)),
+                      clipBehavior: Clip.antiAlias,
+                      child: logo.isEmpty
+                          ? Icon(orgTypeIcons[org['type']] ?? Icons.account_balance_rounded, color: col)
+                          : Image.network(logo, fit: BoxFit.cover, errorBuilder: (_, _, _) => Icon(Icons.account_balance_rounded, color: col)),
                     ),
-                  IconButton(onPressed: () => _openSpace(), icon: Icon(Icons.open_in_new_rounded, color: c.onHero),
-                      tooltip: t('مساحة المؤسسة', 'Organization space')),
+                    AppSpace.gapSm,
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(orgNameOf(org), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                        if ((orgTypeLabels()[org['type']] ?? '').isNotEmpty)
+                          Text(orgTypeLabels()[org['type']] ?? '', style: AppType.meta(context)),
+                      ]),
+                    ),
+                    if (orgs.length > 1)
+                      PopupMenuButton<int>(
+                        tooltip: t('تبديل المؤسسة', 'Switch organization'),
+                        icon: Icon(Icons.swap_horiz_rounded, color: c.textMedium),
+                        onSelected: (v) {
+                          _orgId = v;
+                          _load();
+                        },
+                        itemBuilder: (_) => [for (final o in orgs) PopupMenuItem(value: asInt(o['id']), child: Text(orgNameOf(o)))],
+                      ),
+                  ]),
+                  AppSpace.gapSm,
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: AppPill(
+                      label: t('فتح مساحة المؤسسة', 'Open the organization space'),
+                      icon: Icons.apartment_rounded,
+                      onTap: () => _openSpace(),
+                    ),
+                  ),
                 ]),
               ),
               // ── what needs me ──
               if (req.isNotEmpty) ...[
-                _title(t('مطلوب منك', 'Needs your action'), Icons.notification_important_rounded, c.warning),
-                for (final r in req)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: OrgActionCard(
-                      icon: {'form': Icons.edit_document, 'availability': Icons.event_available_rounded,
-                        'department_choice': Icons.how_to_vote_rounded}['${r['kind']}'] ?? Icons.gavel_rounded,
-                      color: c.warning,
-                      title: '${r['title']}',
-                      subtitle: {'form': t('نموذج إلزامي', 'Mandatory form'), 'availability': t('أرسل مواعيدك المتاحة', 'Send your available periods'),
-                        'department_choice': t('اختر قسمك العلمي', 'Choose your department')}['${r['kind']}'] ?? t('لائحة تحتاج موافقتك', 'Needs your agreement'),
-                      onTap: () => _openRequired(r),
-                    ),
-                  ),
+                AppSpace.gapLg,
+                AppSection(
+                  title: t('مطلوب منك', 'Needs your action'),
+                  child: Column(children: [
+                    for (final r in req)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                        child: MemberRow(
+                          icon: {'form': Icons.edit_document, 'availability': Icons.event_available_rounded,
+                            'department_choice': Icons.how_to_vote_rounded}['${r['kind']}'] ?? Icons.gavel_rounded,
+                          tone: c.warning,
+                          title: '${r['title']}',
+                          subtitle: {'form': t('نموذج إلزامي', 'Mandatory form'), 'availability': t('أرسل مواعيدك المتاحة', 'Send your available periods'),
+                            'department_choice': t('اختر قسمك العلمي', 'Choose your department')}['${r['kind']}'] ?? t('لائحة تحتاج موافقتك', 'Needs your agreement'),
+                          onTap: () => _openRequired(r),
+                        ),
+                      ),
+                  ]),
+                ),
               ],
               // ── today ──
-              _title(t('اليوم', 'Today'), Icons.today_rounded, c.primary,
-                  action: _week.isEmpty ? null : (t('الأسبوع كاملاً', 'Full week'), () => _weekSheet(context))),
-              examPauseBanner(context, pauses),
-              if (today.isEmpty && todayExtras.isEmpty)
-                _soft(Icons.wb_sunny_rounded, t('لا محاضرات اليوم — استمتع بيومك 🌿', 'No classes today — enjoy your day 🌿'))
-              else ...[
-                for (final x in todayExtras) _slotTile(context, x, special: true),
-                for (final x in today) _slotTile(context, x),
-              ],
-              if (upcoming.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                for (final x in upcoming) _slotTile(context, x, special: true, showDate: true),
-              ],
+              AppSpace.gapLg,
+              AppSection(
+                title: t('اليوم', 'Today'),
+                trailing: _week.isEmpty
+                    ? null
+                    : AppPill(icon: Icons.calendar_view_week_rounded, label: t('الأسبوع كاملاً', 'Full week'), onTap: () => _weekSheet(context)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  examPauseBanner(context, pauses),
+                  if (today.isEmpty && todayExtras.isEmpty)
+                    MemberNote(t('لا محاضرات اليوم — استمتع بيومك', 'No classes today — enjoy your day'), icon: Icons.wb_sunny_rounded)
+                  else ...[
+                    for (final x in todayExtras) _slot(context, x, special: true),
+                    for (final x in today) _slot(context, x),
+                  ],
+                  for (final x in upcoming) _slot(context, x, special: true, showDate: true),
+                ]),
+              ),
               // ── news ──
-              _title(t('الأخبار والإعلانات', 'News & announcements'), Icons.campaign_rounded, c.accent2,
-                  action: (t('الكل', 'All'), () => _openSpace(0))),
-              if (_news.isEmpty)
-                _soft(Icons.campaign_outlined, t('لا جديد الآن', 'Nothing new right now'))
-              else
-                for (final n in _news)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.divider)),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      if (n['pinned'] == true) Padding(padding: const EdgeInsetsDirectional.only(end: 6), child: Icon(Icons.push_pin_rounded, size: 16, color: c.warning)),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${n['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
-                        if ('${n['body'] ?? ''}'.isNotEmpty)
-                          Text('${n['body']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12.5, color: c.textMedium)),
-                        const SizedBox(height: 4),
-                        Text('${n['department'] == null ? '' : '${orgNameOf(asMap(n['department']))} · '}${relTime(n['publish_at'])}',
-                            maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textLight)),
-                      ])),
-                    ]),
-                  ),
+              AppSpace.gapLg,
+              AppSection(
+                title: t('الأخبار والإعلانات', 'News & announcements'),
+                trailing: AppPill(icon: Icons.campaign_rounded, label: t('كل الأخبار', 'All news'), onTap: () => _openSpace(0)),
+                child: _news.isEmpty
+                    ? MemberNote(t('لا جديد الآن', 'Nothing new right now'), icon: Icons.campaign_outlined)
+                    : Column(children: [
+                        for (final n in _news)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                            child: AppCard(
+                              onTap: () => _openSpace(0),
+                              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                if (n['pinned'] == true)
+                                  Padding(
+                                    padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+                                    child: Icon(Icons.push_pin_rounded, size: AppIconSize.sm, color: c.warning),
+                                  ),
+                                Expanded(
+                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text('${n['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                                    if ('${n['body'] ?? ''}'.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: AppSpace.xxs),
+                                        child: Text('${n['body']}', maxLines: 2, overflow: TextOverflow.ellipsis,
+                                            style: AppType.body(context).copyWith(color: c.textMedium)),
+                                      ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: AppSpace.xs),
+                                      child: Text('${n['department'] == null ? '' : '${orgNameOf(asMap(n['department']))} · '}${relTime(n['publish_at'])}',
+                                          maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                                    ),
+                                  ]),
+                                ),
+                              ]),
+                            ),
+                          ),
+                      ]),
+              ),
               // ── departments ──
               if (_depts.isNotEmpty) ...[
-                _title(t('الإدارات والخدمات', 'Departments & services'), Icons.apartment_rounded, c.purple),
-                LayoutBuilder(builder: (context, box) {
-                  final cols = box.maxWidth > 760 ? 4 : (box.maxWidth > 480 ? 3 : 2);
-                  return GridView.count(
-                    crossAxisCount: cols,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 1.25,
-                    children: [
-                      for (final d in _depts)
-                        InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () => _deptSheet(context, d),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: hexColor(d['color'], c.primary).withValues(alpha: 0.07),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: hexColor(d['color'], c.primary).withValues(alpha: 0.22)),
-                            ),
+                AppSpace.gapLg,
+                AppSection(
+                  title: t('الإدارات والخدمات', 'Departments & services'),
+                  child: LayoutBuilder(builder: (context, box) {
+                    final cols = box.maxWidth > 760 ? 4 : (box.maxWidth > 480 ? 3 : 2);
+                    return GridView.count(
+                      crossAxisCount: cols,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: AppSpace.xs,
+                      crossAxisSpacing: AppSpace.xs,
+                      childAspectRatio: 1.4,
+                      children: [
+                        for (final d in _depts)
+                          AppCard(
+                            onTap: () => _deptSheet(context, d),
+                            padding: const EdgeInsets.all(AppSpace.sm),
                             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                               DeptLogo(d: d, size: 40),
-                              const SizedBox(height: 8),
+                              AppSpace.gapXs,
                               Flexible(
-                                child: Text(t('${d['name_ar'] ?? d['name_en']}', '${d['name_en'] ?? d['name_ar']}'), maxLines: 2, textAlign: TextAlign.center,
-                                    overflow: TextOverflow.ellipsis, style: orgText(context, size: 12.5, w: FontWeight.w800)),
+                                child: Text(t('${d['name_ar'] ?? d['name_en']}', '${d['name_en'] ?? d['name_ar']}'),
+                                    maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
                               ),
                             ]),
                           ),
-                        ),
-                    ],
-                  );
-                }),
+                      ],
+                    );
+                  }),
+                ),
               ],
               // ── quick links ──
-              _title(t('روابط سريعة', 'Quick links'), Icons.bolt_rounded, c.primary),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                ActionChip(avatar: const Icon(Icons.assignment_rounded, size: 18), label: Text(t('طلباتي', 'My requests')), onPressed: () => _openSpace(2)),
-                ActionChip(avatar: const Icon(Icons.support_agent_rounded, size: 18), label: Text(t('شكاواي', 'My complaints')), onPressed: () => _openSpace(3)),
-                ActionChip(avatar: const Icon(Icons.gavel_rounded, size: 18), label: Text(t('اللوائح', 'Regulations')), onPressed: () => _openSpace(4)),
-                ActionChip(avatar: const Icon(Icons.route_rounded, size: 18), label: Text(t('مساري الأكاديمي', 'My academic path')), onPressed: () => _openSpace(5)),
-              ]),
+              AppSpace.gapLg,
+              AppSection(
+                title: t('روابط سريعة', 'Quick links'),
+                child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                  AppPill(icon: Icons.assignment_rounded, label: t('طلباتي', 'My requests'), onTap: () => _openSpace(2)),
+                  AppPill(icon: Icons.support_agent_rounded, label: t('شكاواي', 'My complaints'), onTap: () => _openSpace(3)),
+                  AppPill(icon: Icons.gavel_rounded, label: t('اللوائح', 'Regulations'), onTap: () => _openSpace(4)),
+                  AppPill(icon: Icons.route_rounded, label: t('مساري الأكاديمي', 'My academic path'), onTap: () => _openSpace(5)),
+                ]),
+              ),
             ]),
           ),
         ),
@@ -392,64 +395,28 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
     );
   }
 
-  Widget _title(String text, IconData icon, Color col, {(String, VoidCallback)? action}) => Padding(
-        padding: const EdgeInsets.fromLTRB(2, 22, 2, 10),
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, size: 18, color: col),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: orgText(context, size: 16, w: FontWeight.w800))),
-          if (action != null) TextButton(onPressed: action.$2, child: Text(action.$1)),
-        ]),
-      );
-
-  Widget _soft(IconData icon, String text) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(18)),
-      child: Row(children: [
-        Icon(icon, color: c.textLight),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text, style: orgText(context, color: c.textMedium))),
-      ]),
-    );
-  }
-
-  Widget _slotTile(BuildContext context, Map<String, dynamic> x, {bool special = false, bool showDate = false}) {
+  /// One slot of the day (a weekly slot, a dated extra, an upcoming extra with its date).
+  Widget _slot(BuildContext context, Map<String, dynamic> x, {bool special = false, bool showDate = false}) {
     final c = context.colors;
     final lab = x['kind'] == 'lab';
-    final tone = special ? c.accent2 : (lab ? c.purple : c.primary);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(18), border: Border.all(color: tone.withValues(alpha: 0.25))),
-      child: Row(children: [
-        Container(
-          width: 64,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(color: tone.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-          child: Column(children: [
-            FittedBox(fit: BoxFit.scaleDown, child: Text(AppTime.clock(x['start_time']?.toString()), maxLines: 1, style: orgText(context, size: 13, w: FontWeight.w800, color: tone))),
-            FittedBox(fit: BoxFit.scaleDown, child: Text(AppTime.clock(x['end_time']?.toString()), maxLines: 1, style: orgText(context, size: 11, color: c.textMedium))),
-          ]),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${x['title'] ?? x['course'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
-          Text([
-            if (special) (showDate ? shortDate('${x['date']}') : t('موعد إضافي', 'Extra session')),
-            if (x['title'] != null && x['course'] != null) '${x['course']}',
-            if (x['room'] != null) '${x['room']}',
-            if (x['teacher'] != null) '${x['teacher']}',
-          ].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
-        ])),
-        if (lab) OrgPill(t('سكشن', 'Lab'), color: c.purple),
-        if (special) OrgPill(t('خاص', 'Special'), color: c.accent2),
-      ]),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
+      child: MemberSlotTile(
+        start: AppTime.clock(x['start_time']?.toString()),
+        end: AppTime.clock(x['end_time']?.toString()),
+        title: '${x['title'] ?? x['course'] ?? ''}',
+        accent: special ? c.accent2 : (lab ? c.purple : c.primary),
+        where: [
+          if (special) (showDate ? shortDate('${x['date']}') : t('موعد إضافي', 'Extra session')),
+          if (x['title'] != null && x['course'] != null) '${x['course']}',
+          if (x['room'] != null) '${x['room']}',
+          if (x['teacher'] != null) '${x['teacher']}',
+        ].join(' · '),
+        tags: [
+          if (lab) AppStatusBadge(label: t('سكشن', 'Lab'), tone: AppTone.brand, dense: true),
+          if (special) AppStatusBadge(label: t('خاص', 'Special'), tone: AppTone.info, dense: true),
+        ],
+      ),
     );
   }
 
@@ -457,13 +424,13 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
     final days = const ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     final names = {'saturday': t('السبت', 'Saturday'), 'sunday': t('الأحد', 'Sunday'), 'monday': t('الاثنين', 'Monday'),
       'tuesday': t('الثلاثاء', 'Tuesday'), 'wednesday': t('الأربعاء', 'Wednesday'), 'thursday': t('الخميس', 'Thursday'), 'friday': t('الجمعة', 'Friday')};
-    await showAdminSheet<void>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
-          SheetHeader(t('جدولي الأسبوعي', 'My week')),
+    await showAppSheet<void>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
+          AppSheetHeader(t('جدولي الأسبوعي', 'My week')),
           for (final d in days)
             if (_week.any((x) => x['day'] == d)) ...[
-              Padding(padding: const EdgeInsets.fromLTRB(4, 10, 4, 6), child: Text(names[d]!, style: orgText(ctx, w: FontWeight.w800))),
+              Padding(padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.sm, AppSpace.xxs, AppSpace.xs), child: Text(names[d]!, style: AppType.label(ctx))),
               for (final x in (_week.where((x) => x['day'] == d).toList()..sort((a, b) => '${a['start_time']}'.compareTo('${b['start_time']}'))))
-                _slotTile(ctx, x),
+                _slot(ctx, x),
             ],
         ]));
   }
@@ -472,42 +439,43 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
   Future<void> _deptSheet(BuildContext context, Map<String, dynamic> d) async {
     final f = {...((d['features'] as List?) ?? const []).map((e) => '$e')};
     final labels = featureLabels();
-    await showAdminSheet<void>(context, (ctx) {
+    await showAppSheet<void>(context, (ctx) {
       final c = ctx.colors;
       final actions = <Widget>[
         if (f.contains('forms'))
-          OrgActionCard(icon: Icons.assignment_rounded, color: c.purple, title: t('الطلبات والاستبيانات', 'Requests & questionnaires'),
+          MemberRow(icon: Icons.assignment_rounded, tone: c.purple, title: t('الطلبات والاستبيانات', 'Requests & questionnaires'),
               subtitle: t('قدّم طلباً أو أجب عن استبيان', 'Send a request or answer a questionnaire'), onTap: () { Navigator.pop(ctx); _openSpace(2); }),
         if (f.contains('complaints'))
-          OrgActionCard(icon: Icons.support_agent_rounded, color: c.danger, title: t('شكوى لهذه الإدارة', 'A complaint to this department'),
+          MemberRow(icon: Icons.support_agent_rounded, tone: c.danger, title: t('شكوى لهذه الإدارة', 'A complaint to this department'),
               subtitle: t('تصل مباشرة لفريقها', 'Goes straight to its team'), onTap: () async {
                 Navigator.pop(ctx);
                 await showComplaintComposer(context, _org, dept: d);
               }),
         if (f.contains('announcements'))
-          OrgActionCard(icon: Icons.campaign_rounded, color: c.accent2, title: labels['announcements'] ?? '',
+          MemberRow(icon: Icons.campaign_rounded, tone: c.accent2, title: labels['announcements'] ?? '',
               subtitle: t('أخبار وإعلانات الإدارة', 'Its news and announcements'), onTap: () { Navigator.pop(ctx); _openSpace(0); }),
         if (f.contains('materials'))
-          OrgActionCard(icon: Icons.folder_copy_rounded, color: c.primary, title: labels['materials'] ?? '',
+          MemberRow(icon: Icons.folder_copy_rounded, tone: c.primary, title: labels['materials'] ?? '',
               subtitle: t('ملفات وروابط الإدارة', 'Its files and links'), onTap: () { Navigator.pop(ctx); _openSpace(1); }),
       ];
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             DeptLogo(d: d, size: 48),
-            const SizedBox(width: 12),
+            AppSpace.gapSm,
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('${d['name_ar'] ?? d['name_en']}', '${d['name_en'] ?? d['name_ar']}'), style: orgText(ctx, size: 17, w: FontWeight.w800)),
-              if ('${d['office_hours'] ?? ''}'.isNotEmpty) Text('${d['office_hours']}', style: orgText(ctx, size: 12, color: c.textMedium)),
+              Text(t('${d['name_ar'] ?? d['name_en']}', '${d['name_en'] ?? d['name_ar']}'), style: AppType.section(ctx)),
+              if ('${d['office_hours'] ?? ''}'.isNotEmpty) Text('${d['office_hours']}', style: AppType.meta(ctx)),
             ])),
           ]),
-          if ('${d['description'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 10), child: Text('${d['description']}', style: orgText(ctx, color: c.textMedium))),
-          const SizedBox(height: 14),
+          if ('${d['description'] ?? ''}'.isNotEmpty)
+            Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: Text('${d['description']}', style: AppType.body(ctx).copyWith(color: c.textMedium))),
+          AppSpace.gapSm,
           if (actions.isEmpty)
-            Text(t('لا خدمات متاحة من هذه الإدارة حالياً', 'This department offers no services right now'), style: orgText(ctx, color: c.textMedium))
+            MemberNote(t('لا خدمات متاحة من هذه الإدارة حالياً', 'This department offers no services right now'))
           else
-            for (final a in actions) Padding(padding: const EdgeInsets.only(bottom: 8), child: a),
+            for (final a in actions) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: a),
         ]),
       );
     });

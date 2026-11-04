@@ -23,6 +23,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../admin/admin_common.dart' show t, asInt, asMap, asMapList;
+import '../org/org_member_parts.dart' show MemberSlotTile;
 import '../org/org_v3.dart' show orgParseUtc;
 
 /// The kill switch of this whole surface.
@@ -471,7 +472,7 @@ class ParentOrgBody extends StatelessWidget {
                   icon: Icons.campaign_outlined,
                   title: t('لا إعلانات', 'No announcements'),
                   message: t('إعلانات المؤسسة الموجهة لـ $name تظهر هنا', 'Announcements the organization sends to $name appear here'))
-              : Column(children: [for (final a in view.announcements) _AnnouncementRow(a)]),
+              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final a in view.announcements) _AnnouncementRow(a)]),
         ),
         AppSpace.gapLg,
         AppSection(
@@ -482,7 +483,7 @@ class ParentOrgBody extends StatelessWidget {
                   title: t('لا درجات منشورة', 'No published grades'),
                   message: t('تظهر الدرجات هنا بعد أن تنشرها المؤسسة (قد لا تستخدم هذه المؤسسة نظام الدرجات)',
                       'Grades appear here once the organization publishes them (this organization may not use grades)'))
-              : Column(children: [for (final g in view.grades) _GradeRow(g)]),
+              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final g in view.grades) _GradeRow(g)]),
         ),
         AppSpace.gapLg,
         AppSection(
@@ -530,7 +531,7 @@ class _SessionList extends StatelessWidget {
   final bool showDay;
 
   @override
-  Widget build(BuildContext context) => Column(children: [
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (final s in sessions) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: _SessionRow(s)),
       ]);
 }
@@ -541,38 +542,23 @@ class _SessionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final cancelled = s.status == ParentSessionStatus.cancelled;
     final a = s.startsAt, b = s.endsAt;
-    final time = a == null ? '' : (b == null ? AppTime.time(a) : '${AppTime.time(a)} – ${AppTime.time(b)}');
     final sub = [
       if (s.title.isNotEmpty && s.courseName.isNotEmpty) s.courseName,
       if (s.room.isNotEmpty) s.room,
     ].join(' · ');
-    return AppCard(
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(s.online ? Icons.videocam_outlined : Icons.meeting_room_outlined, size: AppIconSize.md, color: cancelled ? c.textLight : c.primary),
-        AppSpace.gapSm,
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(s.heading,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppType.row(context).copyWith(decoration: cancelled ? TextDecoration.lineThrough : null)),
-            if (time.isNotEmpty) Text(time, style: AppType.meta(context)),
-            if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-            if (s.status != ParentSessionStatus.scheduled || s.online)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpace.xxs),
-                child: Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
-                  if (s.status == ParentSessionStatus.changed) AppStatusBadge(label: t('تغيّرت', 'Changed'), tone: AppTone.warning, dense: true),
-                  if (cancelled) AppStatusBadge(label: t('أُلغيت', 'Cancelled'), tone: AppTone.danger, dense: true),
-                  if (s.online) AppStatusBadge(label: t('أونلاين', 'Online'), tone: AppTone.info, dense: true),
-                ]),
-              ),
-          ]),
-        ),
-      ]),
+    return MemberSlotTile(
+      start: a == null ? '' : AppTime.time(a),
+      end: b == null ? '' : AppTime.time(b),
+      title: s.heading,
+      where: sub,
+      cancelled: cancelled,
+      tags: [
+        if (s.status == ParentSessionStatus.changed) AppStatusBadge(label: t('تغيّرت', 'Changed'), tone: AppTone.warning, dense: true),
+        if (cancelled) AppStatusBadge(label: t('أُلغيت', 'Cancelled'), tone: AppTone.danger, dense: true),
+        if (s.online) AppStatusBadge(label: t('أونلاين', 'Online'), tone: AppTone.info, icon: Icons.videocam_outlined, dense: true),
+      ],
     );
   }
 }
@@ -617,7 +603,7 @@ class _GradeRow extends StatelessWidget {
           ),
           AppSpace.gapSm,
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(g.grade, style: AppType.figure(context)),
+            Text(g.grade, textDirection: TextDirection.ltr, style: AppType.figure(context)),
             if (pts.isNotEmpty) Text(pts, style: AppType.meta(context)),
           ]),
         ]),
@@ -639,11 +625,22 @@ class _AttendanceRow extends StatelessWidget {
             Text(label, textAlign: TextAlign.center, style: AppType.meta(context)),
           ]),
         );
+    final rate = a.rate;
+    final pct = rate == null ? 0 : (rate * 100).round();
     return AppCard(
-      child: Row(children: [
-        cell(t('حضر', 'Present'), a.present, c.success),
-        cell(t('غاب', 'Absent'), a.absent, c.danger),
-        cell(t('تأخر', 'Late'), a.late, c.warning),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (rate != null) ...[
+          Row(children: [
+            Expanded(child: Text(t('نسبة الحضور', 'Attendance rate'), style: AppType.row(context))),
+            AppStatusBadge(label: '$pct%', tone: pct >= 85 ? AppTone.success : (pct >= 70 ? AppTone.warning : AppTone.danger)),
+          ]),
+          AppSpace.gapSm,
+        ],
+        Row(children: [
+          cell(t('حضر', 'Present'), a.present, c.success),
+          cell(t('غاب', 'Absent'), a.absent, c.danger),
+          cell(t('تأخر', 'Late'), a.late, c.warning),
+        ]),
       ]),
     );
   }
