@@ -94,20 +94,112 @@ String? _imageExt(Uint8List b) {
   return null;
 }
 
-/// Rough height of a block of paragraphs in twips (what the writer can know without a layout engine): one line per
-/// paragraph, wrapped text, exact-height answer lines and pictures. Only used to spread the questions over the planned pages.
+/// A conservative height of a block of WordprocessingML in twips (the writer has no layout engine, so this is measured against
+/// real Word output and rounded UP): paragraphs by their spacing, font size and wrapped lines (Arabic faces run tall, hence
+/// 1.45 x the size), table rows by their tallest cell, pictures by their extent. Used to cut a copy into pages that never overflow.
 int _estimateHeight(String xml) {
-  final paras = RegExp(r'<w:p[ >/]').allMatches(xml).length;
-  final lines = RegExp('w:line="440"').allMatches(xml).length;
-  var pics = 0;
-  for (final m in RegExp(r'<wp:extent cx="\d+" cy="(\d+)"').allMatches(xml)) {
-    pics += int.parse(m.group(1)!) ~/ 635;
+  final tbl = RegExp(r'<w:tbl>[\s\S]*?</w:tbl>');
+  var total = 0;
+  var last = 0;
+  for (final m in tbl.allMatches(xml)) {
+    total += _paraHeights(xml.substring(last, m.start), _usable);
+    total += _tableHeight(m.group(0)!);
+    last = m.end;
   }
-  var chars = 0;
-  for (final m in RegExp(r'<w:t[^>]*>([^<]*)</w:t>').allMatches(xml)) {
-    chars += m.group(1)!.length;
+  total += _paraHeights(xml.substring(last), _usable);
+  return total;
+}
+
+int _tableHeight(String t) {
+  var h = 0;
+  for (final row in RegExp(r'<w:tr>[\s\S]*?</w:tr>').allMatches(t)) {
+    var rowH = 0;
+    final min = RegExp(r'<w:trHeight w:val="(\d+)"').firstMatch(row.group(0)!);
+    if (min != null) rowH = int.parse(min.group(1)!);
+    for (final c in RegExp(r'<w:tc>[\s\S]*?</w:tc>').allMatches(row.group(0)!)) {
+      final cell = c.group(0)!;
+      final wd = int.parse(RegExp(r'<w:tcW w:w="(\d+)"').firstMatch(cell)?.group(1) ?? '${_usable}');
+      final ch = _paraHeights(cell, wd - 300) + 200; // cell margins + borders
+      if (ch > rowH) rowH = ch;
+    }
+    h += rowH;
   }
-  return paras * 380 + lines * 160 + pics + (chars ~/ 85) * 300;
+  return h;
+}
+
+int _paraHeights(String xml, int width) {
+  var total = 0;
+  for (final m in RegExp(r'<w:p>[\s\S]*?</w:p>|<w:p/>').allMatches(xml)) {
+    final p = m.group(0)!;
+    final sp = RegExp(r'<w:spacing w:before="(\d+)" w:after="(\d+)"(?: w:line="(\d+)" w:lineRule="exact")?').firstMatch(p);
+    final before = int.parse(sp?.group(1) ?? '0'), after = int.parse(sp?.group(2) ?? '0');
+    final exact = sp?.group(3);
+    final ind = int.parse(RegExp(r'<w:ind w:start="(\d+)"').firstMatch(p)?.group(1) ?? '0');
+    var pic = 0;
+    for (final d in RegExp(r'<wp:extent cx="\d+" cy="(\d+)"').allMatches(p)) {
+      pic += int.parse(d.group(1)!) ~/ 635;
+    }
+    var maxSz = 0, chars = 0, breaks = 0;
+    for (final r in RegExp(r'<w:r>[\s\S]*?</w:r>').allMatches(p)) {
+      final run = r.group(0)!;
+      final sz = int.parse(RegExp(r'<w:sz w:val="(\d+)"').firstMatch(run)?.group(1) ?? '23');
+      if (sz > maxSz) maxSz = sz;
+      for (final t in RegExp(r'<w:t[^>]*>([^<]*)</w:t>').allMatches(run)) {
+        chars += t.group(1)!.length * sz; // width ~ chars x size
+      }
+      breaks += '<w:br/>'.allMatches(run).length;
+    }
+    if (maxSz == 0) maxSz = 23;
+    final lineH = exact != null ? int.parse(exact) : (maxSz * 10 * 1.45).round();
+    final perLine = ((width - ind) / 6).floor().clamp(10, 100000); // size-units (half-points) one line holds
+    final lines = (chars / perLine).ceil().clamp(1, 1000) + breaks;
+    total += before + after + (pic > 0 ? pic + 100 : lines * lineH);
+  }
+  return total;
+}
+
+/// What a Word page holds, in twips: A4 minus the margins (900 top, 1600 bottom with the QR footer), times a safety margin
+/// for the estimate's own error: the estimate runs about 10 % above what Word measures (checked in Word 2026-11-04).
+const _pageCap = 14000;
+
+/// Splits units of heights [h] into consecutive pages: the fewest pages that fit [_pageCap] (greedy), then the smallest page
+/// height that still needs only that many, so the pages come out balanced and no page holds a tiny remainder. [maxPages]
+/// (a plan with fewer pages) forces that count, accepting a fuller page. Returns the end index (exclusive) of each page.
+List<int> _paginate(List<int> h, {int? maxPages}) {
+  List<int> greedy(int cap) {
+    final ends = <int>[];
+    var used = 0;
+    for (var i = 0; i < h.length; i++) {
+      if (used > 0 && used + h[i] > cap) {
+        ends.add(i);
+        used = 0;
+      }
+      used += h[i];
+    }
+    ends.add(h.length);
+    return ends;
+  }
+
+  var pages = greedy(_pageCap).length;
+  if (maxPages != null && pages > maxPages) pages = maxPages;
+  var lo = h.fold(0, (m, x) => x > m ? x : m), hi = h.fold(0, (a, b) => a + b);
+  while (lo < hi) {
+    final mid = (lo + hi) ~/ 2;
+    if (greedy(mid).length <= pages) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+  return greedy(lo);
+}
+
+/// How many pages the Word copy of [d] takes (the same split [examPaperDocx] writes): ask the print plan for this many
+/// QR payloads, not the PDF's page count.
+int wordPageCount(ExamPaperDoc d, PaperTemplate tpl) {
+  final z = ZipDecoder().decodeBytes(examPaperDocx(d.copyWith(qrSlots: 1), tpl));
+  final xml = utf8.decode(z.files.firstWhere((f) => f.name == 'word/document.xml').content as List<int>);
+  return '<w:sectPr>'.allMatches(xml).length;
 }
 
 /// The questions (and section titles), the part shared by the built-in designs and a custom template.
@@ -389,20 +481,13 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   }
   if (d.answerTable == AnswerTablePlace.end) units.add(tableXml);
   final chunks = <String>[];
-  if (pageQr.length < 2 || units.length < 2) {
+  if (!d.qrReserved || units.length < 2) {
     chunks.add(units.join());
   } else {
-    final h = [for (final u in units) _estimateHeight(u)];
-    final total = h.fold(0, (a, b) => a + b);
-    final buckets = List.generate(pageQr.length, (_) => StringBuffer());
-    var before = 0;
-    for (var i = 0; i < units.length; i++) {
-      final k = ((before + h[i] / 2) / total * pageQr.length).floor().clamp(0, pageQr.length - 1);
-      buckets[k].write(units[i]);
-      before += h[i];
-    }
-    for (final b in buckets) {
-      if (b.isNotEmpty) chunks.add(b.toString());
+    final cut = _paginate([for (final u in units) _estimateHeight(u)], maxPages: pageQr.isEmpty ? null : pageQr.length);
+    for (var i = 0, from = 0; i < cut.length; i++) {
+      chunks.add(units.sublist(from, cut[i]).join());
+      from = cut[i];
     }
   }
   final qrCount = pageQr.isEmpty ? 0 : (chunks.length < pageQr.length ? chunks.length : pageQr.length);

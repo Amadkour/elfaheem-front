@@ -31,8 +31,9 @@ PaperQuestion _mcq(int n, {String? mediaId, Uint8List? image, bool failed = fals
 
 ExamPaperDoc _doc({List<PaperQuestion>? qs, List<String> qr = const [], String student = '', bool rtl = true}) {
   final questions = qs ?? [for (var i = 1; i <= 12; i++) _mcq(i)];
+  final qs0 = questions;
   return ExamPaperDoc(
-      institution: 'مدرسة النور', course: 'الأحياء', title: 'امتحان الأحياء', dateText: '1/12/2026', durationText: '60', total: 24,
+      institution: 'مدرسة النور', course: 'الأحياء', title: 'امتحان الأحياء', dateText: '1/12/2026', durationText: '60', total: qs0.fold(0.0, (a, q) => a + q.points),
       sections: [PaperSection(title: '', instructions: '', questions: questions)], instructions: const ['اقرأ بعناية'], rtl: rtl,
       studentName: student, qrPages: qr);
 }
@@ -72,10 +73,12 @@ void main() {
   });
 
   test('N copies x M pages: one QR picture per page, each with its own payload', () {
-    const pages = 3;
+    final qs = [for (var i = 1; i <= 40; i++) _mcq(i)];
+    final pages = wordPageCount(_doc(qs: qs), PaperTemplate.minimal);
+    expect(pages, greaterThanOrEqualTo(3));
     for (final student in ['علي', 'منى']) {
       final payloads = [for (var p = 1; p <= pages; p++) 'NB.$student.p$p'];
-      final z = _files(examPaperDocx(_doc(qr: payloads, student: student), PaperTemplate.minimal));
+      final z = _files(examPaperDocx(_doc(qs: qs, qr: payloads, student: student), PaperTemplate.minimal));
       final doc = _text(z, 'word/document.xml');
       // a section per page: pages-1 section-break paragraphs plus the body's own
       expect(RegExp('<w:sectPr>').allMatches(doc).length, pages);
@@ -95,15 +98,17 @@ void main() {
       expect(RegExp('qr\\d+\\.png').allMatches(z.keys.join(' ')).length, pages);
       // the questions are all there, in order, none repeated
       final nums = RegExp('السؤال (\\d+)').allMatches(doc).map((m) => int.parse(m.group(1)!)).toList();
-      expect(nums, [for (var i = 1; i <= 12; i++) i]);
+      expect(nums, [for (var i = 1; i <= 40; i++) i]);
     }
   });
 
   test('the sections hold the questions in page order (page 1 first)', () {
-    final z = _files(examPaperDocx(_doc(qr: ['p1', 'p2', 'p3']), PaperTemplate.classic));
+    final qs = [for (var i = 1; i <= 40; i++) _mcq(i)];
+    final n = wordPageCount(_doc(qs: qs), PaperTemplate.classic);
+    final z = _files(examPaperDocx(_doc(qs: qs, qr: [for (var i = 1; i <= n; i++) 'p$i']), PaperTemplate.classic));
     final doc = _text(z, 'word/document.xml');
     final parts = doc.split(RegExp(r'<w:sectPr>'));
-    expect(parts.length, 4); // 3 sections + the tail after the last sectPr
+    expect(parts.length, n + 1); // n sections + the tail after the last sectPr
     expect(parts[0], contains('امتحان الأحياء'));
     expect(parts[0], contains('السؤال 1<'));
     expect(parts[1], isNot(contains('السؤال 1<')));
@@ -122,7 +127,7 @@ void main() {
   });
 
   test('a one-page plan keeps one section with its QR', () {
-    final z = _files(examPaperDocx(_doc(qr: ['only']), PaperTemplate.minimal));
+    final z = _files(examPaperDocx(_doc(qs: [_mcq(1), _mcq(2)], qr: ['only']), PaperTemplate.minimal));
     expect(_readMatrix(z['word/media/qr1.png']!, qrMatrix('only').length), qrMatrix('only'));
     expect(RegExp('<w:sectPr>').allMatches(_text(z, 'word/document.xml')).length, 1);
   });
@@ -181,7 +186,7 @@ void main() {
   });
 
   test('images and QRs together: every media file has a rel and the png default is declared once', () {
-    final z = _files(examPaperDocx(_doc(qs: [for (var i = 1; i <= 8; i++) _mcq(i, mediaId: i.isOdd ? 'm$i' : null, image: i.isOdd ? _picture() : null)], qr: ['a', 'b']), PaperTemplate.modern));
+    final z = _files(examPaperDocx(_doc(qs: [for (var i = 1; i <= 8; i++) _mcq(i, mediaId: i.isOdd ? 'm$i' : null, image: i.isOdd ? _picture() : null)], qr: ['a']), PaperTemplate.modern));
     final rels = _text(z, 'word/_rels/document.xml.rels') + z.entries.where((e) => e.key.contains('footer') && e.key.endsWith('.rels')).map((e) => utf8.decode(e.value)).join();
     for (final m in z.keys.where((k) => k.startsWith('word/media/'))) {
       expect(rels, contains('Target="media/${m.split('/').last}"'));
@@ -192,18 +197,24 @@ void main() {
   });
 
   test('English left-to-right copy', () {
-    final z = _files(examPaperDocx(_doc(qr: ['x1', 'x2'], rtl: false), PaperTemplate.classic));
-    expect(RegExp('<w:sectPr>').allMatches(_text(z, 'word/document.xml')).length, 2);
-    expect(_text(z, 'word/footer2.xml'), contains('Page '));
+    final qs = [for (var i = 1; i <= 40; i++) _mcq(i)];
+    final n = wordPageCount(_doc(qs: qs, rtl: false), PaperTemplate.classic);
+    final z = _files(examPaperDocx(_doc(qs: qs, qr: [for (var i = 1; i <= n; i++) 'x$i'], rtl: false), PaperTemplate.classic));
+    expect(RegExp('<w:sectPr>').allMatches(_text(z, 'word/document.xml')).length, n);
+    expect(_text(z, 'word/footer1.xml'), contains('Page '));
   });
 
   test('sample per-student Word file', () {
     final dir = Platform.environment['EXPORT_SAMPLES'];
     if (dir == null) return;
     final qs = [for (var i = 1; i <= 14; i++) _mcq(i, mediaId: i == 2 ? 'm' : null, image: i == 2 ? _picture() : null)];
+    final big = [for (var i = 1; i <= 30; i++) _mcq(i, mediaId: i % 10 == 3 ? 'm$i' : null, image: i % 10 == 3 ? _picture() : null)];
+    final pages14 = wordPageCount(_doc(qs: qs), PaperTemplate.modern), pages30 = wordPageCount(_doc(qs: big), PaperTemplate.modern);
+    File('$dir/sample_30.docx').writeAsBytesSync(examPaperDocx(_doc(qs: big, student: 'علي أحمد', qr: [for (var p = 1; p <= pages30; p++) 'NB.big.p$p']), PaperTemplate.modern));
+    File('$dir/pages.txt').writeAsStringSync('14q=$pages14 30q=$pages30');
     final names = ['علي أحمد', 'منى محمود'];
     for (var s = 0; s < names.length; s++) {
-      final bytes = examPaperDocx(_doc(qs: qs, student: names[s], qr: [for (var p = 1; p <= 2; p++) 'NB.copy${s + 1}.p$p']), PaperTemplate.modern);
+      final bytes = examPaperDocx(_doc(qs: qs, student: names[s], qr: [for (var p = 1; p <= pages14; p++) 'NB.copy${s + 1}.p$p']), PaperTemplate.modern);
       File('$dir/sample_exam${s == 0 ? '' : '_2'}.docx')
         ..createSync(recursive: true)
         ..writeAsBytesSync(bytes);

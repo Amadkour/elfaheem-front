@@ -610,7 +610,8 @@ Future<PaperCopiesResult> buildPaperCopies({
   for (final code in codes) {
     final v = versions.byCode(code);
     final doc = (v == null ? base : applyVersion(base, v)).copyWith(qrSlots: 1);
-    pagesOf[code] = (await examPaperPdfMany([doc], tpl, regular: regular, bold: bold)).pages.first;
+    // Word lays itself out: its page count is the writer's own split, not the PDF's
+    pagesOf[code] = word ? wordPageCount(doc, tpl) : (await examPaperPdfMany([doc], tpl, regular: regular, bold: bold)).pages.first;
   }
   final maxPages = pagesOf.values.fold(1, (m, x) => x > m ? x : m);
   final r = await api.printPlan(examId, printPlanBody(named: named, studentIds: named ? studentIds : null, copies: blank, pages: maxPages, form: form));
