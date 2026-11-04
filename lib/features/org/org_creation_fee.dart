@@ -65,6 +65,7 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
   String? _token;
   bool _busy = false;
   String? _method;
+  String? _loadError;
 
   String get _email => (widget.email?.call() ?? '').trim().toLowerCase();
 
@@ -104,11 +105,21 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
         quiet: true);
     if (!mounted) return;
     if (!r.ok) {
-      // older server without the route → nothing to pay; anything else → let the server decide on submit
-      setState(() => _s = {'required': false});
-      widget.onReady(true, null);
+      if (r.endpointMissing) {
+        // an older server without the route → nothing to pay
+        setState(() {
+          _s = {'required': false};
+          _loadError = null;
+        });
+        widget.onReady(true, null);
+      } else {
+        // never fail open: "free" followed by a 402 on submit is worse than an error with Retry
+        setState(() => _loadError = orgErrorText(r.error!));
+        widget.onReady(false, null);
+      }
       return;
     }
+    _loadError = null;
     final s = r.map;
     final p = asMap(s['payment']);
     if (p['token'] != null && p['token'] != _token) await _remember('${p['token']}');
@@ -164,6 +175,18 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = _s;
+    if (_loadError != null) {
+      return Padding(
+        key: const ValueKey('fee.error'),
+        padding: const EdgeInsets.only(bottom: 14),
+        child: AppCard(child: AppErrorState(
+          title: t('تعذّر تحميل رسوم الإنشاء', 'Could not load the organization fee'),
+          message: _loadError,
+          onRetry: reload,
+          compact: true,
+        )),
+      );
+    }
     if (s == null) {
       return const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: AppSkeletonBox(width: double.infinity, height: 90));
     }

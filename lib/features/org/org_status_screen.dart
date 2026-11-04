@@ -1,26 +1,52 @@
 // lib/features/org/org_status_screen.dart
 //
 // What an organization admin sees while the organization is NOT approved yet (pending · rejected · suspended):
-// a calm, human status page instead of errors — a 3-step timeline, the reviewer's note, and the one action
-// that moves things forward (edit the application · resubmit · check again).
+// a calm, human status page instead of errors — a 3-step timeline, the reviewer's note, when the application was
+// sent, where the creation fee stands (paid · receipt under review · not paid) and the actions that move things
+// forward (edit the application · resubmit · contact the platform team). The page follows the server: it reloads on
+// `org_access_changed` and polls slowly as the fallback (EventOrPoll), so an approval shows without a manual refresh.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:provider/provider.dart';
 
-import '../admin/admin_common.dart';
+import '../admin/admin_common.dart' hide money;
 import '../admin/admin_list.dart' show IconBadge;
+import '../shared/profile/about/about_and_terms_screen.dart' show AboutScreen;
 import 'org_common.dart';
+import 'org_creation_fee.dart' show money;
 import 'org_dashboard_screen.dart' show showOrgForm, showOrgSwitcher;
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'org_v3.dart' show orgCall, orgParseUtc;
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+
+/// Where the creation fee stands for the signed-in applicant, from `GET /org/creation-fee`:
+/// `free` (no fee is set) · `paid` (a usable payment) · `review` (a receipt waits for the platform) · `unpaid`.
+/// Null = unknown (the call failed or the server has no fee route): the page then says nothing about the fee.
+String? orgFeeState(Map<String, dynamic>? s) {
+  if (s == null) return null;
+  if (s['required'] != true) return 'free';
+  final p = asMap(s['payment']);
+  if (p['usable'] == true) return 'paid';
+  if ('${p['status']}' == 'review') return 'review';
+  return 'unpaid';
+}
+
+/// What the status page offers, by organization status (pure, unit-tested).
+({bool edit, bool resubmit, bool contact}) orgStatusActions(String status) => (
+      edit: status != 'suspended',
+      resubmit: status == 'rejected',
+      contact: status == 'rejected' || status == 'suspended',
+    );
 
 class OrgStatusScreen extends StatefulWidget {
   const OrgStatusScreen({super.key});
@@ -31,10 +57,42 @@ class OrgStatusScreen extends StatefulWidget {
 
 class _OrgStatusScreenState extends State<OrgStatusScreen> {
   bool _busy = false;
+  Map<String, dynamic>? _fee;
+  EventOrPoll? _watch;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFee();
+    // follows the review: the event when the stream is open, a slow poll otherwise
+    _watch = EventOrPoll(
+      poll: _silent,
+      every: const Duration(seconds: 20),
+      fallbackEvery: const Duration(seconds: 90),
+      names: {LiveEvents.orgAccessChanged},
+    )..start();
+  }
+
+  @override
+  void dispose() {
+    _watch?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _silent() async {
+    if (!mounted) return;
+    await context.read<OrgSession>().load();
+    await _loadFee();
+  }
+
+  Future<void> _loadFee() async {
+    final r = await orgCall(() => ApiClient().get('/api/v1/org/creation-fee'), quiet: true);
+    if (mounted) setState(() => _fee = r.ok ? r.map : null);
+  }
 
   Future<void> _refresh() async {
     setState(() => _busy = true);
-    await context.read<OrgSession>().load();
+    await _silent();
     if (mounted) setState(() => _busy = false);
   }
 
@@ -45,6 +103,9 @@ class _OrgStatusScreenState extends State<OrgStatusScreen> {
     final c = context.colors;
     final status = s.status;
     final note = '${org['review_note'] ?? ''}'.trim();
+    final acts = orgStatusActions(status);
+    final sent = orgParseUtc('${org['submitted_at'] ?? org['created_at'] ?? ''}');
+    final fee = orgFeeState(_fee);
     final (IconData icon, Color tone, String title, String body) = switch (status) {
       'rejected' => (
           Icons.edit_note_rounded,
@@ -80,99 +141,73 @@ class _OrgStatusScreenState extends State<OrgStatusScreen> {
               height: 30,
               decoration: BoxDecoration(shape: BoxShape.circle, color: col.withValues(alpha: done || active || bad ? 1 : 0.3)),
               child: Icon(bad ? Icons.priority_high_rounded : done ? Icons.check_rounded : Icons.circle,
-                  color: c.onHero, size: done || bad ? 18 : 8),
+                  color: c.onHero, size: done || bad ? AppIconSize.md - 2 : 8),
             ),
             Expanded(child: Container(height: 2, color: i == 2 ? Colors.transparent : col.withValues(alpha: 0.5))),
           ]),
-          const SizedBox(height: 6),
-          Text(label, textAlign: TextAlign.center, style: orgText(context, size: 11.5, color: c.textMedium)),
+          AppSpace.gapXs,
+          Text(label, textAlign: TextAlign.center, style: AppType.meta(context)),
         ]),
       );
     }
 
     return AppRefresh(
       onRefresh: _refresh,
-      child: ListView(padding: const EdgeInsets.only(bottom: 40), children: [
+      child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
         OrgHero(
           org: org,
           subtitle: statusLabel(status),
           trailing: s.items.length > 1
-              ? IconButton(
-                  tooltip: t('تبديل المؤسسة', 'Switch organization'),
-                  onPressed: () => showOrgSwitcher(context),
-                  icon: Icon(Icons.swap_horiz_rounded, color: c.onHero))
+              ? AppIconButton(icon: Icons.swap_horiz_rounded, tooltip: t('تبديل المؤسسة', 'Switch organization'), onPressed: () => showOrgSwitcher(context))
               : null,
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: c.cardBg,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: tone.withValues(alpha: 0.25)),
-              boxShadow: c.cardShadow,
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          child: AppCard(
+            padding: const EdgeInsets.all(AppSpace.lg - 4),
             child: Column(children: [
               IconBadge(icon, tone, size: 64),
-              const SizedBox(height: 14),
-              Text(title, textAlign: TextAlign.center, style: orgText(context, size: 18, w: FontWeight.w800)),
-              const SizedBox(height: 8),
-              Text(body, textAlign: TextAlign.center, style: orgText(context, size: 13, color: c.textMedium)),
-              const SizedBox(height: 22),
+              AppSpace.gapSm,
+              Text(title, textAlign: TextAlign.center, style: AppType.headline(context)),
+              AppSpace.gapXs,
+              Text(body, textAlign: TextAlign.center, style: AppType.body(context)),
+              const SizedBox(height: AppSpace.lg - 2),
               Row(children: [
                 step(0, t('أُرسل الطلب', 'Sent'), done: true, active: false),
-                step(1, t('المراجعة', 'Review'),
-                    done: status == 'suspended', active: status == 'pending', bad: status == 'rejected'),
+                step(1, t('المراجعة', 'Review'), done: status == 'suspended', active: status == 'pending', bad: status == 'rejected'),
                 step(2, status == 'suspended' ? t('موقوفة', 'Paused') : t('جاهزة للعمل', 'Live'),
                     done: false, active: false, bad: status == 'suspended'),
               ]),
+              if (sent != null || (fee != null && fee != 'free')) ...[
+                const Divider(height: AppSpace.lg),
+                if (sent != null) _InfoLine(icon: Icons.event_available_rounded, label: t('أُرسل الطلب', 'Application sent'), value: AppTime.dateTime(sent)),
+                if (fee != null && fee != 'free') _FeeLine(state: fee, amount: money(_fee?['amount'], '${_fee?['currency'] ?? ''}')),
+              ],
             ]),
           ),
         ),
         if (note.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: tone.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: tone.withValues(alpha: 0.3)),
-              ),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(Icons.format_quote_rounded, color: tone),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(t('ملاحظة فريق المنصة', 'Note from the platform team'),
-                        style: orgText(context, size: 12, w: FontWeight.w800, color: tone)),
-                    const SizedBox(height: 4),
-                    Text(note, style: orgText(context)),
-                  ]),
-                ),
-              ]),
-            ),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm + 2, AppSpace.md, 0),
+            child: AppBanner(icon: Icons.format_quote_rounded, color: tone, text: '${t('ملاحظة فريق المنصة', 'Note from the platform team')}: $note'),
           ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-          child: Column(children: [
-            if (status != 'suspended')
-              PrimaryButton(
-                isLoading: false,
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.lg - 4, AppSpace.md, 0),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (acts.edit)
+              AppButton.primary(
                 label: t('تعديل بيانات الطلب', 'Edit the application'),
                 icon: Icons.edit_rounded,
-                iconBefore: true,
+                expand: true,
                 onPressed: () => showOrgForm(context, edit: org),
               ),
-            if (status == 'rejected') ...[
-              const SizedBox(height: 10),
-              PrimaryButton(
-                isLoading: _busy,
-                background: c.success,
+            if (acts.resubmit) ...[
+              AppSpace.gapXs,
+              AppButton.secondary(
                 label: t('إعادة الإرسال للمراجعة', 'Resubmit for review'),
                 icon: Icons.send_rounded,
-                iconBefore: true,
+                expand: true,
+                busy: _busy,
                 onPressed: () async {
                   setState(() => _busy = true);
                   await s.resubmit();
@@ -180,25 +215,75 @@ class _OrgStatusScreenState extends State<OrgStatusScreen> {
                 },
               ),
             ],
-            const SizedBox(height: 6),
+            if (acts.contact) ...[
+              AppSpace.gapXs,
+              AppButton.tonal(
+                key: const ValueKey('status.contact'),
+                label: status == 'suspended' ? t('تواصل مع المنصة لإعادة التفعيل', 'Contact the platform team to reactivate') : t('تواصل مع فريق المنصة', 'Contact the platform team'),
+                icon: Icons.support_agent_rounded,
+                expand: true,
+                // ROUTE: profile.about (Contact & support)
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AboutScreen())),
+              ),
+            ],
+            AppSpace.gapXs,
+            AppButton.ghost(
+              label: t('تحقق من الحالة الآن', 'Check the status now'),
+              icon: Icons.refresh_rounded,
+              expand: true,
+              onPressed: _busy ? null : _refresh,
+            ),
             // A waiting / rejected / suspended org admin can always leave (before: no way out of this screen).
-            TextButton.icon(
+            AppButton.ghost(
+              label: 'logout'.tr,
+              icon: DirIcons.logout,
+              expand: true,
               onPressed: () async {
                 if (await confirm(context, message: 'logout_confirm'.tr) && context.mounted) {
                   await context.read<ProfileProvider>().logout(context);
                 }
               },
-              icon: Icon(DirIcons.logout, color: c.danger),
-              label: Text('logout'.tr, style: TextStyle(fontFamily: AppFonts.family, color: c.danger)),
-            ),
-            TextButton.icon(
-              onPressed: _busy ? null : _refresh,
-              icon: const Icon(Icons.refresh_rounded),
-              label: Text(t('تحقق من الحالة الآن', 'Check the status now'), style: TextStyle(fontFamily: AppFonts.family)),
             ),
           ]),
         ),
       ]),
     );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({required this.icon, required this.label, required this.value});
+  final IconData icon;
+  final String label, value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.xs),
+        child: Row(children: [
+          Icon(icon, size: AppIconSize.md, color: context.colors.textLight),
+          AppSpace.gapXs,
+          Expanded(child: Text(label, style: AppType.meta(context))),
+          Flexible(child: Text(value, textAlign: TextAlign.end, style: AppType.row(context))),
+        ]),
+      );
+}
+
+class _FeeLine extends StatelessWidget {
+  const _FeeLine({required this.state, required this.amount});
+  final String state, amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final (String label, AppTone tone) = switch (state) {
+      'paid' => (t('مدفوعة', 'Paid'), AppTone.success),
+      'review' => (t('الإيصال قيد المراجعة', 'Receipt under review'), AppTone.warning),
+      _ => (t('غير مدفوعة', 'Not paid'), AppTone.danger),
+    };
+    return Row(children: [
+      Icon(Icons.receipt_long_rounded, size: AppIconSize.md, color: context.colors.textLight),
+      AppSpace.gapXs,
+      Expanded(child: Text('${t('رسوم إنشاء المؤسسة', 'Organization fee')} · $amount', style: AppType.meta(context))),
+      AppStatusBadge(label: label, tone: tone),
+    ]);
   }
 }
