@@ -789,6 +789,10 @@ bool _sameList(List<String> a, List<String> b) => a.length == b.length && a.toSe
 
 // ── server codes in plain words, each with the fix ────────────────────────────────────────────────────────────
 
+/// The bubble-sheet reader numbers questions in the exam's own order: no question shuffling on a bubble exam.
+String get versionsBubbleText => t("لا يستطيع قارئ ورقة التظليل قراءة ترتيب أسئلة مخلوط بعد — ما زال خلط الاختيارات متاحًا",
+    "Bubble sheets can't read a shuffled question order yet — options can still be shuffled");
+
 String setupCodeText(String? code, [Map<String, dynamic> detail = const {}]) => switch (code) {
       'setup_unknown_keys' => t('هذا الإصدار من التطبيق أرسل حقلًا لا يعرفه الخادم — حدّث التطبيق', 'This app version sent a setting the server does not know — update the app'),
       'delivery_invalid' => t('اختر نوع الاختبار: إلكتروني أو ورقي', 'Choose the exam type: online or paper'),
@@ -803,6 +807,8 @@ String setupCodeText(String? code, [Map<String, dynamic> detail = const {}]) => 
       'policy_uncertain_fixed' => t('التظليل غير الواضح يذهب للمراجعة دائمًا', 'Unclear marks always go to review'),
       'markers_invalid' => t('اختر طرق التمييز من القائمة دون تكرار', 'Pick the ways to tell models apart from the list, each once'),
       'markers_too_many' => t('طريقتان على الأكثر لتمييز النماذج — ألغِ واحدة', 'At most two ways to tell models apart — remove one'),
+      'question_shuffle_needs_paper_answers' => versionsBubbleText,
+      'versions_stale' => t('تغيّرت الأسئلة بعد إنشاء النماذج — أعد إنشاءها', 'The questions changed after the versions were made — regenerate them'),
       'marker_needs_bubble_sheet' => t('«الفقاعة المظللة» تحتاج ورقة تظليل — اختر طريقة أخرى أو ورقة التظليل', 'A marked bubble needs a bubble sheet — pick another way or use a bubble sheet'),
       'markers_need_forms' => t('طرق التمييز تلزم فقط مع أكثر من نموذج — أضف نموذجًا', 'Ways to tell models apart are needed only with more than one model — add a model'),
       'identifier_source' || 'identifier_invalid_shape' => t('اختر طريقة التعرف على الطالب من القائمة', 'Choose how to identify students from the list'),

@@ -1,7 +1,7 @@
 // The teacher's "Paper exam setup" wizard over the fake backend (D-150, D-151):
 //   • Example 1: choose National ID → "2 ready, 1 missing", the duplicates card, ask the missing student; the list
 //     follows the core's `exam_identifiers` event live (no timer needed) down to "0 missing".
-//   • Example 2: Online is stored and the wizard stops at "Online exams are coming next".
+//   • Example 2: Online is stored and the wizard closes (the exam editor holds the online settings).
 //   • Exam paper only skips the bubble-sheet step (no template call) and finishing sends nothing it did not change.
 // Setup / identifiers / templates replies are the recorded ones (test/org/fixtures/omr_setup_payloads.json); the exam
 // itself follows exam_engine/services/exams.py `to_dict(with_sections=True, reveal_answers=True)` with the questions
@@ -186,7 +186,7 @@ void main() {
     await _done(tester);
   });
 
-  testWidgets('Example 2: Online is stored and the wizard stops at "coming next"', (tester) async {
+  testWidgets('Example 2: Online is stored and the wizard closes', (tester) async {
     final b = _Backend({..._p('setup_put_bubble'), 'identifier': {'source': 'national_id', 'key': null}});
     AppConfig.disableList = ['exam.identifiers'];
     final fake = await _open(tester, b);
@@ -198,8 +198,10 @@ void main() {
     expect(find.text('Step 1 of 1 · Type'), findsOneWidget, reason: 'online has no further steps');
     await _tapPrimary(tester);
     expect(b.puts.single, {'delivery': 'online'});
-    expect(find.text('Online exams are coming next'), findsOneWidget);
-    expect(find.text('Done'), findsOneWidget);
+    await _frames(tester, 6);
+    expect(find.text('Online exams are coming next'), findsNothing, reason: 'online is a real path now, not a dead end');
+    expect(find.text('How will students take this exam?'), findsNothing, reason: 'the wizard closed');
+    expect(result, isTrue);
     expect(fake.calls.where((c) => c.path.contains('/omr/templates') || c.path.endsWith('/forms')), isEmpty);
     expect(tester.takeException(), isNull);
     await _done(tester);

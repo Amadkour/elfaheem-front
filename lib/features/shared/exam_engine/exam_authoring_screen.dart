@@ -5,6 +5,7 @@
 // AccommodationsPanel, AccommodationForm, ExamPublishPanel, BankQuestionTile) take plain values and callbacks, so
 // test/org/exam_authoring_test.dart runs them under the layout harness; the stateful screens own the API calls.
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import 'exam_authoring.dart';
 import 'exam_grading_widgets.dart' show ResultsViewField;
+import 'exam_media.dart';
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'offline/offline_exam_teacher.dart';
 import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi;
@@ -270,6 +272,8 @@ class ExamSectionsPanel extends StatelessWidget {
     required this.onAddQuestions,
     required this.onRemoveQuestion,
     required this.onEditQuestion,
+    this.onReorderQuestions,
+    this.onMoveQuestionToSection,
   });
   final ExamView view;
   final VoidCallback onAddSection;
@@ -280,6 +284,11 @@ class ExamSectionsPanel extends StatelessWidget {
   final ValueChanged<PlacedQuestion> onRemoveQuestion;
   final void Function(SectionDraft section, PlacedQuestion question) onEditQuestion;
 
+  /// Drag / up / down inside a section (`ReorderableListView` indices: [newIndex] is before the removal).
+  final void Function(SectionDraft section, int oldIndex, int newIndex)? onReorderQuestions;
+
+  /// "Move to section…" for a placement.
+  final void Function(SectionDraft section, PlacedQuestion question)? onMoveQuestionToSection;
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -369,7 +378,20 @@ class ExamSectionsPanel extends StatelessWidget {
         if (sv.questions.isEmpty)
           Text(s.mode == 'paper' ? t('قسم ورقي — الأسئلة اختيارية (تُدخل الدرجات أو تُمسح الأوراق)', 'Paper section — questions optional (marks entered or scanned)')
               : t('لا توجد أسئلة في هذا القسم', 'No questions in this section'), style: appText(12.5, c: c.textLight)),
-        for (var qi = 0; qi < sv.questions.length; qi++) _questionRow(context, s, sv.questions[qi], qi, draft: draft),
+        if (draft && onReorderQuestions != null && sv.questions.length > 1)
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            proxyDecorator: (child, _, anim) => Material(color: Colors.transparent, elevation: 4, borderRadius: BorderRadius.circular(12), child: child),
+            onReorder: (o, n) => onReorderQuestions!(s, o, n),
+            children: [
+              for (var qi = 0; qi < sv.questions.length; qi++)
+                KeyedSubtree(key: ValueKey('pl.${sv.questions[qi].placementId}'), child: _questionRow(context, s, sv.questions[qi], qi, draft: draft, count: sv.questions.length, sections: view.sections.length)),
+            ],
+          )
+        else
+          for (var qi = 0; qi < sv.questions.length; qi++) _questionRow(context, s, sv.questions[qi], qi, draft: draft, count: sv.questions.length, sections: view.sections.length),
         if (draft) ...[
           _gap(6),
           Align(
@@ -381,15 +403,24 @@ class ExamSectionsPanel extends StatelessWidget {
     );
   }
 
-  Widget _questionRow(BuildContext context, SectionDraft s, PlacedQuestion q, int index, {required bool draft}) {
+  Widget _questionRow(BuildContext context, SectionDraft s, PlacedQuestion q, int index, {required bool draft, int count = 1, int sections = 1}) {
     final c = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 4, 8),
       decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
       child: Row(children: [
+        if (draft && onReorderQuestions != null && count > 1)
+          ReorderableDragStartListener(
+            index: index,
+            child: Padding(padding: const EdgeInsetsDirectional.only(end: 4), child: Icon(Icons.drag_indicator_rounded, size: 22, color: c.textLight, semanticLabel: t('اسحب لإعادة الترتيب', 'Drag to reorder'))),
+          ),
         Text('${index + 1}.', style: appText(13, w: FontWeight.w700, c: c.textMedium)),
         const SizedBox(width: 8),
+        if (q.media != null) ...[
+          QuestionImage.bank(questionId: q.questionId, media: q.media!, compact: true),
+          const SizedBox(width: 8),
+        ],
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(q.prompt.isEmpty ? '—' : q.prompt, style: appText(13.5, c: c.textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -397,12 +428,33 @@ class ExamSectionsPanel extends StatelessWidget {
             Wrap(spacing: 6, runSpacing: 4, children: [
               AppBadgePill(questionTypeLabel(q.type)),
               AppBadgePill(t('${fmtPoints(q.points)} د', '${fmtPoints(q.points)} pt'), color: c.success),
+              AppBadgePill(t('صعوبة ${q.difficulty}', 'Level ${q.difficulty}'), icon: Icons.signal_cellular_alt_rounded),
               if (q.required) AppBadgePill(t('إلزامي', 'Required'), color: c.warning),
               if (q.outdated) AppBadgePill(t('نسخة أحدث متاحة', 'Newer version'), icon: Icons.update_rounded, color: c.warning),
             ]),
           ]),
         ),
         _iconBtn(Icons.edit_outlined, t('تعديل السؤال', 'Edit question'), () => onEditQuestion(s, q), color: c.primary),
+        if (draft && onReorderQuestions != null && (count > 1 || sections > 1))
+          PopupMenuButton<String>(
+            tooltip: t('نقل السؤال', 'Move the question'),
+            icon: Icon(Icons.swap_vert_rounded, size: 20, color: c.textMedium),
+            onSelected: (v) {
+              switch (v) {
+                case 'up':
+                  onReorderQuestions!(s, index, index - 1);
+                case 'down':
+                  onReorderQuestions!(s, index, index + 2);
+                case 'section':
+                  onMoveQuestionToSection?.call(s, q);
+              }
+            },
+            itemBuilder: (_) => [
+              if (index > 0) PopupMenuItem(value: 'up', child: Text(t('نقل لأعلى', 'Move up'))),
+              if (index < count - 1) PopupMenuItem(value: 'down', child: Text(t('نقل لأسفل', 'Move down'))),
+              if (sections > 1 && onMoveQuestionToSection != null) PopupMenuItem(value: 'section', child: Text(t('نقل إلى قسم…', 'Move to section…'))),
+            ],
+          ),
         if (draft) _iconBtn(Icons.remove_circle_outline_rounded, t('إزالة من الاختبار', 'Remove from the exam'), () => onRemoveQuestion(q), color: c.danger),
       ]),
     );
@@ -503,8 +555,13 @@ class _SectionFormState extends State<SectionForm> with _Controllers {
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 class QuestionEditorForm extends StatefulWidget {
-  const QuestionEditorForm({super.key, required this.draft, required this.onSave, this.scrollable = true});
+  const QuestionEditorForm({super.key, required this.draft, required this.onSave, this.scrollable = true, this.orgId, this.courseId, this.mediaApi});
+  final int? courseId;
   final QuestionDraft draft;
+
+  /// Bank space of the question image upload (null = the personal bank) and the API (tests inject a fake).
+  final int? orgId;
+  final QuestionMediaApi? mediaApi;
 
   /// Saves the (already validated) draft; returns an error text, or null when saved.
   final Future<String?> Function(QuestionDraft draft) onSave;
@@ -516,6 +573,8 @@ class QuestionEditorForm extends StatefulWidget {
 
 class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controllers {
   late QuestionDraft d = widget.draft;
+  late final QuestionMediaApi _media = widget.mediaApi ?? QuestionMediaApi();
+  final Map<String, Uint8List> _uploaded = {};      // just uploaded images: previewed from memory, no round trip
   List<String> _codes = const [];
   String? _error;
   bool _busy = false;
@@ -571,8 +630,28 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
           controller: ctl('prompt', d.prompt), label: t('نص السؤال', 'Question text'), maxLines: 4,
           hint: d.type == 'fill_blank' ? t('ضع ___ مكان كل فراغ', 'Put ___ where each blank goes') : null,
           onChanged: (v) => setState(() => d.prompt = v)),
+      QuestionImageField(
+        media: d.media,
+        onChanged: (m) => setState(() => d.media = m),
+        preview: (m) {
+          final local = _uploaded[m.id];
+          return local != null
+              ? QuestionImage(cacheKey: 'local/${m.id}', load: () => Future.value(local), alt: m.alt)
+              : d.id != null
+                  ? QuestionImage.bank(questionId: d.id!, media: m, api: _media)
+                  : const SizedBox.shrink();
+        },
+        upload: (bytes, name) async {
+          final r = await _media.upload(bytes: bytes, fileName: name, orgId: widget.orgId, courseId: widget.courseId);
+          if (!r.ok) return (null, authoringError(r));
+          final id = '${r.map['id'] ?? ''}';
+          if (!QuestionMedia.validId(id)) return (null, authoringCodeText('question_media_invalid'));
+          _uploaded[id] = bytes;
+          return (QuestionMedia(id), null);
+        },
+      ),
       ..._typeEditor(context),
-      AppSectionTitle(t('الدرجة والتصنيف', 'Points and tags')),
+      AppSectionTitle(t('الدرجة والتصنيف', 'Points and tags'), subtitle: t('الدرجة: ${fmtPoints(d.points)} · الصعوبة: ${d.difficulty} من 5', 'Marks: ${fmtPoints(d.points)} · Difficulty: ${d.difficulty} of 5')),
       AppField(controller: ctl('pts', fmtPoints(d.points)), label: t('الدرجة', 'Points'), keyboard: _numKeyboard, ltr: true,
           onChanged: (v) => setState(() => d.points = parseNum(v) ?? 0)),
       Text(t('الصعوبة', 'Difficulty'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
@@ -809,6 +888,8 @@ Future<Map<String, dynamic>?> showQuestionEditor(BuildContext context, {Question
   return showAppSheet<Map<String, dynamic>>(
     context,
     (ctx) => QuestionEditorForm(
+      orgId: orgId,
+      courseId: courseId,
       draft: draft ?? QuestionDraft(),
       onSave: (d) async {
         final r = d.isNew ? await a.createQuestion(d.toCreate(orgId: orgId, courseId: courseId)) : await a.updateQuestion(d.id!, d.toUpdate());
@@ -839,6 +920,10 @@ class BankQuestionTile extends StatelessWidget {
       padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 12),
       onTap: onTap,
       child: Row(children: [
+        if (q.media != null) ...[
+          QuestionImage.bank(questionId: q.id, media: q.media!, compact: true),
+          const SizedBox(width: 10),
+        ],
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(q.prompt.isEmpty ? '—' : q.prompt, style: appText(13.5, w: FontWeight.w600, c: c.textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -846,6 +931,7 @@ class BankQuestionTile extends StatelessWidget {
             Wrap(spacing: 6, runSpacing: 4, children: [
               AppBadgePill(questionTypeLabel(q.type)),
               AppBadgePill(t('${fmtPoints(q.points)} د', '${fmtPoints(q.points)} pt'), color: c.success),
+              AppBadgePill(t('صعوبة ${q.difficulty}', 'Level ${q.difficulty}'), icon: Icons.signal_cellular_alt_rounded),
               AppBadgePill(t('نسخة ${q.version}', 'v${q.version}'), color: c.textMedium),
               if (q.status != 'active') AppBadgePill(t('مؤرشف', 'Archived'), color: c.warning),
               for (final tag in q.tags.take(3)) AppBadgePill('#$tag', color: c.textMedium),
@@ -879,7 +965,10 @@ class _QuestionBankBrowserState extends State<QuestionBankBrowser> {
   final _search = TextEditingController();
   Timer? _debounce;
   String? _type;
-  List<BankQuestion>? _items;
+  final Set<int> _levels = {};
+  final _paging = BankPaging();
+  bool _loaded = false;
+  bool _more = false;
   String? _error;
 
   @override
@@ -903,20 +992,32 @@ class _QuestionBankBrowserState extends State<QuestionBankBrowser> {
 
   int _gen = 0;
 
-  Future<void> _load() async {
+  static const _pageSize = 30;
+
+  /// [more] appends the next page (`next_before`); otherwise the list restarts with the current filters.
+  Future<void> _load({bool more = false}) async {
     final gen = ++_gen;                                  // a slower, older search never replaces a newer one
-    final r = await widget.api.questions(orgId: widget.orgId, courseId: widget.courseId, type: _type, q: _search.text);
+    if (more && !_paging.hasMore) return;
+    if (more) setState(() => _more = true);
+    final r = await widget.api.questions(
+        orgId: widget.orgId, courseId: widget.courseId, type: _type, q: _search.text, difficulty: _levels,
+        limit: _pageSize, before: more ? _paging.nextBefore : null);
     if (!mounted || gen != _gen) return;
     setState(() {
+      _more = false;
+      _loaded = true;
       _error = r.ok ? null : authoringError(r);
-      _items = r.ok ? [for (final q in asMapList(r.map['items'])) BankQuestion.fromJson(q)] : (_items ?? const []);
+      if (r.ok) {
+        if (!more) _paging.reset();
+        _paging.add(BankPage.fromResult(r.map));
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final items = _items;
+    final items = _loaded ? _paging.items : null;
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
       ...widget.header,
       AppField(
@@ -937,6 +1038,15 @@ class _QuestionBankBrowserState extends State<QuestionBankBrowser> {
           _load();
         },
       ),
+      _gap(4),
+      Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text(t('الصعوبة', 'Difficulty'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+        for (var i = 1; i <= 5; i++)
+          AppChoiceChip(label: '$i', selected: _levels.contains(i), onTap: () {
+            setState(() => _levels.contains(i) ? _levels.remove(i) : _levels.add(i));
+            _load();
+          }),
+      ]),
       _gap(12),
       if (_error != null) AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
       if (items == null) const SizedBox(height: 260, child: AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.zero)),
@@ -945,6 +1055,16 @@ class _QuestionBankBrowserState extends State<QuestionBankBrowser> {
       if (items != null)
         for (final q in items)
           BankQuestionTile(question: q, trailing: widget.trailing?.call(q), onTap: widget.onTap == null ? null : () => widget.onTap!(q)),
+      if (items != null && _paging.scanCapped && !_paging.hasMore)
+        Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(t('البحث اقتصر على جزء من البنك — ضيّق البحث', 'The search covered part of the bank — narrow it down'), style: appText(12, c: c.textLight))),
+      if (items != null && _paging.hasMore)
+        Align(
+          child: TextButton.icon(
+            onPressed: _more ? null : () => _load(more: true),
+            icon: _more ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.expand_more_rounded),
+            label: Text(t('تحميل المزيد', 'Load more')),
+          ),
+        ),
     ]);
   }
 }
@@ -1560,6 +1680,56 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     _load(side: false);
   }
 
+  /// Drag / up / down inside a section: the list moves at once; a refused order reloads the exam from the server.
+  Future<void> _reorderQuestions(SectionDraft s, int oldIndex, int newIndex) async {
+    final v = _view;
+    if (v == null) return;
+    final sv = v.sections.firstWhere((x) => x.section.id == s.id);
+    final before = List.of(sv.questions);
+    final ids = [for (final q in before) q.placementId];
+    final next = reorderIds(ids, oldIndex, newIndex);
+    if (next.join(',') == ids.join(',')) return;
+    final byId = {for (final q in before) q.placementId: q};
+    setState(() => sv.questions
+      ..clear()
+      ..addAll([for (final id in next) byId[id]!]));
+    final r = await _api.reorderQuestions(v.exam.id!, s.id!, next);
+    if (!mounted) return;
+    if (r.ok) {
+      setState(() => _apply(r.map));
+    } else {
+      // not a snapshot taken before the await (a second quick drag would roll back against a stale one): the server's order
+      appToast(authoringError(r), error: true);
+      _load(side: false);
+    }
+  }
+
+  /// "Move to section…": the question goes to the end of the chosen section.
+  Future<void> _moveQuestionToSection(SectionDraft from, PlacedQuestion q) async {
+    final v = _view;
+    if (v == null) return;
+    final target = await showAppSheet<SectionDraft>(context, (ctx) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppSectionTitle(t('نقل إلى قسم', 'Move to section')),
+          for (var i = 0; i < v.sections.length; i++)
+            if (v.sections[i].section.id != from.id)
+              ListTile(
+                title: Text(v.sections[i].section.title.trim().isEmpty ? t('القسم ${i + 1}', 'Section ${i + 1}') : v.sections[i].section.title.trim()),
+                trailing: Text(t('${v.sections[i].questions.length} سؤال', '${v.sections[i].questions.length} questions')),
+                onTap: () => Navigator.of(ctx).pop(v.sections[i].section),
+              ),
+        ]));
+    if (target == null || !mounted) return;
+    final dest = v.sections.firstWhere((x) => x.section.id == target.id);
+    final r = await _api.movePlacement(v.exam.id!, q.placementId, sectionId: target.id, position: dest.questions.length);
+    if (!mounted) return;
+    if (!r.ok) {
+      appToast(authoringError(r), error: true);
+      _load(side: false);
+      return;
+    }
+    setState(() => _apply(r.map));
+  }
+
   Future<void> _addQuestions(SectionDraft s) async {
     final v = _view!;
     await showAppSheet<void>(context, (_) => QuestionPickerSheet(
@@ -1743,6 +1913,8 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                       onAddQuestions: _addQuestions,
                       onRemoveQuestion: _removeQuestion,
                       onEditQuestion: _editQuestion,
+                      onReorderQuestions: _reorderQuestions,
+                      onMoveQuestionToSection: _moveQuestionToSection,
                     ),
                   ]),
                 ),

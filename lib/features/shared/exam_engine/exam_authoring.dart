@@ -13,6 +13,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import 'exam_engine_api.dart';
 import 'exam_grading.dart' show resultsViews;
+import 'exam_media.dart';
 import 'exam_taking.dart' show examCodeText;
 
 // ── vocabularies (exam_engine/models.py) ────────────────────────────────────────────────────────────────────────
@@ -317,6 +318,16 @@ class QuestionDraft {
   bool get isOpen => openQuestionTypes.contains(type);
   bool get isNew => id == null;
 
+  /// The question's optional image (body `media`, at most one); kept in [extraBody] so it round-trips.
+  QuestionMedia? get media => mediaOfBody(extraBody);
+  set media(QuestionMedia? m) {
+    if (m == null) {
+      extraBody.remove('media');
+    } else {
+      extraBody['media'] = [m.toJson()];
+    }
+  }
+
   /// Switch the type of a NEW question: the prompt, points and tags stay, the type's own parts start fresh.
   QuestionDraft withType(String next) {
     final d = QuestionDraft(type: next)
@@ -325,6 +336,8 @@ class QuestionDraft {
       ..points = points
       ..tags = List.of(tags)
       ..difficulty = difficulty;
+    final m = media;
+    if (m != null) d.media = m;
     if ((next == 'mcq_single' || next == 'mcq_multi') && options.isNotEmpty) d.options = options;
     if (openQuestionTypes.contains(next)) {
       d.model = model;
@@ -491,6 +504,7 @@ class QuestionDraft {
     final out = <String>[];
     if (prompt.trim().isEmpty) out.add('prompt_required');
     if (!(points > 0)) out.add('points_positive');
+    out.addAll(validateMediaList(extraBody['media']));
     switch (type) {
       case 'mcq_single':
       case 'mcq_multi':
@@ -549,6 +563,9 @@ class BankQuestion {
   final int version;
   final String status;
   final Map<String, dynamic> raw;
+
+  QuestionMedia? get media => mediaOfBody(asMap(raw['body']));
+  int get difficulty => asInt(raw['difficulty'], 3);
 
   static BankQuestion fromJson(Map<String, dynamic> q) => BankQuestion(
         id: asInt(q['id']), type: '${q['type'] ?? ''}', prompt: '${asMap(q['body'])['prompt'] ?? ''}', points: asDouble(q['points'], 1),
@@ -782,6 +799,9 @@ class PlacedQuestion {
   final bool outdated;
   final List<String> tags;
   final Map<String, dynamic> raw;
+
+  QuestionMedia? get media => mediaOfBody(asMap(raw['body']));
+  int get difficulty => asInt(raw['difficulty'], 3);
 
   static PlacedQuestion fromJson(Map<String, dynamic> q) => PlacedQuestion(
         placementId: asInt(q['placement_id']), questionId: asInt(q['id']), type: '${q['type'] ?? ''}',
@@ -1071,6 +1091,9 @@ String authoringCodeText(String code) => switch (code) {
       'bad_weight' => t('وزن القسم يجب أن يكون موجباً', 'The section weight must be positive'),
       'bad_time_box_minutes' => t('وقت القسم يجب أن يكون موجباً', 'The section time must be positive'),
       'bad_pool_size' => t('عدد أسئلة السحب يجب أن يكون موجباً', 'The pool size must be positive'),
+      'order_mismatch' => t('ترتيب الأسئلة تغيّر — أعد التحميل', 'The question order changed — reload'),
+      'exam_not_draft' => t('الاختبار لم يعد مسودة', 'The exam is no longer a draft'),
+      'bad_points' => t('الدرجة غير صالحة', 'Invalid points'),
       'bad_order' => t('ترتيب الأقسام غير مطابق — أعد التحميل', 'The section order does not match — reload'),
       'already_placed' => t('السؤال موجود في هذا الاختبار بالفعل', 'The question is already in this exam'),
       'placement_not_found' => t('السؤال ليس في هذا الاختبار', 'The question is not in this exam'),
@@ -1084,7 +1107,7 @@ String authoringCodeText(String code) => switch (code) {
       'accommodation_not_found' => t('التيسير غير موجود', 'The accommodation was not found'),
       'forbidden' => t('ليس لديك صلاحية على هذا', 'You do not have permission for this'),
       'engine_unavailable' => t('خدمة الاختبارات الجديدة غير متاحة بعد على الخادم', 'The exam service is not available on the server yet'),
-      _ => examCodeText(code),
+      _ => mediaCodeText(code) ?? examCodeText(code),
     };
 
 /// The text to show for a failed call: the mapped code, else the server's message.
@@ -1114,6 +1137,66 @@ class ExamScope {
   final EngineResult list;
 }
 
+// ── reorder / paging (pure) ─────────────────────────────────────────────────────────────────────────────────────
+
+/// `ReorderableListView.onReorder` semantics (newIndex is the position BEFORE the removal): the new list of ids.
+List<int> reorderIds(List<int> ids, int oldIndex, int newIndex) {
+  if (oldIndex < 0 || oldIndex >= ids.length) return List.of(ids);
+  var to = newIndex;
+  if (to > oldIndex) to -= 1;
+  to = to.clamp(0, ids.length - 1);
+  final out = List.of(ids);
+  out.insert(to, out.removeAt(oldIndex));
+  return out;
+}
+
+/// The same reorder applied to any list (optimistic update; rolled back by restoring the old list).
+List<T> reorderList<T>(List<T> items, int oldIndex, int newIndex) {
+  if (oldIndex < 0 || oldIndex >= items.length) return List.of(items);
+  var to = newIndex;
+  if (to > oldIndex) to -= 1;
+  to = to.clamp(0, items.length - 1);
+  final out = List.of(items);
+  out.insert(to, out.removeAt(oldIndex));
+  return out;
+}
+
+/// One page of the bank. Understands the new shape (`items` + `next_before` + `scan_capped`) and the old ones
+/// (`items` only, or a bare list that `engineCall` wraps as `value`).
+class BankPage {
+  BankPage(this.items, this.nextBefore, this.scanCapped);
+  final List<BankQuestion> items;
+  final int? nextBefore;
+  final bool scanCapped;
+
+  static BankPage fromResult(Map<String, dynamic> m) {
+    final raw = m['items'] is List ? asMapList(m['items']) : (m['value'] is List ? asMapList(m['value']) : const <Map<String, dynamic>>[]);
+    final nb = m['next_before'];
+    return BankPage([for (final q in raw) BankQuestion.fromJson(q)], nb == null ? null : asInt(nb), m['scan_capped'] == true);
+  }
+}
+
+/// Paging state of the bank list: filters reset it, "load more" appends and never duplicates a question.
+class BankPaging {
+  final List<BankQuestion> items = [];
+  int? nextBefore;
+  bool scanCapped = false;
+  bool get hasMore => nextBefore != null;
+
+  void reset() {
+    items.clear();
+    nextBefore = null;
+    scanCapped = false;
+  }
+
+  void add(BankPage p) {
+    final seen = {for (final q in items) q.id};
+    items.addAll(p.items.where((q) => seen.add(q.id)));
+    nextBefore = p.nextBefore;
+    scanCapped = p.scanCapped;
+  }
+}
+
 // ── API ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class ExamAuthoringApi {
@@ -1122,7 +1205,8 @@ class ExamAuthoringApi {
   static const base = ExamEngineApi.base;
 
   // question bank
-  Future<EngineResult> questions({int? orgId, int? courseId, String? type, String? tag, String? q, bool includeArchived = false}) =>
+  Future<EngineResult> questions({int? orgId, int? courseId, String? type, String? tag, String? q, bool includeArchived = false,
+          Set<int> difficulty = const {}, int? limit, int? before}) =>
       engineCall(() => _api.get('$base/questions', queryParams: {
             'org_id': ?orgId,
             'course_id': ?courseId,
@@ -1130,6 +1214,9 @@ class ExamAuthoringApi {
             if (tag != null && tag.isNotEmpty) 'tag': tag,
             if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
             if (includeArchived) 'include_archived': true,
+            if (difficulty.isNotEmpty) 'difficulty': (difficulty.toList()..sort()).join(','),
+            'limit': ?limit,
+            'before': ?before,
           }));
   Future<EngineResult> question(int id, {int? version}) => engineCall(() => _api.get('$base/questions/$id', queryParams: {'version': ?version}));
   Future<EngineResult> createQuestion(Map<String, dynamic> body) => engineCall(() => _api.post('$base/questions', body: body));
@@ -1204,6 +1291,12 @@ class ExamAuthoringApi {
             'position': ?position,
             'required': required,
           }));
+  /// New order of one section's placements (exactly its set), draft only.
+  Future<EngineResult> reorderQuestions(int examId, int sid, List<int> placementIds) =>
+      engineCall(() => _api.put('$base/exams/$examId/sections/$sid/questions/order', body: {'placement_ids': placementIds}));
+  /// Move a placement to another section and/or position (0-based), or change its points.
+  Future<EngineResult> movePlacement(int examId, int placementId, {int? sectionId, int? position, double? points}) =>
+      engineCall(() => _api.put('$base/exams/$examId/placements/$placementId', body: {'section_id': ?sectionId, 'position': ?position, 'points': ?points}));
   Future<EngineResult> unplace(int examId, int placementId) => engineCall(() => _api.delete('$base/exams/$examId/placements/$placementId'));
 
   // proctoring + accommodations + consent texts
