@@ -2572,6 +2572,41 @@ screens are untouched until they opt in):
 `StatusChip`, `PremiumHero` …): each session moves its own screens when it touches them; the Super Admin pages move in
 D-181.
 
+## D-181 — The Super Admin dashboard on the design system: one page frame, a real overview, global search · 2026-11-04 · accepted
+
+**Context.** The audit (`docs/admin/SUPER_ADMIN_AUDIT.md`) walked every Super Admin page: four header styles, the
+title drawn twice (app bar + hero), a doodle background behind tables, centred spinners, failed loads shown as "no
+data", `'$e'` error texts, red Activate buttons, ±1 steppers for values in the hundreds, deletes without a confirm or
+with one that does not name the item, money without thousands separators, and no way to find a person, course or
+payment without knowing which tab holds it.
+
+**Decision.**
+- Every pushed admin page is `AdminPage` (`lib/features/admin/admin_page.dart`): `AppPageHeader` once (title, ONE
+  primary action, secondary actions, Refresh with "Updated …"), `AppUnsavedGuard` through `dirty:`, a readable max
+  width, no doodle background. A shell tab registers its reload through `AdminRefreshScope.register`, so the shell's
+  Refresh reloads data instead of re-creating the page.
+- Records are `AppDataTable` (a table on wide screens, cards on phones, search / filter / sort / load-more); settings
+  are `AppSection` + `AppCard` groups with typed number fields next to any stepper; loading is a skeleton, a failed
+  load is `AppErrorState` with the server's text and Retry, a failed refresh keeps the data.
+- Overview: a greeting, the global search field, six KPIs (revenue 30 days is the one highlighted card), ONE "Needs
+  your attention" list whose rows deep-link, then charts, health and shortcuts.
+- Global search: `GET /api/v1/admin/search?q=&limit=` (backend `routers/admin_search_router.py`, admin-only; the
+  admins group is super-admin only; capped per group) plus the pages the viewer can open, in a command palette
+  (Ctrl+K or "/", a full sheet on phones) — `admin_global_search.dart`.
+- Hub tiles carry the brand tint only (no colour per service); labels renamed where the audit found them wrong
+  (Flags → "Student review & read flags", Terms → "About & terms", Requirements, Send message).
+- One money formatter, `money()` in `admin_common.dart` (thousands separators); amounts typed with Arabic digits or
+  "2,5" parse (`parseAmountLoose`).
+
+**Consolidated, nothing lost.** The owner asked for best practice ("premium and smart"): the duplicated entry points the
+audit found (R1–R8) were folded into one home each — one Fees page (Rates · Policy), one App versions page (Build &
+publish · Update prompt, each tab with its old role and kill-switch rules), one Parent linking page (Requests ·
+Settings), the Feature guide shows the app switch read-only and links to Features, the View-as and Teachers hub tiles
+went (their paths are the user rows, the Teachers tab and the search palette), and the Overview's hubs block became
+"Recently opened" (`AdminRecents`, per user, on this device; the palette shows the same as Recent). Every call, field,
+kill switch and role check of the old screens is kept, and the old page classes still open for any caller. Screens owned by other sessions (courses ↔ students, RAG, exams and the grading
+feedback store, organization flow) were not redesigned.
+
 ## D-210 — One course-access rule, expiry enforced, an organization's charge stops at its own courses · 2026-11-04 · accepted
 
 **Context.** A student who paid for a six-month plan was told to "subscribe" again. The investigation (fix/subscriptions,

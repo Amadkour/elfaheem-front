@@ -78,6 +78,74 @@ Future<void> exportPagedList(BuildContext context, AdminPagedProvider p, AppTabl
   }
 }
 
+/// Exports rows that are NOT an [AdminPagedProvider] list (the payments hub, the payout requests): [fetch] gets every
+/// row behind a progress dialog with Cancel, [build] turns them into the table, the export sheet writes the file.
+Future<void> exportFetched(
+  BuildContext context, {
+  required Future<List<Map<String, dynamic>>> Function(ExportJob job) fetch,
+  required AppTableExport Function(List<Map<String, dynamic>> rows) build,
+  Map<String, String> filters = const {},
+}) async {
+  if (_busy) return;
+  _busy = true;
+  try {
+    final rows = await runExportWithProgress(context, fetch, title: t('جارٍ تجهيز كل الصفوف…', 'Preparing every row…'));
+    if (rows == null) {
+      toast(t('أُلغي التصدير', 'Export cancelled'));
+      return;
+    }
+    if (!context.mounted) return;
+    final e = bilingualExport(() => build(rows));
+    await showAppExportSheet(context, e.copyWith(filters: {...filters, ...e.filters}));
+  } catch (err) {
+    toast(ApiException.from(err).message, error: true);
+  } finally {
+    _busy = false;
+  }
+}
+
+/// Payment history (the payments hub): date · payer · course · amount · currency · method · status.
+AppTableExport adminPaymentsExport(List<Map<String, dynamic>> rows) {
+  String courseName(Map<String, dynamic> c) {
+    final ar = asStr(c['name_ar']);
+    final en = asStr(c['name_en']);
+    final first = t(ar, en);
+    return first.isNotEmpty ? first : (ar.isNotEmpty ? ar : en);
+  }
+
+  return AppTableExport(
+    id: 'admin.payments',
+    title: t('سجل المدفوعات', 'Payment history'),
+    columns: [
+      AppExportColumn('created_at', t('التاريخ', 'Date'), type: AppColType.dateTime),
+      AppExportColumn('payer', t('الدافع', 'Payer'), locked: true, total: AppTotal.count),
+      AppExportColumn('course', t('الكورس', 'Course')),
+      AppExportColumn('amount', t('المبلغ', 'Amount'), type: AppColType.money, total: AppTotal.sum),
+      AppExportColumn('currency', t('العملة', 'Currency'), width: 9),
+      AppExportColumn('method', t('الطريقة', 'Method')),
+      _status('status', t('الحالة', 'Status'), {
+        'pending': t('قيد الانتظار', 'Pending'),
+        'completed': t('مكتمل', 'Completed'),
+        'failed': t('فشل', 'Failed'),
+        'refunded': t('مُسترد', 'Refunded'),
+        'cancelled': t('ملغي', 'Cancelled'),
+      }),
+    ],
+    rows: [
+      for (final r in rows)
+        {
+          'created_at': r['created_at'],
+          'payer': asStr(asMap(r['student'])['name']),
+          'course': courseName(asMap(r['course'])),
+          'amount': r['amount'],
+          'currency': asStr(r['currency']) == '—' ? '' : asStr(r['currency']),
+          'method': asStr(r['method']),
+          'status': asStr(r['status']),
+        },
+    ],
+  );
+}
+
 /// A compact "Export" pill for list headers.
 class AppExportPill extends StatelessWidget {
   const AppExportPill({super.key, required this.onTap, this.label});
@@ -197,6 +265,7 @@ AppTableExport adminWithdrawalsExport(List<Map<String, dynamic>> rows) => AppTab
         AppExportColumn('teacher_name', t('المعلم', 'Teacher'), locked: true),
         AppExportColumn('teacher_gmail', t('البريد', 'Email')),
         AppExportColumn('amount', t('المبلغ', 'Amount'), type: AppColType.money, total: AppTotal.sum),
+        AppExportColumn('payout_currency', t('العملة', 'Currency'), width: 9),
         _status('status', t('الحالة', 'Status'), {'pending': t('معلق', 'Pending'), 'approved': t('مقبول', 'Approved'), 'paid': t('مدفوع', 'Paid'), 'rejected': t('مرفوض', 'Rejected')}),
         AppExportColumn('payout_method', t('الطريقة', 'Method')),
         AppExportColumn('bank_reference', t('مرجع البنك', 'Bank reference'), visible: false),
