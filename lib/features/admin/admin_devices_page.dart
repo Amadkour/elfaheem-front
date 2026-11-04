@@ -4,17 +4,16 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:provider/provider.dart';
 
-import '../../config/app_config.dart';
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/base_page.dart';
-import 'admin_common.dart';
-import 'admin_premium_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'admin_common.dart' show t;
+import 'admin_page.dart';
 import 'admin_providers.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminDevicesPage extends StatelessWidget {
   const AdminDevicesPage({super.key});
@@ -34,290 +33,256 @@ class _View extends StatefulWidget {
 }
 
 class _ViewState extends State<_View> {
-  int _devices = 1;
-  int _videos = 1;
-  int _days = 30;
+  // null = the field holds something that is not a valid number in range (Save stays off)
+  int? _devices = 1;
+  int? _videos = 1;
+  int? _days = 30;
   bool _filled = false;
   bool _allowResub = true;
   bool _busy = false;
+  // what the server holds (the unsaved-changes guard)
+  int _sDevices = 1, _sVideos = 1, _sDays = 30;
+  bool _sResub = true;
+  DateTime? _loadedAt;
 
   void _fill(AdminSettingsProvider s) {
     if (_filled || s.values.isEmpty) return;
     _filled = true;
-    _devices = s.maxDevices.clamp(1, 10);
-    _videos = s.maxVideos.clamp(1, 1000);
-    _days = s.switchDays.clamp(1, 365);
-    _allowResub = s.allowResubscribe;
+    _loadedAt = DateTime.now();
+    _devices = _sDevices = s.maxDevices.clamp(1, 10);
+    _videos = _sVideos = s.maxVideos.clamp(1, 1000);
+    _days = _sDays = s.switchDays.clamp(1, 365);
+    _allowResub = _sResub = s.allowResubscribe;
   }
 
+  bool get _valid => _devices != null && _videos != null && _days != null;
+  bool get _dirty =>
+      _filled && (_devices != _sDevices || _videos != _sVideos || _days != _sDays || _allowResub != _sResub);
+
   Future<void> _save(AdminSettingsProvider s) async {
+    if (_busy || !_valid) return;
     FocusScope.of(context).unfocus();
     setState(() => _busy = true);
     try {
-      await s.save({
-        'max_devices': _devices.clamp(1, 10),
-        'device_switch_days': _days.clamp(1, 365),
-        'max_monthly_view': _videos.clamp(1, 1000),
+      final ok = await s.save({
+        'max_devices': _devices!.clamp(1, 10),
+        'device_switch_days': _days!.clamp(1, 365),
+        'max_monthly_view': _videos!.clamp(1, 1000),
         'allow_resubscribe': _allowResub,
       });
+      if (ok) {
+        _sDevices = _devices!;
+        _sVideos = _videos!;
+        _sDays = _days!;
+        _sResub = _allowResub;
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _reload(AdminSettingsProvider s) async {
+    await s.load();
+    if (!mounted) return;
+    setState(() {
+      _filled = false;
+      _fill(s);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     context.watch<LangProvider>();
     final s = context.watch<AdminSettingsProvider>();
-    final c = context.colors;
     _fill(s);
 
+    final empty = s.values.isEmpty;
     Widget body;
-    if (s.values.isEmpty && s.isLoading) {
+    if (empty && s.isLoading) {
       body = const AppListSkeleton();
-    } else if (s.values.isEmpty) {
-      body = ErrorRetry(
-        message: s.error ?? 'admin_could_not_load_data'.tr,
-        onRetry: s.load,
+    } else if (empty) {
+      body = Center(
+        child: AppErrorState(message: s.error ?? 'admin_could_not_load_data'.tr, onRetry: () => _reload(s)),
       );
     } else {
       body = ListView(
-        padding: const EdgeInsets.all(16),
+        padding: AdminPage.bodyPadding(context),
         children: [
-          PremiumHero(
-            icon: Icons.devices_other_rounded,
-            colors: AdminPalette.violet,
-            title: 'admin_devices'.tr,
-            subtitle: 'svc_devices_d'.tr,
-            footer: Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                HeroPill(
-                  trp('dev_pill_devices', {'n': _devices}),
-                  icon: Icons.smartphone_rounded,
-                ),
-                HeroPill(
-                  trp('dev_pill_days', {'n': _days}),
-                  icon: Icons.event_repeat_rounded,
-                ),
-                HeroPill(
-                  trp('dev_pill_videos', {'n': _videos}),
-                  icon: Icons.play_circle_rounded,
-                ),
-              ],
-            ),
-          ),
-          Section(
-            icon: Icons.phonelink_lock_rounded,
-            colors: AdminPalette.blue,
+          AppSection(
             title: 'admin_student_devices'.tr,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PremiumCounter(
+            subtitle: 'admin_a_student_may_request_one_device'.tr,
+            child: AppCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                _NumberRow(
                   label: 'admin_devices_allowed_per_student'.tr,
                   value: _devices,
-                  minValue: 1,
-                  maxValue: 10,
-                  enabled: true,
+                  min: 1,
+                  max: 10,
+                  unit: (n) => countText(n,
+                      ar1: 'جهاز واحد', ar2: 'جهازان', arFew: '{n} أجهزة', arMany: '{n} جهازًا', en1: '1 device', en: '{n} devices'),
                   onChanged: (v) => setState(() => _devices = v),
                 ),
-                _PremiumCounter(
+                const Divider(),
+                _NumberRow(
                   label: 'admin_days_between_device_switches_default'.tr,
                   value: _days,
-                  minValue: 1,
-                  maxValue: 365,
-                  enabled: true,
+                  min: 1,
+                  max: 365,
+                  unit: daysText,
                   onChanged: (v) => setState(() => _days = v),
-                  suffix: 'days',
                 ),
-                _PremiumCounter(
+                const Divider(),
+                _NumberRow(
                   label: 'max_monthly_view'.tr,
                   value: _videos,
-                  minValue: 1,
-                  maxValue: 1000,
-                  enabled: true,
+                  min: 1,
+                  max: 1000,
+                  unit: (n) => countText(n,
+                      ar1: 'مشاهدة واحدة', ar2: 'مشاهدتان', arFew: '{n} مشاهدات', arMany: '{n} مشاهدة', en1: '1 view', en: '{n} views'),
                   onChanged: (v) => setState(() => _videos = v),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Text(
-                    'admin_a_student_may_request_one_device'.tr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 12,
-                      color: c.textLight,
-                    ),
-                  ),
-                ),
-              ],
+              ]),
             ),
           ),
-          Section(
-            icon: Icons.autorenew_rounded,
-            colors: AdminPalette.green,
+          AppSpace.gapLg,
+          AppSection(
             title: 'admin_resubscribe_section'.tr,
-            child: PremiumSwitchRow(
-              title: 'admin_global_allow_resubscribe'.tr,
-              subtitle: 'admin_global_allow_resubscribe_hint'.tr,
-              value: _allowResub,
-              onChanged: (v) => setState(() => _allowResub = v),
+            child: AppCard(
+              child: AppSwitchTile(
+                icon: Icons.autorenew_rounded,
+                title: 'admin_global_allow_resubscribe'.tr,
+                subtitle: 'admin_global_allow_resubscribe_hint'.tr,
+                value: _allowResub,
+                onChanged: (v) => setState(() => _allowResub = v),
+              ),
             ),
           ),
         ],
       );
     }
 
-    return BasePage(
-      useWebCard: true,
-      maxWith: 900,
-      appBar: ScreenAppBar(title: 'admin_devices'.tr),
-      bottomNavigationBar: s.values.isEmpty
+    return AdminPage(
+      title: 'admin_devices'.tr,
+      subtitle: 'svc_devices_d'.tr,
+      icon: Icons.devices_other_rounded,
+      onRefresh: s.isLoading || _busy ? null : () => _reload(s),
+      updatedAt: _loadedAt,
+      dirty: _dirty,
+      primaryAction: empty
           ? null
-          : PremiumSaveBar(
+          : AppButton.primary(
               label: 'admin_save_settings'.tr,
-              loading: _busy,
-              onPressed: () => _save(s),
+              busy: _busy,
+              onPressed: _dirty && _valid ? () => _save(s) : null,
             ),
-      child: body,
+      body: body,
     );
   }
 }
 
-class _PremiumCounter extends StatelessWidget {
-  final String label;
-  final int value;
-  final int minValue;
-  final int maxValue;
-  final bool enabled;
-  final ValueChanged<int> onChanged;
-  final String? suffix;
-
-  const _PremiumCounter({
+/// A label, a typed number (digits only, range checked) and +/- as helpers. [onChanged] gets null while the text is
+/// empty or out of range.
+class _NumberRow extends StatefulWidget {
+  const _NumberRow({
     required this.label,
     required this.value,
-    required this.minValue,
-    required this.maxValue,
-    required this.enabled,
+    required this.min,
+    required this.max,
+    required this.unit,
     required this.onChanged,
-    this.suffix,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final canDecrease = enabled && value > minValue;
-    final canIncrease = enabled && value < maxValue;
+  final String label;
+  final int? value;
+  final int min, max;
+  final String Function(int n) unit;
+  final ValueChanged<int?> onChanged;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: colors.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: enabled ? colors.primary.withValues(alpha: 0.20) : context.colors.textLight.withValues(alpha: 0.15),
-          ),
-          boxShadow: colors.cardShadow,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontWeight: FontWeight.w700,
-                      color: enabled ? colors.textDark: colors.textLight,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    'Min $minValue • Max $maxValue',
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 11,
-                      color: colors.textLight,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            _CounterButton(
-              icon: Icons.remove_rounded,
-              enabled: canDecrease,
-              onTap: () => onChanged((value - 1).clamp(minValue, maxValue)),
-            ),
-            Container(
-              constraints: const BoxConstraints(minWidth: 54),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$value',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: enabled ? colors.primary : colors.textLight,
-                    ),
-                  ),
-                  if (suffix != null)
-                    Text(
-                      suffix!,
-                      style: TextStyle(fontSize: 10, color: colors.textLight),
-                    ),
-                ],
-              ),
-            ),
-            _CounterButton(
-              icon: Icons.add_rounded,
-              enabled: canIncrease,
-              onTap: () => onChanged((value + 1).clamp(minValue, maxValue)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  @override
+  State<_NumberRow> createState() => _NumberRowState();
 }
 
-class _CounterButton extends StatelessWidget {
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback onTap;
+class _NumberRowState extends State<_NumberRow> {
+  late final TextEditingController _ctl = TextEditingController(text: '${widget.value ?? ''}');
 
-  const _CounterButton({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-  });
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(_NumberRow old) {
+    super.didUpdateWidget(old);
+    // a stepper tap or a reload moved the value: show it (a half-typed invalid text is left alone)
+    if (widget.value != null && widget.value != int.tryParse(_ctl.text)) {
+      _ctl.text = '${widget.value}';
+    }
+  }
+
+  void _typed(String text) {
+    final n = int.tryParse(text);
+    widget.onChanged(n != null && n >= widget.min && n <= widget.max ? n : null);
+  }
+
+  void _step(int d) {
+    final base = widget.value ?? int.tryParse(_ctl.text) ?? widget.min;
+    widget.onChanged((base + d).clamp(widget.min, widget.max));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Material(
-      color: enabled ? colors.primary.withValues(alpha: 0.10) : context.colors.textLight.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(
-            icon,
-            color: enabled ? colors.primary : context.colors.textLight,
-            size: 21,
+    final v = widget.value;
+    final invalid = v == null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpace.md,
+        runSpacing: AppSpace.xs,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420, minWidth: 160),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(widget.label, style: AppType.row(context)),
+              Text(
+                invalid
+                    ? t('أدخل رقمًا من ${widget.min} إلى ${widget.max}', 'Enter a number from ${widget.min} to ${widget.max}')
+                    : '${t('الأدنى', 'Min')} ${widget.min} • ${t('الأقصى', 'Max')} ${widget.max} — ${widget.unit(v)}',
+                style: AppType.meta(context).copyWith(color: invalid ? context.colors.danger : null),
+              ),
+            ]),
           ),
-        ),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            AppIconButton(
+              icon: Icons.remove_rounded,
+              tooltip: t('إنقاص', 'Decrease'),
+              onPressed: (v ?? widget.min) > widget.min ? () => _step(-1) : null,
+            ),
+            SizedBox(
+              width: 88,
+              child: TextField(
+                controller: _ctl,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.ltr,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
+                decoration: InputDecoration(
+                  isDense: true,
+                  errorText: invalid ? '' : null,
+                  errorStyle: const TextStyle(height: 0, fontSize: 0),
+                ),
+                onChanged: _typed,
+              ),
+            ),
+            AppIconButton(
+              icon: Icons.add_rounded,
+              tooltip: t('زيادة', 'Increase'),
+              onPressed: (v ?? widget.min - 1) < widget.max ? () => _step(1) : null,
+            ),
+          ]),
+        ],
       ),
     );
   }

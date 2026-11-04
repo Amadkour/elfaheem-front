@@ -77,6 +77,10 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
   bool _disposed = false;
   int _gen = 0; // drops answers of requests that were replaced meanwhile
 
+  /// True after a search / filter / sort change until the new first page arrives: if that load fails the rows
+  /// of the OLD query must not stay on screen. A plain refresh (pull-to-refresh, after an action) keeps them.
+  bool _stale = false;
+
   String get path;
   Map<String, dynamic> get filters;
 
@@ -107,6 +111,7 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
     final t = v.trim();
     if (t == search) return;
     search = t;
+    _stale = true;
     _debounce?.cancel();
     _debounce = Timer(Duration.zero, () {
       if (!_disposed) refresh();
@@ -120,6 +125,7 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
     } else {
       adv[key] = value;
     }
+    _stale = true;
     return refresh();
   }
 
@@ -132,17 +138,20 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
           if (e.value != null) e.key: e.value,
       });
     sort = sortKey;
+    _stale = true;
     return refresh();
   }
 
   /// Removes the given filters (a chip's "x").
   Future<void> removeAdv(Iterable<String> keys) {
     keys.forEach(adv.remove);
+    _stale = true;
     return refresh();
   }
 
   Future<void> setSort(String? v) {
     sort = v;
+    _stale = true;
     return refresh();
   }
 
@@ -152,16 +161,14 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
     search = '';
     adv.clear();
     sort = null;
+    _stale = true;
     return refresh();
   }
 
+  /// Reloads the first page. The rows on screen stay until the new page arrives (no skeleton flash, the scroll
+  /// position is kept); a slow answer for an older query is dropped by the generation guard in [_fetch].
   Future<void> refresh() async {
     _debounce?.cancel();
-    rows.clear();
-    page = 0;
-    pages = 1;
-    total = 0;
-    loaded = false;
     loadingMore = false;
     error = null;
     await _fetch(1);
@@ -192,13 +199,21 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
     if (_disposed || gen != _gen) return; // a newer search / filter replaced this request
     if (r is Map) {
       final d = PageData(Map<String, dynamic>.from(r));
+      if (p == 1) rows.clear();
       rows.addAll(d.items);
       page = d.page;
       pages = d.pages;
       total = d.total;
       extra = d.extra;
       error = null;
+      _stale = false;
     } else if (p == 1) {
+      if (_stale) {
+        rows.clear();
+        page = 0;
+        pages = 1;
+        total = 0;
+      }
       error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     loaded = true;
@@ -1165,6 +1180,20 @@ class AdminPayoutRequestsProvider extends AdminPagedProvider {
   String? status = 'pending'; // null = all
   final Set<int> busy = {};
 
+  /// Teacher name / e-mail typed in the search box. The server has no search on this route, so it narrows the
+  /// rows already loaded (and, while it is set, the remaining pages are loaded so nothing is missed).
+  String query = '';
+
+  /// When the rows on screen were last loaded (the header's "Updated …").
+  DateTime? loadedAt;
+
+  /// Money waiting for the admin, per currency ('' = a withdrawal without a payout currency).
+  Map<String, double> pendingMoney = {};
+  int pendingCount = 0;
+
+  int _reqGen = 0; // a slower answer for an older status / reload is dropped
+  bool _gone = false;
+
   // Required by AdminPagedProvider; unused because this endpoint paginates with
   // skip/limit, so refresh / loadMore / hasMore are overridden below.
   @override
@@ -1174,21 +1203,57 @@ class AdminPayoutRequestsProvider extends AdminPagedProvider {
 
   List<Withdrawal> get items => rows.map(Withdrawal.new).toList();
 
-  @override
-  bool get hasMore => rows.length < total;
-
-  Future<void> setStatus(String? s) {
-    status = s;
-    return refresh();
+  /// [items] narrowed by [query] (teacher name or e-mail, or "#id").
+  List<Withdrawal> get visible {
+    final q = query.trim().toLowerCase();
+    final all = items;
+    if (q.isEmpty) return all;
+    return all
+        .where((w) =>
+            w.teacherName.toLowerCase().contains(q) ||
+            w.teacherGmail.toLowerCase().contains(q) ||
+            '#${w.id}' == q ||
+            '${w.id}' == q)
+        .toList();
   }
 
   @override
+  bool get hasMore => rows.length < total;
+
+  @override
+  void dispose() {
+    _gone = true;
+    super.dispose();
+  }
+
+  Future<void> setStatus(String? s) {
+    status = s;
+    _statusChanged = true;
+    return refresh();
+  }
+
+  bool _statusChanged = false;
+
+  /// Narrow the loaded rows by teacher. Loads the rest of the list (at most ~1000 rows) so a teacher on a later
+  /// page is found too.
+  Future<void> setQuery(String v) async {
+    final q = v.trim();
+    if (q == query) return;
+    query = q;
+    notifyListeners();
+    var guard = 0;
+    while (query.isNotEmpty && hasMore && !loadingMore && !isLoading && error == null && guard++ < 5) {
+      await loadMore();
+    }
+  }
+
+  /// Reloads the first page WITHOUT clearing the rows (no skeleton, scroll kept); an older answer is dropped.
+  @override
   Future<void> refresh() async {
-    rows.clear();
-    total = 0;
-    loaded = false;
     error = null;
+    final summary = _loadPendingSummary();
     await _fetchSkip(0);
+    await summary;
   }
 
   @override
@@ -1198,27 +1263,74 @@ class AdminPayoutRequestsProvider extends AdminPagedProvider {
   }
 
   Future<void> _fetchSkip(int skip) async {
+    final gen = skip == 0 ? ++_reqGen : _reqGen;
     if (skip > 0) {
       loadingMore = true;
       notifyListeners();
     }
     final r = await run(
-            () => api.get('$_base/withdrawals', queryParams: {
-          if (status != null) 'status': status,
-          'skip': skip,
-          'limit': 20,
-        }),
+        () => api.get('$_base/withdrawals', queryParams: {
+              if (status != null) 'status': status,
+              'skip': skip,
+              'limit': 20,
+            }),
         makLoading: skip == 0);
+    if (_gone || gen != _reqGen) return;
     if (r is Map) {
+      if (skip == 0) rows.clear();
       rows.addAll(asMapList(r['items']));
       total = asInt(r['total']);
       error = null;
+      _statusChanged = false;
+      loadedAt = DateTime.now();
+      if (status == 'pending' && !hasMore) _sumPending(rows, total);
     } else if (skip == 0) {
+      if (_statusChanged) {
+        rows.clear();
+        total = 0;
+      }
       error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     loaded = true;
     loadingMore = false;
     notifyListeners();
+  }
+
+  void _sumPending(List<Map<String, dynamic>> list, int count) {
+    final m = <String, double>{};
+    for (final w in list.map(Withdrawal.new)) {
+      m[w.currency ?? ''] = (m[w.currency ?? ''] ?? 0) + w.amount;
+    }
+    pendingMoney = m;
+    pendingCount = count;
+  }
+
+  /// The money waiting for the admin: a quiet read of the pending requests (a failure keeps the last numbers).
+  Future<void> _loadPendingSummary() async {
+    try {
+      final r = await api.get('$_base/withdrawals',
+          queryParams: {'status': 'pending', 'skip': 0, 'limit': 200});
+      if (_gone || r is! Map) return;
+      _sumPending(asMapList(r['items']), asInt(r['total']));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Every request of the current status, 200 per request (for the export; this route has no page / size).
+  Future<List<Map<String, dynamic>>> fetchEvery({int maxRows = 5000}) async {
+    final out = <Map<String, dynamic>>[];
+    while (out.length < maxRows) {
+      final r = await api.get('$_base/withdrawals', queryParams: {
+        if (status != null) 'status': status,
+        'skip': out.length,
+        'limit': 200,
+      });
+      if (r is! Map) break;
+      final items = asMapList(r['items']);
+      out.addAll(items);
+      if (items.isEmpty || out.length >= asInt(r['total'])) break;
+    }
+    return out;
   }
 
   Future<bool> _act(int id, Future<dynamic> Function() fn, String ok) async {

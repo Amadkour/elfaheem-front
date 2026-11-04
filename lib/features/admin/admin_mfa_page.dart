@@ -12,14 +12,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../auth/auth_provider.dart';
 import '../auth/mfa.dart';
 import 'admin_common.dart' show t;
+import 'admin_page.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 
 /// The settings entry's label.
@@ -648,12 +647,13 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
     return PopScope(
       // the forced enrollment cannot be skipped once the codes are on screen (the session already exists)
       canPop: !(_forced && _stage == _Stage.codes),
-      child: BasePage(
+      child: AdminPage(
         key: const ValueKey('admin.mfa'),
-        useWebCard: true,
-        maxWith: 760,
-        appBar: ScreenAppBar(title: mfaEntryLabel(), actions: [if (!_dead) AppRefreshAction(onRefresh: _load)]),
-        child: body is MfaStatusView && !_dead ? AppRefresh(onRefresh: _load, child: body) : body,
+        title: mfaEntryLabel(),
+        icon: Icons.verified_user_rounded,
+        maxWidth: 760,
+        onRefresh: _dead ? null : _load,
+        body: body is MfaStatusView && !_dead ? AppRefresh(onRefresh: _load, child: body) : body,
       ),
     );
   }

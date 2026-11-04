@@ -2321,3 +2321,33 @@ screens are untouched until they opt in):
 **Not done here.** Migrating the ~100 existing call sites of the older widgets (`PrimaryButton`, `SearchBox`,
 `StatusChip`, `PremiumHero` …): each session moves its own screens when it touches them; the Super Admin pages move in
 D-181.
+
+## D-181 — The Super Admin dashboard on the design system: one page frame, a real overview, global search · 2026-11-04 · accepted
+
+**Context.** The audit (`docs/admin/SUPER_ADMIN_AUDIT.md`) walked every Super Admin page: four header styles, the
+title drawn twice (app bar + hero), a doodle background behind tables, centred spinners, failed loads shown as "no
+data", `'$e'` error texts, red Activate buttons, ±1 steppers for values in the hundreds, deletes without a confirm or
+with one that does not name the item, money without thousands separators, and no way to find a person, course or
+payment without knowing which tab holds it.
+
+**Decision.**
+- Every pushed admin page is `AdminPage` (`lib/features/admin/admin_page.dart`): `AppPageHeader` once (title, ONE
+  primary action, secondary actions, Refresh with "Updated …"), `AppUnsavedGuard` through `dirty:`, a readable max
+  width, no doodle background. A shell tab registers its reload through `AdminRefreshScope.register`, so the shell's
+  Refresh reloads data instead of re-creating the page.
+- Records are `AppDataTable` (a table on wide screens, cards on phones, search / filter / sort / load-more); settings
+  are `AppSection` + `AppCard` groups with typed number fields next to any stepper; loading is a skeleton, a failed
+  load is `AppErrorState` with the server's text and Retry, a failed refresh keeps the data.
+- Overview: a greeting, the global search field, six KPIs (revenue 30 days is the one highlighted card), ONE "Needs
+  your attention" list whose rows deep-link, then charts, health and shortcuts.
+- Global search: `GET /api/v1/admin/search?q=&limit=` (backend `routers/admin_search_router.py`, admin-only; the
+  admins group is super-admin only; capped per group) plus the pages the viewer can open, in a command palette
+  (Ctrl+K or "/", a full sheet on phones) — `admin_global_search.dart`.
+- Hub tiles carry the brand tint only (no colour per service); labels renamed where the audit found them wrong
+  (Flags → "Student review & read flags", Terms → "About & terms", Requirements, Send message).
+- One money formatter, `money()` in `admin_common.dart` (thousands separators); amounts typed with Arabic digits or
+  "2,5" parse (`parseAmountLoose`).
+
+**Kept on purpose.** No page, tile or action was removed. The redundancies the audit found (R1–R8) are listed there and
+wait for the owner's decision. Screens owned by other sessions (courses ↔ students, RAG, exams and the grading
+feedback store, organization flow) were not redesigned.

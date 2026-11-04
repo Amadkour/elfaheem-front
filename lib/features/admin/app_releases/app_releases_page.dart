@@ -14,15 +14,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
-import '../../../core/display/app_fonts.dart';
 import '../../../core/live/event_wait.dart';
 import '../../../design/app_kit.dart';
-import '../../../design/app_notice.dart';
-import '../../../design/app_tokens.dart';
 import '../../../utils/live_events.dart';
-import '../../../utils/widget/app_bar.dart';
-import '../../../utils/widget/base_page.dart';
 import '../admin_common.dart' show t;
+import '../admin_page.dart';
 import 'app_release_detail.dart';
 import 'app_release_form.dart';
 import 'app_releases_api.dart';
@@ -53,10 +49,12 @@ class AppReleasesPageState extends State<AppReleasesPage> {
   /// D-144: the Codemagic setup; null on an older server (the D-143 build server strip is shown then).
   ReleaseConfig? _config;
   String? _error;
+  bool _missing = false; // the server has no such route yet (404 / 405)
   String? _platform, _status;
   int _pages = 1;
   EventOrPoll? _poller;
   bool? _pollActive;
+  bool _preparingNew = false; // the "latest version" fetch before the new-version form
 
   AppReleasesApi get _api => widget.api;
 
@@ -78,7 +76,7 @@ class AppReleasesPageState extends State<AppReleasesPage> {
     _pollActive = active;
     _poller?.dispose();
     _poller = EventOrPoll(
-      poll: () => _load(silent: true),
+      poll: () => _load(silent: true, firstOnly: true),
       every: active ? const Duration(seconds: 10) : const Duration(minutes: 1),
       fallbackEvery: active ? const Duration(seconds: 40) : const Duration(minutes: 6),
       names: const {LiveEvents.appReleaseUpdated, LiveEvents.appReleaseLive},
@@ -87,11 +85,11 @@ class AppReleasesPageState extends State<AppReleasesPage> {
     )..start();
   }
 
-  Future<void> _load({bool silent = false}) async {
+  Future<void> _load({bool silent = false, bool firstOnly = false}) async {
     if (!silent && _page == null) setState(() => _error = null);
     try {
       final f = await Future.wait<Object?>([
-        _list(),
+        _list(firstOnly: firstOnly),
         _api.config().then<Object?>((c) => c, onError: (_) => _config),
         if (_config == null) _api.builderStatus().then<Object?>((b) => b, onError: (_) => _builder),
       ]);
@@ -104,13 +102,30 @@ class AppReleasesPageState extends State<AppReleasesPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      if (!silent || _page == null) setState(() => _error = ReleaseFailure.from(e).message);
+      if (!silent || _page == null) {
+        final f = ReleaseFailure.from(e);
+        setState(() {
+          _error = f.message;
+          _missing = f.status == 404 || f.status == 405;
+        });
+      }
     }
     if (mounted) _syncPoller();
   }
 
   /// Pages 1 … [_pages] of the current filter, as one page (page_size ≤ 100 on the server).
-  Future<ReleasePage> _list() async {
+  ///
+  /// [firstOnly] (the poll tick): only page 1 is fetched, and the pages already loaded beyond it are kept — a tick must
+  /// not cost one request per loaded page.
+  Future<ReleasePage> _list({bool firstOnly = false}) async {
+    final old = _page;
+    if (firstOnly && _pages > 1 && old != null) {
+      final first = await _api.list(platform: _platform, status: _status, page: 1);
+      final kept = old.items.skip(first.items.length);
+      final ids = {for (final r in first.items) r.id};
+      return ReleasePage([...first.items, ...kept.where((r) => !ids.contains(r.id))],
+          total: first.total, live: first.live, nextBuild: first.nextBuild);
+    }
     final pages = await Future.wait([for (var i = 1; i <= _pages; i++) _api.list(platform: _platform, status: _status, page: i)]);
     final first = pages.first;
     return ReleasePage([for (final p in pages) ...p.items], total: first.total, live: first.live, nextBuild: first.nextBuild);
@@ -147,8 +162,11 @@ class AppReleasesPageState extends State<AppReleasesPage> {
   }
 
   Future<void> _new() async {
+    if (_preparingNew) return;
+    setState(() => _preparingNew = true);
     final (latest, next) = await _latest();
     if (!mounted) return;
+    setState(() => _preparingNew = false);
     final created = await Navigator.of(context).push<AppRelease>(MaterialPageRoute(
       settings: const RouteSettings(name: '/app_releases/new'),
       builder: (_) => NewAppReleasePage(api: _api, latest: latest, nextBuild: next, initialPlatform: _platform ?? 'android', askPassword: widget.askPassword),
@@ -188,26 +206,24 @@ class AppReleasesPageState extends State<AppReleasesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final page = _page;
-    return BasePage(
+    return AdminPage(
       key: const ValueKey(kAppReleasesFeatureKey),
-      appBar: ScreenAppBar(
-        title: t('إصدارات التطبيق', 'App versions'),
-        actions: [AppRefreshAction(onRefresh: _load)],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'app_releases_new',
+      title: t('إصدارات التطبيق', 'App versions'),
+      icon: Icons.rocket_launch_rounded,
+      maxWidth: 1100 + 2 * AppSpace.md,
+      onRefresh: _load,
+      primaryAction: AppButton.primary(
         key: const ValueKey('releases.new'),
-        backgroundColor: c.primary,
-        onPressed: _new,
-        icon: Icon(Icons.add_rounded, color: c.onHero),
-        label: Text(t('إصدار جديد', 'New version'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontWeight: FontWeight.w700)),
+        label: t('إصدار جديد', 'New version'),
+        icon: Icons.add_rounded,
+        busy: _preparingNew,
+        onPressed: _preparingNew ? null : _new,
       ),
-      child: AppRefresh(
+      body: AppRefresh(
         onRefresh: _load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 96),
+          padding: AdminPage.bodyPadding(context),
           children: [
             Center(
               child: ConstrainedBox(
@@ -231,7 +247,15 @@ class AppReleasesPageState extends State<AppReleasesPage> {
                     ),
                   const SizedBox(height: AppSpace.md),
                   if (_error != null && page == null)
-                    AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
+                    SizedBox(
+                      height: 360,
+                      child: _missing
+                          ? AppErrorState(
+                              title: t('هذه الميزة تحتاج تحديث الخادم', 'This feature needs a server update'),
+                              message: t('الخادم الحالي لا يدعم هذه الصفحة بعد. حدّث الخادم ثم حاول مرة أخرى.', 'The current server does not support this page yet. Update the server, then try again.'),
+                              onRetry: _load)
+                          : AppErrorState(message: _error, onRetry: _load),
+                    )
                   else if (page == null)
                     const AppListSkeleton(items: 5, padding: EdgeInsets.zero)
                   else

@@ -16,21 +16,24 @@
 //         (needs the `image_picker` package — see _pickImage)
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart'
     show Breakpoints;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'admin_common.dart';
+import 'admin_page.dart';
+import 'cfg_common.dart';
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppListSkeleton, AppRefresh, AppKpiGrid, AppKpiCard, AppTabs, AppTabItem, AppSpace, appErrorMessage;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -148,7 +151,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
 
   int _tab = 0; // 0 = about · 1 = terms
   bool _loading = true;
-  String? _error;
+  Object? _error;
   String? _uploading; // path of the running upload
 
   Map<String, dynamic>? _info;
@@ -166,10 +169,9 @@ class _AdminContentPageState extends State<AdminContentPage> {
   Future<void> _load({bool silent = false}) async {
     if (!silent) setState(() => _loading = true);
     try {
-      final about = await _api.get('$_read/about');
-      final terms = await _api.get('$_read/terms');
-      final a = asMap(about);
-      final t = asMap(terms);
+      final got = await Future.wait([_api.get('$_read/about'), _api.get('$_read/terms')]);
+      final a = asMap(got[0]);
+      final t = asMap(got[1]);
       _info = a['info'] is Map ? asMap(a['info']) : null;
       _stats = asMapList(a['stats']);
       _team = asMapList(a['team']);
@@ -178,7 +180,12 @@ class _AdminContentPageState extends State<AdminContentPage> {
       _sections = asMapList(t['sections']);
       _error = null;
     } catch (e) {
-      _error = '$e';
+      // a failed refresh keeps what is on screen
+      if (_info == null && _sections.isEmpty && _team.isEmpty) {
+        _error = ApiException.from(e);
+      } else {
+        toast(appErrorMessage(e), error: true);
+      }
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -189,7 +196,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
       if (ok != null) toast(ok.tr);
       await _load(silent: true);
     } catch (e) {
-      toast('$e', error: true);
+      toast(appErrorMessage(e), error: true);
     }
   }
 
@@ -208,7 +215,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
       await _api.patch('$_write$path/${row['id']}', body: {'is_active': v});
       if (mounted) setState(() => row['is_active'] = v);
     } catch (e) {
-      toast('$e', error: true);
+      toast(appErrorMessage(e), error: true);
     }
   }
 
@@ -227,7 +234,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
     try {
       await _api.post('$_read/$kind/reorder', body: {'ids': list.map((e) => e['id']).toList()});
     } catch (e) {
-      toast('$e', error: true);
+      toast(appErrorMessage(e), error: true);
       _load(silent: true);
     }
   }
@@ -235,10 +242,18 @@ class _AdminContentPageState extends State<AdminContentPage> {
   /// Gallery → bytes → multipart. Swap this one function if the project already
   /// uses another picker (file_picker, …); only the bytes + file name matter.
   Future<void> _pickImage(String path) async {
-    final x = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 88);
-    if (x == null || !mounted) return;
-    final img = await cropImageWithName(context, await x.readAsBytes(), x.name);
+    final ({Uint8List bytes, String name})? img;
+    try {
+      final x = await ImagePicker()
+          .pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 88);
+      if (x == null || !mounted) return;
+      final bytes = await x.readAsBytes();
+      if (!mounted) return;
+      img = await cropImageWithName(context, bytes, x.name);
+    } catch (e) {
+      toast(appErrorMessage(e), error: true);
+      return;
+    }
     if (img == null || !mounted) return;
     setState(() => _uploading = path);
     try {
@@ -253,7 +268,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
       toast('content_photo_saved'.tr);
       await _load(silent: true);
     } catch (e) {
-      toast('$e', error: true);
+      toast(appErrorMessage(e), error: true);
     }
     if (mounted) setState(() => _uploading = null);
   }
@@ -302,78 +317,33 @@ class _AdminContentPageState extends State<AdminContentPage> {
 
   Widget _hero() {
     if (_tab == 0) {
-      return PremiumHero(
-        icon: Icons.info_rounded,
-        colors: _pal(context).primary,
-        title: 'content_about_title'.tr,
-        subtitle: 'content_about_intro'.tr,
-        footer: Wrap(spacing: 8, runSpacing: 6, children: [
-          HeroPill(trp('content_n_stats', {'n': _stats.length}), icon: Icons.bar_chart_rounded),
-          HeroPill(trp('content_n_team', {'n': _team.length}), icon: Icons.groups_rounded),
-          HeroPill(trp('content_n_contacts', {'n': _contacts.length}), icon: Icons.alternate_email_rounded),
-        ]),
-      );
+      return AppKpiGrid(maxColumns: 3, children: [
+        AppKpiCard(icon: Icons.bar_chart_rounded, value: '${_stats.length}', label: t('إحصاءات', 'Stats')),
+        AppKpiCard(icon: Icons.groups_rounded, value: '${_team.length}', label: t('الفريق', 'Team')),
+        AppKpiCard(icon: Icons.alternate_email_rounded, value: '${_contacts.length}', label: t('قنوات التواصل', 'Contacts')),
+      ]);
     }
     final active = _sections.where((e) => asBool(e['is_active'], true)).length;
     final version = asStr(_meta?['version']);
-    return PremiumHero(
-      icon: Icons.gavel_rounded,
-      colors: _pal(context).gold,
-      title: 'content_terms_title'.tr,
-      subtitle: 'content_terms_intro'.tr,
-      footer: Wrap(spacing: 8, runSpacing: 6, children: [
-        if (version.isNotEmpty)
-          HeroPill(trp('content_version_n', {'v': version}), icon: Icons.tag_rounded),
-        HeroPill(trp('content_n_sections', {'n': _sections.length}), icon: Icons.view_agenda_rounded),
-        HeroPill(trp('content_n_visible', {'n': active}), icon: Icons.visibility_rounded),
-      ]),
-    );
+    return AppKpiGrid(maxColumns: 3, children: [
+      if (version.isNotEmpty) AppKpiCard(icon: Icons.tag_rounded, value: version, label: t('الإصدار', 'Version')),
+      AppKpiCard(icon: Icons.view_agenda_rounded, value: '${_sections.length}', label: t('الأقسام', 'Sections')),
+      AppKpiCard(icon: Icons.visibility_rounded, value: '$active', label: t('ظاهرة', 'Visible')),
+    ]);
   }
 
-  Widget _tabs() {
-    final c = context.colors;
-    Widget tab(int i, IconData icon, String key) {
-      final on = _tab == i;
-      return Expanded(
-        child: GestureDetector(
-          onTap: () => setState(() => _tab = i),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            padding: const EdgeInsets.symmetric(vertical: 11),
-            decoration: BoxDecoration(
-              color: on ? c.cardBg : Colors.transparent,
-              borderRadius: BorderRadius.circular(13),
-              boxShadow: on ? c.cardShadow : null,
-            ),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, size: 18, color: on ? c.primary : c.textLight),
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(key.tr,
-                    overflow: TextOverflow.ellipsis,
-                    style: adminText(context,
-                        size: 13.5, weight: FontWeight.w800, color: on ? c.primary : c.textMedium)),
-              ),
-            ]),
-          ),
+  Widget _tabs() => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.md),
+        child: AppTabs(
+          expand: true,
+          index: _tab,
+          onChanged: (i) => setState(() => _tab = i),
+          items: [
+            AppTabItem('content_tab_about'.tr, icon: Icons.info_outline_rounded),
+            AppTabItem('content_tab_terms'.tr, icon: Icons.gavel_rounded),
+          ],
         ),
       );
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: c.inputBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.divider),
-      ),
-      child: Row(children: [
-        tab(0, Icons.info_outline_rounded, 'content_tab_about'),
-        tab(1, Icons.gavel_rounded, 'content_tab_terms'),
-      ]),
-    );
-  }
 
   Widget _pill({
     required String label,
@@ -648,7 +618,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
         else
           Row(mainAxisSize: MainAxisSize.min, children: [
             if (uploading)
-              const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.4))
+              Icon(Icons.cloud_upload_rounded, size: 26, color: context.colors.primary)
             else if (logo.isNotEmpty)
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 96, maxHeight: 26),
@@ -703,7 +673,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
         border: Border.all(color: c.divider),
       ),
       child: uploading
-          ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.4)))
+          ? Center(child: Icon(Icons.cloud_upload_rounded, size: 28, color: c.primary))
           : logo.isNotEmpty
           ? _networkImage(logo, 74, Icon(Icons.broken_image_rounded, color: c.textLight), radius: 22)
           : ServiceIcon(icon: Icons.school_rounded, colors: _pal(context).primary, size: 74),
@@ -890,10 +860,10 @@ class _AdminContentPageState extends State<AdminContentPage> {
             deleteKey: 'content_delete_member',
             onEdit: () => _form(_teamCfg, item: m, path: '/about/team'),
             leading: busy
-                ? const SizedBox(
+                ? SizedBox(
                 width: 50,
                 height: 50,
-                child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))))
+                child: Center(child: Icon(Icons.cloud_upload_rounded, size: 26, color: c.primary)))
                 : photo.isNotEmpty
                 ? _networkImage(photo, 50, fallback)
                 : fallback,
@@ -1036,14 +1006,15 @@ class _AdminContentPageState extends State<AdminContentPage> {
     if (_loading) {
       body = const AppListSkeleton();
     } else if (_error != null) {
-      body = ErrorRetry(message: _error!, onRetry: _load);
+      body = cfgErrorState(_error, onRetry: _load);
     } else {
       body = AppRefresh(
         onRefresh: () => _load(silent: true),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
+          padding: AdminPage.bodyPadding(context),
           children: [
             _hero(),
+            AppSpace.gapMd,
             _tabs(),
             ..._tab == 0 ? _aboutTab() : _termsTab(),
           ],
@@ -1051,16 +1022,13 @@ class _AdminContentPageState extends State<AdminContentPage> {
       );
     }
 
-    return BasePage(
-      useWebCard: true,
-      appBar: ScreenAppBar(title: 'content_page_title'.tr),
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
-          child: body,
-        ),
-      ),
+    return AdminPage(
+      title: t('من نحن والشروط', 'About & terms'),
+      subtitle: 'content_page_title'.tr,
+      icon: Icons.info_rounded,
+      maxWidth: Breakpoints.contentMax,
+      onRefresh: () => _load(silent: _info != null),
+      body: body,
     );
   }
 }

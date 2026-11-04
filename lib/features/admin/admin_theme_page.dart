@@ -8,15 +8,13 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/base_page.dart';
-import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_page.dart';
 import 'admin_models.dart';
 import 'admin_providers.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppListSkeleton, AppRefresh, AppButton, AppIconButton, AppCard, AppSpace, AppType, AppStatusBadge, AppTone, AppErrorState, AppUnsavedGuard, AppTouch, AppRadius;
 
 Color? _parseHex(String s) {
   final h = s.trim().replaceFirst('#', '');
@@ -43,54 +41,40 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminThemesProvider>();
-    final c = context.colors;
 
     Widget body;
     if (p.items.isEmpty && p.isLoading) {
       body = const AppListSkeleton();
     } else if (p.items.isEmpty) {
-      body = ErrorRetry(
-        message: p.error ?? 'admin_could_not_load_data'.tr,
-        onRetry: p.load,
-      );
+      body = AppErrorState(message: p.error ?? 'admin_could_not_load_data'.tr, onRetry: p.load);
     } else {
       body = AppRefresh(
         onRefresh: p.load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 90),
+          padding: AdminPage.bodyPadding(context),
           children: [
-            Text(
-              'admin_pick_a_ready_theme_or_build_your_own'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12.5,
-                color: c.textMedium,
-              ),
-            ),
-            const SizedBox(height: 12),
             for (final th in p.items)
-              _ThemeCard(th, active: th.key == p.activeKey),
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                child: _ThemeCard(th, active: th.key == p.activeKey),
+              ),
           ],
         ),
       );
     }
 
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: 'theme'.tr),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "theme_float",
-        key: ValueKey("theme_float"),
-        backgroundColor: c.primary,
+    return AdminPage(
+      title: 'theme'.tr,
+      subtitle: 'admin_pick_a_ready_theme_or_build_your_own'.tr,
+      icon: Icons.palette_rounded,
+      onRefresh: p.load,
+      primaryAction: AppButton.primary(
+        key: const ValueKey('theme_float'),
+        label: 'admin_custom_theme'.tr,
+        icon: Icons.palette_rounded,
         onPressed: p.items.isEmpty ? null : () => _openEditor(context, p),
-        icon: Icon(Icons.palette_rounded, color: c.onHero),
-        label: Text(
-          'admin_custom_theme'.tr,
-          style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
-        ),
       ),
-      child: body,
+      body: body,
     );
   }
 }
@@ -103,43 +87,31 @@ class _ThemeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final p = context.read<AdminThemesProvider>();
     final col = th.colors;
     Color sw(String k) => _parseHex(col[k] ?? '') ?? context.colors.textLight;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+    return DecoratedBox(
+      position: DecorationPosition.foreground,
       decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: active ? c.primary : c.divider,
-          width: active ? 2 : 1,
-        ),
+        borderRadius: AppRadius.cardAll,
+        border: active ? Border.all(color: context.colors.primary, width: 2) : null,
       ),
+      child: AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  th.name,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: c.textDark,
-                  ),
-                ),
-              ),
-              if (active) StatusChip('admin_active_2'.tr, c.success),
-              if (!th.isBuiltin) StatusChip('admin_custom'.tr, c.purple),
+              Expanded(child: Text(th.name, style: AppType.section(context))),
+              if (active) AppStatusBadge(label: 'admin_active_2'.tr, tone: AppTone.success),
+              if (!th.isBuiltin) ...[
+                AppSpace.gapXs,
+                AppStatusBadge(label: 'admin_custom'.tr, tone: AppTone.brand),
+              ],
             ],
           ),
-          const SizedBox(height: 10),
+          AppSpace.gapSm,
           _Preview(
             primary: sw('primary_hex'),
             dark: sw('primary_dark_hex'),
@@ -150,46 +122,35 @@ class _ThemeCard extends StatelessWidget {
             text: sw('text_dark'),
             card: sw('surface_card'),
           ),
-          const SizedBox(height: 10),
-          Row(
+          AppSpace.gapSm,
+          // wraps: three actions never overflow a 320 px phone
+          Wrap(
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: active ? c.textLight : c.primary,
-                  ),
-                  icon: Icon(Icons.check_rounded, color: c.onHero),
-                  label: Text(
-                    active ? 'admin_currently_active'.tr : 'admin_activate'.tr,
-                    style: TextStyle(
-                      color: c.onHero,
-                      fontFamily: AppFonts.family,
-                    ),
-                  ),
-                  onPressed: active
-                      ? null
-                      : () async {
-                          final ok = await confirm(
-                            context,
-                            message: trp('admin_activate_for_all_users', {
-                              'name': th.name,
-                            }),
-                          );
-                          if (ok) await p.activate(th.id);
-                        },
-                ),
+              AppButton.primary(
+                icon: Icons.check_rounded,
+                label: active ? 'admin_currently_active'.tr : 'admin_activate'.tr,
+                onPressed: active
+                    ? null
+                    : () async {
+                        final ok = await confirm(
+                          context,
+                          message: trp('admin_activate_for_all_users', {'name': th.name}),
+                        );
+                        if (ok) await p.activate(th.id);
+                      },
               ),
-              const SizedBox(width: 8),
-              OutlineButton(
+              AppButton.secondary(
                 icon: th.isBuiltin ? Icons.copy_rounded : Icons.edit_rounded,
                 label: th.isBuiltin ? 'admin_copy'.tr : 'btn_edit'.tr,
-                onPressed: () =>
-                    _openEditor(context, p, base: th, edit: !th.isBuiltin),
-                color: context.colors.primary,
+                onPressed: () => _openEditor(context, p, base: th, edit: !th.isBuiltin),
               ),
               if (!th.isBuiltin && !active)
-                IconButton(tooltip: t('حذف', 'Delete'), 
-                  icon: Icon(Icons.delete_outline_rounded, color: c.danger),
+                AppIconButton(
+                  tooltip: t('حذف', 'Delete'),
+                  icon: Icons.delete_outline_rounded,
                   onPressed: () async {
                     final ok = await confirm(
                       context,
@@ -203,7 +164,7 @@ class _ThemeCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -352,9 +313,22 @@ class _EditorState extends State<_Editor> {
   final Map<String, TextEditingController> _ctrls = {};
   bool busy = false;
 
+  /// Unsaved edits: the names or any colour differ from the theme this editor started from.
+  bool get _dirty {
+    final src = widget.source;
+    if (_ar.text != (widget.edit ? src.nameAr : '${src.nameAr} (نسخة)')) return true;
+    if (_en.text != (widget.edit ? src.nameEn : '${src.nameEn} copy')) return true;
+    for (final e in _ctrls.entries) {
+      if (e.value.text.trim().toUpperCase() != (src.colors[e.key] ?? '#000000').toUpperCase()) return true;
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
+    _ar.addListener(_redraw);
+    _en.addListener(_redraw);
     for (final k in _editable.keys) {
       _ctrls[k] = TextEditingController(text: colors[k] ?? '#000000');
     }
@@ -368,6 +342,10 @@ class _EditorState extends State<_Editor> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  void _redraw() {
+    if (mounted) setState(() {});
   }
 
   Color col(String k) => _parseHex(_ctrls[k]!.text) ?? context.colors.textLight;
@@ -401,6 +379,13 @@ class _EditorState extends State<_Editor> {
 
   @override
   Widget build(BuildContext context) {
+    return AppUnsavedGuard(
+      dirty: _dirty && !busy,
+      child: _body(context),
+    );
+  }
+
+  Widget _body(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -435,15 +420,20 @@ class _EditorState extends State<_Editor> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
                       children: [
-                        GestureDetector(
-                          onTap: () => _pickPalette(e.key),
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: col(e.key),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: context.colors.divider),
+                        Semantics(
+                          button: true,
+                          label: '${e.value.tr} ${_ctrls[e.key]!.text}',
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => _pickPalette(e.key),
+                            child: Container(
+                              width: AppTouch.min,
+                              height: AppTouch.min,
+                              decoration: BoxDecoration(
+                                color: col(e.key),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: context.colors.divider),
+                              ),
                             ),
                           ),
                         ),
@@ -487,7 +477,7 @@ class _EditorState extends State<_Editor> {
                               'النص الثانوي ${w.dark ? '(الوضع الداكن) ' : ''}${w.hex} تباينه ${w.ratio.toStringAsFixed(1)}:1 فقط مع الخلفية (المطلوب 4.5:1) — سيعرضه التطبيق بلون ${_hexOf(w.adjusted)}',
                               'Secondary text ${w.dark ? '(dark mode) ' : ''}${w.hex} reaches only ${w.ratio.toStringAsFixed(1)}:1 on its background (4.5:1 needed) — the app will show it as ${_hexOf(w.adjusted)}',
                             ),
-                            style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: context.colors.textMedium),
+                            style: AppType.meta(context),
                           ),
                         ),
                       ],
@@ -495,7 +485,7 @@ class _EditorState extends State<_Editor> {
                   ),
                 Text(
                   'admin_all_other_colours_success_danger_dark'.tr,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12),
+                  style: AppType.meta(context),
                 ),
                 const SizedBox(height: 14),
                 PrimaryButton(
@@ -541,24 +531,26 @@ class _EditorState extends State<_Editor> {
         textDirection: dir,
         child: AlertDialog(
           scrollable: true,
-          title: Text(
-            'admin_pick_a_colour'.tr,
-            style: TextStyle(fontFamily: AppFonts.family),
-          ),
+          title: Text('admin_pick_a_colour'.tr),
           content: Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
               for (final c in _swatches)
-                GestureDetector(
-                  onTap: () => Navigator.pop(ctx, c),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: c,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: context.colors.divider),
+                Semantics(
+                  button: true,
+                  label: _hexOf(c),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => Navigator.pop(ctx, c),
+                    child: Container(
+                      width: AppTouch.min,
+                      height: AppTouch.min,
+                      decoration: BoxDecoration(
+                        color: c,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: context.colors.divider),
+                      ),
                     ),
                   ),
                 ),

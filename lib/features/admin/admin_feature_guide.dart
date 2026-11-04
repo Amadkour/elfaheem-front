@@ -19,12 +19,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../org/org_v3.dart';
 import '../shared/rag/rag_library.dart' show RagLibraryApi, ragOutcomeSummary, ragResultText;
 import 'admin_common.dart' show asInt, asMap, asMapList, t;
+import 'admin_page.dart';
+import 'cfg_common.dart';
 
 const _guide = '/api/v1/admin/features/guide';
 const guidePlatformNames = {'android': 'Android', 'ios': 'iOS', 'web': 'Web'};
@@ -104,7 +104,7 @@ class AdminFeatureGuidePage extends StatefulWidget {
 
 class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
   Map<String, dynamic>? _data;
-  String? _error;
+  Object? _error;
   String _q = '';
   String? _group, _role;
   GuideShow _show = GuideShow.all;
@@ -127,12 +127,17 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
   Future<void> _load() async {
     final r = await orgCall(() => ApiClient().get(_guide), quiet: true);
     if (!mounted) return;
+    // a failed refresh keeps the loaded guide
+    if (!r.ok && _data != null) {
+      appToast(orgErrorText(r.error!), error: true);
+      return;
+    }
     setState(() {
       if (r.ok) {
         _data = r.map;
         _error = null;
       } else {
-        _error = r.endpointMissing ? t('دليل الميزات يحتاج تحديث الخادم.', 'The features guide needs a server update.') : orgErrorText(r.error!);
+        _error = r.error;
       }
     });
   }
@@ -170,20 +175,19 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
+    return AdminPage(
       key: const ValueKey('rag.features_guide'),
-      useWebCard: true,
-      maxWith: 1000,
-      appBar: ScreenAppBar(title: t('دليل ميزات التطبيق', 'App features guide'), actions: [
+      title: t('دليل ميزات التطبيق', 'App features guide'),
+      subtitle: t('ما يعرفه مساعد التطبيق عن الميزات: لمن هي، وأين، وكيف تُستخدم.', 'What the app assistant knows about the features: who has them, where, and how to use them.'),
+      icon: Icons.menu_book_rounded,
+      onRefresh: _load,
+      primaryAction: _super ? AppButton.primary(label: t('ميزة جديدة', 'New feature'), icon: Icons.add_rounded, onPressed: () => _openEditor(null)) : null,
+      actions: [
         if (_data != null)
-          IconButton(tooltip: t('ما يقرؤه المساعد', 'What the assistant reads'), icon: const Icon(Icons.article_outlined), onPressed: _openPreview),
-        IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: _load),
-      ]),
-      floatingActionButton: _super
-          ? FloatingActionButton.extended(onPressed: () => _openEditor(null), icon: const Icon(Icons.add_rounded), label: Text(t('ميزة جديدة', 'New feature')))
-          : null,
-      child: _error != null
-          ? AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Try again'), onAction: _load)
+          AppIconButton(tooltip: t('ما يقرؤه المساعد', 'What the assistant reads'), icon: Icons.article_outlined, onPressed: _openPreview),
+      ],
+      body: _error != null
+          ? cfgErrorState(_error, onRetry: _load)
           : _data == null
               ? const AppListSkeleton(items: 8)
               : _list(context),
@@ -211,19 +215,14 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
       onRefresh: _load,
       child: CustomScrollView(slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          padding: EdgeInsets.fromLTRB(AppSpace.gutter(MediaQuery.sizeOf(context).width), AppSpace.md, AppSpace.gutter(MediaQuery.sizeOf(context).width), 0),
           sliver: SliverList.list(children: [
-            AppHero(
-              title: t('دليل ميزات التطبيق', 'App features guide'),
-              subtitle: t('ما يعرفه مساعد التطبيق عن الميزات: لمن هي، وأين، وكيف تُستخدم.', 'What the app assistant knows about the features: who has them, where, and how to use them.'),
-              icon: Icons.menu_book_rounded,
-              stats: [
-                AppHeroStat(icon: Icons.widgets_rounded, value: '${counts['total'] ?? 0}', label: t('ميزة', 'Features')),
-                AppHeroStat(icon: Icons.smart_toy_rounded, value: '${counts['in_assistant'] ?? 0}', label: t('يشرحها المساعد', 'In the assistant')),
-                AppHeroStat(icon: Icons.visibility_off_rounded, value: '${counts['hidden_in_app'] ?? 0}', label: t('مخفية في التطبيق', 'Hidden in the app')),
-              ],
-            ),
-            const SizedBox(height: 12),
+            AppKpiGrid(maxColumns: 3, children: [
+              AppKpiCard(icon: Icons.widgets_rounded, value: '${counts['total'] ?? 0}', label: t('ميزة', 'Features')),
+              AppKpiCard(icon: Icons.smart_toy_rounded, value: '${counts['in_assistant'] ?? 0}', label: t('يشرحها المساعد', 'In the assistant')),
+              AppKpiCard(icon: Icons.visibility_off_rounded, value: '${counts['hidden_in_app'] ?? 0}', label: t('مخفية في التطبيق', 'Hidden in the app')),
+            ]),
+            AppSpace.gapSm,
             if (_super)
               AppBanner(
                 icon: _dirty ? Icons.sync_problem_rounded : Icons.info_outline_rounded,
@@ -244,9 +243,9 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
               ),
             ],
             const SizedBox(height: 12),
-            TextField(
+            AppSearchField(
+              hint: t('ابحث بالاسم أو المفتاح أو الوصف', 'Search by name, key or description'),
               onChanged: (v) => setState(() => _q = v),
-              decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), hintText: t('ابحث بالاسم أو المفتاح أو الوصف', 'Search by name, key or description')),
             ),
             const SizedBox(height: 10),
             Wrap(spacing: 8, runSpacing: 8, children: [
@@ -387,7 +386,7 @@ class GuideFeatureTile extends StatelessWidget {
       onTap: onTap,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(f.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-        Text(f.key, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: appText(11, c: c.textLight).copyWith(fontFamily: 'monospace')),
+        Text(f.key, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context)),
         Text(f.roles.map((r) => roleNames[r] ?? r).join(t('، ', ', ')), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.primary)),
         if (f.summary.isNotEmpty) Text(f.summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
         const SizedBox(height: 8),

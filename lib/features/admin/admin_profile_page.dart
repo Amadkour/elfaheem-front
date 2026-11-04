@@ -20,14 +20,15 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/base_page.dart';
 import '../../utils/widget/editable_image.dart';
-import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_page.dart';
+import 'package:flutter_education_app/design/app_badges.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppListSkeleton;
+import 'package:flutter_education_app/design/app_states.dart' show AppErrorState, appErrorMessage;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class _ProfileApi {
   static const me = '/api/v1/admin/me';
@@ -66,6 +67,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
   bool _loading = true;
   bool _failed = false;
   bool _saving = false;
+  String? _error;
 
   bool get _isSuper => isSuperNow(context);
 
@@ -97,12 +99,15 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _failed = false;
     });
     try {
       var data = asMap(await _api.get(_ProfileApi.me));
+      // the page may have been closed while the request was in flight: the controllers are disposed then
+      if (!mounted) return;
       if (data['user'] is Map) data = asMap(data['user']);
       _original = data;
       _name.text = asStr(data['name']);
@@ -111,7 +116,9 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
       _country.text = asStr(data['country']);
       _dob.text = _dateOnly(asStrOrNull(data['dob']));
     } catch (e) {
+      if (!mounted) return;
       _failed = true;
+      _error = appErrorMessage(e);
     }
     if (!mounted) return;
     setState(() => _loading = false);
@@ -191,6 +198,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
       // 2. Text fields.
       if (body.isNotEmpty) {
         await _api.put(_ProfileApi.me, body: body);
+        if (!mounted) return; // closed meanwhile: the controllers are disposed
         _password.clear();
         _confirm.clear();
         await _load();
@@ -212,158 +220,91 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
     if (_loading) {
       body = const AppListSkeleton();
     } else if (_failed) {
-      body = ErrorRetry(message: 'admin_could_not_load_data'.tr, onRetry: _load);
+      body = AppErrorState(message: _error, onRetry: _load);
     } else {
-      body = Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Form(
-                key: _form,
-                child: Column(
-                  children: [
-                    _buildHero(context),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-                      child: Column(
-                        children: [
-                          _buildPersonalCard(context),
-                          const SizedBox(height: 16),
-                          _buildContactCard(context),
-                          const SizedBox(height: 16),
-                          _buildSecurityCard(context),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      body = SingleChildScrollView(
+        padding: AdminPage.bodyPadding(context),
+        child: Form(
+          key: _form,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildIdentity(context),
+              const SizedBox(height: AppSpace.md),
+              _buildPersonalCard(context),
+              const SizedBox(height: AppSpace.md),
+              _buildContactCard(context),
+              const SizedBox(height: AppSpace.md),
+              _buildSecurityCard(context),
+            ],
           ),
-          _buildSaveBar(context, dirty),
-        ],
+        ),
       );
     }
 
-    return BasePage(
-      useWebCard: true,
-      maxWith: 700,
-      appBar: ScreenAppBar(title: 'admin_my_account'.tr),
-      child: body,
+    return AdminPage(
+      title: 'admin_my_account'.tr,
+      icon: Icons.account_circle_rounded,
+      maxWidth: 720,
+      dirty: dirty,
+      // Save is the page's one primary action; disabled while nothing changed
+      primaryAction: _loading || _failed
+          ? null
+          : AppButton.primary(
+              key: const ValueKey('profile_save'),
+              label: 'save_changes'.tr,
+              icon: Icons.check_rounded,
+              busy: _saving,
+              onPressed: dirty ? _save : null,
+            ),
+      body: body,
     );
   }
 
-  // Gradient header: picture (tap to change), name, e-mail, role.
-  Widget _buildHero(BuildContext context) {
+  // Picture (tap to change), name, e-mail and role on a calm card.
+  Widget _buildIdentity(BuildContext context) {
     final c = context.colors;
     final p = context.watch<ProfileProvider>();
     final name = _name.text.trim();
     final isSuperRole = asStr(_original['role']) == 'super-admin';
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-      decoration: BoxDecoration(
-        gradient: c.primaryGradient,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: c.primary.withValues(alpha: 0.30),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+    return AppCard(
       child: Column(
         children: [
-          // White ring around the picture.
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: c.onHero,
-            ),
-            child: EditableImage(
-              onChange: (f) async {
-                await p.changeImage(f);
-                if (mounted) setState(() {});
-              },
-              imageFile: p.imageFile,
-              imageByte: p.imageByte,
-              imageUrl: p.imageUrl,
-              size: 104,
-              isCircle: true,
-            ),
+          EditableImage(
+            onChange: (f) async {
+              await p.changeImage(f);
+              if (mounted) setState(() {});
+            },
+            imageFile: p.imageFile,
+            imageByte: p.imageByte,
+            imageUrl: p.imageUrl,
+            size: 104,
+            isCircle: true,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.sm),
           Text(
             name.isEmpty ? '—' : name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 21,
-              fontWeight: FontWeight.w800,
-              color: c.onHero,
-            ),
+            style: AppType.section(context),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           Text(
             _email.text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 13,
-              color: c.onHero.withValues(alpha: 0.8),
-            ),
+            textDirection: TextDirection.ltr,
+            style: AppType.meta(context),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: c.onHero.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: c.onHero.withValues(alpha: 0.35)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isSuperRole
-                      ? Icons.verified_user_rounded
-                      : Icons.admin_panel_settings_rounded,
-                  size: 15,
-                  color: c.onHero,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  isSuperRole
-                      ? 'admin_role_super_admin'.tr
-                      : 'admin_role_admin'.tr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: c.onHero,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: AppSpace.xs),
+          AppStatusBadge(
+            label: isSuperRole ? 'admin_role_super_admin'.tr : 'admin_role_admin'.tr,
+            tone: isSuperRole ? AppTone.brand : AppTone.info,
+            icon: isSuperRole ? Icons.verified_user_rounded : Icons.admin_panel_settings_rounded,
           ),
-          const SizedBox(height: 10),
-          Text(
-            'admin_tap_photo_to_change'.tr,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 11.5,
-              color: c.onHero.withValues(alpha: 0.7),
-            ),
-          ),
+          const SizedBox(height: AppSpace.xs),
+          Text('admin_tap_photo_to_change'.tr, style: AppType.meta(context).copyWith(color: c.textLight)),
         ],
       ),
     );
@@ -386,21 +327,12 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
         AppEmailField(controller: _email, label: 'admin_email'.tr, enabled: isSuper),
         if (!isSuper)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: Row(
               children: [
-                Icon(Icons.lock_outline_rounded, size: 14, color: c.textLight),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'admin_email_super_only_hint'.tr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 12,
-                      color: c.textLight,
-                    ),
-                  ),
-                ),
+                Icon(Icons.lock_outline_rounded, size: AppIconSize.xs, color: c.textLight),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Text('admin_email_super_only_hint'.tr, style: AppType.meta(context))),
               ],
             ),
           ),
@@ -439,45 +371,6 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
       ],
     );
   }
-
-  // Sticky save bar: enabled only when something actually changed.
-  Widget _buildSaveBar(BuildContext context, bool dirty) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        boxShadow: [
-          BoxShadow(
-            color: c.heroShade.withValues(alpha: 0.06),
-            blurRadius: 14,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedOpacity(
-              opacity: dirty || _saving ? 1.0 : 0.45,
-              duration: const Duration(milliseconds: 200),
-              child: PrimaryButton(
-                label: 'save_changes'.tr,
-                isLoading: _saving,
-                onPressed: dirty ? _save : null,
-              ),
-            ),
-            if (!dirty && !_saving) ...[
-              const SizedBox(height: 6),
-              Text('no_changes_yet'.tr, style: c.caption),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ── A titled card that groups related fields ─────────────────────────────────
@@ -495,14 +388,7 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 6),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: c.brLarge,
-        boxShadow: c.cardShadow,
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -511,17 +397,14 @@ class _SectionCard extends StatelessWidget {
               Container(
                 width: 34,
                 height: 34,
-                decoration: BoxDecoration(
-                  color: c.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 18, color: c.primary),
+                decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
+                child: Icon(icon, size: AppIconSize.md, color: c.primary),
               ),
-              const SizedBox(width: 10),
-              Flexible(child: Text(title, style: c.h3)),
+              const SizedBox(width: AppSpace.sm),
+              Flexible(child: Text(title, style: AppType.section(context))),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           ...children,
         ],
       ),
