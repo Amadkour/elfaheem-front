@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
+import 'org_effective_access.dart';
 import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import 'org_page_kit.dart' show OrgMenuItem, OrgMoreMenu;
 import 'org_providers.dart';
@@ -25,11 +26,17 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton,
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
-/// The catalog is the same for the whole app session: fetch once.
-Map<String, dynamic>? _catalogCache;
+/// The catalog (modules, actions, groups) is fetched on every open and Refresh: a server update that adds a module
+/// shows up without restarting the app. The last answer of each organization is kept only as the fallback when the
+/// request fails.
+final Map<String, Map<String, dynamic>> _lastCatalog = {};
 
-Future<Map<String, dynamic>?> orgCatalog(OrgSession s) async =>
-    _catalogCache ??= await OrgApi.i.getMap('${s.base}/access/catalog');
+Future<Map<String, dynamic>?> orgCatalog(OrgSession s) async {
+  final base = s.base;
+  final c = await OrgApi.i.getMap('$base/access/catalog');
+  if (c != null) _lastCatalog[base] = c;
+  return c ?? _lastCatalog[base];
+}
 
 /// A pushed page's readable column: the dashboard header keeps the page's full width (its one row needs the room),
 /// the content stays as narrow as the older page was.
@@ -400,7 +407,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
       OrgApi.i.getMap('$_base/access/roles'),
       OrgApi.i.getMap('$_base/departments'),
     ]);
-    _catalog ??= await orgCatalog(s);
+    _catalog = await orgCatalog(s) ?? _catalog;
     if (!mounted) return;
     setState(() {
       _d = results[0] ?? _d;
@@ -591,15 +598,15 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                     icon: Icons.fact_check_rounded,
                     child: _catalog == null
                         ? const SizedBox.shrink()
-                        : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            OrgPermissionMatrix(catalog: _catalog!, value: permsFromJson(asMap(d['effective'])['permissions']),
-                                readOnly: true, onChanged: (_) {}),
-                            for (final e in asMap(asMap(d['effective'])['dept_permissions']).entries) ...[
-                              const SizedBox(height: 8),
-                              Text('${t('داخل', 'Inside')} ${_deptName(int.tryParse(e.key))}', style: orgText(context, w: FontWeight.w800, color: c.primary)),
-                              OrgPermissionMatrix(catalog: _catalog!, value: permsFromJson(e.value), deptOnly: true, readOnly: true, onChanged: (_) {}),
-                            ],
-                          ]),
+                        : OrgEffectiveAccessView(
+                            catalog: _catalog!,
+                            orgWide: permsFromJson(asMap(d['effective'])['permissions']),
+                            perDept: {
+                              for (final e in asMap(asMap(d['effective'])['dept_permissions']).entries)
+                                if (int.tryParse(e.key) != null) int.parse(e.key): permsFromJson(e.value),
+                            },
+                            deptName: (id) => _deptName(id),
+                          ),
                   ),
                 ]),
               ),

@@ -28,7 +28,10 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_academic_pages.dart' show orgCourseGate;
 import 'org_access_joining.dart' show openOrgJoin;
+import 'org_invitations_pages.dart' show OrgMyInvitationsCard;
 import 'org_v3.dart' show membershipStatusLabels, orgCodeText;
+import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton, AppButtonSize;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -129,8 +132,12 @@ class _MembershipView extends StatelessWidget {
       child: !p.loaded
           ? const AppListSkeleton()
           : p.mine.isEmpty
-              ? OrgEmpty(icon: Icons.domain_rounded, title: t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet"))
+              ? ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
+                  OrgMyInvitationsCard(onChanged: (_) => p.loadMine()),
+                  OrgEmpty(icon: Icons.domain_rounded, title: t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet")),
+                ])
               : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
+                  OrgMyInvitationsCard(onChanged: (_) => p.loadMine()),
                   for (final m in p.mine)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -160,7 +167,7 @@ class _OrgCard extends StatelessWidget {
     final status = '${m['status']}';
     final col = orgColor(context, o);
     final p = context.read<OrgMembershipProvider>();
-    return RowCard(
+    final card = RowCard(
       accent: col,
       onTap: status == 'active'
           ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: o)))
@@ -186,18 +193,37 @@ class _OrgCard extends StatelessWidget {
           ]),
         ),
         if (status == 'active') const Icon(Icons.chevron_right_rounded),
-        if (status != 'active' || m['role'] == 'student' || m['role'] == 'teacher')
-          IconButton(
-            icon: Icon(DirIcons.logout, color: c.textLight, size: 20),
-            tooltip: t('خروج', 'Leave'),
-            onPressed: () async {
-              if (await confirm(context, message: t('الخروج من المؤسسة؟ اشتراكاتك في الكورسات تبقى كما هي.', 'Leave this organization? Your course enrollments stay.'), danger: true)) {
-                p.leave(asInt(o['id']));
-              }
-            },
-          ),
       ]),
     );
+    final leavable = status != 'active' || m['role'] == 'student' || m['role'] == 'teacher';
+    if (!leavable) return card;
+    // a labelled action under the card (text + icon), not an icon alone
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      card,
+      Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: AppButton.ghost(
+          key: ValueKey('org.leave.${o['id']}'),
+          label: status == 'pending' ? t('سحب الطلب', 'Withdraw request') : t('الخروج من المؤسسة', 'Leave organization'),
+          icon: DirIcons.logout,
+          size: AppButtonSize.sm,
+          onPressed: () async {
+            final active = status == 'active';
+            if (await appConfirm(
+              context,
+              danger: true,
+              confirmLabel: active ? t('خروج', 'Leave') : t('سحب', 'Withdraw'),
+              message: active
+                  ? t('الخروج من «${OrgSession.nameOf(o)}»؟ تفقد وصولك إلى صفوفها وجداولها وإعلاناتها، وتبقى اشتراكاتك في الكورسات كما هي. يمكنك الانضمام مجدداً بكود أو بطلب جديد.',
+                      'Leave "${OrgSession.nameOf(o)}"? You lose access to its classes, timetable and announcements; your course enrollments stay. You can join again with a code or a new request.')
+                  : t('سحب الطلب المرسل إلى «${OrgSession.nameOf(o)}»؟', 'Withdraw your request to "${OrgSession.nameOf(o)}"?'),
+            )) {
+              p.leave(asInt(o['id']));
+            }
+          },
+        ),
+      ),
+    ]);
   }
 }
 

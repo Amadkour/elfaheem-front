@@ -14,6 +14,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiClient;
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
+import 'package:flutter_education_app/utils/web_entry_route.dart' show SignInReturn;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -25,7 +28,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show AdminAvatar;
 import 'org_access_page.dart' show OrgAccessPage;
 import 'org_join_pages.dart' show JoinRequestCard, OrgUnitJoinScreen, unitKindLabel;
-import 'org_join_scan.dart' show joinScannerAvailable, openJoinScanner;
+import 'org_join_scan.dart' show joinLinkFor, joinScannerAvailable, openJoinScanner, parseJoinQr;
 import 'org_page_header.dart' show OrgPushedPage;
 import 'org_providers.dart';
 import 'org_ui.dart';
@@ -481,7 +484,8 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
 
   Future<void> _showPlain(String code, Map<String, dynamic> row) => showAppSheet<void>(context, (ctx) {
         final c = ctx.colors;
-        final share = t('انضم إلى ${_orgName()} على التطبيق باستخدام الكود: $code', 'Join ${_orgName()} in the app with the code: $code');
+        final link = joinLinkFor(code);
+        final share = t('انضم إلى ${_orgName()} على التطبيق: $link\nأو باستخدام الكود: $code', 'Join ${_orgName()} in the app: $link\nOr with the code: $code');
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
           child: Column(children: [
@@ -489,7 +493,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.divider)),
-              child: QrImageView(data: code, size: 180, backgroundColor: Colors.white),
+              child: QrImageView(data: joinLinkFor(code), size: 180, backgroundColor: Colors.white),
             ),
             const SizedBox(height: 12),
             FittedBox(
@@ -670,8 +674,20 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
     if (!await appConfirm(context, message: t('إصدار كود عام جديد يوقف الكود الحالي فوراً. متابعة؟', 'A new general code stops the current one at once. Continue?'))) return;
     if (!mounted) return;
     final s = context.read<OrgSession>();
-    final r = await orgCall(() => s.api.post('${s.base}/join-code/regenerate'), ok: t('صدر كود جديد', 'New code issued'));
-    if (r.ok) widget.onChanged();
+    // The printed general code is a row of the multi-code table now (C6): rotate it through the same route as every
+    // code. `legacy_code_id` is the row's id; a server that does not send it yet gets a fresh general code instead.
+    final cid = widget.settings?['legacy_code_id'];
+    final OrgCall r;
+    if (cid != null) {
+      r = await orgCall(() => s.api.post('$_url/$cid/regenerate'));
+    } else {
+      r = await orgCall(() => s.api.post(_url, body: {'default_role': 'student', 'label': t('الكود العام', 'General code')}));
+    }
+    if (r.ok) {
+      if (r.map['code'] != null && mounted) await _showPlain('${r.map['code']}', r.map);
+      _load();
+      widget.onChanged();
+    }
   }
 
   @override
@@ -964,8 +980,14 @@ Future<void> openOrgJoin(BuildContext context, {VoidCallback? onDone, String? co
 }
 
 class OrgJoinPage extends StatefulWidget {
-  const OrgJoinPage({super.key, this.initialCode});
+  const OrgJoinPage({super.key, this.initialCode, this.isParent, this.scannerAvailable});
   final String? initialCode;
+
+  /// A parent account can't join (role_cannot_join): null = ask the session.
+  final bool? isParent;
+
+  /// The camera scanner exists (false on web): null = [joinScannerAvailable].
+  final bool? scannerAvailable;
 
   @override
   State<OrgJoinPage> createState() => _OrgJoinPageState();
@@ -1120,6 +1142,31 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
     if (res.ok) _loadStatus();
   }
 
+  /// Withdraw my own pending request to an organization (POST /public/{org}/join-request/cancel).
+  Future<void> _cancelOrg(Map<String, dynamic> r) async {
+    final org = asMap(r['organization']);
+    if (!await appConfirm(context, message: t('سحب طلب الانضمام إلى «${orgNameOf(org)}»؟', 'Withdraw your request to join "${orgNameOf(org)}"?'))) return;
+    final res = await orgCall(() => OrgApi.i.api.post('$_pub/${org['id']}/join-request/cancel'), quiet: true);
+    if (!mounted) return;
+    if (!res.ok) {
+      // already decided meanwhile: just show the new state
+      showAppNotice(orgErrorText(res.error!), error: true);
+    } else {
+      showAppNotice(t('سُحب الطلب', 'Request withdrawn'));
+    }
+    _loadStatus();
+    _search(_q.text);
+  }
+
+  bool get _parent {
+    if (widget.isParent != null) return widget.isParent!;
+    try {
+      return Provider.of<MyAuthProvider>(context, listen: false).isParent;
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -1127,6 +1174,13 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
       return BasePage(
         appBar: ScreenAppBar(title: t('انضمام', 'Join')),
         child: AppEmpty(icon: Icons.domain_disabled_rounded, title: orgCodeText('orgs_disabled')),
+      );
+    }
+    if (_parent) {
+      // parents follow their child's organization instead (C2); say so before they type a code
+      return BasePage(
+        appBar: ScreenAppBar(title: t('انضمام', 'Join')),
+        child: AppEmpty(icon: Icons.family_restroom_rounded, title: t('حساب ولي الأمر لا ينضم للمؤسسات', 'Parent accounts can\'t join organizations'), message: orgCodeText('role_cannot_join')),
       );
     }
     final orgReqs = asMapList(_status?['organizations']);
@@ -1176,7 +1230,7 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
               ),
               const SizedBox(height: 10),
               AppPrimaryButton(label: t('انضمام', 'Join'), icon: DirIcons.login, busy: _busy, onPressed: _busy ? null : _joinCode),
-              if (joinScannerAvailable) ...[
+              if (widget.scannerAvailable ?? joinScannerAvailable) ...[
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
@@ -1190,6 +1244,20 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                     ),
                   ),
                 ),
+              ] else ...[
+                const SizedBox(height: 8),
+                // the camera scanner is a phone feature (mobile_scanner loads ZXing from a CDN on the web)
+                Row(key: const ValueKey('org.join.no_scan'), crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(Icons.qr_code_scanner_rounded, size: 18, color: c.textLight),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      t('مسح رمز QR متاح في تطبيق الهاتف. هنا اكتب الكود بالأعلى، أو افتح الرابط الذي وصلك.',
+                          'Scanning a QR code works in the phone app. Here, type the code above or open the link you were sent.'),
+                      style: orgText(context, size: 12, color: c.textMedium),
+                    ),
+                  ),
+                ]),
               ],
             ]),
           ),
@@ -1197,7 +1265,16 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
             const SizedBox(height: 18),
             AppSectionTitle(t('طلباتي', 'My requests'), subtitle: t('تابع حالة طلباتك هنا', 'Follow your requests here')),
             const SizedBox(height: 8),
-            for (final r in orgReqs) _statusTile(context, orgNameOf(asMap(r['organization'])), t('المؤسسة', 'Organization'), '${r['status']}', r['created_at']),
+            for (final r in orgReqs)
+              _statusTile(
+                context,
+                orgNameOf(asMap(r['organization'])),
+                t('المؤسسة', 'Organization'),
+                '${r['status']}',
+                r['created_at'],
+                onCancel: r['status'] == 'pending' ? () => _cancelOrg(r) : null,
+                onAgain: r['status'] == 'rejected' ? () => _request(asMap(r['organization'])) : null,
+              ),
             for (final r in unitReqs.take(10))
               _statusTile(
                 context,
@@ -1236,7 +1313,7 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
     );
   }
 
-  Widget _statusTile(BuildContext context, String title, String sub, String status, dynamic at, {String note = '', VoidCallback? onCancel}) {
+  Widget _statusTile(BuildContext context, String title, String sub, String status, dynamic at, {String note = '', VoidCallback? onCancel, VoidCallback? onAgain}) {
     final c = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1257,6 +1334,7 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
           ),
           AppBadgePill(requestStatusLabels()[status] ?? statusLabel(status), color: statusColor(context, status)),
           if (onCancel != null) IconButton(tooltip: t('إلغاء الطلب', 'Cancel request'), onPressed: onCancel, icon: const Icon(Icons.close_rounded, size: 18)),
+          if (onAgain != null) TextButton(onPressed: _busy ? null : onAgain, child: Text(t('اطلب مجدداً', 'Request again'))),
         ]),
       ),
     );
@@ -1304,5 +1382,69 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
         ]),
       ),
     );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  /j/<CODE>: a shared join link
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The page behind `https://nextbrain.site/j/<CODE>`: the Join page with the code filled in (not sent: the person
+/// confirms). Signed out, it explains and sends to sign-in / sign-up; the link is remembered through
+/// [SignInReturn] (D-170) so the first signed-in page opens it again with the same code.
+class OrgJoinLinkPage extends StatelessWidget {
+  const OrgJoinLinkPage({super.key, required this.code, this.signedIn});
+  final String code;
+
+  /// null = ask the session (tests pass it).
+  final bool? signedIn;
+
+  @override
+  Widget build(BuildContext context) {
+    final norm = parseJoinQr(code) ?? code.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (signedIn ?? ApiClient().hasSession) return OrgJoinPage(initialCode: norm);
+    void go(String route) {
+      SignInReturn.pending = '/j/$norm';
+      Navigator.of(context).pushNamed(route);
+    }
+
+    return BasePage(
+      useWebCard: true,
+      maxWith: 560,
+      appBar: ScreenAppBar(title: t('انضمام', 'Join')),
+      child: JoinLinkSignedOut(code: norm, onSignIn: () => go('/login'), onRegister: () => go('/register')),
+    );
+  }
+}
+
+/// What a signed-out visitor of a join link sees (plain values).
+class JoinLinkSignedOut extends StatelessWidget {
+  const JoinLinkSignedOut({super.key, required this.code, this.onSignIn, this.onRegister});
+  final String code;
+  final VoidCallback? onSignIn, onRegister;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
+      AppCard(
+        child: Column(children: [
+          Icon(Icons.domain_add_rounded, size: AppIconSize.hero, color: c.primary),
+          AppSpace.gapSm,
+          Text(t('دعوة للانضمام إلى مؤسسة', 'You have a link to join an organization'), textAlign: TextAlign.center, style: AppType.pageTitle(context)),
+          AppSpace.gapSm,
+          FittedBox(
+            child: Text(code, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.display, fontSize: 26, letterSpacing: 4, fontWeight: FontWeight.w800, color: c.primary)),
+          ),
+          AppSpace.gapSm,
+          Text(t('سجّل الدخول أو أنشئ حساباً وسنكمل الانضمام بهذا الكود.', 'Sign in or create an account and we continue joining with this code.'),
+              textAlign: TextAlign.center, style: AppType.body(context)),
+        ]),
+      ),
+      AppSpace.gapMd,
+      AppButton.primary(key: const ValueKey('org.join_link.sign_in'), label: t('تسجيل الدخول', 'Sign in'), icon: DirIcons.login, expand: true, onPressed: onSignIn),
+      AppSpace.gapXs,
+      AppButton.secondary(key: const ValueKey('org.join_link.register'), label: t('إنشاء حساب', 'Create an account'), expand: true, onPressed: onRegister),
+    ]);
   }
 }
