@@ -31,7 +31,6 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
-import '../teacher/certificates/designer/certificate_designs_screen.dart' show CertificateDesignsScreen;
 import 'home/org_dept_courses.dart' show OrgDeptCoursesTab;
 import 'home/org_home_tasks.dart' show OrgPersonAvatar;
 import 'home/org_home_logic.dart' show OrgDeptTab, OrgTabLevels, orgTabLevelsOf;

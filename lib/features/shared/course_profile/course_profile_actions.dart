@@ -17,7 +17,6 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../../org/org_academic_pages.dart' show CourseArchiveScreen;
-import '../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../attendance/attendance_course_entry.dart' show TeacherAttendanceCourseEntry;
 import '../attendance/teacher_attendance_launcher.dart' show LauncherSession;
 import 'course_profile_models.dart';
