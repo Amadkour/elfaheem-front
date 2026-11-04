@@ -44,7 +44,7 @@ DateTime? hubTime(Object? v) {
 /// The roles in the order the server lists them (mlkit/providers.ROLES).
 const kHubRoles = [
   'embedding', 'generation', 'reranker', 'nli', 'ocr_det', 'ocr_rec_ar', 'ocr_rec_en', 'handwriting_en', 'digits',
-  'vision_language',
+  'vision_language', 'exam_grading',
 ];
 
 /// A role's resource limits (`limits`).
@@ -369,6 +369,10 @@ class HubRole {
     this.fallbackId,
     this.pending,
     this.limits = const HubLimits(),
+    this.mode,
+    this.sharedFrom,
+    this.sharedActive,
+    this.effective,
   });
 
   factory HubRole.fromJson(Map<String, dynamic> j) => HubRole(
@@ -382,6 +386,11 @@ class HubRole {
         pending: HubPending.fromJson(j['pending']),
         limits: HubLimits.fromJson(_map(j['limits'])),
         models: [for (final m in _maps(j['models'])) HubModel.fromJson(m)],
+        // additive (D-196, the exam_grading row only): an older server sends none of these
+        mode: _str(j['mode']),
+        sharedFrom: _str(j['shared_from']),
+        sharedActive: _str(j['shared_active']),
+        effective: _str(j['effective']),
       );
 
   final String role;
@@ -390,6 +399,15 @@ class HubRole {
   final HubPending? pending;
   final HubLimits limits;
   final List<HubModel> models;
+
+  /// How the role gets its model (`shared` = follows the [sharedFrom] role's active model, `own` = its own, `off`); null
+  /// for a role without the choice and for an older server.
+  final String? mode, sharedFrom;
+
+  /// The ref of [sharedFrom]'s active model, and the ref the role actually runs on now (null = none).
+  final String? sharedActive, effective;
+
+  bool get hasMode => mode != null;
 
   HubModel? byId(int? id) {
     if (id == null) return null;
@@ -704,6 +722,9 @@ class ModelsHubApi {
 
   Future<HubLimits> setLimits(String role, Map<String, dynamic> body) async =>
       HubLimits.fromJson(_map(_map(await _api.put('$base/roles/$role/limits', body: body))['limits']));
+
+  /// D-196: Exam grading follows the generation model (`shared`), uses its own (`own`) or is `off`.
+  Future<void> setGradingMode(String mode) async => _api.put('$base/roles/exam_grading/mode', body: {'mode': mode});
 
   Future<HubStep> reindexEmbedding() async => HubStep.fromJson(await _api.post('$base/roles/embedding/reindex'));
 }
