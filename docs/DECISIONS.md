@@ -2282,3 +2282,12 @@ switches); the other language's choice loads in the background. A screen that dr
 `LazyFonts.ensure` or sits under a `LazyFontGate` (admin filters, data lab, org report designer, the card form, the
 export previews). `LazyFonts.prefetchLater` fetches whatever is left 10 s after start-up, so a forgotten screen finds it
 loaded. A new family on the lazy list needs the same treatment.
+
+**Start-up chain.** The theme request (on a first visit the first real frame waits for it) starts right after the
+token store loads (`ThemeConfigProvider.prefetch`, taken by the first `load()`: still one request), and Firebase →
+Remote Config run beside display / identity / language instead of after them. Same steps, same limits, same order of
+effects; the start waits for the longest, not the sum. **Delivery** (front `scripts/web/postbuild.dart`, back
+`deploy/nginx/nextbrain.conf.example`): the main script and its deferred parts get a content hash and an `immutable`
+cache, every compressible file ≥ 1 KB a `.gz` / `.br` copy served by `gzip_static` / `brotli_static`, HTTP/2; no
+dynamic gzip, so API replies are unchanged. CanvasKit stays on Google's CDN (measured a wash; `--self-host-canvaskit`
+exists); the wasm renderer is not possible yet (`dart:html` in the checkout and data-lab web files).

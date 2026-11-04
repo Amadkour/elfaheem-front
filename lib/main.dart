@@ -174,6 +174,23 @@ Future<void> _initCore() async {
   // Essential: the app cannot run without storage.
   _storage = await StorageService.getInstance();
   await ApiClient().primeSession(); // load the token store so MyAuthProvider.isAuthenticated is answered synchronously
+  // the theme request (the first real frame waits for it on a first visit) runs while the steps below do (D-171)
+  ThemeConfigProvider.prefetch(ApiClient());
+  // Firebase, then Remote Config (both on the network; on the web Firebase first downloads its SDK) run beside the
+  // local steps below instead of after them: the same steps and limits, the start no longer waits for their sum (D-171)
+  final firebase = () async {
+    await _safe(
+      'firebase',
+          () =>
+          Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+      seconds: 10,
+    );
+    await _safe(
+      'remoteConfig',
+          () => RemoteConfigService.instance.init(),
+      seconds: 8,
+    );
+  }();
   // Display & reading (fonts per language, text size, zoom, contrast, reduce motion …): early, so the splash
   // already honours reduce motion and the first real frame has the chosen fonts (D-072)
   await _safe('display', DisplaySettings.instance.load, seconds: 4);
@@ -186,18 +203,7 @@ Future<void> _initCore() async {
   await _safe('language', () => readLanguage(), seconds: 8);
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
   timeago.setLocaleMessages('en', timeago.EnShortMessages());
-
-  await _safe(
-    'firebase',
-        () =>
-        Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
-    seconds: 10,
-  );
-  await _safe(
-    'remoteConfig',
-        () => RemoteConfigService.instance.init(),
-    seconds: 8,
-  );
+  await firebase;
 
   // Never block startup on notifications (permission dialog / FCM token can be slow).
   _safe(
