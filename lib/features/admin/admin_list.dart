@@ -145,27 +145,39 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
       );
     }
 
-    return Column(
-      children: [
-        if (widget.header != null) widget.header!,
-        if (widget.export != null && p.rows.isNotEmpty)
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(14, 2, 14, 8),
-            child: Align(alignment: AlignmentDirectional.centerEnd, child: AppExportPill(onTap: () => exportPagedList(context, p, widget.export!))),
-          ),
-        // pinned "Showing 20 of 134" progress
-        if (p.rows.isNotEmpty && p.total > widget.showCountFrom)
-          PagedCountCard(
-            loaded: p.rows.length,
-            total: p.total,
-            loadingMore: p.loadingMore,
-            done: !p.hasMore,
-            icon: widget.countIcon ?? Icons.format_list_numbered_rounded,
-            margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-          ),
-        Expanded(child: body),
-      ],
-    );
+    // The pinned top (header, export pill, progress card) may take at most 40 % of the height and scrolls inside
+    // that, so a tall header can never push the list off a small phone.
+    final top = <Widget>[
+      if (widget.header != null) widget.header!,
+      if (widget.export != null && p.rows.isNotEmpty)
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 2, 14, 8),
+          child: Align(alignment: AlignmentDirectional.centerEnd, child: AppExportPill(onTap: () => exportPagedList(context, p, widget.export!))),
+        ),
+      // pinned "Showing 20 of 134" progress
+      if (p.rows.isNotEmpty && p.total > widget.showCountFrom)
+        PagedCountCard(
+          loaded: p.rows.length,
+          total: p.total,
+          loadingMore: p.loadingMore,
+          done: !p.hasMore,
+          icon: widget.countIcon ?? Icons.format_list_numbered_rounded,
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+        ),
+    ];
+    return LayoutBuilder(builder: (context, box) {
+      final cap = box.maxHeight.isFinite ? box.maxHeight * 0.4 : double.infinity;
+      return Column(
+        children: [
+          if (top.isNotEmpty)
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: cap),
+              child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: top)),
+            ),
+          Expanded(child: body),
+        ],
+      );
+    });
   }
 }
 

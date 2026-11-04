@@ -3,20 +3,17 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/base_page.dart';
-import '../../utils/widget/primary_button.dart';
-import 'admin_common.dart';
+import 'admin_common.dart' show t, toast;
 import 'admin_filter_models.dart';
 import 'admin_filters.dart';
-import 'admin_list.dart';
 import 'admin_models.dart';
-import 'admin_premium_widgets.dart';
+import 'admin_page.dart';
 import 'admin_providers.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 class AdminCategoriesPage extends StatelessWidget {
   const AdminCategoriesPage({super.key});
@@ -46,117 +43,128 @@ const _categorySpecs = <FilterSpec>[
   }),
 ];
 
-class _View extends StatelessWidget {
+String _coursesText(int n) => countText(n,
+    ar1: 'كورس واحد', ar2: 'كورسان', arFew: '{n} كورسات', arMany: '{n} كورسًا', en1: '1 course', en: '{n} courses');
+
+class _View extends StatefulWidget {
   const _View();
 
   @override
-  Widget build(BuildContext context) {
-    final p = context.watch<AdminCategoriesProvider>();
-    final c = context.colors;
-
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: 'categories'.tr),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "categories_float",
-        key: const ValueKey("categories_float"),
-        backgroundColor: c.primary,
-        onPressed: () => _form(context, p),
-        icon: Icon(Icons.add_rounded, color: c.onHero),
-        label: Text('admin_add_category'.tr,
-            style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
-      ),
-      child: Column(children: [
-        AdminFilterBar(
-          host: p,
-          hintKey: 'admin_search_categories',
-          specs: _categorySpecs,
-          sort: _categorySort,
-        ),
-        Expanded(
-          child: AdminSimpleList(
-            loading: p.isLoading,
-            error: p.error,
-            isEmpty: p.items.isEmpty,
-            emptyText: p.hasActiveQuery
-                ? 'admin_filter_no_results'.tr
-                : 'admin_no_categories_yet'.tr,
-            onRefresh: p.load,
-            children: [
-              PremiumHero(
-                icon: Icons.category_rounded,
-                colors: AdminPalette.teal,
-                title: 'categories'.tr,
-                subtitle: 'svc_categories_d'.tr,
-                footer: Wrap(spacing: 8, children: [
-                  HeroPill(trp('cat_pill_total', {'n': p.items.length}),
-                      icon: Icons.folder_special_rounded),
-                ]),
-              ),
-              for (final cat in p.items) _CategoryCard(cat),
-            ],
-          ),
-        ),
-      ]),
-    );
-  }
+  State<_View> createState() => _ViewState();
 }
 
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard(this.cat);
+class _ViewState extends State<_View> {
+  DateTime? _loadedAt;
 
-  final AdminCategory cat;
+  Future<void> _reload(AdminCategoriesProvider p) async {
+    await p.load();
+    if (mounted) setState(() => _loadedAt = DateTime.now());
+  }
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LangProvider>();
+    final p = context.watch<AdminCategoriesProvider>();
     final c = context.colors;
-    final p = context.read<AdminCategoriesProvider>();
-    final title = cat.nameAr.isEmpty ? cat.nameEn : cat.nameAr;
+    final first = p.items.isEmpty;
 
-    return RowCard(
-      accent: c.primary,
-      onTap: () => _form(context, p, existing: cat),
-      child: Row(children: [
-        IconBadge(Icons.category_rounded, c.primary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: c.textDark)),
-            if (cat.nameEn.isNotEmpty && cat.nameAr.isNotEmpty)
-              Text(cat.nameEn,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textDirection: TextDirection.ltr,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
-            const SizedBox(height: 6),
-            InfoChip(Icons.menu_book_rounded,
-                '${cat.coursesCount} ${'roadmap_course_unit'.tr}', c.primary),
-          ]),
-        ),
-        IconButton(
-          tooltip: 'delete'.tr,
-          icon: Icon(Icons.delete_outline_rounded, color: c.danger),
-          onPressed: () async {
-            final ok = await confirm(context,
-                message: 'admin_delete_this_category'.tr, danger: true);
-            if (ok) await p.remove(cat.id);
-          },
-        ),
-      ]),
+    return AdminPage(
+      title: 'categories'.tr,
+      subtitle: 'svc_categories_d'.tr,
+      icon: Icons.category_rounded,
+      onRefresh: p.isLoading ? null : () => _reload(p),
+      updatedAt: _loadedAt,
+      primaryAction: AppButton.primary(
+        label: 'admin_add_category'.tr,
+        icon: Icons.add_rounded,
+        onPressed: () => _form(context, p),
+      ),
+      body: Padding(
+        padding: AdminPage.bodyPadding(context),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AdminFilterBar(
+            host: p,
+            hintKey: 'admin_search_categories',
+            specs: _categorySpecs,
+            sort: _categorySort,
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          ),
+          Expanded(
+            child: AppDataTable<AdminCategory>(
+              state: p.isLoading && first
+                  ? AppTableState.loading
+                  : p.error != null && first
+                      ? AppTableState.error
+                      : AppTableState.ready,
+              errorText: p.error,
+              onRetry: p.load,
+              rows: p.items,
+              empty: AppEmpty(
+                icon: Icons.category_rounded,
+                title: p.hasActiveQuery ? 'admin_filter_no_results'.tr : 'admin_no_categories_yet'.tr,
+              ),
+              onRowTap: (cat) => _form(context, p, existing: cat),
+              columns: [
+                AppTableColumn<AdminCategory>(
+                  key: 'name',
+                  label: t('التصنيف', 'Category'),
+                  primary: true,
+                  flex: 3,
+                  cell: (context, cat) {
+                    final title = cat.nameAr.isEmpty ? cat.nameEn : cat.nameAr;
+                    return Row(children: [
+                      Icon(Icons.category_rounded, color: c.primary, size: AppIconSize.lg),
+                      AppSpace.gapSm,
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                          if (cat.nameEn.isNotEmpty && cat.nameAr.isNotEmpty)
+                            Text(cat.nameEn,
+                                maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context)),
+                        ]),
+                      ),
+                    ]);
+                  },
+                ),
+                AppTableColumn<AdminCategory>.text(
+                  key: 'courses',
+                  label: t('الكورسات', 'Courses'),
+                  text: (cat) => _coursesText(cat.coursesCount),
+                ),
+              ],
+              rowActions: (cat) => [
+                AppRowAction(icon: Icons.edit_rounded, label: t('تعديل', 'Edit'), onTap: () => _form(context, p, existing: cat)),
+                AppRowAction(icon: Icons.delete_outline_rounded, label: 'delete'.tr, danger: true, onTap: () => _delete(context, p, cat)),
+              ],
+            ),
+          ),
+        ]),
+      ),
     );
   }
 }
 
+Future<void> _delete(BuildContext context, AdminCategoriesProvider p, AdminCategory cat) async {
+  final name = cat.display;
+  if (cat.coursesCount > 0) {
+    // the server refuses (409) while courses use the category: say why instead of a generic confirm
+    showAppNotice(
+      t('«$name» مرتبط بـ ${_coursesText(cat.coursesCount)} — انقل الكورسات إلى تصنيف آخر أولًا ثم احذفه.',
+          '"$name" is used by ${_coursesText(cat.coursesCount)} — move them to another category first, then delete it.'),
+      error: true,
+    );
+    return;
+  }
+  final ok = await appConfirm(
+    context,
+    message: t('حذف التصنيف «$name»؟', 'Delete the category "$name"?'),
+    danger: true,
+  );
+  if (ok) await p.remove(cat.id);
+}
+
 Future<void> _form(BuildContext context, AdminCategoriesProvider p, {AdminCategory? existing}) =>
-    showAdminSheet(context, (ctx) => _CategoryForm(provider: p, existing: existing));
+    showAppSheet(context, (ctx) => _CategoryForm(provider: p, existing: existing));
 
 /// The sheet content owns its controllers, so they are disposed only when the
 /// sheet is really removed from the tree (after the close animation) — not
@@ -185,44 +193,35 @@ class _CategoryFormState extends State<_CategoryForm> {
     super.dispose();
   }
 
+  Future<void> _save() async {
+    if (busy) return;
+    if (ar.text.trim().isEmpty && en.text.trim().isEmpty) {
+      toast('admin_enter_a_category_name'.tr, error: true);
+      return;
+    }
+    setState(() => busy = true);
+    final ok = await widget.provider.save(id: widget.existing?.id, body: {
+      'name_ar': ar.text.trim().isEmpty ? null : ar.text.trim(),
+      'name_en': en.text.trim().isEmpty ? null : en.text.trim(),
+      'description': desc.text.trim().isEmpty ? null : desc.text.trim(),
+    });
+    if (mounted) {
+      setState(() => busy = false);
+      if (ok) Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext ctx) {
-    final p = widget.provider;
     final existing = widget.existing;
-    {
-      return Column(mainAxisSize: MainAxisSize.min, children: [
-        SheetHeader(existing == null ? 'admin_add_category'.tr : 'admin_edit_category'.tr),
-        Flexible(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-            child: Column(children: [
-              Field(controller: ar, label: 'admin_arabic_name'.tr),
-              Field(controller: en, label: 'admin_english_name'.tr, ltr: true),
-              Field(controller: desc, label: 'description'.tr, maxLines: 3),
-              PrimaryButton(
-                label: 'save'.tr,
-                isLoading: busy,
-                onPressed: () async {
-                  if (ar.text.trim().isEmpty && en.text.trim().isEmpty) {
-                    toast('admin_enter_a_category_name'.tr, error: true);
-                    return;
-                  }
-                  setState(() => busy = true);
-                  final ok = await p.save(id: existing?.id, body: {
-                    'name_ar': ar.text.trim().isEmpty ? null : ar.text.trim(),
-                    'name_en': en.text.trim().isEmpty ? null : en.text.trim(),
-                    'description': desc.text.trim().isEmpty ? null : desc.text.trim(),
-                  });
-                  if (mounted) {
-                    setState(() => busy = false);
-                    if (ok) Navigator.pop(ctx);
-                  }
-                },
-              ),
-            ]),
-          ),
-        ),
-      ]);
-    }
+    return AppSheetContent(
+      title: existing == null ? 'admin_add_category'.tr : 'admin_edit_category'.tr,
+      children: [
+        AppField(controller: ar, label: 'admin_arabic_name'.tr),
+        AppField(controller: en, label: 'admin_english_name'.tr, ltr: true),
+        AppField(controller: desc, label: 'description'.tr, maxLines: 3),
+        AppButton.primary(label: 'save'.tr, busy: busy, expand: true, onPressed: busy ? null : _save),
+      ],
+    );
   }
 }

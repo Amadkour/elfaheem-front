@@ -19,40 +19,72 @@ import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_username.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../shared/points/points_api.dart';
 import '../shared/points/points_wallet_page.dart' show LedgerTile, TopupTile;
 import 'admin_common.dart' show t;
+import 'admin_page.dart';
 import 'admin_money_p8.dart' show p8SaveBytes;
 
-class AdminPointsPage extends StatelessWidget {
+class AdminPointsPage extends StatefulWidget {
   const AdminPointsPage({super.key, this.api = const PointsApi()});
 
   final PointsApi api;
 
   @override
+  State<AdminPointsPage> createState() => _AdminPointsPageState();
+}
+
+class _AdminPointsPageState extends State<AdminPointsPage> {
+  final _topups = GlobalKey<_TopupsTabState>();
+  final _users = GlobalKey<_UsersTabState>();
+  final _settings = GlobalKey<_SettingsTabState>();
+  final _visited = <int>{0};
+  int _tab = 0;
+
+  Future<void> _refresh() async {
+    await switch (_tab) {
+      0 => _topups.currentState?._load(),
+      1 => _users.currentState?._load(),
+      _ => _settings.currentState?._load(),
+    };
+  }
+
+  @override
   Widget build(BuildContext context) => BasePage(
+        // the kill switch: a super admin can switch the points admin off (the page then shows "coming soon")
         key: const ValueKey(kAdminPointsFeatureKey),
-        appBar: ScreenAppBar(title: t('النقاط والمحافظ', 'Points & wallets')),
-        child: DefaultTabController(
-          length: 3,
-          child: Column(children: [
-            TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.center,
-              tabs: [
-                Tab(text: t('طلبات الشحن', 'Top-ups')),
-                Tab(text: t('المستخدمون', 'Users')),
-                Tab(text: t('الإعدادات', 'Settings')),
-              ],
+        child: AdminPage(
+          title: t('النقاط والمحافظ', 'Points & wallets'),
+          icon: Icons.stars_rounded,
+          onRefresh: _refresh,
+          body: Column(children: [
+            Padding(
+              padding: EdgeInsetsDirectional.fromSTEB(
+                  AppSpace.gutter(MediaQuery.sizeOf(context).width), AppSpace.md, AppSpace.gutter(MediaQuery.sizeOf(context).width), AppSpace.xs),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: AppTabs(
+                  index: _tab,
+                  onChanged: (i) => setState(() {
+                    _tab = i;
+                    _visited.add(i);
+                  }),
+                  items: [
+                    AppTabItem(t('طلبات الشحن', 'Top-ups')),
+                    AppTabItem(t('المستخدمون', 'Users')),
+                    AppTabItem(t('الإعدادات', 'Settings')),
+                  ],
+                ),
+              ),
             ),
             Expanded(
-              child: TabBarView(children: [
-                _TopupsTab(api: api),
-                _UsersTab(api: api),
-                _SettingsTab(api: api),
+              child: IndexedStack(index: _tab, children: [
+                _TopupsTab(key: _topups, api: widget.api),
+                _visited.contains(1) ? _UsersTab(key: _users, api: widget.api) : const SizedBox.shrink(),
+                _visited.contains(2) ? _SettingsTab(key: _settings, api: widget.api) : const SizedBox.shrink(),
               ]),
             ),
           ]),
@@ -75,7 +107,7 @@ String _filterLabel(String? f) => switch (f) {
     };
 
 class _TopupsTab extends StatefulWidget {
-  const _TopupsTab({required this.api});
+  const _TopupsTab({super.key, required this.api});
 
   final PointsApi api;
 
@@ -113,7 +145,7 @@ class _TopupsTabState extends State<_TopupsTab> with AutomaticKeepAliveClientMix
   Future<void> _decide(PointsTopup x, bool approve) async {
     final note = await askPointsNote(context,
         title: approve ? t('قبول طلب الشحن', 'Approve the top-up') : t('رفض طلب الشحن', 'Reject the top-up'),
-        action: approve ? t('قبول وإضافة ${x.points} نقطة', 'Approve and add ${x.points} points') : t('رفض', 'Reject'),
+        action: approve ? t('قبول وإضافة ${_pts(x.points)}', 'Approve and add ${_pts(x.points)}') : t('رفض', 'Reject'),
         danger: !approve);
     if (note == null || !mounted) return;
     setState(() => _busyId = x.id);
@@ -340,7 +372,7 @@ Future<void> showPointsReceipt(BuildContext context, Uint8List bytes, String tit
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _UsersTab extends StatefulWidget {
-  const _UsersTab({required this.api});
+  const _UsersTab({super.key, required this.api});
 
   final PointsApi api;
 
@@ -402,7 +434,7 @@ class _UsersTabState extends State<_UsersTab> with AutomaticKeepAliveClientMixin
               submit: (points, note) => widget.api.grant(userId: r.user.id, points: points, note: note),
             ));
     if (balance == null || !mounted) return;
-    appToast(t('الرصيد الآن $balance نقطة', 'Balance is now $balance points'));
+    appToast(t('الرصيد الآن ${_pts(balance)}', 'Balance is now ${_pts(balance)}'));
     setState(() => _rows = [
           for (final x in _rows ?? const <PointsUserRow>[]) x.user.id == r.user.id ? PointsUserRow(user: x.user, balance: balance) : x
         ]);
@@ -553,6 +585,10 @@ class PointsGrantForm extends StatefulWidget {
   State<PointsGrantForm> createState() => _PointsGrantFormState();
 }
 
+/// "1 point" / "5 points" / "نقطة واحدة" / "٥ نقاط" with the right plural form.
+String _pts(int n) => countText(n,
+    ar1: 'نقطة واحدة', ar2: 'نقطتان', arFew: '{n} نقاط', arMany: '{n} نقطة', en1: '1 point', en: '{n} points');
+
 class _PointsGrantFormState extends State<PointsGrantForm> {
   final _points = TextEditingController();
   final _note = TextEditingController();
@@ -570,6 +606,18 @@ class _PointsGrantFormState extends State<PointsGrantForm> {
     final n = parsePoints(_points.text);
     if (n == null || n <= 0) return setState(() => _error = t('اكتب عدد النقاط', 'Enter the number of points'));
     if (_deduct && n > widget.balance) return setState(() => _error = pointsCodeText('points_negative_balance'));
+    // points are money: say who and how many before moving them
+    final ok = await appConfirm(
+      context,
+      danger: _deduct,
+      confirmLabel: _deduct ? t('خصم', 'Deduct') : t('منح', 'Grant'),
+      message: _deduct
+          ? t('خصم ${_pts(n)} من ${widget.user.name}؟ سيصبح رصيده ${_pts(widget.balance - n)}.',
+              'Deduct ${_pts(n)} from ${widget.user.name}? The balance becomes ${_pts(widget.balance - n)}.')
+          : t('منح ${_pts(n)} إلى ${widget.user.name}؟ سيصبح رصيده ${_pts(widget.balance + n)}.',
+              'Grant ${_pts(n)} to ${widget.user.name}? The balance becomes ${_pts(widget.balance + n)}.'),
+    );
+    if (!ok || !mounted) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -589,7 +637,7 @@ class _PointsGrantFormState extends State<PointsGrantForm> {
       padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader(widget.user.name),
-        Text('${t('الرصيد الحالي', 'Current balance')}: ${widget.balance} ${t('نقطة', 'points')}', style: appText(13, c: c.textMedium)),
+        Text('${t('الرصيد الحالي', 'Current balance')}: ${_pts(widget.balance)}', style: appText(13, c: c.textMedium)),
         const SizedBox(height: 12),
         Wrap(spacing: 8, runSpacing: 8, children: [
           AppChoiceChip(label: t('منح', 'Grant'), icon: Icons.add_rounded, selected: !_deduct, onTap: () => setState(() => _deduct = false)),
@@ -609,11 +657,11 @@ class _PointsGrantFormState extends State<PointsGrantForm> {
           AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
         ],
         const SizedBox(height: 16),
-        AppPrimaryButton(
-            label: _deduct ? t('خصم النقاط', 'Deduct points') : t('منح النقاط', 'Grant points'),
-            icon: Icons.check_rounded,
-            busy: _saving,
-            onPressed: _saving ? null : _save),
+        _deduct
+            ? AppButton.danger(
+                label: t('خصم النقاط', 'Deduct points'), icon: Icons.check_rounded, busy: _saving, onPressed: _saving ? null : _save)
+            : AppButton.primary(
+                label: t('منح النقاط', 'Grant points'), icon: Icons.check_rounded, busy: _saving, onPressed: _saving ? null : _save),
       ]),
     );
   }
@@ -693,7 +741,7 @@ class PointsHistoryView extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _SettingsTab extends StatefulWidget {
-  const _SettingsTab({required this.api});
+  const _SettingsTab({super.key, required this.api});
 
   final PointsApi api;
 
@@ -753,6 +801,20 @@ class _SettingsTabState extends State<_SettingsTab> with AutomaticKeepAliveClien
   }
 }
 
+/// "1.25" · "1,25" · "١٫٢٥" · "١,٢٥" → 1.25. The field accepts Arabic digits, so the value is read with them (a plain
+/// double.tryParse turned them into 0 and the form complained about a price the person had typed correctly).
+double? _parseDecimal(String raw) {
+  const ar = '٠١٢٣٤٥٦٧٨٩';
+  final b = StringBuffer();
+  for (final r in raw.trim().runes) {
+    final ch = String.fromCharCode(r);
+    final i = ar.indexOf(ch);
+    b.write(i >= 0 ? '$i' : (ch == '٫' || ch == ',' || ch == '،' ? '.' : ch));
+  }
+  final s = b.toString();
+  return s.isEmpty ? null : double.tryParse(s);
+}
+
 /// The six settings of §9. [save] returns what the server stored.
 class PointsSettingsForm extends StatefulWidget {
   const PointsSettingsForm({super.key, required this.initial, required this.save});
@@ -788,7 +850,7 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
         freeMinutes: parsePoints(_free.text) ?? -1,
         pricePoints: parsePoints(_price.text) ?? 0,
         planDays: parsePoints(_days.text) ?? 0,
-        pointPrice: double.tryParse(_point.text.trim().replaceAll(',', '.')) ?? 0,
+        pointPrice: _parseDecimal(_point.text) ?? 0,
         currency: _currency.text.trim().toUpperCase(),
         topupMin: parsePoints(_min.text) ?? 0,
         freeMinutesDaily: parsePoints(_daily.text) ?? -1,
@@ -815,7 +877,7 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
         child: TextField(
           controller: c,
           keyboardType: TextInputType.numberWithOptions(decimal: decimal),
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(decimal ? '[0-9.,٠-٩]' : '[0-9٠-٩]'))],
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(decimal ? '[0-9.,٫٠-٩]' : '[0-9٠-٩]'))],
           onChanged: (_) => setState(() => _error = null),
           decoration: InputDecoration(labelText: label, helperText: helper, helperMaxLines: 2),
         ),
