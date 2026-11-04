@@ -22,7 +22,7 @@ import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../../../design/app_switch.dart';
 import 'certificate_design_models.dart';
-import 'certificate_designer_screen.dart';
+import '../studio/cert_engine_studio.dart' show openCertificateStudio;
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
@@ -142,7 +142,7 @@ class _View extends StatelessWidget {
 
   Future<void> _open(BuildContext context, {int? designId}) async {
     final p = context.read<CertificateDesignsProvider>();
-    await openCertificateDesigner(context, designId: designId, certificateId: certificateId, orgId: orgId);
+    await openCertificateStudio(context, designId: designId, certificateId: certificateId, orgId: orgId);
     await p.load(orgId: orgId); // pick up what was created / renamed
   }
 
