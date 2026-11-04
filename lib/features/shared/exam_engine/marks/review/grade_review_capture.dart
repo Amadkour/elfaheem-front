@@ -26,6 +26,7 @@ import '../../paper/scan/omr_camera.dart';
 import '../../paper/scan/omr_scan.dart' show AutoCaptureGate, HintPacer, OmrHintTone, OmrLimits, OmrLiveHint, omrHintTone, retryAfterOf;
 import '../../paper/scan/omr_scan_widgets.dart';
 import '../mark_sessions_api.dart';
+import 'grade_capture_logic.dart';
 
 /// The sentence for a quality-gate refusal (422) — the person's next move, in plain words.
 String gradeRetakeText(String code, {String fallback = ''}) => switch (code) {
@@ -89,7 +90,9 @@ class GradeCaptureHud extends StatelessWidget {
         if (showCounter) const SizedBox(height: AppSpace.sm),
         CaptureResultCard(
           key: ValueKey('gr.problem.${p.kind.name}'),
-          accepted: false,
+          // a duplicate is not a failure and has no Retake: the card is the "accepted" kind (it carries the dismiss button),
+          // otherwise the person is stuck on it with the camera held
+          accepted: p.kind == MarkPageKind.duplicate,
           title: gradeOutcomeText(p),
           duplicate: p.kind == MarkPageKind.duplicate,
           onRetake: p.kind == MarkPageKind.duplicate ? null : onRetake,
@@ -123,25 +126,21 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
   EventOrPoll? _watch;
 
   OmrCamera? _cam;
-  bool _starting = true, _capturing = false, _auto = true, _paused = false;
+  bool _starting = true, _auto = true, _paused = false;
   OmrCameraIssue? _issue;
   int _gen = 0;
   OmrLiveHint? _hint;
   String? _note;
 
-  /// The last photo needs the person (retake / already scanned): hints and auto-capture wait.
-  MarkPageOutcome? _problem;
-  int _sent = 0, _read = 0, _waiting = 0;
+  /// The counters and the last photo's problem (retake / already scanned: hints and auto-capture wait).
+  late final GradeCaptureTally _tally = GradeCaptureTally(read: widget.session.counts.read, waiting: widget.session.counts.pending);
 
-  bool get _holding => _capturing || _paused || _problem != null;
+  bool get _holding => _tally.capturing || _paused || _tally.problem != null;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _read = widget.session.counts.read;
-    _waiting = widget.session.counts.pending;
-    _sent = _read + _waiting;
     _watch = EventOrPoll(
       kind: kMarkSessionJobKind,
       id: '${widget.session.id}',
@@ -167,11 +166,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
     final r = await _api.get(widget.session.id);
     if (!mounted || !r.ok) return;
     final s = MarkSession.fromJson(r.map);
-    setState(() {
-      _read = s.counts.read;
-      _waiting = s.counts.pending;
-      if (_sent < _read + _waiting) _sent = _read + _waiting;
-    });
+    setState(() => _tally.synced(s.counts.read, s.counts.pending));
   }
 
   @override
@@ -288,13 +283,13 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
 
   Future<void> _shoot() async {
     final cam = _cam;
-    if (_capturing || _problem != null || cam == null) return;
-    setState(() => _capturing = true);
+    if (_tally.capturing || _tally.problem != null || cam == null) return;
+    setState(() => _tally.capturing = true);
     _gate.captured();
     final photo = await cam.photo();
     if (!mounted) return;
     if (photo == null || photo.isEmpty) {
-      setState(() => _capturing = false);
+      setState(() => _tally.capturing = false);
       _gate.reset();
       showAppNotice(t('تعذّر التقاط الصورة — حاول مرة أخرى', 'The photo could not be taken — try again'), error: true);
       return;
@@ -310,24 +305,12 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
     if (!mounted) return false;
     final o = markPageOutcome(r, arabic: AppConfig.lang == 'ar');
     if (o.ok) {
-      setState(() {
-        _capturing = false;
-        _sent++;
-        _waiting++;
-        _problem = null;
-      });
+      setState(_tally.queued);
       unawaited(HapticFeedback.mediumImpact());
       return true;
     }
     _gate.reset();
-    setState(() {
-      _capturing = false;
-      if (o.kind == MarkPageKind.error) {
-        _problem = null;
-      } else {
-        _problem = o;
-      }
-    });
+    setState(() => _tally.refused(o));
     unawaited(HapticFeedback.heavyImpact());
     if (o.kind == MarkPageKind.error) showAppNotice(gradeOutcomeText(o), error: true);
     return false;
@@ -336,7 +319,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
   /// The problem is acknowledged: the camera goes on (a refused photo stored nothing, so the next shot is the retake).
   void _retake() {
     _gate.reset();
-    setState(() => _problem = null);
+    setState(() => _tally.problem = null);
   }
 
   Future<void> _pickAndUpload() async {
@@ -349,17 +332,17 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
         showAppNotice(t('${f.name}: الملف كبير جدًا', '${f.name}: the file is too large'), error: true);
         continue;
       }
-      setState(() => _capturing = true);
+      setState(() => _tally.capturing = true);
       final ok = await _send(await f.readAsBytes(), camera: false, name: f.name);
       if (ok) {
         okCount++;
-      } else if (_problem != null) {
+      } else if (_tally.problem != null) {
         // stop at the first photo that needs a person; the rest wait for the next pick
-        showAppNotice('${f.name}: ${gradeOutcomeText(_problem!)}', error: true);
-        _problem = null;
+        showAppNotice('${f.name}: ${gradeOutcomeText(_tally.problem!)}', error: true);
+        _tally.problem = null;
       }
     }
-    if (mounted) setState(() => _capturing = false);
+    if (mounted) setState(() => _tally.capturing = false);
     if (okCount > 0) showAppNotice(t('أُرسلت $okCount صورة', '$okCount image(s) sent'));
   }
 
@@ -388,9 +371,9 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
 
   (String, OmrHintTone, IconData?) _message() {
     if (_starting) return (t('تشغيل الكاميرا…', 'Starting the camera…'), OmrHintTone.neutral, Icons.photo_camera_outlined);
-    if (_capturing) return (t('جارٍ فحص الصورة…', 'Checking the photo…'), OmrHintTone.neutral, Icons.hourglass_top_rounded);
-    if (_problem != null) return ('', OmrHintTone.neutral, null);
-    if (!_gate.armed && _sent > 0) return (t('أبعد الورقة وضع الورقة التالية', 'Take the paper away and place the next one'), OmrHintTone.neutral, Icons.swap_horiz_rounded);
+    if (_tally.capturing) return (t('جارٍ فحص الصورة…', 'Checking the photo…'), OmrHintTone.neutral, Icons.hourglass_top_rounded);
+    if (_tally.problem != null) return ('', OmrHintTone.neutral, null);
+    if (!_gate.armed && _tally.sent > 0) return (t('أبعد الورقة وضع الورقة التالية', 'Take the paper away and place the next one'), OmrHintTone.neutral, Icons.swap_horiz_rounded);
     if (_note != null) return (_note!, OmrHintTone.warn, Icons.cloud_queue_rounded);
     final h = _hint;
     if (h == null || h.text.isEmpty) return (t('وجّه الكاميرا إلى ورقة الدرجات', 'Point the camera at the marks sheet'), OmrHintTone.neutral, null);
@@ -410,7 +393,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
         body: Column(children: [
           Padding(
             padding: const EdgeInsets.all(AppSpace.md),
-            child: GradeCaptureHud(sheets: _sent, read: _read, waiting: _waiting, problem: _problem, onRetake: _retake, onDismiss: _retake, checking: _capturing),
+            child: GradeCaptureHud(sheets: _tally.sent, read: _tally.read, waiting: _tally.waiting, problem: _tally.problem, onRetake: _retake, onDismiss: _retake, checking: _tally.capturing),
           ),
           Expanded(
             child: CameraProblemView(issue: _issue!, web: kIsWeb, onRetry: _start, onSettings: kIsWeb ? null : () => openAppSettings(), onUpload: _pickAndUpload),
@@ -449,7 +432,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-                child: GradeCaptureHud(sheets: _sent, read: _read, waiting: _waiting, checking: _capturing),
+                child: GradeCaptureHud(sheets: _tally.sent, read: _tally.read, waiting: _tally.waiting, checking: _tally.capturing),
               ),
             ]),
           ),
@@ -461,17 +444,17 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
           child: SafeArea(
             top: false,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              if (_problem != null)
+              if (_tally.problem != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-                  child: GradeCaptureHud(sheets: _sent, read: _read, waiting: _waiting, problem: _problem, onRetake: _retake, onDismiss: _retake, showCounter: false),
+                  child: GradeCaptureHud(sheets: _tally.sent, read: _tally.read, waiting: _tally.waiting, problem: _tally.problem, onRetake: _retake, onDismiss: _retake, showCounter: false),
                 )
               else
                 ScannerControls(
                   onShutter: cam == null || _starting ? null : _shoot,
-                  busy: _capturing,
+                  busy: _tally.capturing,
                   onFinish: _finish,
-                  finishLabel: t('النتائج ($_sent)', 'Results ($_sent)'),
+                  finishLabel: t('النتائج (${_tally.sent})', 'Results (${_tally.sent})'),
                   onSwitch: (cam?.canSwitch ?? false) ? _switch : null,
                   autoOn: _auto,
                   onAuto: (v) => setState(() {
@@ -479,9 +462,9 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
                     _gate.reset();
                   }),
                 ),
-              if (_problem == null)
+              if (_tally.problem == null)
                 TextButton.icon(
-                  onPressed: _capturing ? null : _pickAndUpload,
+                  onPressed: _tally.capturing ? null : _pickAndUpload,
                   icon: Icon(Icons.upload_file_rounded, color: c.onHero),
                   label: Text(t('رفع صور بدلًا من الكاميرا', 'Upload images instead'), style: appText(13, c: c.onHero)),
                 ),

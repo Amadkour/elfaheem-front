@@ -88,7 +88,18 @@ class _Backend {
             'warnings': const [],
           };
         },
-        'GET /api/v1/exam/omr/templates': (_) => _p('templates'),
+        // the server adds the organization's published answer tables only when asked with `org_id` (D-171)
+        'GET /api/v1/exam/omr/templates': (o) {
+          final base = _p('templates');
+          if ('${o.queryParameters['org_id']}' != '1') return base;
+          return {
+            ...base,
+            'items': [
+              ...(base['items'] as List),
+              {'id': 77, 'family_id': 'f77', 'version': 1, 'name': 'Midterm answer table', 'description': null, 'status': 'published', 'kind': 'answer_table', 'org_id': 1, 'questions': 25, 'options': 4},
+            ],
+          };
+        },
       }, latency: const Duration(milliseconds: 20));
 }
 
@@ -233,6 +244,9 @@ void main() {
     await _tapPrimary(tester);
     expect(find.text('Choose the bubble-sheet type'), findsOneWidget);
     expect(find.text('40 questions'), findsOneWidget);
+    expect('${fake.calls.where((c) => c.path.endsWith('/omr/templates')).single.query['org_id']}', '1', reason: 'the exam own organization is sent');
+    expect(find.byKey(const ValueKey('setup.template.77')), findsOneWidget, reason: 'the organization\'s answer table is offered');
+    expect(find.textContaining('Answer table'), findsOneWidget, reason: 'with its kind');
     expect(find.byKey(const ValueKey('setup.template.learn')), findsNothing, reason: 'no learning screen given');
     await tester.tap(find.byKey(const ValueKey('setup.template.1')));
     await _frames(tester, 2);

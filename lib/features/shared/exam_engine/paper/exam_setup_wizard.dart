@@ -91,6 +91,9 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
 
   late ExamSetup _setup;
   int? _courseId;
+
+  /// The exam's own organization (null for a personal exam): its answer tables join the template list.
+  int? _orgId;
   DateTime? _startsAt;
   List<ObjectiveQuestion> _questions = const [];
   List<IdentifierOption> _options = const [];
@@ -162,6 +165,7 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
     _setup = ExamSetup.fromJson(s.map);
     if (e.ok) {
       _courseId = e.map['course_id'] == null ? null : asInt(e.map['course_id']);
+      _orgId = e.map['org_id'] == null ? null : asInt(e.map['org_id']);
       _startsAt = parseEngineUtc(e.map['starts_at']);
       _questions = [
         for (final sec in asMapList(e.map['sections']))
@@ -375,7 +379,7 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
 
   Future<void> _loadTemplates() async {
     setState(() => _templatesError = null);
-    final r = await _api.templates();
+    final r = await _api.templates(orgId: _orgId);
     if (!mounted) return;
     setState(() {
       if (r.ok) {
@@ -1310,6 +1314,7 @@ class TemplateStepBody extends StatelessWidget {
           icon: Icons.grid_on_rounded,
           title: x.title,
           subtitle: [
+            if (x.isAnswerTable) t('جدول إجابات', 'Answer table'),
             ?x.subtitle,
             if (x.idZone != null) idZoneLabel(x.idZone!),
             if (fits[x.id]?.blocks == true) t('لا يتسع لـ$identifierLabel', 'too short for $identifierLabel'),
