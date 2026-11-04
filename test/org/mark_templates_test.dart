@@ -129,8 +129,8 @@ void main() {
     });
 
     test('a list row and the test reading parse', () {
-      final m = MarkTemplate.fromJson({'id': 7, 'family_id': 3, 'version': 2, 'name': 'Quiz', 'kind': 'answer_table', 'fields_count': 12, 'total_max': 20, 'owner_name': 'Sara', 'updated_at': '2026-11-01T10:00:00', 'has_image': true});
-      expect((m.id, m.familyId, m.version, m.kind, m.totalMax, m.fieldsCount), (7, 3, 2, MarkKind.answerTable, 20.0, 12));
+      final m = MarkTemplate.fromJson({'id': 7, 'family_id': '0c1f6a9e-3b7d-4c2e-9a51-7d2f4e8b6c13', 'version': 2, 'name': 'Quiz', 'kind': 'answer_table', 'fields_count': 12, 'total_max': 20, 'owner_name': 'Sara', 'updated_at': '2026-11-01T10:00:00', 'has_image': true});
+      expect((m.id, m.familyId, m.version, m.kind, m.totalMax, m.fieldsCount), (7, '0c1f6a9e-3b7d-4c2e-9a51-7d2f4e8b6c13', 2, MarkKind.answerTable, 20.0, 12));
       expect(m.updatedAt, isNotNull);
       final r = MarkTestReading.fromJson({
         'ok': true,

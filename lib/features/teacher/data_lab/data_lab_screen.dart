@@ -45,8 +45,9 @@ import 'data_lab_provider.dart';
 import 'data_lab_requests.dart';
 import 'data_lab_style_sheet.dart';
 import 'data_lab_widgets.dart';
+import '../../shared/exam_engine/marks/marks_links.dart' show markTemplatePicker;
 import '../../shared/exam_engine/marks/review/grade_review_entry.dart';
-import '../../shared/exam_engine/marks/review/grade_review_start.dart' show GradeColumn, GradeStudent;
+import '../../shared/exam_engine/marks/review/grade_review_start.dart' show GradeColumn;
 import 'package:flutter_education_app/core/api_error_text.dart';
 
 // Base sizes at 100% zoom. Everything in the sheet is multiplied by the zoom factor,
@@ -469,10 +470,11 @@ class _DataLabViewState extends State<_DataLabView> {
           case 'ask':
             showRequestsSheet(context, p);
           case 'grades':
+            // students: null = every student of the course, loaded when "Assign student" needs them (the grid is paged)
             openGradeReview(context,
                 courseId: p.courseId,
-                columns: [for (final col in p.columns) if (col.isNumber && !col.isCalculated && !col.isLocked) GradeColumn(col.key, col.label, col.maxValue)],
-                students: [for (final r in p.rows) if (r.studentId != null) GradeStudent(r.studentId!, r.name)]);
+                pickTemplate: markTemplatePicker,
+                columns: [for (final col in p.columns) if (col.isNumber && !col.isCalculated && !col.isLocked) GradeColumn(col.key, col.label, col.maxValue)]);
           case 'column':
             showColumnEditor(context, p);
           case 'refresh':
@@ -488,7 +490,8 @@ class _DataLabViewState extends State<_DataLabView> {
           item('certs', Icons.workspace_premium_rounded, 'dl_certificates'.tr, enabled: cfg.allowCertificates, color: c.success),
         if (on('data_lab.requests'))
           item('ask', Icons.mark_chat_unread_rounded, 'dl_ask_students'.tr, enabled: cfg.allowStudentRequests, color: c.warning),
-        item('grades', Icons.document_scanner_rounded, _tr('dl_grade_review', 'Review grades by camera'), sub: _tr('dl_grade_review_sub', 'Import marks from paper'), color: c.primary),
+        if (on('exam.grade_review'))
+          item('grades', Icons.document_scanner_rounded, _tr('dl_grade_review', 'Review grades by camera'), sub: _tr('dl_grade_review_sub', 'Import marks from paper'), color: c.primary),
         if (on('data_lab.columns')) item('column', Icons.add_chart_rounded, 'dl_new_column'.tr, color: c.purple),
         const PopupMenuDivider(),
         item('refresh', Icons.refresh_rounded, _tr('dl_refresh', 'Refresh'), color: c.textMedium),

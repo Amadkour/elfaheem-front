@@ -507,7 +507,7 @@ class MarkTemplate {
   });
 
   final int id;
-  final int familyId;
+  final String familyId;          // the uuid shared by every version of one template
   final int version;
   final String name;
   final MarkKind? kind;
@@ -524,7 +524,7 @@ class MarkTemplate {
 
   factory MarkTemplate.fromJson(Map<String, dynamic> j) => MarkTemplate(
         id: _in(j['id']) ?? 0,
-        familyId: _in(j['family_id']) ?? _in(j['id']) ?? 0,
+        familyId: '${j['family_id'] ?? j['id'] ?? ''}',
         version: _in(j['version']) ?? 1,
         name: '${j['name'] ?? ''}',
         kind: MarkKind.parse(j['kind']),

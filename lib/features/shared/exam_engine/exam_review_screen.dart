@@ -5,6 +5,7 @@
 // "#10"; answers read from a paper exam's scans (bubble marks, handwriting) lead to the OMR review page, where each
 // one is shown next to its crop.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_bidi.dart';
@@ -19,6 +20,7 @@ import 'exam_authoring.dart' show ExamAuthoringApi, ExamView, examStatusLabel;
 import 'exam_authoring_screen.dart' show ExamEditorScreen, QuestionBankScreen;
 import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
 import 'exam_scan_review.dart';
+import 'marks/marks_links.dart' show openGradeReviewForExam;
 import 'offline/offline_exam_teacher.dart';
 import 'exam_taking.dart' show examCodeText;
 import 'exam_quick_screen.dart' show openQuickExam;
@@ -478,7 +480,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
   Widget build(BuildContext context) {
     final q = _queue;
     final c = context.colors;
-    final gradeReview = widget.onOpenGradeReview ?? ExamReviewScreen.openGradeReviewHook;
+    final gradeReview = widget.onOpenGradeReview ?? ExamReviewScreen.openGradeReviewHook ?? openGradeReviewForExam;
     return BasePage(
       key: const ValueKey('exam.review'),
       appBar: AppBar(title: Text(t('مراجعة التصحيح', 'Review marking')), actions: [
@@ -510,7 +512,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
             AppChoiceChip(label: t('الكل', 'All'), selected: _state == 'all', onTap: () => setState(() { _state = 'all'; _load(); })),
           ]),
           const SizedBox(height: 10),
-          if (gradeReview != null)
+          if (!AppConfig.disableList.contains('exam.grade_review'))
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: AppBanner(

@@ -12641,6 +12641,14 @@
     "en": "Import",
     "ar": "استيراد"
   },
+  "dl_grade_review": {
+    "en": "Review grades by camera",
+    "ar": "مراجعة الدرجات بالكاميرا"
+  },
+  "dl_grade_review_sub": {
+    "en": "Check recorded marks against the papers, or import marks from paper",
+    "ar": "طابق الدرجات المسجلة مع الأوراق، أو استورد الدرجات من الورق"
+  },
   "dl_export": {
     "en": "Export",
     "ar": "تصدير"

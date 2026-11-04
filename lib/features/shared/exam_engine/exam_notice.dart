@@ -10,6 +10,8 @@ import 'exam_engine_api.dart';
 import 'exam_insights_screen.dart' show ExamAppealsScreen;
 import 'exam_result_screen.dart' show ExamResultScreen;
 import 'exam_results_screen.dart' show ExamResultsScreen;
+import 'marks/review/grade_review_entry.dart' show openMarkSessionFromNotice;
+import 'paper/scan/omr_batch_notice.dart' as batch_notice;
 
 /// What an `exam_notice` (push data, live event fields or a notification target) points at.
 class ExamNotice {
@@ -71,13 +73,16 @@ ExamNoticeTarget examNoticeTarget(ExamNotice n, {bool teacher = false}) {
   };
 }
 
-/// TODO(agent FC): the scan batch finished → open the batch / its issues list (`GET /exams/{id}/omr/issues?batch_id=`).
-/// Until then the exam's results screen opens, where the Paper exam card leads to the scans.
-Future<void> examNoticeBatchDone(NavigatorState nav, ExamNotice n) => _openResults(nav, n);
+/// The scan batch finished → the exam's scanned pages, where the batch and its issues list are.
+Future<void> examNoticeBatchDone(NavigatorState nav, ExamNotice n) async =>
+    batch_notice.examNoticeBatchDone(nav.context, {'exam_id': n.examId, 'title': n.title, if (n.batchId != null) 'batch_id': n.batchId});
 
-/// TODO(agent FB2): a grade-review session finished → open that session's rows (`n.sessionId`).
-/// Until then the exam's results screen opens.
-Future<void> examNoticeMarkSession(NavigatorState nav, ExamNotice n) => n.examId == null ? nav.pushNamed('/notifications') : _openResults(nav, n);
+/// A grade-review session finished → that session's three lists.
+Future<void> examNoticeMarkSession(NavigatorState nav, ExamNotice n) async {
+  if (n.sessionId != null) return openMarkSessionFromNotice(n.sessionId!);
+  if (n.examId != null) return _openResults(nav, n);
+  await nav.pushNamed('/notifications');
+}
 
 Future<void> _openResults(NavigatorState nav, ExamNotice n) async {
   await nav.push(MaterialPageRoute(
