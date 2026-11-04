@@ -9,8 +9,8 @@ library;
 
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -291,7 +291,7 @@ class _UnitCard extends StatelessWidget {
             AppSpace.gapSm,
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, fontSize: 15)),
+                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
                 const SizedBox(height: AppSpace.xxs),
                 Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                 if (badge != null || facts.isNotEmpty) ...[
@@ -509,8 +509,8 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             AppEmailField(controller: email, label: t('البريد', 'E-mail')),
             PhoneInputField(controller: phone, label: t('الهاتف', 'Phone')),
             const SizedBox(height: 6),
-            PrimaryButton(
-              isLoading: busy,
+            AppButton.primary(
+              busy: busy,
               label: t('حفظ', 'Save'),
               onPressed: () async {
                 if (ar.text.trim().isEmpty && en.text.trim().isEmpty) {
@@ -640,10 +640,10 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(orgNameOf(_d), style: TextStyle(fontFamily: AppFonts.display, fontSize: 18, fontWeight: FontWeight.w800, color: c.onHero)),
+                  Text(orgNameOf(_d), style: AppType.section(context).copyWith(color: c.onHero)),
                   if ('${_d['description'] ?? ''}'.isNotEmpty)
                     Text('${_d['description']}', maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.onHero.withValues(alpha: 0.88))),
+                        style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
                 ]),
               ),
             ]),
@@ -790,8 +790,8 @@ class _TeamBodyState extends State<_TeamBody> {
                     value: head,
                     onChanged: (v) => set(() => head = v)),
               const SizedBox(height: 8),
-              PrimaryButton(
-                isLoading: busy,
+              AppButton.primary(
+                busy: busy,
                 label: t('إضافة', 'Add'),
                 onPressed: picked == null
                     ? null

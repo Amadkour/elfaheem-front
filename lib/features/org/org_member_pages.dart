@@ -14,7 +14,7 @@ import 'package:flutter_education_app/features/shared/course/course_access.dart'
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime, AppType;
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -81,13 +81,13 @@ class OrgHomeEntry extends StatelessWidget {
                     first == null ? t('انضم إلى جامعتك أو كليتك', 'Join your university or faculty') : OrgSession.nameOf(first),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.display, fontSize: 16, fontWeight: FontWeight.w600, color: c.onHero),
+                    style: AppType.section(context).copyWith(color: c.onHero),
                   ),
                   Text(
                     first == null
                         ? (pending > 0 ? t('طلبك قيد المراجعة', 'Your request is being reviewed') : t('اطّلع على كورسات مؤسستك واشترك بها', "See your institution's courses and subscribe"))
                         : t('${active.length} مؤسسة · الكورسات والجدول', '${active.length} organization(s) · courses & timetable'),
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.onHero.withValues(alpha: 0.88)),
+                    style: AppType.meta(context).copyWith(color: c.onHeroMuted),
                   ),
                 ]),
               ),
@@ -177,18 +177,18 @@ class _OrgCard extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(OrgSession.nameOf(o), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 15, color: c.textDark)),
-            Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
+            Text(OrgSession.nameOf(o), style: AppType.section(context)),
+            Text(orgTypeLabels()[o['type']] ?? '', style: AppType.meta(context)),
             const SizedBox(height: 6),
             StatusChip(
-              status == 'active' ? t('عضو', 'Member') : status == 'rejected' ? t('مرفوض', 'Declined') : membershipStatusLabels()[status] ?? status,
-              status == 'active' ? c.success : status == 'pending' ? c.warning : c.danger,
+              status == 'active' ? t('عضو', 'Member') : status == 'rejected' ? t('مرفوض', 'Declined') : status == 'removed' ? t('أُزيل', 'Removed') : membershipStatusLabels()[status] ?? status,
+              status == 'active' ? c.success : status == 'pending' ? c.warning : status == 'removed' ? c.textMedium : c.danger,
             ),
             // only this organization's membership ended — the account and its other services keep working
             if (status == 'expired' || status == 'suspended')
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(orgCodeText('membership_ended'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textMedium)),
+                child: Text(orgCodeText('membership_ended'), style: AppType.meta(context)),
               ),
           ]),
         ),
@@ -304,7 +304,7 @@ class _CoursesBody extends StatelessWidget {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(t('${row['name_ar'] ?? row['name_en']}', '${row['name_en'] ?? row['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
-                      if (row['teacher'] != null) Text('${(row['teacher'] as Map)['name']}', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
+                      if (row['teacher'] != null) Text('${(row['teacher'] as Map)['name']}', style: AppType.meta(context)),
                       const SizedBox(height: 6),
                       Wrap(spacing: 6, children: [
                         InfoChip(Icons.payments_rounded, asDouble(row['fees']) == 0 ? t('مجاني', 'Free') : money(asDouble(row['fees'])), c.success),
@@ -424,12 +424,12 @@ class _TimetableView extends StatelessWidget {
     final days = memberTimetableDays(tt);
     Widget heading(String text) => Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 6),
-          child: Text(text, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.primary, fontSize: 14)),
+          child: Text(text, style: AppType.bodyStrong(context).copyWith(color: c.primary)),
         );
     return [
       Text('${sched['name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: c.h2),
       if ('${sched['term_label'] ?? ''}'.isNotEmpty)
-        Text('${sched['term_label']}', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
+        Text('${sched['term_label']}', style: AppType.meta(context)),
       const SizedBox(height: 8),
       examPauseBanner(context, examPausesOf(tt)),
       if (extras.isNotEmpty) ...[
@@ -506,9 +506,9 @@ class _SlotRow extends StatelessWidget {
             decoration: BoxDecoration(color: accent.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
             child: Column(children: [
               Text(top, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
-                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: accent, fontSize: 13)),
+                  style: AppType.label(context).copyWith(color: accent)),
               Text(bottom, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
-                  style: TextStyle(color: c.textLight, fontSize: 11)),
+                  style: AppType.overline(context).copyWith(color: c.textLight)),
             ]),
           ),
           const SizedBox(width: 12),
@@ -518,7 +518,7 @@ class _SlotRow extends StatelessWidget {
                   style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark)),
               if (subtitle.isNotEmpty)
                 Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
+                    style: AppType.meta(context)),
               if (hint != null) ...[
                 const SizedBox(height: 4),
                 Row(children: [
@@ -526,7 +526,7 @@ class _SlotRow extends StatelessWidget {
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(hint!, maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w500, color: c.primary)),
+                        style: AppType.meta(context).copyWith(color: c.primary)),
                   ),
                 ]),
               ],

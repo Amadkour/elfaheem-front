@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
-import '../admin/admin_common.dart' show asMap, asMapList, t;
+import '../admin/admin_common.dart' show asMapList, t;
 
 /// One module of the catalog and what the person may do in it.
 class EffectiveRow {

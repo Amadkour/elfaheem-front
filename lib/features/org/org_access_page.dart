@@ -7,11 +7,13 @@
 //   OrgActivityPage      who did what, when — the governance trail (+ Excel)
 library;
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -22,7 +24,7 @@ import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboa
 import 'org_page_kit.dart' show OrgMenuItem, OrgMoreMenu;
 import 'org_providers.dart';
 import 'org_ui.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppIconSize, AppListSkeleton, AppRefresh, AppSpace, AppStatusBadge, AppTone, AppType;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -129,34 +131,15 @@ class _RolesTabState extends State<_RolesTab> {
         onRetry: _load,
         child: roles == null
             ? const SizedBox.shrink()
-            : ListView(padding: const EdgeInsets.fromLTRB(0, 8, 0, 100), children: [
+            : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 100), children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: Text(
                       t('الدور = مجموعة صلاحيات باسم واضح. امنحه لشخص على مستوى المؤسسة أو لإدارة واحدة فقط.',
                           'A role is a named bundle of rights. Give it to someone for the whole organization or for one department.'),
-                      style: orgText(context, size: 12.5, color: c.textMedium)),
+                      style: AppType.meta(context)),
                 ),
-                for (final r in roles)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                    child: OrgActionCard(
-                      icon: r['is_system'] == true ? Icons.verified_user_rounded : Icons.badge_rounded,
-                      color: hexColor(r['color'], c.primary),
-                      title: t('${r['name_ar'] ?? r['name_en']}', '${r['name_en'] ?? r['name_ar']}'),
-                      subtitle: '${r['description'] ?? ''}'.isNotEmpty
-                          ? '${r['description']}'
-                          : t('${asMap(r['permissions']).length} وحدة · ${r['holders']} شخص', '${asMap(r['permissions']).length} modules · ${r['holders']} people'),
-                      trailing: Column(mainAxisSize: MainAxisSize.min, children: [
-                        OrgPill(t('${r['holders']} 👤', '${r['holders']} 👤'), color: c.textMedium),
-                        if (r['inherited'] == true) ...[
-                          const SizedBox(height: 4),
-                          OrgPill(t('من المؤسسة الأم', 'From parent'), color: c.textLight),
-                        ],
-                      ]),
-                      onTap: () => _open(r),
-                    ),
-                  ),
+                for (final r in roles) OrgRoleCard(role: r, onTap: () => _open(r)),
               ]),
       ),
     );
@@ -311,7 +294,7 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
                 ),
         ),
         if (_editable)
-          PrimaryButton(isLoading: _busy, label: t('حفظ', 'Save'), icon: Icons.check_rounded, iconBefore: true, onPressed: _save),
+          AppButton.primary(busy: _busy, label: t('حفظ', 'Save'), icon: Icons.check_rounded, onPressed: _save),
       ]);
   }
 }
@@ -502,8 +485,8 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
               Text(t('ممنوع (يتغلب على أي دور)', 'Deny (beats any role)'), style: orgText(ctx, w: FontWeight.w800, color: c.danger)),
               OrgPermissionMatrix(catalog: _catalog!, value: deny, deptOnly: scope != 0, tone: c.danger, onChanged: (v) => set(() => deny = v)),
               const SizedBox(height: 10),
-              PrimaryButton(
-                isLoading: busy,
+              AppButton.primary(
+                busy: busy,
                 label: t('حفظ', 'Save'),
                 onPressed: () async {
                   set(() => busy = true);
@@ -690,6 +673,53 @@ class OrgActivityPage extends StatelessWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// One role of the list: a plain card (no gradient), its colour only on the icon, what it holds and who holds it.
+class OrgRoleCard extends StatelessWidget {
+  const OrgRoleCard({required this.role, required this.onTap});
+  final Map<String, dynamic> role;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final r = role;
+    final color = hexColor(r['color'], c.primary);
+    final system = r['is_system'] == true;
+    final modules = asMap(r['permissions']).length;
+    final holders = asInt(r['holders']);
+    final desc = '${r['description'] ?? ''}';
+    final summary = [
+      countText(modules, ar1: 'وحدة واحدة', ar2: 'وحدتان', arFew: 'وحدات', arMany: 'وحدة', en1: '1 module', en: '$modules modules'),
+    ].join();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: AppCard(
+        onTap: onTap,
+        child: Row(children: [
+          IconBadge(system ? Icons.verified_user_rounded : Icons.badge_rounded, color),
+          AppSpace.gapSm,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(t('${r['name_ar'] ?? r['name_en']}', '${r['name_en'] ?? r['name_ar']}'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              Text(desc.isNotEmpty ? desc : summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+              AppSpace.gapXs,
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                AppStatusBadge(
+                    icon: Icons.group_outlined,
+                    label: countText(holders, ar0: 'لا أحد', ar1: 'شخص واحد', ar2: 'شخصان', arFew: 'أشخاص', arMany: 'شخصاً', en0: 'Nobody', en1: '1 person', en: '$holders people')),
+                if (system) AppStatusBadge(label: t('مدمج', 'Built in'), tone: AppTone.brand),
+                if (r['inherited'] == true) AppStatusBadge(label: t('من المؤسسة الأم', 'From parent')),
+              ]),
+            ]),
+          ),
+          Icon(CupertinoIcons.forward, size: AppIconSize.sm, color: c.textLight),
+        ]),
       ),
     );
   }
