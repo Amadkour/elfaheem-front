@@ -15,6 +15,7 @@ import '../../../design/export/table_export_model.dart' show onColorHex, shadeHe
 import '../../org/org_reports/report_render.dart' show docxPicture, imageSize;
 import 'exam_paper.dart';
 import 'exam_paper_pdf.dart' show fmtTotal;
+import 'exam_qr_png.dart';
 
 const _ns = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
     'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
@@ -22,9 +23,29 @@ const _ns = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/ma
 
 /// Pieces of WordprocessingML for one paper. [font] null = inherit (a custom template's own fonts).
 class _W {
-  _W(this.rtl, this.font, this.fontCs);
+  _W(this.rtl, this.font, this.fontCs, {this.media});
   final bool rtl;
   final String? font, fontCs;
+
+  /// Question pictures go here (file name in word/media/ -> bytes); null = the writer has no place for them (a custom
+  /// template), so a question keeps its "[image: alt]" line.
+  final Map<String, Uint8List>? media;
+  int _picId = 100;
+
+  /// An inline picture of a question's image fitted to the text width (aspect ratio kept, never enlarged past its 96-dpi
+  /// size), or null when it can't be placed (no registry, unknown or undecodable format).
+  String? questionPicture(Uint8List? bytes, {int maxW = _usable - 560, int maxH = 4800}) {
+    final reg = media;
+    if (reg == null || bytes == null || bytes.length < 4) return null;
+    final ext = _imageExt(bytes);
+    final size = imageSize(bytes);
+    if (ext == null || size == null) return null;
+    final natW = size.$1 * 15.0, natH = size.$2 * 15.0; // px at 96 dpi -> twips
+    final s = [1.0, maxW / natW, maxH / natH].reduce((a, b) => a < b ? a : b);
+    final name = 'q${reg.length + 1}.$ext';
+    reg[name] = bytes;
+    return docxPicture('rQ${reg.length}', ++_picId, (natW * s * 635).round(), (natH * s * 635).round());
+  }
 
   String run(String text, {bool bold = false, String color = '1F2933', double size = 11.5, bool italic = false}) {
     final hp = (size * 2).round();
@@ -59,10 +80,130 @@ class _W {
   }
 }
 
+/// The footer QR's side: 900 twips (1.6 cm), in EMU.
+const _qrEmu = 900 * 635;
+
 const _usable = 11906 - 2 * 1000;     // A4 width minus the margins (twips)
 
+/// png / jpeg / gif by the first bytes (what Word embeds without a conversion), else null.
+String? _imageExt(Uint8List b) {
+  if (b.length < 4) return null;
+  if (b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) return 'png';
+  if (b[0] == 0xFF && b[1] == 0xD8) return 'jpeg';
+  if (b[0] == 0x47 && b[1] == 0x49 && b[2] == 0x46) return 'gif';
+  return null;
+}
+
+/// A conservative height of a block of WordprocessingML in twips (the writer has no layout engine, so this is measured against
+/// real Word output and rounded UP): paragraphs by their spacing, font size and wrapped lines (Arabic faces run tall, hence
+/// 1.45 x the size), table rows by their tallest cell, pictures by their extent. Used to cut a copy into pages that never overflow.
+int _estimateHeight(String xml) {
+  final tbl = RegExp(r'<w:tbl>[\s\S]*?</w:tbl>');
+  var total = 0;
+  var last = 0;
+  for (final m in tbl.allMatches(xml)) {
+    total += _paraHeights(xml.substring(last, m.start), _usable);
+    total += _tableHeight(m.group(0)!);
+    last = m.end;
+  }
+  total += _paraHeights(xml.substring(last), _usable);
+  return total;
+}
+
+int _tableHeight(String t) {
+  var h = 0;
+  for (final row in RegExp(r'<w:tr>[\s\S]*?</w:tr>').allMatches(t)) {
+    var rowH = 0;
+    final min = RegExp(r'<w:trHeight w:val="(\d+)"').firstMatch(row.group(0)!);
+    if (min != null) rowH = int.parse(min.group(1)!);
+    for (final c in RegExp(r'<w:tc>[\s\S]*?</w:tc>').allMatches(row.group(0)!)) {
+      final cell = c.group(0)!;
+      final wd = int.parse(RegExp(r'<w:tcW w:w="(\d+)"').firstMatch(cell)?.group(1) ?? '${_usable}');
+      final ch = _paraHeights(cell, wd - 300) + 200; // cell margins + borders
+      if (ch > rowH) rowH = ch;
+    }
+    h += rowH;
+  }
+  return h;
+}
+
+int _paraHeights(String xml, int width) {
+  var total = 0;
+  for (final m in RegExp(r'<w:p>[\s\S]*?</w:p>|<w:p/>').allMatches(xml)) {
+    final p = m.group(0)!;
+    final sp = RegExp(r'<w:spacing w:before="(\d+)" w:after="(\d+)"(?: w:line="(\d+)" w:lineRule="exact")?').firstMatch(p);
+    final before = int.parse(sp?.group(1) ?? '0'), after = int.parse(sp?.group(2) ?? '0');
+    final exact = sp?.group(3);
+    final ind = int.parse(RegExp(r'<w:ind w:start="(\d+)"').firstMatch(p)?.group(1) ?? '0');
+    var pic = 0;
+    for (final d in RegExp(r'<wp:extent cx="\d+" cy="(\d+)"').allMatches(p)) {
+      pic += int.parse(d.group(1)!) ~/ 635;
+    }
+    var maxSz = 0, chars = 0, breaks = 0;
+    for (final r in RegExp(r'<w:r>[\s\S]*?</w:r>').allMatches(p)) {
+      final run = r.group(0)!;
+      final sz = int.parse(RegExp(r'<w:sz w:val="(\d+)"').firstMatch(run)?.group(1) ?? '23');
+      if (sz > maxSz) maxSz = sz;
+      for (final t in RegExp(r'<w:t[^>]*>([^<]*)</w:t>').allMatches(run)) {
+        chars += t.group(1)!.length * sz; // width ~ chars x size
+      }
+      breaks += '<w:br/>'.allMatches(run).length;
+    }
+    if (maxSz == 0) maxSz = 23;
+    final lineH = exact != null ? int.parse(exact) : (maxSz * 10 * 1.45).round();
+    final perLine = ((width - ind) / 6).floor().clamp(10, 100000); // size-units (half-points) one line holds
+    final lines = (chars / perLine).ceil().clamp(1, 1000) + breaks;
+    total += before + after + (pic > 0 ? pic + 100 : lines * lineH);
+  }
+  return total;
+}
+
+/// What a Word page holds, in twips: A4 minus the margins (900 top, 1600 bottom with the QR footer), times a safety margin
+/// for the estimate's own error: the estimate runs about 10 % above what Word measures (checked in Word 2026-11-04).
+const _pageCap = 14000;
+
+/// Splits units of heights [h] into consecutive pages: the fewest pages that fit [_pageCap] (greedy), then the smallest page
+/// height that still needs only that many, so the pages come out balanced and no page holds a tiny remainder. [maxPages]
+/// (a plan with fewer pages) forces that count, accepting a fuller page. Returns the end index (exclusive) of each page.
+List<int> _paginate(List<int> h, {int? maxPages}) {
+  List<int> greedy(int cap) {
+    final ends = <int>[];
+    var used = 0;
+    for (var i = 0; i < h.length; i++) {
+      if (used > 0 && used + h[i] > cap) {
+        ends.add(i);
+        used = 0;
+      }
+      used += h[i];
+    }
+    ends.add(h.length);
+    return ends;
+  }
+
+  var pages = greedy(_pageCap).length;
+  if (maxPages != null && pages > maxPages) pages = maxPages;
+  var lo = h.fold(0, (m, x) => x > m ? x : m), hi = h.fold(0, (a, b) => a + b);
+  while (lo < hi) {
+    final mid = (lo + hi) ~/ 2;
+    if (greedy(mid).length <= pages) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+  return greedy(lo);
+}
+
+/// How many pages the Word copy of [d] takes (the same split [examPaperDocx] writes): ask the print plan for this many
+/// QR payloads, not the PDF's page count.
+int wordPageCount(ExamPaperDoc d, PaperTemplate tpl) {
+  final z = ZipDecoder().decodeBytes(examPaperDocx(d.copyWith(qrSlots: 1), tpl));
+  final xml = utf8.decode(z.files.firstWhere((f) => f.name == 'word/document.xml').content as List<int>);
+  return '<w:sectPr>'.allMatches(xml).length;
+}
+
 /// The questions (and section titles), the part shared by the built-in designs and a custom template.
-String _questionsXml(ExamPaperDoc d, _W w, {required String accent, required String accentDark}) {
+String _questionsXml(ExamPaperDoc d, _W w, {required String accent, required String accentDark, List<int>? cuts}) {
   final words = PaperWords(d.rtl);
   final out = StringBuffer();
   final lineBorder = '<w:pBdr><w:bottom w:val="dotted" w:sz="6" w:space="1" w:color="B9C1CA"/></w:pBdr>';
@@ -71,6 +212,7 @@ String _questionsXml(ExamPaperDoc d, _W w, {required String accent, required Str
 
   for (var si = 0; si < d.sections.length; si++) {
     final s = d.sections[si];
+    cuts?.add(out.length);
     if (d.sections.length > 1 || s.title.isNotEmpty) {
       out.write(w.para(
           w.run(s.title.isEmpty ? words.sectionN(si) : s.title, bold: true, color: accentDark, size: 13) +
@@ -81,7 +223,9 @@ String _questionsXml(ExamPaperDoc d, _W w, {required String accent, required Str
           border: '<w:pBdr><w:bottom w:val="single" w:sz="8" w:space="2" w:color="$accent"/></w:pBdr>'));
       if (s.instructions.isNotEmpty) out.write(w.para(w.run(s.instructions, color: '6B7280', size: 10), after: 80));
     }
-    for (final q in s.questions) {
+    for (var qi = 0; qi < s.questions.length; qi++) {
+      final q = s.questions[qi];
+      if (qi > 0) cuts?.add(out.length);
       final prompt = q.type == 'fill_blank' ? blankPrompt(q.prompt, q.blanks) : q.prompt;
       out.write(w.para(
           w.run('${q.number}.  ', bold: true, color: accent, size: 12) +
@@ -90,8 +234,13 @@ String _questionsXml(ExamPaperDoc d, _W w, {required String accent, required Str
           before: 200,
           after: 60,
           keepNext: true));
-      // Word copies carry a placeholder line, not the picture
-      if (q.hasMedia) out.write(w.para(w.run(q.imagePlaceholder, color: '6B7280', size: 10, italic: true), ind: 560, after: 60));
+      // the picture under the prompt; a failed / missing / undecodable one (or a writer with no media part) keeps the "[image: alt]" line
+      if (q.hasMedia) {
+        final pic = q.imageFailed ? null : w.questionPicture(q.image);
+        out.write(pic == null
+            ? w.para(w.run(q.imagePlaceholder, color: '6B7280', size: 10, italic: true), ind: 560, after: 60)
+            : w.para(pic, ind: 560, after: 80, keepNext: true));
+      }
       switch (q.type) {
         case 'mcq_single':
         case 'mcq_multi':
@@ -199,7 +348,8 @@ String _answerTableXml(ExamPaperDoc d, _W w, PaperWords words, {required String 
 Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   final style = PaperStyle.of(tpl);
   final words = PaperWords(d.rtl);
-  final w = _W(d.rtl, style.wordFont, style.wordFontCs);
+  final media = <String, Uint8List>{};
+  final w = _W(d.rtl, style.wordFont, style.wordFontCs, media: media);
   final accent = style.color ? d.accentHex : '1F2933', accentDark = shadeHex(accent, .25), tint = style.color ? tintHex(accent, .08) : 'F4F5F7';
   final classic = tpl == PaperTemplate.classic, modern = tpl == PaperTemplate.modern;
   final rule = classic ? accent : 'B9C1CA';
@@ -313,14 +463,44 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
 
   final tableXml = _answerTableXml(d, w, words, accent: accent, accentDark: accentDark, rule: rule);
   if (d.answerTable == AnswerTablePlace.start) body.write(tableXml);
-  body.write(_questionsXml(d, w, accent: accent, accentDark: accentDark));
-  if (d.answerTable == AnswerTablePlace.end) body.write(tableXml);
+  final cuts = <int>[];
+  final questions = _questionsXml(d, w, accent: accent, accentDark: accentDark, cuts: cuts);
+
+  // Pages. A per-student copy has a different QR payload on every page and Word cannot put different content in a header /
+  // footer by page number, so the copy is written as ONE SECTION PER PLANNED PAGE (a next-page section break between them),
+  // each section with a footer of its own that holds that page's QR. The writer spreads the content over the sections by an
+  // estimated height; if a section's content still overflows, the overflow page repeats that section's QR (the same payload,
+  // never another page's).
+  final pageQr = d.qrPages;
+  final units = <String>[body.toString()]; // the header block is never split
+  final bounds = (<int>{...cuts.where((c) => c > 0 && c < questions.length)}.toList()..sort());
+  for (var i = 0, from = 0; i <= bounds.length; i++) {
+    final to = i < bounds.length ? bounds[i] : questions.length;
+    if (to > from) units.add(questions.substring(from, to));
+    from = to;
+  }
+  if (d.answerTable == AnswerTablePlace.end) units.add(tableXml);
+  final chunks = <String>[];
+  if (!d.qrReserved || units.length < 2) {
+    chunks.add(units.join());
+  } else {
+    final cut = _paginate([for (final u in units) _estimateHeight(u)], maxPages: pageQr.isEmpty ? null : pageQr.length);
+    for (var i = 0, from = 0; i < cut.length; i++) {
+      chunks.add(units.sublist(from, cut[i]).join());
+      from = cut[i];
+    }
+  }
+  final qrCount = pageQr.isEmpty ? 0 : (chunks.length < pageQr.length ? chunks.length : pageQr.length);
 
   final rtlPr = d.rtl ? '<w:rtl/>' : '';
   String field(String code) => '<w:fldSimple w:instr=" $code "><w:r><w:rPr><w:sz w:val="17"/><w:szCs w:val="17"/>$rtlPr</w:rPr><w:t>1</w:t></w:r></w:fldSimple>';
   final pageWord = d.rtl ? 'صفحة ' : 'Page ', ofWord = d.rtl ? ' من ' : ' of ';
-  final footer = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr $_ns>'
-      '${w.para('${w.run(pageWord, color: '6B7280', size: 8.5)}${field('PAGE')}${w.run(ofWord, color: '6B7280', size: 8.5)}${field('NUMPAGES')}', jc: 'center')}</w:ftr>';
+  // the footer of section [k] (0-based): the page line and, when the copy has QRs, that page's QR as an inline picture
+  String footerXml(int k) {
+    final qr = k < qrCount ? w.run('    ') + docxPicture('rQr', 1000 + k, _qrEmu, _qrEmu) : '';
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr $_ns>'
+        '${w.para('${w.run(pageWord, color: '6B7280', size: 8.5)}${field('PAGE')}${w.run(ofWord, color: '6B7280', size: 8.5)}${field('NUMPAGES')}$qr', jc: 'center')}</w:ftr>';
+  }
   final runningHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $_ns>'
       '${w.para(w.run(d.title, bold: true, color: accentDark, size: 9.5) + _tagsXml(d, w, accentDark) + (d.course.isEmpty ? '' : w.run('   ·   ${d.course}', color: '6B7280', size: 9)), border: '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="$rule"/></w:pBdr>')}</w:hdr>';
   final firstHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $_ns>${d.studentName.isEmpty ? '<w:p/>' : w.para(w.run(d.studentName, bold: true, size: 9.5), jc: 'end')}</w:hdr>';
@@ -328,24 +508,40 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
       ? '<w:pgBorders w:offsetFrom="page">${['top', 'left', 'bottom', 'right'].map((s) => '<w:$s w:val="double" w:sz="12" w:space="20" w:color="$accent"/>').join()}</w:pgBorders>'
       : '';
 
-  final doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document $_ns><w:body>$body'
-      '<w:sectPr><w:headerReference w:type="default" r:id="rHdr"/><w:headerReference w:type="first" r:id="rHdr1"/><w:footerReference w:type="default" r:id="rFtr"/>'
-      '<w:footerReference w:type="first" r:id="rFtr"/><w:pgSz w:w="11906" w:h="16838"/>'
-      '<w:pgMar w:top="900" w:right="1000" w:bottom="900" w:left="1000" w:header="420" w:footer="420" w:gutter="0"/>$pgBorders<w:titlePg/>${d.rtl ? '<w:bidi/>' : ''}</w:sectPr>'
-      '</w:body></w:document>';
+  // one sectPr per section: the first carries the headers and the title-page footer, later ones only their own footer
+  String sect(int k) {
+    final first = k == 0;
+    final f = 'rFtr${k + 1}';
+    return '<w:sectPr>${first ? '<w:headerReference w:type="default" r:id="rHdr"/><w:headerReference w:type="first" r:id="rHdr1"/>' : ''}'
+        '<w:footerReference w:type="default" r:id="$f"/>${first ? '<w:footerReference w:type="first" r:id="$f"/>' : ''}'
+        '<w:pgSz w:w="11906" w:h="16838"/>'
+        '<w:pgMar w:top="900" w:right="1000" w:bottom="${qrCount > 0 ? 1600 : 900}" w:left="1000" w:header="420" w:footer="420" w:gutter="0"/>'
+        '$pgBorders${first ? '<w:titlePg/>' : ''}${d.rtl ? '<w:bidi/>' : ''}</w:sectPr>';
+  }
+
+  final pages = StringBuffer();
+  for (var k = 0; k < chunks.length; k++) {
+    pages.write(chunks[k]);
+    // a section break closes every section but the last: an empty one-point paragraph carries its properties
+    if (k < chunks.length - 1) {
+      pages.write('<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/><w:rPr><w:sz w:val="2"/></w:rPr>${sect(k)}</w:pPr></w:p>');
+    }
+  }
+  final doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document $_ns><w:body>$pages${sect(chunks.length - 1)}</w:body></w:document>';
   final logoExt = d.logo == null ? null : (d.logo!.length > 3 && d.logo![0] == 0xFF && d.logo![1] == 0xD8 ? 'jpeg' : 'png');
+  final imageExts = <String>{if (logoExt != null) logoExt, if (qrCount > 0) 'png', for (final n in media.keys) n.split('.').last};
   final now = DateTime.now().toUtc().toIso8601String().split('.').first;
 
   return _zip({
     '[Content_Types].xml': utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
-        '${logoExt == null ? '' : '<Default Extension="$logoExt" ContentType="image/$logoExt"/>'}'
+        '${[for (final e in imageExts) '<Default Extension="$e" ContentType="image/$e"/>'].join()}'
         '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
         '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
         '<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>'
         '<Override PartName="/word/header2.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>'
-        '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>'
+        '${[for (var k = 1; k <= chunks.length; k++) '<Override PartName="/word/footer$k.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>'].join()}'
         '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>'),
     '_rels/.rels': utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
@@ -361,7 +557,8 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
         '<Relationship Id="rStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
         '<Relationship Id="rHdr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>'
         '<Relationship Id="rHdr1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header2.xml"/>'
-        '<Relationship Id="rFtr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>'
+        '${[for (var k = 1; k <= chunks.length; k++) '<Relationship Id="rFtr$k" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer$k.xml"/>'].join()}'
+        '${[for (final e in media.keys.indexed) '<Relationship Id="rQ${e.$1 + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${e.$2}"/>'].join()}'
         '${logoExt == null ? '' : '<Relationship Id="rLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.$logoExt"/>'}'
         '</Relationships>'),
     'word/styles.xml': utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -371,7 +568,16 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
         '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>'),
     'word/header1.xml': utf8.encode(runningHeader),
     'word/header2.xml': utf8.encode(firstHeader),
-    'word/footer1.xml': utf8.encode(footer),
+    for (var k = 0; k < chunks.length; k++) ...{
+      'word/footer${k + 1}.xml': utf8.encode(footerXml(k)),
+      if (k < qrCount) ...{
+        'word/_rels/footer${k + 1}.xml.rels': utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rQr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/qr${k + 1}.png"/></Relationships>'),
+        'word/media/qr${k + 1}.png': qrPng(pageQr[k], modulepx: 6),
+      },
+    },
+    for (final e in media.entries) 'word/media/${e.key}': e.value,
     'word/document.xml': utf8.encode(doc),
     if (logoExt != null) 'word/media/logo.$logoExt': d.logo!,
   });
