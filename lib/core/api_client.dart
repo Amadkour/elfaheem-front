@@ -1330,6 +1330,7 @@ class ApiClient {
         bool auth = true,
         CancelToken? cancelToken,
         Map<String, String>? headers,
+        ProgressCallback? onSendProgress,
       }) =>
       _execute(
             () => _dio.post(
@@ -1337,6 +1338,7 @@ class ApiClient {
           data: body,
           queryParameters: queryParams,
           cancelToken: cancelToken,
+          onSendProgress: onSendProgress,
           options: _jsonOpts(auth: auth, method: 'POST', headers: headers),
         ),
       );

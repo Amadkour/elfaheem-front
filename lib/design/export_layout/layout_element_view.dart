@@ -9,6 +9,8 @@
 //   LayoutAssets        image bytes uploaded in this session (asset id → bytes), so the canvas can show them
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
@@ -45,6 +47,13 @@ Color? layoutColor(String? hex, [Color? fallback]) {
   return v == null ? fallback : Color(v);
 }
 
+/// A shadow colour as the model stores it: `#RRGGBB` (opaque) or `#AARRGGBB` — the contract's one colour order, the
+/// same [layoutColor] and the server read (the default `#55000000` is black at a third).
+Color layoutShadowColor(String? hex) => layoutColor(hex, const Color(0x55000000))!;
+
+/// [c] as a shadow colour string `#AARRGGBB`.
+String layoutShadowHex(Color c) => '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
+
 String layoutHex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
 /// The icons a rule may put before its text (`then.icon`) — exactly the server's set (model.py `ICONS`): it drops
@@ -78,6 +87,8 @@ Map<String, String> layoutSampleVars({required String lang, String title = '', S
 TextStyle layoutTextStyle(LayoutElement e, String pageFont, double scale, Color color, {double pageFontSize = 10, bool? bold}) {
   final s = e.style;
   final family = s.font ?? pageFont;
+  final sh = s.shadow;
+  final textual = e.kind == 'text' || e.kind == 'field' || e.kind == 'badge' || e.kind == 'page_number';
   return TextStyle(
     fontFamily: exportFlutterFont(family),
     fontFamilyFallback: exportFlutterFallback(family),
@@ -85,7 +96,9 @@ TextStyle layoutTextStyle(LayoutElement e, String pageFont, double scale, Color 
     fontWeight: (bold ?? s.bold) ? FontWeight.w700 : FontWeight.w400,
     fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
     color: color,
-    height: 1.15,
+    height: s.lineHeight <= 0 ? 1.3 : s.lineHeight,
+    letterSpacing: s.letterSpacing == 0 ? null : s.letterSpacing * kPtMm * scale,
+    shadows: sh == null || !textual ? null : [Shadow(color: layoutShadowColor(sh.color), offset: Offset(sh.dx * scale, sh.dy * scale), blurRadius: .6 * scale)],
   );
 }
 
@@ -160,9 +173,23 @@ class LayoutElementView extends StatelessWidget {
         child = Center(
           child: element.w >= element.h ? Container(height: thick, color: ink) : Container(width: thick, color: ink),
         );
-        return Opacity(opacity: r.show ? 1 : .25, child: child);
+        return Opacity(opacity: (r.show ? 1 : .25) * e.opacity, child: child);
       case 'rect':
         child = const SizedBox.expand();
+      case 'ellipse':
+        return Opacity(
+          opacity: (r.show ? 1 : .25) * e.opacity,
+          child: CustomPaint(
+            painter: LayoutOvalPainter(
+              fill: bg,
+              stroke: border == null || border.width <= 0 ? null : layoutColor(border.color, color),
+              strokeWidth: border == null ? 0 : (border.width * scale).clamp(.5, 20.0).toDouble(),
+              shadow: s.shadow == null ? null : layoutShadowColor(s.shadow!.color),
+              shadowOffset: s.shadow == null ? Offset.zero : Offset(s.shadow!.dx * scale, s.shadow!.dy * scale),
+            ),
+            child: const SizedBox.expand(),
+          ),
+        );
       case 'image' || 'signature':
         child = _image(context, color);
       case 'qr':
@@ -170,17 +197,21 @@ class LayoutElementView extends StatelessWidget {
       default:
         child = _text(r, color);
     }
+    final sh = s.shadow;
     child = Container(
       decoration: BoxDecoration(
         color: bg,
         borderRadius: radius,
+        boxShadow: sh == null || !(e.kind == 'rect' || e.kind == 'image' || e.kind == 'signature')
+            ? null
+            : [BoxShadow(color: layoutShadowColor(sh.color), offset: Offset(sh.dx * scale, sh.dy * scale), blurRadius: .6 * scale)],
         border: border == null || border.width <= 0 ? null : Border.all(color: layoutColor(border.color, color)!, width: (border.width * scale).clamp(.5, 20.0)),
       ),
       clipBehavior: bg == null && border == null ? Clip.hardEdge : Clip.antiAlias,
       padding: EdgeInsets.all((s.padding * scale).clamp(0.0, 40.0)),
       child: child,
     );
-    return Opacity(opacity: r.show ? 1 : .25, child: child);
+    return Opacity(opacity: (r.show ? 1 : .25) * e.opacity, child: child);
   }
 
   TextStyle _style(Color color, [bool? bold]) => layoutTextStyle(element, pageFont, scale, color, pageFontSize: pageFontSize, bold: bold);
@@ -204,36 +235,55 @@ class LayoutElementView extends StatelessWidget {
       'bottom' => 1.0,
       _ => 0.0,
     };
-    final style = _style(color, r.bold);
     final icon = kLayoutRuleIcons[r.icon];
-    final text = Text(
-      r.text,
-      style: style,
-      textDirection: dir,
-      textAlign: h == 0 ? TextAlign.center : (h < 0 ? TextAlign.left : TextAlign.right),
-      maxLines: s.maxLines > 0 ? s.maxLines : (s.wrap ? null : 1),
-      overflow: s.maxLines > 0 ? TextOverflow.ellipsis : TextOverflow.clip,
-      softWrap: s.wrap,
-    );
-    return Directionality(
-      textDirection: dir,
-      child: ClipRect(
-        child: OverflowBox(
-          alignment: Alignment(h, v),
-          maxHeight: double.infinity,
-          child: Align(
+    final maxLines = s.maxLines > 0 ? s.maxLines : (s.wrap ? null : 1);
+    final align = h == 0 ? TextAlign.center : (h < 0 ? TextAlign.left : TextAlign.right);
+    Widget body(TextStyle style) {
+      final text = Text(
+        r.text,
+        style: style,
+        textDirection: dir,
+        textAlign: align,
+        maxLines: maxLines,
+        overflow: s.maxLines > 0 ? TextOverflow.ellipsis : TextOverflow.clip,
+        softWrap: s.wrap,
+      );
+      return Directionality(
+        textDirection: dir,
+        child: ClipRect(
+          child: OverflowBox(
             alignment: Alignment(h, v),
-            child: icon == null
-                ? text
-                : Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(icon, size: style.fontSize! * 1.1, color: color),
-                    SizedBox(width: style.fontSize! * .25),
-                    Flexible(child: text),
-                  ]),
+            maxHeight: double.infinity,
+            child: Align(
+              alignment: Alignment(h, v),
+              child: icon == null
+                  ? text
+                  : Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(icon, size: style.fontSize! * 1.1, color: color),
+                      SizedBox(width: style.fontSize! * .25),
+                      Flexible(child: text),
+                    ]),
+            ),
           ),
         ),
-      ),
-    );
+      );
+    }
+
+    final style = _style(color, r.bold);
+    if (!s.shrink) return body(style);
+    // shrink to fit: the font goes down (to 50 %) until the text fits the box, instead of being clipped
+    return LayoutBuilder(builder: (context, box) {
+      final f = layoutShrinkFactor(
+        text: r.text,
+        style: style,
+        dir: dir,
+        maxWidth: box.maxWidth,
+        maxHeight: box.maxHeight,
+        maxLines: maxLines,
+        wrap: s.wrap,
+      );
+      return body(f >= 1 ? style : style.copyWith(fontSize: style.fontSize! * f, letterSpacing: style.letterSpacing == null ? null : style.letterSpacing! * f));
+    });
   }
 
   static bool _hasArabic(String s) => s.runes.any((r) => (r >= 0x0600 && r <= 0x08FF) || (r >= 0xFB50 && r <= 0xFEFC));
@@ -246,8 +296,11 @@ class LayoutElementView extends StatelessWidget {
       'fill' => BoxFit.fill,
       _ => BoxFit.contain,
     };
-    final picture = bytes != null
-        ? Image.memory(bytes, fit: fit, gaplessPlayback: true)
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1;
+    // decode at the size it is drawn at (a 12 MP photo in a 40 px box would otherwise cost tens of MB)
+    final cacheW = (e.w * scale * dpr).round().clamp(16, 2048);
+    Widget picture = bytes != null
+        ? Image.memory(bytes, fit: fit, gaplessPlayback: true, cacheWidth: cacheW)
         : Container(
             color: const Color(0x0F101828),
             child: FittedBox(
@@ -257,6 +310,7 @@ class LayoutElementView extends StatelessWidget {
               ),
             ),
           );
+    picture = layoutShapeClip(e.shape, picture);
     if (e.kind != 'signature') return picture;
     final small = _style(color).copyWith(fontSize: ((e.style.size ?? pageFontSize) * .9 * kPtMm * scale).clamp(1.0, 200.0));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -264,6 +318,127 @@ class LayoutElementView extends StatelessWidget {
       if ((e.sigName ?? '').isNotEmpty) Text(layoutFillVars(e.sigName!, vars), style: small.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip),
       if ((e.sigTitle ?? '').isNotEmpty) Text(layoutFillVars(e.sigTitle!, vars), style: small, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip),
     ]);
+  }
+}
+
+/// Clips [child] to an image [shape]: rect | rounded (a tenth of the shorter side) | circle (an ellipse in a
+/// non-square box; the server crops photos to a circle in a square box).
+Widget layoutShapeClip(String shape, Widget child) => switch (shape) {
+      'circle' => ClipOval(child: child),
+      'rounded' => LayoutRoundedClip(child: child),
+      _ => child,
+    };
+
+/// A rounded clip whose radius follows the box: a tenth of the shorter side.
+class LayoutRoundedClip extends StatelessWidget {
+  const LayoutRoundedClip({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, box) {
+          final side = box.hasBoundedWidth && box.hasBoundedHeight ? math.min(box.maxWidth, box.maxHeight) : 40.0;
+          return ClipRRect(borderRadius: BorderRadius.circular(side * .1), child: child);
+        },
+      );
+}
+
+/// The factor (1 down to .5) the font must be multiplied by for [text] to fit [maxWidth] x [maxHeight] in
+/// [maxLines] lines (null = as many as needed), in steps of 5 %. 1 = it fits already (or the box is unbounded).
+double layoutShrinkFactor({
+  required String text,
+  required TextStyle style,
+  required TextDirection dir,
+  required double maxWidth,
+  required double maxHeight,
+  int? maxLines,
+  bool wrap = true,
+}) {
+  if (!maxWidth.isFinite || !maxHeight.isFinite || maxWidth <= 0 || maxHeight <= 0 || text.isEmpty) return 1;
+  final base = style.fontSize ?? 14;
+  for (var f = 1.0; f >= .5 - 1e-9; f -= .05) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: style.copyWith(fontSize: base * f, letterSpacing: style.letterSpacing == null ? null : style.letterSpacing! * f),
+      ),
+      textDirection: dir,
+      maxLines: maxLines,
+    )..layout(maxWidth: wrap ? maxWidth : double.infinity);
+    final fits = tp.height <= maxHeight + .5 && (wrap ? !tp.didExceedMaxLines : tp.width <= maxWidth + .5);
+    tp.dispose();
+    if (fits) return f;
+  }
+  return .5;
+}
+
+/// An ellipse filling its box: fill, outline and an offset shadow (the ellipse element).
+class LayoutOvalPainter extends CustomPainter {
+  const LayoutOvalPainter({this.fill, this.stroke, this.strokeWidth = 0, this.shadow, this.shadowOffset = Offset.zero});
+  final Color? fill, stroke, shadow;
+  final double strokeWidth;
+  final Offset shadowOffset;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final box = Offset.zero & size;
+    final oval = strokeWidth > 0 && stroke != null ? box.deflate(strokeWidth / 2) : box;
+    if (shadow != null && (fill != null || stroke != null)) {
+      canvas.drawOval(oval.shift(shadowOffset), Paint()..color = shadow!..maskFilter = const MaskFilter.blur(BlurStyle.normal, .6));
+    }
+    if (fill != null) canvas.drawOval(oval, Paint()..color = fill!);
+    if (stroke != null && strokeWidth > 0) {
+      canvas.drawOval(
+        oval,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..color = stroke!,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant LayoutOvalPainter old) =>
+      old.fill != fill || old.stroke != stroke || old.strokeWidth != strokeWidth || old.shadow != shadow || old.shadowOffset != shadowOffset;
+}
+
+/// The page's background image under everything: an uploaded asset (drawn from the session's bytes) or an https URL,
+/// laid out as [fit] (cover | contain | fill). Nothing (transparent) when the id has no bytes in this session.
+class LayoutPageBackground extends StatelessWidget {
+  const LayoutPageBackground({super.key, required this.image, this.fit = 'cover', this.cacheWidth});
+
+  /// An asset id, or an https URL.
+  final String? image;
+  final String fit;
+
+  /// Decode width in physical pixels (null = the image's own).
+  final int? cacheWidth;
+
+  static bool isUrl(String? v) => v != null && (v.startsWith('https://') || v.startsWith('http://'));
+
+  @override
+  Widget build(BuildContext context) {
+    final id = image;
+    if (id == null || id.isEmpty) return const SizedBox.shrink();
+    final boxFit = switch (fit) {
+      'contain' => BoxFit.contain,
+      'fill' => BoxFit.fill,
+      _ => BoxFit.cover,
+    };
+    if (isUrl(id)) {
+      return SizedBox.expand(
+        child: Image.network(id, fit: boxFit, cacheWidth: cacheWidth, gaplessPlayback: true, errorBuilder: (_, _, _) => const SizedBox.shrink()),
+      );
+    }
+    return ValueListenableBuilder<int>(
+      valueListenable: LayoutAssets.version,
+      builder: (context, _, _) {
+        final bytes = LayoutAssets.of(id);
+        if (bytes == null) return const SizedBox.shrink();
+        return SizedBox.expand(child: Image.memory(bytes, fit: boxFit, cacheWidth: cacheWidth, gaplessPlayback: true));
+      },
+    );
   }
 }
 
