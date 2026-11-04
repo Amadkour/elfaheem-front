@@ -1,4 +1,4 @@
-// The cache card and the D-190 settings: parsing, the PUT bodies, the card's actions, the lora-disabled stats.
+// The cache card and the D-220 settings: parsing, the PUT bodies, the card's actions, the lora-disabled stats.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/rag/admin/rag_cache_card.dart';
@@ -95,7 +95,7 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
-  test('the D-190 settings parse, bound and detect an older server', () {
+  test('the D-220 settings parse, bound and detect an older server', () {
     final x = RagExtraSettings.fromJson({
       'answer_mode': 'retrieval',
       'ocr_scanned': true,

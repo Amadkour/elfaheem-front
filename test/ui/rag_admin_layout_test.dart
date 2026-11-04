@@ -50,7 +50,7 @@ void main() {
     await expectNoLayoutErrors(tester, () => _scroll(RagCacheCard(stats: RagCacheStats.fromJson(j), onSave: (_) {}, onClearAll: () {}, onClearOrg: (_) {})));
   });
 
-  testWidgets('the D-190 settings card', (tester) async {
+  testWidgets('the D-220 settings card', (tester) async {
     await expectNoLayoutErrors(
         tester,
         () => _scroll(RagExtraSettingsCard(

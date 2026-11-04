@@ -89,7 +89,7 @@ class RagAdminSettings {
     this.extra = const RagExtraSettings(),
   });
 
-  /// The D-190 settings (answer mode, OCR, upload size, search-model training); saved on their own card.
+  /// The D-220 settings (answer mode, OCR, upload size, search-model training); saved on their own card.
   final RagExtraSettings extra;
   final String generator; // llm | extractive
   final bool allowExternalDefault;
@@ -566,7 +566,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
     }
   }
 
-  /// The D-190 settings card: only its own keys travel (the server merges).
+  /// The D-220 settings card: only its own keys travel (the server merges).
   Future<EngineResult> _saveSettingsBody(Map<String, dynamic> body) => _api.saveSettings(body);
 
   Future<void> _saveExtra(Map<String, dynamic> body) async {

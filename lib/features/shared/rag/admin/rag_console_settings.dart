@@ -1,6 +1,6 @@
 // lib/features/shared/rag/admin/rag_console_settings.dart
 //
-// The settings D-190 added to the RAG console (FRONT_CONTRACTS "Upload settings", "Learning"), as one card of the
+// The settings D-220 added to the RAG console (FRONT_CONTRACTS "Upload settings", "Learning"), as one card of the
 // Settings tab, all through PUT /api/v1/rag/admin/settings (flat keys; the server merges and bounds them):
 //
 //   answer_mode             generate | retrieval   (retrieval: the matching passages with their source and page, no writer)
@@ -22,7 +22,7 @@ import '../rag_learning.dart' show EmbedderJob;
 class RagExtraSettings {
   const RagExtraSettings({this.answerMode = 'generate', this.ocrScanned = false, this.maxDocMb = 30, this.embedderAuto = false, this.embedderMinNew = 200, this.present = false});
 
-  /// The settings object of `GET /admin/settings` (`settings`); [present] = the server sent the D-190 keys at all
+  /// The settings object of `GET /admin/settings` (`settings`); [present] = the server sent the D-220 keys at all
   /// (an older server does not, and the card is hidden).
   factory RagExtraSettings.fromJson(Object? settings) {
     final s = asMap(settings);
