@@ -20,7 +20,8 @@ import 'admin_list.dart';
 import 'admin_table_export.dart' show adminCoursesExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppListSkeleton;
+import '../shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminCoursesPage extends StatelessWidget {
@@ -712,6 +713,9 @@ class _CourseDetailState extends State<_CourseDetail> {
                     ],
                   ),
                 ),
+              // the course's exams: the list, New exam and the question bank a teacher has (the engine lets a platform
+              // admin manage any course's exams; it decides the organization scope itself)
+              AppCard(margin: const EdgeInsets.only(bottom: 14), child: EngineReviewSection(courseId: co.id)),
               Section(
                 title: 'admin_controls'.tr,
                 child: Column(
