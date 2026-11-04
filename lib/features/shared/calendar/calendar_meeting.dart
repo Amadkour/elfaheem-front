@@ -13,6 +13,7 @@
 // Students (a role outside the server's staff list) create online, private meetings only (§8).
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -23,7 +24,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart' show showLobbySheet, showShareLinkSheet;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/prejoin.dart';
+import 'package:flutter_education_app/features/teacher/sessions/live/join_args.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
@@ -989,7 +990,7 @@ Future<void> openMeetingRoom(BuildContext context,
   final id = asInt(meeting['id']);
   final owner = isHost ?? meeting['is_owner'] == true;
   await Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => PreJoinPage(
+    builder: (_) => deferredPreJoin(
       args: JoinArgs(
         sessionId: -id, // not a course session: keeps the course-session calls of the room away from real ones
         roomRef: LiveRoomRef.meeting(id),

@@ -14,6 +14,7 @@
 // resolved by [openAnnouncementLink]. Views are recorded when a card has really been on screen (batched).
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -173,7 +174,7 @@ Future<void> openAnnouncementLink(BuildContext context, AnnLink link, {Map<Strin
       : const {'news': 0, 'departments': 1, 'requests': 2, 'complaints': 3, 'regulations': 4, 'my_path': 5, 'join': 6}[
               link.target] ??
           0;
-  await nav.push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: o, initialTab: tab)));
+  await nav.push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: o, initialTab: tab)));
 }
 
 String _errText(Object e) => e is ApiException ? e.message : t('تعذّر الاتصال، حاول مجدداً', 'Connection problem, try again');

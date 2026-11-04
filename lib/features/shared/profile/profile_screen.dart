@@ -6,6 +6,7 @@
 library;
 
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
@@ -208,7 +209,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 color: c.primary,
                                 label: 'cert_my_designs'.tr,
                                 // personal designs: usable on every course of this teacher (no organization needed)
-                                onTap: () => _push(const CertificateDesignsScreen()),
+                                onTap: () => _push(deferredCertificateDesigns()),
                               ),
                             ),
                             ParentComponent(
@@ -239,7 +240,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 icon: Icons.workspace_premium_rounded,
                                 color: c.primary,
                                 label: 'certificate_requests'.tr,
-                                onTap: () => _push(const CertificateRequestsScreen()),
+                                onTap: () => _push(deferredCertificateRequests()),
                               ),
                             ),
                             ParentComponent(

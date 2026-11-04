@@ -929,12 +929,25 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   // ── Network ───────────────────────────────────────────────────────────────
 
   /// Returns true on success (model populated + cached), false on failure.
+  /// The theme request started while the app is still starting (main.dart's `_initCore`, D-171): the first fetch takes
+  /// it instead of asking again, so the first real frame no longer waits for the start-up steps AND then the request.
+  static Future<dynamic>? _early;
+
+  static void prefetch(ApiClient api) {
+    if (_early != null) return;
+    final f = api.get('/api/v1/theme/$_currentPlatform').timeout(const Duration(seconds: 30));
+    f.ignore(); // a failure is the first fetch's to handle
+    _early = f;
+  }
+
   Future<bool> _fetchFromServer({bool silent = false}) async {
     try {
+      final early = _early;
+      _early = null;
       final platform = _currentPlatform;
-      final json = await _api
+      final json = await (early ?? _api
           .get('/api/v1/theme/$platform')
-          .timeout(const Duration(seconds: 30)) as Map<String, dynamic>;
+          .timeout(const Duration(seconds: 30))) as Map<String, dynamic>;
       final colors = json['colors'] as Map<String, dynamic>;
       _model = ThemeConfigModel.fromJson(colors);
 

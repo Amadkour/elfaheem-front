@@ -18,9 +18,41 @@ import 'dart:typed_data';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, t;
 import 'exam_authoring.dart' show ExamView, fmtPoints;
+import 'exam_media.dart' show mediaOfBody;
 import 'paper/omr_counts.dart';
 
 enum PaperTemplate { auto, classic, modern, minimal, custom }
+
+/// Where the "answer on the paper" table of the choice questions goes (none = circles in the questions only).
+enum AnswerTablePlace { none, start, end }
+
+/// One line of the key summary printed on a version's answer key (`GET …/answer-key` `display`).
+class PaperKeyLine {
+  const PaperKeyLine(this.n, this.display);
+  final int n;
+  final String display;
+}
+
+/// One row of the answer table: a choice question and the letters to circle.
+class AnswerTableEntry {
+  const AnswerTableEntry(this.number, this.letters, this.correct, {this.multi = false});
+  final int number;
+  final List<String> letters;
+  final Set<int> correct;
+  final bool multi;
+}
+
+/// The choice questions of [d] as table rows (single and multiple choice; the letters follow the language).
+List<AnswerTableEntry> answerTableEntries(ExamPaperDoc d) => [
+      for (final s in d.sections)
+        for (final q in s.questions)
+          if (q.isChoice && q.options.isNotEmpty)
+            AnswerTableEntry(q.number, [for (var i = 0; i < q.options.length; i++) choiceLetter(i, rtl: d.rtl)], q.correct, multi: q.type == 'mcq_multi'),
+    ];
+
+/// The rows split in [groups] side-by-side groups (a page-friendly grid): rows of at most [groups] entries, in order.
+List<List<AnswerTableEntry>> answerTableRows(List<AnswerTableEntry> entries, {int groups = 3}) =>
+    [for (var i = 0; i < entries.length; i += groups) entries.sublist(i, i + groups > entries.length ? entries.length : i + groups)];
 
 String paperTemplateLabel(PaperTemplate p) => switch (p) {
       PaperTemplate.auto => t('تلقائي', 'Auto'),
@@ -69,8 +101,11 @@ class PaperStyle {
 class PaperQuestion {
   PaperQuestion({required this.number, required this.type, required this.prompt, required this.points, this.options = const [],
       this.correct = const {}, this.left = const [], this.right = const [], this.pairs = const {}, this.items = const [], this.order = const [],
-      this.blanks = 0, this.tfCorrect, this.answerText = ''});
+      this.blanks = 0, this.tfCorrect, this.answerText = '', this.id, this.mediaId, this.mediaAlt = '', this.image, this.imageFailed = false});
   final int number;
+
+  /// The engine question's id (versions order questions by it); null for a hand-built question.
+  final int? id;
   final String type;
   final String prompt;
   final double points;
@@ -85,6 +120,23 @@ class PaperQuestion {
   final List<String> items, order;
   final int blanks;
   final bool? tfCorrect;
+
+  /// The question's image (the body's `media`): its id and alt text, and once fetched ([attachPaperImages]) the bytes.
+  /// [imageFailed]: the fetch failed, the writers print a placeholder line.
+  final String? mediaId;
+  final String mediaAlt;
+  final Uint8List? image;
+  final bool imageFailed;
+
+  bool get hasMedia => mediaId != null;
+
+  PaperQuestion withImage(Uint8List? bytes, {bool failed = false}) => PaperQuestion(
+      id: id, number: number, type: type, prompt: prompt, points: points, options: options, correct: correct, left: left, right: right,
+      pairs: pairs, items: items, order: order, blanks: blanks, tfCorrect: tfCorrect, answerText: answerText, mediaId: mediaId, mediaAlt: mediaAlt,
+      image: bytes, imageFailed: failed);
+
+  /// What a writer without pictures prints instead.
+  String get imagePlaceholder => mediaAlt.isEmpty ? '[image]' : ['[image: ', mediaAlt, ']'].join();
 
   /// What the answer key prints for open / numeric / blank questions.
   final String answerText;
@@ -105,8 +157,37 @@ class PaperSection {
 class ExamPaperDoc {
   ExamPaperDoc({required this.institution, required this.course, required this.title, required this.dateText, required this.durationText,
       required this.total, required this.sections, required this.instructions, required this.rtl, this.logo, this.accentHex = '0F7B5F',
-      this.showPoints = true, this.seatNumber = true, this.answerKey = false});
+      this.showPoints = true, this.seatNumber = true, this.answerKey = false, this.version, this.studentName = '', this.qrPages = const [],
+      this.qrSlots = 0, this.answerTable = AnswerTablePlace.none, this.keySummary = const []});
   final String institution, course, title, dateText, durationText;
+
+  /// The version's letter printed in the header ("Version A"); null = the exam's own order.
+  final String? version;
+
+  /// A per-student copy: the name printed in the student box and the running header, and the QR payload of each
+  /// page ([qrPages], page 1 first). [qrSlots] > 0 reserves the QR's room on every page without drawing one (the
+  /// page-count pass, so the real copy lays out identically).
+  final String studentName;
+  final List<String> qrPages;
+  final int qrSlots;
+
+  /// The "answer on the paper" table for the choice questions.
+  final AnswerTablePlace answerTable;
+
+  /// A version's server key (display strings) printed as a summary on the answer-key copy.
+  final List<PaperKeyLine> keySummary;
+
+  bool get qrReserved => qrPages.isNotEmpty || qrSlots > 0;
+
+  ExamPaperDoc copyWith({List<PaperSection>? sections, String? version, String? studentName, List<String>? qrPages, int? qrSlots,
+          AnswerTablePlace? answerTable, bool? answerKey, List<PaperKeyLine>? keySummary}) =>
+      ExamPaperDoc(
+        institution: institution, course: course, title: title, dateText: dateText, durationText: durationText, total: total,
+        sections: sections ?? this.sections, instructions: instructions, rtl: rtl, logo: logo, accentHex: accentHex, showPoints: showPoints,
+        seatNumber: seatNumber, answerKey: answerKey ?? this.answerKey, version: version ?? this.version, studentName: studentName ?? this.studentName,
+        qrPages: qrPages ?? this.qrPages, qrSlots: qrSlots ?? this.qrSlots, answerTable: answerTable ?? this.answerTable,
+        keySummary: keySummary ?? this.keySummary,
+      );
   final double total;
   final List<PaperSection> sections;
   final List<String> instructions;
@@ -120,15 +201,19 @@ class ExamPaperDoc {
 
   int get questionCount => sections.fold(0, (s, x) => s + x.questions.length);
 
+  /// Whether any question carries an image.
+  bool get hasImages => sections.any((s) => s.questions.any((q) => q.hasMedia));
+
   /// The manager's exam view → the paper. Questions are numbered across sections; empty sections are left out.
   static ExamPaperDoc fromView(ExamView v, {required String institution, String course = '', String? dateText, required List<String> instructions,
-      required bool rtl, Uint8List? logo, String accentHex = '0F7B5F', bool showPoints = true, bool seatNumber = true, bool answerKey = false}) {
+      required bool rtl, Uint8List? logo, String accentHex = '0F7B5F', bool showPoints = true, bool seatNumber = true, bool answerKey = false,
+      AnswerTablePlace answerTable = AnswerTablePlace.none}) {
     var n = 0;
     final sections = <PaperSection>[];
     for (final s in v.sections) {
       final qs = <PaperQuestion>[];
       for (final p in s.questions) {
-        qs.add(paperQuestion(++n, p.type, asMap(p.raw['body']), asMap(p.raw['answer']), p.points * s.section.weight));
+        qs.add(paperQuestion(++n, p.type, asMap(p.raw['body']), asMap(p.raw['answer']), p.points * s.section.weight, id: p.questionId));
       }
       if (qs.isNotEmpty) sections.add(PaperSection(title: s.section.title.trim(), instructions: s.section.instructions.trim(), questions: qs));
     }
@@ -148,6 +233,7 @@ class ExamPaperDoc {
       showPoints: showPoints,
       seatNumber: seatNumber,
       answerKey: answerKey,
+      answerTable: answerTable,
     );
   }
 }
@@ -155,7 +241,40 @@ class ExamPaperDoc {
 List<String> _strings(dynamic v) => [for (final x in (v as List?) ?? const []) x is Map ? '${x['text'] ?? x['id'] ?? ''}' : '$x'];
 
 /// One engine question (body + key) as printed.
-PaperQuestion paperQuestion(int number, String type, Map<String, dynamic> body, Map<String, dynamic> key, double points) {
+PaperQuestion paperQuestion(int number, String type, Map<String, dynamic> body, Map<String, dynamic> key, double points, {int? id}) {
+  final q = _paperQuestion(number, type, body, key, points, id);
+  final m = mediaOfBody(body);
+  return m == null ? q : PaperQuestion(
+      id: q.id, number: q.number, type: q.type, prompt: q.prompt, points: q.points, options: q.options, correct: q.correct, left: q.left,
+      right: q.right, pairs: q.pairs, items: q.items, order: q.order, blanks: q.blanks, tfCorrect: q.tfCorrect, answerText: q.answerText,
+      mediaId: m.id, mediaAlt: m.alt);
+}
+
+/// Fetches every question image of [d] (through [fetch], by question id and media id) BEFORE the page-count and render passes,
+/// so both lay out the same. A failed fetch keeps the question and marks it [PaperQuestion.imageFailed]. Same bytes are fetched once.
+Future<ExamPaperDoc> attachPaperImages(ExamPaperDoc d, Future<Uint8List> Function(int questionId, String mediaId) fetch) async {
+  if (!d.hasImages) return d;
+  final sections = <PaperSection>[];
+  for (final s in d.sections) {
+    final qs = <PaperQuestion>[];
+    for (final q in s.questions) {
+      if (!q.hasMedia || q.id == null) {
+        qs.add(q);
+        continue;
+      }
+      try {
+        final b = await fetch(q.id!, q.mediaId!);
+        qs.add(b.isEmpty ? q.withImage(null, failed: true) : q.withImage(b));
+      } catch (_) {
+        qs.add(q.withImage(null, failed: true));
+      }
+    }
+    sections.add(PaperSection(title: s.title, instructions: s.instructions, questions: qs));
+  }
+  return d.copyWith(sections: sections);
+}
+
+PaperQuestion _paperQuestion(int number, String type, Map<String, dynamic> body, Map<String, dynamic> key, double points, int? id) {
   final prompt = '${body['prompt'] ?? ''}'.trim();
   switch (type) {
     case 'mcq_single':
@@ -163,27 +282,27 @@ PaperQuestion paperQuestion(int number, String type, Map<String, dynamic> body, 
       final raw = (body['options'] as List?) ?? const [];
       final ids = [for (final o in raw) o is Map ? '${o['id']}' : '$o'];
       final right = type == 'mcq_single' ? {'${key['correct']}'} : {for (final c in (key['correct'] as List?) ?? const []) '$c'};
-      return PaperQuestion(number: number, type: type, prompt: prompt, points: points, options: _strings(raw),
+      return PaperQuestion(id: id, number: number, type: type, prompt: prompt, points: points, options: _strings(raw),
           correct: {for (var i = 0; i < ids.length; i++) if (right.contains(ids[i])) i});
     case 'true_false':
-      return PaperQuestion(number: number, type: type, prompt: prompt, points: points, tfCorrect: key['correct'] is bool ? key['correct'] as bool : null);
+      return PaperQuestion(id: id, number: number, type: type, prompt: prompt, points: points, tfCorrect: key['correct'] is bool ? key['correct'] as bool : null);
     case 'fill_blank':
       final blanks = (key['blanks'] as List?) ?? const [];
       final n = asInt(body['blanks_count'], blanks.length);
-      return PaperQuestion(number: number, type: type, prompt: prompt, points: points, blanks: n < 1 ? 1 : n,
+      return PaperQuestion(id: id, number: number, type: type, prompt: prompt, points: points, blanks: n < 1 ? 1 : n,
           answerText: [for (final b in blanks) b is List ? (b.isEmpty ? '' : '${b.first}') : '$b'].join(' · '));
     case 'matching':
-      return PaperQuestion(number: number, type: type, prompt: prompt, points: points, left: _strings(body['left']), right: _strings(body['right']),
+      return PaperQuestion(id: id, number: number, type: type, prompt: prompt, points: points, left: _strings(body['left']), right: _strings(body['right']),
           pairs: {for (final e in asMap(key['pairs']).entries) e.key: '${e.value}'});
     case 'ordering':
-      return PaperQuestion(number: number, type: type, prompt: prompt, points: points, items: _strings(body['items']), order: _strings(key['order']));
+      return PaperQuestion(id: id, number: number, type: type, prompt: prompt, points: points, items: _strings(body['items']), order: _strings(key['order']));
     case 'numeric':
       final unit = (body['units'] as List?)?.isNotEmpty == true ? ' ${(body['units'] as List).first}' : '';
-      return PaperQuestion(number: number, type: type, prompt: prompt, points: points, answerText: key['value'] == null ? '' : '${key['value']}$unit');
+      return PaperQuestion(id: id, number: number, type: type, prompt: prompt, points: points, answerText: key['value'] == null ? '' : '${key['value']}$unit');
     default:
       final model = '${key['model'] ?? ''}'.trim();
       final rubric = [for (final c in (key['rubric'] as List?) ?? const []) if (c is Map) '• ${c['criterion']} (${fmtPoints(asDouble(c['points']))})'];
-      return PaperQuestion(number: number, type: type, prompt: prompt, points: points,
+      return PaperQuestion(id: id, number: number, type: type, prompt: prompt, points: points,
           answerText: [if (model.isNotEmpty) model, ...rubric].join('\n'));
   }
 }
@@ -256,6 +375,9 @@ class PaperWords {
   String get orderHint => rtl ? 'رتّب بكتابة الرقم في المربع' : 'Number the boxes in the right order';
   String get matchHint => rtl ? 'اكتب حرف الإجابة في القوس' : 'Write the matching letter in the brackets';
   String get chooseMany => rtl ? '(اختر كل الإجابات الصحيحة)' : '(choose every correct answer)';
+  String version(String code) => rtl ? 'النموذج $code' : 'Version $code';
+  String get answerTableTitle => rtl ? 'جدول الإجابة — ضع دائرة حول الحرف الصحيح' : 'Answer table — circle the correct letter';
+  String get keySummaryTitle => rtl ? 'مفتاح الإجابة' : 'Answer key';
   String page(int n, int of) => rtl ? 'صفحة $n من $of' : 'Page $n of $of';
   String pts(double p) => rtl ? '${fmtPoints(p)} ${p == 1 ? 'درجة' : 'درجات'}' : '${fmtPoints(p)} ${p == 1 ? 'mark' : 'marks'}';
   String sectionN(int i) => rtl ? 'القسم ${i + 1}' : 'Part ${i + 1}';

@@ -11,6 +11,7 @@
 // (cached per course while it is open). Pure logic: go_live.dart. Renders: test/visual/go_live_golden_test.dart.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -30,7 +31,7 @@ import '../../admin/admin_common.dart' show t;
 import '../../auth/auth_provider.dart';
 import '../../shared/calendar/calendar_meeting.dart' show startQuickMeeting;
 import '../../shared/live/live_room_host.dart';
-import '../sessions/live/prejoin.dart';
+import '../sessions/live/join_args.dart';
 import 'go_live.dart';
 import 'teacher_models.dart';
 
@@ -302,7 +303,7 @@ Future<void> launchGoLive(BuildContext context, GoLiveLaunch go, {GoLiveApi? api
   final a = api ?? RemoteGoLiveApi();
   final user = context.read<MyAuthProvider>().currentUser;
   await Navigator.of(context).push(MaterialPageRoute<void>(
-    builder: (_) => PreJoinPage(
+    builder: (_) => deferredPreJoin(
       startMic: go.mic,
       startCam: go.camera,
       args: JoinArgs(

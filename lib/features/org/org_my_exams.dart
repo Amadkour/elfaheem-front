@@ -15,6 +15,7 @@
 // Pure (unit-tested): MyExam · nextExam · groupExamsByDay · examCountdown · examPauseOn · activeExamPauses.
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -167,7 +168,7 @@ Widget examPauseBanner(BuildContext context, List<Map<String, dynamic>> pauses,
           color: examPauseOn(appToday(), [p]) != null ? c.warning : c.primary,
           action: myExamsAction
               ? TextButton(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyExamsScreen())),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredMyExams())),
                   child: Text(t('امتحاناتي', 'My exams')),
                 )
               : null,
@@ -184,7 +185,7 @@ String myExamKindLabel(String k) => k == 'midterm' ? t('منتصف الفصل', 
 
 /// Opens My exams (optionally one organization's).
 Future<void> openMyExams(BuildContext context, {int? orgId}) =>
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => MyExamsScreen(orgId: orgId)));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredMyExams(orgId: orgId)));
 
 class MyExamsScreen extends StatelessWidget {
   const MyExamsScreen({super.key, this.orgId});

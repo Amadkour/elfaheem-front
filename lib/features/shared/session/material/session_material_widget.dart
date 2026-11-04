@@ -14,6 +14,7 @@
 //   • components/add_material_sheet.dart       (upload / link sheet)
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
@@ -203,7 +204,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TeacherExamHubScreen(
+        builder: (_) => deferredTeacherExamHub(
           courseId: _session.courseId,
           courseTitle: (AppConfig.lang=='ar'? widget.course.titleAr:widget.course.titleEn)??'',
         ),
@@ -217,7 +218,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TeacherExamHubScreen(
+        builder: (_) => deferredTeacherExamHub(
           courseId: _session.courseId,
           courseTitle: (AppConfig.lang=='ar'? widget.course.titleAr:widget.course.titleEn)??'',
           initialSessionId: _session.id,

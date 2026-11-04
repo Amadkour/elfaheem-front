@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart' show TextItem;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_quick.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_quick_screen.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_results_screen.dart';
@@ -41,6 +42,74 @@ void main() {
 
     test('midterm without a sitting: 60 minutes', () {
       expect(QuickExam(kind: QuickKind.midterm).durationMinutes, 60);
+    });
+  });
+
+  group('types and delivery', () {
+    test('true / false: the engine bodies and the key', () {
+      final q = QuickQuestion.ofType('true_false')..prompt = 'The sun is a star';
+      expect(q.validate(), contains('bad_answer_key'));
+      q.engine!.tfCorrect = true;
+      expect(q.validate(), isEmpty);
+      final d = q.toDraft();
+      expect(d.type, 'true_false');
+      expect(d.answer()['correct'], true);
+      expect(d.body()['prompt'], 'The sun is a star');
+    });
+
+    test('complete: blanks are accepted-answer lists', () {
+      final q = QuickQuestion.ofType('fill_blank')..prompt = 'Water is ___ and ___';
+      expect(q.validate(), contains('blank_answer_required'));
+      q.engine!.blanks
+        ..first.text = 'H2O, water'
+        ..add(TextItem('liquid'));
+      expect(q.validate(), isEmpty);
+      expect(q.toDraft().answer()['blanks'], [['H2O', 'water'], ['liquid']]);
+    });
+
+    test('matching: pairs become left / right and the pair key', () {
+      final q = QuickQuestion.ofType('matching')..prompt = 'Match';
+      expect(q.validate(), contains('pair_incomplete'));
+      q.engine!.pairs
+        ..[0].left = 'Cat'
+        ..[0].right = 'Meow'
+        ..[1].left = 'Dog'
+        ..[1].right = 'Woof';
+      expect(q.validate(), isEmpty);
+      final d = q.toDraft();
+      expect(d.body()['left'], ['Cat', 'Dog']);
+      expect(d.answer()['pairs'], {'Cat': 'Meow', 'Dog': 'Woof'});
+    });
+
+    test('short answer is an open question with a key; difficulty reaches the bank question', () {
+      final q = QuickQuestion.ofType('short_answer')..prompt = 'Name the capital of France';
+      expect(q.validate(), contains('essay_key_required'));
+      q
+        ..keyText = 'Paris'
+        ..difficulty = 5;
+      expect(q.validate(), isEmpty);
+      final create = q.toDraft().toCreate();
+      expect(create['type'], 'short_answer');
+      expect(create['difficulty'], 5);
+      expect((create['answer'] as Map)['model'], 'Paris');
+    });
+
+    test('every offered type builds a draft of its own type', () {
+      for (final ty in quickQuestionTypes) {
+        expect(QuickQuestion.ofType(ty).toDraft().type, ty);
+      }
+    });
+
+    test('delivery is chosen last and drives the section and the settings', () {
+      final q = QuickExam(kind: QuickKind.quiz)..questions.add(_mcq());
+      expect(q.validate().$1, ['mode_required']);
+      q.mode = QuickMode.offline;
+      expect(q.validate().$1, isEmpty);
+      expect(q.toSection().mode, 'paper');
+      expect((q.toExamDraft().toBody()['settings'] as Map)['mode'], 'offline');
+      q.mode = QuickMode.online;
+      expect(q.toSection().mode, 'online');
+      expect(quickModeTitle(QuickMode.offline), 'Print / export');
     });
   });
 
@@ -210,7 +279,25 @@ void main() {
   });
 
   group('layout', () {
-    testWidgets('mode chooser', (t) async => expectNoLayoutErrors(t, () => QuickModeChooser(onPick: (_) {})));
+    testWidgets('start chooser', (t) async => expectNoLayoutErrors(t, () => SingleChildScrollView(child: QuickStartChooser(onPick: (_) {}, canGenerate: true))));
+    testWidgets('start chooser without a course', (t) async => expectNoLayoutErrors(t, () => SingleChildScrollView(child: QuickStartChooser(onPick: (_) {}, canGenerate: false))));
+    testWidgets('delivery chooser', (t) async => expectNoLayoutErrors(t, () => SingleChildScrollView(child: QuickDeliveryChooser(onPick: (_) {}))));
+
+    testWidgets('every question type card', (t) async {
+      await expectNoLayoutErrors(
+          t,
+          () => SingleChildScrollView(
+                child: Column(children: [
+                  for (final ty in quickQuestionTypes)
+                    QuickQuestionCard(
+                        index: 0,
+                        question: QuickQuestion.ofType(ty)..prompt = 'A fairly long question text that has to wrap on a narrow phone ___ screen',
+                        errors: const ['pick_correct'],
+                        onChanged: () {},
+                        onRemove: () {}),
+                ]),
+              ));
+    });
 
     testWidgets('question cards', (t) async {
       final essay = QuickQuestion.essay()

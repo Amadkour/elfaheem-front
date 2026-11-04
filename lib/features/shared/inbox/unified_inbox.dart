@@ -23,6 +23,7 @@
 //   UnifiedInbox       the embeddable list (segment chips + cards)
 library;
 
+import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -43,11 +44,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList;
 import '../../ads/ads_pages.dart' show AdCard;
 import '../../org/home_org_mix.dart' show showPlatformRequirement;
-import '../../org/org_academic_pages.dart' show MyAcademicPathPage;
-import '../../org/org_availability_pages.dart' show AvailabilityRequestScreen;
-import '../../org/org_member_dashboard.dart' show openOrgApproval;
-import '../../org/org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
-import '../../org/org_my_exams.dart' show MyExamsScreen;
 import '../../org/org_terms_pages.dart' show TermCard;
 import '../../org/org_v3.dart' show orgParseUtc;
 import '../../parent/parent_dashboard_screen.dart' show ParentTabProvider;
@@ -1027,10 +1023,10 @@ Future<bool> openInboxItem(BuildContext context, InboxItem x) async {
   final orgBrief = {...x.organization, if (x.orgId != null) 'id': x.orgId};
   switch ('${a['type']}') {
     case 'form':
-      final sent = await nav.push<bool>(MaterialPageRoute(builder: (_) => OrgFormFillScreen(formId: asInt(a['id']))));
+      final sent = await nav.push<bool>(MaterialPageRoute(builder: (_) => deferredOrgFormFill(asInt(a['id']))));
       return sent == true;
     case 'availability':
-      await nav.push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => AvailabilityRequestScreen(requestId: asInt(a['id']))));
+      await nav.push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => deferredAvailabilityRequest(asInt(a['id']))));
       return true;
     case 'department_choice':
       await nav.push(MaterialPageRoute(
@@ -1038,7 +1034,7 @@ Future<bool> openInboxItem(BuildContext context, InboxItem x) async {
               useWebCard: true,
               maxWith: 760,
               appBar: ScreenAppBar(title: 'inbox_kind_department_choice'.tr),
-              child: MyAcademicPathPage(orgId: asInt(a['org_id'])))));
+              child: deferredMyAcademicPath(asInt(a['org_id'])))));
       return true;
     case 'platform':
       await showPlatformRequirement(context, x.data);
@@ -1056,10 +1052,10 @@ Future<bool> openInboxItem(BuildContext context, InboxItem x) async {
       } catch (_) {}
       return true;
     case 'complaint':
-      await nav.push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: orgBrief, initialTab: 3)));
+      await nav.push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: orgBrief, initialTab: 3)));
       return true;
     case 'approval':
-      await openOrgApproval(context, asInt(a['org_id']), '${a['what']}');
+      await openOrgApprovalDeferred(context, asInt(a['org_id']), '${a['what']}');
       return true;
     case 'request':
       await _showRequest(context, x);
@@ -1071,7 +1067,7 @@ Future<bool> openInboxItem(BuildContext context, InboxItem x) async {
       await _openAd(context, x);
       return false;
     case 'exam':
-      await nav.push(MaterialPageRoute(builder: (_) => MyExamsScreen(orgId: a['org_id'] == null ? null : asInt(a['org_id']))));
+      await nav.push(MaterialPageRoute(builder: (_) => deferredMyExams(orgId: a['org_id'] == null ? null : asInt(a['org_id']))));
       return false;
     case 'parent_link':
       // inside the parent dashboard → its "Link" tab; from the full inbox page → back to the dashboard
@@ -1148,7 +1144,7 @@ Future<void> _showAnnouncement(BuildContext context, InboxItem x) => showAppShee
             TextButton.icon(
               onPressed: () {
                 Navigator.pop(ctx);
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: {...x.organization, 'id': x.orgId})));
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: {...x.organization, 'id': x.orgId})));
               },
               icon: const Icon(Icons.campaign_rounded),
               label: Text('inbox_all_news'.tr),

@@ -23,6 +23,7 @@ import 'dart:math' as math;
 import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScrollEvent;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData, HardwareKeyboard, SystemChrome, SystemUiMode, SystemUiOverlay;
+import 'package:flutter_education_app/core/display/lazy_fonts.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -158,7 +159,7 @@ class _DataLabViewState extends State<_DataLabView> {
   }
 
   @override
-  Widget build(BuildContext context) {
+Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', 'bahji'], child: _body(context));  Widget _body(BuildContext context) {
     final p = context.watch<DataLabProvider>();
     final c = context.colors;
     Widget content;
