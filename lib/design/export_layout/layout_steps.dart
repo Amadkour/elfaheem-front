@@ -132,7 +132,20 @@ class LayoutCardGrid extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
         final n = (box.maxWidth / min).floor().clamp(1, children.length);
         final w = (box.maxWidth - AppSpace.sm * (n - 1)) / n;
-        return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [for (final c in children) SizedBox(width: w, child: c)]);
+        // rows of equal height: a card with a longer hint no longer sticks out of its row
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var i = 0; i < children.length; i += n) ...[
+            if (i > 0) const SizedBox(height: AppSpace.sm),
+            IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (var j = i; j < i + n; j++) ...[
+                  if (j > i) const SizedBox(width: AppSpace.sm),
+                  SizedBox(width: w, child: j < children.length ? children[j] : null),
+                ],
+              ]),
+            ),
+          ],
+        ]);
       });
 }
 
@@ -456,7 +469,7 @@ class LayoutFieldsEditor extends StatelessWidget {
             key: ValueKey('layout-field-${order[i]}'),
             margin: const EdgeInsets.only(bottom: AppSpace.xxs),
             decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
-            child: Column(children: [
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Checkbox(value: i < picked.length, onChanged: (v) => toggle(order[i], v ?? false)),
                 Expanded(
