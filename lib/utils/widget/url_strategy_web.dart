@@ -33,3 +33,10 @@ Future<bool> browserGo(int delta, {Duration timeout = const Duration(millisecond
     return false;
   }
 }
+
+/// A full reload of the page (a part of the app that is gone from the server after a deploy: the new build loads).
+void reloadPage() {
+  try {
+    web.window.location.reload();
+  } catch (_) {}
+}

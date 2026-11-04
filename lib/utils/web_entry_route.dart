@@ -80,18 +80,28 @@ bool needsSignInFirst(String entry) {
 }
 
 /// The page asked for by URL before the sign-in (D-170): opened once, by the first signed-in page ([consume] in
-/// main.dart's route guard), through [opener] (main.dart's `_openLocation`).
+/// main.dart's route guard), through [opener] (main.dart's `_openLocation`). It is forgotten after [maxAge]: a sign-in
+/// page left open (or given up for the guest pages) must not send the next person who signs in on that tab there.
 class SignInReturn {
   SignInReturn._();
 
-  static String? pending;
+  static const Duration maxAge = Duration(minutes: 30);
+  static String? _pending;
+  static DateTime _at = DateTime.now();
+
+  static String? get pending => _pending != null && DateTime.now().difference(_at) <= maxAge ? _pending : null;
+  static set pending(String? location) {
+    _pending = location;
+    _at = DateTime.now();
+  }
+
   static Future<bool> Function(String location)? opener;
 
   static void consume() {
     final p = pending;
     final open = opener;
     if (p == null || open == null) return;
-    pending = null;
+    _pending = null;
     open(p);
   }
 }

@@ -131,10 +131,15 @@ class AppTime {
   /// when it lands, so a label drawn before that (device clock) is redrawn in the platform zone.
   static Future<void> loadDatabase() {
     _ensureDb();
-    return _tzLoad ??= tzInitAsync().then((_) => _tzLoaded(), onError: (Object _) {
-      _tzLoad = null; // retried on the next use
-    });
+    return _loadTz();
   }
+
+  static DateTime? _tzFailedAt;
+
+  static Future<void> _loadTz() => _tzLoad ??= tzInitAsync().then((_) => _tzLoaded(), onError: (Object _) {
+        _tzLoad = null; // retried by the next use of a zone, at most every 10 s ([_ensureDb])
+        _tzFailedAt = DateTime.now();
+      });
 
   static void _tzLoaded() {
     final wasReady = _tzReady;
@@ -147,7 +152,13 @@ class AppTime {
   }
 
   static void _ensureDb() {
-    if (_db) return;
+    if (_db) {
+      final failed = _tzFailedAt;
+      if (kTzDataIsAsync && !_tzReady && _tzLoad == null && (failed == null || DateTime.now().difference(failed).inSeconds >= 10)) {
+        _loadTz().ignore();
+      }
+      return;
+    }
     _db = true;
     try {
       tzInitSync();
@@ -155,7 +166,7 @@ class AppTime {
       initializeDateFormatting(); // local symbol data loads synchronously; enables Arabic month names
     } catch (_) {}
     useLatinDigits();
-    if (kTzDataIsAsync) loadDatabase().ignore();
+    if (kTzDataIsAsync) _loadTz().ignore();
   }
 
   /// Every DateFormat made from now on writes Western digits for the Arabic locales (M24). Idempotent.

@@ -16,12 +16,13 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show SynchronousFuture;
+import 'package:flutter/foundation.dart' show SynchronousFuture, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/boot_splash.dart' show BootSplash;
+import 'package:flutter_education_app/utils/widget/url_strategy.dart' show reloadPage;
 import 'package:flutter_education_app/features/shared/course_profile/course_profile_hub.dart' show CourseProfileHub;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse;
 
@@ -98,6 +99,7 @@ class DeferredPage extends StatefulWidget {
 
 class _DeferredPageState extends State<DeferredPage> {
   bool _ready = false, _failed = false, _quiet = true;
+  int _failures = 0;
   Timer? _timer;
 
   @override
@@ -119,6 +121,7 @@ class _DeferredPageState extends State<DeferredPage> {
     loadDeferred(widget.id, widget.load).then((_) {
       if (mounted) setState(() => _ready = true);
     }, onError: (Object _) {
+      _failures++;
       if (mounted) setState(() => _failed = true);
     });
   }
@@ -132,7 +135,9 @@ class _DeferredPageState extends State<DeferredPage> {
   @override
   Widget build(BuildContext context) {
     if (_ready) return widget.builder(context);
-    if (_failed) return _DeferredFailed(onRetry: () => setState(_start));
+    // a part that fails twice is most likely gone from the server (a deploy since this page loaded): the retry reloads
+    // the page onto the new build instead of asking for the old file again
+    if (_failed) return _DeferredFailed(onRetry: () => kIsWeb && _failures >= 2 ? reloadPage() : setState(_start));
     if (widget.look == DeferredLook.splash) return const BootSplash();
     if (widget.look == DeferredLook.inline) return const SizedBox(height: 320, child: AppListSkeleton(items: 4));
     return Scaffold(
