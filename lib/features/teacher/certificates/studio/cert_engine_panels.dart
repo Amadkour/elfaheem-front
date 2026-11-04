@@ -359,13 +359,37 @@ class _PageSheetState extends State<_PageSheet> {
 /// The colours the background generator offers.
 const kCertGenColors = ['#1F4E8C', '#0F766E', '#7C3AED', '#B45309', '#BE123C', '#374151'];
 
+/// A dialog that owns its text controller: disposed with the dialog's state, after the exit animation — never on the
+/// dialog's future (the closing dialog still draws its field one more frame).
+class _ControllerDialog extends StatefulWidget {
+  const _ControllerDialog({required this.initial, required this.builder});
+  final String initial;
+  final Widget Function(BuildContext context, TextEditingController ctl, StateSetter setState) builder;
+
+  @override
+  State<_ControllerDialog> createState() => _ControllerDialogState();
+}
+
+class _ControllerDialogState extends State<_ControllerDialog> {
+  late final TextEditingController _ctl = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _ctl, setState);
+}
+
 /// The new name of the design (null = cancelled).
 Future<String?> showCertRenameDialog(BuildContext context, String current) {
-  final ctl = TextEditingController(text: current);
   return showDialog<String>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
+    builder: (ctx) => _ControllerDialog(
+      initial: current,
+      builder: (ctx, ctl, setState) => AlertDialog(
         title: Text(t('إعادة تسمية التصميم', 'Rename the design')),
         content: TextField(
           key: const ValueKey('cert-rename-field'),
@@ -383,7 +407,7 @@ Future<String?> showCertRenameDialog(BuildContext context, String current) {
         ],
       ),
     ),
-  ).whenComplete(ctl.dispose);
+  );
 }
 
 /// Clean a signature again: ink colour (null = keep the original ink) and strength. Null = cancelled.
@@ -487,11 +511,11 @@ Future<String?> showCertLeaveDialog(BuildContext context) => showDialog<String>(
 
 /// A new custom variable: its key (validated), null when cancelled.
 Future<String?> showCertVariableDialog(BuildContext context) {
-  final ctl = TextEditingController();
   return showDialog<String>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
+    builder: (ctx) => _ControllerDialog(
+      initial: '',
+      builder: (ctx, ctl, setState) => AlertDialog(
         title: Text(t('متغيّر جديد', 'New variable')),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           TextField(
@@ -510,7 +534,7 @@ Future<String?> showCertVariableDialog(BuildContext context) {
         ],
       ),
     ),
-  ).whenComplete(ctl.dispose);
+  );
 }
 
 // ── preview ──────────────────────────────────────────────────────────────────────────────────────────────────────
