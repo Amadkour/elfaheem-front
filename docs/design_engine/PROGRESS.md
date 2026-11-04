@@ -23,9 +23,14 @@ Agent branches `de/<id>` in worktrees `D:/platform/nextbrain/wt-de-<id>`, merged
 The legacy designer stays reachable (studio › More › Classic designer; everyone while `certificates.engine` is off).
 Ported since (I1): rename, watermark (text / image), signature upload through the signature endpoint with "Clean
 signature again" (ink / strength), Generate a background (per language), preview sample values for custom variables;
-each language already has its own page (orientation, background). Still only in the legacy designer: the server
-template gallery (starters instead), the draft wizard's theme colours, cleaning a signature saved before this session. Not carried
-by the conversion of a legacy design: text underline, shadow blur, the photo's white ring, tiled watermarks.
+each language already has its own page (orientation, background).
+Ported since (I4): the server template gallery (`GET /certificate-designs/templates`; the gallery shows "Ready-made
+designs" above the starters; a pick creates the template's copy with `theme_color`, reads its page for the current
+language through the document endpoint, adopts it into the OPEN design, which keeps its id and version, and deletes the
+copy), the draft wizard's theme colour (swatches from the app theme + a hex box) and dark flag in "Generate a background"
+(and the colour of a template pick), and "Clean signature again" for a signature saved earlier (its image is fetched and
+sent through the signature endpoint; the server keeps only the cleaned PNG, so it works on the cleaned image). Nothing is
+left that only the legacy designer does, except what the conversion cannot carry:  text underline, shadow blur, the photo's white ring, tiled watermarks.
 
 ## Integration notes
 - Colours: `#RRGGBB` / `#AARRGGBB` only (FB had `#RRGGBBAA` for shadows; fixed in the app, the contract example too).

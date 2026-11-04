@@ -134,6 +134,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   bool _attached = false;
   String _userId = '0';
   List<CertStarter>? _starters;
+  List<CertServerTemplate>? _templates;
 
   /// Read by the title / save button only.
   final _dirty = ValueNotifier<bool>(false);
@@ -391,6 +392,47 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     }
   }
 
+  /// The server's ready-made designs; a failed or old server just shows the starters.
+  Future<List<CertServerTemplate>> _loadTemplates() async {
+    try {
+      return _templates ??= await _api.templates();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// A server template always becomes a NEW design on the server (both languages, backgrounds uploaded). The studio
+  /// keeps ITS design id and version: the template's copy is created, its [lang] page is read through the document
+  /// endpoint and adopted here (like a starter), and the copy is deleted again. Null when it failed (the error is shown).
+  Future<LayoutDesign?> _designFromTemplate(CertServerTemplate tp, String colorHex, String lang) async {
+    int? copy;
+    try {
+      copy = await _api.createFromTemplate(tp.key, orgId: widget.orgId, themeColor: colorHex);
+      final r = await _api.load(copy);
+      final own = r.document.designs[lang];
+      if (own != null) return own;
+      final other = r.document.designs.values.isEmpty ? null : r.document.designs.values.first;
+      return other == null ? certBlankDesign(lang) : certMirrorDesign(other, toRtl: lang == 'ar');
+    } catch (e) {
+      if (mounted) certNotifyError(e);
+      return null;
+    } finally {
+      // the images stay on the server (they are referenced by url); only the throw-away design goes
+      if (copy != null) unawaited(_api.delete(copy).catchError((Object _) {}));
+    }
+  }
+
+  /// Opens the gallery (starters + templates) and resolves the pick to a design for [lang]; null = cancelled.
+  Future<LayoutDesign?> _pickDesign(String lang) async {
+    final starters = await _loadStarters();
+    final templates = await _loadTemplates();
+    if (!mounted || (starters.isEmpty && templates.isEmpty)) return null;
+    final pick = await showCertGallery(context, starters: starters, templates: templates, lang: lang);
+    if (pick == null || !mounted) return null;
+    if (pick.starter != null) return _designFromStarter(pick.starter!, lang);
+    return _designFromTemplate(pick.template!, pick.colorHex, lang);
+  }
+
   LayoutDesign _designFromStarter(CertStarter s, String lang) {
     final own = s.document.designs[lang];
     if (own != null) return own.copy();
@@ -400,15 +442,13 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
 
   /// The starters gallery for the current language: replaces its design in place.
   Future<void> _pickStarter({bool confirm = true}) async {
-    final starters = await _loadStarters();
-    if (!mounted || starters.isEmpty) return;
     if (confirm && _design.row.elements.isNotEmpty) {
       final ok = await appConfirm(context, message: t('سيحلّ التصميم الجاهز محلّ تصميم ${_langName(_lang)} الحالي. المتابعة؟', 'The ready design replaces the current ${_langName(_lang)} design. Continue?'), confirmLabel: t('استبدال', 'Replace'));
       if (!ok || !mounted) return;
     }
-    final s = await showCertStarterGallery(context, starters, lang: _lang);
-    if (s == null || !mounted) return;
-    setState(() => certAdoptDesign(_design, _designFromStarter(s, _lang)));
+    final made = await _pickDesign(_lang);
+    if (made == null || !mounted) return;
+    setState(() => certAdoptDesign(_design, made));
     _touch();
     unawaited(_prefetchImages());
   }
@@ -433,11 +473,8 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
             ..customHeight = other.page.customHeight;
         }
       case CertStart.starter:
-        final starters = await _loadStarters();
-        if (!mounted || starters.isEmpty) return false;
-        final s = await showCertStarterGallery(context, starters, lang: lang);
-        if (s == null) return false;
-        made = _designFromStarter(s, lang);
+        made = await _pickDesign(lang);
+        if (made == null || !mounted) return false;
     }
     doc.designs[lang] = made;
     return true;
@@ -513,7 +550,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   }
 
   Widget? _extraFor(BuildContext context, LayoutElement el, StudioController<LayoutElement> ctl) {
-    if (el.kind != 'signature' || el.value == null || !_sigOrig.containsKey(el.id)) return null;
+    if (el.kind != 'signature' || el.value == null) return null;
     return OutlinedButton.icon(
       key: const ValueKey('cert-sig-clean'),
       onPressed: () => unawaited(_cleanSignature(context, el, ctl)),
@@ -524,11 +561,17 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   }
 
   Future<void> _cleanSignature(BuildContext context, LayoutElement el, StudioController<LayoutElement> ctl) async {
-    final bytes = _sigOrig[el.id];
-    if (bytes == null) return;
-    final r = await showCertSignatureClean(context);
+    // this session's photo when there is one; else the image saved in the design (the server keeps the cleaned PNG only)
+    final fromSaved = !_sigOrig.containsKey(el.id);
+    final r = await showCertSignatureClean(context, fromSaved: fromSaved);
     if (r == null || !mounted) return;
     try {
+      var bytes = _sigOrig[el.id];
+      if (bytes == null) {
+        final src = el.value!;
+        bytes = (src.startsWith('http') ? await _loadImage(src) : null) ?? LayoutAssets.of(src);
+        if (bytes == null) throw ApiException(statusCode: 0, message: t('تعذّر تحميل صورة التوقيع. تحقق من الاتصال وحاول مجددًا.', 'The signature image could not be loaded. Check the connection and try again.'));
+      }
       final url = await _api.uploadSignature(bytes, ink: r.ink, strength: r.strength);
       final clean = await _loadImage(url);
       LayoutAssets.put(url, clean ?? bytes);
@@ -539,7 +582,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   }
 
   /// A generated background for the current language (the server returns it; nothing else changes).
-  Future<String?> _generateBackground(String style, String color) async {
+  Future<String?> _generateBackground(String style, String color, bool dark) async {
     final p = _design.page;
     Map<String, dynamic>? page;
     switch (p.size) {
@@ -555,7 +598,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
         page = {'size': 'a4'};
     }
     try {
-      final url = await _api.generateBackground(_id!, lang: _lang, landscape: p.landscape, style: style, themeColor: color, page: page);
+      final url = await _api.generateBackground(_id!, lang: _lang, landscape: p.landscape, style: style, themeColor: color, dark: dark, page: page);
       final bytes = await _loadImage(url);
       if (bytes != null) LayoutAssets.put(url, bytes);
       return url;
