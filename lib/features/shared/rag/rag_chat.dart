@@ -44,6 +44,8 @@ import 'package:flutter_education_app/core/offline/downloads_availability.dart' 
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t, trp;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'chat/rag_payload.dart';
+import 'chat/rag_stream.dart';
 import 'rag_library.dart' show ragOrgStatusText;
 
 /// The widest the conversation's message column gets on a wide window (about 75 characters a line).
@@ -93,7 +95,7 @@ class RagCitation {
 class RagAnswer {
   RagAnswer(this.id, this.state, this.question, this.found, this.answer, this.citations, this.error,
       [this.helpful, this.followUps = const [], this.stage, this.generator = '', this.app = false, this.orgId, this.conversationId,
-      this.partial, this.createdAt]);
+      this.partial, this.createdAt, this.extras = RagAnswerExtras.none]);
   final int id;
   final String state;
   final String question;
@@ -126,6 +128,14 @@ class RagAnswer {
   /// When the question was asked (`created_at`, UTC); null on a row without it.
   final DateTime? createdAt;
 
+  /// `mode`, `chunks`, `actions`, `tool` of the newer servers (empty on an older one).
+  final RagAnswerExtras extras;
+
+  RagMode get mode => extras.mode;
+  List<RagChunk> get chunks => extras.chunks;
+  List<RagAction> get actions => extras.actions;
+  RagTool? get tool => extras.tool;
+
   bool get done => state == 'done' || state == 'failed';
 
   /// A draft to show under the stage trail: still running and the server sent text. Never once done (the final
@@ -154,7 +164,8 @@ class RagAnswer {
       j['org_id'] == null ? null : asInt(j['org_id']),
       j['conversation_id'] == null ? null : asInt(j['conversation_id']),
       j['answer_partial'] is String ? j['answer_partial'] as String : null,
-      ragParseUtc(j['created_at']));
+      ragParseUtc(j['created_at']),
+      RagAnswerExtras.fromJson(j));
 
   RagCitation? citation(int n) {
     for (final c in citations) {
@@ -650,6 +661,23 @@ class RagApi {
     if (report != null) unawaited(reportDelivery(id, report));
     if (r.ok || ragPollGivesUp(r) || read == null) return r;
     return EngineResult.ok(readMap); // the last poll failed in passing: the answer as it was last read
+  }
+
+  /// Like [waitFor], but first follows the answer stream (`/queries/{id}/stream`): [onUpdate] gets [base] (the row
+  /// `ask` returned) with the text so far as its draft, then the final row. When the stream is unavailable (an older
+  /// server, no streaming on this platform, an error, a drop) it falls back to [waitFor]'s polling. Not for an answer
+  /// already done in [base].
+  Future<EngineResult> waitForLive(int id, Map<String, dynamic> base,
+      {Duration timeout = ragAnswerPatience, void Function(RagAnswer)? onUpdate, RagStreamClient? stream}) async {
+    if (RagAnswer.fromJson(base).done) return EngineResult.ok(base);
+    final payload = await (stream ?? RagStreamClient()).follow(id, timeout: timeout, onText: (text) {
+      onUpdate?.call(RagAnswer.fromJson({...base, 'state': 'running', 'stage': 'write', 'answer_partial': text}));
+    });
+    if (payload != null && payload['id'] != null) {
+      final a = RagAnswer.fromJson({...base, ...payload});
+      if (a.done) return EngineResult.ok({...base, ...payload});
+    }
+    return waitFor(id, timeout: timeout, onUpdate: onUpdate);
   }
 
   static List<RagAnswer> items(EngineResult r) => asMapList(asMap(r.map)['items']).map(RagAnswer.fromJson).toList();
