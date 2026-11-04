@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -20,12 +21,23 @@ String gradeIssueText(String code) => switch (code) {
       'student_twice' => t('الطالب ظهر أكثر من مرة', 'The student appears twice'),
       'mark_above_max' => t('درجة أكبر من الحد الأقصى', 'A mark is above its maximum'),
       'mark_unreadable' || 'unreadable_mark' => t('درجة غير مقروءة', 'A mark is unreadable'),
-      'identifier_unreadable' => t('رقم الطالب غير مقروء', 'The student number is unreadable'),
+      'student_unreadable' => t('رقم الطالب غير مقروء', 'The student number is unreadable'),
+      'student_ambiguous' => t('أكثر من طالب بهذا الرقم', 'More than one student has this number'),
+      'name_unconfirmed' => t('الاسم بخط اليد: أكّد الطالب', 'Only a handwritten name: confirm the student'),
+      'mark_blank' => t('خانة درجة فارغة', 'A mark box is empty'),
+      'total_unreadable' => t('المجموع المكتوب غير مقروء', 'The written total is unreadable'),
       'paper_sum_error' => t('جمع الورقة خاطئ', "The paper's addition is wrong"),
       'scaled' => t('محوَّلة إلى مقياس العمود', "Converted to the column's scale"),
       'not_recorded' => t('لا توجد درجة مسجّلة', 'No recorded grade'),
       _ => code,
     };
+
+/// The server's wording of [code] on [row] (in the app language) when it sent one, else the built-in text.
+String gradeRowIssueText(MarkRow row, String code) {
+  final s = row.issueTexts[code];
+  final text = s == null ? '' : (AppConfig.lang == 'en' ? s.en : s.ar);
+  return text.isNotEmpty ? text : gradeIssueText(code);
+}
 
 bool gradeIssueIsProblem(String code) => !MarkRow.infoIssues.contains(code);
 
@@ -60,7 +72,7 @@ class GradeRowTile extends StatelessWidget {
       MarkList.mismatch => row.recorded == null
           ? '${t('الورقة', 'Paper')} ${markNumberText(row.used)}${row.scaled != null && row.scaled != row.used ? ' → ${markNumberText(row.scaled)}' : ''} · ${t('غير مسجّلة', 'not recorded')}'
           : '${t('الورقة', 'Paper')} ${markNumberText(row.used)}${row.scaled != null && row.scaled != row.used ? ' → ${markNumberText(row.scaled)}' : ''} ${t('مقابل', 'vs')} ${t('المسجّل', 'recorded')} ${markNumberText(row.recorded)} · ${t('الفرق', 'diff')} ${_signed(row.diff ?? (row.proposed != null ? row.proposed! - row.recorded! : null))}',
-      MarkList.unreadable => problems.isEmpty ? t('تحتاج مراجعة', 'Needs a look') : problems.map(gradeIssueText).join(' · '),
+      MarkList.unreadable => problems.isEmpty ? t('تحتاج مراجعة', 'Needs a look') : problems.map((i) => gradeRowIssueText(row, i)).join(' · '),
     };
     return AppCard(
       onTap: onTap,
@@ -226,7 +238,7 @@ class GradeRowDetail extends StatelessWidget {
       if (row.issues.any(gradeIssueIsProblem)) ...[
         const SizedBox(height: AppSpace.sm),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          for (final i in row.issues.where(gradeIssueIsProblem)) AppTag(gradeIssueText(i), c.danger, icon: Icons.error_outline_rounded),
+          for (final i in row.issues.where(gradeIssueIsProblem)) AppTag(gradeRowIssueText(row, i), c.danger, icon: Icons.error_outline_rounded),
         ]),
       ],
       if (row.marks.isNotEmpty) ...[
