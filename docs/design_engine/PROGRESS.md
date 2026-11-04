@@ -21,9 +21,10 @@ Agent branches `de/<id>` in worktrees `D:/platform/nextbrain/wt-de-<id>`, merged
 
 ## Certificate studio vs the legacy designer (owner decides; nothing removed)
 The legacy designer stays reachable (studio › More › Classic designer; everyone while `certificates.engine` is off).
-Not in the studio yet: the AI / theme-colour draft wizard and "template image as background"; signature background
-removal (ink / strength); regenerate background; the server template gallery (starters instead); watermark; design
-rename; per-language orientation / background pairing; sample values for custom variables in the preview. Not carried
+Ported since (I1): rename, watermark (text / image), signature upload through the signature endpoint with "Clean
+signature again" (ink / strength), Generate a background (per language), preview sample values for custom variables;
+each language already has its own page (orientation, background). Still only in the legacy designer: the server
+template gallery (starters instead), the draft wizard's theme colours, cleaning a signature saved before this session. Not carried
 by the conversion of a legacy design: text underline, shadow blur, the photo's white ring, tiled watermarks.
 
 ## Integration notes
