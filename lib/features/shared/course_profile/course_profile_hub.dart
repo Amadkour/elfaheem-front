@@ -571,7 +571,7 @@ class _CoursePageLoaderState extends State<CoursePageLoader> {
     }
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(settings: const RouteSettings(name: '/course-detail'), builder: (_) => page),
+      MaterialPageRoute(settings: RouteSettings(name: '/course-detail', arguments: widget.courseId), builder: (_) => page),
     );
   }
 

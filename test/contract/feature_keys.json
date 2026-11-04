@@ -15,6 +15,7 @@
  "additional_register.specialization",
  "additional_register.teaching_style",
  "admin.app_releases",
+ "admin.course_students",
  "admin.export_log",
  "admin.live_settings",
  "admin.payouts",

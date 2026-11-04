@@ -47,6 +47,7 @@ import 'admin_providers.dart' show AdminPendingPayoutsProvider;
 import 'admin_required_documents_page.dart';
 import 'admin_send_message_page.dart';
 import 'admin_subscriptions_page.dart';
+import 'course_students/cs_pages.dart';
 import 'admin_points_page.dart';
 import 'admin_recs_page.dart';
 import '../shared/roadmap/roadmap_api.dart' show kRecsAdminKey;
@@ -270,6 +271,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           icon: Icons.workspace_premium_rounded,
           colors: AdminPalette.orange,
           onTap: () => push(const AdminSubscriptionsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_course_students',
+          descKey: 'admin_course_students_d',
+          label: t('الدورات والطلاب', 'Courses & students'),
+          desc: t('اشتراك كل طالب في كل دورة، سبب الوصول بالضبط، والتمديد أو المنح أو الإلغاء مع السجل',
+              'Every student in every course, the exact reason behind their access, and extend / grant / cancel with a history'),
+          icon: Icons.groups_2_rounded,
+          colors: AdminPalette.green,
+          featureKey: 'admin.course_students',
+          visible: isSuper,
+          onTap: () => push(const CourseStudentsPage()),
         ),
         AdminService(
           labelKey: 'admin_points',

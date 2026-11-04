@@ -110,7 +110,8 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
       try {
         final r = await ApiClient().get('/api/v1/courses/$value');
         if (r is Map && mounted) {
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => CourseDetailScreen(course: CourseModel.fromJson(Map<String, dynamic>.from(r)))));
+          final course = CourseModel.fromJson(Map<String, dynamic>.from(r));
+          Navigator.of(context).push(MaterialPageRoute(settings: RouteSettings(name: '/course-detail', arguments: course), builder: (_) => CourseDetailScreen(course: course)));
         }
       } catch (_) {
         toast(t('تعذّر فتح الكورس', 'Could not open the course'), error: true);
