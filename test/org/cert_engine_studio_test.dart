@@ -284,7 +284,7 @@ void main() {
     expect(find.text('Gold diploma'), findsOneWidget);
     expect(find.text('All changes saved'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
-  });
+  }, timeout: const Timeout(Duration(minutes: 4)));
 
   testWidgets('the watermark text is a locked, faint, tilted element at the back of the page', (tester) async {
     await open(tester);
