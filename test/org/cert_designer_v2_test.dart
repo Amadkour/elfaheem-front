@@ -10,6 +10,7 @@ import 'package:flutter_education_app/features/teacher/certificates/designer/cer
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_design_models.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Map<String, dynamic> _serverDesign({
   List<Map<String, dynamic>>? fieldsEn,
@@ -57,6 +58,8 @@ CertificateDesignerProvider _provider(CertDesign d, {String lang = 'ar'}) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // the provider's autosave timer can fire after a test ends on a slow machine: give it an in-memory store
+  SharedPreferences.setMockInitialValues({});
 
   group('model', () {
     test('JSON round trip keeps every v2 key and unknown keys', () {
