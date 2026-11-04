@@ -408,6 +408,12 @@ class AiModelsPageState extends State<AiModelsPage> {
     });
   }
 
+  Future<void> _gradingMode(HubRole r, String mode) => _guard(null, () async {
+        await _api.setGradingMode(mode);
+        showAppNotice('${hubRoleName(r.role)}: ${hubGradingModeLabel(mode)}');
+        await _load(silent: true);
+      });
+
   Future<void> _add() async {
     final roles = _ov?.roles.map((r) => r.role).toList();
     final body = await showAppSheet<Map<String, dynamic>>(
@@ -452,6 +458,7 @@ class AiModelsPageState extends State<AiModelsPage> {
       onCancelDownload: (d) => _downloadAction(d, 'cancel'),
       onRollback: _rollback,
       onLimits: _limits,
+      onGradingMode: _gradingMode,
       onReview: (r) => _review(r, null),
       onCancelPending: _cancelPending,
       onReindexNow: _reindexNow,
