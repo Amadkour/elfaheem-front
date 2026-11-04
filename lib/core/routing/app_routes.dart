@@ -174,6 +174,10 @@ class AppRoutes {
     return '$v';
   }
 
+  /// The course id of the object a `'/course-detail'` route carries (main.dart sets it: a `CourseModel`); this file
+  /// stays free of feature imports.
+  static int? Function(Object? arguments)? courseIdOf;
+
   /// The URL a pushed route shows in the address bar, or null when it has none of its own (it keeps the URL of the
   /// page under it). Old route names that carry their id as an argument get their path form here.
   static String? locationOf(String? name, Object? arguments) {
@@ -183,9 +187,11 @@ class AppRoutes {
         return arguments is int ? location(course.id, {'courseId': arguments}) : null;
       case '/org_member':
         return arguments is int ? location(orgMember.id, {'orgId': arguments}) : name;
-      case '/course-detail':
+      case '/course-detail': // the course page built from an in-memory course: its id gives it the course URL
+        final id = arguments is int ? arguments : courseIdOf?.call(arguments);
+        return id != null && id > 0 ? location(course.id, {'courseId': id}) : null;
       case '/otp':
-        return null; // built from an in-memory object / a sign-in step: a refresh could not rebuild it
+        return null; // a sign-in step: a refresh could not rebuild it
     }
     return name;
   }

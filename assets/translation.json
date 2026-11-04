@@ -22412,5 +22412,61 @@
   "ob_level_sheet": {
     "en": "Level",
     "ar": "المستوى"
+  },
+  "course_renew_btn": {
+    "en": "Renew",
+    "ar": "جدّد الاشتراك"
+  },
+  "course_renew_ended_on": {
+    "en": "Your plan ended on {date}",
+    "ar": "انتهت خطتك في {date}"
+  },
+  "course_pay_review_title": {
+    "en": "Payment under review",
+    "ar": "الدفع قيد المراجعة"
+  },
+  "course_pay_review_hint": {
+    "en": "The course opens as soon as the payment is confirmed",
+    "ar": "سنفتح الكورس فور تأكيد الدفع"
+  },
+  "course_access_support_btn": {
+    "en": "Contact support",
+    "ar": "تواصل مع الدعم"
+  },
+  "course_expiring_banner": {
+    "en": "Your plan ends on {date} ({days}) — renew to keep watching",
+    "ar": "تنتهي خطتك في {date} ({days}) — جدّد لتواصل المشاهدة"
+  },
+  "course_expired_banner": {
+    "en": "Your plan has ended — renew to keep watching",
+    "ar": "انتهت خطتك — جدّد اشتراكك لتواصل المشاهدة"
+  },
+  "course_days_today": {
+    "en": "today",
+    "ar": "اليوم"
+  },
+  "session_locked_finish_first": {
+    "en": "Finish «{name}» first to open this session",
+    "ar": "أنهِ «{name}» أولاً لفتح هذه الجلسة"
+  },
+  "session_locked_finish_previous": {
+    "en": "Finish the previous session first to open this one",
+    "ar": "أنهِ الجلسة السابقة أولاً لفتح هذه الجلسة"
+  },
+  "session_locked_subscribe": {
+    "en": "This session is locked — subscribe to the course to open it",
+    "ar": "هذه الجلسة مقفلة — اشترك في الكورس لفتحها"
+  },
+  "dl_access_ended": {
+    "en": "Access ended",
+    "ar": "انتهى الوصول"
+  },
+  "dl_access_ended_title": {
+    "en": "Your access to this course ended",
+    "ar": "انتهى وصولك إلى هذا الكورس"
+  },
+  "dl_access_remove": {
+    "en": "Remove download",
+    "ar": "حذف التحميل"
   }
 }

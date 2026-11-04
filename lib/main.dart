@@ -451,6 +451,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         ..enable();
     }
     SignInReturn.opener = _openLocation; // a page opened by URL while signed out, after the sign-in
+    AppRoutes.courseIdOf = (a) => a is CourseModel ? int.tryParse(a.id) : null; // '/course-detail' → /courses/<id>
 
     AttendancePush.instance.bind(navigatorKey);
     ViewAsBanner.onExit = () {

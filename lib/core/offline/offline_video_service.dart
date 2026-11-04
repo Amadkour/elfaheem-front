@@ -42,9 +42,13 @@ class OfflineItem {
     required this.createdAt,
     required this.expiresAt,
     this.description,
+    this.courseId,
   });
 
   final String id;
+
+  /// The course the video belongs to (null for a copy made before this was stored: its access cannot be checked).
+  final int? courseId;
   final int sessionId;
   final int materialId;
   final String title;
@@ -132,6 +136,7 @@ class OfflineVideoService {
         materialId: (meta['materialId'] as num?)?.toInt() ?? 0,
         title: meta['title'] as String? ?? '',
         description: meta['description'] as String?,
+        courseId: (meta['courseId'] as num?)?.toInt(),
         tier: _tierOf(meta['tier'] as String?),
         sizeBytes: (meta['size'] as num?)?.toInt() ?? 0,
         createdAt: DateTime.fromMillisecondsSinceEpoch(
@@ -142,6 +147,13 @@ class OfflineVideoService {
     }
     out.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return out;
+  }
+
+  /// The course id stored with the copy, or null when unknown (an old copy).
+  Future<int?> courseIdOf(int sessionId, int materialId) async {
+    if (kIsWeb) return null;
+    final meta = await _validMeta(idOf(sessionId, materialId));
+    return (meta?['courseId'] as num?)?.toInt();
   }
 
   /// Playable variant pointing at the local decrypting server, or null.
@@ -168,6 +180,7 @@ class OfflineVideoService {
     required MaterialVariant variant,
     String? description,
     String? captionsUrl,
+    int? courseId,
     Duration validFor = _defaultValidity,
   }) async {
     if (kIsWeb) throw UnsupportedError('Offline downloads need Android/iOS');
@@ -241,6 +254,7 @@ class OfflineVideoService {
         'materialId': materialId,
         'title': title,
         'description': description,
+        'courseId': courseId,
         'tier': variant.tier.name,
         'captions': hasCaptions,
         'size': got,

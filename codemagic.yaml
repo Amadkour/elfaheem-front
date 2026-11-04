@@ -296,6 +296,9 @@ workflows:
             --dart-define=API_BASE_URL=https://nextbrain.site/api \
             --dart-define=LIVEKIT_URL=wss://nextbrain.site/livekit \
             --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER"
+          # D-171: content-hashed main script (cached `immutable` by nginx) + .gz / .br copies for gzip_static /
+          # brotli_static (.br only where the `brotli` command exists)
+          dart run scripts/web/postbuild.dart build/web
           mkdir -p build/nb-upload
           (cd build/web && zip -qr "$CM_BUILD_DIR/build/nb-upload/NextBrain-${NB_BUILD_NAME}-${NB_BUILD_NUMBER}-web.zip" .)
           ls -la build/nb-upload

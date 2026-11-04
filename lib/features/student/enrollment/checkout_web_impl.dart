@@ -36,12 +36,13 @@
 
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:async';
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'dart:ui_web' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:web/web.dart' as web;
 
 /// Shown on Flutter Web. Embeds the checkout page in a full-screen <iframe>.
 /// Works for any hosted-checkout provider (Moyasar, Paymob, ...) because it
@@ -57,8 +58,9 @@ class IFrameCheckoutPage extends StatefulWidget {
 
 class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
   late final String _viewId;
-  late final html.IFrameElement _iframe;
-  StreamSubscription<html.MessageEvent>? _messageSub;
+  late final web.HTMLIFrameElement _iframe;
+  StreamSubscription<web.MessageEvent>? _messageSub;
+  StreamSubscription<web.Event>? _loadSub;
   bool _loading = true;
   bool _resolved = false; // guard against popping twice
 
@@ -76,15 +78,15 @@ class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
     // collide if the user navigates back and retries (any provider).
     _viewId = 'payment-checkout-${DateTime.now().millisecondsSinceEpoch}';
 
-    _iframe = html.IFrameElement()
+    _iframe = web.document.createElement('iframe') as web.HTMLIFrameElement
       ..src = widget.url
-      ..style.border = 'none'
-      ..style.width = '100%'
-      ..style.height = '100%'
-      ..allow = 'payment'          // required for payment APIs inside iframe
-      ..onLoad.listen((_) {
-        if (mounted) setState(() => _loading = false);
-      });
+      ..allow = 'payment'; // required for payment APIs inside iframe
+    _iframe.style.border = 'none';
+    _iframe.style.width = '100%';
+    _iframe.style.height = '100%';
+    _loadSub = web.EventStreamProviders.loadEvent.forElement(_iframe).listen((_) {
+      if (mounted) setState(() => _loading = false);
+    });
 
     // Register the iframe as a Flutter platform view (web only)
     // ignore: undefined_prefixed_name
@@ -98,7 +100,7 @@ class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
     //   window.parent.postMessage({ paymentStatus: 'paid' }, TARGET_ORIGIN)
     // for EVERY provider — it's our own page either way, so there is no
     // Moyasar/Paymob branching to do here.
-    _messageSub = html.window.onMessage.listen((html.MessageEvent event) {
+    _messageSub = web.EventStreamProviders.messageEvent.forTarget(web.window).listen((web.MessageEvent event) {
       if (_resolved) return;
 
       if (_expectedOrigin != null && event.origin != _expectedOrigin) {
@@ -109,7 +111,7 @@ class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
         return;
       }
 
-      final data = event.data;
+      final data = event.data.dartify();
       if (data is Map) {
         // BUG FIX: this previously checked 'moyasorStatus' (typo — missing
         // the 'a'), which never matched the real key result.html actually
@@ -134,6 +136,7 @@ class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
     // window.onMessage listener alive for the lifetime of the app, each one
     // racing to pop an already-popped/disposed route.
     _messageSub?.cancel();
+    _loadSub?.cancel();
     super.dispose();
   }
 

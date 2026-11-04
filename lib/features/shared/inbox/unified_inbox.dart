@@ -1169,8 +1169,9 @@ Future<void> _openAd(BuildContext context, InboxItem x) async {
     try {
       final r = await ApiClient().get('/api/v1/courses/$value');
       if (r is Map && context.mounted) {
-        await Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => CourseDetailScreen(course: CourseModel.fromJson(Map<String, dynamic>.from(r)))));
+        final course = CourseModel.fromJson(Map<String, dynamic>.from(r));
+        await Navigator.of(context).push(MaterialPageRoute(
+            settings: RouteSettings(name: '/course-detail', arguments: course), builder: (_) => CourseDetailScreen(course: course)));
       }
     } catch (_) {
       appToast('inbox_open_failed'.tr, error: true);

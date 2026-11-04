@@ -697,13 +697,15 @@ class _CourseCardState extends State<_CourseCard> {
       onExit: (_) => setState(() => _hovering = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CourseDetailScreen(
-              course: CourseModel.fromCategoryModel(course),
+        onTap: () {
+          final model = CourseModel.fromCategoryModel(course);
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              settings: RouteSettings(name: '/course-detail', arguments: model),
+              builder: (_) => CourseDetailScreen(course: model),
             ),
-          ),
-        ),
+          );
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           transform: Matrix4.translationValues(0, _hovering ? -4 : 0, 0),
