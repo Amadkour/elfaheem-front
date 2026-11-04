@@ -1486,6 +1486,7 @@
   "POST /api/v1/models/{model_id:int}/activate",
   "POST /api/v1/models/{model_id:int}/download",
   "POST /api/v1/models/{model_id:int}/test",
+  "PUT /api/v1/models/roles/exam_grading/mode",
   "PUT /api/v1/models/roles/{role}/fallback",
   "PUT /api/v1/models/roles/{role}/limits"
  ]
