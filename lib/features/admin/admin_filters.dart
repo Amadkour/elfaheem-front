@@ -19,10 +19,14 @@ import 'package:flutter_education_app/core/api_client.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_buttons.dart' show AppIconButton, AppIconButtonVariant;
+import 'package:flutter_education_app/design/app_search_field.dart';
 import 'package:flutter_education_app/design/app_username.dart' show usernameFrom;
+import 'admin_money_p8.dart' show parseAmountLoose;
 
-const _font = 'tajawal';
+String get _font => AppFonts.family;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  helpers
@@ -182,17 +186,15 @@ class AdminSearchField extends StatefulWidget {
 }
 
 class _AdminSearchFieldState extends State<AdminSearchField> {
-  late final TextEditingController _c = TextEditingController(
-    text: widget.value,
-  );
+  late final TextEditingController _c = TextEditingController(text: widget.value);
 
-  /// Waits [kSearchDelay] (1 s) after the LAST keystroke, then sends ONE request.
-  final _debounce = Debouncer();
+  /// The last text handed to [AdminSearchField.onChanged]. [AppSearchField] already waits [kSearchDelay] after the
+  /// LAST keystroke (and fires at once on clear), so this only drops repeats.
   late String _sent = widget.value.trim();
 
   void _send(String v) {
     final q = v.trim();
-    if (q == _sent) return; // nothing new → no request
+    if (q == _sent) return; // nothing new -> no request
     _sent = q;
     widget.onChanged(v);
   }
@@ -200,77 +202,24 @@ class _AdminSearchFieldState extends State<AdminSearchField> {
   @override
   void didUpdateWidget(covariant AdminSearchField old) {
     super.didUpdateWidget(old);
-    // While the user is still typing the provider's value is stale — never
-    // overwrite what they are typing. Follow it only for outside changes
-    // ("clear all filters").
-    if (_debounce.isPending) return;
-    if (widget.value.trim() != _c.text.trim()) {
+    // Follow the provider only for outside changes ("clear all filters"): while the person types, the provider's
+    // value is the text we just sent (or older) and must never overwrite the field.
+    final v = widget.value.trim();
+    if (v != old.value.trim() && v != _sent && v != _c.text.trim()) {
       _c.text = widget.value;
-      _sent = widget.value.trim();
+      _sent = v;
     }
   }
 
   @override
   void dispose() {
-    _debounce.dispose();
     _c.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return TextField(
-      controller: _c,
-      textInputAction: TextInputAction.search,
-      onChanged: (v) {
-        setState(() {});
-        _debounce.run(() => _send(v));
-      },
-      // Enter = search now, don't wait for the delay.
-      onSubmitted: (v) => _debounce.flush(() => _send(v)),
-      style: TextStyle(fontFamily: _font, color: c.textDark, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: widget.hint,
-        hintStyle: TextStyle(
-          fontFamily: _font,
-          color: c.textLight,
-          fontSize: 13.5,
-        ),
-        isDense: true,
-        filled: true,
-        fillColor: c.inputBg,
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 13,
-          horizontal: 12,
-        ),
-        prefixIcon: Icon(Icons.search_rounded, color: c.textLight),
-        suffixIcon: _c.text.isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'admin_filter_clear'.tr,
-                icon: Icon(Icons.close_rounded, size: 18, color: c.textLight),
-                onPressed: () {
-                  _c.clear();
-                  setState(() {});
-                  _debounce.flush(() => _send(''));
-                },
-              ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: c.primary, width: 1.4),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      AppSearchField(hint: widget.hint, controller: _c, debounce: kSearchDelay, onChanged: _send);
 }
 
 // ── filter button with badge ─────────────────────────────────────────────────
@@ -423,7 +372,7 @@ class _ActiveChips extends StatelessWidget {
                 icon: const Icon(Icons.filter_alt_off_rounded, size: 17),
                 label: Text(
                   'admin_filter_clear_all'.tr,
-                  style: const TextStyle(fontFamily: _font, fontSize: 12.5),
+                  style: TextStyle(fontFamily: _font, fontSize: 12.5),
                 ),
                 onPressed: host.clearAll,
               ),
@@ -578,7 +527,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         icon: const Icon(Icons.restart_alt_rounded, size: 19),
                         label: Text(
                           'admin_filter_reset'.tr,
-                          style: const TextStyle(fontFamily: _font),
+                          style: TextStyle(fontFamily: _font),
                         ),
                         onPressed: _count == 0 ? null : _reset,
                       ),
@@ -986,8 +935,8 @@ class _NumberRangeState extends State<_NumberRange> {
   }
 
   void _emit() => widget.onChanged(
-    num.tryParse(_min.text.trim().replaceAll(',', '.')),
-    num.tryParse(_max.text.trim().replaceAll(',', '.')),
+    parseAmountLoose(_min.text),
+    parseAmountLoose(_max.text),
   );
 
   @override
@@ -1223,4 +1172,37 @@ class _LookupPickerState extends State<_LookupPicker> {
       ],
     );
   }
+}
+
+/// The "Filters" button with its active-count badge, for pages that lay their own header out (the people tables).
+class AdminFilterButton extends StatelessWidget {
+  const AdminFilterButton({super.key, required this.host, required this.specs, this.sort, this.quickKeys = const {}});
+
+  final AdminQueryHost host;
+  final List<FilterSpec> specs;
+  final SortSpec? sort;
+  final Set<String> quickKeys;
+
+  @override
+  Widget build(BuildContext context) => AppIconButton(
+        icon: Icons.tune_rounded,
+        tooltip: 'admin_filter_title'.tr,
+        badge: activeFilterCount(host, specs, quickKeys),
+        variant: activeFilterCount(host, specs, quickKeys) > 0 ? AppIconButtonVariant.tonal : AppIconButtonVariant.standard,
+        onPressed: () => showAdminFilterSheet(context, host: host, specs: specs, sort: sort),
+      );
+}
+
+/// The removable chips of the active filters (what [AdminFilterBar] shows under its search box).
+class AdminActiveFilterChips extends StatelessWidget {
+  const AdminActiveFilterChips({super.key, required this.host, required this.specs, this.sort, this.quickKeys = const {}});
+
+  final AdminQueryHost host;
+  final List<FilterSpec> specs;
+  final SortSpec? sort;
+  final Set<String> quickKeys;
+
+  @override
+  Widget build(BuildContext context) =>
+      _ActiveChips(host: host, specs: specs, sort: sort, quickKeys: quickKeys);
 }

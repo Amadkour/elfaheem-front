@@ -10,7 +10,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime, showAppNotice;
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
@@ -181,16 +181,9 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
       String okMessage,
       ) async {
     final p = context.read<ComplaintProvider>();
-    final messenger = ScaffoldMessenger.of(context);
-    final colors = context.colors;
     final ok = await p.changeStatusSilently(cm.id, target);
     if (ok) _swiped[cm.id] = target;
-    showRequestSnack(
-      messenger,
-      ok ? okMessage : 'error_try_again'.tr,
-      color: ok ? colors.success : colors.danger,
-      icon: ok ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-    );
+    showAppNotice(ok ? okMessage : 'error_try_again'.tr, error: !ok);
     return ok;
   }
 
@@ -200,15 +193,26 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
     'complaint_resolved_snack'.tr,
   );
 
-  Future<bool> _close(ComplaintModel cm) async {
-    // Closing blocks further replies, so confirm first.
+  /// Closing blocks further replies, so every way of closing (the swipe and the card's status menu) asks first.
+  Future<bool> _confirmClose() async {
     final sure = await Helpers.confirmDialog(
       context,
       title: 'complaint_close_confirm'.tr,
       confirm: 'complaint_swipe_close'.tr,
     );
-    if (sure != true || !mounted) return false;
+    return sure == true && mounted;
+  }
+
+  Future<bool> _close(ComplaintModel cm) async {
+    if (!await _confirmClose()) return false;
     return _setStatus(cm, ComplaintStatus.closed, 'complaint_closed_snack'.tr);
+  }
+
+  /// The card's status menu: "closed" asks the same confirm the swipe asks.
+  Future<void> _menuStatus(ComplaintModel cm, ComplaintStatus st) async {
+    if (st == ComplaintStatus.closed && !await _confirmClose()) return;
+    if (!mounted) return;
+    context.read<ComplaintProvider>().updateStatus(cm.id, st);
   }
 
   void _onSwipedAway(int id) {
@@ -322,7 +326,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
             busy: busy,
             onTap: () => _openDetail(cm.id),
             // staff move a complaint along without opening it
-            onStatus: staff ? (st) => context.read<ComplaintProvider>().updateStatus(cm.id, st) : null,
+            onStatus: staff ? (st) => _menuStatus(cm, st) : null,
           );
 
           if (!_canSwipe(cm, staff, myId)) {

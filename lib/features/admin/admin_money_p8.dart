@@ -12,6 +12,7 @@
 // [feeCodeText]) are unit-tested; the forms are presentational and run under the layout harness.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -20,10 +21,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../shared/exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'admin_page.dart';
 import 'admin_common.dart' show asBool, asDouble, asInt, asMap, asMapList, asStr, asStrOrNull, isSuperNow, money, shortDateTime, t;
 
 // ── shared pure helpers (also used by the feedback / RAG library screens) ───────────────────────────────────────
@@ -44,6 +46,17 @@ double? parseNum(String s) {
   if (RegExp(r'^\d{1,3}(,\d{3})+(\.\d+)?$').hasMatch(x)) x = x.replaceAll(',', '');
   if (x.contains(',') || x.contains('،')) return null;
   return double.tryParse(x);
+}
+
+/// "2,5" · "٢،٥" · "12.5" · "1,000" → 2.5 / 2.5 / 12.5 / 1000. [parseNum] reads Arabic digits and refuses a lone
+/// comma (it could be a thousands separator); here a comma followed by one or two digits at the very end is a
+/// decimal comma, because nobody types "2,5" to mean 25.
+double? parseAmountLoose(String s) {
+  final v = parseNum(s);
+  if (v != null) return v;
+  final m = RegExp(r'^([0-9٠-٩]+)[,،]([0-9٠-٩]{1,2})$').firstMatch(s.trim());
+  if (m == null) return null;
+  return parseNum('${m[1]}.${m[2]}');
 }
 
 String numText(num? v) {
@@ -458,45 +471,58 @@ class AdminMoneyPage extends StatefulWidget {
 
 class _AdminMoneyPageState extends State<AdminMoneyPage> {
   late int _tab = widget.initialTab;
+  final _policyKey = GlobalKey<_PolicyTabState>();
+  final _orgsKey = GlobalKey<_OrgFeesTabState>();
+  final _ledgerKey = GlobalKey<_LedgerTabState>();
+
+  Future<void> _refresh() async {
+    await switch (_tab) {
+      0 => _policyKey.currentState?._load(),
+      1 => _orgsKey.currentState?._load(),
+      _ => _ledgerKey.currentState?._run(),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final sup = widget.superAdmin ?? isSuperNow(context);
     final tabs = [t('سياسة الرسوم', 'Fee policy'), t('المؤسسات', 'Organizations'), t('دفتر الأستاذ', 'Ledger')];
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
     return BasePage(
+      // the kill switch (a super admin can switch the fee screens off)
       key: const ValueKey('admin.fee_policy'),
-      useWebCard: true,
-      maxWith: 1000,
-      appBar: ScreenAppBar(title: t('الرسوم والتقارير المالية', 'Fees & financial reports')),
-      child: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Wrap(spacing: 8, runSpacing: 8, children: [
-              for (var i = 0; i < tabs.length; i++) AppChoiceChip(label: tabs[i], selected: _tab == i, onTap: () => setState(() => _tab = i)),
+      child: AdminPage(
+        title: t('الرسوم والتقارير المالية', 'Fees & financial reports'),
+        icon: Icons.account_balance_rounded,
+        onRefresh: _refresh,
+        body: Column(children: [
+          Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.md, gutter, AppSpace.xxs),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: AppTabs(index: _tab, onChanged: (i) => setState(() => _tab = i), items: [for (final x in tabs) AppTabItem(x)]),
+            ),
+          ),
+          if (!sup)
+            Padding(
+              padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.xxs, gutter, 0),
+              child: AppBanner(icon: Icons.lock_outline_rounded, text: t('عرض فقط — تعديل الرسوم للمشرف العام', 'Read-only — only the super admin can change fees')),
+            ),
+          Expanded(
+            child: IndexedStack(index: _tab, children: [
+              _PolicyTab(key: _policyKey, superAdmin: sup),
+              if (sup) _OrgFeesTab(key: _orgsKey, superAdmin: sup) else AppEmpty(icon: Icons.lock_outline_rounded, title: t('رسوم المؤسسات للمشرف العام فقط', 'Organization fees are for the super admin only')),
+              _LedgerTab(key: _ledgerKey),
             ]),
           ),
-        ),
-        if (!sup)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: AppBanner(icon: Icons.lock_outline_rounded, text: t('عرض فقط — تعديل الرسوم للمشرف العام', 'Read-only — only the super admin can change fees')),
-          ),
-        Expanded(
-          child: IndexedStack(index: _tab, children: [
-            _PolicyTab(superAdmin: sup),
-            if (sup) _OrgFeesTab(superAdmin: sup) else AppEmpty(icon: Icons.lock_outline_rounded, title: t('رسوم المؤسسات للمشرف العام فقط', 'Organization fees are for the super admin only')),
-            const _LedgerTab(),
-          ]),
-        ),
-      ]),
+        ]),
+      ),
     );
   }
 }
 
 class _PolicyTab extends StatefulWidget {
-  const _PolicyTab({required this.superAdmin});
+  const _PolicyTab({super.key, required this.superAdmin});
   final bool superAdmin;
   @override
   State<_PolicyTab> createState() => _PolicyTabState();
@@ -525,6 +551,21 @@ class _PolicyTabState extends State<_PolicyTab> {
   }
 
   Future<void> _save(FeePolicyDraft d) async {
+    // the policy applies to every LATER payment: the confirm states exactly what changes
+    final old = _policy;
+    final lines = <String>[
+      if (old == null || old.feeBearer != d.bearer)
+        '${t('متحمل الرسوم', 'Fee bearer')}: ${old == null ? '—' : feeBearerText(old.feeBearer)} \u2192 ${feeBearerText(d.bearer)}',
+      if (d.bearer == 'split' && (old == null || old.feeBearer != 'split' || numText(old.studentShare * 100) != numText(parseNum(d.share))))
+        '${t('حصة الطالب', 'Student share')}: ${numText(parseNum(d.share))}%',
+      if (old == null || old.vatOn != d.vatOn)
+        '${t('أساس الضريبة', 'VAT base')}: ${old == null ? '—' : vatBaseText(old.vatOn)} \u2192 ${vatBaseText(d.vatOn)}',
+    ];
+    final ok = await appConfirm(
+      context,
+      message: '${lines.isEmpty ? t('لا تغيير في القيم.', 'No value changes.') : lines.join('\n')}\n\n${t('تنطبق السياسة على كل عملية دفع قادمة. حفظ؟', 'The policy applies to every later payment. Save?')}',
+    );
+    if (!ok || !mounted) return;
     setState(() => _busy = true);
     final r = await _api.savePolicy(d.body());
     if (!mounted) return;
@@ -538,7 +579,7 @@ class _PolicyTabState extends State<_PolicyTab> {
   }
 
   Future<void> _reset() async {
-    if (!await appConfirm(context, message: t('العودة إلى السياسة الافتراضية؟', 'Go back to the default policy?'), danger: true)) return;
+    if (!await appConfirm(context, message: t('العودة إلى السياسة الافتراضية؟ تنطبق على كل عملية دفع قادمة.', 'Go back to the default policy? It applies to every later payment.'), danger: true)) return;
     setState(() => _busy = true);
     final r = await _api.resetPolicy();
     if (!mounted) return;
@@ -635,7 +676,7 @@ class _FeePolicyFormState extends State<FeePolicyForm> {
 // ── organizations ─────────────────────────────────────────────────────────────────────────────────────────────
 
 class _OrgFeesTab extends StatefulWidget {
-  const _OrgFeesTab({required this.superAdmin});
+  const _OrgFeesTab({super.key, required this.superAdmin});
   final bool superAdmin;
   @override
   State<_OrgFeesTab> createState() => _OrgFeesTabState();
@@ -1145,7 +1186,7 @@ class _RefundResolveSheetState extends State<RefundResolveSheet> {
 // ── ledger ────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class _LedgerTab extends StatefulWidget {
-  const _LedgerTab();
+  const _LedgerTab({super.key});
   @override
   State<_LedgerTab> createState() => _LedgerTabState();
 }
@@ -1164,10 +1205,20 @@ class _LedgerTabState extends State<_LedgerTab> {
     _run();
   }
 
+  Timer? _curTimer;
+
   @override
   void dispose() {
+    _curTimer?.cancel();
     _cur.dispose();
     super.dispose();
+  }
+
+  /// A complete code (three letters) or an emptied field applies after a short pause; Enter applies at once.
+  void _currencyChanged(String v) {
+    _curTimer?.cancel();
+    final s = v.trim();
+    if (s.isEmpty || s.length == 3) _curTimer = Timer(const Duration(milliseconds: 400), _run);
   }
 
   LedgerQuery _query({String? groupBy, DateTime? from, DateTime? to, bool clearFrom = false, bool clearTo = false}) => LedgerQuery(
@@ -1243,7 +1294,16 @@ class _LedgerTabState extends State<_LedgerTab> {
       ]),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: AppField(controller: _cur, label: t('العملة (اختياري)', 'Currency (optional)'), ltr: true, onChanged: (_) {})),
+        Expanded(
+            child: AppField(
+                controller: _cur,
+                label: t('العملة (اختياري)', 'Currency (optional)'),
+                ltr: true,
+                onChanged: _currencyChanged,
+                onSubmitted: (_) {
+                  _curTimer?.cancel();
+                  _run();
+                })),
         const SizedBox(width: 8),
         Padding(padding: const EdgeInsets.only(bottom: 12), child: IconButton.filled(tooltip: t('تطبيق', 'Apply'), onPressed: _run, icon: const Icon(Icons.check_rounded))),
         const SizedBox(width: 4),
@@ -1290,6 +1350,40 @@ class LedgerReportView extends StatelessWidget {
           ]),
         ),
       const SizedBox(height: 10),
+      LayoutBuilder(builder: (context, box) {
+        if (box.maxWidth >= Breakpoints.mobile) return _table(context, fmt);
+        // phone: one card per row (the label, its currency, then label / value lines), never a sideways-scrolling table
+        return Column(children: [
+          for (final r in report.rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: AppCard(
+                padding: const EdgeInsets.all(AppSpace.sm),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(children: [
+                    Expanded(child: Text(r.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
+                    AppSpace.gapXs,
+                    Text(r.currency, style: AppType.meta(context)),
+                  ]),
+                  AppSpace.gapXs,
+                  for (final m in ledgerMetrics)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpace.xxs),
+                      child: Row(children: [
+                        Expanded(child: Text(ledgerMetricText(m), style: AppType.meta(context))),
+                        Text(fmt(r.values[m] ?? 0), style: AppType.bodyStrong(context), textDirection: TextDirection.ltr),
+                      ]),
+                    ),
+                ]),
+              ),
+            ),
+        ]);
+      }),
+    ]);
+  }
+
+  Widget _table(BuildContext context, String Function(double) fmt) {
+    return Column(children: [
       AppCard(
         padding: const EdgeInsets.all(6),
         child: AppHScroll(

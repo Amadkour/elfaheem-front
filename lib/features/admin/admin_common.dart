@@ -22,15 +22,16 @@ import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_search_field.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 /// How long every admin search box waits after the LAST keystroke before it
 /// sends a request. Change it here to change all of them.
-const Duration kSearchDelay = Duration(seconds: 1);
+const Duration kSearchDelay = Duration(milliseconds: 400);
 
 /// Runs [run] only after [delay] of silence: every new call cancels the pending
-/// one, so typing "ahmed" sends ONE request (1 s after the last letter), not five.
+/// one, so typing "ahmed" sends ONE request (400 ms after the last letter), not five.
 /// [flush] runs it now (Enter key / clear button); always [dispose] it.
 class Debouncer {
   Debouncer([this.delay = kSearchDelay]);
@@ -120,8 +121,16 @@ void toast(String message, {bool error = false}) {
   }
 }
 
+/// THE money formatter: Latin digits with thousands separators ("12,480", "1,234.50"), two decimals only when the
+/// amount has a fraction, then the currency code when given.
 String money(num v, [String? currency]) {
-  final s = v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  final fixed = v.abs().toStringAsFixed(v == v.roundToDouble() ? 0 : 2);
+  final dot = fixed.indexOf('.');
+  final intPart = dot < 0 ? fixed : fixed.substring(0, dot);
+  final frac = dot < 0 ? '' : fixed.substring(dot);
+  final grouped = intPart.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+  final neg = v < 0 && fixed.replaceAll(RegExp(r'[0.]'), '').isNotEmpty ? '-' : '';
+  final s = '$neg$grouped$frac';
   return currency == null || currency.isEmpty ? s : '$s $currency';
 }
 
@@ -707,68 +716,16 @@ class SearchBox extends StatefulWidget {
 }
 
 class _SearchBoxState extends State<SearchBox> {
-  final _ctrl = TextEditingController();
-  final _debounce = Debouncer();
   String _sent = '';
-
-  @override
-  void dispose() {
-    _debounce.dispose();
-    _ctrl.dispose();
-    super.dispose();
-  }
 
   void _send(String v) {
     final q = v.trim();
-    if (!mounted || q == _sent) return; // nothing new → no request
+    if (!mounted || q == _sent) return; // nothing new -> no request
     _sent = q;
     widget.onChanged(q);
   }
 
-  void _changed(String v) {
-    setState(() {}); // shows / hides the clear button
-    _debounce.run(() => _send(v));
-  }
-
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return TextField(
-      controller: _ctrl,
-      onChanged: _changed,
-      onSubmitted: (v) => _debounce.flush(() => _send(v)),
-      textInputAction: TextInputAction.search,
-      style: TextStyle(fontFamily: AppFonts.family),
-      decoration: InputDecoration(
-        hintText: widget.hint ?? 'admin_search'.tr,
-        prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: _ctrl.text.isEmpty
-            ? null
-            : IconButton(tooltip: t('مسح', 'Clear'), 
-                icon: const Icon(Icons.close_rounded, size: 18),
-                onPressed: () {
-                  _ctrl.clear();
-                  _debounce.flush(() => _send(''));
-                  setState(() {});
-                },
-              ),
-        filled: true,
-        fillColor: c.inputBg,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: c.divider),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: c.divider),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: c.primary, width: 1.6),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      AppSearchField(hint: widget.hint ?? 'admin_search'.tr, debounce: kSearchDelay, onChanged: _send);
 }
