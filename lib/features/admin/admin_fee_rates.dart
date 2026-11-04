@@ -23,13 +23,10 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
-import '../../utils/widget/primary_button.dart';
 import '../student/enrollment/enrollment_models.dart' show asJsonMap;
 import 'admin_common.dart';
-import 'admin_money_p8.dart' show AdminMoneyPage;
-import 'admin_premium_widgets.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'admin_money_p8.dart' show AdminMoneyPage, parseAmountLoose;
+import 'package:flutter_education_app/design/app_kit.dart';
 
 class AdminFeeRatesProvider extends BaseProvider {
   AdminFeeRatesProvider({ApiClient? api}) : api = api ?? ApiClient();
@@ -41,6 +38,20 @@ class AdminFeeRatesProvider extends BaseProvider {
   Map<String, dynamic> teacherVat = {};
   double vatPercent = 0;
   bool loaded = false;
+
+  /// Why the last save failed (the server's own message), or null. A save that fails must never read as
+  /// "could not load".
+  String? saveError;
+
+  /// One PUT through [run]. A rejected save is a failure ([saveError]), never an exception for the caller.
+  Future<Map<String, dynamic>?> _put(String path, Map<String, dynamic> body) async {
+    try {
+      return asJsonMap(await run(() async => api.put(path, body: body)));
+    } on ApiException catch (e) {
+      setError(e.message);
+      return null;
+    }
+  }
 
   Future<void> load() async {
     final json = asJsonMap(await run(() async => api.get('/api/v1/admin/fees')));
@@ -62,18 +73,17 @@ class AdminFeeRatesProvider extends BaseProvider {
 
   /// Saves one method. Pass [reset] to go back to the built-in default.
   Future<bool> save(String method, {double? percent, double? fixed, bool reset = false}) async {
-    final json = asJsonMap(await run(() async => api.put(
-      '/api/v1/admin/fees/$method',
-      body: {
+    final json = await _put('/api/v1/admin/fees/$method', {
         'percent': ?percent,
         'fixed': ?fixed,
         if (reset) 'reset': true,
-      },
-    )));
+      });
     if (json == null) {
+      saveError = hasError ? errorMessage : null;
       notifyListeners();
       return false;
     }
+    saveError = null;
     final i = items.indexWhere((e) => e['method'] == method);
     if (i >= 0) items[i] = json;
     notifyListeners();
@@ -82,18 +92,17 @@ class AdminFeeRatesProvider extends BaseProvider {
 
   /// Platform fee: [percent] is the system default %, [fixed] a fixed amount added per course.
   Future<bool> savePlatform({double? percent, double? fixed, bool reset = false}) async {
-    final json = asJsonMap(await run(() async => api.put(
-      '/api/v1/admin/fees/platform',
-      body: {
+    final json = await _put('/api/v1/admin/fees/platform', {
         'percent': ?percent,
         'fixed': ?fixed,
         if (reset) 'reset': true,
-      },
-    )));
+      });
     if (json == null) {
+      saveError = hasError ? errorMessage : null;
       notifyListeners();
       return false;
     }
+    saveError = null;
     platform = json;
     notifyListeners();
     return true;
@@ -101,17 +110,16 @@ class AdminFeeRatesProvider extends BaseProvider {
 
   /// VAT charged on the platform fee.
   Future<bool> saveVat({double? percent, bool reset = false}) async {
-    final json = asJsonMap(await run(() async => api.put(
-      '/api/v1/admin/fees/vat',
-      body: {
+    final json = await _put('/api/v1/admin/fees/vat', {
         'percent': ?percent,
         if (reset) 'reset': true,
-      },
-    )));
+      });
     if (json == null) {
+      saveError = hasError ? errorMessage : null;
       notifyListeners();
       return false;
     }
+    saveError = null;
     vat = json;
     vatPercent = (json['percent'] as num?)?.toDouble() ?? vatPercent;
     notifyListeners();
@@ -119,17 +127,16 @@ class AdminFeeRatesProvider extends BaseProvider {
   }
   /// VAT deducted from the teacher's earning (on the platform fee).
   Future<bool> saveTeacherVat({double? percent, bool reset = false}) async {
-    final json = asJsonMap(await run(() async => api.put(
-      '/api/v1/admin/fees/teacher-vat',
-      body: {
+    final json = await _put('/api/v1/admin/fees/teacher-vat', {
         'percent': ?percent,
         if (reset) 'reset': true,
-      },
-    )));
+      });
     if (json == null) {
+      saveError = hasError ? errorMessage : null;
       notifyListeners();
       return false;
     }
+    saveError = null;
     teacherVat = json;
     notifyListeners();
     return true;
@@ -146,36 +153,33 @@ class AdminFeeRatesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminFeeRatesProvider>();
-    final c = context.colors;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('admin_fee_rates'.tr,
-          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
-      const SizedBox(height: 4),
-      Text('admin_fee_rates_hint'.tr,
-          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
-      const SizedBox(height: 8),
-      // Phase 8: fee policy, per-organization fees, ledger report
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: OutlinedButton.icon(
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminMoneyPage())),
-          icon: const Icon(Icons.tune_rounded, size: 18),
-          label: Text(_t('سياسة الرسوم والمؤسسات', 'Fee policy & organizations')),
+      AppSection(
+        title: 'admin_fee_rates'.tr,
+        subtitle: 'admin_fee_rates_hint'.tr,
+        // Phase 8: fee policy, per-organization fees, ledger report
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: AppButton.secondary(
+            label: _t('سياسة الرسوم والمؤسسات', 'Fee policy & organizations'),
+            icon: Icons.tune_rounded,
+            size: AppButtonSize.sm,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminMoneyPage())),
+          ),
         ),
       ),
-      const SizedBox(height: 8),
+      AppSpace.gapXs,
       if (!p.loaded && p.isLoading)
-        const AppListSkeleton(items: 3)
+        const AppLoadingState(shape: AppLoadingShape.cards, items: 3)
       else if (!p.loaded)
-        ErrorRetry(message: p.errorMessage ?? 'admin_could_not_load'.tr, onRetry: p.load)
+        AppErrorState(message: p.errorMessage ?? 'admin_could_not_load'.tr, onRetry: p.load)
       else ...[
           if (p.platform.isNotEmpty)
             _FeeRateCard(
               title: _t('رسوم المنصة', 'Platform fee'),
               m: p.platform,
               icon: Icons.account_balance_rounded,
-              colors: AdminPalette.indigo,
               onSave: p.savePlatform,
               provider: p,
               note: _t(
@@ -188,7 +192,6 @@ class AdminFeeRatesSection extends StatelessWidget {
               title: _t('ضريبة الطلاب (القيمة المضافة)', 'Student VAT'),
               m: p.vat,
               icon: Icons.receipt_long_rounded,
-              colors: AdminPalette.orange,
               onSave: ({double? percent, double? fixed, bool reset = false}) =>
                   p.saveVat(percent: percent, reset: reset),
               provider: p,
@@ -201,7 +204,6 @@ class AdminFeeRatesSection extends StatelessWidget {
               title: _t('ضريبة المعلّم (القيمة المضافة)', 'Teacher VAT'),
               m: p.teacherVat,
               icon: Icons.cast_for_education_rounded,
-              colors: AdminPalette.rose,
               onSave: ({double? percent, double? fixed, bool reset = false}) =>
                   p.saveTeacherVat(percent: percent, reset: reset),
               provider: p,
@@ -210,9 +212,8 @@ class AdminFeeRatesSection extends StatelessWidget {
                   'Deducted from the teacher\'s earnings; charged on the platform fee taken from them.'),
             ),
           Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 4),
-            child: Text(_t('رسوم بوابات الدفع', 'Payment gateway fees'),
-                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 14, color: c.textDark)),
+            padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xs),
+            child: Text(_t('رسوم بوابات الدفع', 'Payment gateway fees'), style: AppType.section(context)),
           ),
           for (final m in p.items)
             _FeeRateCard(
@@ -223,7 +224,7 @@ class AdminFeeRatesSection extends StatelessWidget {
               provider: p,
               note: m['group'] == 'manual' ? 'admin_fee_manual_note'.tr : null,
             ),
-          const SizedBox(height: 12),
+          AppSpace.gapSm,
         ],
     ]);
   }
@@ -243,10 +244,8 @@ class _FeeRateCard extends StatelessWidget {
     this.hasFixed = true,
     this.note,
     this.icon = Icons.credit_score_rounded,
-    this.colors,
   });
   final IconData icon;
-  final List<Color>? colors;
   final String title;
   final Map<String, dynamic> m;
   final _FeeSave onSave;
@@ -259,38 +258,39 @@ class _FeeRateCard extends StatelessWidget {
     final c = context.colors;
     final isCustom = m['is_default'] != true;
 
-    return Section(
-      icon: icon,
-      colors: colors ?? AdminPalette.teal,
-      title: title,
-      trailing: isCustom
-          ? Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: context.colors.warning.withValues(alpha: .15),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text('admin_fee_custom'.tr,
-            style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.warning)),
-      )
-          : null,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        KeyValue('admin_fee_percent'.tr, '${_num(m['percent'])}%'),
-        if (hasFixed) KeyValue('admin_fee_fixed'.tr, _num(m['fixed'])),
-        if (note != null)
-          Text(note!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: TextButton.icon(
-            icon: const Icon(Icons.edit_rounded, size: 18),
-            label: Text('admin_edit_details'.tr),
-            onPressed: () => showAdminSheet(
-              context,
-                  (_) => _FeeEditSheet(provider: provider, m: m, title: title, onSave: onSave, hasFixed: hasFixed),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll),
+              child: Icon(icon, size: AppIconSize.md, color: c.primary),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(title, style: AppType.section(context))),
+            if (isCustom) AppStatusBadge(label: 'admin_fee_custom'.tr, tone: AppTone.warning, dense: true),
+          ]),
+          AppSpace.gapXs,
+          KeyValue('admin_fee_percent'.tr, '${_num(m['percent'])}%'),
+          if (hasFixed) KeyValue('admin_fee_fixed'.tr, _num(m['fixed'])),
+          if (note != null) Text(note!, style: AppType.meta(context)),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: AppButton.tonal(
+              icon: Icons.edit_rounded,
+              size: AppButtonSize.sm,
+              label: 'admin_edit_details'.tr,
+              onPressed: () => showAdminSheet(
+                context,
+                (_) => _FeeEditSheet(provider: provider, m: m, title: title, onSave: onSave, hasFixed: hasFixed),
+              ),
             ),
           ),
-        ),
-      ]),
+        ]),
+      ),
     );
   }
 }
@@ -337,13 +337,16 @@ class _FeeEditSheetState extends State<_FeeEditSheet> {
     if (ok) {
       Navigator.pop(context);
     } else {
-      toast(widget.provider.errorMessage ?? 'admin_could_not_load'.tr, error: true);
+      // the server's own reason, never "could not load"
+      toast(widget.provider.saveError ?? _t('تعذّر الحفظ، حاول مجددًا', 'Could not save, try again'), error: true);
     }
   }
 
-  void _save() {
-    final pct = double.tryParse(_percent.text.trim());
-    final fx = widget.hasFixed ? double.tryParse(_fixed.text.trim()) : null;
+  String _was(Object? v) => _num(v);
+
+  Future<void> _save() async {
+    final pct = parseAmountLoose(_percent.text);
+    final fx = widget.hasFixed ? parseAmountLoose(_fixed.text) : null;
     if (pct == null || pct < 0 || pct > 100) {
       toast('admin_fee_percent_invalid'.tr, error: true);
       return;
@@ -352,7 +355,24 @@ class _FeeEditSheetState extends State<_FeeEditSheet> {
       toast('admin_fee_fixed_invalid'.tr, error: true);
       return;
     }
-    _run(() => widget.onSave(percent: pct, fixed: fx));
+    // fees apply to every LATER payment: say what changes before it does
+    final change = StringBuffer('${_was(widget.m['percent'])}% \u2192 ${_num(pct)}%');
+    if (widget.hasFixed) change.write('  |  ${_was(widget.m['fixed'])} \u2192 ${_num(fx)}');
+    final ok = await appConfirm(
+      context,
+      message: '${widget.title}\n${change.toString()}\n\n${_t('ينطبق التغيير على كل عملية دفع قادمة. حفظ؟', 'The change applies to every later payment. Save?')}',
+    );
+    if (!ok || !mounted) return;
+    await _run(() => widget.onSave(percent: pct, fixed: fx));
+  }
+
+  Future<void> _reset() async {
+    final ok = await appConfirm(
+      context,
+      message: '${widget.title}\n\n${_t('ستعود الرسوم إلى قيمتها الافتراضية وتنطبق على كل عملية دفع قادمة. متابعة؟', 'The fee goes back to its default and applies to every later payment. Continue?')}',
+    );
+    if (!ok || !mounted) return;
+    await _run(() => widget.onSave(reset: true));
   }
 
   @override
@@ -364,23 +384,21 @@ class _FeeEditSheetState extends State<_FeeEditSheet> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(children: [
-            Field(
+            AppField(
               controller: _percent,
               label: 'admin_fee_percent'.tr,
               keyboard: const TextInputType.numberWithOptions(decimal: true),
             ),
             if (widget.hasFixed)
-              Field(
+              AppField(
                 controller: _fixed,
                 label: 'admin_fee_fixed'.tr,
                 keyboard: const TextInputType.numberWithOptions(decimal: true),
               ),
-            PrimaryButton(label: 'save'.tr, isLoading: _busy, onPressed: _save),
+            AppButton.primary(label: 'save'.tr, busy: _busy, onPressed: _busy ? null : _save),
             if (m['is_default'] != true)
               TextButton(
-                onPressed: _busy
-                    ? null
-                    : () => _run(() => widget.onSave(reset: true)),
+                onPressed: _busy ? null : _reset,
                 child: Text(
                   widget.hasFixed
                       ? '${'admin_fee_reset'.tr} (${_num(m['default_percent'])}% + ${_num(m['default_fixed'])})'

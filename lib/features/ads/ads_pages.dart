@@ -21,7 +21,10 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../admin/admin_common.dart';
+import '../admin/admin_labels.dart' show disposeAfterRoute;
 import '../admin/admin_list.dart';
+import '../admin/admin_page.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 import '../org/org_providers.dart';
 import '../org/org_ui.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -462,78 +465,257 @@ class AdminAdsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => OrgPaged('/api/v1/admin/ads')..refresh(),
-      child: Builder(builder: (context) {
-        final p = context.watch<OrgPaged>();
-        return BasePage(
-          useWebCard: true,
-          maxWith: 960,
-          appBar: ScreenAppBar(title: t('الإعلانات', 'Ads'), actions: [
-            IconButton(tooltip: t('إعدادات إعلانات المعلمين', 'Teacher ads settings'), onPressed: () => _settings(context), icon: const Icon(Icons.tune_rounded)),
-            IconButton(tooltip: t('إعلان جديد', 'New ad'), onPressed: () async {
-              if (await showAdEditor(context, base: '/api/v1/admin/ads')) p.refresh();
-            }, icon: const Icon(Icons.add_rounded)),
-          ]),
-          child: Column(children: [
-            const SizedBox(height: 8),
-            FilterChips<String>(
-              options: {'': t('الكل', 'All'), 'pending': t('بانتظار المراجعة', 'Waiting'), 'approved': t('نشطة', 'Live'), 'rejected': t('مرفوضة', 'Rejected')},
-              value: '${p.filters['status'] ?? ''}',
+      child: const _AdminAdsView(),
+    );
+  }
+}
+
+AppTone _adTone(String s) => switch (s) {
+      'approved' => AppTone.success,
+      'rejected' => AppTone.danger,
+      'pending' => AppTone.warning,
+      _ => AppTone.neutral,
+    };
+
+String _adStatusLabel(String s) => switch (s) {
+      'approved' => t('نشط', 'Live'),
+      'pending' => t('بانتظار المراجعة', 'Waiting'),
+      'rejected' => t('مرفوض', 'Rejected'),
+      _ => statusLabel(s),
+    };
+
+class _AdminAdsView extends StatefulWidget {
+  const _AdminAdsView();
+
+  @override
+  State<_AdminAdsView> createState() => _AdminAdsViewState();
+}
+
+class _AdminAdsViewState extends State<_AdminAdsView> {
+  static const _base = '/api/v1/admin/ads';
+  DateTime? _loadedAt;
+  final Set<Object> _busy = {};
+
+  Future<void> _refresh(OrgPaged p) async {
+    await p.refresh();
+    if (mounted) setState(() => _loadedAt = DateTime.now());
+  }
+
+  /// Approve asks whether the teacher paid for it (the server still receives `paid`, now chosen) and confirms.
+  Future<void> _approve(OrgPaged p, Map<String, dynamic> a) async {
+    final cost = a['cost'];
+    // Paid by default, as Approve always recorded before; the admin picks Not paid when it was not.
+    bool paid = a['paid'] != false;
+    final ok = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          return AppSheetContent(title: t('الموافقة على الإعلان', 'Approve the ad'), children: [
+            Text('${a['title']}', style: AppType.section(ctx)),
+            AppSpace.gapXs,
+            Text(
+              (cost is num) && cost > 0
+                  ? t('تكلفة الإعلان $cost. هل دفع المعلّن؟', 'The ad costs $cost. Has the advertiser paid?')
+                  : t('هذا الإعلان لا تكلفة له.', 'This ad has no cost.'),
+              style: AppType.body(ctx),
+            ),
+            AppSpace.gapSm,
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              AppChoiceChip(label: t('مدفوع', 'Paid'), icon: Icons.check_circle_rounded, selected: paid, onTap: () => set(() => paid = true)),
+              AppChoiceChip(label: t('غير مدفوع', 'Not paid'), icon: Icons.money_off_rounded, selected: !paid, onTap: () => set(() => paid = false)),
+            ]),
+            AppSpace.gapMd,
+            AppButton.primary(label: t('موافقة ونشر', 'Approve and publish'), icon: Icons.check_rounded, expand: true, onPressed: () => Navigator.pop(ctx, true)),
+          ]);
+        }));
+    if (ok != true || !mounted) return;
+    await _run(a, () async {
+      if (await OrgApi.i.post('$_base/${a['id']}/approve', {'paid': paid}, t('تمت الموافقة', 'Approved')) != null) p.refresh();
+    });
+  }
+
+  Future<void> _reject(OrgPaged p, Map<String, dynamic> a) async {
+    final note = await askText(context, title: t('سبب الرفض', 'Reason'), multiline: true);
+    if (note == null || !mounted) return;
+    await _run(a, () async {
+      if (await OrgApi.i.post('$_base/${a['id']}/reject', {'note': note}, t('تم', 'Done')) != null) p.refresh();
+    });
+  }
+
+  Future<void> _delete(OrgPaged p, Map<String, dynamic> a) async {
+    if (!await appConfirm(context, message: t('حذف الإعلان «${a['title']}»؟', 'Delete the ad "${a['title']}"?'), danger: true) || !mounted) return;
+    await _run(a, () async {
+      if (await OrgApi.i.del('$_base/${a['id']}', t('تم الحذف', 'Deleted')) != null) p.refresh();
+    });
+  }
+
+  /// One action at a time per ad (no double tap).
+  Future<void> _run(Map<String, dynamic> a, Future<void> Function() fn) async {
+    final id = a['id'] as Object;
+    if (!_busy.add(id)) return;
+    try {
+      await fn();
+    } finally {
+      _busy.remove(id);
+    }
+  }
+
+  Future<void> _edit(OrgPaged p, [Map<String, dynamic>? a]) async {
+    if (await showAdEditor(context, base: _base, edit: a)) p.refresh();
+  }
+
+  Widget _stat(BuildContext context, IconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: AppIconSize.sm, color: context.colors.textLight),
+        AppSpace.gapXs,
+        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
+      ]);
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<OrgPaged>();
+    final first = p.rows.isEmpty;
+    return AdminPage(
+      title: t('الإعلانات', 'Ads'),
+      icon: Icons.ads_click_rounded,
+      onRefresh: p.isLoading ? null : () => _refresh(p),
+      updatedAt: _loadedAt,
+      primaryAction: AppButton.primary(label: t('إعلان جديد', 'New ad'), icon: Icons.add_rounded, onPressed: () => _edit(p)),
+      body: Padding(
+        padding: AdminPage.bodyPadding(context),
+        child: AppDataTable<Map<String, dynamic>>(
+          state: p.isLoading && first
+              ? AppTableState.loading
+              : p.error != null && first
+                  ? AppTableState.error
+                  : AppTableState.ready,
+          errorText: p.error,
+          onRetry: p.refresh,
+          rows: p.rows,
+          toolbarTrailing: AppButton.tonal(
+              label: t('إعدادات إعلانات المعلمين', 'Teacher ads settings'), icon: Icons.tune_rounded, size: AppButtonSize.sm, onPressed: () => _settings(context)),
+          filters: [
+            AppTableFilter(
+              label: t('الحالة', 'Status'),
+              value: (p.filters['status'] as String?)?.isEmpty ?? true ? null : '${p.filters['status']}',
+              options: [
+                ('pending', t('بانتظار المراجعة', 'Waiting')),
+                ('approved', t('نشطة', 'Live')),
+                ('rejected', t('مرفوضة', 'Rejected')),
+              ],
               onChanged: (v) => p.setFilter('status', v),
             ),
-            Expanded(
-              child: PagedList<OrgPaged>(
-                emptyText: t('لا إعلانات بعد', 'No ads yet'),
-                itemBuilder: (context, a) => _adRow(context, a,
-                    onTap: () async {
-                      if (await showAdEditor(context, base: '/api/v1/admin/ads', edit: a)) p.refresh();
-                    },
-                    actions: [
-                      if (a['status'] == 'pending') ...[
-                        IconButton(tooltip: t('موافقة', 'Approve'), icon: Icon(Icons.check_circle_rounded, color: context.colors.success), onPressed: () async {
-                          if (await OrgApi.i.post('/api/v1/admin/ads/${a['id']}/approve', {'paid': true}, t('تمت الموافقة', 'Approved')) != null) p.refresh();
-                        }),
-                        IconButton(tooltip: t('رفض', 'Reject'), icon: Icon(Icons.cancel_rounded, color: context.colors.danger), onPressed: () async {
-                          final note = await askText(context, title: t('سبب الرفض', 'Reason'), multiline: true);
-                          if (note != null && await OrgApi.i.post('/api/v1/admin/ads/${a['id']}/reject', {'note': note}, t('تم', 'Done')) != null) p.refresh();
-                        }),
-                      ],
-                      IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: context.colors.danger), onPressed: () async {
-                        if (await confirm(context, message: t('حذف الإعلان؟', 'Delete this ad?'), danger: true) &&
-                            await OrgApi.i.del('/api/v1/admin/ads/${a['id']}', t('تم الحذف', 'Deleted')) != null) p.refresh();
-                      }),
-                    ]),
-              ),
+          ],
+          empty: AppEmpty(icon: Icons.ads_click_rounded, title: t('لا إعلانات بعد', 'No ads yet')),
+          hasMore: p.hasMore,
+          loadingMore: p.loadingMore,
+          onLoadMore: p.loadMore,
+          onRowTap: (a) => _edit(p, a),
+          columns: [
+            AppTableColumn<Map<String, dynamic>>(
+              key: 'title',
+              label: t('الإعلان', 'Ad'),
+              primary: true,
+              flex: 3,
+              cell: (context, a) {
+                final isTeacher = a['owner'] != null && a['owner_kind'] == 'teacher';
+                return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text('${a['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                  if (isTeacher) Text('${asMap(a['owner'])['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                ]);
+              },
             ),
-          ]),
-        );
-      }),
+            AppTableColumn<Map<String, dynamic>>(
+              key: 'status',
+              label: t('الحالة', 'Status'),
+              cell: (context, a) {
+                final st = '${a['status']}';
+                return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+                  AppStatusBadge(label: _adStatusLabel(st), tone: _adTone(st)),
+                  if (a['is_active'] == false && st != 'rejected') AppStatusBadge(label: t('متوقف', 'Off'), tone: AppTone.neutral),
+                ]);
+              },
+            ),
+            AppTableColumn<Map<String, dynamic>>(
+              key: 'stats',
+              label: t('الأداء', 'Performance'),
+              flex: 2,
+              cell: (context, a) => Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, children: [
+                _stat(context, Icons.visibility_rounded, '${a['impressions'] ?? 0}'),
+                _stat(context, Icons.ads_click_rounded, '${a['clicks'] ?? 0} · ${a['ctr'] ?? 0}%'),
+                _stat(context, Icons.thumb_up_alt_outlined, '${a['likes'] ?? 0}'),
+                _stat(context, Icons.thumb_down_alt_outlined, '${a['dislikes'] ?? 0}'),
+              ]),
+            ),
+            AppTableColumn<Map<String, dynamic>>(
+              key: 'cost',
+              label: t('التكلفة', 'Cost'),
+              showOnPhone: false,
+              cell: (context, a) {
+                final cost = a['cost'];
+                if (cost is! num || cost <= 0) return Text('—', style: AppType.meta(context));
+                return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  Text('$cost', style: AppType.row(context)),
+                  AppStatusBadge(label: a['paid'] == true ? t('مدفوع', 'Paid') : t('غير مدفوع', 'Not paid'), tone: a['paid'] == true ? AppTone.success : AppTone.warning, dense: true),
+                ]);
+              },
+            ),
+          ],
+          rowActions: (a) => [
+            if (a['status'] == 'pending') AppRowAction(icon: Icons.check_circle_rounded, label: t('موافقة', 'Approve'), onTap: () => _approve(p, a)),
+            if (a['status'] == 'pending') AppRowAction(icon: Icons.cancel_rounded, label: t('رفض', 'Reject'), onTap: () => _reject(p, a)),
+            AppRowAction(icon: Icons.edit_rounded, label: t('تعديل', 'Edit'), onTap: () => _edit(p, a)),
+            AppRowAction(icon: Icons.delete_outline_rounded, label: t('حذف', 'Delete'), danger: true, onTap: () => _delete(p, a)),
+          ],
+        ),
+      ),
     );
   }
 
   Future<void> _settings(BuildContext context) async {
-    final s = await OrgApi.i.getMap('/api/v1/admin/ads/settings');
+    final s = await OrgApi.i.getMap('$_base/settings');
     if (s == null || !context.mounted) return;
-    bool enabled = s['teacher_ads_enabled'] == true, approval = s['requires_approval'] != false;
+    bool enabled = s['teacher_ads_enabled'] == true, approval = s['requires_approval'] != false, busy = false;
     final price = TextEditingController(text: '${s['price_per_day'] ?? 0}');
     final days = TextEditingController(text: '${s['max_days'] ?? 30}');
-    await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            SheetHeader(t('إعلانات المعلمين', 'Teacher ads')),
-            OrgSwitchRow(title: t('السماح للمعلمين بالإعلان', 'Allow teachers to advertise'),
-                subtitle: t('لطلاب كورساتهم فقط', 'To their own students only'), value: enabled, onChanged: (v) => set(() => enabled = v)),
-            OrgSwitchRow(title: t('مراجعة كل إعلان قبل نشره', 'Review every ad before it goes live'), value: approval, onChanged: (v) => set(() => approval = v)),
-            Field(controller: price, label: t('السعر لكل يوم', 'Price per day'), keyboard: TextInputType.number, ltr: true),
-            Field(controller: days, label: t('أقصى مدة (أيام)', 'Max duration (days)'), keyboard: TextInputType.number, ltr: true),
-            PrimaryButton(isLoading: false, label: t('حفظ', 'Save'), onPressed: () async {
-              final r = await OrgApi.i.put('/api/v1/admin/ads/settings', {
-                'teacher_ads_enabled': enabled, 'requires_approval': approval,
-                'price_per_day': double.tryParse(price.text) ?? 0, 'max_days': int.tryParse(days.text) ?? 30,
-              }, t('تم الحفظ', 'Saved'));
-              if (r != null && ctx.mounted) Navigator.pop(ctx);
-            }),
-          ]),
-        )));
+    String? priceErr, daysErr;
+    await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          Future<void> save() async {
+            if (busy) return;
+            final pr = double.tryParse(price.text.trim());
+            final dy = int.tryParse(days.text.trim());
+            set(() {
+              priceErr = pr == null || pr < 0 ? t('أدخل سعرًا صحيحًا (0 = مجاني)', 'Enter a valid price (0 = free)') : null;
+              daysErr = dy == null || dy < 1 || dy > 365 ? t('أدخل عددًا من 1 إلى 365', 'Enter a number from 1 to 365') : null;
+            });
+            if (priceErr != null || daysErr != null) return;
+            set(() => busy = true);
+            final r = await OrgApi.i.put('$_base/settings', {
+              'teacher_ads_enabled': enabled, 'requires_approval': approval,
+              'price_per_day': pr, 'max_days': dy,
+            }, t('تم الحفظ', 'Saved'));
+            if (!ctx.mounted) return;
+            if (r != null) {
+              Navigator.pop(ctx);
+            } else {
+              set(() => busy = false);
+            }
+          }
+
+          Widget err(String? e) => e == null
+              ? const SizedBox.shrink()
+              : Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text(e, style: AppType.meta(ctx).copyWith(color: ctx.colors.danger)));
+          return AppSheetContent(title: t('إعلانات المعلمين', 'Teacher ads'), children: [
+            AppSwitchTile(
+                title: t('السماح للمعلمين بالإعلان', 'Allow teachers to advertise'),
+                subtitle: t('لطلاب كورساتهم فقط', 'To their own students only'),
+                value: enabled,
+                onChanged: (v) => set(() => enabled = v)),
+            AppSwitchTile(title: t('مراجعة كل إعلان قبل نشره', 'Review every ad before it goes live'), value: approval, onChanged: (v) => set(() => approval = v)),
+            AppField(controller: price, label: t('السعر لكل يوم', 'Price per day'), keyboard: const TextInputType.numberWithOptions(decimal: true), ltr: true),
+            err(priceErr),
+            AppField(controller: days, label: t('أقصى مدة (أيام)', 'Max duration (days)'), keyboard: TextInputType.number, ltr: true),
+            err(daysErr),
+            AppButton.primary(label: t('حفظ', 'Save'), busy: busy, expand: true, onPressed: busy ? null : save),
+          ]);
+        }));
+    disposeAfterRoute([price, days]);
   }
 }
 

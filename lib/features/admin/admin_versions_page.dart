@@ -8,18 +8,14 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../design/app_kit.dart' show AppBanner;
-import '../../design/app_switch.dart';
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/base_page.dart';
+import '../../design/app_kit.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_labels.dart';
-import 'admin_list.dart';
+import 'admin_page.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
 import 'app_releases/app_releases_page.dart' show AppReleasesPage;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 final _semver = RegExp(r'^\d+(\.\d+){0,2}([+-][0-9A-Za-z.\-]+)?$');
 
@@ -51,66 +47,72 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminVersionsProvider>();
-    final c = context.colors;
-
-    return BasePage(
+    final loaded = !p.isLoading || p.items.isNotEmpty;
+    return AdminPage(
       key: const ValueKey('admin_versions'),
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: t('رسالة التحديث', 'Update prompt')),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "admin_float",
+      title: t('رسالة التحديث', 'Update prompt'),
+      subtitle: t('الإصدار الذي يطلب التطبيق من المستخدمين التحديث إليه، إجباريًا أو موصى به',
+          'The version the app asks users to update to, forced or recommended'),
+      icon: Icons.system_update_rounded,
+      onRefresh: p.load,
+      primaryAction: AppButton.primary(
         key: const ValueKey('admin_versions.publish'),
-        backgroundColor: c.primary,
+        label: t('إضافة رسالة تحديث', 'Add update prompt'),
+        icon: Icons.add_rounded,
         onPressed: () => _form(context, p),
-        icon: Icon(Icons.add_rounded, color: c.onHero),
-        label: Text(
-          t('إضافة رسالة تحديث', 'Add update prompt'),
-          style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
-        ),
       ),
-      child: AdminSimpleList(
-        loading: p.isLoading,
-        error: p.error,
-        isEmpty: p.items.isEmpty,
-        emptyText: 'admin_no_versions_published_yet'.tr,
-        emptyIcon: Icons.rocket_launch_rounded,
-        onRefresh: p.load,
-        children: [
-          PremiumHero(
-            icon: Icons.system_update_rounded,
-            colors: AdminPalette.orange,
-            title: t('رسالة التحديث', 'Update prompt'),
-            subtitle: t('الإصدار الذي يطلب التطبيق من المستخدمين التحديث إليه، إجباريًا أو موصى به',
-                'The version the app asks users to update to, forced or recommended'),
-            footer: Wrap(spacing: 8, runSpacing: 6, children: [
-              HeroPill(trp('ver_pill_total', {'n': p.items.length}), icon: Icons.layers_rounded),
-              HeroPill(
-                trp('ver_pill_active', {
-                  'n': p.items.where((v) => asBool(v['is_active'])).length,
-                }),
-                icon: Icons.check_circle_rounded,
-              ),
-            ]),
-          ),
-          // this page builds nothing: the real build-and-publish page is App versions (super admin only)
-          AppBanner(
-            icon: Icons.info_outline_rounded,
-            text: t('هذه الصفحة لا تبني التطبيق. لبناء إصدار جديد ونشره على المتجر أو الموقع استخدم «إصدارات التطبيق»، وعند نشره تُضاف رسالة التحديث هنا تلقائيًا.',
-                'This page does not build the app. To build a new version and publish it to the store or the website, use App versions; when it goes live, its update prompt is added here by itself.'),
-            action: isSuperNow(context)
-                ? TextButton.icon(
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                        settings: const RouteSettings(name: AppReleasesPage.routeName),
-                        builder: (_) => deferredAppReleases())),
-                    icon: const Icon(Icons.rocket_launch_rounded),
-                    label: Text(t('إصدارات التطبيق', 'App versions')),
-                  )
-                : null,
-          ),
-          for (final v in p.items) _VersionCard(v),
-        ],
-      ),
+      body: !loaded
+          ? const AppListSkeleton()
+          : p.error != null && p.items.isEmpty
+              ? AppErrorState(message: p.error, onRetry: p.load)
+              : AppRefresh(
+                  onRefresh: p.load,
+                  child: ListView(
+                    padding: AdminPage.bodyPadding(context),
+                    children: [
+                      AppKpiGrid(maxColumns: 2, children: [
+                        AppKpiCard(
+                            icon: Icons.layers_rounded,
+                            value: '${p.items.length}',
+                            label: t('رسائل التحديث', 'Update prompts')),
+                        AppKpiCard(
+                            icon: Icons.check_circle_rounded,
+                            value: '${p.items.where((v) => asBool(v['is_active'])).length}',
+                            label: t('مفعّلة', 'Active')),
+                      ]),
+                      AppSpace.gapSm,
+                      if (p.error != null) ...[
+                        AppErrorState(compact: true, message: p.error, onRetry: p.load),
+                        AppSpace.gapSm,
+                      ],
+                      // this page builds nothing: the real build-and-publish page is App versions (super admin only)
+                      AppBanner(
+                        icon: Icons.info_outline_rounded,
+                        text: t('هذه الصفحة لا تبني التطبيق. لبناء إصدار جديد ونشره على المتجر أو الموقع استخدم «إصدارات التطبيق»، وعند نشره تُضاف رسالة التحديث هنا تلقائيًا.',
+                            'This page does not build the app. To build a new version and publish it to the store or the website, use App versions; when it goes live, its update prompt is added here by itself.'),
+                      ),
+                      if (isSuperNow(context)) ...[
+                        AppSpace.gapXs,
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: AppButton.secondary(
+                            icon: Icons.rocket_launch_rounded,
+                            label: t('إصدارات التطبيق', 'App versions'),
+                            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                                settings: const RouteSettings(name: AppReleasesPage.routeName),
+                                builder: (_) => deferredAppReleases())),
+                          ),
+                        ),
+                      ],
+                      AppSpace.gapMd,
+                      if (p.items.isEmpty)
+                        AppEmpty(icon: Icons.rocket_launch_rounded, title: 'admin_no_versions_published_yet'.tr)
+                      else
+                        for (final v in p.items)
+                          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: _VersionCard(v)),
+                    ],
+                  ),
+                ),
     );
   }
 }
@@ -121,133 +123,121 @@ IconData _platformIcon(String platform) => switch (platform) {
   _ => Icons.android_rounded,
 };
 
-class _VersionCard extends StatelessWidget {
+/// The platform's name, not the raw server code.
+String _platformName(String platform) => switch (platform) {
+  'ios' => 'iOS',
+  'web' => 'Web',
+  'android' => 'Android',
+  'macos' => 'macOS',
+  'windows' => 'Windows',
+  'linux' => 'Linux',
+  _ => platform,
+};
+
+class _VersionCard extends StatefulWidget {
   const _VersionCard(this.v);
 
   final Map<String, dynamic> v;
 
   @override
+  State<_VersionCard> createState() => _VersionCardState();
+}
+
+class _VersionCardState extends State<_VersionCard> {
+  bool _toggling = false;
+
+  Future<void> _toggle(AdminVersionsProvider p, bool active, int id) async {
+    if (_toggling) return;
+    if (!active && asBool(widget.v['force_update'])) {
+      final ok = await confirm(context, message: 'admin_activate_forced_version'.tr, danger: true);
+      if (!ok || !mounted) return;
+    }
+    setState(() => _toggling = true);
+    await p.toggle(id);
+    if (mounted) setState(() => _toggling = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final v = widget.v;
     final c = context.colors;
     final p = context.read<AdminVersionsProvider>();
     final active = asBool(v['is_active']);
     final id = asInt(v['id']);
     final platform = asStr(v['platform']);
-    final accent = active ? c.success : c.textLight;
     final notes = asStr(v['release_notes_ar'], asStr(v['release_notes_en']));
 
-    return RowCard(
-      accent: accent,
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              IconBadge(_platformIcon(platform), c.primary),
-              const SizedBox(width: 12),
+              Icon(_platformIcon(platform), color: c.primary),
+              AppSpace.gapSm,
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'v${asStr(v['version'])}',
-                      textDirection: TextDirection.ltr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                        color: c.textDark,
-                      ),
-                    ),
-                    Text(
-                      platform,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 12,
-                        color: c.textLight,
-                      ),
-                    ),
+                    Text('v${asStr(v['version'])}', textDirection: TextDirection.ltr, style: AppType.section(context)),
+                    Text(_platformName(platform), style: AppType.meta(context)),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              AppSpace.gapXs,
               AppSwitch(
                 value: active,
-                activeColor: c.success,
-                onChanged: (_) async {
-                  if (!active && asBool(v['force_update'])) {
-                    final ok = await confirm(
-                      context,
-                      message: 'admin_activate_forced_version'.tr,
-                      danger: true,
-                    );
-                    if (!ok) return;
-                  }
-                  await p.toggle(id);
-                },
+                semanticLabel: 'v${asStr(v['version'])} ${_platformName(platform)}',
+                onChanged: _toggling ? null : (_) => _toggle(p, active, id),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          AppSpace.gapSm,
           Wrap(
-            spacing: 6,
-            runSpacing: 6,
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
             children: [
-              StatusChip(
-                active ? 'exam_status_active'.tr : 'admin_inactive'.tr,
-                accent,
-              ),
-              if (asBool(v['force_update']))
-                StatusChip('admin_forced'.tr, c.danger),
-              if (asBool(v['recommend_update']))
-                StatusChip('admin_recommended'.tr, c.warning),
+              AppStatusBadge(
+                  label: active ? 'exam_status_active'.tr : 'admin_inactive'.tr,
+                  tone: active ? AppTone.success : AppTone.neutral,
+                  dot: true),
+              if (asBool(v['force_update'])) AppStatusBadge(label: 'admin_forced'.tr, tone: AppTone.danger),
+              if (asBool(v['recommend_update'])) AppStatusBadge(label: 'admin_recommended'.tr, tone: AppTone.warning),
               if (asStrOrNull(v['min_supported']) != null)
-                StatusChip(
-                  trp('admin_min_version', {'version': asStr(v['min_supported'])}),
-                  c.charcoal,
-                ),
+                AppStatusBadge(label: trp('admin_min_version', {'version': asStr(v['min_supported'])})),
             ],
           ),
           if (notes.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text(
-                notes,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 12.5,
-                  color: c.textMedium,
-                ),
+              padding: const EdgeInsets.only(top: AppSpace.sm),
+              child: Text(notes, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.body(context)),
+            ),
+          AppSpace.gapSm,
+          Wrap(
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
+            alignment: WrapAlignment.spaceBetween,
+            children: [
+              AppButton.secondary(
+                icon: Icons.edit_rounded,
+                label: 'btn_edit'.tr,
+                onPressed: () => _form(context, p, existing: v),
               ),
-            ),
-          const SizedBox(height: 4),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextButton.icon(
-                  icon: const Icon(Icons.edit_rounded, size: 18),
-                  label: Text('btn_edit'.tr),
-                  onPressed: () => _form(context, p, existing: v),
-                ),
-                TextButton.icon(
-                  style: TextButton.styleFrom(foregroundColor: c.danger),
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                  label: Text('delete'.tr),
-                  onPressed: () async {
-                    final ok = await confirm(
-                      context,
-                      message: 'admin_delete_this_version'.tr,
-                      danger: true,
-                    );
-                    if (ok) await p.remove(id);
-                  },
-                ),
-              ],
-            ),
+              AppButton.danger(
+                dangerOutline: true,
+                icon: Icons.delete_outline_rounded,
+                label: 'delete'.tr,
+                onPressed: () async {
+                  final ok = await confirm(
+                    context,
+                    message: t('حذف رسالة التحديث v${asStr(v['version'])} (${_platformName(platform)})؟',
+                        'Delete the update prompt v${asStr(v['version'])} (${_platformName(platform)})?'),
+                    danger: true,
+                  );
+                  if (ok) await p.remove(id);
+                },
+              ),
+            ],
           ),
         ],
       ),

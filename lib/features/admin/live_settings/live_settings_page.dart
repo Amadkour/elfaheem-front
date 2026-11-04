@@ -19,14 +19,14 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin_common.dart' show t;
+import '../admin_page.dart';
+import '../cfg_common.dart';
 import 'live_settings_draft.dart';
 
 export 'live_settings_draft.dart' show kLiveSettingsFeatureKey;
@@ -45,9 +45,14 @@ class LiveSettingsPage extends StatefulWidget {
 class _LiveSettingsPageState extends State<LiveSettingsPage> {
   LiveSettingsInfo? _info;
   LiveSettingsDraft? _draft;
-  String? _error;
+  Object? _error;
   bool _missing = false;
   bool _saving = false;
+
+  int get _pending {
+    final info = _info, draft = _draft;
+    return info == null || draft == null ? 0 : draft.differencesFrom(info.settings);
+  }
 
   @override
   void initState() {
@@ -56,6 +61,11 @@ class _LiveSettingsPageState extends State<LiveSettingsPage> {
   }
 
   Future<void> _load() async {
+    if (_info != null && _pending > 0) {
+      final ok = await appConfirm(context,
+          message: t('لديك تغييرات لم تُحفظ. التحديث سيتجاهلها. متابعة؟', 'You have unsaved changes. Refreshing discards them. Continue?'));
+      if (!ok || !mounted) return;
+    }
     setState(() => _error = null);
     try {
       final info = await widget.api.load();
@@ -68,9 +78,14 @@ class _LiveSettingsPageState extends State<LiveSettingsPage> {
     } catch (e) {
       if (!mounted) return;
       final ex = ApiException.from(e);
+      // a failed refresh keeps the form that is on screen
+      if (_info != null) {
+        showAppNotice(ex.message, error: true);
+        return;
+      }
       setState(() {
         _missing = ex.statusCode == 404 || ex.statusCode == 405;
-        _error = ex.message;
+        _error = ex;
       });
     }
   }
@@ -119,21 +134,9 @@ class _LiveSettingsPageState extends State<LiveSettingsPage> {
     final info = _info, draft = _draft;
     Widget body;
     if (_missing) {
-      body = ListView(padding: const EdgeInsets.all(16), children: [
-        AppBanner(
-          icon: Icons.system_update_alt_rounded,
-          text: t('هذه الصفحة تحتاج تحديث الخادم.', 'This page needs a server update.'),
-        ),
-      ]);
+      body = cfgErrorState(_error, onRetry: _load);
     } else if (info == null || draft == null) {
-      body = _error != null
-          ? AppEmpty(
-              icon: Icons.cloud_off_rounded,
-              title: _error!,
-              actionLabel: t('إعادة المحاولة', 'Try again'),
-              onAction: _load,
-            )
-          : const AppListSkeleton(items: 6, withAvatar: false);
+      body = _error != null ? cfgErrorState(_error, onRetry: _load) : const AppListSkeleton(items: 6, withAvatar: false);
     } else {
       body = LiveSettingsView(
         draft: draft,
@@ -142,18 +145,38 @@ class _LiveSettingsPageState extends State<LiveSettingsPage> {
         stored: info.stored,
         envRecordingMode: info.envRecordingMode,
         saving: _saving,
+        showActionBar: false,
         onChanged: (d) => setState(() => _draft = d),
         onSave: _save,
         onReset: _reset,
         onDiscard: () => setState(() => _draft = info.settings),
       );
     }
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1180,
-      enableFooterWidget: false,
-      appBar: ScreenAppBar(title: liveSettingsTitle()),
-      child: body,
+    final pending = _pending;
+    return AdminPage(
+      title: liveSettingsTitle(),
+      subtitle: t('الترميز، ضعف الشبكة، جودة الكاميرات والشاشة، ومكان التسجيل — لكل الأجهزة دون تحديث',
+          'Codec, weak networks, camera and screen quality, and where classes are recorded — no app update'),
+      icon: Icons.speed_rounded,
+      maxWidth: 1180,
+      onRefresh: _load,
+      dirty: pending > 0,
+      primaryAction: info == null
+          ? null
+          : cfgSaveButton(dirty: pending > 0, busy: _saving, onSave: _save),
+      actions: [
+        if (info != null && pending > 0)
+          AppIconButton(
+              icon: Icons.undo_rounded,
+              tooltip: t('تراجع عن التغييرات', 'Discard changes'),
+              onPressed: _saving ? null : () => setState(() => _draft = info.settings)),
+        if (info != null)
+          AppIconButton(
+              icon: Icons.restart_alt_rounded,
+              tooltip: t('الرجوع إلى المستحسن', 'Reset to recommended'),
+              onPressed: _saving || draft?.differencesFrom(info.recommended) == 0 ? null : _reset),
+      ],
+      body: body,
     );
   }
 }
@@ -175,6 +198,7 @@ class LiveSettingsView extends StatelessWidget {
     this.envRecordingMode,
     this.saving = false,
     this.onDiscard,
+    this.showActionBar = true,
   });
 
   final LiveSettingsDraft draft;
@@ -188,8 +212,25 @@ class LiveSettingsView extends StatelessWidget {
   final VoidCallback onReset;
   final VoidCallback? onDiscard;
 
+  /// The Save / Reset / Discard bar under the page. The page (AdminPage) puts them in its header instead.
+  final bool showActionBar;
+
+  /// The jump list: section order matches [build]'s `sections`.
+  static List<String> get sectionNames => [
+        t('الفيديو', 'Video'),
+        t('الكاميرات', 'Cameras'),
+        t('مشاركة الشاشة', 'Screen share'),
+        t('الصوت', 'Audio'),
+        t('التسجيل', 'Recording'),
+      ];
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _JumpScope(
+        count: sectionNames.length,
+        builder: (context, keys, jump) => _build(context, keys, jump),
+      );
+
+  Widget _build(BuildContext context, List<GlobalKey> keys, void Function(int) jump) {
     final pending = draft.differencesFrom(saved);
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= 980;
@@ -202,16 +243,31 @@ class LiveSettingsView extends StatelessWidget {
         _recordingSection(context),
       ];
       final list = ListView(
+        // every section stays built, so the jump list can scroll to any of them
+        scrollCacheExtent: const ScrollCacheExtent.pixels(100000),
         padding: EdgeInsets.fromLTRB(16, 16, 16, wide ? 32 : 24),
         children: [
           if (!wide) ...[preview, const SizedBox(height: 16)],
           for (var i = 0; i < sections.length; i++) ...[
             if (i > 0) const SizedBox(height: 16),
-            sections[i],
+            KeyedSubtree(key: keys[i], child: sections[i]),
           ],
         ],
       );
+      final names = sectionNames;
       return Column(children: [
+        // the jump list: one chip per section
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(children: [
+            for (var i = 0; i < names.length; i++)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 8),
+                child: AppChoiceChip(label: names[i], selected: false, onTap: () => jump(i)),
+              ),
+          ]),
+        ),
         Expanded(
           child: wide
               ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -226,14 +282,15 @@ class LiveSettingsView extends StatelessWidget {
                 ])
               : list,
         ),
-        _ActionBar(
-          pending: pending,
-          atRecommended: draft.differencesFrom(recommended) == 0,
-          saving: saving,
-          onSave: pending > 0 ? onSave : null,
-          onReset: onReset,
-          onDiscard: pending > 0 ? onDiscard : null,
-        ),
+        if (showActionBar)
+          _ActionBar(
+            pending: pending,
+            atRecommended: draft.differencesFrom(recommended) == 0,
+            saving: saving,
+            onSave: pending > 0 ? onSave : null,
+            onReset: onReset,
+            onDiscard: pending > 0 ? onDiscard : null,
+          ),
       ]);
     });
   }
@@ -746,6 +803,30 @@ class _GlassStat extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// Owns the section keys of the jump list and scrolls a section into view.
+class _JumpScope extends StatefulWidget {
+  const _JumpScope({required this.count, required this.builder});
+
+  final int count;
+  final Widget Function(BuildContext, List<GlobalKey>, void Function(int)) builder;
+
+  @override
+  State<_JumpScope> createState() => _JumpScopeState();
+}
+
+class _JumpScopeState extends State<_JumpScope> {
+  late final List<GlobalKey> _keys = List.generate(widget.count, (_) => GlobalKey());
+
+  void _jump(int i) {
+    final ctx = _keys[i].currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(ctx, duration: AppMotion.of(context).base, curve: Curves.easeOutCubic, alignment: 0.02);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _keys, _jump);
 }
 
 // ── Sections, fields ─────────────────────────────────────────────────────────

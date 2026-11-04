@@ -307,6 +307,13 @@ class Withdrawal {
   String? get providerStatus => asStrOrNull(j['payout_status']);
   String? get providerReference => asStrOrNull(j['payout_reference']);
   String? get error => asStrOrNull(j['payout_error']);
+
+  /// The currency the money is paid out in (the server's `payout_currency`); null on an older server or when no
+  /// payout was prepared yet. Every amount shown for a withdrawal carries it.
+  String? get currency {
+    final c = asStrOrNull(j['payout_currency']);
+    return c == null || c.trim().isEmpty ? null : c.trim().toUpperCase();
+  }
 }
 
 String payoutMethodLabel(String m) {

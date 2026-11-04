@@ -16,8 +16,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show ltrIsolate;
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 // ⚠ adjust this path to wherever swipe_request_card.dart lives in your project (the file the
 // transfer / device-request screens already import).
@@ -25,13 +26,13 @@ import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart'; // already used by complaint_attachement_widgets.dart
 
-import 'admin_common.dart';
+import 'admin_common.dart' hide StatusChip;
+import 'admin_page.dart';
 import 'admin_premium_widgets.dart' show AdminPalette;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'admin_finance_provider.dart';
 import 'admin_money_p8.dart';
 import 'admin_payouts_page.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
+import 'admin_table_export.dart' show adminPaymentsExport, exportFetched;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -54,41 +55,79 @@ class AdminFinancePage extends StatelessWidget {
 class _View extends StatelessWidget {
   const _View();
 
+  /// Payment history → Excel / Word / PDF with every row matching the search and filters (50 per request).
+  Future<void> _export(BuildContext context, AdminFinanceProvider p) {
+    final f = p.filters(1);
+    return exportFetched(
+      context,
+      fetch: (job) => p.fetchEvery(
+        1,
+        cancelled: () => job.cancelled,
+        onProgress: (n, total) => job.step('${t('جلب الصفوف', 'Fetching rows')} $n / $total', total == 0 ? null : n / total),
+      ),
+      build: adminPaymentsExport,
+      filters: {
+        if (f.search.isNotEmpty) t('بحث', 'Search'): f.search,
+        if (f.statuses.isNotEmpty) t('الحالة', 'Status'): f.statuses.map(_statusLabel).join(', '),
+        if (f.methods.isNotEmpty) t('الطريقة', 'Method'): f.methods.map(_methodLabel).join(', '),
+        if (f.kind != 'all') t('النوع', 'Type'): f.kind,
+        if (f.range != null) t('الفترة', 'Period'): '${shortDate(f.range!.start.toIso8601String())} → ${shortDate(f.range!.end.toIso8601String())}',
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminFinanceProvider>();
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1000,
-      appBar: ScreenAppBar(title: t('المدفوعات والتحويلات', 'Payments & payouts'), actions: [
+    return AdminPage(
+      title: t('المدفوعات والتحويلات', 'Payments & payouts'),
+      icon: Icons.receipt_long_rounded,
+      onRefresh: () {
+        p.loadSummary();
+        p.load(p.tab, silent: p.list(p.tab).loaded);
+      },
+      primaryAction: p.tab == 1
+          ? AppButton.primary(
+              label: t('تصدير', 'Export'),
+              icon: Icons.ios_share_rounded,
+              onPressed: p.history.loaded && p.history.items.isNotEmpty ? () => _export(context, p) : null,
+            )
+          : null,
+      actions: [
         // Phase 8: fee policy · per-organization fees · ledger report
-        IconButton(
+        AppIconButton(
           tooltip: t('الرسوم والتقارير المالية', 'Fees & financial reports'),
-          icon: const Icon(Icons.account_balance_wallet_outlined),
+          icon: Icons.account_balance_wallet_outlined,
           onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminMoneyPage())),
         ),
-        IconButton(
+        AppIconButton(
           tooltip: t('معالجة استرداد معلّق', 'Resolve a pending refund'),
-          icon: const Icon(Icons.sync_alt_rounded),
+          icon: Icons.sync_alt_rounded,
           onPressed: () => showRefundResolveSheet(context),
         ),
-      ]),
-      child: Column(
-        children: [
-          const _SummaryStrip(),
-          const _Tabs(),
-          Expanded(
-            child: IndexedStack(
-              index: p.tab,
-              children: const [
-                _TabBody(tab: 0),
-                _TabBody(tab: 1),
-                _TabBody(tab: 2),
-              ],
-            ),
-          ),
-        ],
-      ),
+      ],
+      // A tall window keeps the overview and tabs on top and lets the list fill the rest; a short one (a phone) scrolls
+      // the whole page and gives the list a fixed height, so the overview never squeezes the list to nothing.
+      body: LayoutBuilder(builder: (context, box) {
+        final stack = IndexedStack(
+          index: p.tab,
+          children: const [
+            _TabBody(tab: 0),
+            _TabBody(tab: 1),
+            _TabBody(tab: 2),
+          ],
+        );
+        if (box.maxHeight >= 900) {
+          return Column(children: [const _SummaryStrip(), const _Tabs(), Expanded(child: stack)]);
+        }
+        return SingleChildScrollView(
+          child: Column(children: [
+            const _SummaryStrip(),
+            const _Tabs(),
+            SizedBox(height: 740, child: stack),
+          ]),
+        );
+      }),
     );
   }
 }
@@ -190,67 +229,55 @@ void _copy(String text) {
 class _SummaryStrip extends StatelessWidget {
   const _SummaryStrip();
 
+  /// The first currency's figure, "+N" when the period holds more than one currency.
+  String _value(List<String> lines) =>
+      lines.length > 1 ? '${ltrIsolate(lines.first)} ${ltrIsolate('+${lines.length - 1}')}' : ltrIsolate(lines.first);
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminFinanceProvider>();
-    final c = context.colors;
     final pay = asMap(p.summary['payments']);
     final out = asMap(p.summary['payouts']);
-    final days = p.summaryDays;
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
-    Widget period(int d, String label) => Padding(
-      padding: const EdgeInsetsDirectional.only(start: 6),
-      child: ChoiceChip(
-        label: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
-        selected: days == d,
-        visualDensity: VisualDensity.compact,
-        selectedColor: c.primary.withValues(alpha: 0.18),
-        onSelected: (_) => p.setSummaryDays(d),
-      ),
-    );
+    String count(dynamic agg, String ar1, String ar2, String arFew, String arMany, String en1, String en) =>
+        countText(_countOf(agg), ar1: ar1, ar2: ar2, arFew: arFew, arMany: arMany, en1: en1, en: en);
+    String payments(dynamic a) => count(a, 'عملية واحدة', 'عمليتان', '{n} عمليات', '{n} عملية', '1 payment', '{n} payments');
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-          child: Row(
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.sm, gutter, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: AppSpace.sm,
+            runSpacing: AppSpace.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: Text(
-                  t('نظرة عامة', 'Overview'),
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: c.textDark,
-                  ),
-                ),
-              ),
+              Text(t('نظرة عامة', 'Overview'), style: AppType.section(context)),
               if (p.summaryLoading)
-                const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              period(7, t('7 أيام', '7d')),
-              period(30, t('30 يومًا', '30d')),
-              period(0, t('الكل', 'All')),
+                const SizedBox(width: AppIconSize.xs, height: AppIconSize.xs, child: CircularProgressIndicator(strokeWidth: 2)),
+              AppTabs(
+                index: switch (p.summaryDays) { 7 => 0, 30 => 1, _ => 2 },
+                onChanged: (i) => p.setSummaryDays(const [7, 30, 0][i]),
+                items: [
+                  AppTabItem(t('7 أيام', '7d')),
+                  AppTabItem(t('30 يومًا', '30d')),
+                  AppTabItem(t('الكل', 'All')),
+                ],
+              ),
             ],
           ),
-        ),
-        SizedBox(
-          height: 118,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          AppSpace.gapXs,
+          AppKpiGrid(
+            maxColumns: 5,
             children: [
-              _Kpi(
+              AppKpiCard(
                 icon: Icons.trending_up_rounded,
-                color: _green,
-                title: t('الإيرادات', 'Revenue'),
-                lines: _moneyLines(pay['completed']),
-                sub: '${_countOf(pay['completed'])} ${t('عملية', 'payments')}',
+                label: t('الإيرادات', 'Revenue'),
+                value: _value(_moneyLines(pay['completed'])),
+                footnote: payments(pay['completed']),
+                highlight: true,
                 onTap: () {
                   p.historyFilters
                     ..reset()
@@ -259,36 +286,32 @@ class _SummaryStrip extends StatelessWidget {
                   p.load(1);
                 },
               ),
-              _Kpi(
+              AppKpiCard(
                 icon: Icons.hourglass_top_rounded,
-                color: _amber,
-                title: t('بانتظار المراجعة', 'Awaiting review'),
-                lines: _moneyLines(pay['pending_transfers']),
-                sub: '${_countOf(pay['pending_transfers'])} ${t('تحويل', 'transfers')}',
+                label: t('بانتظار المراجعة', 'Awaiting review'),
+                value: _value(_moneyLines(pay['pending_transfers'])),
+                footnote: count(pay['pending_transfers'], 'تحويل واحد', 'تحويلان', '{n} تحويلات', '{n} تحويلًا', '1 transfer', '{n} transfers'),
                 onTap: () => p.setTab(0),
               ),
-              _Kpi(
+              AppKpiCard(
                 icon: Icons.account_balance_wallet_rounded,
-                color: _red,
-                title: t('طلبات السحب', 'Payout requests'),
-                lines: _moneyLines(out['pending']),
-                sub: '${_countOf(out['pending'])} ${t('طلب', 'requests')}',
+                label: t('طلبات السحب', 'Payout requests'),
+                value: _value(_moneyLines(out['pending'])),
+                footnote: count(out['pending'], 'طلب واحد', 'طلبان', '{n} طلبات', '{n} طلبًا', '1 request', '{n} requests'),
                 onTap: () => p.openPayoutsWithStatus('pending'),
               ),
-              _Kpi(
+              AppKpiCard(
                 icon: Icons.payments_rounded,
-                color: _blue,
-                title: t('المدفوع للمعلمين', 'Paid to teachers'),
-                lines: _moneyLines(out['paid']),
-                sub: '${_countOf(out['paid'])} ${t('عملية', 'payouts')}',
+                label: t('المدفوع للمعلمين', 'Paid to teachers'),
+                value: _value(_moneyLines(out['paid'])),
+                footnote: payments(out['paid']),
                 onTap: () => p.openPayoutsWithStatus('paid'),
               ),
-              _Kpi(
+              AppKpiCard(
                 icon: Icons.undo_rounded,
-                color: _violet,
-                title: t('المبالغ المستردة', 'Refunded'),
-                lines: _moneyLines(pay['refunded']),
-                sub: '${_countOf(pay['refunded'])} ${t('عملية', 'payments')}',
+                label: t('المبالغ المستردة', 'Refunded'),
+                value: _value(_moneyLines(pay['refunded'])),
+                footnote: payments(pay['refunded']),
                 onTap: () {
                   p.historyFilters
                     ..reset()
@@ -299,92 +322,7 @@ class _SummaryStrip extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Kpi extends StatelessWidget {
-  const _Kpi({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.lines,
-    required this.sub,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String title;
-  final List<String> lines;
-  final String sub;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 168,
-        margin: const EdgeInsetsDirectional.only(end: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
-          boxShadow: c.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, size: 16, color: color),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: c.textMedium,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            for (final l in lines.take(2))
-              Text(
-                l,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: c.textDark,
-                ),
-              ),
-            Text(
-              sub,
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: c.textLight),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -400,80 +338,22 @@ class _Tabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminFinanceProvider>();
-    final c = context.colors;
-
-    Widget tabItem(int i, IconData icon, String label, {int badge = 0}) {
-      final selected = p.tab == i;
-      return Expanded(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => p.setTab(i),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? c.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 17, color: selected ? c.onHero : c.textMedium),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: selected ? c.onHero : c.textMedium,
-                    ),
-                  ),
-                ),
-                if (badge > 0) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: selected ? c.onHero : _red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      badge > 99 ? '99+' : '$badge',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: selected ? _red : c.onHero,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     final out = asMap(p.summary['payouts']);
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: c.inputBg,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          tabItem(0, Icons.pending_actions_rounded, t('بانتظار المراجعة', 'Pending'),
-              badge: p.pendingBadge),
-          tabItem(1, Icons.receipt_long_rounded, t('السجل', 'History')),
-          tabItem(2, Icons.account_balance_wallet_rounded, t('السحوبات', 'Payouts'),
-              badge: _countOf(out['pending'])),
-        ],
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
+    int? badge(int n) => n > 0 ? n : null;
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.sm, gutter, AppSpace.xs),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: AppTabs(
+          index: p.tab,
+          onChanged: p.setTab,
+          items: [
+            AppTabItem(t('بانتظار المراجعة', 'Pending'), icon: Icons.pending_actions_rounded, count: badge(p.pendingBadge)),
+            AppTabItem(t('السجل', 'History'), icon: Icons.receipt_long_rounded),
+            AppTabItem(t('السحوبات', 'Payouts'), icon: Icons.account_balance_wallet_rounded, count: badge(_countOf(out['pending']))),
+          ],
+        ),
       ),
     );
   }
@@ -482,6 +362,15 @@ class _Tabs extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // One tab: search · filters · list
 // ─────────────────────────────────────────────────────────────────────────────
+
+AppTone _statusTone(String s) => switch (s) {
+  'pending' => AppTone.warning,
+  'completed' || 'paid' => AppTone.success,
+  'failed' || 'rejected' => AppTone.danger,
+  'approved' => AppTone.info,
+  'refunded' => AppTone.brand,
+  _ => AppTone.neutral,
+};
 
 class _TabBody extends StatelessWidget {
   const _TabBody({required this.tab});
@@ -492,29 +381,228 @@ class _TabBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<AdminFinanceProvider>();
     final l = p.list(tab);
-    final c = context.colors;
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
+
+    if (tab == 0) return _PendingTab(l: l);
+
+    // History (1) and Payouts (2): a real table on wide screens, cards on phones
+    final f = p.filters(tab);
+    final records = tab == 1;
+    final moreFailed = l.moreError != null;
+    final totals = l.totals.entries.map((e) => money(e.value, _cur(e.key))).join(' · ');
+
+    return Column(
+      children: [
+        if (tab == 2) const _ManagePayoutsButton(),
+        _FilterBar(tab: tab, compact: true),
+        if (l.loaded && l.items.isNotEmpty)
+          Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(gutter, 0, gutter, AppSpace.xxs),
+            child: Row(
+              children: [
+                Text(
+                  countText(l.total,
+                      ar1: 'نتيجة واحدة', ar2: 'نتيجتان', arFew: '{n} نتائج', arMany: '{n} نتيجة', en1: '1 result', en: '{n} results'),
+                  style: AppType.meta(context),
+                ),
+                const Spacer(),
+                if (totals.isNotEmpty)
+                  Flexible(
+                    child: Text(
+                      '${t('الإجمالي', 'Total')}: $totals',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.bodyStrong(context),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.xxs, gutter, moreFailed ? 0 : AppSpace.md),
+            child: AppDataTable<Map<String, dynamic>>(
+              state: l.loading && l.items.isEmpty
+                  ? AppTableState.loading
+                  : (l.error != null && l.items.isEmpty)
+                      ? AppTableState.error
+                      : AppTableState.ready,
+              errorText: l.error,
+              onRetry: () => p.load(tab),
+              rows: l.items,
+              searchHint: records
+                  ? t('ابحث بالطالب أو الكورس أو المرجع أو الرقم', 'Search student, course, reference or #')
+                  : t('ابحث بالمعلم أو المرجع أو الرقم', 'Search teacher, reference or #'),
+              onSearch: (v) => p.setSearch(tab, v),
+              filters: [
+                AppTableFilter(
+                  label: t('الحالة', 'Status'),
+                  value: f.statuses.length == 1 ? f.statuses.first : null,
+                  options: [
+                    for (final s in records ? const ['pending', 'completed', 'failed', 'refunded'] : const ['pending', 'approved', 'paid', 'rejected'])
+                      (s, _statusLabel(s)),
+                  ],
+                  onChanged: (v) {
+                    f.statuses = v == null ? {} : {v};
+                    p.load(tab);
+                  },
+                ),
+              ],
+              onClearFilters: () => p.resetFilters(tab),
+              toolbarTrailing: _FilterBar.toolbarButtons(context, tab),
+              empty: AppEmpty(icon: Icons.search_off_rounded, title: t('لا توجد نتائج مطابقة', 'Nothing matches these filters')),
+              columns: records ? _paymentColumns() : _payoutColumns(),
+              onRowTap: (item) => _showDetails(context, p, tab, item),
+              rowActions: (item) => [
+                AppRowAction(
+                  icon: Icons.open_in_full_rounded,
+                  label: t('التفاصيل', 'Details'),
+                  onTap: () => _showDetails(context, p, tab, item),
+                ),
+              ],
+              onLoadMore: () => p.loadMore(tab),
+              hasMore: l.items.length < l.total && !moreFailed,
+              loadingMore: l.loadingMore,
+            ),
+          ),
+        ),
+        if (moreFailed)
+          Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.xs, gutter, AppSpace.md),
+            child: AppErrorState(
+              compact: true,
+              message: l.moreError,
+              onRetry: () => p.loadMore(tab),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+List<AppTableColumn<Map<String, dynamic>>> _paymentColumns() => [
+  AppTableColumn<Map<String, dynamic>>(
+    key: 'payer',
+    label: t('الدافع', 'Payer'),
+    primary: true,
+    flex: 3,
+    cell: (ctx, p) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(asStr(asMap(p['student'])['name'], '—'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(ctx)),
+        Text(AppLangPick.name(asMap(p['course'])), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(ctx)),
+      ],
+    ),
+  ),
+  AppTableColumn<Map<String, dynamic>>(
+    key: 'amount',
+    label: t('المبلغ', 'Amount'),
+    numeric: true,
+    align: AppColAlignment.end,
+    cell: (ctx, p) => Text(money(asDouble(p['amount']), _cur(p['currency'])), style: AppType.figure(ctx), textDirection: TextDirection.ltr),
+  ),
+  AppTableColumn<Map<String, dynamic>>.text(
+    key: 'method',
+    label: t('الطريقة', 'Method'),
+    text: (p) => _methodLabel(asStrOrNull(p['method'])),
+  ),
+  AppTableColumn<Map<String, dynamic>>(
+    key: 'status',
+    label: t('الحالة', 'Status'),
+    cell: (ctx, p) => AppStatusBadge(label: _statusLabel(asStr(p['status'])), tone: _statusTone(asStr(p['status'])), dense: true),
+  ),
+  AppTableColumn<Map<String, dynamic>>.text(
+    key: 'date',
+    label: t('التاريخ', 'Date'),
+    text: (p) => shortDateTime(asStrOrNull(p['created_at'])),
+  ),
+];
+
+List<AppTableColumn<Map<String, dynamic>>> _payoutColumns() => [
+  AppTableColumn<Map<String, dynamic>>(
+    key: 'teacher',
+    label: t('المعلم', 'Teacher'),
+    primary: true,
+    flex: 3,
+    cell: (ctx, w) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(asStr(asMap(w['teacher'])['name'], '—'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(ctx)),
+        Text('${t('طلب سحب', 'Withdrawal')} #${w['id']}', style: AppType.meta(ctx)),
+      ],
+    ),
+  ),
+  AppTableColumn<Map<String, dynamic>>(
+    key: 'amount',
+    label: t('المبلغ', 'Amount'),
+    numeric: true,
+    align: AppColAlignment.end,
+    cell: (ctx, w) => Text(money(asDouble(w['amount']), _cur(w['currency'])), style: AppType.figure(ctx), textDirection: TextDirection.ltr),
+  ),
+  AppTableColumn<Map<String, dynamic>>.text(
+    key: 'method',
+    label: t('الطريقة', 'Method'),
+    text: (w) => _methodLabel(asStrOrNull(w['payout_method'])),
+  ),
+  AppTableColumn<Map<String, dynamic>>(
+    key: 'status',
+    label: t('الحالة', 'Status'),
+    cell: (ctx, w) => AppStatusBadge(label: _statusLabel(asStr(w['status'])), tone: _statusTone(asStr(w['status'])), dense: true),
+  ),
+  AppTableColumn<Map<String, dynamic>>.text(
+    key: 'requested',
+    label: t('تاريخ الطلب', 'Requested'),
+    text: (w) => shortDateTime(asStrOrNull(w['requested_at'])),
+  ),
+];
+
+/// One payment / payout in full (the existing card: receipt, fees, refund, copyable details) in a sheet.
+void _showDetails(BuildContext context, AdminFinanceProvider p, int tab, Map<String, dynamic> item) {
+  showAppSheet<void>(
+    context,
+    (ctx) => AppSheetContent(
+      title: tab == 1 ? '${t('عملية دفع', 'Payment')} #${item['id']}' : '${t('طلب سحب', 'Withdrawal')} #${item['id']}',
+      children: [
+        ChangeNotifierProvider.value(
+          value: p,
+          child: tab == 1 ? _PaymentCard(item: item) : _PayoutCard(item: item),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The Pending tab: manual transfers waiting for review, swipe (or buttons) to approve / reject.
+class _PendingTab extends StatelessWidget {
+  const _PendingTab({required this.l});
+
+  final FinanceList l;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<AdminFinanceProvider>();
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
     Widget content;
     if (l.loading && l.items.isEmpty) {
-      content = const AppListSkeleton();
+      content = const AppLoadingState();
     } else if (l.error != null && l.items.isEmpty) {
-      content = ErrorRetry(
-        message: t('تعذّر تحميل البيانات', 'Could not load the data'),
-        onRetry: () => p.load(tab),
-      );
+      content = AppErrorState(message: l.error, onRetry: () => p.load(0));
     } else if (l.items.isEmpty) {
       content = AppRefresh(
-        onRefresh: () => p.load(tab),
+        onRefresh: () => p.load(0),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             SizedBox(
               height: 300,
-              child: EmptyState(
-                tab == 0
+              child: AppEmpty(
+                icon: p.filters(0).search.isEmpty ? Icons.task_alt_rounded : Icons.search_off_rounded,
+                title: p.filters(0).search.isEmpty
                     ? t('لا توجد تحويلات بانتظار المراجعة', 'No transfers waiting for review')
                     : t('لا توجد نتائج مطابقة', 'Nothing matches these filters'),
-                icon: tab == 0 ? Icons.task_alt_rounded : Icons.search_off_rounded,
               ),
             ),
           ],
@@ -523,29 +611,26 @@ class _TabBody extends StatelessWidget {
     } else {
       content = NotificationListener<ScrollNotification>(
         onNotification: (n) {
-          if (n.metrics.pixels >= n.metrics.maxScrollExtent - 300) p.loadMore(tab);
+          if (n.metrics.pixels >= n.metrics.maxScrollExtent - 300 && l.moreError == null) p.loadMore(0);
           return false;
         },
         child: AppRefresh(
-          onRefresh: () => p.load(tab),
+          onRefresh: () => p.load(0),
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.xxs, gutter, AppSpace.xxl + AppSpace.xl),
             itemCount: l.items.length + 1,
             itemBuilder: (_, i) {
               if (i == l.items.length) {
-                return PagedListFooter(
-                  loadingMore: l.loadingMore,
-                  hasMore: l.items.length < l.total,
-                );
+                if (l.moreError != null) {
+                  return AppErrorState(compact: true, message: l.moreError, onRetry: () => p.loadMore(0));
+                }
+                return PagedListFooter(loadingMore: l.loadingMore, hasMore: l.items.length < l.total);
               }
               final item = l.items[i];
-              if (tab == 2) return _PayoutCard(item: item);
-              if (tab == 0 && item['pending_review'] == true) {
-                return _SwipePending(item: item);
-              }
+              if (item['pending_review'] == true) return _SwipePending(item: item);
               return Padding(
-                padding: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: _PaymentCard(item: item),
               );
             },
@@ -556,47 +641,17 @@ class _TabBody extends StatelessWidget {
 
     return Column(
       children: [
-        _FilterBar(tab: tab),
-        if (tab == 0 && l.items.isNotEmpty) const _SwipeHint(),
-        if (tab == 2) const _ManagePayoutsButton(),
-        // same pinned "Showing X of Y" progress as every other list
+        const _FilterBar(tab: 0),
+        if (l.items.isNotEmpty) const _SwipeHint(),
         if (l.loaded && l.items.isNotEmpty && l.total > 20)
-          PagedCountCard(
-            loaded: l.items.length,
-            total: l.total,
-            loadingMore: l.loadingMore,
-            done: l.items.length >= l.total,
-            icon: tab == 2
-                ? Icons.account_balance_wallet_rounded
-                : Icons.receipt_long_rounded,
-            margin: const EdgeInsets.fromLTRB(16, 2, 16, 6),
-          ),
-        if (l.loaded && l.items.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
-            child: Row(
-              children: [
-                if (l.total <= 20)
-                  Text(
-                    '${l.total} ${t('نتيجة', 'results')}',
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight),
-                  ),
-                const Spacer(),
-                if (l.totals.isNotEmpty)
-                  Flexible(
-                    child: Text(
-                      '${t('الإجمالي', 'Total')}: ${l.totals.entries.map((e) => money(e.value, _cur(e.key))).join(' · ')}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        color: c.textDark,
-                      ),
-                    ),
-                  ),
-              ],
+            padding: EdgeInsetsDirectional.fromSTEB(gutter, 0, gutter, AppSpace.xs),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                '${l.items.length} / ${l.total}',
+                style: AppType.meta(context),
+              ),
             ),
           ),
         Expanded(child: content),
@@ -668,19 +723,60 @@ class _ManagePayoutsButton extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FilterBar extends StatelessWidget {
-  const _FilterBar({required this.tab});
+  const _FilterBar({required this.tab, this.compact = false});
 
   final int tab;
+
+  /// History / Payouts: the table has its own search and status filter, so this only draws the active-filter chips.
+  final bool compact;
+
+  /// Sort + "More filters" for the table's toolbar.
+  static Widget toolbarButtons(BuildContext context, int tab) {
+    final p = context.watch<AdminFinanceProvider>();
+    final f = p.filters(tab);
+    final c = context.colors;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PopupMenuButton<String>(
+          tooltip: t('ترتيب', 'Sort'),
+          icon: Icon(Icons.sort_rounded, color: c.textMedium),
+          onSelected: (v) => p.setSort(tab, v),
+          itemBuilder: (_) => [
+            for (final s in const ['newest', 'oldest', 'amount_desc', 'amount_asc'])
+              PopupMenuItem(
+                value: s,
+                child: Row(
+                  children: [
+                    Icon(f.sort == s ? Icons.check_rounded : null, size: AppIconSize.md, color: c.primary),
+                    AppSpace.gapXs,
+                    Text(_sortLabel(s), style: AppType.row(context)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        AppIconButton(
+          icon: Icons.tune_rounded,
+          tooltip: t('تصفية', 'Filters'),
+          badge: f.activeCount,
+          onPressed: () => showAdminSheet<void>(context, (ctx) => _FilterSheet(provider: p, tab: tab)),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminFinanceProvider>();
     final f = p.filters(tab);
     final c = context.colors;
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
     final filterable = tab != 0; // the pending queue only needs search + sort
 
     final chips = <_ActiveChip>[
-      if (filterable)
+      // one status is the table's own filter chip; several (picked in the sheet) are listed here
+      if (filterable && (!compact || f.statuses.length > 1))
         for (final s in f.statuses)
           _ActiveChip(_statusLabel(s), () {
             f.statuses.remove(s);
@@ -699,7 +795,7 @@ class _FilterBar extends StatelessWidget {
       if (tab == 1 && f.hasAttachment != null)
         _ActiveChip(
           f.hasAttachment! ? t('بمرفق', 'With receipt') : t('بدون مرفق', 'No receipt'),
-              () {
+          () {
             f.hasAttachment = null;
             p.load(tab);
           },
@@ -707,7 +803,7 @@ class _FilterBar extends StatelessWidget {
       if (tab == 2 && f.hasReceipt != null)
         _ActiveChip(
           f.hasReceipt! ? t('بإيصال', 'With receipt') : t('بدون إيصال', 'No receipt'),
-              () {
+          () {
             f.hasReceipt = null;
             p.load(tab);
           },
@@ -720,7 +816,7 @@ class _FilterBar extends StatelessWidget {
       if (f.minAmount != null || f.maxAmount != null)
         _ActiveChip(
           '${f.minAmount != null ? money(f.minAmount!) : '0'} – ${f.maxAmount != null ? money(f.maxAmount!) : '∞'}',
-              () {
+          () {
             f.minAmount = null;
             f.maxAmount = null;
             p.load(tab);
@@ -729,74 +825,39 @@ class _FilterBar extends StatelessWidget {
     ];
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      padding: EdgeInsetsDirectional.fromSTEB(gutter, 0, gutter, AppSpace.xs),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: SearchBox(
-                  hint: tab == 2
-                      ? t('ابحث بالمعلم أو المرجع أو الرقم', 'Search teacher, reference or #')
-                      : t('ابحث بالطالب أو الكورس أو المرجع أو الرقم',
-                      'Search student, course, reference or #'),
-                  onChanged: (v) => p.setSearch(tab, v),
+          if (!compact)
+            Row(
+              children: [
+                Expanded(
+                  child: AppSearchField(
+                    hint: t('ابحث بالطالب أو الكورس أو المرجع أو الرقم', 'Search student, course, reference or #'),
+                    onChanged: (v) => p.setSearch(tab, v),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              // sort
-              PopupMenuButton<String>(
-                tooltip: t('ترتيب', 'Sort'),
-                icon: Icon(Icons.sort_rounded, color: c.textMedium),
-                onSelected: (v) => p.setSort(tab, v),
-                itemBuilder: (_) => [
-                  for (final s in const ['newest', 'oldest', 'amount_desc', 'amount_asc'])
-                    PopupMenuItem(
-                      value: s,
-                      child: Row(
-                        children: [
-                          Icon(
-                            f.sort == s ? Icons.check_rounded : null,
-                            size: 18,
-                            color: c.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(_sortLabel(s), style: TextStyle(fontFamily: AppFonts.family)),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              if (filterable)
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    IconButton.filledTonal(
-                      onPressed: () => _openFilters(context, tab),
-                      icon: const Icon(Icons.tune_rounded),
-                      tooltip: t('تصفية', 'Filters'),
-                    ),
-                    if (f.activeCount > 0)
-                      PositionedDirectional(
-                        top: -2,
-                        end: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(color: _red, shape: BoxShape.circle),
-                          child: Text(
-                            '${f.activeCount}',
-                            style: TextStyle(
-                              color: c.onHero,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                AppSpace.gapXs,
+                PopupMenuButton<String>(
+                  tooltip: t('ترتيب', 'Sort'),
+                  icon: Icon(Icons.sort_rounded, color: c.textMedium),
+                  onSelected: (v) => p.setSort(tab, v),
+                  itemBuilder: (_) => [
+                    for (final s in const ['newest', 'oldest', 'amount_desc', 'amount_asc'])
+                      PopupMenuItem(
+                        value: s,
+                        child: Row(
+                          children: [
+                            Icon(f.sort == s ? Icons.check_rounded : null, size: AppIconSize.md, color: c.primary),
+                            AppSpace.gapXs,
+                            Text(_sortLabel(s), style: AppType.row(context)),
+                          ],
                         ),
                       ),
                   ],
                 ),
-            ],
-          ),
+              ],
+            ),
           if (chips.isNotEmpty)
             SizedBox(
               height: 40,
@@ -805,19 +866,17 @@ class _FilterBar extends StatelessWidget {
                 children: [
                   for (final ch in chips)
                     Padding(
-                      padding: const EdgeInsetsDirectional.only(end: 6, top: 6),
+                      padding: const EdgeInsetsDirectional.only(end: AppSpace.xs, top: AppSpace.xs),
                       child: InputChip(
-                        label: Text(ch.label,
-                            style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
+                        label: Text(ch.label, style: AppType.meta(context)),
                         onDeleted: ch.onRemove,
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
                   Padding(
-                    padding: const EdgeInsetsDirectional.only(top: 6),
+                    padding: const EdgeInsetsDirectional.only(top: AppSpace.xs),
                     child: ActionChip(
-                      label: Text(t('مسح الكل', 'Clear all'),
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.danger)),
+                      label: Text(t('مسح الكل', 'Clear all'), style: AppType.meta(context).copyWith(color: c.danger)),
                       visualDensity: VisualDensity.compact,
                       onPressed: () => p.resetFilters(tab),
                     ),
@@ -827,14 +886,6 @@ class _FilterBar extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-
-  void _openFilters(BuildContext context, int tab) {
-    final p = context.read<AdminFinanceProvider>();
-    showAdminSheet<void>(
-      context,
-          (ctx) => _FilterSheet(provider: p, tab: tab),
     );
   }
 }
@@ -1057,8 +1108,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   onPressed: () {
-                    final lo = double.tryParse(_min.text.trim().replaceAll(',', '.'));
-                    final hi = double.tryParse(_max.text.trim().replaceAll(',', '.'));
+                    final lo = parseAmountLoose(_min.text);
+                    final hi = parseAmountLoose(_max.text);
                     if (lo != null && hi != null && lo > hi) {
                       toast(t('الحد الأدنى أكبر من الأقصى', 'Min is greater than max'), error: true);
                       return;
@@ -1084,6 +1135,20 @@ class _FilterSheetState extends State<_FilterSheet> {
 // Pending: swipe to approve / reject
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// The server's reason for a failed approve / reject; the generic line only when there is none.
+String _failText(String? reason) =>
+    reason != null && reason.trim().isNotEmpty ? reason : t('تعذّر تنفيذ العملية', 'Action failed');
+
+/// Opens a link outside the app; a bad link or a device that cannot open it is a message, never an exception.
+Future<void> _openUrl(String url, {String? failText}) async {
+  try {
+    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    if (!ok) toast(failText ?? t('تعذّر فتح الرابط', 'Could not open the link'), error: true);
+  } catch (_) {
+    toast(failText ?? t('تعذّر فتح الرابط', 'Could not open the link'), error: true);
+  }
+}
+
 class _SwipePending extends StatelessWidget {
   const _SwipePending({required this.item});
 
@@ -1091,8 +1156,6 @@ class _SwipePending extends StatelessWidget {
 
   Future<bool> _approve(BuildContext context) async {
     final p = context.read<AdminFinanceProvider>();
-    final messenger = ScaffoldMessenger.of(context);
-    final colors = context.colors;
     final sure = await confirm(
       context,
       message: t('الموافقة على هذا التحويل وتفعيل اشتراك الطالب؟',
@@ -1101,20 +1164,16 @@ class _SwipePending extends StatelessWidget {
     );
     if (!sure) return false;
     final ok = await p.approve(asInt(item['id']));
-    showRequestSnack(
-      messenger,
-      ok ? t('تمت الموافقة وتفعيل الاشتراك', 'Approved — enrollment activated')
-          : t('تعذّر تنفيذ العملية', 'Action failed'),
-      color: ok ? colors.success : colors.danger,
-      icon: ok ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+    // on a failure the SERVER's reason (already approved, student gone, …), never a bare "Action failed"
+    showAppNotice(
+      ok ? t('تمت الموافقة وتفعيل الاشتراك', 'Approved — enrollment activated') : _failText(p.lastError),
+      error: !ok,
     );
     return ok;
   }
 
   Future<bool> _reject(BuildContext context) async {
     final p = context.read<AdminFinanceProvider>();
-    final messenger = ScaffoldMessenger.of(context);
-    final colors = context.colors;
     final reason = await showReasonDialog(
       context,
       title: t('سبب الرفض', 'Reason for rejection'),
@@ -1127,12 +1186,7 @@ class _SwipePending extends StatelessWidget {
     );
     if (reason == null || reason.isEmpty) return false;
     final ok = await p.reject(asInt(item['id']), reason);
-    showRequestSnack(
-      messenger,
-      ok ? t('تم رفض الطلب', 'Request rejected') : t('تعذّر تنفيذ العملية', 'Action failed'),
-      color: ok ? colors.warning : colors.danger,
-      icon: ok ? Icons.block_rounded : Icons.error_outline_rounded,
-    );
+    showAppNotice(ok ? t('تم رفض الطلب', 'Request rejected') : _failText(p.lastError), error: !ok);
     return ok;
   }
 
@@ -1249,7 +1303,7 @@ class _PaymentCardState extends State<_PaymentCard> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  StatusChip(_statusLabel(status), color),
+                  AppStatusBadge(label: _statusLabel(status), tone: _statusTone(status), dense: true),
                 ],
               ),
             ],
@@ -1261,20 +1315,20 @@ class _PaymentCardState extends State<_PaymentCard> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              _MiniChip(_methodIcon(asStrOrNull(p['method'])), _methodLabel(asStrOrNull(p['method'])), c.primary),
-              _MiniChip(
+              _miniChip(_methodIcon(asStrOrNull(p['method'])), _methodLabel(asStrOrNull(p['method'])), AppTone.brand),
+              _miniChip(
                 p['kind'] == 'transfer' ? Icons.swap_horiz_rounded : Icons.language_rounded,
                 p['kind'] == 'transfer' ? t('تحويل', 'Transfer') : t('أونلاين', 'Online'),
-                _grey,
+                AppTone.neutral,
               ),
               if (asStr(p['plan']).isNotEmpty)
-                _MiniChip(Icons.event_repeat_rounded, _planLabel(asStrOrNull(p['plan'])), _blue),
-              _MiniChip(Icons.schedule_rounded, shortDateTime(asStrOrNull(p['created_at'])), _grey),
+                _miniChip(Icons.event_repeat_rounded, _planLabel(asStrOrNull(p['plan'])), AppTone.info),
+              _miniChip(Icons.schedule_rounded, shortDateTime(asStrOrNull(p['created_at'])), AppTone.neutral),
               if (refunds.refunded > 0.0001)
-                _MiniChip(Icons.undo_rounded, '${t('مسترد', 'Refunded')}: ${money(refunds.refunded, currency)}', c.warning),
+                _miniChip(Icons.undo_rounded, '${t('مسترد', 'Refunded')}: ${money(refunds.refunded, currency)}', AppTone.warning),
               if (refunds.refunded > 0.0001 && refunds.refundable != null && refunds.refundable! > 0.0001)
-                _MiniChip(Icons.account_balance_wallet_outlined,
-                    '${t('قابل للاسترداد', 'Refundable')}: ${money(refunds.refundable!, currency)}', _grey),
+                _miniChip(Icons.account_balance_wallet_outlined,
+                    '${t('قابل للاسترداد', 'Refundable')}: ${money(refunds.refundable!, currency)}', AppTone.neutral),
             ],
           ),
 
@@ -1484,7 +1538,7 @@ class _ProofBlock extends StatelessWidget {
                   runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    StatusChip(_statusLabel(status), _statusColor(status == 'approved' ? 'completed' : status)),
+                    AppStatusBadge(label: _statusLabel(status), tone: _statusTone(status == 'approved' ? 'completed' : status), dense: true),
                     if (reviewer.isNotEmpty && asStr(reviewer['name']).isNotEmpty)
                       Text(
                         '${t('بواسطة', 'by')} ${reviewer['name']} · ${shortDateTime(asStrOrNull(proof['reviewed_at']))}',
@@ -1537,8 +1591,7 @@ class _PayoutCardState extends State<_PayoutCard> {
     if (link!['kind'] == 'image') {
       _showImage(context, url, '${t('إيصال سحب', 'Payout receipt')} #${widget.item['id']}');
     } else {
-      final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      if (!ok) toast(t('تعذّر فتح الملف', 'Could not open the file'), error: true);
+      await _openUrl(url, failText: t('تعذّر فتح الملف', 'Could not open the file'));
     }
   }
 
@@ -1603,7 +1656,7 @@ class _PayoutCardState extends State<_PayoutCard> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    StatusChip(_statusLabel(status), color),
+                    AppStatusBadge(label: _statusLabel(status), tone: _statusTone(status), dense: true),
                   ],
                 ),
               ],
@@ -1613,16 +1666,16 @@ class _PayoutCardState extends State<_PayoutCard> {
               spacing: 6,
               runSpacing: 6,
               children: [
-                _MiniChip(_methodIcon(asStrOrNull(w['payout_method'])),
-                    _methodLabel(asStrOrNull(w['payout_method'])), c.primary),
-                if (automatic) _MiniChip(Icons.bolt_rounded, t('تلقائي', 'Automatic'), _blue),
+                _miniChip(_methodIcon(asStrOrNull(w['payout_method'])),
+                    _methodLabel(asStrOrNull(w['payout_method'])), AppTone.brand),
+                if (automatic) _miniChip(Icons.bolt_rounded, t('تلقائي', 'Automatic'), AppTone.info),
                 if (automatic && state.isNotEmpty && state != 'none')
-                  _MiniChip(
+                  _miniChip(
                     state == 'paid' ? Icons.check_circle_rounded : (state == 'failed' ? Icons.error_rounded : Icons.sync_rounded),
                     state,
-                    state == 'paid' ? _green : (state == 'failed' ? _red : _amber),
+                    state == 'paid' ? AppTone.success : (state == 'failed' ? AppTone.danger : AppTone.warning),
                   ),
-                _MiniChip(Icons.schedule_rounded, shortDateTime(asStrOrNull(w['requested_at'])), _grey),
+                _miniChip(Icons.schedule_rounded, shortDateTime(asStrOrNull(w['requested_at'])), AppTone.neutral),
               ],
             ),
             if (destRows.isNotEmpty) ...[
@@ -1679,32 +1732,9 @@ class _PayoutCardState extends State<_PayoutCard> {
 // Small shared pieces
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _MiniChip extends StatelessWidget {
-  const _MiniChip(this.icon, this.label, this.color);
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.10),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: color),
-        const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(
-                fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
-      ],
-    ),
-  );
-}
+/// A small icon + label pill (method, plan, date …): the kit's status badge.
+Widget _miniChip(IconData icon, String label, AppTone tone) =>
+    AppStatusBadge(label: label, tone: tone, icon: icon, dense: true);
 
 /// "label  value" row; tap copies the value when [copy]. Hidden when the value is empty.
 class _Kv extends StatelessWidget {
@@ -1788,7 +1818,7 @@ class _ImageViewer extends StatelessWidget {
           IconButton(
             tooltip: t('فتح في المتصفح', 'Open in browser'),
             icon: const Icon(Icons.open_in_new_rounded),
-            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            onPressed: () => _openUrl(url),
           ),
         ],
       ),
