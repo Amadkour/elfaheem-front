@@ -787,7 +787,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         if (id != null) return _fade(_Guard(child: CoursePageLoader(courseId: id)), settings); // the one course page (D-111)
       case 'org.member':
         final id = page!.intParam('orgId');
-        if (id != null) return _fade(_Guard(child: OrgsGate(child: OrgMemberDashboardScreen(orgId: id))), settings);
+        if (id != null) return _fade(_Guard(child: OrgsGate(child: deferredOrgMemberDashboard(orgId: id))), settings);
     }
     // a role home on one of its tabs (`/dashboard/my-courses`): the person's own home, switched to that tab
     final homeTab = AppRoutes.splitTab(settings.name);
