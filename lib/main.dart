@@ -530,6 +530,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
   bool _isLink(String r) =>
       guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || exportLinkTokenFromRoute(r) != null ||
       DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null ||
+      const {'link.org_join', 'link.org_invitation'}.contains(AppRoutes.match(r)?.id) ||
       ExploreRequest.matches(r) || isInstitutionRoute(r) ||
       // /register?role=teacher (the landing's teacher card) is a sign-in page: signed out only, like /register
       (!context.read<MyAuthProvider>().isAuthenticated && registerRoleFromRoute(r) != null);
@@ -797,6 +798,12 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     // a refresh, the browser's Forward, the assistant's page links
     final page = AppRoutes.match(settings.name);
     switch (page?.id) {
+      // organization join / invitation links (D-283): no guard — the pages handle a signed-out visitor themselves
+      // (sign-in or sign-up, then back here through SignInReturn)
+      case 'link.org_join':
+        return _fade(OrgsGate(child: deferredOrgJoinLink(code: page!.params['code']!)), settings);
+      case 'link.org_invitation':
+        return _fade(OrgsGate(child: deferredOrgInvitation(token: page!.params['token']!)), settings);
       case 'course':
         final id = page!.intParam('courseId');
         if (id != null) return _fade(_Guard(child: CoursePageLoader(courseId: id)), settings); // the one course page (D-111)

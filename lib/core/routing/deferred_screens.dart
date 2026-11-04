@@ -30,8 +30,10 @@ import '../../features/admin/admin_dashboard_screen.dart' deferred as admin_dash
 import '../../features/admin/app_releases/app_release_detail.dart' deferred as app_release_detail;
 import '../../features/admin/app_releases/app_releases_page.dart' deferred as app_releases_page;
 import '../../features/org/org_academic_pages.dart' deferred as org_academic;
+import '../../features/org/org_access_joining.dart' deferred as org_access_joining;
 import '../../features/org/org_availability_pages.dart' deferred as org_availability;
 import '../../features/org/org_dashboard_screen.dart' deferred as org_dashboard;
+import '../../features/org/org_invitations_pages.dart' deferred as org_invitations_pages;
 import '../../features/org/org_member_dashboard.dart' deferred as org_member_dashboard;
 import '../../features/org/org_member_space.dart' deferred as org_member_space;
 import '../../features/org/org_my_exams.dart' deferred as org_my_exams;
@@ -192,6 +194,14 @@ Widget deferredOrgMemberDashboard({int? orgId}) => DeferredPage(
     load: org_member_dashboard.loadLibrary,
     look: DeferredLook.splash,
     builder: (_) => org_member_dashboard.OrgMemberDashboardScreen(orgId: orgId));
+
+/// `/j/<CODE>` (D-283): the join page with the code filled in; a signed-out visitor is asked to sign in first.
+Widget deferredOrgJoinLink({required String code}) => DeferredPage(
+    id: 'org_join_link', load: org_access_joining.loadLibrary, builder: (_) => org_access_joining.OrgJoinLinkPage(code: code));
+
+/// `/i/<token>` (D-283): an organization invitation; the preview needs no account, accepting does.
+Widget deferredOrgInvitation({required String token}) => DeferredPage(
+    id: 'org_invitation', load: org_invitations_pages.loadLibrary, builder: (_) => org_invitations_pages.OrgInviteePage(token: token));
 
 // ─── inner pages ────────────────────────────────────────────────────────────────────────────────────────────────
 

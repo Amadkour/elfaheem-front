@@ -99,6 +99,10 @@ class AppRoutes {
   static const verifyLink =
       AppRouteDef('link.verify', '/verify/:token', signIn: false, description: "A certificate's verification page");
   static const exportLink = AppRouteDef('link.export', '/e/:token', description: 'An Export Studio share link (D-134)');
+  static const orgJoinLink = AppRouteDef('link.org_join', '/j/:code',
+      signIn: false, description: "An organization's join link: the join page with the code filled in (D-283)");
+  static const orgInvitationLink = AppRouteDef('link.org_invitation', '/i/:token',
+      signIn: false, description: 'An organization invitation: accept or decline, after signing in (D-283)');
 
   /// Every page, in match order.
   static const all = <AppRouteDef>[
@@ -106,7 +110,7 @@ class AppRoutes {
     studentHome, teacherHome, adminHome, parentHome, orgHome,
     course, orgMember, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
     downloads, exports, exportLog, exportSchedules, exportLinks,
-    courseLink, profileLink, liveLink, verifyLink, exportLink,
+    courseLink, profileLink, liveLink, verifyLink, exportLink, orgJoinLink, orgInvitationLink,
   ];
 
   /// The role homes, by path (their tabs are `<home>/<tab>`).

@@ -107,6 +107,15 @@
                     android:host="nextbrain.site"
                     android:pathPrefix="/e/"
                     android:scheme="https" />
+                <!-- organization join links /j/<CODE> and invitations /i/<token> (D-283) -->
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/j/"
+                    android:scheme="https" />
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/i/"
+                    android:scheme="https" />
             </intent-filter>
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
