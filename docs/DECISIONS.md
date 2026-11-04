@@ -2634,8 +2634,9 @@ faculty's rights) and read-only system roles (the owner wants organization admin
 `User.is_active` belongs to the platform. Department staff / head seats need the rights they hand out
 (`assert_can_grant`) and nobody appoints themselves. The admin seat moves with `POST /api/v1/org/orgs/{id}/transfer-admin`
 (the organization's own admin) or `POST /api/v1/admin/orgs/{id}/transfer-admin` (platform admins), one shared helper:
-the old admin stays as administrative staff or leaves; leaving ENDS the membership, roles and grants rather than
-deleting them, so the history stays. The new admin's global account role is unchanged; they reach the dashboard
+the old admin stays as administrative staff or leaves; leaving ENDS the membership (status `removed`, `ended_at`),
+the role assignments (`valid_to`) and grants (`expires_at`) rather than deleting them, so the history stays (only the
+department seat, which has no end date, is removed). The new admin's global account role is unchanged; they reach the dashboard
 through the context switcher (D-266).
 
 ## D-263 — Organization invitations by e-mail or phone, and join links · 2026-11-04 · accepted
