@@ -90,6 +90,8 @@ String _questionsXml(ExamPaperDoc d, _W w, {required String accent, required Str
           before: 200,
           after: 60,
           keepNext: true));
+      // Word copies carry a placeholder line, not the picture
+      if (q.hasMedia) out.write(w.para(w.run(q.imagePlaceholder, color: '6B7280', size: 10, italic: true), ind: 560, after: 60));
       switch (q.type) {
         case 'mcq_single':
         case 'mcq_multi':
@@ -166,6 +168,33 @@ Uint8List _zip(Map<String, List<int>> files) {
   return ZipEncoder().encodeBytes(a);
 }
 
+/// The student's name and the version letter in the running header.
+String _tagsXml(ExamPaperDoc d, _W w, String accentDark) =>
+    (d.studentName.isEmpty ? '' : w.run('   ·   ${d.studentName}', bold: true, size: 9.5)) +
+    (d.version == null ? '' : w.run('   ·   ${PaperWords(d.rtl).version(d.version!)}', bold: true, color: accentDark, size: 9.5));
+
+/// The "answer on the paper" table: one row per choice question, one column per letter (circles to mark; the key fills them).
+String _answerTableXml(ExamPaperDoc d, _W w, PaperWords words, {required String accent, required String accentDark, required String rule}) {
+  if (d.answerTable == AnswerTablePlace.none) return '';
+  final entries = answerTableEntries(d);
+  if (entries.isEmpty) return '';
+  final cols = entries.fold(0, (m, e) => e.letters.length > m ? e.letters.length : m);
+  final first = 900;
+  final each = (_usable - first) ~/ cols;
+  String c(String s, {bool bold = false, String? fill, int width = 0}) => w.cell(w.para(w.run(s, bold: bold, size: 10), jc: 'center'), width: width, fill: fill);
+  final rows = <String>[
+    w.row([c('#', bold: true, fill: tintHex(accent, .14), width: first), for (var i = 0; i < cols; i++) c(choiceLetter(i, rtl: d.rtl), bold: true, fill: tintHex(accent, .14), width: each)]),
+    for (final e in entries)
+      w.row([
+        c('${e.number}', bold: true, width: first),
+        for (var i = 0; i < cols; i++) c(i < e.letters.length ? (d.answerKey && e.correct.contains(i) ? '●' : '○') : '', width: each),
+      ]),
+  ];
+  return w.para(w.run(words.answerTableTitle, bold: true, color: accentDark, size: 11), before: 120, after: 60, keepNext: true) +
+      w.table([first, for (var i = 0; i < cols; i++) each], rows, border: rule, pad: 30) +
+      w.para('', after: 120);
+}
+
 /// A built-in design. [tpl] must be resolved (classic, modern or minimal).
 Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   final style = PaperStyle.of(tpl);
@@ -230,14 +259,19 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
         [info(words.course, d.course), info(words.date, d.dateText), info(words.duration, d.durationText), info(words.total, fmtTotal(d.total))].join(w.run('     ')),
         after: 120));
   }
+  if (d.version != null) body.write(w.para(w.run(words.version(d.version!), bold: true, color: accentDark, size: 12), jc: classic ? 'center' : 'start', after: 80));
   if (d.answerKey) body.write(w.para(w.run(words.answerKey, bold: true, color: '9B1C1C', size: 12), jc: classic ? 'center' : 'start', after: 160));
+  if (d.answerKey && d.keySummary.isNotEmpty) {
+    body.write(w.para(w.run('${words.keySummaryTitle}: ', bold: true, color: '9B1C1C', size: 10.5) +
+        w.run(d.keySummary.map((k) => '${k.n}: ${k.display}').join('     '), color: '9B1C1C', size: 10), after: 160));
+  }
 
   // ── student box
   if (!d.answerKey) {
     final a = (_usable * .6).round(), b = _usable - a;
-    String field(String label) => w.para(w.run('$label:', color: '6B7280', size: 10));
+    String field(String label, [String name = '']) => w.para(w.run('$label:', color: '6B7280', size: 10) + (name.isEmpty ? '' : w.run(' $name', bold: true, size: 10.5)));
     body.write(w.table([a, b], [
-      w.row([w.cell(field(words.name), width: a), w.cell(field(words.id), width: b)], height: 520),
+      w.row([w.cell(field(words.name, d.studentName), width: a), w.cell(field(words.id), width: b)], height: 520),
       w.row([w.cell(field(words.group), width: a), w.cell(field(d.seatNumber ? words.seat : words.score), width: b)], height: 520),
     ], border: rule, borderPt: classic ? 1 : .6));
     body.write(w.para('', after: 120));
@@ -277,7 +311,10 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
         before: 80, after: 200));
   }
 
+  final tableXml = _answerTableXml(d, w, words, accent: accent, accentDark: accentDark, rule: rule);
+  if (d.answerTable == AnswerTablePlace.start) body.write(tableXml);
   body.write(_questionsXml(d, w, accent: accent, accentDark: accentDark));
+  if (d.answerTable == AnswerTablePlace.end) body.write(tableXml);
 
   final rtlPr = d.rtl ? '<w:rtl/>' : '';
   String field(String code) => '<w:fldSimple w:instr=" $code "><w:r><w:rPr><w:sz w:val="17"/><w:szCs w:val="17"/>$rtlPr</w:rPr><w:t>1</w:t></w:r></w:fldSimple>';
@@ -285,8 +322,8 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   final footer = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr $_ns>'
       '${w.para('${w.run(pageWord, color: '6B7280', size: 8.5)}${field('PAGE')}${w.run(ofWord, color: '6B7280', size: 8.5)}${field('NUMPAGES')}', jc: 'center')}</w:ftr>';
   final runningHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $_ns>'
-      '${w.para(w.run(d.title, bold: true, color: accentDark, size: 9.5) + (d.course.isEmpty ? '' : w.run('   ·   ${d.course}', color: '6B7280', size: 9)), border: '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="$rule"/></w:pBdr>')}</w:hdr>';
-  final firstHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $_ns><w:p/></w:hdr>';
+      '${w.para(w.run(d.title, bold: true, color: accentDark, size: 9.5) + _tagsXml(d, w, accentDark) + (d.course.isEmpty ? '' : w.run('   ·   ${d.course}', color: '6B7280', size: 9)), border: '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="$rule"/></w:pBdr>')}</w:hdr>';
+  final firstHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $_ns>${d.studentName.isEmpty ? '<w:p/>' : w.para(w.run(d.studentName, bold: true, size: 9.5), jc: 'end')}</w:hdr>';
   final pgBorders = classic
       ? '<w:pgBorders w:offsetFrom="page">${['top', 'left', 'bottom', 'right'].map((s) => '<w:$s w:val="double" w:sz="12" w:space="20" w:color="$accent"/>').join()}</w:pgBorders>'
       : '';
