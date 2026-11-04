@@ -779,7 +779,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                         OutlineButton(
                           label: 'delete'.tr,
                           color: context.colors.danger,
-                          icon: Icons.edit_rounded,
+                          icon: Icons.delete_outline_rounded,
                           onPressed: () async {
                             final ok = await confirm(
                               context,
