@@ -27,6 +27,20 @@ import '../studio/studio.dart';
 import 'layout_element_view.dart';
 import 'layout_model.dart';
 
+/// The icon of an element kind (the layers list and the properties header).
+IconData layoutKindIcon(String k) => switch (k) {
+      'field' => Icons.data_object_rounded,
+      'image' => Icons.image_outlined,
+      'line' => Icons.horizontal_rule_rounded,
+      'rect' => Icons.crop_square_rounded,
+      'ellipse' => Icons.circle_outlined,
+      'badge' => Icons.label_outline_rounded,
+      'qr' => Icons.qr_code_2_rounded,
+      'page_number' => Icons.numbers_rounded,
+      'signature' => Icons.draw_rounded,
+      _ => Icons.text_fields_rounded,
+    };
+
 /// A field the props can pick ({key, label}) — the flow's fields in the design's language.
 typedef LayoutFieldOption = ({String key, String label, bool numeric});
 
@@ -36,6 +50,7 @@ String layoutKindLabel(String kind) => switch (kind) {
       'image' => t('صورة', 'Image'),
       'line' => t('خط', 'Line'),
       'rect' => t('مربع', 'Box'),
+      'ellipse' => t('شكل بيضاوي', 'Ellipse'),
       'badge' => t('شارة', 'Badge'),
       'qr' => t('رمز QR', 'QR code'),
       'page_number' => t('رقم الصفحة', 'Page number'),
@@ -104,6 +119,9 @@ class LayoutElementProps extends StatelessWidget {
 
   void _edit(String label, VoidCallback mutate, {bool coalesce = false}) => ctl.record(label, mutate, coalesce: coalesce);
 
+  /// A line, a box or an ellipse: no text of their own.
+  bool get _decor => element.kind == 'line' || element.kind == 'rect' || element.kind == 'ellipse';
+
   @override
   Widget build(BuildContext context) {
     final e = element;
@@ -139,31 +157,23 @@ class LayoutElementProps extends StatelessWidget {
           StudioPropSection(title: t('القواعد', 'Rules'), children: [
             LayoutRulesEditor(element: e, fields: fields, edit: _edit),
           ]),
-        if (e.kind != 'line' && e.kind != 'rect') StudioPropSection(title: t('الخط والألوان', 'Text and colours'), children: _style()),
-        StudioPropSection(title: e.kind == 'line' || e.kind == 'rect' ? t('الشكل', 'Shape') : t('الإطار', 'Border'), children: _shape()),
+        if (!_decor) StudioPropSection(title: t('الخط والألوان', 'Text and colours'), children: _style()),
+        if (textual || e.kind == 'page_number') StudioPropSection(title: t('الطباعة', 'Typography'), children: _typography()),
+        StudioPropSection(title: _decor ? t('الشكل', 'Shape') : t('الإطار', 'Border'), children: _shape()),
+        StudioPropSection(title: t('المظهر', 'Appearance'), children: _appearance()),
         StudioPropSection(title: t('الموضع (مم)', 'Position (mm)'), children: _box(context)),
       ],
     );
   }
 
-  static IconData _kindIcon(String k) => switch (k) {
-        'field' => Icons.data_object_rounded,
-        'image' => Icons.image_outlined,
-        'line' => Icons.horizontal_rule_rounded,
-        'rect' => Icons.crop_square_rounded,
-        'badge' => Icons.label_outline_rounded,
-        'qr' => Icons.qr_code_2_rounded,
-        'page_number' => Icons.numbers_rounded,
-        'signature' => Icons.draw_rounded,
-        _ => Icons.text_fields_rounded,
-      };
+  static IconData _kindIcon(String k) => layoutKindIcon(k);
 
   List<Widget> _content(BuildContext context) {
     final e = element;
     void insertVar(String v) => _edit('text', () => e.value = '${e.value ?? ''}$v');
     final vars = StudioPlaceholderChips(label: t('أدرج متغيرًا', 'Insert a variable'), items: layoutVariableChips(), onInsert: insertVar);
     switch (e.kind) {
-      case 'line' || 'rect':
+      case 'line' || 'rect' || 'ellipse':
         return [Text(t('عنصر زخرفي: اضبط شكله من «الشكل».', 'A decoration: set its look under "Shape".'), style: appText(12.5, c: context.colors.textMedium))];
       case 'image' || 'signature':
         return [
@@ -325,11 +335,97 @@ class LayoutElementProps extends StatelessWidget {
     ];
   }
 
+  /// Letter spacing, line height and shrink-to-fit of a text element.
+  List<Widget> _typography() {
+    final s = element.style;
+    return [
+      Row(children: [
+        Expanded(
+          child: StudioStepper(
+            key: const ValueKey('layout-letter-spacing'),
+            label: t('تباعد الحروف (pt)', 'Letter spacing (pt)'),
+            value: s.letterSpacing,
+            min: -2,
+            max: 20,
+            step: .1,
+            decimals: 1,
+            onChanged: (v) => _edit('letter spacing', () => s.letterSpacing = v, coalesce: true),
+          ),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(
+          child: StudioStepper(
+            key: const ValueKey('layout-line-height'),
+            label: t('ارتفاع السطر', 'Line height'),
+            value: s.lineHeight,
+            min: .8,
+            max: 3,
+            step: .05,
+            decimals: 2,
+            onChanged: (v) => _edit('line height', () => s.lineHeight = v, coalesce: true),
+          ),
+        ),
+      ]),
+      AppSwitchTile(
+        key: const ValueKey('layout-shrink'),
+        title: t('تصغير الخط ليتسع النص', 'Shrink text to fit'),
+        value: s.shrink,
+        dense: true,
+        onChanged: (on) => _edit('shrink', () => s.shrink = on),
+      ),
+    ];
+  }
+
+  /// Opacity, the photo shape and the shadow.
+  List<Widget> _appearance() {
+    final e = element;
+    final sh = e.style.shadow;
+    final photo = e.kind == 'image' || e.kind == 'signature';
+    return [
+      StudioOpacitySlider(
+        key: const ValueKey('layout-opacity'),
+        label: t('الشفافية', 'Opacity'),
+        value: e.opacity,
+        onChanged: (v) => _edit('opacity', () => e.opacity = v, coalesce: true),
+      ),
+      if (photo)
+        StudioSegmented<String>(
+          segments: [
+            StudioSegment(value: 'rect', label: t('مستطيل', 'Square')),
+            StudioSegment(value: 'rounded', label: t('مستدير', 'Rounded')),
+            StudioSegment(value: 'circle', label: t('دائري', 'Circle')),
+          ],
+          value: e.shape,
+          onChanged: (v) => _edit('shape', () => e.shape = v),
+        ),
+      if (e.kind != 'line' && e.kind != 'qr')
+        AppSwitchTile(
+          key: const ValueKey('layout-shadow'),
+          title: t('ظل', 'Shadow'),
+          value: sh != null,
+          dense: true,
+          onChanged: (on) => _edit('shadow', () => e.style.shadow = on ? LayoutShadow() : null),
+        ),
+      if (sh != null && e.kind != 'line' && e.kind != 'qr') ...[
+        StudioColorField(
+          label: t('لون الظل', 'Shadow colour'),
+          value: layoutShadowColor(sh.color),
+          onChanged: (c) => _edit('shadow colour', () => sh.color = c == null ? '#00000055' : layoutShadowHex(c.a < .99 ? c : c.withValues(alpha: .4))),
+        ),
+        Row(children: [
+          Expanded(child: StudioStepper(label: t('إزاحة أفقية (مم)', 'Offset X (mm)'), value: sh.dx, min: -5, max: 5, step: .1, decimals: 1, onChanged: (v) => _edit('shadow x', () => sh.dx = v, coalesce: true))),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: StudioStepper(label: t('إزاحة رأسية (مم)', 'Offset Y (mm)'), value: sh.dy, min: -5, max: 5, step: .1, decimals: 1, onChanged: (v) => _edit('shadow y', () => sh.dy = v, coalesce: true))),
+        ]),
+      ],
+    ];
+  }
+
   List<Widget> _shape() {
     final s = element.style;
     final b = s.border;
     return [
-      if (element.kind == 'rect' || element.kind == 'badge') _color(t('التعبئة', 'Fill'), s.bg, (v) => _edit('fill', () => s.bg = v), allowNone: true),
+      if (element.kind == 'rect' || element.kind == 'badge' || element.kind == 'ellipse') _color(t('التعبئة', 'Fill'), s.bg, (v) => _edit('fill', () => s.bg = v), allowNone: true),
       AppSwitchTile(
         title: element.kind == 'line' ? t('خط مرئي', 'Visible line') : t('إطار', 'Border'),
         value: b != null && b.width > 0,
@@ -345,7 +441,7 @@ class LayoutElementProps extends StatelessWidget {
           onChanged: (v) => _edit('border style', () => b.style = v),
         ),
       ],
-      if (element.kind != 'line')
+      if (element.kind != 'line' && element.kind != 'ellipse')
         StudioStepper(label: t('استدارة الزوايا (مم)', 'Corner radius (mm)'), value: s.radius, min: 0, max: 20, step: .5, decimals: 1, onChanged: (v) => _edit('radius', () => s.radius = v, coalesce: true)),
     ];
   }

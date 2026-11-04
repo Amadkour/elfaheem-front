@@ -16,6 +16,8 @@
 //   studio_canvas.dart       StudioCanvas<P>(controller, itemBuilder, inlineText, inlineStyle, onInlineCommit,
 //                            contextMenu) · StudioBorderBox · StudioCanvas.scaleOf
 //   studio_dock.dart         StudioDockPanel: the phone's non-modal properties panel under the page
+//   studio_layers.dart       StudioLayersPanel(controller, nameOf, iconOf): the layers list (select, reorder, lock, hide,
+//                            rename) · StudioLayersAdapter / StudioRotateAdapter are the optional adapter hooks
 //   studio_toolbar.dart      StudioToolbar(controller, leading, trailing) · StudioToolButton
 //   studio_props.dart        property-panel primitives (section, font, stepper, weight, colour, align, border,
 //                            opacity)
@@ -54,6 +56,7 @@ library;
 export 'studio_canvas.dart';
 export 'studio_controller.dart';
 export 'studio_dock.dart';
+export 'studio_layers.dart';
 export 'studio_model.dart';
 export 'studio_props.dart';
 export 'studio_small_screen.dart';

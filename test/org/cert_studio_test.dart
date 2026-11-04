@@ -380,9 +380,9 @@ void main() {
       c.endGesture();
       final b = slice.fields.firstWhere((f) => f.id == 'b');
       expect([b.w, b.h], [150, 50]);
-      // a turned element shows no handles but still moves
+      // a turned element moves and, since the design engine v4, is resized in its own frame
       c.select('c');
-      expect(c.resizable, isNull);
+      expect(c.resizable, isNotNull);
       expect(c.beginMove(), isTrue);
       c.cancelGesture();
       // hit-testing a turned box: a point on its turned corner is inside, the unturned corner is not
