@@ -19,6 +19,8 @@ case "$target" in
   web)
     # web code is minified by dart2js; --obfuscate does not apply to web builds
     flutter build web --release
+    # content-hashed main script, precompressed .gz / .br, font-manifest prune (scripts/web/postbuild.dart; add --self-host-canvaskit to serve CanvasKit from the build)
+    dart run scripts/web/postbuild.dart build/web
     ;;
   *) echo "usage: $0 apk|appbundle|ipa|web" >&2; exit 2 ;;
 esac
