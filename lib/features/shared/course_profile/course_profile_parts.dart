@@ -20,7 +20,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../teacher/home/teacher_models.dart' show TeacherCourse;
 import '../../teacher/sessions/sessions_provider.dart' show TeacherCourseScreenProvider;
-import '../../teacher/sessions/sessions_screen.dart' show TeacherSessionsScreen;
 import '../../student/analysis/student_course_analytics_screen.dart';
 import '../attendance/attendance_course_entry.dart' show AttendanceCourseEntry;
 import '../attendance/attendance_widgets.dart' show showTeacherAttendanceSheet;

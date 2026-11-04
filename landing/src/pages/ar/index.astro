@@ -1,0 +1,11 @@
+---
+import Landing from '../../components/Landing.astro';
+import '../../styles/fonts-ar.css';
+import arabic400 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-400-normal.woff2?url';
+import arabic700 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2?url';
+import latin400 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-latin-400-normal.woff2?url';
+import latin700 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-latin-700-normal.woff2?url';
+// All four faces are preloaded: a late swap of any of them reflowed the hero (layout shift).
+---
+
+<Landing lang="ar" preload={[arabic400, arabic700, latin400, latin700]} />

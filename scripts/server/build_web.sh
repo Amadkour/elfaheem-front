@@ -26,7 +26,7 @@ git checkout --theirs . || true
 git log --oneline -1
 flutter pub get > /tmp/nb-pubget.log 2>&1 || { tail -20 /tmp/nb-pubget.log; die "pub get failed"; }
 
-# D-150: once nginx serves the landing at the root (deploy_landing.sh wrote its block), the app lives under /app/
+# D-165: once nginx serves the landing at the root (deploy_landing.sh wrote its block), the app lives under /app/
 BASE=/
 grep -q "nb-landing:begin" /etc/nginx/sites-available/nextbrain && BASE=/app/
 echo "base href: $BASE"

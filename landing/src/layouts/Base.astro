@@ -1,0 +1,70 @@
+---
+import { SITE, jsonForScript } from '../config';
+import '../styles/global.css';
+
+interface Props {
+  lang?: 'ar' | 'en';
+  title: string;
+  description: string;
+  path: string; // '/', '/ar/', '/en/'
+  ogAlt: string;
+  jsonLd?: unknown[];
+  preload?: string[];
+}
+const { lang = 'ar', title, description, path, ogAlt, jsonLd = [], preload = [] } = Astro.props;
+const url = SITE + path;
+const og = SITE + '/og.png';
+const dir = lang === 'ar' ? 'rtl' : 'ltr';
+const ogLocale = lang === 'ar' ? 'ar_AR' : 'en_US';
+---
+
+<!doctype html>
+<html lang={lang} dir={dir}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={url} />
+    <link rel="alternate" hreflang="ar" href={SITE + '/ar/'} />
+    <link rel="alternate" hreflang="en" href={SITE + '/en/'} />
+    <link rel="alternate" hreflang="x-default" href={SITE + '/'} />
+    <meta name="theme-color" content="#0f7b5f" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0c1511" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="NextBrain" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={url} />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:image" content={og} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={og} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    {preload.map((href) => <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />)}
+    <script is:inline>
+      // Legacy app URLs (payment callbacks, installed PWA) belong to the Flutter app under /app/.
+      (function () {
+        try {
+          var h = location.hash || '';
+          if (h.indexOf('#/') === 0) {
+            location.replace('/app/' + location.search + h);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <slot name="head" />
+    {jsonLd.map((j) => <script type="application/ld+json" set:html={jsonForScript(j)} />)}
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

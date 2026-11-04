@@ -20,7 +20,7 @@ import 'org_academic_pages.dart' show MyAcademicPathPage;
 import 'org_availability_pages.dart' show AvailabilityRequestScreen;
 import 'org_common.dart';
 import 'org_departments_page.dart' show DeptLogo, featureLabels;
-import 'org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace, showComplaintComposer;
+import 'org_member_space.dart' show OrgFormFillScreen, showComplaintComposer;
 import 'org_my_exams.dart' show appToday, examPauseBanner, examPauseOn, examPausesOf;
 import 'org_providers.dart' show orgBase;
 import 'org_ui.dart';

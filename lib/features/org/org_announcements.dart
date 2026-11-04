@@ -34,7 +34,7 @@ import '../admin/admin_list.dart';
 import '../student/courses/details/course_link_loader.dart';
 import 'org_common.dart';
 import 'org_member_pages.dart' show OrgCoursesScreen, OrgTimetableScreen;
-import 'org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
+import 'org_member_space.dart' show OrgFormFillScreen;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart' show orgParseUtc, orgUtc;
