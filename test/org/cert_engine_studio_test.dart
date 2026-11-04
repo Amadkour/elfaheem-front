@@ -2,6 +2,9 @@
 // other, the mirrored copy, save with the version, the 409 "saved elsewhere" dialog (keep mine / reload), the local
 // draft prompt and the kill switch that opens the legacy designer.
 import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart' show RequestOptions;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -37,6 +40,8 @@ Map<String, dynamic> _doc({bool both = false, List<Map<String, dynamic>>? ar, Li
       },
     };
 
+const _png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
 void main() {
   late FakeApi fake;
   late CertEngineMemoryDrafts drafts;
@@ -45,6 +50,8 @@ void main() {
   var loadVersion = 5;
   var converted = false;
   late Map<String, dynamic> served;
+  final calls = <String, List<Map<String, dynamic>>>{};
+  Map<String, dynamic> body(RequestOptions o) => (o.data as Map).cast<String, dynamic>();
 
   setUp(() {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +61,7 @@ void main() {
     AppConfig.disableList = [];
     drafts = CertEngineMemoryDrafts();
     puts.clear();
+    calls.clear();
     putAnswers = [];
     loadVersion = 5;
     converted = false;
@@ -66,6 +74,22 @@ void main() {
         return {'document': served, 'version': (puts.last['version'] as int) + 1};
       },
       'GET /api/v1/exports/layout/fonts': (_) => <Object>[],
+      'PUT /api/v1/certificate-designs/7': (o) {
+        (calls['rename'] ??= []).add(body(o));
+        return {'id': 7};
+      },
+      'POST /api/v1/certificate-designs/draft': (o) {
+        (calls['draft'] ??= []).add(body(o));
+        return {'background_url': 'https://x/ar.png', 'background_url_en': 'https://x/en.png'};
+      },
+      'POST /api/v1/certificate-designs/signature': (o) {
+        (calls['signature'] ??= []).add(body(o));
+        return {'url': 'https://x/sig.png', 'width': 1, 'height': 1};
+      },
+      'POST /api/v1/certificate-designs/preview-document': (o) {
+        (calls['preview'] ??= []).add(body(o));
+        return {'png_b64': _png};
+      },
     }, latency: const Duration(milliseconds: 20));
     fake.install();
   });
@@ -245,6 +269,94 @@ void main() {
     await settle(tester, 300);
     expect(drafts.data, isEmpty);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('renaming sends the name only and keeps the design clean', (tester) async {
+    await open(tester);
+    await tester.tap(find.byKey(const ValueKey('cert-title')));
+    await settle(tester, 300);
+    await tester.enterText(find.byKey(const ValueKey('cert-rename-field')), 'Gold diploma');
+    await tester.pump(); // enterText does not pump: the Save button enables on the next frame
+    await tester.tap(find.byKey(const ValueKey('cert-rename-ok')));
+    await settle(tester);
+    expect(calls['rename'], [
+      {'name': 'Gold diploma'}
+    ]);
+    expect(find.text('Gold diploma'), findsOneWidget);
+    expect(find.text('All changes saved'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the watermark text is a locked, faint, tilted element at the back of the page', (tester) async {
+    await open(tester);
+    await tester.tap(find.byTooltip('Add an element'));
+    await settle(tester, 300);
+    await tester.tap(find.widgetWithText(PopupMenuItem<LayoutAddOption>, 'Watermark text'));
+    await settle(tester, 300);
+    await save(tester);
+    final els = ((((puts.single['document'] as Map)['designs'] as Map)['ar'] as Map)['row'] as Map)['elements'] as List;
+    expect(els, hasLength(2));
+    final w = els.first as Map;
+    expect(w['locked'], isTrue);
+    expect(w['opacity'], closeTo(.12, 1e-9));
+    expect(w['rotation'], -30);
+    expect(w['x'] + w['w'] / 2, closeTo(148.5, 1), reason: 'centred on the landscape A4');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a generated background goes into the current language only', (tester) async {
+    served = _doc(both: true);
+    await open(tester);
+    await tester.tap(find.byKey(const ValueKey('cert-tab-en')));
+    await settle(tester, 300);
+    await tester.tap(find.byKey(const ValueKey('cert-menu')));
+    await settle(tester, 300);
+    await tester.tap(find.text('Page and background'));
+    await settle(tester, 300);
+    await tester.tap(find.byKey(const ValueKey('cert-gen-modern')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey('cert-gen-go')));
+    await tester.tap(find.byKey(const ValueKey('cert-gen-go')));
+    await settle(tester);
+    expect(calls['draft']!.single['lang'], 'en');
+    expect(calls['draft']!.single['style'], 'modern');
+    expect(calls['draft']!.single['design_id'], 7);
+    expect(calls['draft']!.single['reset_fields'], false);
+    await tester.tapAt(const Offset(5, 5));
+    await settle(tester, 300);
+    await save(tester);
+    final designs = (puts.single['document'] as Map)['designs'] as Map;
+    expect(((designs['en'] as Map)['page'] as Map)['background_image'], 'https://x/en.png');
+    expect(((designs['ar'] as Map)['page'] as Map)['background_image'], isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('sample values typed in the preview are sent as values', (tester) async {
+    served = _doc(ar: [_el('a1', '{{honors_level}}')]);
+    await open(tester);
+    await tester.tap(find.byKey(const ValueKey('cert-preview')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('cert-sample-values')));
+    await settle(tester, 400);
+    await tester.enterText(find.byKey(const ValueKey('cert-sample-honors_level')), 'First class');
+    await tester.tap(find.byKey(const ValueKey('cert-sample-apply')));
+    await settle(tester);
+    expect(calls['preview'], hasLength(2));
+    expect((calls['preview']!.last['values'] as Map)['honors_level'], 'First class');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  test('signature, rename and background calls have the legacy body shapes', () async {
+    final api = CertEngineApi();
+    expect(await api.uploadSignature(Uint8List.fromList([1, 2]), ink: '#000000', strength: .7), 'https://x/sig.png');
+    final b = calls['signature']!.single;
+    expect(b['ink_color'], '#000000');
+    expect(b['strength'], .7);
+    expect(b['image_base64'], base64Encode([1, 2]));
+    expect(await api.generateBackground(7, lang: 'ar', landscape: true, style: 'classic'), 'https://x/ar.png');
+    expect(calls['draft']!.single['orientation'], 'landscape');
+    final wm = certAddOptions('en', const []).firstWhere((o) => o.label == 'Watermark image');
+    expect(wm.toBack && wm.centered, isTrue);
   });
 
   test('the kill switch certificates.engine opens the legacy designer', () {

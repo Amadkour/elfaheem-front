@@ -102,13 +102,22 @@ List<StudioPlaceholder> layoutVariableChips() => [
 /// Picks an image, crops it and uploads it (`POST /assets`). The asset id, or null.
 typedef LayoutAssetUploader = Future<String?> Function(Uint8List bytes, String name);
 
+/// Like [LayoutAssetUploader] but told which element the image is for (a signature goes to another endpoint).
+typedef LayoutElementUploader = Future<String?> Function(LayoutElement el, Uint8List bytes, String name);
+
 class LayoutElementProps extends StatelessWidget {
-  const LayoutElementProps({super.key, required this.ctl, required this.element, required this.fields, required this.upload, this.onClose, this.pageFontSize = 10, this.fieldFocus});
+  const LayoutElementProps({super.key, required this.ctl, required this.element, required this.fields, required this.upload, this.uploadFor, this.extraFor, this.onClose, this.pageFontSize = 10, this.fieldFocus});
 
   final StudioController<LayoutElement> ctl;
   final LayoutElement element;
   final List<LayoutFieldOption> fields;
   final LayoutAssetUploader upload;
+
+  /// When given it wins over [upload] and is told the element.
+  final LayoutElementUploader? uploadFor;
+
+  /// Extra controls under an image / signature element's own (optional).
+  final Widget? Function(BuildContext context, LayoutElement element, StudioController<LayoutElement> ctl)? extraFor;
   final VoidCallback? onClose;
 
   /// The page's text size (pt): what an element without its own size shows.
@@ -196,6 +205,7 @@ class LayoutElementProps extends StatelessWidget {
             StudioTextProp(label: t('الاسم', 'Name'), value: e.sigName ?? '', onChanged: (v) => _edit('signature name', () => e.sigName = v, coalesce: true)),
             StudioTextProp(label: t('الصفة', 'Title'), value: e.sigTitle ?? '', onChanged: (v) => _edit('signature title', () => e.sigTitle = v, coalesce: true)),
           ],
+          ?extraFor?.call(context, e, ctl),
         ];
       case 'qr' || 'page_number':
         return [
@@ -271,7 +281,8 @@ class LayoutElementProps extends StatelessWidget {
       final cropped = await showAppImageCropper(context, bytes);
       if (cropped == null) return;
       bytes = cropped;
-      final id = await upload(bytes, f.name.isEmpty ? 'image.png' : f.name);
+      final nm = f.name.isEmpty ? 'image.png' : f.name;
+      final id = uploadFor != null ? await uploadFor!(element, bytes, nm) : await upload(bytes, nm);
       if (id == null) return;
       LayoutAssets.put(id, bytes);
       _edit('image', () => element.value = id);

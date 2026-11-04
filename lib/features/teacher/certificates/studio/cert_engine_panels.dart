@@ -182,14 +182,16 @@ Future<void> showCertPageSheet(
   required LayoutDesign design,
   required VoidCallback onChanged,
   required Future<String?> Function() pickBackground,
+  Future<String?> Function(String style, String color)? generateBackground,
 }) =>
-    showAppSheet<void>(context, (ctx) => _PageSheet(design: design, onChanged: onChanged, pickBackground: pickBackground));
+    showAppSheet<void>(context, (ctx) => _PageSheet(design: design, onChanged: onChanged, pickBackground: pickBackground, generateBackground: generateBackground));
 
 class _PageSheet extends StatefulWidget {
-  const _PageSheet({required this.design, required this.onChanged, required this.pickBackground});
+  const _PageSheet({required this.design, required this.onChanged, required this.pickBackground, this.generateBackground});
   final LayoutDesign design;
   final VoidCallback onChanged;
   final Future<String?> Function() pickBackground;
+  final Future<String?> Function(String style, String color)? generateBackground;
 
   @override
   State<_PageSheet> createState() => _PageSheetState();
@@ -197,6 +199,17 @@ class _PageSheet extends StatefulWidget {
 
 class _PageSheetState extends State<_PageSheet> {
   LayoutPage get p => widget.design.page;
+  bool _generating = false;
+  String _style = 'classic';
+  String _color = kCertGenColors.first;
+
+  Future<void> _generate() async {
+    setState(() => _generating = true);
+    final url = await widget.generateBackground!(_style, _color);
+    if (!mounted) return;
+    setState(() => _generating = false);
+    if (url != null) _plain(() => p.backgroundImage = url);
+  }
 
   /// Changes the page and keeps the elements at their relative places.
   void _page(VoidCallback mutate) {
@@ -294,6 +307,150 @@ class _PageSheetState extends State<_PageSheet> {
             ],
           ]),
         ),
+        if (widget.generateBackground != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          StudioPropField(
+            label: t('إنشاء خلفية', 'Generate a background'),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                for (final (k, ar, en) in const [('classic', 'كلاسيكي', 'Classic'), ('modern', 'عصري', 'Modern'), ('dark', 'داكن', 'Dark')])
+                  ChoiceChip(key: ValueKey('cert-gen-$k'), label: Text(t(ar, en)), selected: _style == k, onSelected: (_) => setState(() => _style = k)),
+              ]),
+              const SizedBox(height: AppSpace.xs),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                for (final hex in kCertGenColors)
+                  Semantics(
+                    button: true,
+                    selected: _color == hex,
+                    label: hex,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                      onTap: () => setState(() => _color = hex),
+                      child: Container(
+                        width: AppTouch.min,
+                        height: AppTouch.min,
+                        alignment: Alignment.center,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(color: layoutColor(hex), shape: BoxShape.circle, border: Border.all(color: _color == hex ? c.textDark : c.divider, width: _color == hex ? 3 : 1)),
+                        ),
+                      ),
+                    ),
+                  ),
+              ]),
+              const SizedBox(height: AppSpace.xs),
+              FilledButton.icon(
+                key: const ValueKey('cert-gen-go'),
+                onPressed: _generating ? null : _generate,
+                icon: _generating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_awesome_rounded),
+                label: Text(t('إنشاء', 'Generate')),
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
+              ),
+              Text(t('تُطبَّق على لغة هذا التبويب فقط.', 'Applied to the language of this tab only.'), style: appText(12, c: c.textMedium)),
+            ]),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The colours the background generator offers.
+const kCertGenColors = ['#1F4E8C', '#0F766E', '#7C3AED', '#B45309', '#BE123C', '#374151'];
+
+/// A dialog that owns its text controller: disposed with the dialog's state, after the exit animation — never on the
+/// dialog's future (the closing dialog still draws its field one more frame).
+class _ControllerDialog extends StatefulWidget {
+  const _ControllerDialog({required this.initial, required this.builder});
+  final String initial;
+  final Widget Function(BuildContext context, TextEditingController ctl, StateSetter setState) builder;
+
+  @override
+  State<_ControllerDialog> createState() => _ControllerDialogState();
+}
+
+class _ControllerDialogState extends State<_ControllerDialog> {
+  late final TextEditingController _ctl = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _ctl, setState);
+}
+
+/// The new name of the design (null = cancelled).
+Future<String?> showCertRenameDialog(BuildContext context, String current) {
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => _ControllerDialog(
+      initial: current,
+      builder: (ctx, ctl, setState) => AlertDialog(
+        title: Text(t('إعادة تسمية التصميم', 'Rename the design')),
+        content: TextField(
+          key: const ValueKey('cert-rename-field'),
+          controller: ctl,
+          autofocus: true,
+          maxLength: 120,
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (v) {
+            if (v.trim().isNotEmpty) Navigator.pop(ctx, v.trim());
+          },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('إلغاء', 'Cancel'))),
+          FilledButton(key: const ValueKey('cert-rename-ok'), onPressed: ctl.text.trim().isEmpty ? null : () => Navigator.pop(ctx, ctl.text.trim()), child: Text(t('حفظ', 'Save'))),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Clean a signature again: ink colour (null = keep the original ink) and strength. Null = cancelled.
+Future<({String? ink, double strength})?> showCertSignatureClean(BuildContext context) => showAppSheet<({String? ink, double strength})>(
+      context,
+      (ctx) => _SigCleanSheet(),
+    );
+
+class _SigCleanSheet extends StatefulWidget {
+  @override
+  State<_SigCleanSheet> createState() => _SigCleanSheetState();
+}
+
+class _SigCleanSheetState extends State<_SigCleanSheet> {
+  String? _ink = '#000000';
+  double _strength = .5;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppSheetContent(
+      title: t('تنظيف التوقيع', 'Clean the signature'),
+      children: [
+        StudioPropField(
+          label: t('لون الحبر', 'Ink colour'),
+          child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            for (final (v, ar, en) in const [(null, 'الأصلي', 'Original'), ('#000000', 'أسود', 'Black'), ('#1F3A8A', 'أزرق داكن', 'Dark blue'), ('#374151', 'رمادي', 'Grey')])
+              ChoiceChip(key: ValueKey('cert-ink-${v ?? 'none'}'), label: Text(t(ar, en)), selected: _ink == v, onSelected: (_) => setState(() => _ink = v)),
+          ]),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        StudioPropField(
+          label: t('قوة إزالة الخلفية', 'Background removal strength'),
+          child: Slider(value: _strength, onChanged: (v) => setState(() => _strength = v)),
+        ),
+        Text(t('تُعاد المعالجة من الصورة التي رفعتها في هذه الجلسة.', 'It is processed again from the photo you uploaded in this session.'), style: appText(12, c: c.textMedium)),
+        const SizedBox(height: AppSpace.sm),
+        FilledButton(
+          key: const ValueKey('cert-ink-go'),
+          onPressed: () => Navigator.pop(context, (ink: _ink, strength: _strength)),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
+          child: Text(t('تطبيق', 'Apply')),
+        ),
       ],
     );
   }
@@ -354,11 +511,11 @@ Future<String?> showCertLeaveDialog(BuildContext context) => showDialog<String>(
 
 /// A new custom variable: its key (validated), null when cancelled.
 Future<String?> showCertVariableDialog(BuildContext context) {
-  final ctl = TextEditingController();
   return showDialog<String>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
+    builder: (ctx) => _ControllerDialog(
+      initial: '',
+      builder: (ctx, ctl, setState) => AlertDialog(
         title: Text(t('متغيّر جديد', 'New variable')),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           TextField(
@@ -377,20 +534,31 @@ Future<String?> showCertVariableDialog(BuildContext context) {
         ],
       ),
     ),
-  ).whenComplete(ctl.dispose);
+  );
 }
 
 // ── preview ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /// The server preview of the design: one page per language, fetched through [fetch] (the studio caches by document).
-Future<void> showCertPreview(BuildContext context, {required List<String> languages, required String initial, required Future<Uint8List> Function(String lang) fetch}) =>
-    showDialog<void>(context: context, builder: (_) => _PreviewDialog(languages: languages, initial: initial, fetch: fetch));
+Future<void> showCertPreview(
+  BuildContext context, {
+  required List<String> languages,
+  required String initial,
+  required Future<Uint8List> Function(String lang) fetch,
+  List<String> customKeys = const [],
+  Map<String, String> samples = const {},
+  ValueChanged<Map<String, String>>? onSamples,
+}) =>
+    showDialog<void>(context: context, builder: (_) => _PreviewDialog(languages: languages, initial: initial, fetch: fetch, customKeys: customKeys, samples: samples, onSamples: onSamples));
 
 class _PreviewDialog extends StatefulWidget {
-  const _PreviewDialog({required this.languages, required this.initial, required this.fetch});
+  const _PreviewDialog({required this.languages, required this.initial, required this.fetch, this.customKeys = const [], this.samples = const {}, this.onSamples});
   final List<String> languages;
   final String initial;
   final Future<Uint8List> Function(String lang) fetch;
+  final List<String> customKeys;
+  final Map<String, String> samples;
+  final ValueChanged<Map<String, String>>? onSamples;
 
   @override
   State<_PreviewDialog> createState() => _PreviewDialogState();
@@ -399,6 +567,25 @@ class _PreviewDialog extends StatefulWidget {
 class _PreviewDialogState extends State<_PreviewDialog> {
   late String _lang = widget.initial;
   late Future<Uint8List> _png = widget.fetch(_lang);
+  late final Map<String, TextEditingController> _ctls = {
+    for (final k in widget.customKeys) k: TextEditingController(text: widget.samples[k] ?? ''),
+  };
+
+  @override
+  void dispose() {
+    for (final c in _ctls.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _apply() {
+    widget.onSamples?.call({
+      for (final e in _ctls.entries)
+        if (e.value.text.trim().isNotEmpty) e.key: e.value.text.trim(),
+    });
+    _pick(_lang);
+  }
 
   void _pick(String l) => setState(() {
         _lang = l;
@@ -453,6 +640,35 @@ class _PreviewDialogState extends State<_PreviewDialog> {
               },
             ),
           ),
+          if (_ctls.isNotEmpty)
+            ExpansionTile(
+              key: const ValueKey('cert-sample-values'),
+              title: Text(t('قيم المتغيّرات التجريبية', 'Sample values of the variables'), style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
+              childrenPadding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 220),
+                  child: SingleChildScrollView(
+                    child: Column(children: [
+                      for (final e in _ctls.entries)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                          child: TextField(
+                            key: ValueKey('cert-sample-${e.key}'),
+                            controller: e.value,
+                            decoration: InputDecoration(labelText: e.key, isDense: true),
+                            onSubmitted: (_) => _apply(),
+                          ),
+                        ),
+                    ]),
+                  ),
+                ),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: FilledButton(key: const ValueKey('cert-sample-apply'), onPressed: _apply, child: Text(t('تحديث المعاينة', 'Refresh the preview'))),
+                ),
+              ],
+            ),
           Padding(
             padding: const EdgeInsets.all(AppSpace.xs),
             child: Text(t('بقيم تجريبية — لا يُحفظ شيء.', 'With sample values — nothing is saved.'), style: appText(12, c: c.textMedium)),
