@@ -96,7 +96,7 @@ Both repos hold this file (front `docs/design_engine/ENGINE.md`, back `docs/desi
 {"letter_spacing": 0,        // pt, −5…50
  "line_height": 1.3,         // × font size, 0.6…3
  "shrink": false,            // text that does not fit shrinks (down to 50 %) instead of being clipped
- "shadow": {"color": "#00000055", "dx": 0.4, "dy": 0.4}   // mm; text and shapes
+ "shadow": {"color": "#55000000", "dx": 0.4, "dy": 0.4}   // mm; text and shapes
 }
 ```
 Excel ignores shadow / letter_spacing (note); Word keeps letter_spacing (`w:spacing`), drops shadow.

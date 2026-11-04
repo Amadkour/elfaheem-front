@@ -47,23 +47,12 @@ Color? layoutColor(String? hex, [Color? fallback]) {
   return v == null ? fallback : Color(v);
 }
 
-/// A shadow colour as the model stores it: `#RRGGBB` (opaque) or `#RRGGBBAA` (the default is `#00000055`: black at
-/// a third) — NOT the `#AARRGGBB` order [layoutColor] reads.
-Color layoutShadowColor(String? hex) {
-  final h = (hex ?? '').replaceAll('#', '').trim();
-  final v = int.tryParse(h, radix: 16);
-  if (v == null) return const Color(0x55000000);
-  if (h.length == 6) return Color(0xFF000000 | v);
-  if (h.length == 8) return Color(((v & 0xFF) << 24) | (v >> 8));
-  return const Color(0x55000000);
-}
+/// A shadow colour as the model stores it: `#RRGGBB` (opaque) or `#AARRGGBB` — the contract's one colour order, the
+/// same [layoutColor] and the server read (the default `#55000000` is black at a third).
+Color layoutShadowColor(String? hex) => layoutColor(hex, const Color(0x55000000))!;
 
-/// [c] as a shadow colour string `#RRGGBBAA`.
-String layoutShadowHex(Color c) {
-  final rgb = (c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase();
-  final a = (c.a * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0').toUpperCase();
-  return '#$rgb$a';
-}
+/// [c] as a shadow colour string `#AARRGGBB`.
+String layoutShadowHex(Color c) => '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
 
 String layoutHex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 

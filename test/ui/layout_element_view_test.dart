@@ -57,14 +57,14 @@ void main() {
       w: 40,
       h: 10,
       value: 'Hello',
-      style: LayoutStyle(letterSpacing: 2, lineHeight: 1.6, shadow: LayoutShadow(color: '#000000FF', dx: 1, dy: 1)),
+      style: LayoutStyle(letterSpacing: 2, lineHeight: 1.6, shadow: LayoutShadow(color: '#FF000000', dx: 1, dy: 1)),
     );
     await _pump(t, _view(e));
     final st = _text(t).style!;
     expect(st.letterSpacing, closeTo(2 * kPtMm * 4, 1e-9));
     expect(st.height, 1.6);
     expect(st.shadows, hasLength(1));
-    expect(st.shadows!.single.color, const Color(0xFF000000), reason: '#RRGGBBAA, not #AARRGGBB');
+    expect(st.shadows!.single.color, const Color(0xFF000000), reason: '#AARRGGBB, the contract order');
   });
 
   testWidgets('shrink makes the font smaller until the text fits, never below half', (t) async {
@@ -87,12 +87,12 @@ void main() {
     expect(mid, inInclusiveRange(.5, 1));
   });
 
-  test('a shadow colour is #RRGGBB or #RRGGBBAA', () {
-    expect(layoutShadowColor('#00000055'), const Color(0x55000000));
+  test('a shadow colour is #RRGGBB or #AARRGGBB, the order the server reads', () {
+    expect(layoutShadowColor('#55000000'), const Color(0x55000000));
     expect(layoutShadowColor('#FF0000'), const Color(0xFFFF0000));
-    expect(layoutShadowColor('#FF000080'), const Color(0x80FF0000));
+    expect(layoutShadowColor('#80FF0000'), const Color(0x80FF0000));
     expect(layoutShadowColor('bad'), const Color(0x55000000));
-    expect(layoutShadowHex(const Color(0x80FF0000)), '#FF000080');
+    expect(layoutShadowHex(const Color(0x80FF0000)), '#80FF0000');
   });
 
   testWidgets('the page background draws nothing for an unknown asset and nothing without an image', (t) async {

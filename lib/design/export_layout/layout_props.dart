@@ -410,7 +410,7 @@ class LayoutElementProps extends StatelessWidget {
         StudioColorField(
           label: t('لون الظل', 'Shadow colour'),
           value: layoutShadowColor(sh.color),
-          onChanged: (c) => _edit('shadow colour', () => sh.color = c == null ? '#00000055' : layoutShadowHex(c.a < .99 ? c : c.withValues(alpha: .4))),
+          onChanged: (c) => _edit('shadow colour', () => sh.color = c == null ? '#55000000' : layoutShadowHex(c.a < .99 ? c : c.withValues(alpha: .4))),
         ),
         Row(children: [
           Expanded(child: StudioStepper(label: t('إزاحة أفقية (مم)', 'Offset X (mm)'), value: sh.dx, min: -5, max: 5, step: .1, decimals: 1, onChanged: (v) => _edit('shadow x', () => sh.dx = v, coalesce: true))),

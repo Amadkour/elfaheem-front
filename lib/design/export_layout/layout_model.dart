@@ -183,14 +183,14 @@ class LayoutStyle {
 
 /// v4: a drop shadow, offsets in mm.
 class LayoutShadow {
-  LayoutShadow({this.color = '#00000055', this.dx = 0.4, this.dy = 0.4});
+  LayoutShadow({this.color = '#55000000', this.dx = 0.4, this.dy = 0.4});
   String color;
   double dx, dy;
 
   static LayoutShadow? maybe(Object? v) => v is Map ? LayoutShadow.fromJson(_map(v)) : null;
 
   factory LayoutShadow.fromJson(Map<String, dynamic> j) =>
-      LayoutShadow(color: _s(j['color']) ?? '#00000055', dx: _d(j['dx'], 0.4), dy: _d(j['dy'], 0.4));
+      LayoutShadow(color: _s(j['color']) ?? '#55000000', dx: _d(j['dx'], 0.4), dy: _d(j['dy'], 0.4));
 
   Map<String, dynamic> toJson() => {'color': color, 'dx': dx, 'dy': dy};
 }
