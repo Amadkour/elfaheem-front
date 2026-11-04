@@ -2263,7 +2263,7 @@ the Arabic / English saving problems (a background regenerate committed to the s
 and wiped theme keys; no save concurrency check; drafts dropped silently) and a designer that rebuilt everything per
 drag frame.
 
-**Decision.** `certificate_designs.document` (JSON, nullable) + `document_version` (migration 0043, reversible). A design
+**Decision.** `certificate_designs.document` (JSON, nullable) + `document_version` (migration 0044, reversible). A design
 saved by the new Certificate Studio holds a v4 page-mode document (one design per language, never an implicit English
 fallback) and renders through the engine (PDF, and PNG at the legacy pixel size); a design with no document renders
 with the legacy renderer exactly as before, and a legacy save clears `document` — whatever saved last renders.
