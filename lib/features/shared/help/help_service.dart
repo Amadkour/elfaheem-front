@@ -1,10 +1,14 @@
-// HelpService (workstream f3): the in-app Help catalogue, fetched ONCE per person + organization context, cached on
-// the device with its version, and refreshed only when `GET /api/v1/help/version` says it changed.
+// HelpService (workstream f3): the in-app Help catalogue. A page's Info button costs NO request (the owner's rule:
+// homes stay cheap):
 //
-//   - first ask: no cache -> GET /help/pages?org_id= (role is resolved by the server) and store it;
-//   - later asks: a cache is shown at once; the version is checked at most once per app start and again on resume
-//     after [recheckAfter] (1 h). `If-None-Match: "help-<n>"` answers 304 = keep; a new number refetches the pages;
-//   - offline / any failure: the cached copy stays; a failed check is retried at most once a minute.
+//   - visibility comes from the index bundled in the app, `assets/help/help_index.json` ((page_id, role) pairs that
+//     have an entry, generated from the backend's help seed by tool/gen_help_index.dart); a catalogue cached on the
+//     device from an earlier tap overrides it (exact for this person's role);
+//   - the catalogue is fetched only when the person taps an Info button ([ensure]): no cache -> GET /help/pages?org_id=
+//     (the role is resolved by the server); a cache -> `GET /help/version` with `If-None-Match: "help-<n>"` (304 =
+//     keep, a new number refetches the pages), at most once per app start and again after [recheckAfter] (1 h);
+//   - nothing at start-up, on resume or on a timer; offline / any failure: the cached copy stays, a failed check is
+//     retried at most once a minute.
 //
 // The transport is a [HelpRemote] so tests (and the offline case) never need a server.
 library;
@@ -12,7 +16,8 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api_client.dart';
@@ -50,10 +55,11 @@ class ApiHelpRemote implements HelpRemote {
   }
 }
 
-class HelpService extends ChangeNotifier with WidgetsBindingObserver {
-  HelpService({HelpRemote remote = const ApiHelpRemote(), DateTime Function()? clock})
+class HelpService extends ChangeNotifier {
+  HelpService({HelpRemote remote = const ApiHelpRemote(), DateTime Function()? clock, Future<String> Function()? indexLoader})
       : _remote = remote,
-        _now = clock ?? DateTime.now;
+        _now = clock ?? DateTime.now,
+        _indexLoader = indexLoader ?? (() => rootBundle.loadString(indexAsset));
 
   static HelpService instance = HelpService();
 
@@ -63,9 +69,11 @@ class HelpService extends ChangeNotifier with WidgetsBindingObserver {
   static const recheckAfter = Duration(hours: 1);
   static const retryAfterFailure = Duration(minutes: 1);
   static const _prefix = 'help.cache.v1.';
+  static const indexAsset = 'assets/help/help_index.json';
 
   final HelpRemote _remote;
   final DateTime Function() _now;
+  final Future<String> Function() _indexLoader;
 
   String _scope = '';
   int _version = -1;
@@ -73,33 +81,99 @@ class HelpService extends ChangeNotifier with WidgetsBindingObserver {
   Map<String, HelpEntry> _pages = const {};
   DateTime? _checkedAt, _failedAt;
   Future<void>? _inFlight;
-  bool _observing = false;
-  int? _lastOrg;
-  String _lastUser = '';
+  Map<String, Set<String>>? _index; // page_id -> roles that have an entry
+  String _helpRole = ''; // the person's resolved help role ([helpRoleOf]); '' = unknown
+  Future<void>? _indexLoading;
 
   int get version => _version;
   String get role => _role;
   bool get loaded => _scope.isNotEmpty;
   int get count => _pages.length;
 
-  /// The entry of [pageId] for the current person, or null (no button).
+  /// The entry of [pageId] from the catalogue cached on the device, or null (not cached yet: the tour waits).
   HelpEntry? entry(String pageId) => _pages[pageId];
 
   Iterable<String> get pageIds => _pages.keys;
 
+  /// Without a cached catalogue the bundled index decides, for the person's help role and its fallback chain (the
+  /// server's rules, [helpRoleOf] / [helpFallback]); an unknown role (no [loadLocal] yet) shows nothing.
+  bool has(String pageId) {
+    if (_version >= 0) return _pages.containsKey(pageId);
+    final roles = _index?[pageId];
+    if (roles == null || _helpRole.isEmpty) return false;
+    return helpFallback(_helpRole).any(roles.contains);
+  }
+
+  /// The help role of a person, as the server's `resolve_role` computes it: a platform admin is always
+  /// `super_admin`; inside an organization an `org_admin` member is `org_admin` and any other member `org_member`;
+  /// else the platform role (`org-admin` -> org_admin, `org-staff` -> org_member, teacher / parent / student).
+  static String helpRoleOf(String? platformRole, {bool inOrg = false, bool orgAdmin = false}) {
+    final base = switch (platformRole) {
+      'admin' || 'super-admin' || 'super_admin' || 'developer' => 'super_admin',
+      'teacher' => 'teacher',
+      'parent' => 'parent',
+      'org-admin' || 'org_admin' => 'org_admin',
+      'org-staff' || 'org_staff' => 'org_member',
+      _ => 'student',
+    };
+    if (base == 'super_admin' || !inOrg) return base;
+    return orgAdmin ? 'org_admin' : 'org_member';
+  }
+
+  /// The server's fallback chains (`_FALLBACK` in services/help_service.py).
+  static List<String> helpFallback(String role) => switch (role) {
+        'super_admin' => const ['super_admin', 'org_admin'],
+        'org_admin' => const ['org_admin', 'org_member', 'student'],
+        'org_member' => const ['org_member', 'student'],
+        'teacher' => const ['teacher', 'student'],
+        'parent' => const ['parent', 'student'],
+        'student' => const ['student'],
+        _ => [role, 'student'],
+      };
+
   static String scopeOf(String userKey, int? orgId) => '$userKey:${orgId ?? 0}';
 
-  /// Makes sure the catalogue for ([userKey], [orgId]) is loaded: the cache at once, then (at most once per start and
-  /// per [recheckAfter]) the version check. Never throws.
+  /// Reads the bundled index (a local asset, no request). Never throws.
+  Future<void> loadIndex() => _indexLoading ??= () async {
+        try {
+          final m = jsonDecode(await _indexLoader());
+          final list = m is Map ? (m['pages'] as List? ?? const []) : const [];
+          final idx = <String, Set<String>>{};
+          for (final p in list) {
+            if (p is List && p.length >= 2) idx.putIfAbsent('${p[0]}', () => {}).add('${p[1]}');
+          }
+          _index = idx;
+        } catch (_) {
+          _index = <String, Set<String>>{};
+        }
+        notifyListeners();
+      }();
+
+  /// Local only, no request: the bundled index plus this person's cached catalogue (saved by an earlier tap).
+  Future<void> loadLocal({required String userKey, int? orgId, required String helpRole}) async {
+    unawaited(loadIndex());
+    final roleChanged = helpRole != _helpRole;
+    _helpRole = helpRole;
+    final scope = scopeOf(userKey, orgId);
+    if (scope == _scope && roleChanged) notifyListeners();
+    if (scope == _scope) return;
+    _resetTo(scope);
+    await _loadCache(scope);
+    notifyListeners();
+  }
+
+  void _resetTo(String scope) {
+    _scope = scope;
+    _version = -1;
+    _role = '';
+    _pages = const {};
+    _checkedAt = null;
+    _failedAt = null;
+  }
+
+  /// The tap path: makes sure the catalogue for ([userKey], [orgId]) is loaded: the cache at once, then (at most once
+  /// per start and per [recheckAfter]) the version check, or the first fetch when nothing is cached. Never throws.
   Future<void> ensure({required String userKey, int? orgId, bool force = false}) {
-    _lastUser = userKey;
-    _lastOrg = orgId;
-    if (!_observing) {
-      _observing = true;
-      try {
-        WidgetsBinding.instance.addObserver(this);
-      } catch (_) {/* no binding (a plain Dart test) */}
-    }
     final scope = scopeOf(userKey, orgId);
     final running = _inFlight;
     if (running != null && scope == _scope && !force) return running;
@@ -109,12 +183,7 @@ class HelpService extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _run(String scope, bool force) async {
     if (scope != _scope) {
-      _scope = scope;
-      _version = -1;
-      _role = '';
-      _pages = const {};
-      _checkedAt = null;
-      _failedAt = null;
+      _resetTo(scope);
       await _loadCache(scope);
       notifyListeners();
     }
@@ -185,13 +254,6 @@ class HelpService extends ChangeNotifier with WidgetsBindingObserver {
     _pages = const {};
     _checkedAt = _failedAt = null;
     notifyListeners();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _lastUser.isNotEmpty) {
-      unawaited(ensure(userKey: _lastUser, orgId: _lastOrg)); // rechecks only after [recheckAfter]
-    }
   }
 
   // ── The tour: first visit only, remembered per page per person ───────────────
