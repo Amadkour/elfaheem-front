@@ -10,7 +10,9 @@ library;
 
 import 'package:flutter_education_app/core/api_client.dart';
 
-import '../../admin/admin_common.dart' show asInt, asMap, asMapList;
+import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import 'exam_authoring.dart' show authoringError;
+import 'paper/exam_setup.dart' show versionsBubbleText;
 import 'exam_engine_api.dart' show EngineResult, engineCall;
 import 'exam_paper.dart';
 
@@ -18,7 +20,7 @@ import 'exam_paper.dart';
 const kMaxVersions = 10;
 
 class ExamVersion {
-  const ExamVersion({required this.code, this.label, this.copies, this.questionOrder, this.optionOrders = const {}, this.key = const {}, this.seed});
+  const ExamVersion({required this.code, this.label, this.copies, this.questionOrder, this.optionOrders = const {}, this.key = const {}, this.seed, this.stale = false});
   final String code;
   final String? label;
   final int? copies;
@@ -30,6 +32,9 @@ class ExamVersion {
   final Map<int, List<int>> optionOrders;
   final Map<String, dynamic> key;
   final int? seed;
+
+  /// Questions were placed or removed after this version was made: regenerate before printing.
+  final bool stale;
 
   bool get shuffled => questionOrder != null || optionOrders.isNotEmpty;
 
@@ -47,19 +52,25 @@ class ExamVersion {
       },
       key: Map<String, dynamic>.from(asMap(j['key'])),
       seed: j['seed'] == null ? null : asInt(j['seed']),
+      stale: j['stale'] == true,
     );
   }
 }
 
 class ExamVersions {
-  const ExamVersions({this.items = const [], this.shuffleQuestions = false, this.shuffleOptions = false});
+  const ExamVersions({this.items = const [], this.shuffleQuestions = false, this.shuffleOptions = false, bool stale = false}) : _stale = stale;
   final List<ExamVersion> items;
+  final bool _stale;
+
+  /// The questions changed after the versions were made.
+  bool get stale => _stale || items.any((v) => v.stale);
   final bool shuffleQuestions, shuffleOptions;
 
   static ExamVersions fromJson(Map<String, dynamic> j) => ExamVersions(
         items: [for (final v in asMapList(j['items'])) ExamVersion.fromJson(v)],
         shuffleQuestions: j['shuffle_questions'] == true,
         shuffleOptions: j['shuffle_options'] == true,
+        stale: j['stale'] == true,
       );
 
   ExamVersion? byCode(String? code) {
@@ -69,6 +80,15 @@ class ExamVersions {
     return null;
   }
 }
+
+/// The text of a failed versions / answer-key / print-plan call (`versions_stale` and the bubble rule in words).
+String versionsErrorText(EngineResult r) => switch (r.code) {
+      'versions_stale' => versionsStaleText,
+      'question_shuffle_needs_paper_answers' => versionsBubbleText,
+      _ => authoringError(r),
+    };
+
+String get versionsStaleText => t('تغيّرت الأسئلة بعد إنشاء النماذج — أعد إنشاءها', 'The questions changed after the versions were made — regenerate them');
 
 /// `POST /exams/{id}/versions` body. [copies]: one number for every version (A…).
 Map<String, dynamic> versionBody({required int count, required bool shuffleQuestions, required bool shuffleOptions, int? copies}) {

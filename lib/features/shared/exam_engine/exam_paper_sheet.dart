@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -24,7 +25,11 @@ import 'exam_paper.dart';
 import 'exam_paper_docx.dart';
 import 'exam_paper_pdf.dart';
 import 'exam_quick.dart' show paperFileOf;
+import 'exam_versions.dart';
+import 'exam_versions_sheet.dart';
+import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi, formatBody, setupErrorText;
 import 'paper/omr_counts.dart';
+import 'paper/scan/omr_audience_picker.dart';
 
 const _kTemplate = 'exam_paper.template', _kInstitution = 'exam_paper.institution', _kCustom = 'exam_paper.custom', _kCustomName = 'exam_paper.custom_name';
 const _maxCustomBytes = 1500000;
@@ -74,8 +79,11 @@ Uint8List? printableImage(Uint8List? b) {
 }
 
 class ExamPaperSheet extends StatefulWidget {
-  const ExamPaperSheet({super.key, required this.view, this.course = '', this.orgName = '', this.logoUrl, this.accentHex = '0F7B5F'});
+  const ExamPaperSheet(
+      {super.key, required this.view, this.course = '', this.orgName = '', this.logoUrl, this.accentHex = '0F7B5F', this.versionsApi, this.setupApi});
   final ExamView view;
+  final ExamVersionsApi? versionsApi;
+  final ExamSetupApi? setupApi;
   final String course, orgName;
   final String? logoUrl;
   final String accentHex;
@@ -90,7 +98,18 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
   bool _points = true, _seat = true;
   Uint8List? _custom;
   String? _customName;
-  String? _busy;                 // 'paper' | 'key'
+  String? _busy;                 // 'paper' | 'key' | 'copies'
+
+  // versions, answer area, per-student copies
+  late final ExamVersionsApi _vApi = widget.versionsApi ?? ExamVersionsApi();
+  late final ExamSetupApi _sApi = widget.setupApi ?? ExamSetupApi();
+  ExamVersions _versions = const ExamVersions();
+  String? _version;              // the version code to print; null = the exam's own order
+  AnswerTablePlace _table = AnswerTablePlace.none;
+  ExamSetup? _setup;             // loaded when the exam is a paper exam (the answer-area choice is kept in sync with it)
+  bool _named = true;
+  Set<int> _students = {};
+  int _blank = 30;
   late final _institution = TextEditingController(text: widget.orgName);
   late final _date = TextEditingController(text: widget.view.exam.startsAt == null ? '' : AppTime.date(widget.view.exam.startsAt!));
   late final _course = TextEditingController(text: widget.course);
@@ -105,6 +124,61 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
   void initState() {
     super.initState();
     _restore();
+    _loadExtras();
+  }
+
+  Future<void> _loadExtras() async {
+    final id = widget.view.exam.id;
+    if (id == null) return;
+    final v = await _vApi.versions(id);
+    final s = await _sApi.setup(id);
+    if (!mounted) return;
+    setState(() {
+      if (v.ok) _versions = ExamVersions.fromJson(v.map);
+      if (s.ok) {
+        final x = ExamSetup.fromJson(s.map);
+        if (x.delivery == 'paper') _setup = x;
+      }
+    });
+  }
+
+  Future<void> _editVersions() async {
+    final id = widget.view.exam.id;
+    if (id == null) return;
+    final r = await openExamVersions(context, examId: id, current: _versions, api: _vApi, bubble: _setup?.paperFormat == 'bubble' || _setup?.paperFormat == 'both');
+    if (r != null && mounted) {
+      setState(() {
+        _versions = r;
+        if (_version != null && r.byCode(_version) == null) _version = null;
+      });
+    }
+  }
+
+  /// The paper's answer area follows the exam's paper | bubble | both setting.
+  Future<void> _pickArea(String format) async {
+    final cur = _setup;
+    final id = widget.view.exam.id;
+    if (cur == null || id == null || cur.paperFormat == format) return;
+    final r = await _sApi.putSetup(id, formatBody(cur, format));
+    if (!mounted) return;
+    if (!r.ok) return appToast(setupErrorText(r), error: true);
+    final s = await _sApi.setup(id);
+    if (mounted && s.ok) setState(() => _setup = ExamSetup.fromJson(s.map));
+  }
+
+  Future<void> _pickStudents() async {
+    final id = widget.view.exam.id;
+    if (id == null) return;
+    await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          return AppSheetContent(title: t('اختر الطلاب', 'Pick students'), children: [
+            OmrAudiencePicker(examId: id, selected: _students, onChanged: (v) {
+              set(() {});
+              setState(() => _students = v);
+            }),
+            const SizedBox(height: 8),
+            AppPrimaryButton(label: t('تم', 'Done'), onPressed: () => Navigator.of(ctx).pop()),
+          ]);
+        }));
   }
 
   @override
@@ -172,22 +246,74 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     }
   }
 
+  Future<ExamPaperDoc> _baseDoc({required bool answerKey}) async => ExamPaperDoc.fromView(widget.view,
+      institution: _institution.text,
+      course: _course.text,
+      dateText: _date.text.trim(),
+      instructions: _instructions.text.split('\n'),
+      rtl: AppConfig.lang == 'ar',
+      logo: _tpl == PaperTemplate.custom ? null : await _logo(),
+      accentHex: widget.accentHex,
+      showPoints: _points,
+      seatNumber: _seat,
+      answerKey: answerKey,
+      answerTable: _setup?.paperFormat == 'bubble' ? AnswerTablePlace.none : _table);
+
+  /// One copy per student (or blank), a QR on every page: pages are counted by laying each version out once.
+  Future<void> _printCopies() async {
+    final id = widget.view.exam.id;
+    if (id == null) return;
+    if (_versions.stale) return appToast(versionsStaleText, error: true);
+    if (_named && _students.isEmpty) return appToast(t('اختر الطلاب أولاً', 'Pick the students first'), error: true);
+    setState(() => _busy = 'copies');
+    try {
+      final base = await _baseDoc(answerKey: false);
+      final word = _word;
+      var tpl = resolvePaperTemplate(_tpl, highStakes: widget.view.exam.highStakes);
+      if (tpl == PaperTemplate.custom) tpl = resolvePaperTemplate(PaperTemplate.auto, highStakes: widget.view.exam.highStakes);
+      final style = PaperStyle.of(tpl);
+      final regular = await rootBundle.load(style.regular), bold = await rootBundle.load(style.bold);
+      final res = await buildPaperCopies(
+          base: base, versions: _versions, api: _vApi, examId: id, tpl: tpl, regular: regular, bold: bold, named: _named,
+          studentIds: _students.toList(), blank: _blank, form: _version, word: word);
+      if (res.error != null) {
+        appToast(res.error!, error: true);
+      } else {
+        final name = '${base.title} - ${t('نسخ الطلاب', 'student copies')}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+        final path = await saver.dlSaveBytes(res.bytes!, '$name.${word ? 'zip' : 'pdf'}', word ? 'application/zip' : 'application/pdf');
+        appToast(path == null ? t('جاهز للطباعة', 'Ready to print') : '${t('حُفظ في', 'Saved to')} $path');
+      }
+    } catch (e) {
+      debugPrint('exam copies failed: $e');
+      appToast(t('تعذّر إنشاء الملف', 'Could not create the file'), error: true);
+    }
+    if (mounted) setState(() => _busy = null);
+  }
+
   Future<void> _make({required bool answerKey}) async {
     if (_tpl == PaperTemplate.custom && _custom == null) return _pickCustom();
     setState(() => _busy = answerKey ? 'key' : 'paper');
     try {
-      final rtl = AppConfig.lang == 'ar';
-      final d = ExamPaperDoc.fromView(widget.view,
-          institution: _institution.text,
-          course: _course.text,
-          dateText: _date.text.trim(),
-          instructions: _instructions.text.split('\n'),
-          rtl: rtl,
-          logo: _tpl == PaperTemplate.custom ? null : await _logo(),
-          accentHex: widget.accentHex,
-          showPoints: _points,
-          seatNumber: _seat,
-          answerKey: answerKey);
+      final v = _versions.byCode(_version);
+      if (v != null && v.stale) {
+        appToast(versionsStaleText, error: true);
+        setState(() => _busy = null);
+        return;
+      }
+      var d = await _baseDoc(answerKey: answerKey);
+      if (v != null) {
+        d = applyVersion(d, v);
+        final id = widget.view.exam.id;
+        if (answerKey && id != null) {
+          final k = await _vApi.answerKey(id, form: v.code);
+          if (!k.ok) {
+            appToast(versionsErrorText(k), error: true);
+            setState(() => _busy = null);
+            return;
+          }
+          d = d.copyWith(keySummary: keyLinesOf(answerKeyItems(k.map)));
+        }
+      }
       final tpl = resolvePaperTemplate(_tpl, highStakes: widget.view.exam.highStakes);
       final word = _word || tpl == PaperTemplate.custom;
       final Uint8List bytes;
@@ -199,7 +325,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         final s = PaperStyle.of(tpl);
         bytes = await examPaperPdf(d, tpl, regular: await rootBundle.load(s.regular), bold: await rootBundle.load(s.bold));
       }
-      final base = '${d.title}${answerKey ? ' - ${t('نموذج الإجابة', 'answer key')}' : ''}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+      final base = '${d.title}${v == null ? '' : ' - ${v.code}'}${answerKey ? ' - ${t('نموذج الإجابة', 'answer key')}' : ''}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
       final path = await saver.dlSaveBytes(bytes, '$base.${word ? 'docx' : 'pdf'}',
           word ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf');
       await _remember();
@@ -284,6 +410,31 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         ),
       ),
       const SizedBox(height: 6),
+      PaperVersionsSection(
+        versions: _versions,
+        selected: _version,
+        onSelect: (v) => setState(() => _version = v),
+        onEdit: _editVersions,
+      ),
+      PaperAnswerAreaSection(
+        format: _setup?.paperFormat,
+        syncable: _setup != null,
+        onFormat: _pickArea,
+        table: _table,
+        onTable: (v) => setState(() => _table = v),
+      ),
+      PaperCopiesSection(
+        named: _named,
+        onNamed: (v) => setState(() => _named = v),
+        picked: _students.length,
+        onPick: _pickStudents,
+        blank: _blank,
+        onBlank: (v) => setState(() => _blank = v),
+        busy: _busy == 'copies',
+        wordNote: _word,
+        onPrint: _busy != null ? null : _printCopies,
+      ),
+      const SizedBox(height: 10),
       AppPrimaryButton(
           label: t('ورقة الامتحان', 'Exam paper'),
           icon: Icons.print_rounded,
@@ -407,6 +558,196 @@ class PaperPreview extends StatelessWidget {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2))]),
       clipBehavior: Clip.antiAlias,
       child: template == PaperTemplate.auto ? inner : Padding(padding: const EdgeInsets.all(3), child: inner),
+    );
+  }
+}
+
+
+/// What a per-student print produced: the file, or the reason it could not be made.
+class PaperCopiesResult {
+  const PaperCopiesResult({this.bytes, this.error, this.copies = 0, this.pages = 0});
+  final Uint8List? bytes;
+  final String? error;
+  final int copies, pages;
+}
+
+/// Per-student copies (D-print): lays each version out once to count its pages, asks `POST …/print-plan` for the QR
+/// payloads of that many pages, then renders one paper per plan item with the student's name and a QR on EVERY page,
+/// merged into one PDF. [word]: a zip of Word files instead (the name on every page; no QR in Word).
+Future<PaperCopiesResult> buildPaperCopies({
+  required ExamPaperDoc base,
+  required ExamVersions versions,
+  required ExamVersionsApi api,
+  required int examId,
+  required PaperTemplate tpl,
+  required ByteData regular,
+  required ByteData bold,
+  required bool named,
+  List<int> studentIds = const [],
+  int blank = 1,
+  String? form,
+  bool word = false,
+}) async {
+  final codes = <String?>[
+    if (form != null) form else if (versions.items.isEmpty) null else ...versions.items.map((v) => v.code),
+  ];
+  final pagesOf = <String?, int>{};
+  for (final code in codes) {
+    final v = versions.byCode(code);
+    final doc = (v == null ? base : applyVersion(base, v)).copyWith(qrSlots: 1);
+    pagesOf[code] = (await examPaperPdfMany([doc], tpl, regular: regular, bold: bold)).pages.first;
+  }
+  final maxPages = pagesOf.values.fold(1, (m, x) => x > m ? x : m);
+  final r = await api.printPlan(examId, printPlanBody(named: named, studentIds: named ? studentIds : null, copies: blank, pages: maxPages, form: form));
+  if (!r.ok) return PaperCopiesResult(error: versionsErrorText(r));
+  final plan = PrintPlan.fromJson(r.map);
+  if (plan.items.isEmpty) return PaperCopiesResult(error: t('لا توجد نسخ للطباعة', 'There are no copies to print'));
+  final docs = copiesFor(base, plan, versions, pagesOf: pagesOf);
+  if (word) {
+    final zip = Archive();
+    for (var i = 0; i < docs.length; i++) {
+      final n = docs[i].studentName.isEmpty ? '${plan.items[i].copyNo}' : '${plan.items[i].copyNo} - ${docs[i].studentName}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      zip.add(ArchiveFile.bytes('$n.docx', examPaperDocx(docs[i], tpl)));
+    }
+    return PaperCopiesResult(bytes: Uint8List.fromList(ZipEncoder().encodeBytes(zip)), copies: docs.length);
+  }
+  final out = await examPaperPdfMany(docs, tpl, regular: regular, bold: bold);
+  return PaperCopiesResult(bytes: out.bytes, copies: docs.length, pages: out.pages.fold(0, (a, b) => a + b));
+}
+
+/// Versions of the paper: which one to print, and the sheet that makes them.
+class PaperVersionsSection extends StatelessWidget {
+  const PaperVersionsSection({super.key, required this.versions, required this.selected, required this.onSelect, required this.onEdit});
+  final ExamVersions versions;
+  final String? selected;
+  final ValueChanged<String?> onSelect;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('النماذج', 'Versions'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+        const SizedBox(height: 6),
+        if (versions.stale)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: AppBanner(
+                key: const ValueKey('paper.versions.stale'),
+                icon: Icons.warning_amber_rounded,
+                text: versionsStaleText,
+                action: TextButton(onPressed: onEdit, child: Text(t('إعادة الإنشاء', 'Regenerate')))),
+          ),
+        Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          if (versions.items.isNotEmpty) AppChoiceChip(label: t('ترتيب الاختبار', 'Exam order'), selected: selected == null, onTap: () => onSelect(null)),
+          for (final v in versions.items)
+            AppChoiceChip(label: '${t('نموذج', 'Version')} ${v.code}', selected: selected == v.code, onTap: () {
+                  if (!v.stale) onSelect(v.code);
+                }),
+          OutlinedButton.icon(
+            key: const ValueKey('paper.versions.edit'),
+            onPressed: onEdit,
+            icon: const Icon(Icons.shuffle_rounded, size: 18),
+            label: Text(versions.items.isEmpty ? t('إنشاء نماذج', 'Make versions') : t('تعديل النماذج', 'Edit versions')),
+          ),
+        ]),
+      ]),
+    );
+  }
+}
+
+/// Where the choice answers go: on the paper (with an optional answer table), on the bubble sheet, or both.
+class PaperAnswerAreaSection extends StatelessWidget {
+  const PaperAnswerAreaSection({super.key, required this.format, required this.syncable, required this.onFormat, required this.table, required this.onTable});
+
+  /// The exam's paper | bubble | both setting (null when not a paper exam).
+  final String? format;
+  final bool syncable;
+  final ValueChanged<String> onFormat;
+  final AnswerTablePlace table;
+  final ValueChanged<AnswerTablePlace> onTable;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final onPaper = format != 'bubble';
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('أين يجيب الطالب عن الاختيارات؟', 'Where do students answer the choices?'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+        const SizedBox(height: 6),
+        if (syncable)
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            AppChoiceChip(label: t('على الورقة', 'On the paper'), selected: format == 'paper', onTap: () => onFormat('paper')),
+            AppChoiceChip(label: t('ورقة التظليل', 'Bubble sheet'), selected: format == 'bubble', onTap: () => onFormat('bubble')),
+            AppChoiceChip(label: t('كلاهما', 'Both'), selected: format == 'both', onTap: () => onFormat('both')),
+          ]),
+        if (onPaper) ...[
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            AppChoiceChip(label: t('دوائر داخل الأسئلة', 'Circles in the questions'), selected: table == AnswerTablePlace.none, onTap: () => onTable(AnswerTablePlace.none)),
+            AppChoiceChip(label: t('جدول إجابة في البداية', 'Answer table at the start'), selected: table == AnswerTablePlace.start, onTap: () => onTable(AnswerTablePlace.start)),
+            AppChoiceChip(label: t('جدول إجابة في النهاية', 'Answer table at the end'), selected: table == AnswerTablePlace.end, onTap: () => onTable(AnswerTablePlace.end)),
+          ]),
+        ],
+      ]),
+    );
+  }
+}
+
+/// One copy per student (named, a QR on every page) or a number of blank copies.
+class PaperCopiesSection extends StatelessWidget {
+  const PaperCopiesSection({super.key, required this.named, required this.onNamed, required this.picked, required this.onPick, required this.blank,
+      required this.onBlank, required this.busy, required this.wordNote, required this.onPrint});
+  final bool named, busy, wordNote;
+  final ValueChanged<bool> onNamed;
+  final int picked, blank;
+  final VoidCallback onPick;
+  final ValueChanged<int> onBlank;
+  final VoidCallback? onPrint;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('نسخ مطبوعة لكل طالب', 'Printed copy per student'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+        const SizedBox(height: 6),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          AppChoiceChip(label: t('باسم الطالب', 'Named'), selected: named, onTap: () => onNamed(true)),
+          AppChoiceChip(label: t('فارغة', 'Blank'), selected: !named, onTap: () => onNamed(false)),
+        ]),
+        const SizedBox(height: 8),
+        if (named)
+          OutlinedButton.icon(
+              key: const ValueKey('paper.copies.pick'),
+              onPressed: onPick,
+              icon: const Icon(Icons.groups_rounded, size: 18),
+              label: Text(picked == 0 ? t('اختر الطلاب', 'Pick students') : omrSelectedText(picked)))
+        else
+          Row(children: [
+            Expanded(child: Text(t('عدد النسخ', 'Number of copies'), style: appText(13, c: c.textMedium))),
+            IconButton(onPressed: blank > 1 ? () => onBlank(blank - 1) : null, icon: const Icon(Icons.remove_circle_outline_rounded), tooltip: t('أقل', 'Less')),
+            SizedBox(width: 40, child: Text('$blank', textAlign: TextAlign.center, style: appText(16, w: FontWeight.w800, c: c.textDark))),
+            IconButton(onPressed: blank < 500 ? () => onBlank(blank + 1) : null, icon: const Icon(Icons.add_circle_outline_rounded), tooltip: t('أكثر', 'More')),
+          ]),
+        if (wordNote)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(t('في Word: ملف لكل طالب داخل ملف مضغوط، والاسم في كل صفحة (الرمز QR في PDF فقط).',
+                'Word: one file per student in a zip, the name on every page (the QR code is in PDF only).'), style: appText(11.5, c: c.textLight)),
+          ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          key: const ValueKey('paper.copies.print'),
+          onPressed: onPrint,
+          icon: busy ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.qr_code_2_rounded, size: 18),
+          label: Text(t('طباعة النسخ', 'Print the copies')),
+        ),
+      ]),
     );
   }
 }

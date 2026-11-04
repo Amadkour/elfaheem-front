@@ -6,13 +6,13 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
-import '../../admin/admin_common.dart' show asMapList, t;
-import 'exam_authoring.dart' show authoringError;
+import '../../admin/admin_common.dart' show t;
 import 'exam_versions.dart';
+import 'paper/exam_setup.dart' show versionsBubbleText;
 
 /// Opens the sheet; the versions after it (null when closed without generating).
-Future<ExamVersions?> openExamVersions(BuildContext context, {required int examId, ExamVersions? current, ExamVersionsApi? api}) =>
-    showAppSheet<ExamVersions>(context, (_) => ExamVersionsSheet(examId: examId, current: current, api: api));
+Future<ExamVersions?> openExamVersions(BuildContext context, {required int examId, ExamVersions? current, ExamVersionsApi? api, bool bubble = false}) =>
+    showAppSheet<ExamVersions>(context, (_) => ExamVersionsSheet(examId: examId, current: current, api: api, bubble: bubble));
 
 class VersionsForm extends StatelessWidget {
   const VersionsForm({
@@ -29,10 +29,14 @@ class VersionsForm extends StatelessWidget {
     this.warnings = const [],
     this.error,
     this.busy = false,
+    this.bubble = false,
     required this.onGenerate,
   });
   final int count, copies;
   final bool shuffleQuestions, shuffleOptions, busy;
+
+  /// The exam uses a bubble sheet: the question order cannot be shuffled (the switch is off and says why).
+  final bool bubble;
   final ValueChanged<int> onCount, onCopies;
   final ValueChanged<bool> onShuffleQuestions, onShuffleOptions;
   final List<ExamVersion> versions;
@@ -53,13 +57,19 @@ class VersionsForm extends StatelessWidget {
         Expanded(child: Text(t('كم نموذجًا؟', 'How many versions?'), style: appText(14, w: FontWeight.w700, c: c.textDark))),
         stepper(count, 1, kMaxVersions, onCount, k: const ValueKey('versions.count')),
       ]),
-      AppSwitchTile(title: t('اخلط ترتيب الأسئلة', 'Shuffle the questions'), value: shuffleQuestions, dense: true, onChanged: onShuffleQuestions),
+      AppSwitchTile(
+          key: const ValueKey('versions.shuffleQuestions'),
+          title: t('اخلط ترتيب الأسئلة', 'Shuffle the questions'),
+          subtitle: bubble ? versionsBubbleText : null,
+          value: shuffleQuestions && !bubble,
+          dense: true,
+          onChanged: bubble ? null : onShuffleQuestions),
       AppSwitchTile(title: t('اخلط ترتيب الاختيارات', 'Shuffle the choices'), value: shuffleOptions, dense: true, onChanged: onShuffleOptions),
       Row(children: [
         Expanded(child: Text(t('عدد النسخ لكل نموذج', 'Copies per version'), style: appText(14, w: FontWeight.w700, c: c.textDark))),
         stepper(copies, 1, 500, onCopies, k: const ValueKey('versions.copies')),
       ]),
-      if (error != null) Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: Text(error!, style: appText(12.5, c: c.error))),
+      if (error != null) Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: Text(error!, style: appText(12.5, c: c.danger))),
       for (final w in warnings) Padding(padding: const EdgeInsets.only(top: 4), child: Text(w, style: appText(12, c: c.textMedium))),
       if (versions.isNotEmpty) ...[
         const SizedBox(height: AppSpace.md),
@@ -78,7 +88,8 @@ class VersionsForm extends StatelessWidget {
 }
 
 class ExamVersionsSheet extends StatefulWidget {
-  const ExamVersionsSheet({super.key, required this.examId, this.current, this.api});
+  const ExamVersionsSheet({super.key, required this.examId, this.current, this.api, this.bubble = false});
+  final bool bubble;
   final int examId;
   final ExamVersions? current;
   final ExamVersionsApi? api;
@@ -90,7 +101,7 @@ class ExamVersionsSheet extends StatefulWidget {
 class _ExamVersionsSheetState extends State<ExamVersionsSheet> {
   late final ExamVersionsApi _api = widget.api ?? ExamVersionsApi();
   late int _count = (widget.current?.items.length ?? 2).clamp(1, kMaxVersions);
-  late bool _q = widget.current?.shuffleQuestions ?? true, _o = widget.current?.shuffleOptions ?? true;
+  late bool _q = !widget.bubble && (widget.current?.shuffleQuestions ?? true), _o = widget.current?.shuffleOptions ?? true;
   late int _copies = widget.current?.items.isNotEmpty == true ? (widget.current!.items.first.copies ?? 1) : 1;
   List<ExamVersion> _made = const [];
   ExamVersions? _result;
@@ -103,12 +114,12 @@ class _ExamVersionsSheetState extends State<ExamVersionsSheet> {
       _busy = true;
       _error = null;
     });
-    final r = await _api.generate(widget.examId, versionBody(count: _count, shuffleQuestions: _q, shuffleOptions: _o, copies: _copies));
+    final r = await _api.generate(widget.examId, versionBody(count: _count, shuffleQuestions: _q && !widget.bubble, shuffleOptions: _o, copies: _copies));
     if (!mounted) return;
     if (!r.ok) {
       setState(() {
         _busy = false;
-        _error = authoringError(r);
+        _error = versionsErrorText(r);
       });
       return;
     }
@@ -140,6 +151,7 @@ class _ExamVersionsSheetState extends State<ExamVersionsSheet> {
           warnings: _warnings,
           error: _error,
           busy: _busy,
+          bubble: widget.bubble,
           onGenerate: _busy ? null : _generate,
         ),
         if (_result != null && _warnings.isNotEmpty)

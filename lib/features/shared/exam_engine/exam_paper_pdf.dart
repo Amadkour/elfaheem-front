@@ -47,6 +47,8 @@ const kPaperQrSize = 34.0;
 
 int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl) {
   var lastPage = 1;
+  // pw.Context page numbers count the whole document: a paper in a merged PDF numbers its own pages from 1
+  final offset = doc.document.pdfPageList.pages.length;
   final style = PaperStyle.of(tpl);
   final w = PaperWords(d.rtl);
   final accentHex = style.color ? d.accentHex : '1F2933';
@@ -484,7 +486,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl) {
           : null,
     ),
     maxPages: 500,
-    header: (c) => c.pageNumber == 1
+    header: (c) => c.pageNumber - offset == 1
         ? header()
         : pw.Container(
             margin: const pw.EdgeInsets.only(bottom: 10),
@@ -498,13 +500,14 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl) {
             ]),
           ),
     footer: (c) {
-      if (c.pageNumber > lastPage) lastPage = c.pageNumber;
-      final payload = c.pageNumber <= d.qrPages.length ? d.qrPages[c.pageNumber - 1] : null;
+      final no = c.pageNumber - offset, total = c.pagesCount - offset;
+      if (no > lastPage) lastPage = no;
+      final payload = no <= d.qrPages.length ? d.qrPages[no - 1] : null;
       return pw.Container(
         margin: const pw.EdgeInsets.only(top: 8),
         child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
-          pw.Expanded(child: txt(c.pageNumber < c.pagesCount ? w.turnOver : '', size: 8.5, color: muted)),
-          txt(w.page(c.pageNumber, c.pagesCount), size: 8.5, color: muted),
+          pw.Expanded(child: txt(no < total ? w.turnOver : '', size: 8.5, color: muted)),
+          txt(w.page(no, total), size: 8.5, color: muted),
           if (d.qrReserved) ...[
             pw.SizedBox(width: 10),
             pw.SizedBox(
