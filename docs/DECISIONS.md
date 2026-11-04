@@ -2259,8 +2259,11 @@ rejected it for the same reason). The Router's own reporting (`currentConfigurat
 every in-app Back would ADD a browser entry (Back then walks forward again).
 
 **Known limits.** A page pushed without a name keeps the URL of the page under it: Back / Forward step through it, but
-a refresh opens the page under it. Pages get their own URL by being added to the registry and opened by name. Back on
+a refresh opens the page under it. Pages get their own URL by being added to the registry and opened by name. The course
+page has one wherever it opens from (`/courses/<id>`: `'/course-profile'` with the id, or `'/course-detail'` with the
+`CourseModel`, read through `AppRoutes.courseIdOf`). Back on
 the home tab's first page leaves the site, as on Android (the browser cannot be kept from leaving).
+
 ## D-171 — Web start-up: the splash paints first, and only the fonts of the first frame are downloaded · 2026-11-04 · accepted
 
 **Context.** Cold on production the HTML splash painted at about 1.24 s (TTFB 0.74 s) because two classic scripts in

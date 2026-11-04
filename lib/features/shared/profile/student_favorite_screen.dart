@@ -69,6 +69,7 @@ class _FavouriteCoursesScreenState extends State<FavouriteCoursesScreen> {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
+                            settings: RouteSettings(name: '/course-detail', arguments: c),
                             builder: (_) => CourseDetailScreen(course: c)));
                   },
                   isTeacher: false,
