@@ -16,6 +16,7 @@
  "additional_register.teaching_style",
  "admin.app_releases",
  "admin.course_students",
+ "admin.course_trash",
  "admin.export_log",
  "admin.fee_policy",
  "admin.help",

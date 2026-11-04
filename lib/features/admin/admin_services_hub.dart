@@ -43,6 +43,7 @@ import 'admin_required_documents_page.dart';
 import 'admin_send_message_page.dart';
 import 'admin_subscriptions_page.dart';
 import 'course_students/cs_pages.dart';
+import 'course_trash/trash_page.dart';
 import 'admin_points_page.dart';
 import 'admin_recs_page.dart';
 import '../shared/roadmap/roadmap_api.dart' show kRecsAdminKey;
@@ -258,6 +259,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'admin.course_students',
           visible: isSuper,
           onTap: () => push(const CourseStudentsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_course_trash',
+          descKey: 'admin_course_trash_d',
+          label: t('الكورسات المحذوفة', 'Deleted courses'),
+          desc: t('سلة الكورسات المحذوفة: استرجاع الكورس بطلابه أو حذفه نهائياً مع السجل',
+              'The trash of deleted courses: restore a course with its students, or delete it permanently, with the history'),
+          icon: Icons.delete_sweep_outlined,
+          colors: AdminPalette.rose,
+          featureKey: 'admin.course_trash',
+          visible: isSuper,
+          onTap: () => push(const CourseTrashPage()),
         ),
         AdminService(
           labelKey: 'admin_points',
