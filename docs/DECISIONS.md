@@ -2794,7 +2794,7 @@ accept through the shim `tests/org_v2/_c7_compat.py`; `e2e_of_f6_consent.py` tes
 
 **Problem.** Faculties need full academic advising (advisor assignment, caseloads, student 360, flags, notes,
 appointments, early warning, council escalation, analytics). The platform had only `OrgStudentAcademic.advisor_id`
-(one advisor, no history) and the registrar's advisee list. **Decision.** A new module (`adv_*` tables, migration 0049,
+(one advisor, no history) and the registrar's advisee list. **Decision.** A new module (`adv_*` tables, migration 0050,
 `services/organization/advising/`, `lib/features/org/advising/`, kill switch `org.advising`, plan
 `docs/advising/PLAN.md`):
 - Every advising row hangs on the student's MEMBERSHIP (`org_members.id`) plus `org_id`, never on the global user: a

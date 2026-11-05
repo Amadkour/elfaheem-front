@@ -72,7 +72,7 @@ dept, so escalation needs a new step kind, §3.7).
   student: own membership only). Every list and 360 query goes through it; tests attack each route as
   another org's admin, another advisor, a student of org A reading org B.
 
-### 3.2 Data model (new revision `0049_advising`, all tables prefixed `adv_`)
+### 3.2 Data model (new revision `0050_advising` — planned as 0049, renumbered after `0049_engine_exam_gates` — all tables prefixed `adv_`)
 
 Configuration
 - `adv_policies` — org_id, scope_type (org · program · dept · level · cohort), scope_ref, `settings` JSON
@@ -239,7 +239,7 @@ rule: one deploy after all sessions).
 
 | Phase | Content | Defaults |
 |---|---|---|
-| 2 Foundation | migration 0049, models, RLS, access module, RBAC module + director role, audit helpers, notice log, kill switches, eligibility gate | 1, 3, 4, 8 (rules), 9 (reuse OrgTerm), 11 (indexes) |
+| 2 Foundation | migration 0050, models, RLS, access module, RBAC module + director role, audit helpers, notice log, kill switches, eligibility gate | 1, 3, 4, 8 (rules), 9 (reuse OrgTerm), 11 (indexes) |
 | 3 Config + assignment | policy screens, profiles/leave, dry run + apply, new-student auto-assign, welcome notices, reassignment + handover, conflicts/continuity | 2, 5, 17, 22 |
 | 4 Workspace | my students (risk-sorted), 360, flags + lifecycle, notes + visibility, timeline, offline drafts | 6 (flags), 7 (lifecycle), 8 (notes), 21, 23, 24 (category) |
 | 5 Appointments + messages | availability, booking, reminders, no-show, meeting notes, ics, threads/complaints + escalation, templates, student hub, survey | 6 (threads), 15, 16, 18 |

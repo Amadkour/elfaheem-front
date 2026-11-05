@@ -8,7 +8,7 @@ job (owner deploys once after all sessions).
 | Phase | Status | Notes |
 |---|---|---|
 | 1 Discovery + plan | done | approved 2026-11-05; owner took the recommendations: university + faculty only, midterm mark added |
-| 2 Foundation | in progress | brief `PHASE2.md` |
+| 2 Foundation | done | brief `PHASE2.md`; back 4d00406 · fb66c38 · 3478985, front a117d608 · 2daa1942 · b7031cf1; security review: 3 fixes (no migration data step, live-only directors); migration renumbered 0050 at the merge |
 | 3 Config + assignment | todo | |
 | 4 Advisor workspace | todo | |
 | 5 Appointments + messages | todo | |
