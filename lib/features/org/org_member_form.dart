@@ -9,9 +9,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -76,7 +77,17 @@ Future<List<String>> _applyPositions(OrgSession s, int userId, {int? headOf, Str
   return failed;
 }
 
-/// Returns the saved member row (with `generated_password` once, for a new account), or null.
+/// `POST …/members` answered 202 `{"status": "invited", "invitation": {…}}`: the account exists, so it was invited
+/// and joins only once it accepts (C7).
+bool isInvitedAnswer(Map<String, dynamic> body) => body['status'] == 'invited';
+
+String invitedNoticeText({bool positionsPending = false}) => positionsPending
+    ? t('تم إرسال دعوة — ينضم بعد قبولها. رئاسة القسم والأدوار الإضافية التي اخترتها تُضبط بعد قبولها.',
+        'Invitation sent — they join once they accept. The head-of-department and extra roles you picked can be set after they accept.')
+    : t('تم إرسال دعوة — ينضم بعد قبولها', 'Invitation sent — they join once they accept');
+
+/// Returns the saved member row (with `generated_password` once, for a new account), or null (also when an existing
+/// account was invited instead of added: no row exists yet, a notice says so).
 Future<Map<String, dynamic>?> showOrgMemberForm(
   BuildContext context, {
   List<String> roles = const ['student'],
@@ -105,6 +116,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
   bool busy = false;
   String? err;
   Map<String, dynamic>? saved;
+  bool invited = false, invitedPositions = false;
   var failed = <String>[];
 
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
@@ -294,8 +306,8 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                 decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
                 child: Text(err!, style: orgText(ctx, size: 12.5, color: c.danger)),
               ),
-            PrimaryButton(
-              isLoading: busy,
+            AppButton.primary(
+              busy: busy,
               label: edit == null ? t('إضافة', 'Add') : t('حفظ', 'Save'),
               onPressed: () async {
                 if (edit == null && !email.text.contains('@')) return set(() => err = t('أدخل بريداً صحيحاً', 'Enter a valid email'));
@@ -332,6 +344,12 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                 if (!ctx.mounted) return;
                 set(() => busy = false);
                 if (!r.ok) return set(() => err = orgErrorText(r.error!));
+                if (edit == null && isInvitedAnswer(r.map)) {   // C7: an existing account is invited, no member row exists yet
+                  invited = true;
+                  invitedPositions = !student && ((head && dept != null) || extraRoles.isNotEmpty);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  return;
+                }
                 saved = r.map;
                 if (edit == null && !student && ((head && dept != null) || extraRoles.isNotEmpty)) {
                   failed = await _applyPositions(s, asInt(asMap(r.map['user'])['id']),
@@ -347,6 +365,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
           ]),
         );
       }));
+  if (invited && context.mounted) showAppNotice(invitedNoticeText(positionsPending: invitedPositions));   // no member row: the list is not touched
   final row = saved;
   if (row != null && context.mounted) {
     if (failed.isNotEmpty) {
@@ -416,8 +435,8 @@ Future<Map<String, dynamic>?> showMembershipExtend(BuildContext context, Map<Str
             Field(controller: note, label: t('ملاحظة للسجل (اختياري)', 'Note for the log (optional)')),
             if (err != null) Text(err!, style: orgText(ctx, size: 12.5, color: c.danger)),
             const SizedBox(height: 8),
-            PrimaryButton(
-              isLoading: busy,
+            AppButton.primary(
+              busy: busy,
               label: t('حفظ', 'Save'),
               onPressed: () async {
                 if (!permanent && until == null) return set(() => err = t('اختر تاريخ الانتهاء', 'Pick the end date'));

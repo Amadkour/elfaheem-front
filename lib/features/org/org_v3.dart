@@ -95,7 +95,7 @@ Map<String, String> _codeTexts() => {
       'feature_locked_by_parent': t('أوقفتها المؤسسة الأم — تُدار من هناك', 'Switched off by the parent organization — managed there'),
       'bad_timezone': t('منطقة زمنية غير معروفة', 'Unknown timezone'),
       // organization review / access
-      'org_not_approved': t('المؤسسة بانتظار اعتماد إدارة المنصة', 'The organization is waiting for platform approval'),
+      'org_not_approved': t('هذه المؤسسة غير متاحة الآن — بانتظار اعتماد المنصة أو موقوفة أو محذوفة', 'This organization is not available now — it is waiting for approval, suspended or deleted'),
       'org_forbidden': t('لا تملك صلاحية لهذا الإجراء في هذه المؤسسة', 'You don\'t have the right to do this in this organization'),
       'org_admin_only': t('هذا الإجراء لمدير المؤسسة فقط', 'Only the organization admin can do this'),
       'not_member': t('لست عضواً نشطاً في هذه المؤسسة', 'You are not an active member of this organization'),
@@ -289,6 +289,54 @@ Map<String, String> _codeTexts() => {
       'cannot_shift': t('لا يوجد وقت فارغ قريب لنقل الحصص المتعارضة', 'No nearby free time to move the clashing sessions'),
       // organization / department profile
       'logo_url_not_allowed': t('ارفع الشعار من التطبيق أو استخدم رابط https عاماً', 'Upload the logo in the app or use a public https link'),
+      // invitations (C1) and the other codes of the organization-flow overhaul (CONTRACTS.md)
+      'invite_resend_too_soon': t('أُرسلت هذه الدعوة قبل قليل — انتظر ١٠ دقائق قبل إعادة الإرسال', 'This invitation was sent a moment ago — wait 10 minutes before sending it again'),
+      'invite_not_found': t('هذه الدعوة غير موجودة أو الرابط غير صحيح', 'This invitation does not exist or the link is wrong'),
+      'invite_contact_mismatch': t('هذه الدعوة موجهة إلى بريد أو هاتف آخر — سجّل الدخول بالحساب الذي يملك هذا البريد/الهاتف موثّقاً، أو وثّقه أولاً', 'This invitation was sent to a different e-mail or phone — sign in with the account that has this verified e-mail/phone, or verify it first'),
+      'invite_no_longer_valid': t('لم تعد هذه الدعوة صالحة — اطلب دعوة جديدة من المؤسسة', 'This invitation is no longer valid — ask the organization for a new one'),
+      'invitations_disabled': t('الدعوات موقوفة حالياً — يمكن للشخص الانضمام بكود الانضمام', 'Invitations are switched off right now — the person can join with a join code'),
+      'invite_not_pending': t('لم تعد هذه الدعوة بانتظار الرد (قُبلت أو رُفضت أو أُلغيت)', 'This invitation is no longer waiting for an answer (accepted, declined or cancelled)'),
+      'invite_expired': t('انتهت صلاحية هذه الدعوة — اطلب من المؤسسة دعوة جديدة', 'This invitation has expired — ask the organization for a new one'),
+      'already_invited': t('هذا الشخص لديه دعوة قيد الانتظار من هذه المؤسسة', 'This person already has a pending invitation from this organization'),
+      'invite_declined_recently': t('رفض هذا الشخص دعوة من مؤسستك مؤخراً — يمكن دعوته مرة أخرى بعد 7 أيام', 'This person recently declined an invitation from your organization — you can invite them again after 7 days'),
+      'existing_account_invite_first': t('هذا البريد لحساب موجود — ادعُه أولاً، ثم اختره بعد قبوله الدعوة', 'This e-mail belongs to an existing account — invite them first, then pick them once they accept'),
+      'already_member_other_role': t('أنت عضو في هذه المؤسسة بدور آخر', 'You are already a member of this organization with another role'),
+      'invalid_contact': t('بريد إلكتروني أو رقم هاتف غير صالح', 'Not a valid e-mail address or phone number'),
+      'role_cannot_join': t('لا يمكن لولي الأمر الانضمام إلى مؤسسة بنفسه — تابع ابنك من «أبنائي» وسيظهر لك ما يخص مؤسسته', 'A parent account can\'t join an organization — follow your child from "My children" to see their organization'),
+      'child_not_found': t('لم نجد هذا الابن أو لا ترتبط به', 'We couldn\'t find this child, or you are not linked to them'),
+      'org_not_found': t('المؤسسة غير موجودة', 'The organization was not found'),
+      'link_expired': t('انتهت صلاحية هذا الرابط — اطلب رابطاً جديداً', 'This link has expired — ask for a new one'),
+      'confirm_name_mismatch': t('اسم المؤسسة المكتوب لا يطابق الاسم الحقيقي', 'The name you typed doesn\'t match the organization\'s name'),
+      'not_a_member': t('هذا الشخص ليس عضواً نشطاً في المؤسسة', 'This person is not an active member of the organization'),
+      'admin_only': t('هذا الإجراء لمدير المؤسسة فقط', "Only the organization's admin can do this"),
+      // leaving (DELETE /org/public/{org}/leave): a staff role is ended by the admin, the admin transfers first
+      'staff_cannot_leave': t('اطلب من مدير مؤسستك إنهاء عضويتك', "Ask your organization's admin to end your membership"),
+      'admin_cannot_leave': t('انقل إدارة المؤسسة إلى عضو آخر قبل المغادرة', 'Transfer the administration to another member before leaving'),
+      'not_org_admin': t('هذا الإجراء لمدير المؤسسة الحالي فقط', 'Only the organization\'s current administrator can do this'),
+      'share_target_not_allowed': t('يمكن المشاركة مع أعضاء المؤسسة فقط', 'You can only share with members of the organization'),
+      'members_only': t('هذا المحتوى لأعضاء المؤسسة فقط — انضم إليها أولاً', 'This is for members of the organization only — join it first'),
+      'file_url_not_allowed': t('رابط الملف غير مسموح — ارفع الملف من التطبيق أو استخدم رابطاً آمناً', 'This file link is not allowed — upload the file in the app or use a secure link'),
+      'share_rate_limited': t('أرسلت مشاركات كثيرة — حاول بعد قليل', 'You shared too many times — try again in a moment'),
+      'head_user_not_found': t('لم نجد مسؤول هذا القسم', 'We could not find the head of this department'),
+      'bad_filter': t('عوامل التصفية غير صالحة — عدّلها وأعد المحاولة', 'These filters are not valid — change them and try again'),
+      'links_unavailable': t('روابط الملفات غير متاحة الآن — حاول لاحقاً', 'File links are not available right now — try again later'),
+      'not_reachable': t('لا يمكنك الوصول إلى هذا العنصر', 'You cannot reach this item'),
+      'account_disabled': t('هذا الحساب معطّل — تواصل مع الإدارة', 'This account is disabled — contact the administration'),
+      'org_unavailable': t('هذه المؤسسة غير متاحة حالياً', 'This organization is not available right now'),
+      'advisor_action_not_allowed': t('هذا الإجراء غير متاح للمرشد الأكاديمي', 'This action is not available to an academic advisor'),
+      'not_an_org_student': t('هذا الشخص ليس طالباً في المؤسسة', 'This person is not a student of the organization'),
+      'foreign_reference': t('العنصر المحدد لا يتبع هذه المؤسسة', 'The selected item does not belong to this organization'),
+      'cannot_add_user': t('لا يمكن إضافة هذا المستخدم إلى المؤسسة', 'This user can\'t be added to the organization'),
+      'same_admin': t('هذا الشخص هو مدير المؤسسة الحالي بالفعل', 'This person is already the organization\'s administrator'),
+      'course_not_in_org': t('هذا الكورس لا يتبع المؤسسة', 'This course does not belong to the organization'),
+      'insecure_url': t('الرابط يجب أن يبدأ بـ https', 'The link must start with https'),
+      'parent_only': t('هذا الإجراء لأولياء الأمور فقط', 'This action is for parent accounts only'),
+      'org_deleted': t('حُذفت هذه المؤسسة', 'This organization has been deleted'),
+      'has_children': t('لا يمكن الحذف: توجد وحدات تابعة لها', 'Can\'t delete: it still has units under it'),
+      'not_deleted': t('هذه المؤسسة غير محذوفة', 'This organization is not deleted'),
+      'bad_email': t('بريد إلكتروني غير صالح', 'Not a valid e-mail address'),
+      'name_required': t('الاسم مطلوب', 'A name is required'),
+      'parent_not_approved': t('لم تتم الموافقة على ربطك بهذا الابن بعد', 'Your link to this child has not been approved yet'),
       // ads (ads_pages.dart saves through OrgApi): the home slider is personal, never an organization course
       'org_course_ad': t('لا يمكن الإعلان عن كورس تابع لمؤسسة', 'An ad can\'t open an organization course'),
     };
@@ -315,6 +363,13 @@ String orgErrorText(ApiException e) {
   }
   return e.message;
 }
+
+/// The id of the printed join code's row in the join settings (`legacy_code_id`); null when the server lacks it
+/// (older server, or the caller is not the admin) → the legacy regenerate route is used.
+int? legacyCodeIdOf(dynamic settings) => settings is Map ? int.tryParse('${settings['legacy_code_id'] ?? ''}') : null;
+
+/// The new plain code in a regenerate answer: `code` from `/join/codes/{id}/regenerate`, `join_code` from the legacy route.
+String? regeneratedCodeOf(Map r) => (r['code'] ?? r['join_code'])?.toString();
 
 /// Eligibility reason codes (join_service.py REASONS).
 String joinReasonText(Map<String, dynamic> r) =>
@@ -368,6 +423,7 @@ Map<String, String> membershipStatusLabels() => {
       'expired': t('منتهية', 'Expired'),
       'suspended': t('موقوفة', 'Suspended'),
       'rejected': t('مرفوض', 'Rejected'),
+      'removed': t('أُزيل', 'Removed'), // the membership was ended (an admin handed over with "remove", D-282)
     };
 
 /// One sentence that explains a member row's period.

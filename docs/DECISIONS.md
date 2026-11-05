@@ -2662,7 +2662,6 @@ event timeline. Students are found by academic ID, national ID (shown masked), e
 reactivate, grant and cancel each need a reason and write one event plus a notification to the student. The older admin
 enroll / unenroll / re-subscribe calls keep working and now write events too.
 
-
 ## D-260 — Course delete is a soft delete; the super admin restores or deletes for good · 2026-11-04 · accepted
 
 **Context.** A course delete erased the course and everything under it when it had no payments (a teacher's mistake
@@ -2686,3 +2685,107 @@ the course back but not its students (their old status was never recorded; Cours
 An organization's DELETE `/orgs/{id}/courses/{cid}` is unchanged: it unlinks the course from the organization and
 never deleted the course. Files are removed after the commit and only when no other row still uses the same URL; the
 RAG documents of a course are not touched.
+
+## D-280 — Tenant isolation in the organization modules is checked by the application, object by object · 2026-11-04 · accepted
+
+**Problem.** The org-flow audit (2026-11-04, `feat/organizations-flow`) found routes that loaded an object by id and
+never compared it with the organization in the path: an advisor could run any registrar action through an advisee's
+decision, `GET …/access/users/{uid}` returned any platform user's e-mail and phone, a course archive and extra-session
+rooms of another organization were readable, members-only courses could be bought by strangers. PostgreSQL RLS
+(migration 0003) separates whole organization TREES only, so siblings, a parent and its children are separated by the
+application alone, and no test sent organization B's ids through organization A's routes.
+
+**Decision.** Every org route compares what it loads by id or receives in the body with `ctx.org` (or the allowed
+subtree) and answers 404 / 422 `foreign_reference` otherwise; member routes need `live_member()` in an approved
+organization; advisors may only accept / reject / edit within the decision's own options and students. Each fix has a
+test that fails without it (`tests/org_v2/e2e_of_b1_*` … `e2e_of_b6_*`: two organizations, B's ids through A's routes,
+B's rows unchanged, plus the legitimate path).
+
+## D-281 — Shared system roles are copied on write by a sub-organization · 2026-11-04 · accepted
+
+System roles (teacher, student, …) are stored on the ROOT organization. Platform admins and the root's own admin edit
+them in place; a faculty admin who edits one gets a copy with the same key in their own organization, and the
+assignments in that organization and below move to the copy, so the university and the sibling faculties keep the
+original. A later edit through the original id lands on the existing copy (`_role()` resolves the nearest copy);
+`copy_on_write` on the role tells the app a copy will be made. Rejected: editing in place (one faculty changed every
+faculty's rights) and read-only system roles (the owner wants organization admins to manage their roles).
+
+## D-282 — An organization admin suspends the membership, never the account; the admin seat is handed over · 2026-11-04 · accepted
+
+`PUT …/members/{mid} {is_active}` sets the membership `suspended` / `active` (re-activation needs `requests.approve`);
+`User.is_active` belongs to the platform. Department staff / head seats need the rights they hand out
+(`assert_can_grant`) and nobody appoints themselves. The admin seat moves with `POST /api/v1/org/orgs/{id}/transfer-admin`
+(the organization's own admin) or `POST /api/v1/admin/orgs/{id}/transfer-admin` (platform admins), one shared helper:
+the old admin stays as administrative staff or leaves; leaving ENDS the membership (status `removed`, `ended_at`),
+the role assignments (`valid_to`) and grants (`expires_at`) rather than deleting them, so the history stays (only the
+department seat, which has no end date, is removed). The new admin's global account role is unchanged; they reach the dashboard
+through the context switcher (D-286).
+
+## D-283 — Organization invitations by e-mail or phone, and join links · 2026-11-04 · accepted
+
+Table `org_invitations` (migration 0048, RLS like 0003, reversible). Only the sha256 of the link token is stored, so a
+resend issues a new link and the old one stops working. Inviting needs the insert right of the invited role (students /
+teachers / staff). The invitation page `https://nextbrain.site/i/<token>` opens signed out; accepting or declining
+needs a signed-in account whose VERIFIED e-mail / phone equals the contact. There is no SMS provider: a phone invitation
+is found by the invitee in `GET /org/public/me/invitations` (and an in-app notice when the account exists) and staff share
+the link. `https://nextbrain.site/j/<CODE>` opens the join-by-code flow with the code filled, kept through sign-in.
+Accepting places the person directly (no department join policy: the organization chose them). Parents cannot join an
+organization (403 `role_cannot_join`); they follow their child's organization instead (D-287).
+
+## D-284 — Printed legacy join codes live in `org_join_codes` · 2026-11-04 · accepted
+
+`Organization.join_code` was a second code system next to `org_join_codes` (keyed hashes, one unit per code). Lookups
+now read only `org_join_codes`; each organization's legacy code is copied there idempotently
+(`join_service.sync_legacy_codes`): every organization once at start-up (owner engine), one organization when it is
+created or its code regenerated, and on a lookup miss at most once per 5 minutes per process — not by an Alembic data
+migration, because the hash is keyed with `SECRET_KEY` and codes written after deploy (organization creation, the old
+regenerate route kept for installed apps) must be copied too. Inside an `org_ctx` session only that organization is
+synced (RLS forbids writing another tree's rows). `OrgInvitation` stays in the frozen `ensure_org_tables` list on
+purpose: the e2e harness runs `create_all` before `org_models` is imported, so without it the table is missing there.
+Codes on posters keep working; regenerating through the old route retires the old code at once. The column stays.
+
+## D-285 — Org file links expire; reports are shared with members only; members-only courses are enforced · 2026-11-04 · accepted
+
+`/org/files/{token}` tokens carry a signed expiry (7 days); tokens without one work until `org_files.legacy_until`
+(deploy + 30 days), then 410 `link_expired`. A link STORED in the data (materials, term files, attachments, report files,
+form answers) is a durable reference: every API that returns it mints a fresh 7-day link (`file_links.fresh`), so only a
+link copied out of the app expires; with no `SECRET_KEY` nothing is signed (503 `links_unavailable`, never the
+old literal key). `POST …/reports/share` goes only to live members of the sharing organization or admins of
+organizations that consented to share with it (422 `share_target_not_allowed`; no free e-mail addresses; 20 per hour).
+A `members_only` organization course is enforced in `course_access.py` (D-210's one rule) on enroll and in
+`PaymentService.assert_can_purchase` (every payment path): 403 `members_only`.
+
+## D-286 — One rule for where an organization opens, and switching clears the previous one · 2026-11-04 · accepted
+
+`AppModeController.opensDashboard`: any non-student membership or management right opens `/org_dashboard` (D-103), a
+student membership opens the member home — in the switcher, notification / link taps, and the start-up overview alike.
+Switching from organization A to B closes A's pages and clears its timezone, feature offs and attention focus before
+B is selected in both `AppModeController` and `OrgSession` (a notification for B used to leave the dashboard on A).
+A remembered organization that disappears is replaced with a notice naming both; a failed `/org/mine` keeps the last
+list with Retry instead of looking like "no organizations". The admin home's More page carries the switcher too.
+
+## D-287 — Parents follow their child's organization; organization admins see setup and billing; soft delete · 2026-11-04 · accepted
+
+- Parent view (`/api/v1/org/parent/children[/{sid}/orgs/{org_id}]`, kill switch `parent.org_view`): read-only, computed
+  AS the child (today, next 7 days with one-date changes, announcements the child received, approved grades,
+  attendance), only for an active parent link and a live member child; never another student's row.
+- First-run checklist (`…/setup`, kill switch `org.setup_checklist`) and a read-only billing page (`…/billing`, kill
+  switch `org.billing_view`) for organization admins; `notice: unset_yearly_default` says plainly when nobody configured
+  billing and students are asked for the platform's yearly plan on the organization's own courses (D-210).
+- Platform admins edit an organization, delete it SOFTLY (status `deleted`, data kept, typed name + reason; 409
+  `has_children` while it has live sub-organizations) and restore it.
+
+## D-288 — An organization never attaches an existing account: the person accepts an invitation · 2026-11-05 · accepted
+
+**Problem.** Adding a member by e-mail (one person or an Excel sheet) attached any EXISTING account to the
+organization without the person agreeing (review finding F6). **Decision (owner, 2026-11-05):** bulk Excel import stays;
+an existing account gets a pending invitation (`org_invitations` with `target_user_id`, `member_spec`, `source`
+`manual` / `excel`, migration 0048) and sees it in the app as a notification and a dialog (Accept / Reject / Later,
+`lib/features/org/org_invitation_prompt.dart`, kill switch `org.invitations`). Accepting applies exactly what the admin
+entered (role, student code, window, profile, department seat, assistant permissions). Rejecting notifies the inviter
+and blocks re-inviting from the same organization for 7 days. An account the organization creates right there (no
+account for that e-mail yet) still joins at once with a generated password. The "create a manager here" forms refuse
+an existing account's e-mail (`existing_account_invite_first`): invite first, pick after the accept. Applies to every
+org role; parents never get one (D-287). **Cost.** The dialog adds no request while the attention item
+`org_invitations` is 0, so the home request budgets do not move. Backend tests that used `POST /members` only as set-up
+accept through the shim `tests/org_v2/_c7_compat.py`; `e2e_of_f6_consent.py` tests the real flow.

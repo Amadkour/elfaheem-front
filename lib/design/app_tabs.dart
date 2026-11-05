@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 
 import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
+import 'app_charts.dart' show appInk;
 import 'app_gradients.dart';
 import 'app_tokens.dart';
 
@@ -168,7 +169,7 @@ class _TabStripState extends State<_TabStrip> {
       Widget tab(int i) {
         final it = items[i];
         final sel = i == index;
-        final ink = sel ? (underline ? c.primary : c.onHero) : c.textMedium;
+        final ink = sel ? (underline ? appInk(context, c.primary) : c.onHero) : c.textMedium; // underline: readable on dark
         final ts = style.copyWith(color: ink);
         return Semantics(
           button: true,

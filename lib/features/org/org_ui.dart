@@ -65,7 +65,7 @@ Color statusColor(BuildContext context, String? s) {
   return switch (s) {
     'approved' || 'active' || 'published' || 'open' || 'resolved' => c.success,
     'pending' || 'submitted' || 'in_review' || 'waiting' || 'draft' => c.warning,
-    'rejected' || 'suspended' || 'closed' || 'archived' => c.danger,
+    'rejected' || 'suspended' || 'closed' || 'archived' || 'deleted' => c.danger,
     'in_progress' => c.primary,
     _ => c.textMedium,
   };
@@ -87,6 +87,8 @@ String statusLabel(String? s) => switch (s) {
       'waiting' => t('بانتظار ردك', 'Waiting for you'),
       'resolved' => t('تم الحل', 'Resolved'),
       'active' => t('نشط', 'Active'),
+      'deleted' => t('محذوفة', 'Deleted'), // an organization the platform deleted softly (D-287)
+      'removed' => t('أُزيل', 'Removed'), // an ended membership (D-282); its colour stays neutral
       _ => s ?? '',
     };
 

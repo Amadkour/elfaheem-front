@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 
 import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
+import 'app_charts.dart' show appInk;
 import 'app_gradients.dart';
 import 'app_tokens.dart';
 
@@ -188,11 +189,13 @@ class _AppButtonState extends State<AppButton> {
     final h = _heightOf(widget.size);
     final disabled = widget.onPressed == null && !widget.busy;
 
+    // text / icon ink of an unfilled button: the primary made readable on the open mode's surface (appInk — the raw
+    // indigo is about 1.6:1 on a dark card); fills and borders keep the raw tone
     final Color ink = filled
         ? c.onHero
         : outlineDanger
             ? c.danger
-            : c.primary;
+            : appInk(context, c.primary);
     final fs = switch (widget.size) {
       AppButtonSize.sm => 13.0,
       AppButtonSize.md => 14.0,
@@ -344,7 +347,7 @@ class AppIconButton extends StatelessWidget {
     final c = context.colors;
     final enabled = onPressed != null && !busy;
     final filled = variant == AppIconButtonVariant.filled;
-    final ink = filled ? c.onHero : c.primary;
+    final ink = filled ? c.onHero : appInk(context, c.primary); // readable on a dark card too (see AppButton)
     final visual = Container(
       width: 40,
       height: 40,

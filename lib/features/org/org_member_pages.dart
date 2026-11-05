@@ -14,7 +14,7 @@ import 'package:flutter_education_app/features/shared/course/course_access.dart'
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime, AppType;
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -29,6 +29,8 @@ import 'org_ui.dart';
 import 'org_academic_pages.dart' show orgCourseGate;
 import 'org_access_joining.dart' show openOrgJoin;
 import 'org_v3.dart' show membershipStatusLabels, orgCodeText;
+import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton, AppButtonSize;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -78,13 +80,13 @@ class OrgHomeEntry extends StatelessWidget {
                     first == null ? t('انضم إلى جامعتك أو كليتك', 'Join your university or faculty') : OrgSession.nameOf(first),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.display, fontSize: 16, fontWeight: FontWeight.w600, color: c.onHero),
+                    style: AppType.section(context).copyWith(color: c.onHero),
                   ),
                   Text(
                     first == null
                         ? (pending > 0 ? t('طلبك قيد المراجعة', 'Your request is being reviewed') : t('اطّلع على كورسات مؤسستك واشترك بها', "See your institution's courses and subscribe"))
                         : t('${active.length} مؤسسة · الكورسات والجدول', '${active.length} organization(s) · courses & timetable'),
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.onHero.withValues(alpha: 0.88)),
+                    style: AppType.meta(context).copyWith(color: c.onHeroMuted),
                   ),
                 ]),
               ),
@@ -129,8 +131,12 @@ class _MembershipView extends StatelessWidget {
       child: !p.loaded
           ? const AppListSkeleton()
           : p.mine.isEmpty
-              ? OrgEmpty(icon: Icons.domain_rounded, title: t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet"))
+              ? ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
+                  deferredOrgMyInvitationsCard(onChanged: p.loadMine),
+                  OrgEmpty(icon: Icons.domain_rounded, title: t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet")),
+                ])
               : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
+                  deferredOrgMyInvitationsCard(onChanged: p.loadMine),
                   for (final m in p.mine)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -160,7 +166,7 @@ class _OrgCard extends StatelessWidget {
     final status = '${m['status']}';
     final col = orgColor(context, o);
     final p = context.read<OrgMembershipProvider>();
-    return RowCard(
+    final card = RowCard(
       accent: col,
       onTap: status == 'active'
           ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredOrgMemberSpace(org: o)))
@@ -170,34 +176,53 @@ class _OrgCard extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(OrgSession.nameOf(o), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 15, color: c.textDark)),
-            Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
+            Text(OrgSession.nameOf(o), style: AppType.section(context)),
+            Text(orgTypeLabels()[o['type']] ?? '', style: AppType.meta(context)),
             const SizedBox(height: 6),
             StatusChip(
-              status == 'active' ? t('عضو', 'Member') : status == 'rejected' ? t('مرفوض', 'Declined') : membershipStatusLabels()[status] ?? status,
-              status == 'active' ? c.success : status == 'pending' ? c.warning : c.danger,
+              status == 'active' ? t('عضو', 'Member') : status == 'rejected' ? t('مرفوض', 'Declined') : status == 'removed' ? t('أُزيل', 'Removed') : membershipStatusLabels()[status] ?? status,
+              status == 'active' ? c.success : status == 'pending' ? c.warning : status == 'removed' ? c.textMedium : c.danger,
             ),
             // only this organization's membership ended — the account and its other services keep working
             if (status == 'expired' || status == 'suspended')
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(orgCodeText('membership_ended'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textMedium)),
+                child: Text(orgCodeText('membership_ended'), style: AppType.meta(context)),
               ),
           ]),
         ),
         if (status == 'active') const Icon(Icons.chevron_right_rounded),
-        if (status != 'active' || m['role'] == 'student' || m['role'] == 'teacher')
-          IconButton(
-            icon: Icon(DirIcons.logout, color: c.textLight, size: 20),
-            tooltip: t('خروج', 'Leave'),
-            onPressed: () async {
-              if (await confirm(context, message: t('الخروج من المؤسسة؟ اشتراكاتك في الكورسات تبقى كما هي.', 'Leave this organization? Your course enrollments stay.'), danger: true)) {
-                p.leave(asInt(o['id']));
-              }
-            },
-          ),
       ]),
     );
+    final leavable = status != 'active' || m['role'] == 'student' || m['role'] == 'teacher';
+    if (!leavable) return card;
+    // a labelled action under the card (text + icon), not an icon alone
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      card,
+      Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: AppButton.ghost(
+          key: ValueKey('org.leave.${o['id']}'),
+          label: status == 'pending' ? t('سحب الطلب', 'Withdraw request') : t('الخروج من المؤسسة', 'Leave organization'),
+          icon: DirIcons.logout,
+          size: AppButtonSize.sm,
+          onPressed: () async {
+            final active = status == 'active';
+            if (await appConfirm(
+              context,
+              danger: true,
+              confirmLabel: active ? t('خروج', 'Leave') : t('سحب', 'Withdraw'),
+              message: active
+                  ? t('الخروج من «${OrgSession.nameOf(o)}»؟ تفقد وصولك إلى صفوفها وجداولها وإعلاناتها، وتبقى اشتراكاتك في الكورسات كما هي. يمكنك الانضمام مجدداً بكود أو بطلب جديد.',
+                      'Leave "${OrgSession.nameOf(o)}"? You lose access to its classes, timetable and announcements; your course enrollments stay. You can join again with a code or a new request.')
+                  : t('سحب الطلب المرسل إلى «${OrgSession.nameOf(o)}»؟', 'Withdraw your request to "${OrgSession.nameOf(o)}"?'),
+            )) {
+              p.leave(asInt(o['id']));
+            }
+          },
+        ),
+      ),
+    ]);
   }
 }
 
@@ -278,7 +303,7 @@ class _CoursesBody extends StatelessWidget {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(t('${row['name_ar'] ?? row['name_en']}', '${row['name_en'] ?? row['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
-                      if (row['teacher'] != null) Text('${(row['teacher'] as Map)['name']}', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
+                      if (row['teacher'] != null) Text('${(row['teacher'] as Map)['name']}', style: AppType.meta(context)),
                       const SizedBox(height: 6),
                       Wrap(spacing: 6, children: [
                         InfoChip(Icons.payments_rounded, asDouble(row['fees']) == 0 ? t('مجاني', 'Free') : money(asDouble(row['fees'])), c.success),
@@ -398,12 +423,12 @@ class _TimetableView extends StatelessWidget {
     final days = memberTimetableDays(tt);
     Widget heading(String text) => Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 6),
-          child: Text(text, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.primary, fontSize: 14)),
+          child: Text(text, style: AppType.bodyStrong(context).copyWith(color: c.primary)),
         );
     return [
       Text('${sched['name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: c.h2),
       if ('${sched['term_label'] ?? ''}'.isNotEmpty)
-        Text('${sched['term_label']}', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
+        Text('${sched['term_label']}', style: AppType.meta(context)),
       const SizedBox(height: 8),
       examPauseBanner(context, examPausesOf(tt)),
       if (extras.isNotEmpty) ...[
@@ -480,9 +505,9 @@ class _SlotRow extends StatelessWidget {
             decoration: BoxDecoration(color: accent.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
             child: Column(children: [
               Text(top, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
-                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: accent, fontSize: 13)),
+                  style: AppType.label(context).copyWith(color: accent)),
               Text(bottom, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
-                  style: TextStyle(color: c.textLight, fontSize: 11)),
+                  style: AppType.overline(context).copyWith(color: c.textLight)),
             ]),
           ),
           const SizedBox(width: 12),
@@ -492,7 +517,7 @@ class _SlotRow extends StatelessWidget {
                   style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark)),
               if (subtitle.isNotEmpty)
                 Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
+                    style: AppType.meta(context)),
               if (hint != null) ...[
                 const SizedBox(height: 4),
                 Row(children: [
@@ -500,7 +525,7 @@ class _SlotRow extends StatelessWidget {
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(hint!, maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w500, color: c.primary)),
+                        style: AppType.meta(context).copyWith(color: c.primary)),
                   ),
                 ]),
               ],

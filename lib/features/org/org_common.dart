@@ -105,9 +105,15 @@ class _ImportResultSheet extends StatelessWidget {
         Wrap(spacing: 8, runSpacing: 8, children: [
           InfoChip(Icons.add_circle_rounded, '${t('جديد', 'New')} ${r['created']}', c.success),
           InfoChip(Icons.link_rounded, '${t('مرتبط', 'Linked')} ${r['linked']}', c.primary),
+          if (asInt(r['invited']) > 0) InfoChip(Icons.mark_email_unread_rounded, '${t('دعوات مرسلة', 'Invited')} ${r['invited']}', c.warning),
           if (asInt(r['skipped']) > 0) InfoChip(Icons.skip_next_rounded, '${t('تخطي', 'Skipped')} ${r['skipped']}', c.textMedium),
           if (errors.isNotEmpty) InfoChip(Icons.error_rounded, '${t('أخطاء', 'Errors')} ${errors.length}', c.danger),
         ]),
+        if (asInt(r['invited']) > 0) ...[
+          const SizedBox(height: 10),
+          Text(t('الحسابات الموجودة أصلاً تلقّت دعوة — تنضم إلى المؤسسة بعد قبولها.', 'Accounts that already exist received an invitation — they join once they accept.'),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium)),
+        ],
         if (errors.isNotEmpty) ...[
           const SizedBox(height: 14),
           Text(t('صفوف بها أخطاء', 'Rows with problems'), style: c.h2.copyWith(fontSize: 14)),

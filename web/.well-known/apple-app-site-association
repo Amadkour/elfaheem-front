@@ -10,9 +10,11 @@
           { "/": "/@*", "comment": "profile links (D-074)" },
           { "/": "/live/*", "comment": "live guest links" },
           { "/": "/verify/*", "comment": "certificate verification links / QR (D-132)" },
-          { "/": "/e/*", "comment": "expiring export download links (D-134)" }
+          { "/": "/e/*", "comment": "expiring export download links (D-134)" },
+          { "/": "/j/*", "comment": "organization join links (D-283)" },
+          { "/": "/i/*", "comment": "organization invitations (D-283)" }
         ],
-        "paths": ["/c/*", "/@*", "/live/*", "/verify/*", "/e/*"]
+        "paths": ["/c/*", "/@*", "/live/*", "/verify/*", "/e/*", "/j/*", "/i/*"]
       }
     ]
   }

@@ -5,6 +5,7 @@
 // its visible tab's navigator (D-081: the page keeps the tab bar; [_nav]). Org dashboards, sign-in and other role
 // homes still land on the root navigator (AppTabNavigator hands them up).
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
+import 'package:flutter_education_app/core/routing/app_routes.dart';
 import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
@@ -27,6 +28,10 @@ import '../../main.dart';
 import '../top_route_observer.dart' show topRouteObserver;
 import 'view_as_state.dart';
 import '../../design/app_shell_nav.dart' show AppShellNav;
+import '../../design/context_switcher.dart' show closeOrgPages;
+import '../../features/org/org_providers.dart' show OrgSession;
+import '../../features/org/org_invitation_prompt.dart' show OrgInvitationPrompt;
+import '../../features/org/org_invitations.dart' show invitationsFeatureKey;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
@@ -92,6 +97,8 @@ class AppNavigator {
   /// live_plan_renew_failed, Part 3 §15) | rag_learning · rag_alerts (platform admins only: the assistant's Learning
   /// page / the console's Alerts tab, `rag_admin_links.dart`; anyone else the notifications list) | app_release ·
   /// app_releases (super admins only, D-143: [targetId] = the release → its page, else App versions)
+  ///
+  /// org_invitations (a push / notification for a phone invitation; no org_id, I am not a member yet) → My organizations with the invitations card.
   ///
   /// exam_notice (D-247; also exam_appeal · exam_result): [data] is the push / notification target (`exam_id`, `attempt_id`,
   /// `kind` …), else [targetId] is the exam.
@@ -183,6 +190,16 @@ class AppNavigator {
         return;
       case 'org_exams': // "exam timetable published" → My exams (the organization is already open)
         await nav.push(MaterialPageRoute(builder: (_) => deferredMyExams()));
+        return;
+      case 'org_invitation': // an organization invited an existing account (C7): the accept / reject dialog for it
+        if (AppConfig.orgsEnabled && !AppConfig.disableList.contains(invitationsFeatureKey)) {
+          await OrgInvitationPrompt.instance.showFor(targetId);
+          return;
+        }
+        await nav.pushNamed(AppRoutes.location(AppRoutes.orgMemberships.id));
+        return;
+      case 'org_invitations': // an invitation to join an organization (phone invites, push + notification tap) → My organizations, which shows the invitations card
+        await nav.pushNamed(AppRoutes.location(AppRoutes.orgMemberships.id));
         return;
       case 'org_reports': // a report sent to me → Received reports
         await nav.push(MaterialPageRoute(builder: (_) => deferredOrgReceivedReports()));
@@ -318,9 +335,9 @@ class AppNavigator {
     final timetable = data['type'] == 'org_timetable';        // a draft timetable is ready (schedule_auto / autopilot)
     // the wallet and the plan push {type: points | live_plan | live_plan_expiring | live_plan_renewed | …} (spec §9, §15)
     final module = data['module']?.toString() ??
-        (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : pointsModuleFor(data['type']?.toString()))));
+        (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : data['type'] == 'org_invitation' ? 'org_invitation' : pointsModuleFor(data['type']?.toString()))));
     final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? (module == 'org_invitation' ? data['related_id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) {
@@ -331,17 +348,53 @@ class AppNavigator {
     await _nav?.pushNamed('/notifications');
   }
 
-  /// Organization notification (push data / tap target carry `org_id`): open that organization in Organization
-  /// mode BEFORE routing, so the screen it leads to shows that organization (its timezone and feature offs too).
-  /// Returns true when it already navigated (nothing more specific to open: back to the home root, now in that
-  /// organization).
+  /// Organization notification (push data / tap target carry `org_id`): open that organization BEFORE routing, so the
+  /// screen it leads to shows that organization (its timezone and feature offs too). The organization is selected in
+  /// BOTH [AppModeController] and [OrgSession] (before, only the mode followed, so a push for org B opened B's page
+  /// under A's dashboard), and when it is a different organization from the one open, A's org pages close first.
+  /// An organization where I am staff opens its dashboard ([AppModeController.opensDashboard]); one where I study,
+  /// the member home. Returns true when it already navigated (nothing more specific to open: back to the home root /
+  /// the dashboard, now in that organization). Never throws: tapping must never crash.
   static Future<bool> _openOrgFirst(int orgId, bool homeOnly) async {
     if (!AppConfig.orgsEnabled) return false;
+    final ctl = AppModeController.instance;
+    OrgSession? session;
     try {
-      await AppModeController.instance.openOrg(orgId);
+      session = navigatorKey.currentContext?.read<OrgSession>();
+    } catch (_) {/* no provider in scope */}
+    bool? staff;
+    try {
+      // cold start: the memberships are not known yet - wait for them (bounded) before deciding staff or student
+      if (!ctl.loaded) await ctl.ready();
+      await ctl.openOrg(orgId);
+      staff = ctl.opensDashboardFor(orgId);
+      // the overview does not list it (it failed / is slow): the dashboard's own list decides
+      if (staff == null && session != null) {
+        if (!session.loaded) await session.load().timeout(const Duration(seconds: 6), onTimeout: () {});
+        if (session.loaded && !session.loadFailed) staff = session.items.any((o) => o['id'] == orgId);
+      }
+      final other = session != null && session.currentId != null && session.currentId != orgId;
+      // an organization where I only study is never selected in the dashboard's session
+      if (staff != false) session?.open(orgId);
+      if (other) {
+        // org A -> org B: A's pages go, B is selected (OrgSession.select clears A's context)
+        final root = navigatorKey.currentState;
+        if (root != null) closeOrgPages(root);
+      }
     } catch (_) {/* never block the tap */}
     if (!homeOnly) return false;
-    navigatorKey.currentState?.popUntil((r) => r.isFirst);
+    final root = navigatorKey.currentState;
+    if (staff == true) {
+      // the staff dashboard of that organization: reuse the one on screen, else open it
+      if (_onOrgDashboard) {
+        if (root != null) closeOrgPages(root);
+      } else {
+        root?.popUntil((r) => r.isFirst);
+        if (topRouteObserver.rootRoute?.settings.name != '/org_dashboard') unawaited(root?.pushNamed('/org_dashboard'));
+      }
+      return true;
+    }
+    root?.popUntil((r) => r.isFirst);
     AppShellNav.popVisibleToRoot(); // and the tab on screen back to its own first page
     return true;
   }

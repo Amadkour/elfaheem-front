@@ -68,6 +68,7 @@ import 'features/shared/exports/export_schedules_page.dart';
 import 'features/shared/exports/exports_center_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
+import 'features/org/org_invitation_prompt.dart' show OrgInvitationPromptHost;
 import 'features/admin/models/model_download_bar.dart' show ModelDownloadsHost;
 import 'core/release/web_release_watch.dart' show WebReleaseBanner;
 import 'features/shared/get_app/app_download_banner.dart' show AppDownloadBanner;
@@ -530,6 +531,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
   bool _isLink(String r) =>
       guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || exportLinkTokenFromRoute(r) != null ||
       DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null ||
+      const {'link.org_join', 'link.org_invitation'}.contains(AppRoutes.match(r)?.id) ||
       ExploreRequest.matches(r) || isInstitutionRoute(r) ||
       // /register?role=teacher (the landing's teacher card) is a sign-in page: signed out only, like /register
       (!context.read<MyAuthProvider>().isAuthenticated && registerRoleFromRoute(r) != null);
@@ -737,7 +739,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                     // the live room above the Navigator: full-screen, or a box while moving around the app
                     // web: "Get the app" strip above the role homes; above it the website downloads strip on every page,
                     // sign-in included (D-144); on top "A new version is live — Reload" (D-143), which keeps the top spot
-                    child: LiveRoomLayer(child: WebReleaseBanner(child: AppDownloadBanner(child: GetAppBanner(child: child!)))),
+                    child: LiveRoomLayer(child: WebReleaseBanner(child: AppDownloadBanner(child: GetAppBanner(child: OrgInvitationPromptHost(navigatorKey: navigatorKey, child: child!))))),
                   ),
                 ),
               ),
@@ -797,6 +799,14 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     // a refresh, the browser's Forward, the assistant's page links
     final page = AppRoutes.match(settings.name);
     switch (page?.id) {
+      // organization join / invitation links (D-283): no guard — the pages handle a signed-out visitor themselves
+      // (sign-in or sign-up, then back here through SignInReturn)
+      case 'link.org_join':
+        return _fade(OrgsGate(child: deferredOrgJoinLink(code: page!.params['code']!)), settings);
+      case 'link.org_invitation':
+        return _fade(OrgsGate(child: deferredOrgInvitation(token: page!.params['token']!)), settings);
+      case 'org.memberships':
+        return _fade(_Guard(child: OrgsGate(child: deferredOrgMemberships())), settings);
       case 'course':
         final id = page!.intParam('courseId');
         if (id != null) return _fade(_Guard(child: CoursePageLoader(courseId: id)), settings); // the one course page (D-111)

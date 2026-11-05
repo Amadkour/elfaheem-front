@@ -209,7 +209,10 @@ class OrgSession extends AdminBase {
   /// The selection: the organization asked for by [open], else the current one ([keepSelection]), else [prefer]
   /// (the last one chosen, AppModeController.storedOrgId), else the first.
   Future<void> load({bool keepSelection = true, int? prefer}) async {
+    final before = currentId;
+    final beforeName = name;
     final r = await run(() => api.get('$orgBase/mine', queryParams: const {'members': '1'}));
+    loadFailed = r is! Map;
     if (r is Map) {
       items = [
         for (final o in asMapList(r['items']))
@@ -217,17 +220,41 @@ class OrgSession extends AdminBase {
       ];
       canCreateRoot = r['can_create_root'] == true;
       bool listed(int? id) => id != null && items.any((o) => asInt(o['id']) == id);
+      final asked = _wanted;
       final pick = [_wanted, if (keepSelection) currentId, prefer].where(listed).firstOrNull;
       currentId = pick ?? (items.isEmpty ? null : asInt(items.first['id']));
-      if (listed(_wanted)) _wanted = null;
+      // one load answers the request: an organization /mine does not list (one where I only study) must not stay
+      // wanted and be selected by some later listing
+      _wanted = null;
+      // the organization I was in (or chose last) is gone: say so, never show another one silently
+      final ctl = AppModeController.instance;
+      final wasId = keepSelection ? (before ?? prefer) : null;
+      // the remembered one (cold start) may simply be an organization where I study (not in /mine): only a
+      // membership overview that does not list it either proves it is gone
+      final gone = wasId != null && !listed(wasId) && !listed(asked) &&
+          (before != null || (ctl.loaded && ctl.opensDashboardFor(wasId) == null));
+      if (gone) {
+        if (currentId != null) ctl.rememberDashboardOrg(currentId!);
+        AppModeController.showGoneNotice(AppModeController.orgGoneText(
+            lostName: before == null ? null : beforeName, nowName: currentId == null ? null : name));
+      }
     }
     loaded = true;
     OrgPlatformContext.open(approved ? currentId : null);   // org timezone / 12h-24h + org feature offs
     notifyListeners();
   }
 
+  /// The last `/org/mine` call failed (offline / server error): [items] is the LAST KNOWN list, and the screens show
+  /// an error with Retry ([errorMessage]) instead of looking like "no organizations".
+  bool loadFailed = false;
+
+  /// Switches to [id]: the previous organization's per-org state goes first (timezone / 12h-24h, feature offs, the
+  /// attention focus), then [id]'s context loads; every section reloads (epoch) and pushed pages of the old one
+  /// close themselves (OrgPushedPage).
   void select(int id) {
     if (id == currentId) return;
+    OrgPlatformContext.close();
+    AttentionService.instance.focusOrg(null);
     currentId = id;
     OrgPlatformContext.open(approved ? id : null);
     epoch.value++;
@@ -341,13 +368,25 @@ class OrgSession extends AdminBase {
     return r is Map ? Map<String, dynamic>.from(r) : null;
   }
 
+  /// Rotates the printed join code. The app uses the multi-code route on the code's own row (`legacy_code_id` of the
+  /// join settings, admins only); a server that does not send the id (older) keeps the legacy route.
   Future<String?> regenerateCode() async {
-    final r = await call(() => api.post('$base/join-code/regenerate'));
+    final cid = await legacyCodeId();
+    final r = await call(() => cid != null ? api.post('$base/join/codes/$cid/regenerate') : api.post('$base/join-code/regenerate'));
     if (r is Map) {
       await load();
-      return r['join_code']?.toString();
+      return regeneratedCodeOf(r);
     }
     return null;
+  }
+
+  Future<int?> legacyCodeId() async {
+    try {
+      final s = await api.get('$base/join/settings');
+      return legacyCodeIdOf(s);
+    } catch (_) {
+      return null;                              // settings unreadable: the legacy route still works
+    }
   }
 
   Future<Map<String, dynamic>?> overview() async {
@@ -390,7 +429,13 @@ class OrgMembersProvider extends AdminPagedProvider {
   }
 
   Future<Map<String, dynamic>?> add(Map<String, dynamic> body) async {
-    final r = await call(() => api.post(path, body: body), ok: t('تمت الإضافة', 'Added'));
+    final r = await call(() => api.post(path, body: body));
+    if (r is Map && r['status'] == 'invited') {
+      // C7: 202, an existing account is invited; no member row exists yet, so the list is not touched
+      toast(t('تم إرسال دعوة — ينضم بعد قبولها', 'Invitation sent — they join once they accept'));
+      return Map<String, dynamic>.from(r);
+    }
+    if (r != null) toast(t('تمت الإضافة', 'Added'));
     if (r is Map) await refresh();
     return r is Map ? Map<String, dynamic>.from(r) : null;
   }

@@ -24,6 +24,19 @@ final _notMirroring = RegExp(r'\b(Icons\.(logout|login|exit_to_app|subdirectory_
     r'arrow_outward)(_rounded|_outlined|_sharp)?|CupertinoIcons\.(chevron_forward|chevron_back))\b');
 
 void main() {
+  test('the guard catches every style variant of a non-mirroring icon (login_rounded slipped through once)', () {
+    for (final bad in [
+      'Icons.login', 'Icons.login_rounded', 'Icons.login_outlined', 'Icons.login_sharp', 'Icons.logout_rounded',
+      'Icons.logout_outlined', 'Icons.exit_to_app_rounded', 'Icons.subdirectory_arrow_right_outlined',
+      'Icons.north_east_sharp', 'Icons.arrow_outward_rounded', 'CupertinoIcons.chevron_forward',
+    ]) {
+      expect(_notMirroring.hasMatch('const Icon($bad)'), isTrue, reason: bad);
+    }
+    for (final fine in ['DirIcons.login', 'Icons.login_rounded_x', 'Icons.arrow_forward_rounded', 'Icons.logins']) {
+      expect(_notMirroring.hasMatch('Icon($fine)'), isFalse, reason: fine);
+    }
+  });
+
   test('the DirIcons glyphs mirror and match their Material originals', () {
     for (final (dir, original) in [
       (DirIcons.logout, Icons.logout_rounded),

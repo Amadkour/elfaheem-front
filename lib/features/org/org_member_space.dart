@@ -10,13 +10,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 
 import '../admin/admin_common.dart';
-import '../admin/admin_list.dart';
-import 'org_common.dart';
 import 'org_member_pages.dart' show OrgCoursesScreen, OrgTimetableScreen;
 import 'org_my_exams.dart' show openMyExams;
 import 'org_providers.dart';
@@ -24,13 +22,12 @@ import 'org_services_pages.dart' show ComplaintBubble;
 import 'org_ui.dart';
 import 'org_terms_pages.dart';
 import 'org_departments_page.dart' show DeptLogo;
+import 'org_member_parts.dart';
 import 'org_academic_pages.dart' show MyAcademicPathPage;
 import 'org_announcements.dart' show OrgAnnouncementFeed;
 import 'org_dynamic_form.dart';
 import 'org_join_pages.dart' show OrgJoinUnitsTab;
 import 'org_platform_context.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _pub = '$orgBase/public';
 
@@ -41,8 +38,6 @@ class OrgMemberSpace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final col = orgColor(context, org);
     final id = asInt(org['id']);
     return _OrgContextScope(
       orgId: id,
@@ -52,39 +47,30 @@ class OrgMemberSpace extends StatelessWidget {
       child: BasePage(
         useWebCard: true,
         maxWith: 900,
-        appBar: ScreenAppBar(title: orgNameOf(org), actions: [
-          IconButton(
-              tooltip: t('المقررات', 'Courses'),
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: org))),
-              icon: const Icon(Icons.menu_book_rounded)),
-          IconButton(
-              tooltip: t('جدولي', 'My timetable'),
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgTimetableScreen())),
-              icon: const Icon(Icons.calendar_month_rounded)),
-          IconButton(
-              tooltip: t('امتحاناتي', 'My exams'),
-              onPressed: () => openMyExams(context, orgId: id),
-              icon: const Icon(Icons.event_note_rounded)),
-        ]),
         child: Column(children: [
-          OrgHero(org: org, subtitle: t('مرحباً بك في مجتمعك 👋', 'Welcome to your community 👋')),
-          TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            labelColor: col,
-            indicatorColor: col,
-            unselectedLabelColor: c.textMedium,
-            labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
-            tabs: [
-              Tab(icon: const Icon(Icons.campaign_rounded, size: 20), text: t('الأخبار', 'News')),
-              Tab(icon: const Icon(Icons.apartment_rounded, size: 20), text: t('الإدارات', 'Departments')),
-              Tab(icon: const Icon(Icons.assignment_rounded, size: 20), text: t('طلباتي', 'Requests')),
-              Tab(icon: const Icon(Icons.support_agent_rounded, size: 20), text: t('شكاواي', 'Complaints')),
-              Tab(icon: const Icon(Icons.gavel_rounded, size: 20), text: t('اللوائح', 'Regulations')),
-              Tab(icon: const Icon(Icons.route_rounded, size: 20), text: t('مساري', 'My path')),
-              Tab(icon: const Icon(Icons.group_add_rounded, size: 20), text: t('انضمام', 'Join')),
+          // the organization's name always leads the page, with the way out to the personal space; one tab strip under it
+          AppPageHeader(
+            title: orgNameOf(org),
+            subtitle: t('مساحتك: أخبارك وطلباتك وشكاواك', 'Your space: news, requests and complaints'),
+            icon: Icons.apartment_rounded,
+            onBack: () => Navigator.of(context).maybePop(),
+            actions: [
+              AppIconButton(
+                  tooltip: t('المقررات', 'Courses'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: org))),
+                  icon: Icons.menu_book_rounded),
+              AppIconButton(
+                  tooltip: t('جدولي', 'My timetable'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgTimetableScreen(orgId: id))),
+                  icon: Icons.calendar_month_rounded),
+              AppIconButton(
+                  tooltip: t('امتحاناتي', 'My exams'),
+                  onPressed: () => openMyExams(context, orgId: id),
+                  icon: Icons.event_note_rounded),
+              const ContextExitButton(),
             ],
           ),
+          const _SpaceTabs(),
           Expanded(
             child: TabBarView(children: [
               OrgAnnouncementFeed(orgId: id),   // point 17: views · reactions · deep links
@@ -98,6 +84,36 @@ class OrgMemberSpace extends StatelessWidget {
           ),
         ]),
       ),
+      ),
+    );
+  }
+}
+
+/// The seven tabs of the space as one underline strip (scrolls on a phone), driven by the DefaultTabController.
+class _SpaceTabs extends StatelessWidget {
+  const _SpaceTabs();
+
+  @override
+  Widget build(BuildContext context) {
+    final ctl = DefaultTabController.of(context);
+    final c = context.colors;
+    return DecoratedBox(
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.divider))),
+      child: ListenableBuilder(
+        listenable: ctl,
+        builder: (context, _) => AppUnderlineTabs(
+          index: ctl.index,
+          onChanged: ctl.animateTo,
+          items: [
+            AppTabItem(t('الأخبار', 'News')),
+            AppTabItem(t('الإدارات', 'Departments')),
+            AppTabItem(t('طلباتي', 'Requests')),
+            AppTabItem(t('شكاواي', 'Complaints')),
+            AppTabItem(t('اللوائح', 'Regulations')),
+            AppTabItem(t('مساري', 'My path')),
+            AppTabItem(t('انضمام', 'Join')),
+          ],
+        ),
       ),
     );
   }
@@ -180,47 +196,54 @@ class _DirectoryState extends State<_Directory> with _Loader<_Directory> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return body((list) => list.isEmpty
-        ? ListView(children: [OrgEmpty(icon: Icons.apartment_rounded, title: t('لا إدارات منشورة بعد', 'No departments listed yet'))])
-        : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
+        ? ListView(children: [
+            OrgEmpty(
+              icon: Icons.apartment_rounded,
+              title: t('لا إدارات منشورة بعد', 'No departments listed yet'),
+              message: t('عند نشر المؤسسة لإداراتها ستجدها هنا. يمكنك طلب الانضمام لقسم من تبويب الانضمام.', 'Departments appear here once the organization publishes them. You can ask to join a unit from the Join tab.'),
+              actionLabel: t('انضمام لقسم', 'Join a department'),
+              onAction: () => DefaultTabController.maybeOf(context)?.animateTo(6),
+            )
+          ])
+        : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
             for (final d in list)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: c.cardBg,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: hexColor(d['color'], c.primary).withValues(alpha: 0.25)),
-                ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    DeptLogo(d: d, size: 44),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(orgNameOf(d), style: orgText(context, w: FontWeight.w800)),
-                        if ('${d['description'] ?? ''}'.isNotEmpty)
-                          Text('${d['description']}', maxLines: 2, overflow: TextOverflow.ellipsis,
-                              style: orgText(context, size: 12, color: c.textMedium)),
-                      ]),
-                    ),
-                  ]),
-                  const SizedBox(height: 8),
-                  OrgInfoRow(Icons.place_rounded, '${d['location'] ?? ''}'),
-                  OrgInfoRow(Icons.schedule_rounded, '${d['office_hours'] ?? ''}'),
-                  OrgInfoRow(Icons.alternate_email_rounded, '${d['email'] ?? ''}', ltr: true),
-                  OrgInfoRow(Icons.phone_rounded, '${d['phone'] ?? ''}', ltr: true),
-                  if (d['accepts_complaints'] == true)
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: TextButton.icon(
-                        onPressed: () => showComplaintComposer(context, widget.org, dept: d),
-                        icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                        label: Text(t('تواصل / شكوى', 'Contact / complain'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                child: AppCard(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      DeptLogo(d: d, size: 44),
+                      AppSpace.gapSm,
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(orgNameOf(d), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                          if ('${d['description'] ?? ''}'.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: AppSpace.xxs),
+                              child: Text('${d['description']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                            ),
+                        ]),
                       ),
-                    ),
-                ]),
+                    ]),
+                    AppSpace.gapXs,
+                    OrgInfoRow(Icons.place_rounded, '${d['location'] ?? ''}'),
+                    OrgInfoRow(Icons.schedule_rounded, '${d['office_hours'] ?? ''}'),
+                    OrgInfoRow(Icons.alternate_email_rounded, '${d['email'] ?? ''}', ltr: true),
+                    OrgInfoRow(Icons.phone_rounded, '${d['phone'] ?? ''}', ltr: true),
+                    if (d['accepts_complaints'] == true) ...[
+                      AppSpace.gapXs,
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: AppPill(
+                          label: t('تواصل / شكوى', 'Contact / complain'),
+                          icon: Icons.chat_bubble_outline_rounded,
+                          onTap: () => showComplaintComposer(context, widget.org, dept: d),
+                        ),
+                      ),
+                    ],
+                  ]),
+                ),
               ),
           ]));
   }
@@ -255,61 +278,62 @@ class _RequestsState extends State<_Requests> with _Loader<_Requests> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return body((forms) => ListView(padding: const EdgeInsets.fromLTRB(0, 6, 0, 40), children: [
-          OrgSectionTitle(t('نماذج متاحة لك', 'Forms open for you')),
-          if (forms.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(t('لا نماذج مفتوحة الآن', 'No open forms right now'), style: orgText(context, color: c.textMedium)),
-            ),
-          for (final f in forms)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: OrgActionCard(
-                icon: Icons.edit_document,
-                color: f['can_answer'] == true ? c.primary : c.textLight,
-                title: '${f['title']}',
-                subtitle: [
-                  if (asMap(f['department']).isNotEmpty) orgNameOf(asMap(f['department'])),
-                  if (f['closes_at'] != null) '${t('حتى', 'until')} ${shortDate('${f['closes_at']}')}',
-                  if (f['can_answer'] != true) t('أرسلته ✓', 'Sent ✓'),
-                ].join(' · '),
-                onTap: f['can_answer'] == true
-                    ? () async {
-                        final sent = await Navigator.of(context).push<bool>(
-                            MaterialPageRoute(builder: (_) => OrgFormFillScreen(formId: asInt(f['id']))));
-                        if (sent == true) load();
-                      }
-                    : null,
-              ),
-            ),
-          OrgSectionTitle(t('طلباتي ومتابعتها', 'My requests')),
-          if (_mine.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(t('لم ترسل طلبات بعد', 'No requests yet'), style: orgText(context, color: c.textMedium)),
-            ),
-          for (final r in _mine)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: RowCard(
-                child: Row(children: [
-                  IconBadge(Icons.receipt_long_rounded, statusColor(context, '${r['status']}'), size: 40),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${r['form_title']}', style: orgText(context, w: FontWeight.w800)),
-                      Text('${r['ref']} · ${relTime(r['created_at'])}', textDirection: TextDirection.ltr,
-                          style: orgText(context, size: 12, color: c.textMedium)),
-                      if ('${r['reviewer_note'] ?? ''}'.isNotEmpty)
-                        Text('💬 ${r['reviewer_note']}', style: orgText(context, size: 12.5, color: c.textDark)),
-                    ]),
-                  ),
-                  StatusChip(r['status'] == 'approved' ? t('تمت الموافقة', 'Approved') : r['status'] == 'rejected' ? t('يحتاج منك', 'Needs you') : statusLabel('${r['status']}'),
-                      statusColor(context, '${r['status']}')),
-                ]),
-              ),
-            ),
+    return body((forms) => ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
+          AppSection(
+            title: t('نماذج متاحة لك', 'Forms open for you'),
+            child: forms.isEmpty
+                ? MemberNote(t('لا نماذج مفتوحة الآن', 'No open forms right now'), icon: Icons.edit_document)
+                : Column(children: [
+                    for (final f in forms)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                        child: MemberRow(
+                          icon: Icons.edit_document,
+                          tone: f['can_answer'] == true ? c.primary : c.textLight,
+                          title: '${f['title']}',
+                          subtitle: [
+                            if (asMap(f['department']).isNotEmpty) orgNameOf(asMap(f['department'])),
+                            if (f['closes_at'] != null) '${t('حتى', 'until')} ${shortDate('${f['closes_at']}')}',
+                          ].join(' · '),
+                          trailing: f['can_answer'] == true ? null : AppStatusBadge(label: t('أُرسل', 'Sent'), tone: AppTone.success, icon: Icons.check_rounded, dense: true),
+                          onTap: f['can_answer'] == true
+                              ? () async {
+                                  final sent = await Navigator.of(context).push<bool>(
+                                      MaterialPageRoute(builder: (_) => OrgFormFillScreen(formId: asInt(f['id']))));
+                                  if (sent == true) load();
+                                }
+                              : null,
+                        ),
+                      ),
+                  ]),
+          ),
+          AppSpace.gapLg,
+          AppSection(
+            title: t('طلباتي ومتابعتها', 'My requests'),
+            child: _mine.isEmpty
+                ? MemberNote(t('لم ترسل طلبات بعد. اختر نموذجاً من الأعلى لتبدأ.', 'No requests yet. Pick a form above to start one.'), icon: Icons.receipt_long_rounded)
+                : Column(children: [
+                    for (final r in _mine)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                        child: MemberRow(
+                          icon: Icons.receipt_long_rounded,
+                          tone: statusColor(context, '${r['status']}'),
+                          title: '${r['form_title']}',
+                          subtitle: [
+                            '${r['ref']} · ${relTime(r['created_at'])}',
+                            if ('${r['reviewer_note'] ?? ''}'.isNotEmpty) '${r['reviewer_note']}',
+                          ].join('\n'),
+                          trailing: MemberStatusBadge('${r['status']}',
+                              label: r['status'] == 'approved'
+                                  ? t('تمت الموافقة', 'Approved')
+                                  : r['status'] == 'rejected'
+                                      ? t('يحتاج منك', 'Needs you')
+                                      : null),
+                        ),
+                      ),
+                  ]),
+          ),
         ]));
   }
 }
@@ -355,7 +379,7 @@ class _OrgFormFillScreenState extends State<OrgFormFillScreen> {
     setState(() => _missing = _answers.missing(fields));
     if (_missing.isNotEmpty) {
       final f = fields.firstWhere((x) => _missing.contains('${x['key']}'));
-      toast(t('«${f['label']}» مطلوب', '"${f['label']}" is required'), error: true);
+      showAppNotice(t('«${f['label']}» مطلوب', '"${f['label']}" is required'), error: true);
       return;
     }
     setState(() => _busy = true);
@@ -366,11 +390,11 @@ class _OrgFormFillScreenState extends State<OrgFormFillScreen> {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          icon: Icon(Icons.check_circle_rounded, color: ctx.colors.success, size: 56),
-          title: Text(t('تم الإرسال', 'Sent'), textAlign: TextAlign.center),
-          content: Text('${r['message'] ?? ''}', textAlign: TextAlign.center, style: TextStyle(fontFamily: AppFonts.family, height: 1.5)),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('حسناً', 'OK')))],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sheet)),
+          icon: Icon(Icons.check_circle_rounded, color: ctx.colors.success, size: AppIconSize.hero),
+          title: Text(t('تم الإرسال', 'Sent'), textAlign: TextAlign.center, style: AppType.section(ctx)),
+          content: Text('${r['message'] ?? ''}', textAlign: TextAlign.center, style: AppType.body(ctx)),
+          actions: [AppButton.primary(label: t('حسناً', 'OK'), onPressed: () => Navigator.pop(ctx))],
         ),
       );
       if (mounted) Navigator.pop(context, true);
@@ -392,26 +416,28 @@ class _OrgFormFillScreenState extends State<OrgFormFillScreen> {
     return BasePage(
       useWebCard: true,
       maxWith: 720,
-      appBar: ScreenAppBar(title: f == null ? t('نموذج', 'Form') : '${f['title']}'),
-      child: OrgAsync(
-        loading: f == null && !_failed,
-        failed: _failed,
-        onRetry: _load,
-        child: f == null
-            ? const SizedBox.shrink()
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-                if ('${f['description'] ?? ''}'.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(18)),
-                    child: Text('${f['description']}', style: orgText(context)),
-                  ),
-                for (final x in asMapList(f['fields'])) _field(x),
-                const SizedBox(height: 8),
-                PrimaryButton(isLoading: _busy, label: t('إرسال', 'Send'), icon: Icons.send_rounded, iconBefore: true, onPressed: _submit),
-              ]),
-      ),
+      child: Column(children: [
+        AppPageHeader(title: f == null ? t('نموذج', 'Form') : '${f['title']}', icon: Icons.edit_document, onBack: () => Navigator.of(context).maybePop()),
+        Expanded(
+          child: OrgAsync(
+            loading: f == null && !_failed,
+            failed: _failed,
+            onRetry: _load,
+            child: f == null
+                ? const SizedBox.shrink()
+                : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
+                    if ('${f['description'] ?? ''}'.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.md),
+                        child: AppBanner(icon: Icons.info_outline_rounded, color: c.primary, text: '${f['description']}'),
+                      ),
+                    for (final x in asMapList(f['fields'])) _field(x),
+                    AppSpace.gapSm,
+                    AppButton.primary(label: t('إرسال', 'Send'), icon: Icons.send_rounded, busy: _busy, expand: true, onPressed: _submit),
+                  ]),
+          ),
+        ),
+      ]),
     );
   }
 }
@@ -436,13 +462,13 @@ Future<bool> showComplaintComposer(BuildContext context, Map<String, dynamic> or
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(dept == null ? t('شكوى أو اقتراح', 'Complaint or suggestion') : '${t('إلى', 'To')} ${orgNameOf(dept)}'),
             Text(t('نحن نسمعك. اكتب ما حدث بهدوء ووضوح — ستصلك متابعة برقم مرجعي.',
                     "We're listening. Describe what happened clearly — you'll get a reference number to follow up."),
-                style: orgText(ctx, size: 12.5, color: c.textMedium)),
-            const SizedBox(height: 12),
+                style: AppType.body(ctx).copyWith(color: c.textMedium)),
+            AppSpace.gapSm,
             ChoiceRow<String>(label: t('النوع', 'Type'), options: cats, value: category, onChanged: (v) => set(() => category = v)),
             Field(controller: subject, label: t('العنوان', 'Subject')),
             Field(controller: body, label: t('التفاصيل', 'Details'), maxLines: 6),
@@ -451,11 +477,12 @@ Future<bool> showComplaintComposer(BuildContext context, Map<String, dynamic> or
                 options: {'low': priorityLabel('low'), 'medium': priorityLabel('medium'), 'high': priorityLabel('high')},
                 value: priority,
                 onChanged: (v) => set(() => priority = v)),
-            Wrap(spacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
               for (final f in files) InputChip(label: Text('${f['name']}'), onDeleted: () => set(() => files.remove(f))),
-              ActionChip(
-                avatar: const Icon(Icons.attach_file_rounded, size: 16),
-                label: Text(t('إرفاق', 'Attach')),
+              AppButton.secondary(
+                label: t('إرفاق ملف', 'Attach a file'),
+                icon: Icons.attach_file_rounded,
+                size: AppButtonSize.sm,
                 onPressed: () async {
                   final up = await orgPickAndUpload('$_pub/uploads');
                   if (up != null) set(() => files.add({'name': up['name'], 'url': up['url']}));
@@ -468,15 +495,15 @@ Future<bool> showComplaintComposer(BuildContext context, Map<String, dynamic> or
               value: anonymous,
               onChanged: (v) => set(() => anonymous = v),
             ),
-            const SizedBox(height: 8),
-            PrimaryButton(
-              isLoading: busy,
+            AppSpace.gapXs,
+            AppButton.primary(
+              busy: busy,
+              expand: true,
               label: t('إرسال', 'Send'),
               icon: Icons.send_rounded,
-              iconBefore: true,
               onPressed: () async {
                 if (subject.text.trim().length < 3 || body.text.trim().length < 5) {
-                  toast(t('اكتب عنواناً وتفاصيل كافية', 'Add a subject and enough details'), error: true);
+                  showAppNotice(t('اكتب عنواناً وتفاصيل كافية', 'Add a subject and enough details'), error: true);
                   return;
                 }
                 set(() => busy = true);
@@ -494,7 +521,7 @@ Future<bool> showComplaintComposer(BuildContext context, Map<String, dynamic> or
                 if (r is Map) {
                   sent = true;
                   Navigator.pop(ctx);
-                  toast('${r['message'] ?? t('وصلت شكواك', 'Received')}');
+                  showAppNotice('${r['message'] ?? t('وصلت شكواك', 'Received')}');
                 }
               },
             ),
@@ -516,56 +543,55 @@ class _MyComplaintsState extends State<_MyComplaints> with _Loader<_MyComplaints
   @override
   String get url => '$_pub/me/complaints';
 
+  Future<void> _compose() async {
+    if (await showComplaintComposer(context, widget.org)) load();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'my_complaint',
-        backgroundColor: c.primary,
-        onPressed: () async {
-          if (await showComplaintComposer(context, widget.org)) load();
-        },
-        icon: Icon(Icons.edit_rounded, color: c.onHero),
-        label: Text(t('شكوى جديدة', 'New complaint'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
-      ),
-      body: body((all) {
-        final list = all.where((x) => asInt(x['org_id']) == asInt(widget.org['id'])).toList();
-        return list.isEmpty
-            ? ListView(children: [
-                OrgEmpty(icon: Icons.support_agent_rounded, title: t('لا شكاوى', 'No complaints'),
-                    message: t('إن واجهتك مشكلة فنحن هنا — رأيك يحسّن الخدمة للجميع', "If something goes wrong, we're here — your voice improves things for everyone")),
-              ])
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
-                for (final x in list)
+    return body((all) {
+      final list = all.where((x) => asInt(x['org_id']) == asInt(widget.org['id'])).toList();
+      if (list.isEmpty) {
+        return ListView(children: [
+          OrgEmpty(
+              icon: Icons.support_agent_rounded,
+              title: t('لا شكاوى', 'No complaints'),
+              message: t('إن واجهتك مشكلة فنحن هنا — رأيك يحسّن الخدمة للجميع', "If something goes wrong, we're here — your voice improves things for everyone"),
+              actionLabel: t('شكوى جديدة', 'New complaint'),
+              onAction: _compose),
+        ]);
+      }
+      return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
+        // the one primary action of the tab, in reach (not a floating button over the list)
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: AppButton.primary(label: t('شكوى جديدة', 'New complaint'), icon: Icons.edit_rounded, onPressed: _compose),
+        ),
+        AppSpace.gapSm,
+        for (final x in list)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: MemberRow(
+              icon: Icons.support_agent_rounded,
+              tone: statusColor(context, '${x['status']}'),
+              title: '${x['subject']}',
+              subtitle: '${x['ref']} · ${relTime(x['updated_at'] ?? x['created_at'])}',
+              trailing: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                MemberStatusBadge('${x['status']}'),
+                if (x['unread'] == true)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: RowCard(
-                      accent: x['unread'] == true ? c.primary : null,
-                      onTap: () async {
-                        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMyComplaintThread(id: asInt(x['id']))));
-                        load();
-                      },
-                      child: Row(children: [
-                        IconBadge(Icons.support_agent_rounded, statusColor(context, '${x['status']}'), size: 42),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('${x['subject']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
-                            Text('${x['ref']} · ${relTime(x['updated_at'] ?? x['created_at'])}',
-                                style: orgText(context, size: 12, color: c.textMedium)),
-                          ]),
-                        ),
-                        if (x['unread'] == true) OrgPill(t('رد جديد', 'New reply'), color: c.primary),
-                        const SizedBox(width: 4),
-                        StatusChip(statusLabel('${x['status']}'), statusColor(context, '${x['status']}')),
-                      ]),
-                    ),
+                    padding: const EdgeInsets.only(top: AppSpace.xxs),
+                    child: AppStatusBadge(label: t('رد جديد', 'New reply'), tone: AppTone.brand, dot: true, dense: true),
                   ),
-              ]);
-      }),
-    );
+              ]),
+              onTap: () async {
+                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMyComplaintThread(id: asInt(x['id']))));
+                load();
+              },
+            ),
+          ),
+      ]);
+    });
   }
 }
 
@@ -611,25 +637,25 @@ class _OrgMyComplaintThreadState extends State<OrgMyComplaintThread> {
     int stars = 5;
     final note = TextEditingController();
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('كيف كانت تجربتك؟', 'How was your experience?')),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               for (var i = 1; i <= 5; i++)
                 IconButton(
-                  iconSize: 36,
+                  iconSize: AppIconSize.xl,
                   tooltip: t('$i من 5', '$i of 5'),
                   onPressed: () => set(() => stars = i),
                   icon: Icon(i <= stars ? Icons.star_rounded : Icons.star_border_rounded, color: ctx.colors.warning),
                 ),
             ]),
             Field(controller: note, label: t('كلمة لفريق الإدارة (اختياري)', 'A word for the team (optional)')),
-            PrimaryButton(
-              isLoading: false,
+            AppButton.primary(
+              expand: true,
               label: t('إرسال التقييم', 'Send rating'),
               onPressed: () async {
                 final r = await OrgApi.i.post('$_url/rate', {'rating': stars, 'note': note.text.trim()});
-                if (r is Map) toast('${r['message'] ?? ''}');
+                if (r is Map) showAppNotice('${r['message'] ?? ''}');
                 if (ctx.mounted) Navigator.pop(ctx);
               },
             ),
@@ -646,8 +672,13 @@ class _OrgMyComplaintThreadState extends State<OrgMyComplaintThread> {
     return BasePage(
       useWebCard: true,
       maxWith: 760,
-      appBar: ScreenAppBar(title: d == null ? t('شكواي', 'My complaint') : '${d['ref']}'),
-      child: OrgAsync(
+      child: Column(children: [
+        AppPageHeader(
+            title: d == null ? t('شكواي', 'My complaint') : '${d['ref']}',
+            icon: Icons.support_agent_rounded,
+            onBack: () => Navigator.of(context).maybePop()),
+        Expanded(
+          child: OrgAsync(
         loading: d == null && !_failed,
         failed: _failed,
         onRetry: _load,
@@ -657,16 +688,16 @@ class _OrgMyComplaintThreadState extends State<OrgMyComplaintThread> {
                 Expanded(
                   child: AppRefresh(
                     onRefresh: _load,
-                    child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), children: [
+                    child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md), children: [
                       Section(
                         title: '${d['subject']}',
                         icon: Icons.support_agent_rounded,
-                        trailing: StatusChip(statusLabel(st), statusColor(context, st)),
+                        trailing: MemberStatusBadge(st),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           if (asMap(d['department']).isNotEmpty)
-                            Text('${t('إلى', 'To')} ${orgNameOf(asMap(d['department']))}', style: orgText(context, size: 12, color: c.primary)),
-                          const SizedBox(height: 6),
-                          Text('${d['body']}', style: orgText(context)),
+                            Text('${t('إلى', 'To')} ${orgNameOf(asMap(d['department']))}', style: AppType.meta(context).copyWith(color: c.primary)),
+                          AppSpace.gapXs,
+                          Text('${d['body']}', style: AppType.body(context)),
                           if (d['due_at'] != null && (st == 'open' || st == 'in_progress'))
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
@@ -678,28 +709,31 @@ class _OrgMyComplaintThreadState extends State<OrgMyComplaintThread> {
                       if (st == 'resolved' && d['rating'] == null)
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
-                          child: OrgActionCard(
+                          child: MemberRow(
                             icon: Icons.star_rounded,
-                            color: c.warning,
+                            tone: c.warning,
                             title: t('هل حُلّت مشكلتك؟', 'Was it solved?'),
                             subtitle: t('قيّم الخدمة وأغلق الشكوى', 'Rate the service and close it'),
                             onTap: _rate,
                           ),
                         ),
                       if (st == 'resolved' || st == 'closed')
-                        TextButton.icon(
-                          onPressed: () async {
-                            if (await OrgApi.i.post('$_url/reopen', null, t('أُعيد فتح الشكوى', 'Reopened')) != null) _load();
-                          },
-                          icon: const Icon(Icons.replay_rounded),
-                          label: Text(t('ما زالت المشكلة قائمة؟ أعد فتحها', 'Still a problem? Reopen it'), style: TextStyle(fontFamily: AppFonts.family)),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: AppPill(
+                            label: t('ما زالت المشكلة قائمة؟ أعد فتحها', 'Still a problem? Reopen it'),
+                            icon: Icons.replay_rounded,
+                            onTap: () async {
+                              if (await OrgApi.i.post('$_url/reopen', null, t('أُعيد فتح الشكوى', 'Reopened')) != null) _load();
+                            },
+                          ),
                         ),
                     ]),
                   ),
                 ),
                 if (st != 'closed')
                   Container(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.sm),
                     decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
                     child: Row(children: [
                       Expanded(
@@ -707,18 +741,20 @@ class _OrgMyComplaintThreadState extends State<OrgMyComplaintThread> {
                           controller: _msg,
                           minLines: 1,
                           maxLines: 4,
-                          style: TextStyle(fontFamily: AppFonts.family),
+                          style: AppType.body(context),
                           decoration: InputDecoration(
                             hintText: t('اكتب ردك…', 'Write your reply…'),
                             filled: true,
                             fillColor: c.inputBg,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            border: OutlineInputBorder(borderRadius: AppRadius.cardAll, borderSide: BorderSide.none),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      IconButton.filled(tooltip: t('إرسال', 'Send'), 
-                        style: IconButton.styleFrom(backgroundColor: c.primary),
+                      AppSpace.gapXs,
+                      AppIconButton(
+                        variant: AppIconButtonVariant.filled,
+                        busy: _sending,
+                        tooltip: t('إرسال', 'Send'), 
                         onPressed: _sending
                             ? null
                             : () async {
@@ -732,12 +768,14 @@ class _OrgMyComplaintThreadState extends State<OrgMyComplaintThread> {
                                   _load();
                                 }
                               },
-                        icon: Icon(Icons.send_rounded, color: c.onHero),
+                        icon: Icons.send_rounded,
                       ),
                     ]),
                   ),
               ]),
-      ),
+          ),
+        ),
+      ]),
     );
   }
 }

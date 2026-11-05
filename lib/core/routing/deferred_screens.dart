@@ -19,6 +19,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show SynchronousFuture, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/boot_splash.dart' show BootSplash;
@@ -30,13 +31,18 @@ import '../../features/admin/admin_dashboard_screen.dart' deferred as admin_dash
 import '../../features/admin/app_releases/app_release_detail.dart' deferred as app_release_detail;
 import '../../features/admin/app_releases/app_releases_page.dart' deferred as app_releases_page;
 import '../../features/org/org_academic_pages.dart' deferred as org_academic;
+import '../../features/org/org_access_joining.dart' deferred as org_access_joining;
 import '../../features/org/org_availability_pages.dart' deferred as org_availability;
+import '../../features/org/org_billing_page.dart' deferred as org_billing_page;
 import '../../features/org/org_dashboard_screen.dart' deferred as org_dashboard;
+import '../../features/org/org_invitations_pages.dart' deferred as org_invitations_pages;
 import '../../features/org/org_member_dashboard.dart' deferred as org_member_dashboard;
+import '../../features/org/org_member_pages.dart' deferred as org_member_pages;
 import '../../features/org/org_member_space.dart' deferred as org_member_space;
 import '../../features/org/org_my_exams.dart' deferred as org_my_exams;
 import '../../features/org/org_reports/report_page.dart' deferred as org_report_page;
 import '../../features/parent/parent_dashboard_screen.dart' deferred as parent_dashboard;
+import '../../features/parent/parent_org_view.dart' deferred as parent_org_view;
 import '../../features/teacher/analysis/exam/teacher_exam_hub_screen.dart' deferred as exam_hub;
 import '../../features/teacher/certificates/certificate_requests_screen.dart' deferred as cert_requests;
 import '../../features/teacher/certificates/designer/certificate_designs_screen.dart' deferred as cert_designs;
@@ -147,6 +153,35 @@ class _DeferredPageState extends State<DeferredPage> {
   }
 }
 
+/// A small block of an eager page that lives in a deferred part: nothing while it downloads, nothing if it fails
+/// (the block is a nicety), the block once loaded.
+class DeferredSlot extends StatefulWidget {
+  const DeferredSlot({super.key, required this.id, required this.load, required this.builder});
+  final String id;
+  final Future<void> Function() load;
+  final WidgetBuilder builder;
+
+  @override
+  State<DeferredSlot> createState() => _DeferredSlotState();
+}
+
+class _DeferredSlotState extends State<DeferredSlot> {
+  late bool _ready = _loaded.contains(widget.id);
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_ready) {
+      loadDeferred(widget.id, widget.load).then((_) {
+        if (mounted) setState(() => _ready = true);
+      }, onError: (Object _) {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _ready ? widget.builder(context) : const SizedBox.shrink();
+}
+
 class _DeferredFailed extends StatelessWidget {
   const _DeferredFailed({required this.onRetry});
   final VoidCallback onRetry;
@@ -192,6 +227,86 @@ Widget deferredOrgMemberDashboard({int? orgId}) => DeferredPage(
     load: org_member_dashboard.loadLibrary,
     look: DeferredLook.splash,
     builder: (_) => org_member_dashboard.OrgMemberDashboardScreen(orgId: orgId));
+
+/// `/my-organizations` (D-283): memberships, join requests and the invitations waiting for me.
+Widget deferredOrgMemberships() => DeferredPage(
+    id: 'org_memberships', load: org_member_pages.loadLibrary, builder: (_) => org_member_pages.OrgMembershipScreen());
+
+/// `/j/<CODE>` (D-283): the join page with the code filled in; a signed-out visitor is asked to sign in first.
+Widget deferredOrgJoinLink({required String code}) => DeferredPage(
+    id: 'org_join_link', load: org_access_joining.loadLibrary, builder: (_) => org_access_joining.OrgJoinLinkPage(code: code));
+
+/// `/i/<token>` (D-283): an organization invitation; the preview needs no account, accepting does.
+Widget deferredOrgInvitation({required String token}) => DeferredPage(
+    id: 'org_invitation', load: org_invitations_pages.loadLibrary, builder: (_) => org_invitations_pages.OrgInviteePage(token: token));
+
+/// Invitations (D-283): the invitee's page, the admin's list / invite sheet and "my invitations" card are ONE part,
+/// fetched when the first of them opens; the eager org screens reach them only through these.
+const _kInvitationsPart = 'org_invitation';
+Future<void> _loadInvitationsPart() => loadDeferred(_kInvitationsPart, org_invitations_pages.loadLibrary);
+
+/// The invite sheet (`GET`-free: it only draws a form); resolves when the sheet is closed.
+Future<void> showDeferredOrgInviteSheet(BuildContext context, {required int orgId, String orgName = '', String initialRole = 'student'}) async {
+  await _loadInvitationsPart();
+  if (!context.mounted) return;
+  await org_invitations_pages.showOrgInviteSheet(context, orgId: orgId, orgName: orgName, initialRole: initialRole);
+}
+
+/// The admin's list of sent invitations (push it inside the OrgSession provider).
+Widget deferredOrgInvitationsPage({required int orgId, String orgName = ''}) => DeferredPage(
+    id: _kInvitationsPart,
+    load: org_invitations_pages.loadLibrary,
+    builder: (_) => org_invitations_pages.OrgInvitationsPage(orgId: orgId, orgName: orgName));
+
+/// "Invitations waiting for me" on the memberships page; nothing while the part downloads (or if it can't).
+Widget deferredOrgMyInvitationsCard({VoidCallback? onChanged}) => DeferredSlot(
+    id: _kInvitationsPart,
+    load: org_invitations_pages.loadLibrary,
+    builder: (_) => org_invitations_pages.OrgMyInvitationsCard(onChanged: onChanged == null ? null : (_) => onChanged()));
+
+/// The organization's billing page (read-only), pushed from the dashboard's settings.
+Widget deferredOrgBillingPage({required int? orgId}) =>
+    DeferredPage(id: 'org_billing', load: org_billing_page.loadLibrary, builder: (_) => org_billing_page.OrgBillingPage(orgId: orgId));
+
+/// The parent home's "my children's organizations" strip: asks nothing (and downloads nothing) while organizations
+/// are off or `parent.org_view` is switched off; draws nothing while the part downloads.
+Widget deferredParentOrgChildrenCard() {
+  if (!AppConfig.orgsEnabled || AppConfig.disableList.contains('parent.org_view')) return const SizedBox.shrink();
+  return const _ParentOrgChildrenSlot();
+}
+
+/// The card's request starts with the parent home (in parallel with its own call), not after the card's deferred
+/// part arrived: on the web that part is one more round trip. The first load reads that answer; Retry calls again.
+class _ParentOrgChildrenSlot extends StatefulWidget {
+  const _ParentOrgChildrenSlot();
+
+  @override
+  State<_ParentOrgChildrenSlot> createState() => _ParentOrgChildrenSlotState();
+}
+
+class _ParentOrgChildrenSlotState extends State<_ParentOrgChildrenSlot> {
+  static const _path = '/api/v1/org/parent/children';
+  Future<dynamic>? _first;
+
+  @override
+  void initState() {
+    super.initState();
+    _first = ApiClient().get(_path)..ignore();       // its error is read by the card's first load
+  }
+
+  Future<dynamic> _answer() {
+    final first = _first;
+    _first = null;
+    return first ?? ApiClient().get(_path);
+  }
+
+  @override
+  Widget build(BuildContext context) => DeferredSlot(
+      id: 'parent_org_view', load: parent_org_view.loadLibrary,
+      // a closure, not a method: a deferred type cannot be named in a declaration
+      builder: (_) => parent_org_view.ParentOrgChildrenCard(
+          loader: () async => parent_org_view.parseParentChildren(await _answer())));
+}
 
 // ─── inner pages ────────────────────────────────────────────────────────────────────────────────────────────────
 

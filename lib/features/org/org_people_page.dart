@@ -3,8 +3,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -13,6 +13,10 @@ import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_member_form.dart';
+import 'org_access_page.dart' show OrgPersonAccess;
+import 'org_invitations.dart' show invitationsFeatureKey;
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredOrgInvitationsPage, showDeferredOrgInviteSheet;
+import 'package:flutter_education_app/config/app_config.dart';
 import 'org_v3.dart';
 import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -88,6 +92,7 @@ class _MembersView extends StatelessWidget {
       'scheduled': membershipStatusLabels()['scheduled']!,
       'expired': membershipStatusLabels()['expired']!,
       'suspended': membershipStatusLabels()['suspended']!,
+      'removed': _memberStatusLabel('removed'),
       if (kind != 'staff') 'rejected': t('مرفوض', 'Rejected'),
     };
     final addLabel = switch (kind) {
@@ -117,6 +122,19 @@ class _MembersView extends StatelessWidget {
         onChanged: p.setStatusFilter,
       ),
       more: [
+        if (s.can(module, 'insert') && !AppConfig.disableList.contains(invitationsFeatureKey)) ...[
+          OrgMenuItem(
+            icon: Icons.mail_outline_rounded,
+            label: t('دعوة بالبريد أو الهاتف', 'Invite by e-mail or phone'),
+            onTap: () => showDeferredOrgInviteSheet(context, orgId: s.currentId ?? 0, orgName: s.name, initialRole: kind == 'students' ? 'student' : kind == 'teachers' ? 'teacher' : 'staff'),
+          ),
+          OrgMenuItem(
+            icon: Icons.mark_email_unread_outlined,
+            label: t('الدعوات المرسلة', 'Sent invitations'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ChangeNotifierProvider.value(value: s, child: deferredOrgInvitationsPage(orgId: s.currentId ?? 0, orgName: s.name)))), // ROUTE: org.invitations
+          ),
+        ],
         if (s.can(module, 'insert')) ...[
           OrgMenuItem(
             icon: Icons.upload_file_rounded,
@@ -172,6 +190,7 @@ class _MemberTile extends StatelessWidget {
     final role = '${row['role']}';
     final eff = '${row['effective_status'] ?? row['status']}';
     final pending = row['status'] == 'pending';
+    final removed = eff == 'removed'; // the membership was ended by an admin (D-282); the row is kept
     final ended = eff == 'expired' || eff == 'suspended';
     final id = asInt(row['id']);
     final depts = asMapList(row['departments']);
@@ -186,7 +205,7 @@ class _MemberTile extends StatelessWidget {
       chips: [
                 // the role only where it differs between rows (the Staff list); Students / Teachers say it once, in the switcher
                 if (module == 'staff') StatusChip(_roleLabel(role), c.primary),
-                if (eff != 'active') StatusChip(membershipStatusLabels()[eff] ?? eff, statusColor(context, eff == 'scheduled' ? 'pending' : eff)),
+                if (eff != 'active') StatusChip(_memberStatusLabel(eff), eff == 'removed' ? c.textMedium : statusColor(context, eff == 'scheduled' ? 'pending' : eff)),
                 if ((row['student_code'] ?? '').toString().isNotEmpty) InfoChip(Icons.tag_rounded, '${row['student_code']}', c.textMedium),
                 if (row['academic_level'] != null) InfoChip(Icons.stairs_rounded, '${row['academic_level']}', c.textMedium),
                 if (row['cohort'] != null) InfoChip(Icons.group_rounded, memberCohortLabels()['${row['cohort']}'] ?? '${row['cohort']}', c.textMedium),
@@ -201,6 +220,9 @@ class _MemberTile extends StatelessWidget {
             PopupMenuButton<String>(
               onSelected: (v) async {
                 switch (v) {
+                  case 'access':
+                    await Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgPersonAccess(userId: asInt(u['id']))))); // ROUTE: org.person_access
                   case 'perm':
                     await _permissions(context, p, row);
                   case 'code':
@@ -224,11 +246,17 @@ class _MemberTile extends StatelessWidget {
                     }
                 }
               },
-              itemBuilder: (_) => [
+              itemBuilder: (_) => removed
+                  ? [
+                      // nothing that only makes sense for a live member: re-admitting goes through the normal extend / reactivate flow
+                      if (s.can(module, 'update')) PopupMenuItem(value: 'extend', child: Text(t('إعادة قبوله', 'Re-admit'))),
+                    ]
+                  : [
                 if (s.can(module, 'update')) PopupMenuItem(value: 'edit', child: Text(t('بيانات العضوية', 'Membership details'))),
                 if (s.can(module, 'update'))
                   PopupMenuItem(value: 'extend', child: Text(ended ? t('تمديد / إعادة تفعيل', 'Extend / reactivate') : t('تمديد العضوية', 'Extend membership'))),
                 if (s.can(module, 'update') && !ended) PopupMenuItem(value: 'suspend', child: Text(t('إيقاف العضوية', 'Suspend membership'))),
+                if (s.can('roles') && !pending) PopupMenuItem(value: 'access', child: Text(t('ما يستطيع فعله', 'Effective permissions'))),
                 if (role == 'admin_assistant' && s.isOrgAdmin) PopupMenuItem(value: 'perm', child: Text(t('الصلاحيات', 'Permissions'))),
                 if (role == 'student' && s.can(module, 'update')) PopupMenuItem(value: 'code', child: Text(t('الرقم الجامعي', 'Student number'))),
                 if (s.can(module, 'update')) PopupMenuItem(value: 'toggle', child: Text(u['is_active'] == false ? t('تفعيل الحساب', 'Enable account') : t('تعطيل الحساب', 'Disable account'))),
@@ -361,8 +389,8 @@ Future<void> _permissions(BuildContext context, OrgMembersProvider p, Map<String
                   ]),
                 ]),
               ),
-            PrimaryButton(
-              isLoading: busy,
+            AppButton.primary(
+              busy: busy,
               label: t('حفظ الصلاحيات', 'Save permissions'),
               onPressed: () async {
                 set(() => busy = true);
@@ -377,3 +405,6 @@ Future<void> _permissions(BuildContext context, OrgMembersProvider p, Map<String
         );
       }));
 }
+
+/// A member's status text; "removed" (an admin ended the membership, D-282) is not in the shared table.
+String _memberStatusLabel(String eff) => membershipStatusLabels()[eff] ?? eff;

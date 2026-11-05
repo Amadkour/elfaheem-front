@@ -439,3 +439,29 @@ class ReportTemplate {
         fileName: j['file_name'] as String?,
       );
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Sharing
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The `meta` of `POST …/reports/share`. There is deliberately no `emails` key: the server answers 422
+/// `share_target_not_allowed` for a free address, so people are picked from the members list, teams and consenting
+/// organizations only.
+Map<String, dynamic> reportShareMeta({
+  int? deptId,
+  required String title,
+  String? message,
+  required String channel,
+  Set<int> userIds = const {},
+  Set<int> deptIds = const {},
+  Set<int> orgIds = const {},
+}) =>
+    {
+      'dept_id': deptId,
+      'title': title,
+      'message': message,
+      'channel': channel,
+      'user_ids': userIds.toList(),
+      'dept_ids': deptIds.toList(),
+      'org_ids': orgIds.toList(),
+    };

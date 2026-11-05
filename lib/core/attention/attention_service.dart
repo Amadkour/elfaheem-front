@@ -64,6 +64,10 @@ class AttentionTabs {
     'settings': orgSettings,
   };
 
+  /// An ITEM key of the `home` tab (not a tab): my pending organization invitations (C7); the dialog in
+  /// features/org/org_invitation_prompt.dart reads it. Same string as the server's attention key.
+  static const orgInvitationsItem = 'org_invitations';
+
   static const all = [home, profile, parentLink, parentAlerts, adminSupport, adminFinance, orgPeople, orgAcademics,
     orgTimetable, orgServices, orgSettings];
 }
@@ -199,19 +203,35 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
   List<AttentionItem> _items = const [];
   List<AttentionItem> _focusItems = const [];
   int? _focusOrg;
+  bool _focusFetch = false;
   DateTime? _last;
   Future<void>? _running;
 
   /// Deep link into the org dashboard: it listens and jumps to the section.
   final ValueNotifier<OrgTabRequest?> orgTabRequest = ValueNotifier(null);
 
-  /// Org dashboards call this with the open organization (null when leaving) so `count(…, orgId:)` is exact
-  /// even for platform admins (who manage every org and get them only per org).
-  void focusOrg(int? orgId) {
-    if (orgId == _focusOrg) return;
+  /// Org dashboards call this with the open organization (null when leaving) so `count(…, orgId:)` is exact.
+  /// [perOrg]: the person gets this organization's items only per org (a platform admin, who manages every org).
+  /// Only then is anything fetched, and only the org's own list: a member's general answer already holds their
+  /// organizations' items, so focusing costs no request (home request budgets).
+  void focusOrg(int? orgId, {bool perOrg = false}) {
+    final wanted = orgId != null && perOrg;
+    if (orgId == _focusOrg && wanted == _focusFetch) return;
     _focusOrg = orgId;
+    _focusFetch = wanted;
     _focusItems = const [];
-    refresh(quiet: true);
+    if (wanted) unawaited(_loadFocus(orgId));
+  }
+
+  Future<void> _loadFocus(int orgId) async {
+    try {
+      final res = await ApiClient().get('/api/v1/me/attention', queryParams: {'org_id': orgId});
+      if (orgId != _focusOrg || !_focusFetch) return;
+      _focusItems = _parse(res);
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[attention] org $orgId: $e');
+    }
   }
 
   List<AttentionItem> _pool(int? orgId) {
@@ -258,7 +278,7 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     }
     // a token is here (just logged in, or the stream halted on an old one): let the stream reopen
     LiveEventsClient.instance.poke();
-    final focus = _focusOrg;
+    final focus = _focusFetch ? _focusOrg : null;
     try {
       final res = await Future.wait([
         api.get('/api/v1/me/attention'),
@@ -290,6 +310,7 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     _items = const [];
     _focusItems = const [];
     _focusOrg = null;
+    _focusFetch = false;
     notifyListeners();
   }
 

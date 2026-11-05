@@ -7,29 +7,38 @@
 //   OrgActivityPage      who did what, when — the governance trail (+ Excel)
 library;
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
+import 'org_effective_access.dart';
 import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import 'org_page_kit.dart' show OrgMenuItem, OrgMoreMenu;
 import 'org_providers.dart';
 import 'org_ui.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppIconSize, AppListSkeleton, AppRefresh, AppSpace, AppStatusBadge, AppTone, AppType;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
-/// The catalog is the same for the whole app session: fetch once.
-Map<String, dynamic>? _catalogCache;
+/// The catalog (modules, actions, groups) is fetched on every open and Refresh: a server update that adds a module
+/// shows up without restarting the app. The last answer of each organization is kept only as the fallback when the
+/// request fails.
+final Map<String, Map<String, dynamic>> _lastCatalog = {};
 
-Future<Map<String, dynamic>?> orgCatalog(OrgSession s) async =>
-    _catalogCache ??= await OrgApi.i.getMap('${s.base}/access/catalog');
+Future<Map<String, dynamic>?> orgCatalog(OrgSession s) async {
+  final base = s.base;
+  final c = await OrgApi.i.getMap('$base/access/catalog');
+  if (c != null) _lastCatalog[base] = c;
+  return c ?? _lastCatalog[base];
+}
 
 /// A pushed page's readable column: the dashboard header keeps the page's full width (its one row needs the room),
 /// the content stays as narrow as the older page was.
@@ -122,34 +131,15 @@ class _RolesTabState extends State<_RolesTab> {
         onRetry: _load,
         child: roles == null
             ? const SizedBox.shrink()
-            : ListView(padding: const EdgeInsets.fromLTRB(0, 8, 0, 100), children: [
+            : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 100), children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: Text(
                       t('الدور = مجموعة صلاحيات باسم واضح. امنحه لشخص على مستوى المؤسسة أو لإدارة واحدة فقط.',
                           'A role is a named bundle of rights. Give it to someone for the whole organization or for one department.'),
-                      style: orgText(context, size: 12.5, color: c.textMedium)),
+                      style: AppType.meta(context)),
                 ),
-                for (final r in roles)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                    child: OrgActionCard(
-                      icon: r['is_system'] == true ? Icons.verified_user_rounded : Icons.badge_rounded,
-                      color: hexColor(r['color'], c.primary),
-                      title: t('${r['name_ar'] ?? r['name_en']}', '${r['name_en'] ?? r['name_ar']}'),
-                      subtitle: '${r['description'] ?? ''}'.isNotEmpty
-                          ? '${r['description']}'
-                          : t('${asMap(r['permissions']).length} وحدة · ${r['holders']} شخص', '${asMap(r['permissions']).length} modules · ${r['holders']} people'),
-                      trailing: Column(mainAxisSize: MainAxisSize.min, children: [
-                        OrgPill(t('${r['holders']} 👤', '${r['holders']} 👤'), color: c.textMedium),
-                        if (r['inherited'] == true) ...[
-                          const SizedBox(height: 4),
-                          OrgPill(t('من المؤسسة الأم', 'From parent'), color: c.textLight),
-                        ],
-                      ]),
-                      onTap: () => _open(r),
-                    ),
-                  ),
+                for (final r in roles) OrgRoleCard(role: r, onTap: () => _open(r)),
               ]),
       ),
     );
@@ -304,7 +294,7 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
                 ),
         ),
         if (_editable)
-          PrimaryButton(isLoading: _busy, label: t('حفظ', 'Save'), icon: Icons.check_rounded, iconBefore: true, onPressed: _save),
+          AppButton.primary(busy: _busy, label: t('حفظ', 'Save'), icon: Icons.check_rounded, onPressed: _save),
       ]);
   }
 }
@@ -400,7 +390,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
       OrgApi.i.getMap('$_base/access/roles'),
       OrgApi.i.getMap('$_base/departments'),
     ]);
-    _catalog ??= await orgCatalog(s);
+    _catalog = await orgCatalog(s) ?? _catalog;
     if (!mounted) return;
     setState(() {
       _d = results[0] ?? _d;
@@ -495,8 +485,8 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
               Text(t('ممنوع (يتغلب على أي دور)', 'Deny (beats any role)'), style: orgText(ctx, w: FontWeight.w800, color: c.danger)),
               OrgPermissionMatrix(catalog: _catalog!, value: deny, deptOnly: scope != 0, tone: c.danger, onChanged: (v) => set(() => deny = v)),
               const SizedBox(height: 10),
-              PrimaryButton(
-                isLoading: busy,
+              AppButton.primary(
+                busy: busy,
                 label: t('حفظ', 'Save'),
                 onPressed: () async {
                   set(() => busy = true);
@@ -591,15 +581,15 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                     icon: Icons.fact_check_rounded,
                     child: _catalog == null
                         ? const SizedBox.shrink()
-                        : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            OrgPermissionMatrix(catalog: _catalog!, value: permsFromJson(asMap(d['effective'])['permissions']),
-                                readOnly: true, onChanged: (_) {}),
-                            for (final e in asMap(asMap(d['effective'])['dept_permissions']).entries) ...[
-                              const SizedBox(height: 8),
-                              Text('${t('داخل', 'Inside')} ${_deptName(int.tryParse(e.key))}', style: orgText(context, w: FontWeight.w800, color: c.primary)),
-                              OrgPermissionMatrix(catalog: _catalog!, value: permsFromJson(e.value), deptOnly: true, readOnly: true, onChanged: (_) {}),
-                            ],
-                          ]),
+                        : OrgEffectiveAccessView(
+                            catalog: _catalog!,
+                            orgWide: permsFromJson(asMap(d['effective'])['permissions']),
+                            perDept: {
+                              for (final e in asMap(asMap(d['effective'])['dept_permissions']).entries)
+                                if (int.tryParse(e.key) != null) int.parse(e.key): permsFromJson(e.value),
+                            },
+                            deptName: (id) => _deptName(id),
+                          ),
                   ),
                 ]),
               ),
@@ -683,6 +673,53 @@ class OrgActivityPage extends StatelessWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// One role of the list: a plain card (no gradient), its colour only on the icon, what it holds and who holds it.
+class OrgRoleCard extends StatelessWidget {
+  const OrgRoleCard({required this.role, required this.onTap});
+  final Map<String, dynamic> role;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final r = role;
+    final color = hexColor(r['color'], c.primary);
+    final system = r['is_system'] == true;
+    final modules = asMap(r['permissions']).length;
+    final holders = asInt(r['holders']);
+    final desc = '${r['description'] ?? ''}';
+    final summary = [
+      countText(modules, ar1: 'وحدة واحدة', ar2: 'وحدتان', arFew: 'وحدات', arMany: 'وحدة', en1: '1 module', en: '$modules modules'),
+    ].join();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: AppCard(
+        onTap: onTap,
+        child: Row(children: [
+          IconBadge(system ? Icons.verified_user_rounded : Icons.badge_rounded, color),
+          AppSpace.gapSm,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(t('${r['name_ar'] ?? r['name_en']}', '${r['name_en'] ?? r['name_ar']}'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              Text(desc.isNotEmpty ? desc : summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+              AppSpace.gapXs,
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                AppStatusBadge(
+                    icon: Icons.group_outlined,
+                    label: countText(holders, ar0: 'لا أحد', ar1: 'شخص واحد', ar2: 'شخصان', arFew: 'أشخاص', arMany: 'شخصاً', en0: 'Nobody', en1: '1 person', en: '$holders people')),
+                if (system) AppStatusBadge(label: t('مدمج', 'Built in'), tone: AppTone.brand),
+                if (r['inherited'] == true) AppStatusBadge(label: t('من المؤسسة الأم', 'From parent')),
+              ]),
+            ]),
+          ),
+          Icon(CupertinoIcons.forward, size: AppIconSize.sm, color: c.textLight),
+        ]),
       ),
     );
   }

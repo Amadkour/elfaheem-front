@@ -17,6 +17,11 @@
 // State lives in AppModeController (remembered per user, smart default, deep links); entering / leaving an
 // organization applies / clears its context (timezone, 12h/24h, feature offs) there — nothing is duplicated here.
 // Hidden while there is nothing to switch to (no live organization, organizations off, or 'home.org_tab' off).
+//
+//   switchOrganization         org A -> org B: closes A's pages, clears A's per-org state (timezone, feature offs,
+//                              attention focus: OrgSession.select) and selects B in BOTH AppModeController and OrgSession.
+//   Who drops it in            student / teacher / admin homes and every org page header (ContextPill logo + name);
+//                              the parent home drops in `ContextSwitcher(compact: true)` the same way.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,6 +32,7 @@ import 'package:flutter_education_app/core/attention/attention_service.dart' sho
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
+import 'app_shell_nav.dart' show AppShellNav;
 
 import '../features/admin/admin_common.dart' show asInt, asMap, t;
 import '../features/org/org_access_joining.dart' show openOrgJoin;
@@ -75,6 +81,50 @@ Future<void> leaveToPersonal(BuildContext context) async {
   if (AppModeController.isOrgRoute(root)) nav.pushNamedAndRemoveUntil(AppModeController.personalRoute, (_) => false);
 }
 
+/// Org A -> org B (the sheet of the dashboard, a notification for another organization): every org page of A closes,
+/// A's per-org state is cleared (OrgSession.select: timezone / 12h-24h, feature offs, attention focus) and B is
+/// selected in BOTH [AppModeController] (remembered) and [OrgSession]. Never throws.
+Future<void> switchOrganization(BuildContext context, int orgId, {OrgSession? session}) async {
+  final nav = Navigator.of(context, rootNavigator: true);
+  var s = session;
+  if (s == null) {
+    try {
+      s = context.read<OrgSession>();
+    } catch (_) {}
+  }
+  closeOrgPages(nav);
+  await AppModeController.instance.rememberDashboardOrg(orgId);
+  if (s != null) {
+    s.open(orgId);
+    s.select(orgId);
+  }
+}
+
+/// "Open the organization" right after I joined it (an accepted invitation, an approved request): the SAME rule as
+/// the switcher and a notification tap - an organization where I am NOT a student ([AppModeController.opensDashboardFor];
+/// [staff] is the fallback while the overview does not list it yet) opens the dashboard on it, one where I study the
+/// member home (Organization mode). Everything above the root closes first. Never throws.
+Future<void> openJoinedOrganization(BuildContext context, int orgId, {bool? staff}) async {
+  final nav = Navigator.of(context, rootNavigator: true);
+  final ctl = AppModeController.instance;
+  final asStaff = ctl.opensDashboardFor(orgId) ?? staff ?? false;
+  try {
+    if (asStaff) {
+      await switchOrganization(context, orgId);
+      nav.pushNamedAndRemoveUntil('/org_dashboard', (_) => false);
+    } else {
+      await ctl.setMode(AppMode.organization, orgId: orgId);
+      nav.pushNamedAndRemoveUntil(AppModeController.personalRoute, (_) => false);
+    }
+  } catch (_) {/* never block the tap */}
+}
+
+/// Closes every page above the organization dashboard (or the app root), in the root navigator and in the tab on screen.
+void closeOrgPages(NavigatorState nav) {
+  nav.popUntil((r) => r.isFirst || r.settings.name == '/org_dashboard' || r.settings.name == '/org_member');
+  AppShellNav.popVisibleToRoot();
+}
+
 /// Opens the organization dashboard on [orgId] from a personal home (D-103): remembered as the last organization,
 /// selected in [OrgSession] (at once, or as soon as `/org/mine` lists it) and '/org_dashboard' pushed on top.
 /// [section] (+ [sub]) opens it on that section / sub-page, e.g. `academics` · `courses` (the dashboard consumes
@@ -116,6 +166,7 @@ class ContextPill extends StatelessWidget {
     this.caption,
     this.badge = 0,
     this.inkKey,
+    this.logoUrl,
   });
 
   final IconData icon;
@@ -124,6 +175,9 @@ class ContextPill extends StatelessWidget {
   final String? caption;
   final int badge;
   final VoidCallback onTap;
+
+  /// The organization's logo (shown in the mark when it loads; the icon otherwise).
+  final String? logoUrl;
 
   /// Key of the tappable surface (tests find it).
   final Key? inkKey;
@@ -156,13 +210,14 @@ class ContextPill extends StatelessWidget {
                 customBorder: const StadiumBorder(),
                 onTap: onTap,
                 child: Padding(
-                  padding: EdgeInsetsDirectional.fromSTEB(6, 6, markOnly ? 6 : 12, 6),
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                      AppSpace.xxs + 2, AppSpace.xxs + 2, markOnly ? AppSpace.xxs + 2 : AppSpace.sm, AppSpace.xxs + 2),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _ContextMark(icon: icon, tone: tone),
+                      _ContextMark(icon: icon, tone: tone, logoUrl: logoUrl),
                       if (!markOnly) ...[
-                        const SizedBox(width: 8),
+                        AppSpace.gapXs,
                         Flexible(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -173,20 +228,21 @@ class ContextPill extends StatelessWidget {
                                   caption!,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: appText(10.5, w: FontWeight.w500, c: c.textMedium),
+                                  style: AppType.overline(context).copyWith(fontWeight: FontWeight.w500),
                                 ),
                               Text(
                                 label,
                                 maxLines: twoLines ? 2 : 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: appText(twoLines ? 13 : 13.5, w: FontWeight.w600, c: c.textDark, h: twoLines ? 1.2 : null),
+                                style: AppType.label(context).copyWith(
+                                    fontWeight: FontWeight.w600, color: c.textDark, height: twoLines ? 1.2 : null),
                               ),
                             ],
                           ),
                         ),
                       ],
-                      if (badge > 0) ...[const SizedBox(width: 6), _Count(badge, color: c.danger)],
-                      const SizedBox(width: 2),
+                      if (badge > 0) ...[AppSpace.gapXs, _Count(badge, color: c.danger)],
+                      const SizedBox(width: AppSpace.xxs / 2),
                       Icon(Icons.unfold_more_rounded, size: 18, color: c.textMedium),
                     ],
                   ),
@@ -249,6 +305,7 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
           label: label,
           caption: widget.compact ? null : (inOrg ? 'ctx_in_org'.tr : 'ctx_personal_space'.tr),
           badge: pendingElsewhere(ctl),
+          logoUrl: inOrg ? '${org['logo_url'] ?? ''}' : null,
           onTap: () => showContextSwitcherSheet(context, allowPersonal: widget.allowPersonal), // always: join is offered
         );
 
@@ -261,7 +318,7 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Flexible(child: pill),
-                const SizedBox(width: 8),
+                AppSpace.gapXs,
                 Tooltip(
                   message: 'ctx_exit'.tr,
                   child: Material(
@@ -271,21 +328,25 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
                       key: const ValueKey('ctx.exit'),
                       customBorder: const StadiumBorder(),
                       onTap: () => leaveToPersonal(context),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(DirIcons.logout, size: 18, color: c.primary, textDirection: TextDirection.ltr),
-                            if (!narrow) ...[
-                              const SizedBox(width: 6),
-                              Text(
-                                'ctx_personal'.tr,
-                                maxLines: 1,
-                                style: appText(12.5, w: FontWeight.w600, c: c.primary),
-                              ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(DirIcons.logout, size: 18, color: c.primary, textDirection: TextDirection.ltr),
+                              if (!narrow) ...[
+                                AppSpace.gapXs,
+                                Text(
+                                  'ctx_personal'.tr,
+                                  maxLines: 1,
+                                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -312,8 +373,8 @@ Future<void> showContextSwitcherSheet(
   VoidCallback? onCreateOrg,
 }) async {
   final ctl = AppModeController.instance;
-  if (session != null && !ctl.loaded) {
-    // the dashboard does not load the membership overview on open: only when its switcher is used
+  if (!ctl.loaded) {
+    // the dashboard / admin home do not load the membership overview on open: only when the switcher is used
     int? uid;
     try {
       uid = context.read<MyAuthProvider>().currentUser?.id;
@@ -337,6 +398,17 @@ Future<void> showContextSwitcherSheet(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppSheetHeader('ctx_switch_title'.tr),
+              // the list could not be refreshed: the last known one stays below, with a way to retry
+              if (ctl.refreshFailed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                  child: AppErrorState(
+                    key: const ValueKey('ctx.sheet.error'),
+                    compact: true,
+                    title: t('تعذّر تحديث مؤسساتك', 'Could not refresh your organizations'),
+                    onRetry: () => ctl.refresh(),
+                  ),
+                ),
               if (allowPersonal)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 14),
@@ -357,16 +429,16 @@ Future<void> showContextSwitcherSheet(
                 padding: const EdgeInsetsDirectional.only(start: 4, bottom: 8),
                 child: Text(
                   'ctx_organizations'.tr,
-                  style: appText(12, w: FontWeight.w600, c: c.textMedium),
+                  style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
-              if (ctl.entries.isEmpty && managed.isEmpty)
+              if (ctl.entries.isEmpty && managed.isEmpty && !ctl.refreshFailed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
                     'ctx_no_orgs'.tr,
                     key: const ValueKey('ctx.sheet.empty'),
-                    style: appText(13, c: c.textMedium),
+                    style: AppType.label(ctx),
                   ),
                 ),
               // inside the dashboard: the organizations I manage / work in, switched in place
@@ -382,9 +454,7 @@ Future<void> showContextSwitcherSheet(
                     trailing: check(asInt(o['id']) == session!.currentId),
                     onTap: () {
                       Navigator.pop(ctx);
-                      final id = asInt(o['id']);
-                      AppModeController.instance.rememberDashboardOrg(id);
-                      session.select(id);
+                      switchOrganization(context, asInt(o['id']), session: session);
                     },
                   ),
                 ),
@@ -468,8 +538,10 @@ void _openEntry(BuildContext context, Map<String, dynamic> e, {required bool fro
   final id = asInt(asMap(e['organization'])['id']);
   final ctl = AppModeController.instance;
   if (fromDashboard) {
+    final nav = Navigator.of(context, rootNavigator: true);
+    closeOrgPages(nav); // the pages of the organization I leave
     ctl.setMode(AppMode.organization, orgId: id);
-    Navigator.of(context, rootNavigator: true).pushNamed('/org_member', arguments: id);
+    nav.pushNamed('/org_member', arguments: id);
     return;
   }
   if (AppModeController.opensDashboard(e)) {
@@ -515,9 +587,10 @@ String _statusText(Object? status) => switch ('$status') {
     };
 
 class _ContextMark extends StatelessWidget {
-  const _ContextMark({required this.icon, required this.tone});
+  const _ContextMark({required this.icon, required this.tone, this.logoUrl});
   final IconData icon;
   final Color tone;
+  final String? logoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -528,7 +601,11 @@ class _ContextMark extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(color: tone.withValues(alpha: c.isDark ? 0.24 : 0.14), shape: BoxShape.circle),
-      child: Icon(icon, size: 17, color: ink),
+      clipBehavior: Clip.antiAlias,
+      child: logoUrl == null || logoUrl!.isEmpty
+          ? Icon(icon, size: 17, color: ink)
+          : Image.network(logoUrl!,
+              width: 32, height: 32, fit: BoxFit.cover, errorBuilder: (_, _, _) => Icon(icon, size: 17, color: ink)),
     );
   }
 }
@@ -540,11 +617,11 @@ class _Count extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2, vertical: 1),
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.sheet)),
     child: Text(
       n > 99 ? '99+' : '$n',
-      style: appText(11, w: FontWeight.w600, c: context.colors.button.color),
+      style: AppType.overline(context).copyWith(color: context.colors.button.color, letterSpacing: 0),
     ),
   );
 }

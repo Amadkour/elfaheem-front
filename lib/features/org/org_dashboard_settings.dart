@@ -11,13 +11,14 @@
 // Every sub-page opens through orgPush (the session carried along, the exit button in its bar).
 library;
 
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppSwitch, appRoleLabel;
+    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppSwitch, appRoleLabel, showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -34,6 +35,8 @@ import '../admin/admin_premium_widgets.dart' show AdminPalette;
 import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_common.dart';
 import 'org_creation_fee.dart' show OrgCreationFeePanel;
+import 'org_danger_zone.dart';
+import 'org_v3.dart' show orgCall, orgCodeText;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
 import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
@@ -148,6 +151,14 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
                 subtitle: t('شاركه ليطلب الناس الانضمام', 'Share it so people can ask to join'),
                 keywords: 'code qr invite دعوة رمز',
                 onTap: () => showJoinCode(context)),
+            // C3: what students and staff pay, the creation fee and the payments — read-only
+            AppSettingsTile(
+                icon: Icons.receipt_long_rounded,
+                featureKey: 'org.billing_view', // = orgBillingFeatureKey (the page itself is a deferred part)
+                label: t('الفوترة والرسوم', 'Billing'),
+                subtitle: t('ما يدفعه الطلاب والموظفون وإيصالات المؤسسة', "What students and staff pay, and the organization's receipts"),
+                keywords: 'billing fees plans payments receipt رسوم اشتراك مدفوعات',
+                onTap: () => open(t('الفوترة والرسوم', 'Billing'), deferredOrgBillingPage(orgId: s.currentId))),
           ],
           if (s.can('sub_orgs', 'insert') || s.isOrgAdmin)
             AppSettingsTile(
@@ -164,6 +175,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             AppSettingsTile(icon: Icons.add_business_rounded, label: t('مؤسسة جديدة', 'New organization'), onTap: () => showOrgForm(context)),
         ]),
         if (governance.isNotEmpty) AppSettingsGroup(title: t('الحوكمة', 'Governance'), icon: Icons.shield_rounded, children: governance),
+        if (s.current != null) _dangerGroup(context, s),
         AppSettingsGroup(title: t('التفضيلات', 'Preferences'), icon: Icons.settings_rounded, children: [
           AppLanguageTile(color: AdminPalette.violet.last),
           const DisplaySettingsTile(),
@@ -193,6 +205,79 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
       ]),
     );
   }
+}
+
+/// Teacher assistants and admin assistants cannot leave on their own: the server refuses with `staff_cannot_leave`.
+bool orgStaffCannotLeave(String? myRole) => myRole == 'teacher_assistant' || myRole == 'admin_assistant';
+
+/// Danger zone: the org admin transfers the admin seat or closes the organization (typed-name confirmation); anyone
+/// else can leave it. Every action names what it does and asks first.
+AppSettingsGroup _dangerGroup(BuildContext context, OrgSession s) {
+  final c = context.colors;
+  return AppSettingsGroup(title: t('منطقة الخطر', 'Danger zone'), icon: Icons.warning_amber_rounded, danger: true, children: [
+    if (s.isOrgAdmin) ...[
+      AppSettingsTile(
+          key: const ValueKey('danger.transfer'),
+          icon: Icons.swap_horiz_rounded,
+          color: c.danger,
+          label: t('نقل إدارة المؤسسة', 'Transfer the admin seat'),
+          subtitle: t('اختر عضواً ليصبح المدير الجديد', 'Pick a member to become the new admin'),
+          onTap: () async {
+            final id = s.currentId;
+            if (id == null) return;
+            final done = await showOrgTransferAdmin(context, orgId: id, orgName: s.name, platform: false);
+            if (done) await s.load();
+          }),
+      AppSettingsTile(
+          key: const ValueKey('danger.close'),
+          icon: Icons.delete_outline_rounded,
+          color: c.danger,
+          label: t('إغلاق / حذف المؤسسة', 'Close / delete the organization'),
+          subtitle: t('يتطلب كتابة اسم المؤسسة', "You will type the organization's name to confirm"),
+          onTap: () => _closeOrg(context, s)),
+    ] else if (orgStaffCannotLeave('${s.current?['my_role']}'))
+      // the server refuses (403 staff_cannot_leave): say so up front instead of after a confirmation
+      AppSettingsTile(
+          key: const ValueKey('danger.leave_blocked'),
+          icon: DirIcons.logout,
+          label: t('مغادرة المؤسسة', 'Leave the organization'),
+          subtitle: orgCodeText('staff_cannot_leave'),
+          onTap: () => showAppNotice(orgCodeText('staff_cannot_leave')))
+    else
+      AppSettingsTile(
+          key: const ValueKey('danger.leave'),
+          icon: DirIcons.logout,
+          color: c.danger,
+          label: t('مغادرة المؤسسة', 'Leave the organization'),
+          subtitle: t('تفقد الوصول إلى لوحتها حتى تنضم مجدداً', 'You lose access to its dashboard until you join again'),
+          onTap: () => _leaveOrg(context, s)),
+  ]);
+}
+
+Future<void> _closeOrg(BuildContext context, OrgSession s) async {
+  final org = s.current;
+  if (org == null) return;
+  final reason = await askTypedNameConfirm(context,
+      org: org,
+      askReason: false,
+      title: t('إغلاق المؤسسة', 'Close the organization'),
+      body: t('يجب ألا يكون لها فروع أو مقررات. لا يمكن التراجع عن هذا الإجراء.',
+          'It must have no sub-organizations or courses. This cannot be undone.'),
+      confirmLabel: t('إغلاق المؤسسة', 'Close the organization'));
+  if (reason == null) return;
+  await s.deleteOrg();
+}
+
+Future<void> _leaveOrg(BuildContext context, OrgSession s) async {
+  final id = s.currentId;
+  if (id == null) return;
+  final ok = await confirm(context,
+      message: t('هل تريد مغادرة «${s.name}»؟ ستفقد الوصول إلى لوحتها.', 'Leave "${s.name}"? You will lose access to its dashboard.'),
+      danger: true,
+      confirmLabel: t('مغادرة', 'Leave'));
+  if (!ok) return;
+  final r = await orgCall(() => ApiClient().delete('$orgBase/public/$id/leave'), ok: t('تمت المغادرة', 'You left the organization'));
+  if (r.ok) await s.load(keepSelection: false);
 }
 
 /// The signed-in person in one slim card row: avatar · name · role and e-mail (D-102 language: card + hairline).
@@ -355,7 +440,6 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
               ),
             ]),
             const SizedBox(height: 10),
-            Field(controller: logo, label: t('أو رابط الشعار', 'or a logo URL'), ltr: true),
             Field(controller: desc, label: t('نبذة (اختياري)', 'About (optional)'), maxLines: 3),
             if (official) ...[
               const SizedBox(height: 6),
@@ -409,9 +493,13 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
               const SizedBox(height: 10),
               TextButton.icon(
                 onPressed: () async {
-                  if (await confirm(ctx, message: t('حذف المؤسسة نهائياً؟ (يجب أن تكون بلا فروع أو كورسات)', 'Delete this organization? (it must have no sub-organizations or courses)'), danger: true)) {
-                    if (await s.deleteOrg() && ctx.mounted) Navigator.pop(ctx);
-                  }
+                  final typed = await askTypedNameConfirm(ctx,
+                      org: edit,
+                      askReason: false,
+                      title: t('حذف المؤسسة', 'Delete the organization'),
+                      body: t('يجب أن تكون بلا فروع أو مقررات. لا يمكن التراجع.', 'It must have no sub-organizations or courses. This cannot be undone.'),
+                      confirmLabel: t('حذف المؤسسة', 'Delete the organization'));
+                  if (typed != null && await s.deleteOrg() && ctx.mounted) Navigator.pop(ctx);
                 },
                 icon: Icon(Icons.delete_outline_rounded, color: c.danger),
                 label: Text(t('حذف المؤسسة', 'Delete organization'), style: TextStyle(color: c.danger)),
