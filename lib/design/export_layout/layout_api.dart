@@ -152,6 +152,14 @@ class LayoutStarter {
   }
 }
 
+/// What `POST /assets` answered: the asset id and whether it came from a PDF (page 1 stored as a PNG).
+class LayoutAssetUpload {
+  const LayoutAssetUpload(this.id, {this.fromPdf = false, this.pages = 1});
+  final String id;
+  final bool fromPdf;
+  final int pages;
+}
+
 /// The server's limits on `POST /rows` (413 above them): rows and bytes.
 const kLayoutMaxRows = 50000;
 const kLayoutMaxUploadBytes = 20 * 1024 * 1024;
@@ -288,11 +296,21 @@ class LayoutApi {
         (r) => _maps(_map(r)['columns']),
       );
 
-  /// `POST /assets` — an image (PNG / JPEG ≤ 2 MB). → asset id.
-  Future<ExportResult<String>> uploadAsset(Uint8List bytes, String name) => _call(
+  /// `POST /assets` — an image (PNG / JPEG ≤ 2 MB) or a PDF (≤ 10 MB: the server keeps page 1 as a PNG). → asset id.
+  Future<ExportResult<String>> uploadAsset(Uint8List bytes, String name) async {
+    final r = await uploadAssetInfo(bytes, name);
+    return r.ok ? ExportResult.ok(r.data!.id) : ExportResult.fail(r.error!, code: r.code, status: r.status, missing: r.missing);
+  }
+
+  /// Like [uploadAsset] with the server's extras: `from_pdf` / `pages` when a PDF was rasterised.
+  Future<ExportResult<LayoutAssetUpload>> uploadAssetInfo(Uint8List bytes, String name) => _call(
         () => api.postFiles('$_base/assets', files: [(name, bytes)], field: 'file'),
-        (r) => '${_map(r)['asset_id'] ?? ''}',
+        (r) {
+          final m = _map(r);
+          return LayoutAssetUpload('${m['asset_id'] ?? ''}', fromPdf: m['from_pdf'] == true, pages: m['pages'] is num ? (m['pages'] as num).toInt() : 1);
+        },
       );
+
 
   /// `POST /runs` — 202 {run_id}.
   Future<ExportResult<String>> startRun(LayoutDocument doc, {required String name}) => _call(
@@ -369,7 +387,7 @@ String layoutErrorText(String? code, [String? fallback]) => switch (code) {
       'rows_too_big' || 'payload_too_big' || 'upload_too_big' => tx('lay_err_rows_big', 'The rows are too large to send (20 MB at most)', 'حجم الصفوف أكبر من المسموح (20 ميجابايت)'),
       'upload_expired' || 'upload_not_found' => tx('lay_err_upload', 'The uploaded rows expired: export again', 'انتهت صلاحية الصفوف المرفوعة: أعد التصدير'),
       'asset_too_big' => tx('lay_err_asset_big', 'The image is larger than 2 MB', 'الصورة أكبر من 2 ميجابايت'),
-      'asset_type' || 'asset_invalid' || 'asset_type_invalid' => tx('lay_err_asset_type', 'Use a PNG or JPEG image', 'استخدم صورة PNG أو JPEG'),
+      'asset_type' || 'asset_invalid' || 'asset_type_invalid' => tx('lay_err_asset_type', 'Use a PNG or JPEG image, or a PDF', 'استخدم صورة PNG أو JPEG أو ملف PDF'),
       'run_not_found' => tx('lay_err_run', 'This export no longer exists', 'هذا التصدير لم يعد موجودًا'),
       'run_not_ready' => tx('lay_err_not_ready', 'The file is not ready yet', 'الملف لم يجهز بعد'),
       'run_not_cancelable' => tx('lay_err_not_cancelable', 'This export has already finished', 'انتهى هذا التصدير بالفعل'),
