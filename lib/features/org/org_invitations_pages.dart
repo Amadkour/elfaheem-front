@@ -644,7 +644,7 @@ class _OrgInviteePageState extends State<OrgInviteePage> {
   late final OrgInvitationsApi _api = widget.api ?? OrgInvitationsApi();
   InviteLookup? _lookup;
   String? _error, _mismatch, _doneText;
-  bool _loading = true, _busy = false;
+  bool _loading = true, _busy = false, _otherAccount = false;
 
   bool get _signedIn => widget.signedIn ?? ApiClient().hasSession;
 
@@ -681,14 +681,21 @@ class _OrgInviteePageState extends State<OrgInviteePage> {
     setState(() {
       _busy = true;
       _mismatch = null;
+      _otherAccount = false;
     });
     final r = accept ? await _api.accept(widget.token) : await _api.decline(widget.token);
     if (!mounted) return;
     if (!r.ok) {
       setState(() {
         _busy = false;
-        if (r.code == 'invite_contact_mismatch') {
-          _mismatch = _lookup?.contactMasked ?? '';
+        final masked = _lookup?.contactMasked ?? '';
+        // an invitation addressed to an ACCOUNT answers 404 to everyone else (or the mismatch code with no contact to
+        // show): say it is for another account, not the "verified contact" text
+        if (r.code == 'invite_not_found' || (r.code == 'invite_contact_mismatch' && masked.isEmpty)) {
+          _mismatch = '';
+          _otherAccount = true;
+        } else if (r.code == 'invite_contact_mismatch') {
+          _mismatch = masked;
         } else {
           _error = orgErrorText(r.error!);
         }
@@ -743,6 +750,7 @@ class _OrgInviteePageState extends State<OrgInviteePage> {
           signedIn: _signedIn,
           busy: _busy,
           mismatchMasked: _mismatch,
+          otherAccount: _otherAccount,
           myContact: widget.myContact,
           doneText: _doneText,
           onAccept: () => _answer(true),
@@ -768,6 +776,7 @@ class InviteeView extends StatelessWidget {
     this.signedIn = true,
     this.busy = false,
     this.mismatchMasked,
+    this.otherAccount = false,
     this.myContact = '',
     this.doneText,
     this.onAccept,
@@ -780,7 +789,7 @@ class InviteeView extends StatelessWidget {
   });
 
   final InviteLookup? lookup;
-  final bool loading, signedIn, busy;
+  final bool loading, signedIn, busy, otherAccount;
   final String? error, mismatchMasked, doneText;
   final String myContact;
   final VoidCallback? onAccept, onDecline, onOpenOrg, onSignIn, onRegister, onRetry, onClose;
@@ -836,7 +845,10 @@ class InviteeView extends StatelessWidget {
           AppBanner(
             icon: Icons.person_off_rounded,
             color: c.danger,
-            text: t(
+            text: otherAccount
+                ? t('هذه الدعوة موجهة إلى حساب آخر${myContact.isEmpty ? '' : '، وأنت مسجّل بحساب $myContact'}. سجّل الدخول بالحساب المدعو.',
+                    'This invitation is for a different account${myContact.isEmpty ? '' : ', and you are signed in as $myContact'}. Sign in with the invited account.')
+                : t(
               'هذه الدعوة موجهة إلى ${mismatchMasked!.isEmpty ? 'حساب آخر' : mismatchMasked}${myContact.isEmpty ? '' : '، وأنت مسجّل بحساب $myContact'}. سجّل الدخول بالحساب الذي يملك هذا البريد/الهاتف موثّقاً، أو وثّقه أولاً.',
               'This invitation was sent to ${mismatchMasked!.isEmpty ? 'another account' : mismatchMasked}${myContact.isEmpty ? '' : ', and you are signed in as $myContact'}. Sign in with the account that has this verified e-mail/phone, or verify it first.',
             ),

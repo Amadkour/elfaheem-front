@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -80,7 +81,10 @@ Future<List<String>> _applyPositions(OrgSession s, int userId, {int? headOf, Str
 /// and joins only once it accepts (C7).
 bool isInvitedAnswer(Map<String, dynamic> body) => body['status'] == 'invited';
 
-String invitedNoticeText() => t('تم إرسال دعوة — ينضم بعد قبولها', 'Invitation sent — they join once they accept');
+String invitedNoticeText({bool positionsPending = false}) => positionsPending
+    ? t('تم إرسال دعوة — ينضم بعد قبولها. رئاسة القسم والأدوار الإضافية التي اخترتها تُضبط بعد قبولها.',
+        'Invitation sent — they join once they accept. The head-of-department and extra roles you picked can be set after they accept.')
+    : t('تم إرسال دعوة — ينضم بعد قبولها', 'Invitation sent — they join once they accept');
 
 /// Returns the saved member row (with `generated_password` once, for a new account), or null (also when an existing
 /// account was invited instead of added: no row exists yet, a notice says so).
@@ -112,7 +116,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
   bool busy = false;
   String? err;
   Map<String, dynamic>? saved;
-  bool invited = false;
+  bool invited = false, invitedPositions = false;
   var failed = <String>[];
 
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
@@ -342,6 +346,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                 if (!r.ok) return set(() => err = orgErrorText(r.error!));
                 if (edit == null && isInvitedAnswer(r.map)) {   // C7: an existing account is invited, no member row exists yet
                   invited = true;
+                  invitedPositions = !student && ((head && dept != null) || extraRoles.isNotEmpty);
                   if (ctx.mounted) Navigator.pop(ctx);
                   return;
                 }
@@ -360,7 +365,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
           ]),
         );
       }));
-  if (invited && context.mounted) toast(invitedNoticeText());   // no member row: the list is not touched
+  if (invited && context.mounted) showAppNotice(invitedNoticeText(positionsPending: invitedPositions));   // no member row: the list is not touched
   final row = saved;
   if (row != null && context.mounted) {
     if (failed.isNotEmpty) {

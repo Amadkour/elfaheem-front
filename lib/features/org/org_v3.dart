@@ -293,6 +293,8 @@ Map<String, String> _codeTexts() => {
       'invite_resend_too_soon': t('أُرسلت هذه الدعوة قبل قليل — انتظر ١٠ دقائق قبل إعادة الإرسال', 'This invitation was sent a moment ago — wait 10 minutes before sending it again'),
       'invite_not_found': t('هذه الدعوة غير موجودة أو الرابط غير صحيح', 'This invitation does not exist or the link is wrong'),
       'invite_contact_mismatch': t('هذه الدعوة موجهة إلى بريد أو هاتف آخر — سجّل الدخول بالحساب الذي يملك هذا البريد/الهاتف موثّقاً، أو وثّقه أولاً', 'This invitation was sent to a different e-mail or phone — sign in with the account that has this verified e-mail/phone, or verify it first'),
+      'invite_no_longer_valid': t('لم تعد هذه الدعوة صالحة — اطلب دعوة جديدة من المؤسسة', 'This invitation is no longer valid — ask the organization for a new one'),
+      'invitations_disabled': t('الدعوات موقوفة حالياً — يمكن للشخص الانضمام بكود الانضمام', 'Invitations are switched off right now — the person can join with a join code'),
       'invite_not_pending': t('لم تعد هذه الدعوة بانتظار الرد (قُبلت أو رُفضت أو أُلغيت)', 'This invitation is no longer waiting for an answer (accepted, declined or cancelled)'),
       'invite_expired': t('انتهت صلاحية هذه الدعوة — اطلب من المؤسسة دعوة جديدة', 'This invitation has expired — ask the organization for a new one'),
       'already_invited': t('هذا الشخص لديه دعوة قيد الانتظار من هذه المؤسسة', 'This person already has a pending invitation from this organization'),

@@ -429,7 +429,13 @@ class OrgMembersProvider extends AdminPagedProvider {
   }
 
   Future<Map<String, dynamic>?> add(Map<String, dynamic> body) async {
-    final r = await call(() => api.post(path, body: body), ok: t('تمت الإضافة', 'Added'));
+    final r = await call(() => api.post(path, body: body));
+    if (r is Map && r['status'] == 'invited') {
+      // C7: 202, an existing account is invited; no member row exists yet, so the list is not touched
+      toast(t('تم إرسال دعوة — ينضم بعد قبولها', 'Invitation sent — they join once they accept'));
+      return Map<String, dynamic>.from(r);
+    }
+    if (r != null) toast(t('تمت الإضافة', 'Added'));
     if (r is Map) await refresh();
     return r is Map ? Map<String, dynamic>.from(r) : null;
   }

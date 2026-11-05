@@ -29,6 +29,7 @@ import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../core/app_mode.dart';
 import '../../core/offline/app_connectivity.dart';
+import '../../core/routing/app_routes.dart';
 import '../../design/app_kit.dart';
 import '../../design/context_switcher.dart' show openJoinedOrganization;
 import '../../utils/live_events.dart';
@@ -72,6 +73,19 @@ bool invitationPromptDue({
   if (!signedIn || viewAs || !online || !orgsEnabled || featureOff || liveRoomOpen) return false;
   if (role == 'parent') return false;
   return !_quietRoute(routeName);
+}
+
+enum InviteEventKind { none, count, show }
+
+/// What a live event means for the prompt. Only the `org_invitation` event NAMES an invitation (`show`, one fetch);
+/// an attention change (also the one after my own accept / decline) goes through the count check (`count`), which
+/// makes no request while the count is 0; an `org_invitation` event with no id counts too.
+({InviteEventKind kind, int? id}) invitationEventAction(String type, String? relatedType, Map<String, dynamic> data) {
+  if (type == LiveEvents.attentionChanged) {
+    return (kind: relatedType == 'org_invitation' ? InviteEventKind.count : InviteEventKind.none, id: null);
+  }
+  final id = int.tryParse('${data['invitation_id'] ?? ''}');
+  return id == null ? (kind: InviteEventKind.count, id: null) : (kind: InviteEventKind.show, id: id);
 }
 
 /// "Later" memory: invitation id → when it was snoozed (epoch ms).
@@ -378,6 +392,8 @@ class OrgInvitationPrompt {
     this.gate,
     this.dialog,
     this.store,
+    this.userId,
+    this.onGone,
   });
 
   static GlobalKey<NavigatorState>? _activeKey;
@@ -390,6 +406,15 @@ class OrgInvitationPrompt {
   bool Function()? gate;
   Future<InviteChoice> Function(BuildContext context, MyInvitation i)? dialog;
   InviteSnoozeStore? store;
+  int? Function()? userId;
+
+  /// What happens when a tap names an invitation that is no longer pending (tests replace it).
+  Future<void> Function()? onGone;
+
+  /// One queued tap (a push tap while the dialog was busy or the gate shut): handled when the gate opens.
+  ({int? id, int? uid})? _queued;
+  Timer? _drain;
+  int _drainTries = 0;
 
   bool _busy = false;
   bool _laterThisSession = false;
@@ -402,6 +427,16 @@ class OrgInvitationPrompt {
   void attach(GlobalKey<NavigatorState> navigatorKey, MyAuthProvider? auth) {
     _activeKey = navigatorKey;
     _auth = auth;
+  }
+
+  int? get _uid => userId != null ? userId!() : _auth?.currentUser?.id;
+
+  /// Signed out or another person signed in: nothing queued for the last one may survive.
+  void clearQueued() {
+    _queued = null;
+    _drain?.cancel();
+    _drain = null;
+    _drainTries = 0;
   }
 
   /// A new person signs in: forget this run's memory.
@@ -453,60 +488,106 @@ class OrgInvitationPrompt {
     await _run(null, count: n);
   }
 
-  /// A push tap or the live event for [invitationId] (null = just the newest): shows it even when snoozed.
+  /// A push tap or the live event for [invitationId] (null = just the newest): shows it even when snoozed. When the
+  /// dialog is busy or the gate is shut the tap is queued (one) and handled when it opens; when the invitation is
+  /// not pending any more the person is told and My organizations opens.
   Future<void> showFor(int? invitationId) async {
-    if (!_allowed()) {
+    if (_busy || !_allowed()) {
+      _queue(invitationId);
       return;
     }
     await _run(invitationId, force: true);
   }
 
+  void _queue(int? id) {
+    _queued = (id: id, uid: _uid);
+    _drainTries = 0;
+    _drain ??= Timer.periodic(const Duration(seconds: 2), (_) => unawaited(drainQueued()));
+  }
+
+  /// Handles the queued tap when nothing blocks it any more (also called by the host).
+  Future<void> drainQueued() async {
+    final q = _queued;
+    if (q == null) {
+      _drain?.cancel();
+      _drain = null;
+      return;
+    }
+    if (q.uid != null && q.uid != _uid) {
+      clearQueued();
+      return;
+    }
+    if (_busy || !_allowed()) {
+      if (++_drainTries > 30) clearQueued(); // a minute of waiting is enough
+      return;
+    }
+    clearQueued();
+    await _run(q.id, force: true);
+  }
+
+  Future<void> _goneNotice() async {
+    final custom = onGone;
+    if (custom != null) return custom();
+    showAppNotice(t('لم تعد هذه الدعوة متاحة', 'This invitation is no longer available'), error: true);
+    final nav = _activeKey?.currentState;
+    if (nav != null) await nav.pushNamed(AppRoutes.location(AppRoutes.orgMemberships.id));
+  }
+
   Future<void> _run(int? onlyId, {bool force = false, int? count}) async {
     if (_busy) return;
     _busy = true;
+    final uid = _uid;
+    var gone = false;
     try {
       final r = await (api ?? OrgInvitationsApi()).mine();
       fetchCount++;
+      if (uid != _uid) return; // another person signed in meanwhile: this answer is not theirs
       _lastFetch = clock();
       if (count != null) _lastCount = count;
       if (!r.ok) return;
       final items = [for (final x in asMapList(asMap(r.data)['items'])) MyInvitation.fromJson(x)];
-      final snoozes = await _loadSnoozes();
+      final snoozes = await _loadSnoozes(uid);
       var asked = onlyId;
+      if (asked != null && !items.any((x) => x.id == asked && (x.expiresAt == null || x.expiresAt!.isAfter(clock())))) {
+        gone = true;
+        return;
+      }
       while (true) {
         final i = pickInvitationToShow(items, snoozes, clock(), onlyId: asked, skip: _handled);
         if (i == null) break;
         final ctx = navigatorContext();
-        if (ctx == null || !ctx.mounted || !_allowed()) break;
+        if (uid != _uid || ctx == null || !ctx.mounted || !_allowed()) break;
         _handled.add(i.id);
         final choice = await (dialog ?? showOrgInvitationDialog)(ctx, i);
         if (choice == InviteChoice.later) {
           snoozes.snooze(i.id, clock());
-          await _saveSnoozes(snoozes);
+          await _saveSnoozes(snoozes, uid);
           if (!force) _laterThisSession = true;
           break;
         }
         if (choice == InviteChoice.opened) break;
         asked = null; // the next one in line
-        if (_laterThisSession) break;
+        if (_laterThisSession || uid != _uid) break;
       }
     } catch (e) {
       // a prompt must never break the app
       if (kDebugMode) debugPrint('[org invitation prompt] $e');
     } finally {
       _busy = false;
+      if (gone) {
+        await _goneNotice();
+      } else if (_queued != null) {
+        unawaited(drainQueued());
+      }
     }
   }
 
-  String get _userKey {
-    final id = _auth?.currentUser?.id ?? 0;
-    return 'org_invite_later_$id';
-  }
+  static String _userKey(int? uid) => 'org_invite_later_${uid ?? 0}';
 
-  Future<InviteSnoozes> _loadSnoozes() async {
+  Future<InviteSnoozes> _loadSnoozes(int? uid) async {
     try {
       final s = store ?? const _PrefsSnoozeStore();
-      final m = InviteSnoozes.decode(await s.read(_userKey));
+      final m = InviteSnoozes.decode(await s.read(_userKey(uid)));
       m.prune(clock());
       return m;
     } catch (_) {
@@ -514,9 +595,9 @@ class OrgInvitationPrompt {
     }
   }
 
-  Future<void> _saveSnoozes(InviteSnoozes s) async {
+  Future<void> _saveSnoozes(InviteSnoozes s, int? uid) async {
     try {
-      await (store ?? const _PrefsSnoozeStore()).write(_userKey, s.encode());
+      await (store ?? const _PrefsSnoozeStore()).write(_userKey(uid), s.encode());
     } catch (_) {/* not remembered: it asks again, nothing breaks */}
   }
 }
@@ -578,25 +659,39 @@ class _OrgInvitationPromptHostState extends State<OrgInvitationPromptHost> {
     _onAuth();
   }
 
+  int? _uid;
+
+  /// Parents never see the prompt (they cannot join): for them nothing is listened to at all. Everyone else already
+  /// has a home with an AttentionBadge mounted under every pushed page (the shell stays in the Navigator), so this
+  /// listener adds no polling the homes would not run anyway.
+  bool get _wantsFeed => (_auth?.isAuthenticated ?? false) && _auth?.currentUser?.role != 'parent';
+
   void _onAuth() {
     final signedIn = _auth?.isAuthenticated ?? false;
-    if (signedIn && !_listening) {
+    final uid = _auth?.currentUser?.id;
+    if (_listening && (!signedIn || uid != _uid)) {
+      _stop();
+    }
+    if (signedIn && !_listening && _wantsFeed) {
       _listening = true;
+      _uid = uid;
       OrgInvitationPrompt.instance.reset();
       AttentionService.instance.addListener(_onAttention);
       _live = LiveEvents.instance.listen({orgInvitationEvent, LiveEvents.attentionChanged}, _onEvent);
-    } else if (!signedIn && _listening) {
-      _stop();
     }
   }
 
   void _stop() {
     _listening = false;
+    _uid = null;
     AttentionService.instance.removeListener(_onAttention);
     _live?.cancel();
     _live = null;
     _settle?.cancel();
     _retry?.cancel();
+    OrgInvitationPrompt.instance
+      ..clearQueued()
+      ..reset();
   }
 
   void _onAttention() {
@@ -619,8 +714,13 @@ class _OrgInvitationPromptHostState extends State<OrgInvitationPromptHost> {
   }
 
   void _onEvent(LiveEvent e) {
-    if (e.type == LiveEvents.attentionChanged && e.relatedType != 'org_invitation') return;
-    final id = int.tryParse('${e.data['invitation_id'] ?? e.data['related_id'] ?? e.data['id'] ?? ''}');
+    final act = invitationEventAction(e.type, e.relatedType, e.data);
+    if (act.kind == InviteEventKind.none) return;
+    if (act.kind == InviteEventKind.count) {
+      _onAttention();
+      return;
+    }
+    final id = act.id;
     _settle?.cancel();
     _settle = Timer(settle, () {
       if (mounted) unawaited(OrgInvitationPrompt.instance.showFor(id));
