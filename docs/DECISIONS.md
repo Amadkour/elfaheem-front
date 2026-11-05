@@ -2813,3 +2813,21 @@ appointments, early warning, council escalation, analytics). The platform had on
 - An optional midterm mark per registration (`interim_percent`) feeds the early-warning "failing midterm" rule.
 **Cost.** One pre-computed row per student (`adv_student_stats`) must be kept in step by every advising write and a
 claimed job; that is what keeps advisor lists and director counts fast at 100 k students per organization.
+
+## D-290 — Connected detail views: one scoped entities API, enrollment history on the enrollment row · 2026-11-05 · accepted
+
+**Problem.** Every list (admin students / courses / teachers / categories, the teacher's students, the student's
+courses, the org's people) opened its own one-off sheet or page, nothing linked to anything else, and the data a
+student's story needs (when they first came, were last active, finished, withdrew and why) was not stored. **Decision
+(owner-approved plan, 2026-11-05):** ONE scoped router, `/api/v1/entities/{students|courses|teachers|categories}/{id}`
+plus paged sub-lists and a per-course timeline (`../back/docs/master_detail/CONTRACT.md`), serves every role; the server
+decides what a viewer may see (out of scope = 404, never 403) and lists the `sections` the app may open, so the app has
+one master-detail framework configured per entity, never a copy per role. The history lives on `enrollments`
+(migration 0049: first / last activity, completed_at, withdrawn_at + reason code + text, two indexes, idempotent
+backfill from views, completions, video views and `cancelled` events). Status-driven stamps sit in ONE SQLAlchemy
+listener on `Enrollment.status`, so the ten paths that drop, reactivate or complete an enrollment (payments,
+registrar, imports, consoles, org runs, the trash) cannot forget them; `services/enrollment_history.py` adds the reason
+code and the throttled activity stamps (one indexed UPDATE, at most one write per 10 minutes). **Deliberate
+deviations.** "Liked" is the existing Favorite, not a new like model; the timeline is composed on read from the
+existing tables (no new event table); no background statistics job until a benchmark asks for one; organization staff
+scope arrives with the org rollout (phase 7) and gets 403 `entity_forbidden` until then.
