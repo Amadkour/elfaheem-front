@@ -205,18 +205,22 @@ class AdvSetupView extends StatelessWidget {
       ],
       if (counts != null) ...[
         _SectionTitle(t('نظرة سريعة', 'At a glance')),
-        AppGrid(
-          minTile: 150,
-          spacing: AppSpace.sm,
-          padding: EdgeInsets.zero,
-          children: [
-            _Stat(icon: Icons.school_rounded, label: t('الطلاب', 'Students'), value: counts.students, color: c.primary),
-            _Stat(icon: Icons.how_to_reg_rounded, label: t('لهم مرشد', 'With an advisor'), value: counts.assigned, color: c.success),
-            _Stat(icon: Icons.person_search_rounded, label: t('بلا مرشد', 'Without an advisor'), value: counts.unassigned,
-                color: counts.unassigned > 0 ? c.warning : c.textMedium),
-            _Stat(icon: Icons.supervisor_account_rounded, label: t('المرشدون', 'Advisors'), value: counts.advisors, color: c.primary),
-          ],
-        ),
+        // four tiles: one row of 4 when there is room, else 2 × 2 (never 3 + 1 or a gap at the end)
+        LayoutBuilder(builder: (context, box) {
+          final cols = box.maxWidth >= 560 ? 4 : 2;
+          return AppGrid(
+            minTile: (box.maxWidth - AppSpace.sm * (cols - 1)) / cols,
+            spacing: AppSpace.sm,
+            padding: EdgeInsets.zero,
+            children: [
+              _Stat(icon: Icons.school_rounded, label: t('الطلاب', 'Students'), value: counts.students, color: c.primary),
+              _Stat(icon: Icons.how_to_reg_rounded, label: t('لهم مرشد', 'With an advisor'), value: counts.assigned, color: c.success),
+              _Stat(icon: Icons.person_search_rounded, label: t('بلا مرشد', 'Without an advisor'), value: counts.unassigned,
+                  color: counts.unassigned > 0 ? c.warning : c.textMedium),
+              _Stat(icon: Icons.supervisor_account_rounded, label: t('المرشدون', 'Advisors'), value: counts.advisors, color: c.primary),
+            ],
+          );
+        }),
         const SizedBox(height: AppSpace.sm),
         _Coverage(counts: counts),
         if (counts.unassigned > 0) ...[
