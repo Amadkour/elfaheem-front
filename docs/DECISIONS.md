@@ -2774,3 +2774,18 @@ list with Retry instead of looking like "no organizations". The admin home's Mor
   billing and students are asked for the platform's yearly plan on the organization's own courses (D-210).
 - Platform admins edit an organization, delete it SOFTLY (status `deleted`, data kept, typed name + reason; 409
   `has_children` while it has live sub-organizations) and restore it.
+
+## D-288 — An organization never attaches an existing account: the person accepts an invitation · 2026-11-05 · accepted
+
+**Problem.** Adding a member by e-mail (one person or an Excel sheet) attached any EXISTING account to the
+organization without the person agreeing (review finding F6). **Decision (owner, 2026-11-05):** bulk Excel import stays;
+an existing account gets a pending invitation (`org_invitations` with `target_user_id`, `member_spec`, `source`
+`manual` / `excel`, migration 0047) and sees it in the app as a notification and a dialog (Accept / Reject / Later,
+`lib/features/org/org_invitation_prompt.dart`, kill switch `org.invitations`). Accepting applies exactly what the admin
+entered (role, student code, window, profile, department seat, assistant permissions). Rejecting notifies the inviter
+and blocks re-inviting from the same organization for 7 days. An account the organization creates right there (no
+account for that e-mail yet) still joins at once with a generated password. The "create a manager here" forms refuse
+an existing account's e-mail (`existing_account_invite_first`): invite first, pick after the accept. Applies to every
+org role; parents never get one (D-287). **Cost.** The dialog adds no request while the attention item
+`org_invitations` is 0, so the home request budgets do not move. Backend tests that used `POST /members` only as set-up
+accept through the shim `tests/org_v2/_c7_compat.py`; `e2e_of_f6_consent.py` tests the real flow.
