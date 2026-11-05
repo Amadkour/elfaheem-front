@@ -600,7 +600,8 @@ class OrgInvitationCard extends StatelessWidget {
         ]),
         AppSpace.gapXs,
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          AppStatusBadge(label: inviteRoleLabel(i.role), tone: AppTone.brand, dense: true),
+          AppStatusBadge(label: inviteMemberRoleLabel(i.memberRole, i.role), tone: AppTone.brand, dense: true),
+          AppStatusBadge(key: ValueKey('org.invite.source.${i.id}'), label: inviteSourceLabel(i.source), tone: AppTone.neutral, dense: true),
           Text(inviteExpiryText(i.expiresAt, now: now), style: AppType.meta(context)),
           if (i.invitedBy.isNotEmpty) Text('· ${i.invitedBy}', style: AppType.meta(context)),
           if (i.sentCount > 1) Text(t('· أُرسلت ${i.sentCount} مرات', '· sent ${i.sentCount} times'), style: AppType.meta(context)),
@@ -944,7 +945,7 @@ class MyInvitationsView extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(i.orgName, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
-                Text('${inviteRoleLabel(i.role)} · ${inviteExpiryText(i.expiresAt)}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                Text('${i.roleLabel} · ${inviteExpiryText(i.expiresAt)}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
               ]),
             ),
           ]),

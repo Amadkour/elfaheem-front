@@ -30,6 +30,8 @@ import 'view_as_state.dart';
 import '../../design/app_shell_nav.dart' show AppShellNav;
 import '../../design/context_switcher.dart' show closeOrgPages;
 import '../../features/org/org_providers.dart' show OrgSession;
+import '../../features/org/org_invitation_prompt.dart' show OrgInvitationPrompt;
+import '../../features/org/org_invitations.dart' show invitationsFeatureKey;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
@@ -189,6 +191,13 @@ class AppNavigator {
       case 'org_exams': // "exam timetable published" → My exams (the organization is already open)
         await nav.push(MaterialPageRoute(builder: (_) => deferredMyExams()));
         return;
+      case 'org_invitation': // an organization invited an existing account (C7): the accept / reject dialog for it
+        if (AppConfig.orgsEnabled && !AppConfig.disableList.contains(invitationsFeatureKey)) {
+          await OrgInvitationPrompt.instance.showFor(targetId);
+          return;
+        }
+        await nav.pushNamed(AppRoutes.location(AppRoutes.orgMemberships.id));
+        return;
       case 'org_invitations': // an invitation to join an organization (phone invites, push + notification tap) → My organizations, which shows the invitations card
         await nav.pushNamed(AppRoutes.location(AppRoutes.orgMemberships.id));
         return;
@@ -326,9 +335,9 @@ class AppNavigator {
     final timetable = data['type'] == 'org_timetable';        // a draft timetable is ready (schedule_auto / autopilot)
     // the wallet and the plan push {type: points | live_plan | live_plan_expiring | live_plan_renewed | …} (spec §9, §15)
     final module = data['module']?.toString() ??
-        (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : pointsModuleFor(data['type']?.toString()))));
+        (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : data['type'] == 'org_invitation' ? 'org_invitation' : pointsModuleFor(data['type']?.toString()))));
     final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? (module == 'org_invitation' ? data['related_id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) {
