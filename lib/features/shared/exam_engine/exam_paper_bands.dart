@@ -569,13 +569,31 @@ String _pageField(String code, String rpr, {int minus = 0}) {
   return '${f('begin')}${ins('=')}$one${ins('- $minus')}${f('separate')}<w:r>$rpr<w:t>1</w:t></w:r>${f('end')}';
 }
 
+final _kNumberRun = RegExp(r'\d+(?:[/.:-]\d+)+');
+
 /// A text with `{{page}}` / `{{pages}}` as runs (PAGE / NUMPAGES fields). [pagesMinus]: pages not counted (a cover).
 String paperTextRuns(String text, {required String rpr, int pagesMinus = 0}) {
   final out = StringBuffer();
   var last = 0;
+  // Word reorders a date or a number with separators inside a right-to-left run (1/12/2026 shows as 2026/12/1, even
+  // with LRE / PDF marks): such a run is written as its own run WITHOUT <w:rtl/>, which Word keeps left to right.
+  final rtl = rpr.contains('<w:rtl/>');
+  final ltrPr = rpr.replaceAll('<w:rtl/>', '');
+  String runs(String line, String pr, bool br) {
+    if (!rtl || !_kNumberRun.hasMatch(line)) return '<w:r>$pr${br ? '<w:br/>' : ''}<w:t xml:space="preserve">${xmlEsc(line)}</w:t></w:r>';
+    final out = StringBuffer(br ? '<w:r>$pr<w:br/></w:r>' : '');
+    var at = 0;
+    for (final m in _kNumberRun.allMatches(line)) {
+      if (m.start > at) out.write('<w:r>$pr<w:t xml:space="preserve">${xmlEsc(line.substring(at, m.start))}</w:t></w:r>');
+      out.write('<w:r>$ltrPr<w:t xml:space="preserve">${xmlEsc(m[0]!)}</w:t></w:r>');
+      at = m.end;
+    }
+    if (at < line.length) out.write('<w:r>$pr<w:t xml:space="preserve">${xmlEsc(line.substring(at))}</w:t></w:r>');
+    return out.toString();
+  }
   String lit(String s) {
     final lines = s.split('\n');
-    return [for (var i = 0; i < lines.length; i++) if (lines[i].isNotEmpty || i > 0) '<w:r>$rpr${i > 0 ? '<w:br/>' : ''}<w:t xml:space="preserve">${xmlEsc(lines[i])}</w:t></w:r>'].join();
+    return [for (var i = 0; i < lines.length; i++) if (lines[i].isNotEmpty || i > 0) runs(lines[i], rpr, i > 0)].join();
   }
 
   for (final m in _pageToken.allMatches(text)) {
