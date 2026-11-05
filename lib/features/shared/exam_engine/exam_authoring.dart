@@ -1229,10 +1229,11 @@ String sessionLockHint() => t('لا يفتح الطلاب الدروس بعد ه
 
 /// One row the Excel import refused.
 class ImportRowError {
-  const ImportRowError({required this.row, required this.code, required this.message});
+  const ImportRowError({required this.row, required this.code, required this.message, this.messageEn = ''});
   final int row;
   final String code;
   final String message;
+  final String messageEn;
 }
 
 /// `POST /exams/{id}/questions/import`: how many questions were created and which rows were refused.
@@ -1243,16 +1244,20 @@ class ImportReport {
 
   static ImportReport fromJson(Map<String, dynamic> j) => ImportReport(
         created: asInt(j['created']),
-        errors: [for (final e in asMapList(j['errors'])) ImportRowError(row: asInt(e['row']), code: '${e['code'] ?? ''}', message: '${e['message'] ?? ''}')],
+        errors: [for (final e in asMapList(j['errors'])) ImportRowError(row: asInt(e['row']), code: '${e['code'] ?? ''}', message: '${e['message'] ?? ''}',
+                messageEn: '${e['message_en'] ?? ''}')],
       );
 }
 
-/// A refused row in words: the known codes bilingual, any other code with the server's own message.
+/// A refused row in words: the server's own sentence in the app's language (it names the exact problem, e.g. the
+/// unknown type), else the known codes bilingual, else the code.
 String importRowText(ImportRowError e) {
+  if (e.message.isNotEmpty && e.messageEn.isNotEmpty) return t(e.message, e.messageEn);
   final known = switch (e.code) {
-    'prompt_required' || 'question_required' => t('نص السؤال فارغ', 'The question text is empty'),
+    'missing_question' || 'prompt_required' || 'question_required' => t('نص السؤال فارغ', 'The question text is empty'),
     'options_required' => t('خيارات ناقصة', 'Not enough choices'),
     'bad_correct' || 'pick_correct' || 'correct_required' => t('الإجابة الصحيحة غير موجودة بين الخيارات', 'The correct answer is not among the choices'),
+    'bad_pairs' => t('أزواج التوصيل غير صحيحة (اكتبها هكذا: أ=ب|ج=د)', 'The matching pairs are not valid (write them as a=b|c=d)'),
     'bad_type' || 'unknown_type' => t('نوع السؤال غير معروف', 'Unknown question type'),
     'bad_points' || 'points_positive' => t('الدرجة غير صحيحة', 'The points are not valid'),
     _ => null,

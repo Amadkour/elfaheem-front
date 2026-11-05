@@ -206,7 +206,9 @@ class _HubViewState extends State<_HubView>
             child: EngineReviewSection(
               courseId: prov.courseId,
               showCreate: false,                                   // ONE entry: the "New exam" button (D-197)
-              onAvailable: (ok) => _engineOk = ok,
+              onAvailable: (ok) {
+                if (ok) _engineOk = true;       // a failure is asked again on the tap (it may have been the network)
+              },
               onItems: (items) {
                 if (mounted) setState(() => _engineExams = items);
               },
@@ -492,13 +494,20 @@ class _HubViewState extends State<_HubView>
   /// its quiet "Classic exam" link, or here when the engine is unavailable for this course.
   Future<void> _newExam() async {
     final courseId = context.read<TeacherExamProvider>().courseId;
-    var ok = _engineOk;
-    if (ok == null) {
-      ok = (await ExamAuthoringApi().resolveScope(courseId)).list.ok;
+    if (_engineOk != true) {
+      final r = (await ExamAuthoringApi().resolveScope(courseId)).list;
       if (!mounted) return;
-      _engineOk = ok;
+      if (r.ok) {
+        _engineOk = true;
+      } else if (r.unavailable || r.code != null || r.status == 403) {
+        // the engine is not deployed or refuses this course: the legacy sheet, as before D-197
+        return _showCreateSheet(context);
+      } else {
+        // the network or a server error: not a reason to drop the teacher into the old form
+        showAppNotice(AppConfig.lang == 'ar' ? 'تعذّر الوصول إلى الخادم، حاول مرة أخرى' : 'Could not reach the server, try again', error: true);
+        return;
+      }
     }
-    if (!ok) return _showCreateSheet(context);
     await openQuickExam(context,
         courseId: courseId,
         sessionId: widget.initialSessionId,
