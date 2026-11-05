@@ -66,6 +66,7 @@ import 'org_sections_page.dart';
 import 'org_feedback_risk.dart';
 import 'org_academic_pages.dart' show OrgAcademicPage;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
+import 'advising/adv_wiring.dart' show advServiceSubs;
 import 'governance/gov_wiring.dart' show govServiceSubs;
 
 export 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
@@ -472,6 +473,8 @@ List<OrgSub> _serviceSubs(OrgSession s) => [
         ('exam_feedback', t('ملاحظات الامتحانات', 'Exam feedback'), Icons.rate_review_rounded, OrgFeedbackSettingsPage(orgId: s.currentId!)),
       // governance (D-057): items · entities · councils · my votes (hidden by the org.governance kill switch)
       ...govServiceSubs(s),
+      // academic advising (Phase 2): eligibility · switch on / off · directors · counts (kill switch org.advising)
+      ...advServiceSubs(s),
     ];
 
 /// Page frame: THE page header (OrgPageHeader) + the page's own refresh scope + live reload when the organization
@@ -590,4 +593,5 @@ const _subHelpIds = <String, String>{
   'governance': 'org.governance',
   'entities': 'org.governance',
   'councils': 'org.governance',
+  'advising': 'org.advising',
 };
