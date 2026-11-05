@@ -7,6 +7,21 @@
 // (GET /api/v1/courses/{id}/sessions → items[i]["exams"]), so SessionModel
 // itself does not need to change.
 
+import '../../../shared/exam_engine/engine_exams_section.dart' show engineExamStartable;
+
+/// Where tapping an engine gate goes: straight into the engine exam, or to the course's Exams tab (a passcode to ask
+/// for, a paper / offline exam, not startable yet, or the exam is not in the student's engine list), which explains why.
+enum EngineGateTarget { engineExam, examsTab }
+
+/// [exam] is the gate's entry in the student's engine list (`GET /exam/student/exams`), null when it is not there.
+EngineGateTarget engineGateTarget(Map<String, dynamic>? exam) {
+  if (exam == null || exam['paper_only'] == true || exam['offline'] == true) return EngineGateTarget.examsTab;
+  final open = exam['open_attempt_id'] != null;
+  if (!engineExamStartable(exam) && !open) return EngineGateTarget.examsTab;
+  if (exam['has_passcode'] == true && !open) return EngineGateTarget.examsTab;
+  return EngineGateTarget.engineExam;
+}
+
 class SessionExamInfo {
   final int id;
   final String name;
@@ -24,6 +39,13 @@ class SessionExamInfo {
   final DateTime? startDate;
   final DateTime? endDate;
 
+  /// An Exam Engine exam (D-197): its attempts are the engine's, so the tile opens the engine exam, not the legacy one.
+  final bool engine;
+  final int? engineExamId;
+
+  /// The id to open in the engine (`engine_exam_id`, else the entry's own id).
+  int get engineId => engineExamId ?? id;
+
   const SessionExamInfo({
     required this.id,
     required this.name,
@@ -38,10 +60,12 @@ class SessionExamInfo {
     required this.passed,
     this.startDate,
     this.endDate,
+    this.engine = false,
+    this.engineExamId,
   });
 
   factory SessionExamInfo.fromJson(Map<String, dynamic> j) => SessionExamInfo(
-        id: j['id'] as int,
+        id: (j['id'] as num?)?.toInt() ?? (j['engine_exam_id'] as num?)?.toInt() ?? 0,
         name: (j['name'] as String?) ?? '',
         passingScore: (j['passing_score'] as num?)?.toDouble() ?? 0,
         duration: (j['duration'] as num?)?.toInt(),
@@ -58,10 +82,15 @@ class SessionExamInfo {
         endDate: j['end_date'] != null
             ? DateTime.tryParse(j['end_date'] as String)
             : null,
+        engine: j['engine'] == true,
+        engineExamId: (j['engine_exam_id'] as num?)?.toInt(),
       );
 
+  /// 0 attempts allowed = unlimited (engine exams): never exhausted.
+  bool get unlimitedAttempts => maxSubmissions == 0;
+
   bool get attemptsExhausted =>
-      remainingSubmissions != null && remainingSubmissions! <= 0;
+      !unlimitedAttempts && remainingSubmissions != null && remainingSubmissions! <= 0;
   bool get startsLater =>
       startDate != null && startDate!.isAfter(DateTime.now());
   bool get isClosed => endDate != null && endDate!.isBefore(DateTime.now());

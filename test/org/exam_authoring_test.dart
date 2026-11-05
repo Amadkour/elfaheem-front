@@ -267,7 +267,7 @@ void main() {
         ..startsAt = DateTime.utc(2026, 1, 2)
         ..endsAt = DateTime.utc(2026, 1, 1)
         ..platforms = {}
-        ..maxAttempts = 0
+        ..maxAttempts = -1
         ..passingPercent = 120;
       expect(d.validate(), ['title_required', 'bad_window', 'bad_attempts', 'platform_required', 'bad_passing']);
       final p = ExamDraft.fromJson(_exam(status: 'published', duration: null))..endsAt = null;

@@ -22,6 +22,11 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/student_course_exams_widget.dart'
     show SessionExamButton;
 import 'package:flutter_education_app/features/student/analysis/exam/student_exam_provider.dart';
+import '../../../admin/admin_common.dart' show asInt, asMapList;
+import '../../exam_engine/exam_authoring.dart' show ExamAuthoringApi;
+import '../../exam_engine/exam_engine_api.dart' show ExamEngineApi;
+import '../../exam_engine/exam_taking_screen.dart' show openEngineExam;
+import '../../exam_engine/exam_quick_screen.dart' show openQuickExam;
 
 import '../../../../config/app_config.dart';
 import '../../../../core/course_access.dart';
@@ -210,9 +215,24 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     );
   }
 
-  /// Opens the exam hub with the "new exam" sheet already open and this
-  /// session pre-selected, so the new exam is attached to it on creation.
-  void _openAddExam() {
+  /// "New exam" in the session menu (D-197): the quick builder with this session pre-selected in "Lock the lessons
+  /// after …", so the exam gates what comes after it. Its quiet "Classic exam" link, and an unavailable Exam Engine,
+  /// open the legacy hub with its create sheet already open (live quiz in the room, legacy Excel).
+  Future<void> _openAddExam() async {
+    final courseId = _session.courseId;
+    final ok = (await ExamAuthoringApi().resolveScope(courseId)).list.ok;
+    if (!mounted) return;
+    if (!ok) return _openClassicExam();
+    await openQuickExam(context,
+        courseId: courseId,
+        sessionId: _session.id,
+        course: (AppConfig.lang == 'ar' ? widget.course.titleAr : widget.course.titleEn) ?? '',
+        onClassic: () {
+          if (mounted) _openClassicExam();
+        });
+  }
+
+  void _openClassicExam() {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -244,7 +264,26 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       _openExams();
       return;
     }
-    context.read<CourseDetailProvider>().setTab(CourseDetailTab.exam);
+    final prov = context.read<CourseDetailProvider>();
+    final pending = prov.examGates[_session.id]?.firstPending;
+    if (pending != null && pending.engine) {
+      _openEngineGate(pending.engineId, prov);
+      return;
+    }
+    prov.setTab(CourseDetailTab.exam);
+  }
+
+  /// A gate that is an Exam Engine exam (D-197): the student's own engine entry point opens it. Anything that needs
+  /// the Exams tab (a passcode, not startable yet) goes there, where the engine list explains why.
+  Future<void> _openEngineGate(int examId, CourseDetailProvider prov) async {
+    final r = await ExamEngineApi().studentExams(courseId: _session.courseId);
+    if (!mounted) return;
+    final exam = r.ok ? asMapList(r.map['items']).where((e) => asInt(e['id']) == examId).firstOrNull : null;
+    if (exam == null || engineGateTarget(exam) == EngineGateTarget.examsTab) {
+      prov.setTab(CourseDetailTab.exam);
+      return;
+    }
+    await openEngineExam(context, exam);
   }
 
   // ── Live controls ──────────────────────────────────────────────────────────
