@@ -216,6 +216,7 @@ void main() {
       await blocked.onAttention();
       await blocked.showFor(1);
       expect(fake.calls, isEmpty);
+      blocked.clearQueued(); // the tap waits for the gate (f7); no timer may outlive the test
     });
 
     testWidgets('a count of 1 reads the list ONCE and shows the dialog; Accept answers and offers to open', (tester) async {
