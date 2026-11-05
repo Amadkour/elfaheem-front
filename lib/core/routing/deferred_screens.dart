@@ -19,6 +19,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show SynchronousFuture, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/boot_splash.dart' show BootSplash;
@@ -271,8 +272,40 @@ Widget deferredOrgBillingPage({required int? orgId}) =>
 /// are off or `parent.org_view` is switched off; draws nothing while the part downloads.
 Widget deferredParentOrgChildrenCard() {
   if (!AppConfig.orgsEnabled || AppConfig.disableList.contains('parent.org_view')) return const SizedBox.shrink();
-  return DeferredSlot(
-      id: 'parent_org_view', load: parent_org_view.loadLibrary, builder: (_) => parent_org_view.ParentOrgChildrenCard());
+  return const _ParentOrgChildrenSlot();
+}
+
+/// The card's request starts with the parent home (in parallel with its own call), not after the card's deferred
+/// part arrived: on the web that part is one more round trip. The first load reads that answer; Retry calls again.
+class _ParentOrgChildrenSlot extends StatefulWidget {
+  const _ParentOrgChildrenSlot();
+
+  @override
+  State<_ParentOrgChildrenSlot> createState() => _ParentOrgChildrenSlotState();
+}
+
+class _ParentOrgChildrenSlotState extends State<_ParentOrgChildrenSlot> {
+  static const _path = '/api/v1/org/parent/children';
+  Future<dynamic>? _first;
+
+  @override
+  void initState() {
+    super.initState();
+    _first = ApiClient().get(_path)..ignore();       // its error is read by the card's first load
+  }
+
+  Future<dynamic> _answer() {
+    final first = _first;
+    _first = null;
+    return first ?? ApiClient().get(_path);
+  }
+
+  @override
+  Widget build(BuildContext context) => DeferredSlot(
+      id: 'parent_org_view', load: parent_org_view.loadLibrary,
+      // a closure, not a method: a deferred type cannot be named in a declaration
+      builder: (_) => parent_org_view.ParentOrgChildrenCard(
+          loader: () async => parent_org_view.parseParentChildren(await _answer())));
 }
 
 // ─── inner pages ────────────────────────────────────────────────────────────────────────────────────────────────

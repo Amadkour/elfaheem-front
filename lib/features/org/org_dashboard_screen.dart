@@ -263,7 +263,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
       return const BasePage(useWebCard: true, maxWith: 760, child: OrgStatusScreen());
     }
     _dash.ensure(session);
-    AttentionService.instance.focusOrg(session.currentId);
+    AttentionService.instance.focusOrg(session.currentId, perOrg: session.current?['my_role'] == 'platform_admin');
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<OrgTabs>.value(value: _tabs),
