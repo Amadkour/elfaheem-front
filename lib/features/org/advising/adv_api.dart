@@ -1,12 +1,12 @@
 // lib/features/org/advising/adv_api.dart — the HTTP client of the Academic Advising module, one method per server
-// route of docs/advising/PHASE2.md (status, enable / disable) and PHASE3.md (settings, advisors, conflicts, students,
-// distribution, handovers). Every method throws `ApiException` (wrap calls in `orgCall` from org_v3.dart
+// route of docs/advising/PHASE2.md (status, enable / disable), PHASE3.md (settings, advisors, conflicts, students,
+// distribution, handovers) and PHASE4.md (workspace, student 360, categories, flags, notes, timeline). Every method throws `ApiException` (wrap calls in `orgCall` from org_v3.dart
 // to toast `orgErrorText`); answers are parsed into adv_models.dart. A missing route (older server) surfaces as
 // `orgEndpointMissing`, and the screens then say the feature needs a server update.
 library;
 
 import '../../../core/api_client.dart';
-import '../../admin/admin_common.dart' show asMap, asMapList;
+import '../../admin/admin_common.dart' show asInt, asMap, asMapList;
 import '../org_providers.dart' show orgBase;
 import 'adv_models.dart';
 
@@ -151,6 +151,82 @@ class AdvApi {
 
   /// The receiving advisor.
   Future<AdvHandover> acknowledge(int id) async => AdvHandover.fromJson(asMap(await _api.post('$base/handovers/$id/ack')));
+
+  // ── Phase 4: the workspace ────────────────────────────────────────────────
+
+  /// An advisor: their own advisees (the advisor filter is ignored); manage: the whole organization. Default order:
+  /// the risk score, highest first. Facets `open` · `urgent` · `no_contact_30d` · `total`.
+  Future<AdvPage<AdvCaseItem>> workspace(AdvWorkspaceQuery query, {required bool manage}) async =>
+      AdvPage.fromJson(asMap(await _api.get('$base/workspace', queryParams: query.toQuery(manage: manage))), AdvCaseItem.fromJson);
+
+  /// The student 360. 404 `advising_not_found` for a student the caller does not advise.
+  Future<AdvCaseProfile> profile(int memberId) async => AdvCaseProfile.fromJson(asMap(await _api.get('$base/students/$memberId/profile')));
+
+  // ── Categories ────────────────────────────────────────────────────────────
+
+  Future<List<AdvCategory>> categories() async =>
+      [for (final m in asMapList(asMap(await _api.get('$base/categories'))['items'])) AdvCategory.fromJson(m)];
+
+  /// Manage. The key is made by the server.
+  Future<AdvCategory> addCategory(AdvCategoryDraft draft) async =>
+      AdvCategory.fromJson(asMap(await _api.post('$base/categories', body: draft.toJson(create: true))));
+
+  /// Manage. The whole category. Also answers how many student-visible notes became team-only (`notes_downgraded`,
+  /// when the category turned sensitive).
+  Future<(AdvCategory, int)> saveCategory(int id, AdvCategoryDraft draft) async {
+    final j = asMap(await _api.put('$base/categories/$id', body: draft.toJson()));
+    return (AdvCategory.fromJson(j), asInt(j['notes_downgraded']));
+  }
+
+  /// Manage. 409 `advising_category_in_use` while open flags use it; a system category is never deleted.
+  Future<void> deleteCategory(int id) async => _api.delete('$base/categories/$id');
+
+  // ── Flags ─────────────────────────────────────────────────────────────────
+
+  /// [status] `open` · `closed` · `all`. `restricted` counts the flags the caller may not read.
+  Future<AdvPage<AdvFlag>> flags(int memberId, {String status = 'open'}) async =>
+      AdvPage.fromJson(asMap(await _api.get('$base/students/$memberId/flags', queryParams: {'status': status})), AdvFlag.fromJson);
+
+  /// 422 `advising_bad_accommodation` for an accommodation the category does not list.
+  Future<AdvFlag> addFlag(int memberId, AdvFlagDraft draft) async =>
+      AdvFlag.fromJson(asMap(await _api.post('$base/students/$memberId/flags', body: draft.toJson())));
+
+  /// The owner or manage; the whole flag.
+  Future<AdvFlag> saveFlag(int id, AdvFlagDraft draft) async => AdvFlag.fromJson(asMap(await _api.put('$base/flags/$id', body: draft.toJson())));
+
+  /// 409 `advising_bad_transition`; 422 `advising_outcome_required` for `resolved` without an outcome.
+  Future<AdvFlag> setFlagStatus(int id, String status, {String? outcomeNote}) async => AdvFlag.fromJson(asMap(await _api.post('$base/flags/$id/status', body: {
+        'status': status,
+        'outcome_note': (outcomeNote ?? '').trim().isEmpty ? null : outcomeNote!.trim(),
+      })));
+
+  /// Newest first.
+  Future<List<AdvFlagEvent>> flagHistory(int id) async =>
+      [for (final m in asMapList(asMap(await _api.get('$base/flags/$id/history'))['items'])) AdvFlagEvent.fromJson(m)];
+
+  // ── Notes ─────────────────────────────────────────────────────────────────
+
+  Future<AdvPage<AdvNote>> notes(int memberId, {int page = 1, int size = 20}) async => AdvPage.fromJson(
+        asMap(await _api.get('$base/students/$memberId/notes', queryParams: {'page': page, 'size': size})),
+        AdvNote.fromJson,
+      );
+
+  /// Idempotent by the draft's `client_id`: the same id again answers the note already made (200).
+  Future<AdvNote> addNote(int memberId, AdvNoteDraft draft) async =>
+      AdvNote.fromJson(asMap(await _api.post('$base/students/$memberId/notes', body: draft.toJson())));
+
+  /// The author only; the whole note.
+  Future<AdvNote> saveNote(int id, AdvNoteDraft draft) async => AdvNote.fromJson(asMap(await _api.put('$base/notes/$id', body: draft.toJson(create: false))));
+
+  /// The author or manage.
+  Future<void> deleteNote(int id) async => _api.delete('$base/notes/$id');
+
+  // ── Timeline ──────────────────────────────────────────────────────────────
+
+  /// Newest first; [before] = the previous page's `next` cursor.
+  Future<AdvTimelinePage> timeline(int memberId, {String? before, int size = 30}) async => AdvTimelinePage.fromJson(
+        asMap(await _api.get('$base/students/$memberId/timeline', queryParams: {'before': ?before, 'size': size})),
+      );
 
   /// Member side: is advising on, am I a student / an advisor there, and my own advisors.
   static Future<AdvMemberStatus> memberStatus(int orgId, {ApiClient? client}) async =>

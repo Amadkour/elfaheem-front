@@ -29,4 +29,22 @@ Map<String, String> advCodeTexts() => {
       'advising_bad_dates': t('تاريخ النهاية يجب أن يكون بعد تاريخ البداية', 'The end date must be after the start date'),
       'advising_bad_request': t('الطلب غير مكتمل: اختر المرشد الذي يُنقل طلابه', 'The request is incomplete: choose the advisor whose students move'),
       'plan_stale': t('تغيّرت البيانات منذ المعاينة — عاين من جديد', 'The data changed since the preview — preview again'),
+      // Phase 4: categories, flags, notes
+      'advising_category_in_use': t('لا يمكن حذف التصنيف ما دامت تنبيهات مفتوحة تستخدمه — أغلقها أو أوقف التصنيف بدلاً من حذفه',
+          'The category cannot be deleted while open flags use it — close them, or switch the category off instead'),
+      'advising_bad_accommodation': t('التسهيلات المختارة لا تتبع تصنيف هذا التنبيه', 'The chosen accommodations do not belong to this flag\'s category'),
+      'advising_bad_transition': t('لا يمكن نقل التنبيه إلى هذه الحالة من حالته الحالية — حدّث الصفحة', 'The flag cannot move to that status from where it is now — refresh the page'),
+      'advising_outcome_required': t('اكتب نتيجة المعالجة قبل إغلاق التنبيه', 'Write the outcome before resolving the flag'),
+      'advising_bad_visibility': t('الملاحظة الحساسة لا تُعرض على الطالب — اختر «خاصة» أو «فريق الإرشاد»',
+          'A sensitive note is never shown to the student — choose Private or Advising team'),
+      'advising_rate_limited': t('كتابات كثيرة في وقت قصير — انتظر بضع دقائق ثم أعد المحاولة', 'Too many changes in a short time — wait a few minutes, then try again'),
+      'advising_bad_category': t('التصنيف المختار متوقف أو لا يتبع هذه المؤسسة — اختر تصنيفاً آخر', 'The chosen category is switched off or belongs to another organization — choose another one'),
+      'advising_category_system': t('تصنيفات النظام لا تُحذف ولا تتغير حساسيتها — يمكن إعادة تسميتها أو إيقافها',
+          'Built-in categories cannot be deleted or change their sensitivity — rename or switch them off instead'),
+      'advising_bad_contact_at': t('وقت التواصل لا يكون في المستقبل', 'The contact time cannot be in the future'),
+      'advising_bad_cursor': t('تعذّر متابعة السجل الزمني من هذا الموضع — حدّث الصفحة', 'The timeline cannot continue from that point — refresh the page'),
+      'advising_client_id_conflict': t('رقم الملاحظة المحفوظة استُخدم لطالب آخر — تُرسل برقم جديد', 'That saved note\'s id was used for another student — it is sent with a new id'),
     };
+
+/// The risk-reason codes of the workspace (`score.py`); `advRiskReasonText` in adv_models.dart writes each one.
+const advRiskReasonCodes = ['cgpa_low', 'gpa_drop', 'absence_high', 'failed_courses', 'open_flags', 'no_contact'];

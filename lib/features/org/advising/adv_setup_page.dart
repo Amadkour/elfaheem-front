@@ -3,9 +3,9 @@
 //   not eligible  → why ("available to universities, faculties and the units under them")
 //   off           → what it brings + Enable (org admin): pick the department that leads it, or create one
 //   on            → the leading department, the director(s), my role, the counts (admins / directors), the way
-//                   into the Phase 3 pages (manage: Settings · Advisors · Distribute · Students; an advisor: My
-//                   profile · Handovers with the pending count) and Turn off in More (org admin, `appConfirm`; every
-//                   record is kept)
+//                   into the pages (manage: Workspace · Settings · Advisors · Distribute · Students · Categories; an
+//                   advisor: My students · My profile · Handovers; the workspace tile carries the urgent / overdue
+//                   flag counts) and Turn off in More (org admin, `appConfirm`; every record is kept)
 // `AdvSetupView` and `AdvEnableForm` take plain values (test/ui/adv_layout_test.dart); `AdvSetupPage` loads and
 // calls `AdvApi`. Refresh comes from the dashboard header (the page is re-keyed).
 library;
@@ -20,11 +20,13 @@ import '../org_page_kit.dart';
 import '../org_v3.dart' show orgCall, orgErrorText;
 import 'adv_advisors_page.dart';
 import 'adv_api.dart';
+import 'adv_categories_page.dart';
 import 'adv_config_page.dart';
 import 'adv_distribute_page.dart';
 import 'adv_handovers_page.dart';
 import 'adv_models.dart';
 import 'adv_students_page.dart';
+import 'adv_workspace_page.dart';
 
 /// What the page shows.
 enum AdvSetupState { loading, failed, unavailable, off, on }
@@ -322,7 +324,25 @@ extension _AdvSetupLinks on AdvSetupView {
     final me = st.me;
     final open = onOpen!;
     final pending = me.handoversPending;
+    final urgent = me.flagsUrgent, overdue = me.flagsOverdue;
+    final attention = [
+      if (urgent > 0)
+        countText(urgent, ar1: 'تنبيه عاجل', ar2: 'تنبيهان عاجلان', arFew: '$urgent تنبيهات عاجلة', arMany: '$urgent تنبيهاً عاجلاً', en1: '1 urgent flag', en: '$urgent urgent flags'),
+      if (overdue > 0)
+        countText(overdue, ar1: 'مراجعة متأخرة', ar2: 'مراجعتان متأخرتان', arFew: '$overdue مراجعات متأخرة', arMany: '$overdue مراجعة متأخرة', en1: '1 review overdue', en: '$overdue reviews overdue'),
+    ].join(' · ');
+    final workspace = AppActionCard(
+      icon: Icons.groups_rounded,
+      title: me.leads ? t('مساحة الإرشاد', 'Advising workspace') : t('طلابي', 'My students'),
+      subtitle: attention.isNotEmpty
+          ? attention
+          : (me.leads ? t('كل الطلاب مرتبين حسب الخطر، والتنبيهات والملاحظات', 'Every student by risk, with flags and notes') : t('طلابك مرتبين حسب الخطر، والتنبيهات والملاحظات', 'Your students by risk, with flags and notes')),
+      badge: urgent + overdue,
+      color: urgent > 0 ? c.danger : (overdue > 0 ? c.warning : c.primary),
+      onTap: () => open('workspace'),
+    );
     final tiles = <Widget>[
+      if (me.leads || me.advisor) workspace,
       if (me.leads) ...[
         AppActionCard(
           icon: Icons.tune_rounded,
@@ -349,6 +369,12 @@ extension _AdvSetupLinks on AdvSetupView {
           subtitle: t('مرشد كل طالب، الإقفال، تعارض المصالح', 'Each student\'s advisor, locks, conflicts'),
           onTap: () => open('students'),
         ),
+        AppActionCard(
+          icon: Icons.label_outline_rounded,
+          title: t('التصنيفات', 'Categories'),
+          subtitle: t('تصنيفات التنبيهات والملاحظات والتسهيلات', 'Flag and note categories, accommodations'),
+          onTap: () => open('categories'),
+        ),
       ],
       if (me.advisor) ...[
         AppActionCard(
@@ -369,13 +395,6 @@ extension _AdvSetupLinks on AdvSetupView {
           color: pending > 0 ? c.warning : null,
           onTap: () => open('handovers'),
         ),
-        if (!me.leads)
-          AppActionCard(
-            icon: Icons.groups_rounded,
-            title: t('طلابي', 'My students'),
-            subtitle: t('من ترشدهم وسجل كل منهم', 'Who you advise and their history'),
-            onTap: () => open('students'),
-          ),
       ],
     ];
     return [
@@ -772,6 +791,8 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
       'rebalance' => AdvDistributePage(orgId: id, initial: const AdvPlanRequest(mode: 'rebalance')),
       'students_away' => AdvStudentsPage(orgId: id, manage: lead, filter: 'away'),
       'handovers' => AdvHandoversPage(orgId: id, manage: false),
+      'workspace' => AdvWorkspacePage(orgId: id, manage: lead),
+      'categories' => AdvCategoriesPage(orgId: id),
       _ => AdvStudentsPage(orgId: id, manage: lead),
     };
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));

@@ -19,8 +19,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
 import 'package:flutter_education_app/design/app_kit.dart';
 
-import '../../admin/admin_common.dart' show t;
-import '../org_v3.dart' show orgCall, orgErrorText;
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
+import 'package:flutter_education_app/core/plural.dart';
+
+import '../../admin/admin_common.dart' show asInt, asMap, t;
+import '../org_v3.dart' show OrgCall, orgCall, orgErrorText;
 import 'adv_api.dart';
 import 'adv_models.dart';
 
@@ -411,8 +414,42 @@ class AdvConflictList extends StatelessWidget {
   }
 }
 
-/// What a list page shows while it has no rows to draw: loading, failed (retry), or "needs a server update".
-enum AdvLoad { loading, failed, missing, ready }
+/// What a list page shows while it has no rows to draw: loading, failed (retry), "needs a server update", or
+/// offline (Phase 4: nothing loaded and no connection).
+enum AdvLoad { loading, failed, missing, offline, ready }
+
+/// [orgErrorText] with the numbers some advising errors carry: when to try again (`advising_rate_limited`
+/// `retry_after_minutes`), how many open flags hold a category (`advising_category_in_use` `open_flags`).
+String advErrorText(ApiException e) {
+  final d = asMap(ApiException.asMap(e.body)?['detail']);
+  switch (e.code) {
+    case 'advising_rate_limited':
+      final m = asInt(d['retry_after_minutes']);
+      if (m > 0) {
+        final wait = countText(m, ar1: 'دقيقة', ar2: 'دقيقتين', arFew: '$m دقائق', arMany: '$m دقيقة', en1: '1 minute', en: '$m minutes');
+        return t('كتابات كثيرة في وقت قصير — أعد المحاولة بعد $wait', 'Too many changes in a short time — try again in $wait');
+      }
+    case 'advising_category_in_use':
+      final n = asInt(d['open_flags']);
+      if (n > 0) {
+        return countText(n,
+            ar1: 'يستخدم هذا التصنيف تنبيه مفتوح — أغلقه أو أوقف التصنيف بدلاً من حذفه',
+            ar2: 'يستخدم هذا التصنيف تنبيهان مفتوحان — أغلقهما أو أوقف التصنيف بدلاً من حذفه',
+            arFew: 'يستخدم هذا التصنيف $n تنبيهات مفتوحة — أغلقها أو أوقف التصنيف بدلاً من حذفه',
+            arMany: 'يستخدم هذا التصنيف $n تنبيهاً مفتوحاً — أغلقها أو أوقف التصنيف بدلاً من حذفه',
+            en1: '1 open flag uses this category — close it, or switch the category off instead',
+            en: '$n open flags use this category — close them, or switch the category off instead');
+      }
+  }
+  return orgErrorText(e);
+}
+
+/// The state a failed call leaves a block in: a route the server lacks · no connection · anything else.
+AdvLoad advFailLoad(OrgCall r) {
+  if (r.endpointMissing) return AdvLoad.missing;
+  final e = r.error;
+  return e != null && (e.isNetwork || e.isTimeout) ? AdvLoad.offline : AdvLoad.failed;
+}
 
 class AdvLoadState extends StatelessWidget {
   const AdvLoadState({super.key, required this.state, this.errorText, this.onRetry, this.items = 5});
@@ -431,6 +468,14 @@ class AdvLoadState extends StatelessWidget {
             icon: Icons.system_update_alt_rounded,
             title: t('يحتاج تحديث الخادم', 'Needs a server update'),
             message: t('هذا الجزء من الإرشاد الأكاديمي لم يصل إلى الخادم بعد.', 'This part of academic advising is not on the server yet.'),
+          ),
+        AdvLoad.offline => AppEmpty(
+            icon: Icons.wifi_off_rounded,
+            title: t('لا يوجد اتصال', 'You are offline'),
+            message: t('تظهر القائمة عند عودة الاتصال. الملاحظات المكتوبة دون اتصال تُرسل تلقائياً.',
+                'The list shows when the connection is back. Notes written offline are sent by themselves.'),
+            actionLabel: onRetry == null ? null : t('إعادة المحاولة', 'Retry'),
+            onAction: onRetry,
           ),
         _ => AppEmpty(
             icon: Icons.cloud_off_rounded,
