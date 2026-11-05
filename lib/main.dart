@@ -68,6 +68,7 @@ import 'features/shared/exports/export_schedules_page.dart';
 import 'features/shared/exports/exports_center_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
+import 'features/org/org_invitation_prompt.dart' show OrgInvitationPromptHost;
 import 'features/admin/models/model_download_bar.dart' show ModelDownloadsHost;
 import 'core/release/web_release_watch.dart' show WebReleaseBanner;
 import 'features/shared/get_app/app_download_banner.dart' show AppDownloadBanner;
@@ -738,7 +739,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                     // the live room above the Navigator: full-screen, or a box while moving around the app
                     // web: "Get the app" strip above the role homes; above it the website downloads strip on every page,
                     // sign-in included (D-144); on top "A new version is live — Reload" (D-143), which keeps the top spot
-                    child: LiveRoomLayer(child: WebReleaseBanner(child: AppDownloadBanner(child: GetAppBanner(child: child!)))),
+                    child: LiveRoomLayer(child: WebReleaseBanner(child: AppDownloadBanner(child: GetAppBanner(child: OrgInvitationPromptHost(navigatorKey: navigatorKey, child: child!))))),
                   ),
                 ),
               ),

@@ -64,6 +64,10 @@ class AttentionTabs {
     'settings': orgSettings,
   };
 
+  /// An ITEM key of the `home` tab (not a tab): my pending organization invitations (C7); the dialog in
+  /// features/org/org_invitation_prompt.dart reads it. Same string as the server's attention key.
+  static const orgInvitationsItem = 'org_invitations';
+
   static const all = [home, profile, parentLink, parentAlerts, adminSupport, adminFinance, orgPeople, orgAcademics,
     orgTimetable, orgServices, orgSettings];
 }

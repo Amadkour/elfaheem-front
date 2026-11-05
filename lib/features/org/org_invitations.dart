@@ -126,6 +126,25 @@ String inviteRoleLabel(String r) => switch (r) {
       _ => r,
     };
 
+/// The role an invitation gives (`member_role` of the C7 contract, else the invitation vocabulary of [inviteRoleLabel]).
+String inviteMemberRoleLabel(String memberRole, String fallbackRole) => switch (memberRole) {
+      'student' => t('طالب', 'Student'),
+      'teacher' => t('مدرس', 'Teacher'),
+      'teacher_assistant' => t('مساعد مدرس', 'Teaching assistant'),
+      'admin_assistant' => t('مساعد إداري', 'Administrative assistant'),
+      'org_admin' => t('مدير مؤسسة', 'Organization admin'),
+      'staff' => t('فريق العمل', 'Staff'),
+      '' => inviteRoleLabel(fallbackRole),
+      _ => memberRole,
+    };
+
+/// Where an invitation came from, for the admin's list.
+String inviteSourceLabel(String source) => switch (source) {
+      'manual' => t('أضافه مدير', 'Added by an admin'),
+      'excel' => t('ملف Excel', 'Excel sheet'),
+      _ => t('رابط دعوة', 'Invitation link'),
+    };
+
 String inviteChannelLabel(String c) => c == 'phone' ? t('رقم هاتف', 'Phone number') : t('بريد إلكتروني', 'E-mail');
 
 String inviteStatusLabel(String s) => switch (s) {
@@ -180,10 +199,18 @@ class OrgInvitation {
     this.sentCount = 0,
     this.lastSentAt,
     this.link,
+    this.source = 'invite',
+    this.memberRole = '',
   });
 
   final int id;
   final String channel, contact, role, status;
+
+  /// How it was made (C7): `invite` (link / e-mail / phone) · `manual` (added by an admin) · `excel` (a sheet).
+  final String source;
+
+  /// The role it gives on accept (`member_role`: student · teacher · teacher_assistant · …); empty on an older server.
+  final String memberRole;
   final int? deptId, programId;
   final DateTime? createdAt, expiresAt, acceptedAt, lastSentAt;
   final String invitedBy;
@@ -209,6 +236,8 @@ class OrgInvitation {
       sentCount: n(j['sent_count']) ?? 0,
       lastSentAt: orgParseUtc(j['last_sent_at']),
       link: j['link'] == null ? null : '${j['link']}',
+      source: '${j['source'] ?? 'invite'}',
+      memberRole: '${j['member_role'] ?? ''}',
     );
   }
 
@@ -279,12 +308,27 @@ class InviteLookup {
 
 /// A pending invitation addressed to me (`GET /public/me/invitations`).
 class MyInvitation {
-  const MyInvitation({required this.id, required this.orgId, required this.orgName, required this.role, this.logoUrl, this.expiresAt});
+  const MyInvitation({
+    required this.id,
+    required this.orgId,
+    required this.orgName,
+    required this.role,
+    this.logoUrl,
+    this.expiresAt,
+    this.memberRole = '',
+    this.source = 'invite',
+    this.message = '',
+    this.createdAt,
+    this.invitedByName = '',
+  });
 
   final int id, orgId;
-  final String orgName, role;
+  final String orgName, role, memberRole, source, message, invitedByName;
   final String? logoUrl;
-  final DateTime? expiresAt;
+  final DateTime? expiresAt, createdAt;
+
+  /// The role it gives, as a label.
+  String get roleLabel => inviteMemberRoleLabel(memberRole, role);
 
   factory MyInvitation.fromJson(Map<String, dynamic> j) {
     final o = asMap(j['org']);
@@ -296,6 +340,11 @@ class MyInvitation {
       logoUrl: o['logo_url'] as String?,
       role: '${j['role'] ?? 'student'}',
       expiresAt: orgParseUtc(j['expires_at']),
+      memberRole: '${j['member_role'] ?? ''}',
+      source: '${j['source'] ?? 'invite'}',
+      message: '${j['message'] ?? ''}'.trim(),
+      createdAt: orgParseUtc(j['created_at']),
+      invitedByName: '${j['invited_by_name'] ?? ''}'.trim(),
     );
   }
 }
