@@ -239,6 +239,21 @@ void main() {
             SessionExamTile(gate: gate, isTeacher: true),
           ]));
     });
+
+    testWidgets('a held result: "waiting for results", no start button, nothing about pass / fail', (tester) async {
+      final gate = SessionExamGate.fromJson([
+        {'id': 0, 'engine': true, 'engine_exam_id': 31, 'name': 'Quiz', 'passed': false, 'awaiting_results': true,
+         'attempted': true, 'max_submissions': 0, 'passing_score': 60},
+      ]);
+      final e = gate.firstPending!;
+      expect(e.awaitingResults, isTrue);
+      expect(SessionExamGate.fromJson([{'id': 1, 'name': 'Old', 'passed': false}]).firstPending!.awaitingResults, isFalse);
+      await tester.pumpWidget(app(Scaffold(body: SessionExamTile(gate: gate, isTeacher: false, enrolled: true))));
+      expect(find.text('session_exam_awaiting_results'.tr), findsOneWidget);
+      expect(find.text('session_exam_retry'.tr), findsNothing);
+      expect(find.text('session_exam_start'.tr), findsNothing);
+      await expectNoLayoutErrors(tester, () => SessionExamTile(gate: gate, isTeacher: false, enrolled: true));
+    });
   });
 
   group('results export and Excel import', () {
