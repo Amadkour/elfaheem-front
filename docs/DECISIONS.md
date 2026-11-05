@@ -2789,3 +2789,27 @@ an existing account's e-mail (`existing_account_invite_first`): invite first, pi
 org role; parents never get one (D-287). **Cost.** The dialog adds no request while the attention item
 `org_invitations` is 0, so the home request budgets do not move. Backend tests that used `POST /members` only as set-up
 accept through the shim `tests/org_v2/_c7_compat.py`; `e2e_of_f6_consent.py` tests the real flow.
+
+## D-289 — Academic Advising is a module per organization membership, built on governance, the registrar and the calendar · 2026-11-05 · accepted
+
+**Problem.** Faculties need full academic advising (advisor assignment, caseloads, student 360, flags, notes,
+appointments, early warning, council escalation, analytics). The platform had only `OrgStudentAcademic.advisor_id`
+(one advisor, no history) and the registrar's advisee list. **Decision.** A new module (`adv_*` tables, migration 0049,
+`services/organization/advising/`, `lib/features/org/advising/`, kill switch `org.advising`, plan
+`docs/advising/PLAN.md`):
+- Every advising row hangs on the student's MEMBERSHIP (`org_members.id`) plus `org_id`, never on the global user: a
+  student in a faculty and a learning center has two separate advising records. Postgres RLS on every table.
+- Only `university` / `faculty` organizations and their sub-organizations can switch it on (`ADVISING_ORG_TYPES`);
+  others get 403 `advising_not_available`.
+- Assignments get their own history table (`adv_assignments`, one active primary per membership by a partial unique
+  index); `advisor_id` stays as a mirror of the primary so the registrar's advisor routes and `advisor_decide` keep
+  working. Existing advisors are imported as locked `legacy` assignments, never overwritten by auto-distribution.
+- No second workflow engine: support requests, council escalation and referrals are governance work items, with one
+  new chain step `student_department_council`. No new term entity: `OrgTerm`. Appointments mirror into `CalMeeting`.
+  Exports and scheduled reports are Export Studio datasets.
+- One priority scale (low · normal · high · urgent) for flags, alerts, threads and requests.
+- The Advising Director is the head of the `academic_advising` department or a holder of the system role
+  `advising_director`; org admins hold every director right.
+- An optional midterm mark per registration (`interim_percent`) feeds the early-warning "failing midterm" rule.
+**Cost.** One pre-computed row per student (`adv_student_stats`) must be kept in step by every advising write and a
+claimed job; that is what keeps advisor lists and director counts fast at 100 k students per organization.
