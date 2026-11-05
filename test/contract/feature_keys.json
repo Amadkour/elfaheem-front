@@ -209,6 +209,7 @@
  "notifications.mark_all_read",
  "notifications.today",
  "notifications.yesterday",
+ "org.advising",
  "org.billing_view",
  "org.governance",
  "org.governance.export_hub",
