@@ -229,8 +229,9 @@ class ExamPaperDoc {
       ...paperPlaceholders(c),
       'org_name': c.institution,
       'version': c.version ?? '',
-      'student_name': c.studentName,
-      'seat': c.seat,
+      // a blank copy: a line to write on instead of nothing after the label
+      'student_name': c.studentName.trim().isEmpty ? '____________________' : c.studentName,
+      'seat': c.seat.trim().isEmpty ? '________' : c.seat,
       'university': c.cover?.university ?? cover?.university ?? '',
       'exporter': '',
     };
