@@ -338,15 +338,15 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     setState(() => q.questions.remove(x));
     if (call != null) unawaited(sendGenFeedback(_learning, _review, [call]));
     // generation v2 (D-194): the draft drops the item too, so a later regenerate never brings it back
-    if (ref != null && v2) unawaited(deleteGenItem(ref.draftId, ref.n));
+    if (ref != null && v2 && ref.serverN != null) unawaited(deleteGenItem(ref.draftId, ref.serverN!));
   }
 
   /// "Regenerate" on a generated question: the server writes another from a different idea of the same section; it
   /// takes the old one's place in the list and in the review. Null = it could not (the old one stays).
   Future<QuickQuestion?> _regenerate(QuickQuestion old) async {
     final ref = _review.of(old);
-    if (ref == null) return null;
-    final fresh = await regenerateGenItem(ref.draftId, ref.n);
+    if (ref == null || ref.serverN == null) return null;
+    final fresh = await regenerateGenItem(ref.draftId, ref.serverN!);
     if (fresh == null || !mounted) return null;
     setState(() {
       final at = q.questions.indexOf(old);

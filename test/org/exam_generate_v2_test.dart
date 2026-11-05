@@ -20,7 +20,7 @@ Map<String, dynamic> _src({int page = 12, String section = 'Chapter 2'}) =>
     {'document_id': 3, 'title': 'Biology', 'section_id': 9, 'section': section, 'page_from': page, 'page_to': page + 1, 'chunk_id': 40};
 
 Map<String, dynamic> _q(String type, Map<String, dynamic> extra) => {
-      'n': 0,
+      'n': 1,
       'type': type,
       'prompt': 'Question of $type',
       'points': 2,
@@ -199,7 +199,8 @@ void main() {
       expect(j.progress.percent, 25);
       expect(j.progress.phase, 'writing');
       expect(j.warnings.single.code, 'slot_failed');
-      expect(j.item(0), isNotNull);
+      expect(j.item(1), isNotNull);
+      expect(j.item(0), isNull); // the server numbers from 1
       expect(j.item(3), isNull);
       expect(GenJob.fromJson({'id': 1, 'state': 'failed', 'error': 'no_questions'}).done, isTrue);
       expect(GenJob.fromJson({'id': 1, 'state': 'done', 'progress': {'percent': 140}}).progress.percent, 100);
@@ -395,22 +396,22 @@ void main() {
       var gets = 0;
       Map<String, dynamic>? sent;
       final api = await backend({
-        'POST /api/v1/rag/exam-gen/5/items/1/regenerate': (o) {
+        'POST /api/v1/rag/exam-gen/5/items/2/regenerate': (o) {
           sent = Map<String, dynamic>.from(o.data as Map);
           return const FakeResponse(202, {'id': 5});
         },
         'GET /api/v1/rag/exam-gen/5': (_) {
           gets++;
-          final other = _q('true_false', {'n': 0, 'answer': true, 'prompt': 'Untouched'});
+          final other = _q('true_false', {'n': 1, 'answer': true, 'prompt': 'Untouched'});
           return _job([
             other,
             gets < 2
-                ? _q('true_false', {'n': 1, 'answer': true, 'state': 'regenerating'})
-                : _q('fill_blank', {'n': 1, 'prompt': 'New ____ question', 'answer': ['cell'], 'source': _src(page: 40, section: 'Chapter 5')}),
+                ? _q('true_false', {'n': 2, 'answer': true, 'state': 'regenerating'})
+                : _q('fill_blank', {'n': 2, 'prompt': 'New ____ question', 'answer': ['cell'], 'source': _src(page: 40, section: 'Chapter 5')}),
           ]);
         },
       });
-      final fresh = await regenerateGenItemWith(ExamGenV2Api(), 5, 1, hint: ' shorter ', every: const Duration(milliseconds: 5));
+      final fresh = await regenerateGenItemWith(ExamGenV2Api(), 5, 2, hint: ' shorter ', every: const Duration(milliseconds: 5));
       expect(sent, {'hint': 'shorter'});
       expect(fresh, isNotNull);
       expect(fresh!.type, 'fill_blank');
@@ -419,28 +420,73 @@ void main() {
       expect(api.calls.where((c) => c.method == 'POST').length, 1);
 
       // the review swaps the one question and keeps its slot
-      final old = quickOfV2(_q('true_false', {'answer': true}))!;
-      final keep = quickOfV2(_q('true_false', {'answer': false}))!;
+      final old = quickOfV2(_q('true_false', {'n': 2, 'answer': true}))!;
+      final keep = quickOfV2(_q('true_false', {'n': 1, 'answer': false}))!;
       final review = ExamGenReview()..track(ExamGenResult(5, [(0, keep), (1, old)]));
       expect(review.replace(old, fresh), isTrue);
       expect(review.of(old), isNull);
       expect(review.of(keep)!.n, 0);
-      expect(review.of(fresh)!.n, 1);
+      expect(review.of(keep)!.serverN, 1);
+      expect(review.of(fresh)!.n, 1); // the feedback index
+      expect(review.of(fresh)!.serverN, 2); // the server's item number
       expect(review.of(fresh)!.draftId, 5);
       expect(review.replace(old, fresh), isFalse);
     });
 
     test('regenerate that the server cannot write gives null (the old question stays)', () async {
       await backend({
-        'POST /api/v1/rag/exam-gen/5/items/1/regenerate': (_) => const FakeResponse(409, {'detail': {'code': 'item_busy', 'message': 'busy'}}),
+        'POST /api/v1/rag/exam-gen/5/items/2/regenerate': (_) => const FakeResponse(409, {'detail': {'code': 'item_busy', 'message': 'busy'}}),
       });
-      expect(await regenerateGenItemWith(ExamGenV2Api(), 5, 1), isNull);
+      expect(await regenerateGenItemWith(ExamGenV2Api(), 5, 2), isNull);
 
       await backend({
-        'POST /api/v1/rag/exam-gen/5/items/1/regenerate': (_) => const FakeResponse(202, {'id': 5}),
-        'GET /api/v1/rag/exam-gen/5': (_) => _job([_q('true_false', {'answer': true}), _q('true_false', {'answer': true, 'state': 'failed'})]),
+        'POST /api/v1/rag/exam-gen/5/items/2/regenerate': (_) => const FakeResponse(202, {'id': 5}),
+        'GET /api/v1/rag/exam-gen/5': (_) => _job([_q('true_false', {'answer': true}), _q('true_false', {'n': 2, 'answer': true, 'state': 'failed'})]),
       });
-      expect(await regenerateGenItemWith(ExamGenV2Api(), 5, 1, every: const Duration(milliseconds: 5)), isNull);
+      expect(await regenerateGenItemWith(ExamGenV2Api(), 5, 2, every: const Duration(milliseconds: 5)), isNull);
+    });
+
+    test('server numbering: the first item is 1, a skipped (removed) item shifts the list index but not n; feedback keeps the index', () {
+      final qs = [
+        _q('true_false', {'n': 1, 'answer': true}),
+        _q('true_false', {'n': 2, 'answer': true, 'removed': true}),
+        _q('true_false', {'n': 3, 'answer': false, 'prompt': 'Third'}),
+      ];
+      final job = GenJob.fromJson({'id': 5, 'state': 'done', 'questions': qs});
+      expect(job.item(3)!['prompt'], 'Third'); // found by its n, not by position
+      expect(job.item(0), isNull);
+      final items = genItemsOf(job.questions);
+      expect([for (final (i, _) in items) i], [0, 2]); // list indexes, the removed one skipped
+      final review = ExamGenReview()..track(ExamGenResult(5, items));
+      final first = review.of(items[0].$2)!, third = review.of(items[1].$2)!;
+      expect((first.n, first.serverN), (0, 1));
+      expect((third.n, third.serverN), (2, 3));
+      // feedback goes by the index
+      final call = review.reject(items[1].$2, 'bad')!;
+      expect((call.$1, call.$2), (5, 2));
+    });
+
+    test('regenerate and delete send the server n (first item, and an item after a removed one)', () async {
+      final api = await backend({
+        'POST /api/v1/rag/exam-gen/5/items/*': (_) => const FakeResponse(202, {'id': 5}),
+        'DELETE /api/v1/rag/exam-gen/5/items/*': (_) => _job([]),
+        'GET /api/v1/rag/exam-gen/5': (_) => _job([
+              _q('true_false', {'n': 1, 'answer': true, 'prompt': 'One'}),
+              _q('true_false', {'n': 2, 'answer': true, 'removed': true}),
+              _q('fill_blank', {'n': 3, 'prompt': 'Three ____', 'answer': ['x']}),
+            ]),
+      });
+      final fresh1 = await regenerateGenItemWith(ExamGenV2Api(), 5, 1, every: const Duration(milliseconds: 5));
+      expect(fresh1!.prompt, 'One');
+      final fresh3 = await regenerateGenItemWith(ExamGenV2Api(), 5, 3, every: const Duration(milliseconds: 5));
+      expect(fresh3!.prompt, 'Three ____');
+      expect(await removeGenItem(ExamGenV2Api(), 5, 3), isTrue);
+      final keys = [for (final c in api.calls) if (c.method != 'GET') c.key];
+      expect(keys, [
+        'POST /api/v1/rag/exam-gen/5/items/1/regenerate',
+        'POST /api/v1/rag/exam-gen/5/items/3/regenerate',
+        'DELETE /api/v1/rag/exam-gen/5/items/3',
+      ]);
     });
 
     test('delete calls DELETE …/items/{n}; a failure never throws', () async {

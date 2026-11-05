@@ -333,8 +333,13 @@ class GenJob {
       error: j['error']?.toString(),
       params: asMap(j['params']));
 
-  /// The item `n` of the job (its index in [questions]); null when there is none.
-  Map<String, dynamic>? item(int n) => n >= 0 && n < questions.length ? questions[n] : null;
+  /// The item the SERVER numbered `n` (from 1; its `n` field, not its position in [questions]); null when there is none.
+  Map<String, dynamic>? item(int n) {
+    for (final q in questions) {
+      if (q['n'] is num && asInt(q['n']) == n) return q;
+    }
+    return null;
+  }
 }
 
 // ── a question's origin ─────────────────────────────────────────────────────────────────────────────────────────
@@ -362,7 +367,11 @@ class GenSourceInfo {
 /// What the server knows about a generated question besides the question: its source, the passage it came from and
 /// how the check went. Kept next to the [QuickQuestion] (see [genMetaOf]).
 class GenQMeta {
-  const GenQMeta({this.source, this.evidence = '', this.concept = '', this.supported, this.checkedBy = '', this.writer = ''});
+  const GenQMeta({this.n, this.source, this.evidence = '', this.concept = '', this.supported, this.checkedBy = '', this.writer = ''});
+
+  /// The item number the SERVER gave the question (from 1): what regenerate and delete address. Not the feedback
+  /// index (that one is the position in the draft's list, see `GenItemRef.n`). Null when the payload has none.
+  final int? n;
   final GenSourceInfo? source;
   final String evidence, concept, checkedBy, writer;
 
@@ -375,6 +384,7 @@ class GenQMeta {
   factory GenQMeta.fromJson(Map<String, dynamic> g) {
     final v = asMap(g['validation']);
     return GenQMeta(
+        n: g['n'] is num ? asInt(g['n']) : null,
         source: g['source'] is Map ? GenSourceInfo.fromJson(asMap(g['source'])) : null,
         evidence: asStr(g['evidence']).trim(),
         concept: asStr(g['concept']),
@@ -449,7 +459,7 @@ QuickQuestion? quickOfV2(Map<String, dynamic> g) {
   q.prompt = prompt;
   if (g['points'] is num && (g['points'] as num) > 0) q.points = (g['points'] as num).toDouble();
   q.difficulty = _levelToDifficulty[asStr(g['difficulty'])] ?? q.difficulty;
-  if (g['source'] is Map || g['evidence'] != null || g['validation'] is Map) setGenMeta(q, GenQMeta.fromJson(g));
+  if (g['source'] is Map || g['evidence'] != null || g['validation'] is Map || g['n'] is num) setGenMeta(q, GenQMeta.fromJson(g));
   return q;
 }
 

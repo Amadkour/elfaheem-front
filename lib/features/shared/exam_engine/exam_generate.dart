@@ -206,9 +206,15 @@ bool genChanged(Map<String, dynamic> original, Map<String, dynamic> now) {
 }
 
 class GenItemRef {
-  GenItemRef(this.draftId, this.n, this.original);
+  GenItemRef(this.draftId, this.n, this.original, {this.serverN});
   final int draftId;
+
+  /// The index in the draft's `questions`: what the FEEDBACK route takes.
   final int n;
+
+  /// The item number the server gave a v2 question (from 1): what regenerate and delete take. Null for the old
+  /// generator's items (no such routes).
+  final int? serverN;
 
   /// [genFinalOf] as generated.
   final Map<String, dynamic> original;
@@ -236,7 +242,7 @@ class ExamGenReview {
 
   void track(ExamGenResult r) {
     for (final (n, q) in r.items) {
-      _items[q] = GenItemRef(r.draftId, n, genFinalOf(q));
+      _items[q] = GenItemRef(r.draftId, n, genFinalOf(q), serverN: genMetaOf(q)?.n);
     }
   }
 
@@ -254,7 +260,7 @@ class ExamGenReview {
   bool replace(QuickQuestion old, QuickQuestion fresh) {
     final r = _items.remove(old);
     if (r == null) return false;
-    _items[fresh] = GenItemRef(r.draftId, r.n, genFinalOf(fresh));
+    _items[fresh] = GenItemRef(r.draftId, r.n, genFinalOf(fresh), serverN: genMetaOf(fresh)?.n ?? r.serverN);
     return true;
   }
 
