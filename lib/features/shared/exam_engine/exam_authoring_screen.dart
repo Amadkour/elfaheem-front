@@ -7,12 +7,18 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
+import '../../admin/admin_money_p8.dart' show p8SaveBytes;
 import 'exam_authoring.dart';
 import 'exam_grading_widgets.dart' show ResultsViewField;
 import 'exam_media.dart';
@@ -116,14 +122,56 @@ class _DateTimeField extends StatelessWidget {
   }
 }
 
+/// "Lock the lessons after …": the session this exam gates (plain values; under the layout harness). Nothing is
+/// shown while the course has no sessions to offer. [sessions] come from `ExamAuthoringApi.courseSessions`.
+class SessionLockPicker extends StatelessWidget {
+  const SessionLockPicker({super.key, required this.sessions, required this.selected, required this.onChanged});
+  final List<LockSession> sessions;
+  final int? selected;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    if (sessions.isEmpty && selected == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppDropdown<int?>(
+          key: const ValueKey('exam.session_lock'),
+          value: selected,
+          decoration: InputDecoration(labelText: t('اقفل الدروس بعد …', 'Lock the lessons after …'), prefixIcon: Icon(Icons.lock_clock_rounded, size: 20, color: c.primary)),
+          items: [
+            DropdownMenuItem<int?>(value: null, child: Text(t('بدون ربط بجلسة', 'Not tied to a session'))),
+            for (final s in sessions) DropdownMenuItem<int?>(value: s.id, child: Text(s.name, overflow: TextOverflow.ellipsis)),
+          ],
+          onChanged: onChanged,
+        ),
+        if (selected != null)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(top: 6, start: 4, end: 4),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.info_outline_rounded, size: 15, color: c.primary),
+              const SizedBox(width: 6),
+              Expanded(child: Text(sessionLockHint(), style: appText(12, c: c.primary))),
+            ]),
+          ),
+      ]),
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 // Exam settings
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 /// The exam's settings. Edits [draft] in place; [onSave] returns an error text (or null when saved).
 class ExamSettingsForm extends StatefulWidget {
-  const ExamSettingsForm({super.key, required this.draft, required this.onSave, this.creating = false});
+  const ExamSettingsForm({super.key, required this.draft, required this.onSave, this.creating = false, this.sessions = const []});
   final ExamDraft draft;
+
+  /// The course's sessions for "Lock the lessons after …" (empty hides the picker).
+  final List<LockSession> sessions;
   final Future<String?> Function(ExamDraft draft) onSave;
   final bool creating;
 
@@ -173,7 +221,9 @@ class _ExamSettingsFormState extends State<ExamSettingsForm> with _Controllers {
           onChanged: (v) => d.durationMinutes = v.trim().isEmpty ? null : (parseIntField(v) ?? -1)),
       AppField(
           controller: ctl('att', '${d.maxAttempts}'), label: t('عدد المحاولات', 'Attempts allowed'), keyboard: TextInputType.number, ltr: true,
+          hint: t('0 = بلا حد', '0 = unlimited'),
           onChanged: (v) => d.maxAttempts = parseIntField(v) ?? 0),
+      SessionLockPicker(sessions: widget.sessions, selected: d.sessionId, onChanged: (v) => setState(() => d.sessionId = v)),
       if (d.status == 'published')
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -261,6 +311,189 @@ class _ExamSettingsFormState extends State<ExamSettingsForm> with _Controllers {
 // Sections and placed questions
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+/// "Import from Excel" (D-197): the template, then the filled file; the rows the server refused are listed with their
+/// row number (plain values; under the layout harness). [sections] (id, title) offers the destination when the exam
+/// has more than one.
+class ExcelImportBody extends StatelessWidget {
+  const ExcelImportBody({
+    super.key,
+    required this.sections,
+    required this.sectionId,
+    required this.onSection,
+    required this.fileName,
+    required this.report,
+    required this.busy,
+    required this.error,
+    required this.onTemplate,
+    required this.onPick,
+    required this.onUpload,
+    required this.onDone,
+  });
+  final List<(int, String)> sections;
+  final int? sectionId;
+  final ValueChanged<int?> onSection;
+  final String? fileName;
+  final ImportReport? report;
+  final bool busy;
+  final String? error;
+  final VoidCallback? onTemplate;
+  final VoidCallback? onPick;
+  final VoidCallback? onUpload;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final r = report;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      Text(t('نزّل القالب، املأه بأسئلتك، ثم ارفعه: يصير كل صف سؤالاً في بنك الأسئلة ويوضع في الاختبار.',
+          'Download the template, fill it with your questions, then upload it: each row becomes a question in the bank and is placed in the exam.'),
+          style: appText(13, c: c.textMedium, h: 1.4)),
+      _gap(12),
+      OutlinedButton.icon(
+          key: const ValueKey('exam.import.template'),
+          onPressed: onTemplate,
+          icon: const Icon(Icons.file_download_outlined, size: 18),
+          label: Text(t('تنزيل القالب', 'Download the template'))),
+      if (sections.length > 1) ...[
+        _gap(12),
+        AppDropdown<int?>(
+          value: sectionId ?? sections.first.$1,
+          decoration: InputDecoration(labelText: t('القسم', 'Section')),
+          items: [for (final s in sections) DropdownMenuItem<int?>(value: s.$1, child: Text(s.$2, overflow: TextOverflow.ellipsis))],
+          onChanged: onSection,
+        ),
+      ],
+      _gap(12),
+      AppCard(
+        padding: const EdgeInsets.all(12),
+        child: Row(children: [
+          Icon(fileName == null ? Icons.table_chart_outlined : Icons.insert_drive_file_rounded, color: c.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(fileName ?? t('ملف Excel (.xlsx)', 'An Excel file (.xlsx)'),
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: fileName == null ? c.textMedium : c.textDark)),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(key: const ValueKey('exam.import.pick'), onPressed: onPick, child: Text(fileName == null ? t('اختر ملفاً', 'Choose a file') : t('تغيير', 'Change'))),
+        ]),
+      ),
+      if (error != null) ...[_gap(10), AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)],
+      if (r != null) ...[
+        _gap(10),
+        AppBanner(
+            key: const ValueKey('exam.import.result'),
+            icon: r.created > 0 ? Icons.task_alt_rounded : Icons.info_outline_rounded,
+            color: r.created > 0 ? c.success : c.warning,
+            text: r.created > 0
+                ? t('أُضيف ${r.created} سؤالاً', '${r.created} questions added')
+                : t('لم يُضف أي سؤال', 'No question was added')),
+        if (r.errors.isNotEmpty) ...[
+          _gap(8),
+          Text(t('صفوف لم تُقبل (${r.errors.length})', 'Rows not accepted (${r.errors.length})'), style: appText(13, w: FontWeight.w700, c: c.danger)),
+          _gap(4),
+          for (final e in r.errors)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                AppBadgePill(t('صف ${e.row}', 'Row ${e.row}'), color: c.danger),
+                const SizedBox(width: 8),
+                Expanded(child: Text(importRowText(e), style: appText(12.5, c: c.textDark))),
+              ]),
+            ),
+        ],
+      ],
+      _gap(14),
+      Row(children: [
+        Expanded(child: TextButton(onPressed: busy ? null : onDone, child: Text(t('تم', 'Done')))),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 2,
+          child: AppPrimaryButton(key: const ValueKey('exam.import.upload'), label: t('رفع واستيراد', 'Upload and import'), icon: Icons.upload_file_rounded, busy: busy, onPressed: busy ? null : onUpload),
+        ),
+      ]),
+    ]);
+  }
+}
+
+/// The import sheet: owns the file and the calls.
+class ExcelImportSheet extends StatefulWidget {
+  const ExcelImportSheet({super.key, required this.api, required this.examId, required this.sections});
+  final ExamAuthoringApi api;
+  final int examId;
+  final List<(int, String)> sections;
+
+  @override
+  State<ExcelImportSheet> createState() => _ExcelImportSheetState();
+}
+
+class _ExcelImportSheetState extends State<ExcelImportSheet> {
+  int? _section;
+  String? _fileName, _path, _error;
+  Uint8List? _bytes;
+  ImportReport? _report;
+  bool _busy = false;
+
+  Future<void> _template() async {
+    try {
+      final bytes = await widget.api.importTemplate(AppConfig.lang);
+      await p8SaveBytes(bytes, 'questions_template.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    } catch (e) {
+      appToast(apiErrorText(ApiException.from(e)), error: true);
+    }
+  }
+
+  Future<void> _pick() async {
+    final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['xlsx']);
+    if (f == null) return;
+    final bytes = kIsWeb || f.path == null ? await f.readAsBytes() : null;
+    if (!mounted) return;
+    setState(() {
+      _fileName = f.name;
+      _bytes = bytes;
+      _path = kIsWeb ? null : f.path;
+      _report = null;
+      _error = null;
+    });
+  }
+
+  Future<void> _upload() async {
+    if (_fileName == null) return appToast(t('اختر ملف Excel أولاً', 'Choose an Excel file first'), error: true);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final r = await widget.api.importQuestions(widget.examId,
+        fileName: _fileName!, bytes: _bytes, path: _path, sectionId: widget.sections.length > 1 ? (_section ?? widget.sections.first.$1) : null);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (r.ok) {
+        _report = ImportReport.fromJson(r.map);
+      } else {
+        _error = authoringError(r);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AppSheetContent(title: t('استيراد من Excel', 'Import from Excel'), children: [
+        ExcelImportBody(
+          sections: widget.sections,
+          sectionId: _section,
+          onSection: (v) => setState(() => _section = v),
+          fileName: _fileName,
+          report: _report,
+          busy: _busy,
+          error: _error,
+          onTemplate: _template,
+          onPick: _busy ? null : _pick,
+          onUpload: _upload,
+          onDone: () => Navigator.pop(context, (_report?.created ?? 0) > 0),
+        ),
+      ]);
+}
+
 class ExamSectionsPanel extends StatelessWidget {
   const ExamSectionsPanel({
     super.key,
@@ -274,8 +507,12 @@ class ExamSectionsPanel extends StatelessWidget {
     required this.onEditQuestion,
     this.onReorderQuestions,
     this.onMoveQuestionToSection,
+    this.onImportExcel,
   });
   final ExamView view;
+
+  /// "Import from Excel" (draft exams); null hides it.
+  final VoidCallback? onImportExcel;
   final VoidCallback onAddSection;
   final ValueChanged<SectionDraft> onEditSection;
   final ValueChanged<SectionDraft> onDeleteSection;
@@ -301,6 +538,14 @@ class ExamSectionsPanel extends StatelessWidget {
         AppBadgePill(t('الدرجة العظمى ${fmtPoints(view.maxScore)}', 'Max score ${fmtPoints(view.maxScore)}'), icon: Icons.emoji_events_outlined, color: c.success),
       ]),
       _gap(),
+      if (draft && onImportExcel != null && view.sections.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: AppPill(key: const ValueKey('exam.import.open'), icon: Icons.table_chart_outlined, label: t('استيراد من Excel', 'Import from Excel'), onTap: onImportExcel),
+          ),
+        ),
       if (!draft)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -1523,9 +1768,19 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
   /// The paper setup (`GET …/setup`): a paper exam gets its "Paper exam" entry (app bar + the Settings and Publish tabs).
   ExamSetup? _paper;
 
+  /// The course's sessions for the "Lock the lessons after …" picker.
+  List<LockSession> _sessions = const [];
+
+  Future<void> _loadSessions(int? courseId) async {
+    if (courseId == null) return;
+    final s = await _api.courseSessions(courseId);
+    if (mounted && s.isNotEmpty) setState(() => _sessions = s);
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadSessions(widget.courseId);
     if (_examId == null) {
       _newDraft = ExamDraft()
         ..courseId = widget.courseId
@@ -1567,6 +1822,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
       _loadAccommodations();
       _loadConsents();
       _loadPaper();
+      if (widget.courseId == null) _loadSessions(_view?.exam.courseId);
     }
   }
 
@@ -1733,6 +1989,17 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     setState(() => _apply(r.map));
   }
 
+  /// "Import from Excel": the filled template becomes bank questions placed in a section of this draft.
+  Future<void> _importExcel() async {
+    final v = _view!;
+    await showAppSheet<bool>(context, (_) => ExcelImportSheet(
+          api: _api,
+          examId: v.exam.id!,
+          sections: [for (final s in v.sections) (s.section.id!, s.section.title.trim().isEmpty ? t('القسم', 'Section') : s.section.title.trim())],
+        ));
+    if (mounted) _load(side: false);
+  }
+
   Future<void> _addQuestions(SectionDraft s) async {
     final v = _view!;
     await showAppSheet<void>(context, (_) => QuestionPickerSheet(
@@ -1855,7 +2122,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppHero(title: t('اختبار جديد', 'New exam'), subtitle: t('ابدأ بالإعدادات، ثم الأقسام والأسئلة والمراقبة', 'Start with the settings, then sections, questions and proctoring'),
                 icon: Icons.edit_note_rounded),
-            ExamSettingsForm(draft: nd, creating: true, onSave: _create),
+            ExamSettingsForm(draft: nd, creating: true, onSave: _create, sessions: _sessions),
           ]),
         ),
       );
@@ -1901,7 +2168,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     if (isPaperExam(_paper)) _paperEntry(v),
-                    ExamSettingsForm(key: ValueKey('settings.$_settingsGen'), draft: w, onSave: _saveSettings),
+                    ExamSettingsForm(key: ValueKey('settings.$_settingsGen'), draft: w, onSave: _saveSettings, sessions: _sessions),
                   ]),
                 ),
                 AppRefresh(
@@ -1918,6 +2185,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                       onEditQuestion: _editQuestion,
                       onReorderQuestions: _reorderQuestions,
                       onMoveQuestionToSection: _moveQuestionToSection,
+                      onImportExcel: _importExcel,
                     ),
                   ]),
                 ),

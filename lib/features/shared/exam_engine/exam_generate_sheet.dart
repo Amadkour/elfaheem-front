@@ -16,13 +16,16 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import '../../admin/admin_common.dart' show asInt, asMap, t;
 import '../rag/rag_library.dart';
 import '../rag/rag_learning.dart' show examReasonLabel, examReasons;
+import 'exam_gen_api.dart' show GenQMeta;
 import 'exam_generate.dart';
+import 'exam_generate_wizard.dart' show ExamGenEntry;
 import 'exam_quick.dart';
 
 /// Opens the generator; the draft's questions to add (with their indexes in the draft, for the Track F review), or
-/// null when the teacher left without generating.
+/// null when the teacher left without generating. The five-step wizard (exam_generate_wizard.dart, generation v2);
+/// on an older server [ExamGenEntry] shows the sheet below, unchanged.
 Future<ExamGenResult?> openExamGenerator(BuildContext context, {required int courseId, int? orgId}) =>
-    showAppSheet<ExamGenResult>(context, (_) => ExamGenSheet(courseId: courseId, orgId: orgId));
+    showAppSheet<ExamGenResult>(context, (_) => ExamGenEntry(courseId: courseId, orgId: orgId));
 
 class ExamGenSheet extends StatefulWidget {
   const ExamGenSheet({super.key, required this.courseId, this.orgId, this.api, this.library, this.pickFile});
@@ -368,22 +371,84 @@ class QuickGenerateCard extends StatelessWidget {
 
 /// Track F: the strip on a generated question in the builder — "Generated" and Accept / Edit / Reject (plain values).
 /// Accept and Edit only mark it (what counts is the question when the exam is saved: unchanged = accepted, changed =
-/// edited with its final text); Reject asks why and takes the question out.
-class GenReviewBar extends StatelessWidget {
-  const GenReviewBar({super.key, required this.mark, required this.onAccept, required this.onEdit, required this.onReject});
+/// edited with its final text); Reject asks why and takes the question out. Generation v2 adds [onRegenerate] (another
+/// question for the same slot; the builder swaps it in) and the source chip: pages and section, the passage it was
+/// written from in a popover ([meta], `genMetaOf(question)`).
+class GenReviewBar extends StatefulWidget {
+  const GenReviewBar({super.key, required this.mark, required this.onAccept, required this.onEdit, required this.onReject, this.onRegenerate, this.meta});
   final GenMark mark;
   final VoidCallback onAccept, onEdit, onReject;
+
+  /// Resolves to the replacement question (null = could not write another; the old one stays).
+  final Future<QuickQuestion?> Function()? onRegenerate;
+  final GenQMeta? meta;
+
+  @override
+  State<GenReviewBar> createState() => _GenReviewBarState();
+}
+
+class _GenReviewBarState extends State<GenReviewBar> {
+  bool _busy = false;
+
+  Future<void> _regenerate() async {
+    if (_busy || widget.onRegenerate == null) return;
+    setState(() => _busy = true);
+    QuickQuestion? q;
+    try {
+      q = await widget.onRegenerate!();
+    } catch (_) {
+      q = null;
+    }
+    if (q == null) appToast(t('تعذر كتابة سؤال آخر — أبقينا السؤال الحالي', 'Could not write another question — the current one stays'), error: true);
+    if (mounted) setState(() => _busy = false);
+  }
+
+  void _showEvidence(GenQMeta m) {
+    showAppSheet<void>(context, (ctx) {
+      final c = ctx.colors;
+      final s = m.source;
+      return AppSheetContent(title: t('مصدر السؤال', 'Where this question comes from'), children: [
+        if (s != null) ...[
+          Text(s.title, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+          Text(s.label, style: appText(13, c: c.textMedium)),
+          const SizedBox(height: AppSpace.sm),
+        ],
+        if (m.evidence.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(color: c.primary.withValues(alpha: .06), borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: SelectableText(m.evidence, style: appText(13.5, c: c.textDark, h: 1.5)),
+          )
+        else
+          Text(t('لا يوجد مقتطف محفوظ لهذا السؤال.', 'No passage was kept for this question.'), style: appText(13, c: c.textMedium)),
+        if (m.needsLook) ...[
+          const SizedBox(height: AppSpace.sm),
+          AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: t('لم نجد الإجابة صراحةً في هذا المقتطف — راجع السؤال بعناية.', 'The answer was not clearly in this passage — look at the question twice.')),
+        ],
+      ]);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final m = widget.meta;
+    final mark = widget.mark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
         AppBadgePill(t('مُنشأ تلقائياً', 'Generated'), icon: Icons.auto_awesome_rounded, color: c.primary),
-        AppChoiceChip(label: t('قبول', 'Accept'), icon: Icons.check_rounded, selected: mark == GenMark.accepted, onTap: onAccept),
-        AppChoiceChip(label: t('تعديل', 'Edit'), icon: Icons.edit_outlined, selected: mark == GenMark.edited, onTap: onEdit),
-        AppChoiceChip(label: t('رفض', 'Reject'), icon: Icons.close_rounded, selected: false, onTap: onReject),
+        if (m != null && m.hasSource)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 260),
+            child: AppPill(icon: Icons.menu_book_outlined, label: m.source!.label, onTap: () => _showEvidence(m)),
+          ),
+        if (m != null && m.needsLook) AppBadgePill(t('يحتاج مراجعة', 'Needs a look'), icon: Icons.warning_amber_rounded, color: c.warning),
+        AppChoiceChip(label: t('قبول', 'Accept'), icon: Icons.check_rounded, selected: mark == GenMark.accepted, onTap: widget.onAccept),
+        AppChoiceChip(label: t('تعديل', 'Edit'), icon: Icons.edit_outlined, selected: mark == GenMark.edited, onTap: widget.onEdit),
+        if (widget.onRegenerate != null)
+          AppChoiceChip(label: _busy ? t('نكتب سؤالاً آخر…', 'Writing another…') : t('سؤال آخر', 'Regenerate'), icon: Icons.refresh_rounded, selected: false, onTap: _regenerate),
+        AppChoiceChip(label: t('رفض', 'Reject'), icon: Icons.close_rounded, selected: false, onTap: widget.onReject),
         if (mark == GenMark.edited)
           Text(t('عدّل السؤال أدناه؛ يُسجَّل نصه النهائي عند الحفظ', 'Edit the question below; its final text is recorded when you save'),
               style: appText(12, c: c.textMedium)),

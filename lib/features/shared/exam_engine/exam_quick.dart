@@ -176,7 +176,7 @@ class QuickQuestion {
 
 /// The whole quick exam: the creator's answers plus the defaults.
 class QuickExam {
-  QuickExam({required this.kind, this.courseId, this.orgId, this.scheduleSlotId, String? title, this.startsAt, this.endsAt})
+  QuickExam({required this.kind, this.courseId, this.orgId, this.scheduleSlotId, this.sessionId, String? title, this.startsAt, this.endsAt})
       : title = title ?? quickKindTitle(kind) {
     final window = startsAt != null && endsAt != null ? endsAt!.difference(startsAt!).inMinutes : null;
     durationMinutes = window != null && window > 0
@@ -195,6 +195,9 @@ class QuickExam {
   int? orgId;
   final int? scheduleSlotId;
 
+  /// The session this exam locks the lessons after (settings.session_id, D-197); null = no lock.
+  int? sessionId;
+
   QuickMode? mode;
   QuickSource source = QuickSource.questions;
   String title;
@@ -210,7 +213,14 @@ class QuickExam {
   late int durationMinutes;
   DateTime? startsAt;
   DateTime? endsAt;
+  /// 0 = unlimited attempts.
   int maxAttempts = 1;
+
+  /// Shown to students above the questions.
+  String description = '';
+
+  /// Questions each student gets drawn from the list (the section pool_size); null = all of them.
+  int? poolSize;
   bool shuffle = true;
   late bool highStakes;
   late String resultsPolicy;
@@ -237,7 +247,8 @@ class QuickExam {
     if (mode == null) out.add('mode_required');
     if (title.trim().isEmpty) out.add('title_required');
     if (durationMinutes <= 0) out.add('bad_duration');
-    if (maxAttempts < 1) out.add('bad_attempts');
+    if (maxAttempts < 0 || maxAttempts > 100) out.add('bad_attempts');
+    if (poolSize != null && !isFile && (poolSize! < 1 || (questions.isNotEmpty && poolSize! > questions.length))) out.add('bad_pool');
     if (startsAt != null && endsAt != null && !endsAt!.isAfter(startsAt!)) out.add('bad_window');
     if (isFile) {
       if (!hasFile) out.add('file_required');
@@ -257,6 +268,8 @@ class QuickExam {
       ..orgId = orgId
       ..courseId = courseId
       ..title = title.trim()
+      ..description = description.trim()
+      ..sessionId = sessionId
       ..durationMinutes = durationMinutes
       ..startsAt = startsAt
       ..endsAt = endsAt
@@ -277,7 +290,8 @@ class QuickExam {
     ..title = isFile ? t('ورقة الامتحان', 'Exam paper') : t('الأسئلة', 'Questions')
     ..mode = mode == QuickMode.offline ? 'paper' : 'online'
     ..shuffleQuestions = shuffle && !isFile && mode == QuickMode.online
-    ..shuffleOptions = shuffle && !isFile && mode == QuickMode.online;
+    ..shuffleOptions = shuffle && !isFile && mode == QuickMode.online
+    ..poolSize = isFile ? null : poolSize;
 
   /// The engine questions to create, in order.
   List<QuestionDraft> questionDrafts() {
@@ -307,7 +321,8 @@ String quickCodeText(String code) => switch (code) {
       'mode_required' => t('اختر: إلكتروني أم ورقي', 'Choose online or offline'),
       'title_required' => t('اكتب اسم الاختبار', 'Give the exam a name'),
       'bad_duration' => t('المدة يجب أن تكون أكبر من صفر', 'The duration must be more than zero'),
-      'bad_attempts' => t('عدد المحاولات واحدة على الأقل', 'At least one attempt'),
+      'bad_attempts' => t('عدد المحاولات بين 0 (بلا حد) و100', 'Attempts: 0 (unlimited) to 100'),
+      'bad_pool' => t('عدد الأسئلة لكل طالب بين 1 وعدد الأسئلة', 'Questions per student: from 1 up to the number of questions'),
       'bad_window' => t('النهاية يجب أن تكون بعد البداية', 'The end must be after the start'),
       'file_required' => t('ارفع ملف الامتحان', 'Upload the exam file'),
       'no_questions' => t('أضف سؤالاً واحداً على الأقل', 'Add at least one question'),

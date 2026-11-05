@@ -143,6 +143,7 @@
  "exam.identifiers",
  "exam.mark_templates",
  "exam.omr",
+ "exam.paper_designer",
  "exam.question_void",
  "exam.results_view",
  "exam_frozen",

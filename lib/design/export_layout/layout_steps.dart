@@ -14,6 +14,7 @@
 // the canvas is for tablets and desktops.
 library;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -263,6 +264,84 @@ Future<String?> layoutUpload(LayoutFlowController f, Uint8List bytes, String nam
     return null;
   }
   return r.data;
+}
+
+/// Uploads a page background (PNG / JPEG ≤ 2 MB, or a PDF ≤ 10 MB whose first page the server keeps); notices on
+/// failure. The asset id, or null. An image's bytes are remembered so the canvas can draw it at once.
+Future<String?> layoutUploadBackground(LayoutFlowController f, Uint8List bytes, String name) async {
+  final pdf = name.toLowerCase().endsWith('.pdf');
+  if (bytes.length > (pdf ? 10 : 2) * 1024 * 1024) {
+    showAppNotice(pdf ? t('ملف PDF أكبر من 10 ميجابايت', 'The PDF is larger than 10 MB') : t('الصورة أكبر من 2 ميجابايت', 'The image is larger than 2 MB'), error: true);
+    return null;
+  }
+  final r = await f.api.uploadAssetInfo(bytes, name);
+  if (!r.ok || r.data!.id.isEmpty) {
+    showAppNotice(r.error ?? t('تعذّر رفع الملف', 'Could not upload the file'), error: true);
+    return null;
+  }
+  if (!pdf) LayoutAssets.put(r.data!.id, bytes);
+  return r.data!.id;
+}
+
+/// The page background of a page-mode design (exam paper, cover, certificate): a picture or a PDF's first page drawn
+/// under everything, and how it fills the page. Applies to every language of the document.
+class LayoutPageBackground extends StatelessWidget {
+  const LayoutPageBackground({super.key, required this.flow});
+  final LayoutFlowController flow;
+
+  Future<void> _pick(BuildContext context) async {
+    try {
+      final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['png', 'jpg', 'jpeg', 'pdf']);
+      if (file == null) return;
+      final id = await layoutUploadBackground(flow, await file.readAsBytes(), file.name);
+      if (id == null) return;
+      _set((p) => p.backgroundImage = id);
+    } catch (_) {
+      showAppNotice(t('تعذّر اختيار الملف', 'Could not pick the file'), error: true);
+    }
+  }
+
+  void _set(void Function(LayoutPage p) fn) {
+    for (final dz in {...flow.doc.designs.values, flow.design}) {
+      fn(dz.page);
+    }
+    flow.changed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final p = flow.design.page;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            key: const ValueKey('layout-page-bg-pick'),
+            icon: const Icon(Icons.wallpaper_rounded),
+            label: Text(p.backgroundImage == null ? t('صورة أو PDF', 'Image or PDF') : t('تغيير الخلفية', 'Change the background'), maxLines: 1, overflow: TextOverflow.ellipsis),
+            onPressed: () => _pick(context),
+          ),
+        ),
+        if (p.backgroundImage != null)
+          IconButton(
+            key: const ValueKey('layout-page-bg-remove'),
+            tooltip: t('إزالة', 'Remove'),
+            icon: Icon(Icons.delete_outline_rounded, color: c.danger),
+            onPressed: () => _set((p) => p.backgroundImage = null),
+          ),
+      ]),
+      if (p.backgroundImage != null) ...[
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          for (final (k, ar, en) in const [('cover', 'ملء', 'Cover'), ('contain', 'احتواء', 'Contain'), ('fill', 'تمديد', 'Stretch')])
+            ChoiceChip(label: Text(t(ar, en)), selected: p.backgroundFit == k, onSelected: (_) => _set((p) => p.backgroundFit = k)),
+        ]),
+      ],
+      const SizedBox(height: AppSpace.xxs),
+      Text(t('تظهر الخلفية في المعاينة وفي الملف النهائي. ملف PDF تُؤخذ صفحته الأولى.', 'The background shows in the preview and in the final file. A PDF contributes its first page.'),
+          style: appText(12, c: c.textMedium)),
+    ]);
+  }
 }
 
 /// The live row preview: the card(s) for the real items, rules applied, with "‹ item 3 of 120 ›".
@@ -1015,6 +1094,10 @@ class LayoutPageOptions extends StatelessWidget {
             SizedBox(width: kLayoutMarginWidth, child: StudioStepper(label: '$label (mm)', value: get(), min: 0, max: 60, step: 1, onChanged: (v) => set(() => layoutSetPage(d, (_) => put(v))))),
         ]),
       ]),
+      if (d.mode == 'page')
+        LayoutSection(title: t('خلفية الصفحة', 'Page background'), children: [
+          LayoutPageBackground(flow: f),
+        ]),
       LayoutSection(title: t('الخط', 'Font'), children: [
         StudioFontPicker(options: fonts, value: p.font, onChanged: (v) => set(() => p.font = v)),
         const SizedBox(height: AppSpace.xs),

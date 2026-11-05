@@ -25,6 +25,7 @@ import '../rag/rag_learning.dart' show ExamItemAction, LearningApi, examItemBody
 import '../rag/rag_library.dart' show RagDocument, ragLibraryCodeText;
 import 'exam_authoring.dart' show QOption;
 import 'exam_engine_api.dart' show EngineResult, engineCall;
+import 'exam_gen_api.dart';
 import 'exam_quick.dart';
 
 /// The only two questions asked: which kind of questions, and how many.
@@ -122,6 +123,8 @@ List<(int, QuickQuestion)> genItemsOf(List<Map<String, dynamic>> questions) {
 }
 
 QuickQuestion? _quickOf(Map<String, dynamic> g) {
+  // generation v2 (exam_gen_api.dart): all six types, each with its source; the old draft only knows mcq and essay
+  if (genIsV2(g)) return quickOfV2(g);
   final prompt = asStr(g['prompt']).trim();
   if (prompt.isEmpty) return null;
   if (g['type'] == 'mcq') {
@@ -159,9 +162,12 @@ QuickQuestion? _quickOf(Map<String, dynamic> g) {
 
 /// What the sheet hands the quick builder: the draft and its questions with their indexes in the draft.
 class ExamGenResult {
-  const ExamGenResult(this.draftId, this.items);
+  const ExamGenResult(this.draftId, this.items, {this.notice = ''});
   final int draftId;
   final List<(int, QuickQuestion)> items;
+
+  /// What the teacher should know about the whole batch (written without a model, and why); '' = nothing.
+  final String notice;
 
   List<QuickQuestion> get questions => [for (final (_, q) in items) q];
 }
@@ -174,8 +180,20 @@ enum GenMark { none, accepted, edited, rejected }
 Map<String, dynamic> genFinalOf(QuickQuestion q) => {
       'question': q.prompt.trim(),
       'options': q.isEssay ? const <Map<String, dynamic>>[] : [for (final o in q.options) if (o.text.trim().isNotEmpty) {'id': o.id, 'text': o.text.trim()}],
-      'answer': q.isEssay ? q.keyText.trim() : (q.correct ?? ''),
+      'answer': _engineAnswer(q) ?? (q.isEssay ? q.keyText.trim() : (q.correct ?? '')),
     };
+
+/// The answer of a true / false, complete or matching question as one comparable text (null for the other types).
+String? _engineAnswer(QuickQuestion q) {
+  final e = q.engine;
+  if (e == null) return null;
+  return switch (q.type) {
+    'true_false' => '${e.tfCorrect ?? ''}',
+    'fill_blank' => e.blanks.map((b) => b.text.trim()).join(' | '),
+    'matching' => e.pairs.map((p) => '${p.left.trim()} = ${p.right.trim()}').join(' | '),
+    _ => null,
+  };
+}
 
 String _norm(Object? v) => '$v'.replaceAll(RegExp(r'\s+'), ' ').trim();
 
@@ -191,9 +209,15 @@ bool genChanged(Map<String, dynamic> original, Map<String, dynamic> now) {
 }
 
 class GenItemRef {
-  GenItemRef(this.draftId, this.n, this.original);
+  GenItemRef(this.draftId, this.n, this.original, {this.serverN});
   final int draftId;
+
+  /// The index in the draft's `questions`: what the FEEDBACK route takes.
   final int n;
+
+  /// The item number the server gave a v2 question (from 1): what regenerate and delete take. Null for the old
+  /// generator's items (no such routes).
+  final int? serverN;
 
   /// [genFinalOf] as generated.
   final Map<String, dynamic> original;
@@ -221,7 +245,7 @@ class ExamGenReview {
 
   void track(ExamGenResult r) {
     for (final (n, q) in r.items) {
-      _items[q] = GenItemRef(r.draftId, n, genFinalOf(q));
+      _items[q] = GenItemRef(r.draftId, n, genFinalOf(q), serverN: genMetaOf(q)?.n);
     }
   }
 
@@ -232,6 +256,15 @@ class ExamGenReview {
   void mark(QuickQuestion q, GenMark m) {
     final r = _items[q];
     if (r != null && !r.sent) r.mark = m;
+  }
+
+  /// [fresh] took the place of [old] (the review bar's "Regenerate"): the same slot of the draft, a new original, a
+  /// fresh verdict. False when [old] is not a tracked question.
+  bool replace(QuickQuestion old, QuickQuestion fresh) {
+    final r = _items.remove(old);
+    if (r == null) return false;
+    _items[fresh] = GenItemRef(r.draftId, r.n, genFinalOf(fresh), serverN: genMetaOf(fresh)?.n ?? r.serverN);
+    return true;
   }
 
   /// The creator rejected [q] (it leaves the exam): the call to send now, null when it is not a generated question.
@@ -262,6 +295,19 @@ class ExamGenReview {
     return out;
   }
 }
+
+/// "Regenerate" on a generated question: another question for item [n] of job [jobId] (the `n` of [GenItemRef]), or
+/// null when the server could not (the old question stays). The quick builder swaps it in with [ExamGenReview.replace].
+Future<QuickQuestion?> regenerateGenItem(int jobId, int n, {String? hint}) async {
+  try {
+    return await regenerateGenItemWith(ExamGenV2Api(), jobId, n, hint: hint);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Deletes item [n] of the job on the server (v2 jobs; fire-and-forget, after the reject feedback).
+Future<void> deleteGenItem(int jobId, int n) => removeGenItem(ExamGenV2Api(), jobId, n);
 
 /// Sends [calls] fire-and-forget (all at once); an older server switches [review] off. Never throws.
 Future<void> sendGenFeedback(LearningApi api, ExamGenReview review, List<GenFeedbackCall> calls) async {

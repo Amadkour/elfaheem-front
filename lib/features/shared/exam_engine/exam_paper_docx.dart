@@ -7,6 +7,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -14,6 +15,7 @@ import 'package:archive/archive.dart';
 import '../../../design/export/table_export_model.dart' show onColorHex, shadeHex, tintHex, xmlEsc;
 import '../../org/org_reports/report_render.dart' show docxPicture, imageSize;
 import 'exam_paper.dart';
+import 'exam_paper_bands.dart';
 import 'exam_paper_pdf.dart' show fmtTotal;
 import 'exam_qr_png.dart';
 
@@ -165,7 +167,7 @@ const _pageCap = 14000;
 /// Splits units of heights [h] into consecutive pages: the fewest pages that fit [_pageCap] (greedy), then the smallest page
 /// height that still needs only that many, so the pages come out balanced and no page holds a tiny remainder. [maxPages]
 /// (a plan with fewer pages) forces that count, accepting a fuller page. Returns the end index (exclusive) of each page.
-List<int> _paginate(List<int> h, {int? maxPages}) {
+List<int> _paginate(List<int> h, {int? maxPages, int cap = _pageCap}) {
   List<int> greedy(int cap) {
     final ends = <int>[];
     var used = 0;
@@ -180,7 +182,7 @@ List<int> _paginate(List<int> h, {int? maxPages}) {
     return ends;
   }
 
-  var pages = greedy(_pageCap).length;
+  var pages = greedy(cap).length;
   if (maxPages != null && pages > maxPages) pages = maxPages;
   var lo = h.fold(0, (m, x) => x > m ? x : m), hi = h.fold(0, (a, b) => a + b);
   while (lo < hi) {
@@ -199,8 +201,15 @@ List<int> _paginate(List<int> h, {int? maxPages}) {
 int wordPageCount(ExamPaperDoc d, PaperTemplate tpl) {
   final z = ZipDecoder().decodeBytes(examPaperDocx(d.copyWith(qrSlots: 1), tpl));
   final xml = utf8.decode(z.files.firstWhere((f) => f.name == 'word/document.xml').content as List<int>);
-  return '<w:sectPr>'.allMatches(xml).length;
+  // the cover is a section of its own, outside the paper's pages and QR payloads
+  return '<w:sectPr>'.allMatches(xml).length - (d.cover == null ? 0 : 1);
 }
+
+const _mmPerTwip = 25.4 / 1440;
+
+/// The Word text width (A4 minus the margins) in mm, the width an engine band is scaled to.
+const _wordContentMm = _usable * _mmPerTwip;
+const _wordMarginMm = 1000 * _mmPerTwip;
 
 /// The questions (and section titles), the part shared by the built-in designs and a custom template.
 String _questionsXml(ExamPaperDoc d, _W w, {required String accent, required String accentDark, List<int>? cuts}) {
@@ -344,9 +353,47 @@ String _answerTableXml(ExamPaperDoc d, _W w, PaperWords words, {required String 
       w.para('', after: 120);
 }
 
+/// The cover section of [d]: one paragraph holding the cover's anchored items, closed by the section break that gives it its own
+/// page geometry. [rels] / [media] get its pictures.
+String _coverXml(ExamPaperDoc d, PaperStyle style, PaperDocxMedia media, PaperPartRels rels) {
+  final cover = d.cover!;
+  final design = paperDesignFor(cover.design ?? paperCoverDesign(rtl: d.rtl), rtl: d.rtl);
+  if (design == null) return '';
+  final page = design.page;
+  final ctx = PaperBandCtx(doc: d, design: design, values: d.paperValues(), lang: d.rtl ? 'ar' : 'en', widthMm: page.contentWidth, marksTable: cover.marksTable);
+  final items = resolvePaperElements(design.row.elements, ctx);
+  final bg = paperBackground(design, d.assets);
+  final runs = (bg == null ? '' : paperBackgroundDocx(bg, media, rels, pageWmm: page.width, pageHmm: page.height)) +
+      paperItemsDocx(items, media, rels,
+          originXmm: page.margins.left, originYmm: page.margins.top, vRel: 'page', fontName: style.wordFont, fontCs: style.wordFontCs);
+  final sect = '<w:sectPr><w:pgSz w:w="${paperTwips(page.width)}" w:h="${paperTwips(page.height)}"/>'
+      '<w:pgMar w:top="${paperTwips(page.margins.top)}" w:right="${paperTwips(page.margins.right)}" w:bottom="${paperTwips(page.margins.bottom)}" '
+      'w:left="${paperTwips(page.margins.left)}" w:header="0" w:footer="0" w:gutter="0"/>${d.rtl ? '<w:bidi/>' : ''}</w:sectPr>';
+  return '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/><w:rPr><w:sz w:val="2"/></w:rPr>$sect</w:pPr>$runs</w:p>';
+}
+
 /// A built-in design. [tpl] must be resolved (classic, modern or minimal).
 Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   final style = PaperStyle.of(tpl);
+
+  // an engine design (null = the template alone, unchanged): header / footer bands and the page background in the header /
+  // footer parts, as anchored shapes inside one exact-height paragraph each
+  final design = paperDesignFor(d.design, rtl: d.rtl);
+  final bandCtx = design == null ? null : PaperBandCtx(doc: d, design: design, values: d.paperValues(), lang: d.rtl ? 'ar' : 'en', widthMm: _wordContentMm);
+  final headerBand = bandCtx == null || design!.header.elements.isEmpty ? null : resolvePaperBand(design.header, bandCtx);
+  final footerBand = bandCtx == null || design!.footer.elements.isEmpty ? null : resolvePaperBand(design.footer, bandCtx);
+  final everyPageHeader = design?.header.placement == 'every_page';
+  final afterItemsFooter = design?.footer.placement == 'after_items';
+  final designBg = paperBackground(design, d.assets);
+  final ownStudentBox = paperDesignDraws(design, 'student_box'), ownInstructions = paperDesignDraws(design, 'instructions');
+  final bandMedia = PaperDocxMedia();
+  final relsDoc = PaperPartRels(), relsH1 = PaperPartRels(), relsH2 = PaperPartRels();
+  final coverXml = d.cover == null ? '' : _coverXml(d, style, bandMedia, relsDoc);
+  final pagesMinus = coverXml.isEmpty ? 0 : 1;
+  // twips the bands take beyond Word's default margins: the header sits 420 from the top edge, the footer band adds to the
+  // bottom margin; an every-page header grows the top margin, a first-page one pushes the first page's text down by itself
+  final headerPush = headerBand == null ? 0 : math.max(0, 420 + paperTwips(headerBand.heightMm) + 60 - 900);
+  final footerPush = footerBand == null ? 0 : paperTwips(footerBand.heightMm);
   final words = PaperWords(d.rtl);
   final media = <String, Uint8List>{};
   final w = _W(d.rtl, style.wordFont, style.wordFontCs, media: media);
@@ -371,7 +418,9 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   String info(String label, String value) => w.run('$label: ', color: '6B7280', size: 10) + w.run(value.isEmpty ? '—' : value, bold: true, size: 10.5);
 
   // ── header
-  if (classic) {
+  if (headerBand != null) {
+    // the engine's header band is drawn in the header part (below)
+  } else if (classic) {
     final side = (_usable * .32).round(), mid = _usable - 2 * side;
     body.write(w.table([side, mid, side], [
       w.row([
@@ -417,7 +466,7 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   }
 
   // ── student box
-  if (!d.answerKey) {
+  if (!d.answerKey && !ownStudentBox) {
     final a = (_usable * .6).round(), b = _usable - a;
     String field(String label, [String name = '']) => w.para(w.run('$label:', color: '6B7280', size: 10) + (name.isEmpty ? '' : w.run(' $name', bold: true, size: 10.5)));
     body.write(w.table([a, b], [
@@ -428,7 +477,7 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   }
 
   // ── instructions
-  if (d.instructions.isNotEmpty) {
+  if (d.instructions.isNotEmpty && !ownInstructions) {
     final inner = w.para(w.run(words.instructions, bold: true, color: accentDark, size: 11), after: 40) +
         [for (var i = 0; i < d.instructions.length; i++) w.para(w.run('${i + 1}. ${d.instructions[i]}', size: 10.2), after: 20)].join();
     body.write(w.table([_usable], [w.row([w.cell(inner, width: _usable, fill: modern ? tint : null)])], border: modern ? null : rule, pad: 100));
@@ -473,6 +522,9 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   // never another page's).
   final pageQr = d.qrPages;
   final units = <String>[body.toString()]; // the header block is never split
+  // a design's bands take room too: a first-page header only on page 1, an every-page one and the footer on all of them
+  final pageCap = _pageCap - (everyPageHeader ? headerPush : 0) - footerPush;
+  final firstExtra = headerBand != null && !everyPageHeader ? headerPush : 0;
   final bounds = (<int>{...cuts.where((c) => c > 0 && c < questions.length)}.toList()..sort());
   for (var i = 0, from = 0; i <= bounds.length; i++) {
     final to = i < bounds.length ? bounds[i] : questions.length;
@@ -484,7 +536,9 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   if (!d.qrReserved || units.length < 2) {
     chunks.add(units.join());
   } else {
-    final cut = _paginate([for (final u in units) _estimateHeight(u)], maxPages: pageQr.isEmpty ? null : pageQr.length);
+    final heights = [for (final u in units) _estimateHeight(u)];
+    heights[0] += firstExtra;
+    final cut = _paginate(heights, maxPages: pageQr.isEmpty ? null : pageQr.length, cap: pageCap);
     for (var i = 0, from = 0; i < cut.length; i++) {
       chunks.add(units.sublist(from, cut[i]).join());
       from = cut[i];
@@ -496,14 +550,36 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   String field(String code) => '<w:fldSimple w:instr=" $code "><w:r><w:rPr><w:sz w:val="17"/><w:szCs w:val="17"/>$rtlPr</w:rPr><w:t>1</w:t></w:r></w:fldSimple>';
   final pageWord = d.rtl ? 'صفحة ' : 'Page ', ofWord = d.rtl ? ' من ' : ' of ';
   // the footer of section [k] (0-based): the page line and, when the copy has QRs, that page's QR as an inline picture
+  final footerRels = <int, PaperPartRels>{};
+  List<PaperItem> bandItems(PaperBand b) => [
+        if (b.bg != null) PaperItem(kind: 'rect', x: 0, y: 0, w: _wordContentMm, h: b.heightMm, bg: b.bg),
+        ...b.items,
+      ];
   String footerXml(int k) {
     final qr = k < qrCount ? w.run('    ') + docxPicture('rQr', 1000 + k, _qrEmu, _qrEmu) : '';
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr $_ns>'
-        '${w.para('${w.run(pageWord, color: '6B7280', size: 8.5)}${field('PAGE')}${w.run(ofWord, color: '6B7280', size: 8.5)}${field('NUMPAGES')}$qr', jc: 'center')}</w:ftr>';
+    // the design's footer band sits above the page + QR line; "after the items" draws it on the last section only
+    var band = '';
+    if (footerBand != null) {
+      final rels = footerRels[k] = PaperPartRels();
+      final runs = !afterItemsFooter || k == chunks.length - 1
+          ? paperItemsDocx(bandItems(footerBand), bandMedia, rels, originXmm: _wordMarginMm, fontName: style.wordFont, fontCs: style.wordFontCs, pagesMinus: pagesMinus)
+          : '';
+      band = paperAnchorParagraph(runs, footerBand.heightMm);
+    }
+    final pagesField = pagesMinus == 0
+        ? field('NUMPAGES')
+        : paperTextRuns('{{pages}}', rpr: '<w:rPr><w:sz w:val="17"/><w:szCs w:val="17"/>$rtlPr</w:rPr>', pagesMinus: pagesMinus);
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr $_ns>$band'
+        '${w.para('${w.run(pageWord, color: '6B7280', size: 8.5)}${field('PAGE')}${w.run(ofWord, color: '6B7280', size: 8.5)}$pagesField$qr', jc: 'center')}</w:ftr>';
   }
+  String bgRuns(PaperPartRels r) => designBg == null ? '' : paperBackgroundDocx(designBg, bandMedia, r, pageWmm: 210, pageHmm: 297);
+  String bandHeader(PaperPartRels r) => paperAnchorParagraph(
+      bgRuns(r) +
+          paperItemsDocx(bandItems(headerBand!), bandMedia, r, originXmm: _wordMarginMm, fontName: style.wordFont, fontCs: style.wordFontCs, pagesMinus: pagesMinus),
+      headerBand.heightMm);
   final runningHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $_ns>'
-      '${w.para(w.run(d.title, bold: true, color: accentDark, size: 9.5) + _tagsXml(d, w, accentDark) + (d.course.isEmpty ? '' : w.run('   ·   ${d.course}', color: '6B7280', size: 9)), border: '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="$rule"/></w:pBdr>')}</w:hdr>';
-  final firstHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $_ns>${d.studentName.isEmpty ? '<w:p/>' : w.para(w.run(d.studentName, bold: true, size: 9.5), jc: 'end')}</w:hdr>';
+      '${headerBand != null && everyPageHeader ? bandHeader(relsH1) : w.para(bgRuns(relsH1) + w.run(d.title, bold: true, color: accentDark, size: 9.5) + _tagsXml(d, w, accentDark) + (d.course.isEmpty ? '' : w.run('   ·   ${d.course}', color: '6B7280', size: 9)), border: '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="$rule"/></w:pBdr>')}</w:hdr>';
+  final firstHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr $_ns>${headerBand != null ? bandHeader(relsH2) : d.studentName.isEmpty ? '<w:p>${bgRuns(relsH2)}</w:p>' : w.para(bgRuns(relsH2) + w.run(d.studentName, bold: true, size: 9.5), jc: 'end')}</w:hdr>';
   final pgBorders = classic
       ? '<w:pgBorders w:offsetFrom="page">${['top', 'left', 'bottom', 'right'].map((s) => '<w:$s w:val="double" w:sz="12" w:space="20" w:color="$accent"/>').join()}</w:pgBorders>'
       : '';
@@ -515,11 +591,11 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
     return '<w:sectPr>${first ? '<w:headerReference w:type="default" r:id="rHdr"/><w:headerReference w:type="first" r:id="rHdr1"/>' : ''}'
         '<w:footerReference w:type="default" r:id="$f"/>${first ? '<w:footerReference w:type="first" r:id="$f"/>' : ''}'
         '<w:pgSz w:w="11906" w:h="16838"/>'
-        '<w:pgMar w:top="900" w:right="1000" w:bottom="${qrCount > 0 ? 1600 : 900}" w:left="1000" w:header="420" w:footer="420" w:gutter="0"/>'
-        '$pgBorders${first ? '<w:titlePg/>' : ''}${d.rtl ? '<w:bidi/>' : ''}</w:sectPr>';
+        '<w:pgMar w:top="${900 + (everyPageHeader ? headerPush : 0)}" w:right="1000" w:bottom="${(qrCount > 0 ? 1600 : 900) + footerPush}" w:left="1000" w:header="420" w:footer="420" w:gutter="0"/>'
+        '$pgBorders${first && pagesMinus > 0 ? '<w:pgNumType w:start="1"/>' : ''}${first ? '<w:titlePg/>' : ''}${d.rtl ? '<w:bidi/>' : ''}</w:sectPr>';
   }
 
-  final pages = StringBuffer();
+  final pages = StringBuffer(coverXml);
   for (var k = 0; k < chunks.length; k++) {
     pages.write(chunks[k]);
     // a section break closes every section but the last: an empty one-point paragraph carries its properties
@@ -529,7 +605,10 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   }
   final doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document $_ns><w:body>$pages${sect(chunks.length - 1)}</w:body></w:document>';
   final logoExt = d.logo == null ? null : (d.logo!.length > 3 && d.logo![0] == 0xFF && d.logo![1] == 0xD8 ? 'jpeg' : 'png');
-  final imageExts = <String>{if (logoExt != null) logoExt, if (qrCount > 0) 'png', for (final n in media.keys) n.split('.').last};
+  // the footers first: a band's pictures register their relationships while it is written
+  final footers = [for (var k = 0; k < chunks.length; k++) footerXml(k)];
+  final imageExts = <String>{if (logoExt != null) logoExt, if (qrCount > 0) 'png', for (final n in media.keys) n.split('.').last, for (final n in bandMedia.files.keys) n.split('.').last};
+
   final now = DateTime.now().toUtc().toIso8601String().split('.').first;
 
   return _zip({
@@ -558,6 +637,7 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
         '<Relationship Id="rHdr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>'
         '<Relationship Id="rHdr1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header2.xml"/>'
         '${[for (var k = 1; k <= chunks.length; k++) '<Relationship Id="rFtr$k" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer$k.xml"/>'].join()}'
+        '${relsDoc.entries}'
         '${[for (final e in media.keys.indexed) '<Relationship Id="rQ${e.$1 + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${e.$2}"/>'].join()}'
         '${logoExt == null ? '' : '<Relationship Id="rLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.$logoExt"/>'}'
         '</Relationships>'),
@@ -567,15 +647,19 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
         '${d.rtl ? '<w:lang w:bidi="ar-SA"/>' : ''}</w:rPr></w:rPrDefault>'
         '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>'),
     'word/header1.xml': utf8.encode(runningHeader),
+    if (!relsH1.isEmpty) 'word/_rels/header1.xml.rels': utf8.encode(relsH1.xml),
+    if (!relsH2.isEmpty) 'word/_rels/header2.xml.rels': utf8.encode(relsH2.xml),
+    for (final e in bandMedia.files.entries) 'word/media/${e.key}': e.value,
     'word/header2.xml': utf8.encode(firstHeader),
     for (var k = 0; k < chunks.length; k++) ...{
-      'word/footer${k + 1}.xml': utf8.encode(footerXml(k)),
-      if (k < qrCount) ...{
+      'word/footer${k + 1}.xml': utf8.encode(footers[k]),
+      if (k < qrCount || !(footerRels[k]?.isEmpty ?? true)) ...{
         'word/_rels/footer${k + 1}.xml.rels': utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            '<Relationship Id="rQr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/qr${k + 1}.png"/></Relationships>'),
-        'word/media/qr${k + 1}.png': qrPng(pageQr[k], modulepx: 6),
+            '${k < qrCount ? '<Relationship Id="rQr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/qr${k + 1}.png"/>' : ''}'
+            '${footerRels[k]?.entries ?? ''}</Relationships>'),
       },
+      if (k < qrCount) 'word/media/qr${k + 1}.png': qrPng(pageQr[k], modulepx: 6),
     },
     for (final e in media.entries) 'word/media/${e.key}': e.value,
     'word/document.xml': utf8.encode(doc),

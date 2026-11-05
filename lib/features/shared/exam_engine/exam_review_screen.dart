@@ -567,11 +567,40 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
   }
 }
 
+/// "Locks after: <session>" on an exam card (plain values; under the layout harness). [name] null = still loading.
+class SessionLockChip extends StatelessWidget {
+  const SessionLockChip({super.key, this.name});
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.lock_clock_rounded, size: 14, color: c.textMedium),
+      const SizedBox(width: 4),
+      Flexible(
+        child: Text(name == null ? t('يقفل ما بعد جلسة', 'Locks after a session') : t('يقفل ما بعد: $name', 'Locks after: $name'),
+            maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+      ),
+    ]);
+  }
+}
+
 /// The engine exams a teacher manages for a course, with how many answers wait for them. Hidden when the engine is
 /// not deployed or the course has no engine exams, so the legacy hub stays as it was.
 class EngineReviewSection extends StatefulWidget {
-  const EngineReviewSection({super.key, required this.courseId, this.onItems, this.showEmpty = false});
+  const EngineReviewSection({super.key, required this.courseId, this.onItems, this.showEmpty = false, this.showCreate = true, this.onAvailable, this.api});
   final int courseId;
+
+  /// The "+" (new exam). The teacher's hub turns it off: its floating button is the ONE entry (D-197).
+  final bool showCreate;
+
+  /// Whether the engine answered for this course (false = unavailable or refused): the hub falls back to its legacy
+  /// create sheet then.
+  final ValueChanged<bool>? onAvailable;
+
+  /// Tests.
+  final ExamAuthoringApi? api;
 
   /// Says "No exams for this course yet" when there are none: the admin's course page, where nothing else would. The
   /// teacher's hub keeps it off (its own list and empty state follow the section).
@@ -586,8 +615,9 @@ class EngineReviewSection extends StatefulWidget {
 }
 
 class _EngineReviewSectionState extends State<EngineReviewSection> with PageReturnAware {
-  final _api = ExamAuthoringApi();
+  late final _api = widget.api ?? ExamAuthoringApi();
   List<Map<String, dynamic>> _items = const [];
+  Map<int, String> _sessionNames = const {};
   bool _ready = false;
   String? _reason;
   int? _orgId;
@@ -614,6 +644,7 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
     if (!s.list.ok) {
       // not silent: the "+" stays, disabled, with the reason under the title
       setState(() => _reason = authoringError(s.list));
+      widget.onAvailable?.call(false);
       return;
     }
     setState(() {
@@ -623,6 +654,15 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
       _items = asMapList(s.list.map['items']);
     });
     widget.onItems?.call(_items);
+    widget.onAvailable?.call(true);
+    _loadSessionNames();
+  }
+
+  /// The names for the "Locks after: …" chip, asked only when some exam is tied to a session.
+  Future<void> _loadSessionNames() async {
+    if (!_items.any((e) => asMap(e['settings'])['session_id'] != null)) return;
+    final s = await _api.courseSessions(widget.courseId);
+    if (mounted && s.isNotEmpty) setState(() => _sessionNames = {for (final x in s) x.id: x.name});
   }
 
   void _open(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)).then((_) => _load());
@@ -636,7 +676,7 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready && _reason == null) return const SizedBox.shrink();
+    if (!_ready && (_reason == null || !widget.showCreate)) return const SizedBox.shrink();
     final c = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -647,7 +687,8 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
                   onPressed: _ready ? () => _open(QuestionBankScreen(orgId: _orgId, courseId: widget.courseId)) : null,
                   icon: const Icon(Icons.quiz_outlined),
                   tooltip: t('بنك الأسئلة', 'Question bank')),
-              IconButton(onPressed: _ready ? _quick : null, icon: Icon(Icons.add_circle_outline_rounded, color: _ready ? c.primary : c.textLight), tooltip: t('اختبار جديد', 'New exam')),
+              if (widget.showCreate)
+                IconButton(onPressed: _ready ? _quick : null, icon: Icon(Icons.add_circle_outline_rounded, color: _ready ? c.primary : c.textLight), tooltip: t('اختبار جديد', 'New exam')),
             ])),
         if (!_ready)
           Padding(
@@ -677,6 +718,11 @@ class _EngineReviewSectionState extends State<EngineReviewSection> with PageRetu
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${e['title'] ?? ''}', style: appText(14, w: FontWeight.w700, c: c.textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
                       Text(examStatusLabel('${e['status'] ?? ''}'), style: appText(12, c: c.textMedium)),
+                      if (asMap(e['settings'])['session_id'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: SessionLockChip(name: _sessionNames[asInt(asMap(e['settings'])['session_id'])]),
+                        ),
                     ]),
                   ),
                   const SizedBox(width: 8),

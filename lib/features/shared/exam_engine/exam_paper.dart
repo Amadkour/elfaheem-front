@@ -16,6 +16,7 @@ library;
 
 import 'dart:typed_data';
 
+import '../../../design/export_layout/layout_model.dart' show LayoutDocument;
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, t;
 import 'exam_authoring.dart' show ExamView, fmtPoints;
 import 'exam_media.dart' show mediaOfBody;
@@ -101,8 +102,11 @@ class PaperStyle {
 class PaperQuestion {
   PaperQuestion({required this.number, required this.type, required this.prompt, required this.points, this.options = const [],
       this.correct = const {}, this.left = const [], this.right = const [], this.pairs = const {}, this.items = const [], this.order = const [],
-      this.blanks = 0, this.tfCorrect, this.answerText = '', this.id, this.mediaId, this.mediaAlt = '', this.image, this.imageFailed = false});
+      this.blanks = 0, this.tfCorrect, this.answerText = '', this.id, this.mediaId, this.mediaAlt = '', this.image, this.imageFailed = false, this.difficulty = ''});
   final int number;
+
+  /// easy / medium / hard as the question bank holds it (the Excel export lists it); empty = not set.
+  final String difficulty;
 
   /// The engine question's id (versions order questions by it); null for a hand-built question.
   final int? id;
@@ -133,7 +137,7 @@ class PaperQuestion {
   PaperQuestion withImage(Uint8List? bytes, {bool failed = false}) => PaperQuestion(
       id: id, number: number, type: type, prompt: prompt, points: points, options: options, correct: correct, left: left, right: right,
       pairs: pairs, items: items, order: order, blanks: blanks, tfCorrect: tfCorrect, answerText: answerText, mediaId: mediaId, mediaAlt: mediaAlt,
-      image: bytes, imageFailed: failed);
+      image: bytes, imageFailed: failed, difficulty: difficulty);
 
   /// What a writer without pictures prints instead.
   String get imagePlaceholder => mediaAlt.isEmpty ? '[image]' : ['[image: ', mediaAlt, ']'].join();
@@ -153,12 +157,36 @@ class PaperSection {
   double get points => questions.fold(0.0, (s, q) => s + q.points);
 }
 
+/// The cover page printed before each copy: its own design (purpose exam_cover, page mode; null = the built-in cover),
+/// the university line ({{university}}) and whether the per-question marks grid is drawn in the design's `marks_table`.
+class ExamCover {
+  const ExamCover({this.design, this.university = '', this.marksTable = true});
+  final LayoutDocument? design;
+  final String university;
+  final bool marksTable;
+}
+
 /// Everything a writer needs.
 class ExamPaperDoc {
   ExamPaperDoc({required this.institution, required this.course, required this.title, required this.dateText, required this.durationText,
       required this.total, required this.sections, required this.instructions, required this.rtl, this.logo, this.accentHex = '0F7B5F',
       this.showPoints = true, this.seatNumber = true, this.answerKey = false, this.version, this.studentName = '', this.qrPages = const [],
-      this.qrSlots = 0, this.answerTable = AnswerTablePlace.none, this.keySummary = const []});
+      this.qrSlots = 0, this.answerTable = AnswerTablePlace.none, this.keySummary = const [], this.design, this.cover,
+      this.assets = const {}, this.seat = ''});
+
+  /// The engine design of the paper (purpose exam_paper): its header / footer bands and page background replace the
+  /// built-in ones (exam_paper_bands.dart). Null = today's Classic / Modern / Minimal, unchanged.
+  final LayoutDocument? design;
+
+  /// The cover page printed before the copy; null = none.
+  final ExamCover? cover;
+
+  /// The bytes of the designs' image / signature / background asset ids (the designer host resolves them before
+  /// rendering). An id missing here is skipped quietly.
+  final Map<String, Uint8List> assets;
+
+  /// The student's seat number printed for {{seat}} (a per-student copy).
+  final String seat;
   final String institution, course, title, dateText, durationText;
 
   /// The version's letter printed in the header ("Version A"); null = the exam's own order.
@@ -180,14 +208,35 @@ class ExamPaperDoc {
   bool get qrReserved => qrPages.isNotEmpty || qrSlots > 0;
 
   ExamPaperDoc copyWith({List<PaperSection>? sections, String? version, String? studentName, List<String>? qrPages, int? qrSlots,
-          AnswerTablePlace? answerTable, bool? answerKey, List<PaperKeyLine>? keySummary}) =>
+          AnswerTablePlace? answerTable, bool? answerKey, List<PaperKeyLine>? keySummary, String? seat,
+          ExamCover? cover, bool dropCover = false, LayoutDocument? design, bool dropDesign = false, Map<String, Uint8List>? assets}) =>
       ExamPaperDoc(
         institution: institution, course: course, title: title, dateText: dateText, durationText: durationText, total: total,
         sections: sections ?? this.sections, instructions: instructions, rtl: rtl, logo: logo, accentHex: accentHex, showPoints: showPoints,
         seatNumber: seatNumber, answerKey: answerKey ?? this.answerKey, version: version ?? this.version, studentName: studentName ?? this.studentName,
         qrPages: qrPages ?? this.qrPages, qrSlots: qrSlots ?? this.qrSlots, answerTable: answerTable ?? this.answerTable,
-        keySummary: keySummary ?? this.keySummary,
+        keySummary: keySummary ?? this.keySummary, design: dropDesign ? null : (design ?? this.design),
+        cover: dropCover ? null : (cover ?? this.cover), assets: assets ?? this.assets,
+        seat: seat ?? this.seat,
       );
+
+  /// Every value a design's `{{…}}` can name for one copy ([copy] = the per-student paper, default this one): the Word
+  /// placeholders plus `version`, `student_name`, `seat`, `university`, `org_name`. `{{page}}` / `{{pages}}` are left
+  /// out: the writers fill them per page.
+  Map<String, String> paperValues({ExamPaperDoc? copy}) {
+    final c = copy ?? this;
+    return {
+      ...paperPlaceholders(c),
+      'org_name': c.institution,
+      'version': c.version ?? '',
+      // a blank copy: a line to write on instead of nothing after the label
+      'student_name': c.studentName.trim().isEmpty ? '____________________' : c.studentName,
+      'seat': c.seat.trim().isEmpty ? '________' : c.seat,
+      'university': c.cover?.university ?? cover?.university ?? '',
+      'exporter': '',
+    };
+  }
+
   final double total;
   final List<PaperSection> sections;
   final List<String> instructions;
@@ -213,7 +262,8 @@ class ExamPaperDoc {
     for (final s in v.sections) {
       final qs = <PaperQuestion>[];
       for (final p in s.questions) {
-        qs.add(paperQuestion(++n, p.type, asMap(p.raw['body']), asMap(p.raw['answer']), p.points * s.section.weight, id: p.questionId));
+        final q = paperQuestion(++n, p.type, asMap(p.raw['body']), asMap(p.raw['answer']), p.points * s.section.weight, id: p.questionId);
+        qs.add(paperDifficulty(q, '${p.raw['difficulty'] ?? asMap(p.raw['body'])['difficulty'] ?? ''}'));
       }
       if (qs.isNotEmpty) sections.add(PaperSection(title: s.section.title.trim(), instructions: s.section.instructions.trim(), questions: qs));
     }
@@ -249,6 +299,14 @@ PaperQuestion paperQuestion(int number, String type, Map<String, dynamic> body, 
       right: q.right, pairs: q.pairs, items: q.items, order: q.order, blanks: q.blanks, tfCorrect: q.tfCorrect, answerText: q.answerText,
       mediaId: m.id, mediaAlt: m.alt);
 }
+
+/// [q] with its difficulty label (empty = unchanged).
+PaperQuestion paperDifficulty(PaperQuestion q, String difficulty) => difficulty.isEmpty || difficulty == 'null'
+    ? q
+    : PaperQuestion(
+        id: q.id, number: q.number, type: q.type, prompt: q.prompt, points: q.points, options: q.options, correct: q.correct, left: q.left,
+        right: q.right, pairs: q.pairs, items: q.items, order: q.order, blanks: q.blanks, tfCorrect: q.tfCorrect, answerText: q.answerText,
+        mediaId: q.mediaId, mediaAlt: q.mediaAlt, image: q.image, imageFailed: q.imageFailed, difficulty: difficulty);
 
 /// Fetches every question image of [d] (through [fetch], by question id and media id) BEFORE the page-count and render passes,
 /// so both lay out the same. A failed fetch keeps the question and marks it [PaperQuestion.imageFailed]. Same bytes are fetched once.

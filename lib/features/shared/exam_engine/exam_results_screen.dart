@@ -46,6 +46,33 @@ double? averagePercent(List<ResultRow> rows) {
   return v.isEmpty ? null : v.reduce((a, b) => a + b) / v.length;
 }
 
+/// The results table for Excel / Word / PDF (`showAppExportSheet`). Build it inside `bilingualExport(() => …)` so an
+/// English or "Both" file gets English headers in the Arabic app. Pure (unit-tested).
+AppTableExport examResultsExport({required String title, required List<ResultRow> rows}) {
+  String status(ResultRow r) => r.needsReview ? 'waiting' : (r.finished ? (r.passed == true ? 'passed' : (r.passed == false ? 'failed' : 'submitted')) : 'not_submitted');
+  return AppTableExport(
+    id: 'exam.results',
+    title: title,
+    fileName: title,
+    columns: [
+      AppExportColumn('name', t('الطالب', 'Student'), locked: true),
+      AppExportColumn('score', t('الدرجة', 'Score'), type: AppColType.number, decimals: 2),
+      AppExportColumn('max', t('من', 'Out of'), type: AppColType.number, decimals: 2),
+      AppExportColumn('percentage', t('النسبة', 'Percentage'), type: AppColType.percent, decimals: 1),
+      AppExportColumn('status', t('الحالة', 'Status'), type: AppColType.status, statusLabels: {
+        'passed': t('ناجح', 'Passed'),
+        'failed': t('راسب', 'Failed'),
+        'submitted': t('سلّم', 'Submitted'),
+        'waiting': t('ينتظر التصحيح', 'Waiting for marking'),
+        'not_submitted': t('لم يسلّم', 'Not submitted'),
+      }),
+    ],
+    rows: [
+      for (final r in rows) {'name': r.name, 'score': r.score, 'max': r.maxScore, 'percentage': r.percentage, 'status': status(r)},
+    ],
+  );
+}
+
 class ExamResultsScreen extends StatefulWidget {
   const ExamResultsScreen({super.key, required this.examId, required this.examTitle, this.courseId});
   final int examId;
@@ -136,6 +163,12 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
     _load();
   }
 
+  void _exportResults() {
+    final rows = _rows;
+    if (rows == null || rows.isEmpty) return;
+    showAppExportSheet(context, bilingualExport(() => examResultsExport(title: widget.examTitle, rows: rows)));
+  }
+
   void _openGradeLog() => Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ExamGradeLogScreen(examId: widget.examId, examTitle: widget.examTitle, attemptNames: {for (final r in _rows ?? const <ResultRow>[]) r.attemptId: r.name})));
 
@@ -214,6 +247,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
               if (_offline && _names.isNotEmpty) AppPill(icon: Icons.edit_note_rounded, label: t('إدخال الدرجات', 'Enter marks'), onTap: _enterMarks),
               if (canPublishResults) AppPill(icon: Icons.campaign_rounded, label: t('انشر النتائج للطلاب', 'Publish results to students'), onTap: _busy ? null : _publishResults),
               AppPill(icon: Icons.history_rounded, label: t('سجل الدرجات', 'Grade log'), onTap: _openGradeLog),
+              if (rows.isNotEmpty) AppPill(icon: Icons.file_download_outlined, label: t('تصدير النتائج', 'Export results'), onTap: _exportResults),
               if (paper != null) AppPill(icon: Icons.download_rounded, label: t('ملف الامتحان', 'Exam file'), onTap: () => _downloadPaper(paper)),
               if (paper == null && v != null && v.questionCount > 0)
                 AppPill(icon: Icons.print_rounded, label: t('ورقة الامتحان للطباعة', 'Printable exam paper'), onTap: () => openExamPaper(context, examId: widget.examId)),

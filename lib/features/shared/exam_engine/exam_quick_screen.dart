@@ -22,8 +22,9 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show asInt, t;
 import '../rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
 import 'exam_authoring.dart';
-import 'exam_authoring_screen.dart' show ExamEditorScreen, pickEngineDateTime;
-import 'exam_generate.dart' show ExamGenReview, GenMark, sendGenFeedback;
+import 'exam_authoring_screen.dart' show ExamEditorScreen, SessionLockPicker, pickEngineDateTime;
+import 'exam_gen_api.dart' show genMetaOf;
+import 'exam_generate.dart' show ExamGenReview, GenMark, deleteGenItem, regenerateGenItem, sendGenFeedback;
 import 'exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, QuickGenerateCard, openExamGenerator;
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
@@ -42,10 +43,29 @@ const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
 /// An offline exam with in-app questions goes straight on to its printable paper. When the paper setup was finished,
 /// the builder ends on "The paper exam is ready" instead: the paper section (print, scan, review, results) or the
 /// printable paper, from one sheet.
-Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, QuickKind kind = QuickKind.quiz, int? scheduleSlotId, String? title,
-    DateTime? startsAt, DateTime? endsAt, String course = ''}) async {
-  final q = QuickExam(kind: kind, courseId: courseId, orgId: orgId, scheduleSlotId: scheduleSlotId, title: title, startsAt: startsAt, endsAt: endsAt);
-  final id = await Navigator.of(context).push<int>(MaterialPageRoute(builder: (_) => QuickExamScreen(exam: q)));
+///
+/// [sessionId] pre-selects the session whose lessons the exam locks ("Lock the lessons after …"). [onClassic] shows the
+/// chooser's quiet "Classic exam (live quiz in the room)" link: tapping it closes the builder and calls it (the caller
+/// opens the legacy create sheet), so the legacy path stays reachable wherever it exists. [api] is for tests.
+Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, QuickKind kind = QuickKind.quiz, int? scheduleSlotId, int? sessionId,
+    String? title, DateTime? startsAt, DateTime? endsAt, String course = '', VoidCallback? onClassic, ExamAuthoringApi? api}) async {
+  final q = QuickExam(
+      kind: kind, courseId: courseId, orgId: orgId, scheduleSlotId: scheduleSlotId, sessionId: sessionId, title: title, startsAt: startsAt, endsAt: endsAt);
+  var classic = false;
+  final id = await Navigator.of(context).push<int>(MaterialPageRoute(
+      builder: (_) => QuickExamScreen(
+          exam: q,
+          api: api,
+          onClassic: onClassic == null
+              ? null
+              : () {
+                  classic = true;
+                  Navigator.of(context).pop();
+                })));
+  if (classic) {
+    onClassic?.call();
+    return null;
+  }
   var setUp = false;
   if (id != null && q.mode == QuickMode.offline && q.courseId != null && context.mounted) {
     setUp = await openExamSetupWizard(context, examId: id, initialDelivery: 'paper', onLearnTemplate: () => openOmrTemplateLearn(context).then((_) {})) == true;
@@ -155,9 +175,12 @@ IconData quickTypeIcon(String type) => switch (type) {
 
 /// The first question of a new exam (plain values; under the layout harness).
 class QuickStartChooser extends StatelessWidget {
-  const QuickStartChooser({super.key, required this.onPick, required this.canGenerate});
+  const QuickStartChooser({super.key, required this.onPick, required this.canGenerate, this.onClassic});
   final ValueChanged<QuickStart> onPick;
   final bool canGenerate;
+
+  /// The quiet "Classic exam (live quiz in the room)" link; null hides it (shown only where the legacy sheet exists).
+  final VoidCallback? onClassic;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +208,19 @@ class QuickStartChooser extends StatelessWidget {
         text: t('PDF أو Word أو صورة', 'A PDF, Word file or photo'),
         onTap: () => onPick(QuickStart.file),
       ),
+      if (onClassic != null)
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpace.sm),
+          child: Center(
+            child: TextButton.icon(
+              key: const ValueKey('exam.quick.classic'),
+              onPressed: onClassic,
+              icon: Icon(Icons.sensors_rounded, size: 18, color: context.colors.textMedium),
+              label: Text(t('اختبار تقليدي (مسابقة مباشرة في الغرفة)', 'Classic exam (live quiz in the room)'),
+                  textAlign: TextAlign.center, style: appText(13, c: context.colors.textMedium)),
+            ),
+          ),
+        ),
     ]);
   }
 }
@@ -249,9 +285,12 @@ class _ModeCard extends StatelessWidget {
 // ═══════════════════════════════════════ the builder ════════════════════════════════════════════════════════════
 
 class QuickExamScreen extends StatefulWidget {
-  const QuickExamScreen({super.key, required this.exam, this.api});
+  const QuickExamScreen({super.key, required this.exam, this.api, this.onClassic});
   final QuickExam exam;
   final ExamAuthoringApi? api;
+
+  /// The chooser's "Classic exam" link (see [openQuickExam]); null hides it.
+  final VoidCallback? onClassic;
 
   @override
   State<QuickExamScreen> createState() => _QuickExamScreenState();
@@ -262,10 +301,23 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
   QuickExam get q => widget.exam;
   late final _title = TextEditingController(text: q.title);
   bool _busy = false;
+  String _genNotice = '';                // the generator's note about the whole batch (no model, and why)
   bool _tried = false;
   late bool _started = q.questions.isNotEmpty || q.isFile;
   final _review = ExamGenReview();
   late final _learning = LearningApi();
+  List<LockSession> _sessions = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    final cid = q.courseId;
+    if (cid != null) {
+      _api.courseSessions(cid).then((s) {
+        if (mounted) setState(() => _sessions = s);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -281,9 +333,28 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
   Future<void> _reject(QuickQuestion x) async {
     final reason = await showAppSheet<String>(context, (_) => const GenRejectSheet());
     if (reason == null || !mounted) return;
+    final ref = _review.of(x);
+    final v2 = genMetaOf(x) != null;
     final call = _review.reject(x, reason.isEmpty ? null : reason);
     setState(() => q.questions.remove(x));
     if (call != null) unawaited(sendGenFeedback(_learning, _review, [call]));
+    // generation v2 (D-194): the draft drops the item too, so a later regenerate never brings it back
+    if (ref != null && v2 && ref.serverN != null) unawaited(deleteGenItem(ref.draftId, ref.serverN!));
+  }
+
+  /// "Regenerate" on a generated question: the server writes another from a different idea of the same section; it
+  /// takes the old one's place in the list and in the review. Null = it could not (the old one stays).
+  Future<QuickQuestion?> _regenerate(QuickQuestion old) async {
+    final ref = _review.of(old);
+    if (ref == null || ref.serverN == null) return null;
+    final fresh = await regenerateGenItem(ref.draftId, ref.serverN!);
+    if (fresh == null || !mounted) return null;
+    setState(() {
+      final at = q.questions.indexOf(old);
+      if (at >= 0) q.questions[at] = fresh;
+      _review.replace(old, fresh);
+    });
+    return fresh;
   }
 
   Future<void> _pickFile() async {
@@ -302,7 +373,10 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     final got = await openExamGenerator(context, courseId: q.courseId!, orgId: q.orgId);
     if (got == null || got.items.isEmpty || !mounted) return;
     _review.track(got);
-    setState(() => q.questions.addAll(got.questions));
+    setState(() {
+      q.questions.addAll(got.questions);
+      _genNotice = got.notice;
+    });
     appToast(t('أُضيف ${got.items.length} سؤالاً — راجعها وعدّلها قبل النشر', '${got.items.length} questions added — review and edit them before publishing'));
   }
 
@@ -375,7 +449,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
       child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: quickScreenMaxWidth), child: !_started
           ? SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              child: QuickStartChooser(onPick: _start, canGenerate: q.courseId != null))
+              child: QuickStartChooser(onPick: _start, canGenerate: q.courseId != null, onClassic: widget.onClassic))
           : Column(children: [
               Expanded(
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), children: [
@@ -399,6 +473,11 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                   else ...[
                     if (q.courseId != null)
                       Padding(padding: const EdgeInsets.only(bottom: 10), child: QuickGenerateCard(onTap: _busy ? null : _generate)),
+                    if (_genNotice.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: _genNotice),
+                      ),
                     for (var i = 0; i < q.questions.length; i++)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
@@ -410,6 +489,8 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                               onAccept: () => setState(() => _review.mark(q.questions[i], GenMark.accepted)),
                               onEdit: () => setState(() => _review.mark(q.questions[i], GenMark.edited)),
                               onReject: () => _reject(q.questions[i]),
+                              meta: genMetaOf(q.questions[i]),
+                              onRegenerate: genMetaOf(q.questions[i]) == null ? null : () => _regenerate(q.questions[i]),
                             ),
                           QuickQuestionCard(
                             key: ObjectKey(q.questions[i]),
@@ -431,7 +512,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                     ]),
                   ],
                   const SizedBox(height: 14),
-                  QuickAdvancedPanel(exam: q, onChanged: () => setState(() {}), onFullEditor: _busy ? null : () => _save(publish: false, editor: true)),
+                  QuickAdvancedPanel(exam: q, sessions: _sessions, onChanged: () => setState(() {}), onFullEditor: _busy ? null : () => _save(publish: false, editor: true)),
                   if (errors.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: errors.map(quickCodeText).join('\n')),
@@ -828,8 +909,11 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
 
 /// The defaults, closed until opened (under the layout harness).
 class QuickAdvancedPanel extends StatefulWidget {
-  const QuickAdvancedPanel({super.key, required this.exam, required this.onChanged, this.onFullEditor});
+  const QuickAdvancedPanel({super.key, required this.exam, required this.onChanged, this.onFullEditor, this.sessions = const []});
   final QuickExam exam;
+
+  /// The course's sessions for "Lock the lessons after …" (empty hides the picker).
+  final List<LockSession> sessions;
   final VoidCallback onChanged;
 
   /// Saves a draft and opens the full editor (sections, question bank, proctoring, accommodations …).
@@ -845,10 +929,12 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
   late final _attempts = TextEditingController(text: '${q.maxAttempts}');
   late final _passing = TextEditingController(text: fmtPoints(q.passingPercent));
   late final _passcode = TextEditingController(text: q.passcode);
+  late final _description = TextEditingController(text: q.description);
+  late final _pool = TextEditingController(text: q.poolSize?.toString() ?? '');
 
   @override
   void dispose() {
-    for (final x in [_duration, _attempts, _passing, _passcode]) {
+    for (final x in [_duration, _attempts, _passing, _passcode, _description, _pool]) {
       x.dispose();
     }
     super.dispose();
@@ -862,7 +948,8 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
   String _summary() {
     final parts = <String>[
       t('${q.durationMinutes} دقيقة', '${q.durationMinutes} min'),
-      t('${q.maxAttempts} محاولة', '${q.maxAttempts} attempt(s)'),
+      q.maxAttempts == 0 ? t('محاولات بلا حد', 'unlimited attempts') : t('${q.maxAttempts} محاولة', '${q.maxAttempts} attempt(s)'),
+      if (q.sessionId != null) t('يقفل ما بعد جلسة', 'locks after a session'),
       if (q.startsAt != null) AppTime.dateTime(q.startsAt!),
       resultsPolicyLabel(q.resultsPolicy),
     ];
@@ -901,7 +988,8 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
           leading: Icon(Icons.tune_rounded, color: c.textMedium),
           title: Text(t('متقدم', 'Advanced'), style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
           subtitle: Text(_summary(), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
-          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          // the top gap keeps the first row's floating labels inside the tile, which clips its children
+          childrenPadding: const EdgeInsets.fromLTRB(14, AppSpace.xs, 14, 14),
           expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(children: [
@@ -910,10 +998,23 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
                       onChanged: (v) => _set(() => q.durationMinutes = parseIntField(v) ?? 0))),
               const SizedBox(width: 10),
               Expanded(
-                  child: AppField(controller: _attempts, label: t('المحاولات', 'Attempts'), keyboard: TextInputType.number, ltr: true,
+                  child: AppField(controller: _attempts, label: t('المحاولات', 'Attempts'), hint: t('0 = بلا حد', '0 = unlimited'), keyboard: TextInputType.number, ltr: true,
                       onChanged: (v) => _set(() => q.maxAttempts = parseIntField(v) ?? 0))),
             ]),
             const SizedBox(height: 10),
+            AppField(controller: _description, label: t('وصف (اختياري)', 'Description (optional)'), maxLines: 2, onChanged: (v) => q.description = v),
+            const SizedBox(height: 10),
+            SessionLockPicker(sessions: widget.sessions, selected: q.sessionId, onChanged: (v) => _set(() => q.sessionId = v)),
+            if (!q.isFile && q.mode != QuickMode.offline) ...[
+              AppField(
+                  controller: _pool,
+                  label: t('عدد الأسئلة لكل طالب', 'Questions per student'),
+                  hint: t('فارغ = كل الأسئلة؛ أقل من ذلك يعني سحباً عشوائياً', 'Empty = all of them; fewer means a random draw'),
+                  keyboard: TextInputType.number,
+                  ltr: true,
+                  onChanged: (v) => _set(() => q.poolSize = v.trim().isEmpty ? null : (parseIntField(v) ?? 0))),
+              const SizedBox(height: 10),
+            ],
             _when(t('يبدأ', 'Opens'), q.startsAt, (d) => q.startsAt = d),
             _when(t('ينتهي', 'Closes'), q.endsAt, (d) => q.endsAt = d),
             if (online)

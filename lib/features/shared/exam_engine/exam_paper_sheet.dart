@@ -2,6 +2,7 @@
 // the paper or the teacher's answer key. Institution, date, instructions and the small switches sit under Advanced
 // with sensible defaults; the last design, institution and custom template are remembered on this device.
 // Writers: exam_paper_pdf.dart / exam_paper_docx.dart over the model in exam_paper.dart.
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -18,11 +19,17 @@ import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t;
+import '../../../design/engine/design_engine.dart' show DesignPurpose;
+import '../../../design/export_layout/layout_api.dart' show LayoutApi;
+import '../../../design/export_layout/layout_model.dart' show LayoutDocument;
+import '../../../utils/widget/parent_component.dart';
 import '../../org/org_ui.dart' show orgFileUrl;
 import '../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../teacher/data_lab/data_lab_saver_web.dart' as saver;
 import 'exam_authoring.dart';
 import 'exam_media.dart' show bankQuestionBytes;
 import 'exam_paper.dart';
+import 'exam_paper_design_api.dart';
+import 'exam_paper_designer.dart';
 import 'exam_paper_docx.dart';
 import 'exam_paper_pdf.dart';
 import 'exam_quick.dart' show paperFileOf;
@@ -81,10 +88,14 @@ Uint8List? printableImage(Uint8List? b) {
 
 class ExamPaperSheet extends StatefulWidget {
   const ExamPaperSheet(
-      {super.key, required this.view, this.course = '', this.orgName = '', this.logoUrl, this.accentHex = '0F7B5F', this.versionsApi, this.setupApi});
+      {super.key, required this.view, this.course = '', this.orgName = '', this.logoUrl, this.accentHex = '0F7B5F', this.versionsApi, this.setupApi, this.designApi, this.layoutApi});
   final ExamView view;
   final ExamVersionsApi? versionsApi;
   final ExamSetupApi? setupApi;
+
+  /// The stored paper design (D-196) and the engine's starters / templates / pictures; tests pass fakes.
+  final ExamPaperDesignApi? designApi;
+  final LayoutApi? layoutApi;
   final String course, orgName;
   final String? logoUrl;
   final String accentHex;
@@ -95,7 +106,20 @@ class ExamPaperSheet extends StatefulWidget {
 
 class _ExamPaperSheetState extends State<ExamPaperSheet> {
   PaperTemplate _tpl = PaperTemplate.auto;
-  bool _word = false;
+  bool _word = false, _xlsx = false;
+
+  // the paper designer (D-196): the stored design, the cover, and what runs
+  late final ExamPaperDesignApi _dApi = widget.designApi ?? ExamPaperDesignApi();
+  late final LayoutApi _lApi = widget.layoutApi ?? LayoutApi.instance;
+  LayoutDocument? _design;
+  PaperCoverSpec _cover = const PaperCoverSpec();
+  bool _coverOn = false, _designDirty = false;
+  int _designVersion = 0;
+  String? _designBusy;           // 'design' | 'template' | 'cover' | 'letterhead'
+  late final _university = TextEditingController()..addListener(() => _designDirty = true);
+
+  /// The kill switch `exam.paper_designer` hides the whole block and the sheet works as it did before.
+  bool get _designerOn => !AppConfig.disableList.contains('exam.paper_designer');
   bool _points = true, _seat = true;
   Uint8List? _custom;
   String? _customName;
@@ -133,7 +157,9 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     if (id == null) return;
     final v = await _vApi.versions(id);
     final s = await _sApi.setup(id);
+    final pd = _designerOn ? await _dApi.load(id) : null;
     if (!mounted) return;
+    if (pd != null && !_designDirty && _design == null) _adopt(pd);
     setState(() {
       if (v.ok) _versions = ExamVersions.fromJson(v.map);
       if (s.ok) {
@@ -141,6 +167,201 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         if (x.delivery == 'paper') _setup = x;
       }
     });
+  }
+
+  /// Takes the server's stored design as the current one.
+  void _adopt(PaperDesignState s) {
+    _designVersion = s.version;
+    _design = s.document;
+    final c = s.cover;
+    _coverOn = c != null;
+    _cover = c ?? const PaperCoverSpec();
+    _university.text = _cover.university;
+    _designDirty = false;
+  }
+
+  /// Saves the design and the cover with the version we hold; a stale version asks "Reload / Keep mine".
+  Future<void> _persist() async {
+    final id = widget.view.exam.id;
+    if (id == null || !_designerOn) return;
+    _cover = _cover.copyWith(university: _university.text.trim());
+    var r = await _dApi.save(id, document: _design, cover: _coverOn ? _cover : null, version: _designVersion);
+    if (!mounted) return;
+    if (r.conflict) {
+      final pick = await showPaperConflictDialog(context);
+      if (!mounted || pick == null) return;
+      final cur = await _dApi.load(id);
+      if (!mounted) return;
+      if (cur == null) return appToast(t('تعذّر تحميل التصميم', 'Could not load the design'), error: true);
+      if (pick == PaperConflictChoice.reload) {
+        setState(() => _adopt(cur));
+        return;
+      }
+      r = await _dApi.save(id, document: _design, cover: _coverOn ? _cover : null, version: cur.version);
+      if (!mounted) return;
+    }
+    if (r.ok) {
+      _designVersion = r.state!.version;
+      _designDirty = false;
+      // the purge cannot read the engine's designs: keep their pictures alive (fire and forget)
+      final ids = {...paperAssetIds(_design), if (_coverOn) ...paperAssetIds(_cover.design)};
+      if (ids.isNotEmpty) unawaited(LayoutApi.instance.keepAssets(ids));
+    } else if (r.error != null) {
+      appToast(r.error!, error: true);
+    } else {
+      appToast(t('تغيّر التصميم مجددًا: أعد المحاولة', 'The design changed again: try once more'), error: true);
+    }
+  }
+
+  Map<String, Object?> _sample() {
+    final d = ExamPaperDoc.fromView(widget.view,
+        institution: _institution.text, course: _course.text, dateText: _date.text.trim(), instructions: _instructions.text.split('\n'), rtl: AppConfig.lang == 'ar');
+    return paperSampleRow(
+        institution: _institution.text, course: _course.text, title: d.title, date: _date.text.trim(), duration: d.durationText,
+        total: '${d.total}', instructions: _instructions.text, university: _university.text);
+  }
+
+  Future<void> _withBusy(String what, Future<void> Function() fn) async {
+    setState(() => _designBusy = what);
+    try {
+      await fn();
+    } catch (e) {
+      debugPrint('paper design failed: $e');
+      appToast(t('تعذّر إكمال العملية', 'Could not finish'), error: true);
+    }
+    if (mounted) setState(() => _designBusy = null);
+  }
+
+  /// A start document for [purpose]: the classic starter, else null.
+  Future<LayoutDocument?> _starterDoc(String purpose) async {
+    final r = await _lApi.starters(purpose: purpose);
+    if (!r.ok) return null;
+    final cs = paperStartChoices(r.data!, const [], purpose: purpose);
+    return cs.isEmpty ? null : paperDocFrom(cs.first.document, purpose: purpose);
+  }
+
+  Future<void> _professional() => _withBusy('template', () async {
+        final s = await _lApi.starters(purpose: DesignPurpose.examPaper);
+        final mine = await _lApi.templates(pageKey: 'exam.paper', orgId: widget.view.exam.orgId);
+        if (!mounted) return;
+        final choices = paperStartChoices(s.ok ? s.data! : const [], mine.ok ? mine.data!.$1 : const []);
+        if (choices.isEmpty) return appToast(s.error ?? t('لا توجد تصاميم جاهزة بعد', 'There are no ready designs yet'), error: true);
+        final pick = await showAppSheet<PaperStartChoice>(
+            context, (ctx) => PaperStartGallery(title: t('اختر تصميمًا', 'Pick a design'), choices: choices, onPick: (x) => Navigator.of(ctx).pop(x)));
+        if (pick == null || !mounted) return;
+        setState(() {
+          _design = paperDocFrom(pick.document, purpose: DesignPurpose.examPaper);
+          if (_tpl == PaperTemplate.custom) _tpl = PaperTemplate.auto;
+        });
+        await _persist();
+        if (mounted) appToast(t('اخترت «${pick.name}». اضغط «صمّم الورقة» لتعديله.', 'Using “${pick.name}”. Tap “Design the paper” to adjust it.'));
+      });
+
+  Future<void> _letterhead() async {
+    final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['png', 'jpg', 'jpeg', 'pdf']);
+    if (f == null || !mounted) return;
+    await _withBusy('letterhead', () async {
+      final id = await uploadPaperBackground(_lApi, await f.readAsBytes(), f.name);
+      if (id == null || !mounted) return;
+      final doc = _design ?? await _starterDoc(DesignPurpose.examPaper) ?? blankPaperDoc(purpose: DesignPurpose.examPaper, assetId: id);
+      setPaperBackground(doc, id);
+      setState(() {
+        _design = doc;
+        if (_tpl == PaperTemplate.custom) _tpl = PaperTemplate.auto;
+      });
+      await _persist();
+      if (mounted) await _openDesigner();
+    });
+  }
+
+  Future<void> _openDesigner() async {
+    final d = _design;
+    if (d == null) return;
+    final out = await openPaperDesigner(context,
+        purpose: DesignPurpose.examPaper, title: widget.view.exam.title, initial: d, sample: _sample(), orgId: widget.view.exam.orgId);
+    if (out == null || !mounted) return;
+    setState(() => _design = out);
+    await resolvePaperAssets([out]);
+    await _persist();
+  }
+
+  Future<void> _useBuiltIn() async {
+    setState(() => _design = null);
+    await _persist();
+  }
+
+  Future<void> _saveTemplate() async {
+    final d = _design;
+    if (d == null) return;
+    final ctl = TextEditingController(text: widget.view.exam.title);
+    final name = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              title: Text(t('حفظ كقالب لي', 'Save as my template')),
+              content: AppField(controller: ctl, label: t('اسم القالب', 'Template name')),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t('إلغاء', 'Cancel'))),
+                FilledButton(onPressed: () => Navigator.of(ctx).pop(ctl.text.trim()), child: Text(t('حفظ', 'Save'))),
+              ],
+            ));
+    ctl.dispose();
+    if (name == null || name.isEmpty || !mounted) return;
+    await _withBusy('template', () async {
+      final r = await _lApi.saveTemplate(pageKey: 'exam.paper', name: name, doc: d, orgId: widget.view.exam.orgId);
+      if (mounted) appToast(r.ok ? '${t('حُفظ القالب', 'Template saved')}: $name' : (r.error ?? t('تعذّر حفظ القالب', 'Could not save the template')), error: !r.ok);
+    });
+  }
+
+  Future<void> _setCover(bool on) async {
+    setState(() => _coverOn = on);
+    await _persist();
+  }
+
+  /// The cover's start document: its saved design, else the classic cover starter, else an empty page.
+  Future<LayoutDocument> _coverDoc({String? assetId}) async {
+    final doc = _cover.design ?? await _starterDoc(DesignPurpose.examCover) ?? blankPaperDoc(purpose: DesignPurpose.examCover, assetId: assetId);
+    doc.purpose = DesignPurpose.examCover;
+    if (assetId != null) setPaperBackground(doc, assetId);
+    return doc;
+  }
+
+  Future<void> _openCoverDesigner(LayoutDocument doc) async {
+    final out = await openPaperDesigner(context,
+        purpose: DesignPurpose.examCover, title: widget.view.exam.title, initial: doc, sample: _sample(), orgId: widget.view.exam.orgId);
+    if (out == null || !mounted) return;
+    setState(() => _cover = _cover.copyWith(design: out));
+    await resolvePaperAssets([out]);
+    await _persist();
+  }
+
+  Future<void> _designCover() => _withBusy('cover', () async => _openCoverDesigner(await _coverDoc()));
+
+  Future<void> _uploadCover() async {
+    final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['png', 'jpg', 'jpeg', 'pdf']);
+    if (f == null || !mounted) return;
+    await _withBusy('cover', () async {
+      final id = await uploadPaperBackground(_lApi, await f.readAsBytes(), f.name);
+      if (id == null || !mounted) return;
+      final doc = await _coverDoc(assetId: id);
+      setState(() => _cover = _cover.copyWith(design: doc));
+      await _persist();
+      if (mounted) await _openCoverDesigner(doc);
+    });
+  }
+
+  /// The paper with the design, the cover and the bytes of their pictures (a custom Word template ignores them).
+  Future<ExamPaperDoc> _designed(ExamPaperDoc d) async {
+    if (!_designerOn || _tpl == PaperTemplate.custom) return d;
+    if (_designDirty && (_design != null || _coverOn)) await _persist();
+    final cover = _coverOn ? _cover.copyWith(university: _university.text.trim()) : null;
+    if (_design == null && cover == null) return d;
+    final raw = await resolvePaperAssets([_design, cover?.design]);
+    final assets = <String, Uint8List>{};
+    for (final e in raw.entries) {
+      final b = printableImage(e.value);
+      if (b != null) assets[e.key] = b;
+    }
+    return paperWithDesign(d, design: _design, cover: cover, assets: assets);
   }
 
   Future<void> _editVersions() async {
@@ -182,7 +403,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
 
   @override
   void dispose() {
-    for (final c in [_institution, _date, _course, _instructions]) {
+    for (final c in [_institution, _date, _course, _instructions, _university]) {
       c.dispose();
     }
     super.dispose();
@@ -231,6 +452,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
       _customName = f.name;
       _tpl = PaperTemplate.custom;
       _word = true;
+      _xlsx = false;
     });
   }
 
@@ -245,7 +467,8 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     }
   }
 
-  Future<ExamPaperDoc> _baseDoc({required bool answerKey}) async => attachPaperImages(await _plainDoc(answerKey: answerKey), bankQuestionBytes);
+  Future<ExamPaperDoc> _baseDoc({required bool answerKey}) async =>
+      attachPaperImages(await _designed(await _plainDoc(answerKey: answerKey)), bankQuestionBytes);
 
   Future<ExamPaperDoc> _plainDoc({required bool answerKey}) async => ExamPaperDoc.fromView(widget.view,
       institution: _institution.text,
@@ -318,9 +541,12 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         }
       }
       final tpl = resolvePaperTemplate(_tpl, highStakes: widget.view.exam.highStakes);
-      final word = _word || tpl == PaperTemplate.custom;
+      final xlsx = _xlsx && tpl != PaperTemplate.custom;
+      final word = (_word || tpl == PaperTemplate.custom) && !xlsx;
       final Uint8List bytes;
-      if (tpl == PaperTemplate.custom) {
+      if (xlsx) {
+        bytes = paperXlsxBytes(d, versions: _versions);
+      } else if (tpl == PaperTemplate.custom) {
         bytes = fillExamTemplate(_custom!, d);
       } else if (word) {
         bytes = examPaperDocx(d, tpl);
@@ -329,8 +555,10 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         bytes = await examPaperPdf(d, tpl, regular: await rootBundle.load(s.regular), bold: await rootBundle.load(s.bold));
       }
       final base = '${d.title}${v == null ? '' : ' - ${v.code}'}${answerKey ? ' - ${t('نموذج الإجابة', 'answer key')}' : ''}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
-      final path = await saver.dlSaveBytes(bytes, '$base.${word ? 'docx' : 'pdf'}',
-          word ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf');
+      final path = await saver.dlSaveBytes(bytes, '$base.${xlsx ? 'xlsx' : word ? 'docx' : 'pdf'}',
+          xlsx
+              ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+              : word ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf');
       await _remember();
       appToast(path == null ? t('جاهز للطباعة', 'Ready to print') : '${t('حُفظ في', 'Saved to')} $path');
     } catch (e) {
@@ -344,7 +572,71 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final resolved = resolvePaperTemplate(_tpl, highStakes: widget.view.exam.highStakes);
+    final designActive = _designerOn && _design != null && _tpl != PaperTemplate.custom;
     return AppSheetContent(title: t('ورقة الامتحان للطباعة', 'Printable exam paper'), children: [
+      ParentComponent(
+        featureKey: 'exam.paper_designer',
+        child: ExamPaperDesignBlock(
+          hasDesign: _design != null,
+          wordSelected: _tpl == PaperTemplate.custom,
+          wordName: _customName,
+          busy: _designBusy,
+          onProfessional: _professional,
+          onWord: () {
+            if (_custom == null) {
+              _pickCustom();
+              return;
+            }
+            setState(() {
+              _tpl = PaperTemplate.custom;
+              _word = true;
+              _xlsx = false;
+            });
+          },
+          onLetterhead: _letterhead,
+          onDesign: () => _withBusy('design', _openDesigner),
+          onSaveTemplate: _saveTemplate,
+          onUseBuiltIn: _useBuiltIn,
+          coverOn: _coverOn,
+          onCover: _setCover,
+          university: _university,
+          marksTable: _cover.marksTable,
+          onMarksTable: (v) {
+            setState(() => _cover = _cover.copyWith(marksTable: v));
+            _persist();
+          },
+          hasCoverDesign: _cover.design != null,
+          onCoverUpload: _uploadCover,
+          onCoverDesign: _designCover,
+        ),
+      ),
+      if (!designActive) ..._templatePicker(c, resolved) else const SizedBox.shrink(),
+      const SizedBox(height: 12),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        AppChoiceChip(label: 'PDF', icon: Icons.picture_as_pdf_rounded, selected: !_word && !_xlsx && _tpl != PaperTemplate.custom,
+            onTap: () => setState(() {
+                  _word = false;
+                  _xlsx = false;
+                  if (_tpl == PaperTemplate.custom) _tpl = PaperTemplate.auto;
+                })),
+        AppChoiceChip(label: 'Word', icon: Icons.description_rounded, selected: (_word && !_xlsx) || _tpl == PaperTemplate.custom, onTap: () => setState(() {
+              _word = true;
+              _xlsx = false;
+            })),
+        AppChoiceChip(label: 'Excel', icon: Icons.table_chart_rounded, selected: _xlsx && _tpl != PaperTemplate.custom, onTap: () => setState(() {
+              _xlsx = true;
+              _word = false;
+              if (_tpl == PaperTemplate.custom) _tpl = PaperTemplate.auto;
+            })),
+      ]),
+      const SizedBox(height: 6),
+      ..._rest(context),
+    ]);
+  }
+
+  /// "Pick a design": the built-in designs and the creator's own Word template (hidden while a designed paper is on).
+  List<Widget> _templatePicker(ThemeConfigProvider c, PaperTemplate resolved) {
+    return [
       Text(t('اختر التصميم', 'Pick a design'), style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
       const SizedBox(height: 8),
       Wrap(spacing: 10, runSpacing: 10, children: [
@@ -380,16 +672,12 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
             TextButton(onPressed: _pickCustom, child: Text(t('ملف آخر', 'Another file'))),
           ]),
         ),
-      const SizedBox(height: 12),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        AppChoiceChip(label: 'PDF', icon: Icons.picture_as_pdf_rounded, selected: !_word && _tpl != PaperTemplate.custom,
-            onTap: () => setState(() {
-                  _word = false;
-                  if (_tpl == PaperTemplate.custom) _tpl = PaperTemplate.auto;
-                })),
-        AppChoiceChip(label: 'Word', icon: Icons.description_rounded, selected: _word || _tpl == PaperTemplate.custom, onTap: () => setState(() => _word = true)),
-      ]),
-      const SizedBox(height: 6),
+    ];
+  }
+
+  List<Widget> _rest(BuildContext context) {
+    final c = context.colors;
+    return [
       Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
@@ -449,7 +737,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         icon: _busy == 'key' ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.key_rounded, size: 18),
         label: Text(t('نموذج الإجابة (نسخة المعلم)', 'Answer key (teacher\'s copy)')),
       ),
-    ]);
+    ];
   }
 }
 

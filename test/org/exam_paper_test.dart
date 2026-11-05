@@ -147,6 +147,25 @@ void main() {
     expect(templateHasQuestions(plain), isFalse);
   });
 
+  test('a design with no bands for the language leaves today\'s templates untouched; paperValues covers the copy', () async {
+    // an empty LayoutDocument holds no design: the writers must produce what they produce with design null
+    final plain = _doc(), empty = ExamPaperDoc.fromView(_view(ar: true), institution: 'x', instructions: const [], rtl: true);
+    expect(empty.design, isNull);
+    final withEmpty = _doc().copyWith(studentName: 'Salma');
+    expect(withEmpty.design, isNull);
+    final a = _docXml(examPaperDocx(plain, PaperTemplate.classic)), b = _docXml(examPaperDocx(plain.copyWith(), PaperTemplate.classic));
+    expect(a, b);
+    final v = plain.copyWith(studentName: 'Salma', seat: '9', version: 'B').paperValues();
+    expect(v['student_name'], 'Salma');
+    expect(v['seat'], '9');
+    expect(v['version'], 'B');
+    expect(v['institution'], 'مدرسة النور الثانوية');
+    expect(plain.cover, isNull);
+    expect(plain.assets, isEmpty);
+    expect(plain.copyWith(cover: const ExamCover(university: 'U')).cover!.university, 'U');
+    expect(plain.copyWith(cover: const ExamCover(), dropCover: true).cover, isNull);
+  });
+
   test('printableImage keeps PNG / JPEG and drops what it cannot read', () {
     final png = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0, 0]);
     expect(printableImage(png), same(png));

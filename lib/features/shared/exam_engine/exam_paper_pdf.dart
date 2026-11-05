@@ -15,6 +15,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../../design/export/table_export_model.dart' show onColorHex, shadeHex, tintHex;
 import 'exam_paper.dart';
+import 'exam_paper_bands.dart';
 
 PdfColor _pc(String hex) => PdfColor.fromInt(0xFF000000 | int.parse(hex, radix: 16));
 
@@ -52,8 +53,38 @@ const kPaperQrSize = 34.0;
 /// Test hook: called with (paper index, page number, the paper's page count) for each footer drawn into a real document.
 void Function(int paper, int no, int total)? paperFooterProbe;
 
+/// The cover page of [d] (its student's name filled in), drawn from the cover design's item block; the built-in cover when the
+/// design is null. Not part of the paper's own page count, numbering or QR payloads.
+void _addCover(pw.Document doc, ExamPaperDoc d) {
+  final cover = d.cover!;
+  final design = paperDesignFor(cover.design ?? paperCoverDesign(rtl: d.rtl), rtl: d.rtl);
+  if (design == null) return;
+  final page = design.page;
+  final values = d.paperValues();
+  final ctx = PaperBandCtx(doc: d, design: design, values: values, lang: d.rtl ? 'ar' : 'en', widthMm: page.contentWidth, marksTable: cover.marksTable);
+  final items = resolvePaperElements(design.row.elements, ctx);
+  final bg = paperBackground(design, d.assets);
+  final w = page.width * PdfPageFormat.mm, h = page.height * PdfPageFormat.mm;
+  doc.addPage(pw.Page(
+    pageTheme: pw.PageTheme(pageFormat: PdfPageFormat(w, h), margin: pw.EdgeInsets.zero, textDirection: d.rtl ? pw.TextDirection.rtl : pw.TextDirection.ltr),
+    build: (_) => pw.SizedBox(
+      width: w,
+      height: h,
+      child: pw.Stack(overflow: pw.Overflow.clip, children: [
+        if (bg != null) pw.Positioned(left: 0, top: 0, child: paperBackgroundPdf(bg, w, h)),
+        pw.Positioned(
+          left: page.margins.left * PdfPageFormat.mm,
+          top: page.margins.top * PdfPageFormat.mm,
+          child: paperItemsPdf(items, widthMm: page.contentWidth, heightMm: page.contentHeight),
+        ),
+      ]),
+    ),
+  ));
+}
+
 int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTotal, int paperIndex) {
   var lastPage = 1;
+  if (d.cover != null) _addCover(doc, d);
   // pw.Context page numbers count the whole document: a paper in a merged PDF numbers its own pages from 1
   final offset = doc.document.pdfPageList.pages.length;
   final style = PaperStyle.of(tpl);
@@ -66,6 +97,17 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
   const fs = 11.5;
   final logo = d.logo == null ? null : pw.MemoryImage(d.logo!);
   List<T> rtlCols<T>(List<T> cols) => d.rtl ? cols.reversed.toList() : cols;
+
+  // an engine design (null = the template alone, unchanged): its header / footer bands and page background
+  const contentMm = (595.28 - 80) / PdfPageFormat.mm;
+  final design = paperDesignFor(d.design, rtl: d.rtl);
+  final bandCtx = design == null ? null : PaperBandCtx(doc: d, design: design, values: d.paperValues(), lang: d.rtl ? 'ar' : 'en', widthMm: contentMm);
+  final headerBand = bandCtx == null || design!.header.elements.isEmpty ? null : resolvePaperBand(design.header, bandCtx);
+  final footerBand = bandCtx == null || design!.footer.elements.isEmpty ? null : resolvePaperBand(design.footer, bandCtx);
+  final everyPageHeader = design?.header.placement == 'every_page';
+  final afterItemsFooter = design?.footer.placement == 'after_items';
+  final designBg = paperBackground(design, d.assets);
+  final ownStudentBox = paperDesignDraws(design, 'student_box'), ownInstructions = paperDesignDraws(design, 'instructions');
 
   pw.Widget txt(String s, {double size = fs, bool bold = false, PdfColor? color, pw.TextAlign? align, double? height, int? maxLines}) => pw.Text(s,
       textAlign: align, maxLines: maxLines, style: pw.TextStyle(fontSize: size, fontWeight: bold ? pw.FontWeight.bold : null, color: color ?? ink, lineSpacing: height));
@@ -436,8 +478,8 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
   final tableOn = d.answerTable != AnswerTablePlace.none && answerTableEntries(d).isNotEmpty;
   final content = <pw.Widget>[
     pw.SizedBox(height: 10),
-    if (!d.answerKey) ...[studentBox(), pw.SizedBox(height: 9)],
-    instructions(),
+    if (!d.answerKey && !ownStudentBox) ...[studentBox(), pw.SizedBox(height: 9)],
+    if (!ownInstructions) instructions(),
     if (!d.answerKey && !tplIsMinimal(tpl)) ...[pw.SizedBox(height: 9), marksTable()],
     if (d.answerKey && d.keySummary.isNotEmpty) ...[pw.SizedBox(height: 9), keySummary()],
     if (tableOn && d.answerTable == AnswerTablePlace.start) ...[pw.SizedBox(height: 9), answerTable()],
@@ -502,7 +544,24 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
       pageFormat: PdfPageFormat.a4,
       margin: pw.EdgeInsets.fromLTRB(40, classic ? 40 : 32, 40, classic ? 34 : 28),
       textDirection: dir,
-      buildBackground: classic
+      buildBackground: design != null
+          ? (designBg == null && design.frame == null
+              ? null
+              : (c) => pw.FullPage(
+                    ignoreMargins: true,
+                    child: pw.Stack(children: [
+                      if (designBg != null) pw.Positioned(left: 0, top: 0, child: paperBackgroundPdf(designBg, PdfPageFormat.a4.width, PdfPageFormat.a4.height)),
+                      if (design.frame != null)
+                        pw.Positioned(
+                          left: 17, top: 17,
+                          child: pw.Container(
+                            width: PdfPageFormat.a4.width - 34, height: PdfPageFormat.a4.height - 34,
+                            decoration: pw.BoxDecoration(border: pw.Border.all(color: _pc((parseLayoutColor(design.frame!.color)?.$1) ?? '1F2933'), width: design.frame!.width * PdfPageFormat.mm)),
+                          ),
+                        ),
+                    ]),
+                  ))
+          : classic
           ? (c) => pw.FullPage(
                 ignoreMargins: true,
                 child: pw.Container(
@@ -515,7 +574,9 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
           : null,
     ),
     maxPages: 500,
-    header: (c) => c.pageNumber - offset == 1
+    header: (c) => headerBand != null && (c.pageNumber - offset == 1 || everyPageHeader)
+        ? paperBandPdf(headerBand, widthMm: contentMm, page: c.pageNumber - offset, pages: knownTotal ?? lastPage)
+        : c.pageNumber - offset == 1 && headerBand == null
         ? header()
         : pw.Container(
             margin: const pw.EdgeInsets.only(bottom: 10),
@@ -535,7 +596,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
       final total = knownTotal ?? lastPage;
       paperFooterProbe?.call(paperIndex, no, total);
       final payload = no <= d.qrPages.length ? d.qrPages[no - 1] : null;
-      return pw.Container(
+      final line = pw.Container(
         margin: const pw.EdgeInsets.only(top: 8),
         child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
           pw.Expanded(child: txt(paperTurnOver(no, total) ? w.turnOver : '', size: 8.5, color: muted)),
@@ -549,6 +610,14 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
           ],
         ]),
       );
+      if (footerBand == null) return line;
+      // the design's footer band sits above the app-drawn page + QR strip; "after the items" draws it on the last page only
+      // (the room is kept on every page so the page count does not depend on it)
+      final showBand = !afterItemsFooter || no >= total;
+      return pw.Column(mainAxisSize: pw.MainAxisSize.min, crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+        showBand ? paperBandPdf(footerBand, widthMm: contentMm, page: no, pages: total) : pw.SizedBox(height: footerBand.heightMm * PdfPageFormat.mm),
+        line,
+      ]);
     },
     build: (_) => content,
   ));
