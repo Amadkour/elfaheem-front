@@ -518,7 +518,7 @@ class GenProgressView extends StatelessWidget {
           padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Text(t('${progress.done} من ${progress.total} سؤالاً', '${progress.done} of ${progress.total} questions'), textAlign: TextAlign.center, style: appText(12, c: c.textLight)),
         ),
-      for (final w in warnings.take(3)) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: w.message)),
+      for (final w in warnings.take(3)) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: w.text)),
     ]);
   }
 }
@@ -848,7 +848,8 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
     appToast(left > 0
         ? t('${items.length} سؤالاً جاهزاً، وتعذّر كتابة $left', '${items.length} questions ready, $left could not be written')
         : t('${items.length} سؤالاً جاهزاً', '${items.length} questions ready'));
-    Navigator.pop(context, ExamGenResult(job.id, items));
+    final notice = [for (final w in job.warnings) if (w.code == 'rules_writer') w.text];
+    Navigator.pop(context, ExamGenResult(job.id, items, notice: notice.isEmpty ? '' : notice.first));
   }
 
   bool get _canNext => switch (_step) {

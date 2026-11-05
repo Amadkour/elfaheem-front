@@ -301,6 +301,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
   QuickExam get q => widget.exam;
   late final _title = TextEditingController(text: q.title);
   bool _busy = false;
+  String _genNotice = '';                // the generator's note about the whole batch (no model, and why)
   bool _tried = false;
   late bool _started = q.questions.isNotEmpty || q.isFile;
   final _review = ExamGenReview();
@@ -372,7 +373,10 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     final got = await openExamGenerator(context, courseId: q.courseId!, orgId: q.orgId);
     if (got == null || got.items.isEmpty || !mounted) return;
     _review.track(got);
-    setState(() => q.questions.addAll(got.questions));
+    setState(() {
+      q.questions.addAll(got.questions);
+      _genNotice = got.notice;
+    });
     appToast(t('أُضيف ${got.items.length} سؤالاً — راجعها وعدّلها قبل النشر', '${got.items.length} questions added — review and edit them before publishing'));
   }
 
@@ -469,6 +473,11 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                   else ...[
                     if (q.courseId != null)
                       Padding(padding: const EdgeInsets.only(bottom: 10), child: QuickGenerateCard(onTap: _busy ? null : _generate)),
+                    if (_genNotice.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: _genNotice),
+                      ),
                     for (var i = 0; i < q.questions.length; i++)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
@@ -979,7 +988,8 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
           leading: Icon(Icons.tune_rounded, color: c.textMedium),
           title: Text(t('متقدم', 'Advanced'), style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
           subtitle: Text(_summary(), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
-          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          // the top gap keeps the first row's floating labels inside the tile, which clips its children
+          childrenPadding: const EdgeInsets.fromLTRB(14, AppSpace.xs, 14, 14),
           expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(children: [

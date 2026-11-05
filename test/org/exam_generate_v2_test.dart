@@ -206,6 +206,19 @@ void main() {
       expect(GenJob.fromJson({'id': 1, 'state': 'done', 'progress': {'percent': 140}}).progress.percent, 100);
       expect(genPhaseLabel('validating'), contains('Checking'));
     });
+
+    test('warnings read in the app language, by code; an unknown code shows the server text', () {
+      GenWarning w(Map<String, dynamic> m) => GenWarning.fromJson(m);
+      final consent = w({'code': 'rules_writer', 'reason': 'needs_consent', 'message': 'x'});
+      expect(consent.text, contains('organization has not allowed'));
+      expect(w({'code': 'rules_writer', 'reason': 'no_model', 'message': 'x'}).text, contains('no language model is set up'));
+      expect(w({'code': 'matching_to_mcq', 'n': 4, 'message': 'x'}).text, startsWith('Question 4: '));
+      expect(w({'code': 'section_empty', 'title': 'Cells', 'message': 'x'}).text, contains('“Cells”'));
+      expect(w({'code': 'brand_new', 'message': 'server text'}).text, 'server text');
+      AppConfig.lang = 'ar';
+      expect(consent.text, contains('مؤسستك'));
+      expect(w({'code': 'slot_failed', 'n': 2, 'message': 'x'}).text, startsWith('السؤال 2: '));
+    });
   });
 
   group('server question → quick builder question', () {

@@ -306,9 +306,45 @@ String genPhaseLabel(String phase) => switch (phase) {
       _ => t('نجهّز الأسئلة…', 'Getting ready…'),
     };
 
+/// A note the server attached to a generation job; [text] is what the teacher reads, in the app's language.
 class GenWarning {
-  const GenWarning(this.code, this.message);
+  const GenWarning(this.code, this.message, {this.n, this.reason = '', this.title = ''});
   final String code, message;
+
+  /// The question it is about (from 1), when it is about one.
+  final int? n;
+
+  /// `rules_writer`: no_model | platform_off | org_choice | needs_consent; `slot_failed`: why the slot failed.
+  final String reason;
+
+  /// `section_empty`: the section's title.
+  final String title;
+
+  factory GenWarning.fromJson(Map<String, dynamic> w) =>
+      GenWarning(asStr(w['code']), asStr(w['message']), n: w['n'] is num ? asInt(w['n']) : null, reason: asStr(w['reason']), title: asStr(w['title']));
+
+  String get text {
+    final q = n == null ? '' : t('السؤال $n: ', 'Question $n: ');
+    return switch (code) {
+      'rules_writer' => switch (reason) {
+          'no_model' => t('كُتبت الأسئلة من نص المادة مباشرةً لأنه لا يوجد نموذج لغوي مُعدّ. راجعها قبل النشر.',
+              'The questions were written straight from the text because no language model is set up. Review them before publishing.'),
+          'org_choice' => t('اختارت مؤسستك كتابة الأسئلة من نص المادة دون نموذج لغوي. راجعها قبل النشر.',
+              'Your organization chose to write questions from the text without a language model. Review them before publishing.'),
+          'needs_consent' => t('كُتبت الأسئلة من نص المادة لأن مؤسستك لم تسمح بإرسال المحتوى إلى نموذج خارجي. يمكن لمسؤول المؤسسة السماح بذلك.',
+              'The questions were written from the text because your organization has not allowed sending content to an external model. An organization admin can allow it.'),
+          _ => t('كُتبت الأسئلة من نص المادة دون نموذج لغوي. راجعها قبل النشر.', 'The questions were written from the text without a language model. Review them before publishing.'),
+        },
+      'matching_to_mcq' => '$q${t('لا توجد تعريفات كافية للمطابقة في هذا الفصل، فكُتب السؤال اختيارًا من متعدد.', 'the chapter has no definitions to match, so it was written as multiple choice.')}',
+      'slot_failed' => '$q${t('تعذّرت كتابة سؤال من هذا الجزء. أعد التوليد أو اكتبه يدويًا.', 'could not be written from this part. Regenerate it or write it by hand.')}',
+      'regenerate_failed' => '$q${t('تعذّرت إعادة التوليد، وبقي السؤال السابق.', 'regenerating failed; the previous question was kept.')}',
+      'section_empty' => title.isEmpty
+          ? t('أحد الفصول المختارة لا يحتوي نصًا صالحًا للأسئلة.', 'One of the chosen chapters has no text usable for questions.')
+          : t('الفصل «$title» لا يحتوي نصًا صالحًا للأسئلة.', 'The chapter “$title” has no text usable for questions.'),
+      'section_unavailable' => t('أحد الفصول المختارة لم يعد متاحًا.', 'One of the chosen chapters is no longer available.'),
+      _ => message,
+    };
+  }
 }
 
 class GenJob {
@@ -329,7 +365,7 @@ class GenJob {
       state: asStr(j['state'], 'queued'),
       progress: GenProgress.fromJson(asMap(j['progress'])),
       questions: asMapList(j['questions']),
-      warnings: [for (final w in asMapList(j['warnings'])) GenWarning(asStr(w['code']), asStr(w['message']))],
+      warnings: [for (final w in asMapList(j['warnings'])) GenWarning.fromJson(w)],
       error: j['error']?.toString(),
       params: asMap(j['params']));
 

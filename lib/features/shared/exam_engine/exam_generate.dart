@@ -162,9 +162,12 @@ QuickQuestion? _quickOf(Map<String, dynamic> g) {
 
 /// What the sheet hands the quick builder: the draft and its questions with their indexes in the draft.
 class ExamGenResult {
-  const ExamGenResult(this.draftId, this.items);
+  const ExamGenResult(this.draftId, this.items, {this.notice = ''});
   final int draftId;
   final List<(int, QuickQuestion)> items;
+
+  /// What the teacher should know about the whole batch (written without a model, and why); '' = nothing.
+  final String notice;
 
   List<QuickQuestion> get questions => [for (final (_, q) in items) q];
 }
