@@ -9,7 +9,7 @@ job (owner deploys once after all sessions).
 |---|---|---|
 | 1 Discovery + plan | done | approved 2026-11-05; owner took the recommendations: university + faculty only, midterm mark added |
 | 2 Foundation | done | brief `PHASE2.md`; back 4d00406 · fb66c38 · 3478985, front a117d608 · 2daa1942 · b7031cf1; security review: 3 fixes (no migration data step, live-only directors); migration renumbered 0050 at the merge |
-| 3 Config + assignment | todo | |
+| 3 Config + assignment | in progress | brief `PHASE3.md`; owner 2026-11-05: keep links to departed advisors (counted away) |
 | 4 Advisor workspace | todo | |
 | 5 Appointments + messages | todo | |
 | 6 Early warning | todo | |
