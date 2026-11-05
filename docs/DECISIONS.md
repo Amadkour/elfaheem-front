@@ -2723,7 +2723,7 @@ through the context switcher (D-286).
 
 ## D-283 — Organization invitations by e-mail or phone, and join links · 2026-11-04 · accepted
 
-Table `org_invitations` (migration 0047, RLS like 0003, reversible). Only the sha256 of the link token is stored, so a
+Table `org_invitations` (migration 0048, RLS like 0003, reversible). Only the sha256 of the link token is stored, so a
 resend issues a new link and the old one stops working. Inviting needs the insert right of the invited role (students /
 teachers / staff). The invitation page `https://nextbrain.site/i/<token>` opens signed out; accepting or declining
 needs a signed-in account whose VERIFIED e-mail / phone equals the contact. There is no SMS provider: a phone invitation
@@ -2780,7 +2780,7 @@ list with Retry instead of looking like "no organizations". The admin home's Mor
 **Problem.** Adding a member by e-mail (one person or an Excel sheet) attached any EXISTING account to the
 organization without the person agreeing (review finding F6). **Decision (owner, 2026-11-05):** bulk Excel import stays;
 an existing account gets a pending invitation (`org_invitations` with `target_user_id`, `member_spec`, `source`
-`manual` / `excel`, migration 0047) and sees it in the app as a notification and a dialog (Accept / Reject / Later,
+`manual` / `excel`, migration 0048) and sees it in the app as a notification and a dialog (Accept / Reject / Later,
 `lib/features/org/org_invitation_prompt.dart`, kill switch `org.invitations`). Accepting applies exactly what the admin
 entered (role, student code, window, profile, department seat, assistant permissions). Rejecting notifies the inviter
 and blocks re-inviting from the same organization for 7 days. An account the organization creates right there (no

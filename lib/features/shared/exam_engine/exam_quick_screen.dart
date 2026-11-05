@@ -11,6 +11,7 @@ import 'dart:async' show unawaited;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -33,6 +34,8 @@ import 'paper/paper_exam_entry.dart' show isPaperExam, showPaperExamReady;
 import 'paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
 
 const _numKeyboard = TextInputType.numberWithOptions(decimal: true);
+/// The builder's column on a wide window.
+const quickScreenMaxWidth = 820.0;
 const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
 
 /// Opens the quick builder; returns the created exam's id (null when the creator left without creating).
@@ -367,8 +370,9 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     final errors = rawErrors.where((e) => e != 'mode_required').toList();
     return BasePage(
       key: const ValueKey('exam.quick'),
-      appBar: AppBar(title: Text(t('اختبار جديد', 'New exam'))),
-      child: !_started
+      appBar: AppBar(title: Text(t('اختبار جديد', 'New exam')), actions: const [HelpInfoButton(pageId: 'teacher.exam_quick')]),
+      // a desktop window: the builder reads as one column, not as 1400 px wide cards
+      child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: quickScreenMaxWidth), child: !_started
           ? SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               child: QuickStartChooser(onPick: _start, canGenerate: q.courseId != null))
@@ -452,7 +456,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                   ]),
                 ),
               ),
-            ]),
+            ]))),
     );
   }
 }
@@ -743,7 +747,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
     final c = context.colors;
     return [
       for (final o in q.options)
-        Row(children: [
+        Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs), child: Row(children: [
           IconButton(
             tooltip: t('الإجابة الصحيحة', 'The right answer'),
             onPressed: () {
@@ -760,7 +764,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
             ),
           ),
           if (q.options.length > 2) IconButton(onPressed: () => _removeOption(o), tooltip: t('حذف الخيار', 'Remove option'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
-        ]),
+        ])),
       Align(
         alignment: AlignmentDirectional.centerStart,
         child: TextButton.icon(onPressed: _addOption, icon: const Icon(Icons.add_rounded, size: 18), label: Text(t('خيار', 'Choice'))),

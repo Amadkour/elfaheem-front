@@ -79,11 +79,11 @@ class OfflineExamRelayClient {
           final r = await link.request({'t': 'exam_part', 'pub': me.pub, 'exam_id': head.examId, 'n': head.n, 'i': i});
           if (r['t'] != 'exam_chunk') return NearbyExam(code: '${r['code'] ?? 'bad_package'}');
           of = asInt(r['of']).clamp(1, 400);
-          parts.add(await me.open(hostPub, '${r['box']}'));
+          parts.add('${r['box']}');
           progress?.call((i + 1) / of);
         }
         try {
-          pkg = OfflinePackage.fromJson(asMap(jsonDecode(parts.join())));
+          pkg = OfflinePackage.fromJson(asMap(jsonDecode(await openParts(me, hostPub, parts))));
         } catch (_) {
           return const NearbyExam(code: 'bad_package');
         }
@@ -251,7 +251,7 @@ class OfflineExamHost {
     _incoming.remove(id);
     final Map<String, dynamic> bundle;
     try {
-      bundle = asMap(jsonDecode(await link.open(pub, buf.join())));
+      bundle = asMap(jsonDecode(await openParts(link, pub, buf.cast<String>())));
     } catch (_) {
       return _error('bad_message');
     }

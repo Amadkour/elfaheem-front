@@ -715,7 +715,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                 ),
               // the course's exams: the list, New exam and the question bank a teacher has (the engine lets a platform
               // admin manage any course's exams; it decides the organization scope itself)
-              AppCard(margin: const EdgeInsets.only(bottom: 14), child: EngineReviewSection(courseId: co.id)),
+              AppCard(margin: const EdgeInsets.only(bottom: 14), child: EngineReviewSection(courseId: co.id, showEmpty: true)),
               Section(
                 title: 'admin_controls'.tr,
                 child: Column(

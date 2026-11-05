@@ -85,6 +85,7 @@ dependencies:
   http: any
   device_info_plus: ^13.3.0
   uuid: any
+  qr: ^3.0.2
   qr_flutter: ^4.1.0
   # Camera QR scanner for organization join codes (org_join_scan.dart).
   mobile_scanner: ^7.4.2
@@ -119,6 +120,8 @@ flutter:
   assets:
     - assets/images/
     - assets/translation.json
+    # (page_id, role) pairs that have help: the Info button shows from it with no request (tool/gen_help_index.dart)
+    - assets/help/help_index.json
     # the timezone database for the web (lib/core/tz_database_web.dart); a copy of package:timezone lib/data/latest.tzf
     - assets/tz/latest.tzf
     # UI fonts the person can choose (lib/core/display/app_fonts.dart): loaded by FontLoader when chosen

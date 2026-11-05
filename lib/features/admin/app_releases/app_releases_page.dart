@@ -208,6 +208,7 @@ class AppReleasesPageState extends State<AppReleasesPage> {
   Widget build(BuildContext context) {
     final page = _page;
     return AdminPage(
+      helpPageId: 'admin.app_releases',
       key: const ValueKey(kAppReleasesFeatureKey),
       title: t('إصدارات التطبيق', 'App versions'),
       icon: Icons.rocket_launch_rounded,

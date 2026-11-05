@@ -19,8 +19,10 @@
 //   • the attendance spotlight selects (type, session count) on its own.
 // ─────────────────────────────────────────────────────────────────────────
 
+import 'dart:async' show unawaited;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show helpAvailableForMenu, showHelpForPage;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
 import 'package:provider/provider.dart';
@@ -331,6 +333,12 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
       onBack: Navigator.of(context).canPop() ? () => Navigator.maybePop(context) : null,
       onRefresh: _refresh,
       topActions: [
+        if (helpAvailableForMenu(context, 'teacher.session'))
+          CourseSpaceTopAction(
+            icon: Icons.info_outline_rounded,
+            tooltip: _t('معلومات عن هذه الصفحة', 'About this page'),
+            onTap: () => unawaited(showHelpForPage(context, 'teacher.session')),
+          ),
         CourseSpaceTopAction(
           icon: Icons.ios_share_rounded,
           tooltip: 'course_hero_share'.tr,

@@ -204,6 +204,7 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
     context.watch<LangProvider>(); // whole page re-translates when the language changes
     final c = context.colors;
     return AdminPage(
+      helpPageId: 'admin.teacher_documents',
       title: 'required_documents_title'.tr,
       icon: Icons.folder_shared_rounded,
       onRefresh: _loading ? null : () => _load(silent: true),

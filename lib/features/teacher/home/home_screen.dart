@@ -188,6 +188,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                       child: HomeEntrance(
                         index: 0,
                         child: HomeHeader(
+                          helpPageId: 'home.teacher',
                           name: user?.name ?? 'sir'.tr,
                           // the day in one line, from exactly what the page below draws (M6): in Organization mode
                           // that organization's today, strip and "What needs you" rows; else my sessions and pills

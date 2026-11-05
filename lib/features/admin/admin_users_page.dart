@@ -189,6 +189,7 @@ class _UsersViewState extends State<_UsersView> {
     );
 
     return AdminPage(
+      helpPageId: 'admin.users',
       title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
       icon: isStudent ? Icons.school_rounded : Icons.person_pin_rounded,
       subtitle: wide && p.loaded ? _totalText(p.total) : null,

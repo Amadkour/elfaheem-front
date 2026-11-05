@@ -172,6 +172,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
   @override
   Widget build(BuildContext context) {
     return AdminPage(
+      helpPageId: 'admin.features',
       title: t('الميزات', 'Features'),
       subtitle: t('ما تخفيه هنا يختفي من التطبيق لكل المستخدمين فوراً.', 'What you hide here disappears from the app for everyone, right away.'),
       icon: Icons.dashboard_customize_rounded,

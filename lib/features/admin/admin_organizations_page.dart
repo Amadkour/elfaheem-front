@@ -150,6 +150,7 @@ class _AdminOrganizationsPageState extends State<AdminOrganizationsPage> {
       subtitle: t('اعتماد المؤسسات وإدارتها وتغيير مديريها', 'Approve, edit and manage organizations and their admins'),
       icon: Icons.domain_rounded,
       onRefresh: _reload,
+      helpPageId: 'admin.organizations',
       updatedAt: _at,
       primaryAction: AppButton.primary(
         label: t('حساب مدير مؤسسة', 'Org-admin account'),

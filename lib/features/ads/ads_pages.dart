@@ -573,6 +573,7 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
     final p = context.watch<OrgPaged>();
     final first = p.rows.isEmpty;
     return AdminPage(
+      helpPageId: 'admin.ads',
       title: t('الإعلانات', 'Ads'),
       icon: Icons.ads_click_rounded,
       onRefresh: p.isLoading ? null : () => _refresh(p),

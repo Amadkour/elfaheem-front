@@ -27,6 +27,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
@@ -206,22 +207,22 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
           _OrgTab(title: t('الرئيسية', 'Home'), header: false, child: const OrgHomePage()))),
       if (people.isNotEmpty)
         ('people', DashboardItem(Icons.groups_outlined, Icons.groups_rounded, t('الأعضاء', 'People'), null,
-            _OrgTab(title: t('الأعضاء والإدارات', 'People & departments'), child: _SectionHub(id: 'people', subs: people)),
+            _OrgTab(helpPageId: 'home.org/people', title: t('الأعضاء والإدارات', 'People & departments'), child: _SectionHub(id: 'people', subs: people)),
             attentionKeys: const [AttentionTabs.orgPeople], attentionOrgId: oid)),
       if (academics.isNotEmpty)
         ('academics', DashboardItem(Icons.school_outlined, Icons.school_rounded, t('الأكاديمي', 'Academics'), null,
-            _OrgTab(title: t('الشؤون الأكاديمية', 'Academics'), child: _SectionHub(id: 'academics', subs: academics)),
+            _OrgTab(helpPageId: 'home.org/academics', title: t('الشؤون الأكاديمية', 'Academics'), child: _SectionHub(id: 'academics', subs: academics)),
             attentionKeys: const [AttentionTabs.orgAcademics], attentionOrgId: oid)),
       if (s.can('schedule'))
         ('timetable', DashboardItem(Icons.calendar_month_outlined, Icons.calendar_month_rounded, t('الجدول', 'Timetable'), null,
-            _OrgTab(title: t('الجدول الدراسي', 'Timetable'), child: const OrgSchedulePage()),
+            _OrgTab(helpPageId: 'home.org/timetable', title: t('الجدول الدراسي', 'Timetable'), child: const OrgSchedulePage()),
             attentionKeys: const [AttentionTabs.orgTimetable], attentionOrgId: oid)),
       if (!compact && services.isNotEmpty)
         ('services', DashboardItem(Icons.forum_outlined, Icons.forum_rounded, t('الخدمات', 'Services'), null,
-            _OrgTab(title: t('التواصل والخدمات', 'Communication & services'), child: _SectionHub(id: 'services', subs: services)),
+            _OrgTab(helpPageId: 'home.org/services', title: t('التواصل والخدمات', 'Communication & services'), child: _SectionHub(id: 'services', subs: services)),
             attentionKeys: const [AttentionTabs.orgServices], attentionOrgId: oid)),
       ('settings', DashboardItem(Icons.tune_outlined, Icons.tune_rounded, settingsTitle, null,
-          _OrgTab(title: settingsTitle, child: OrgSettingsPage(services: compact ? services : const [])),
+          _OrgTab(helpPageId: 'home.org/settings', title: settingsTitle, child: OrgSettingsPage(services: compact ? services : const [])),
           attentionKeys: compact ? const [AttentionTabs.orgServices, AttentionTabs.orgSettings] : const [AttentionTabs.orgSettings],
           attentionOrgId: oid)),
     ];
@@ -476,7 +477,8 @@ List<OrgSub> _serviceSubs(OrgSession s) => [
 /// Page frame: THE page header (OrgPageHeader) + the page's own refresh scope + live reload when the organization
 /// changes. [header] false = the page draws OrgPageHeader itself (the Home, at the top of its scroll).
 class _OrgTab extends StatefulWidget {
-  const _OrgTab({required this.title, required this.child, this.header = true});
+  const _OrgTab({required this.title, required this.child, this.header = true, this.helpPageId});
+  final String? helpPageId;
   final String title;
   final Widget child;
   final bool header;
@@ -509,7 +511,7 @@ class _OrgTabState extends State<_OrgTab> {
         useWebCard: true,
         maxWith: 1200,
         child: widget.header
-            ? Column(children: [OrgPageHeader(title: widget.title), Expanded(child: body)])
+            ? Column(children: [OrgPageHeader(title: widget.title, helpPageId: widget.helpPageId), Expanded(child: body)])
             : body,
       ),
     );
@@ -544,18 +546,24 @@ class _SectionHubState extends State<_SectionHub> {
     }
     final i = _i.clamp(0, widget.subs.length - 1);
     if (widget.subs.length == 1) return widget.subs.first.$4;
+    final subHelp = _subHelpIds[widget.subs[i].$1];
     return Column(children: [
       // one row; on a phone it scrolls with a fade on the hidden edge and keeps the chosen chip in view
       Padding(
         padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xs),
-        child: OrgSectionChips(
+        child: Row(children: [
+          Expanded(
+            child: OrgSectionChips(
           items: [for (final x in widget.subs) (x.$2, x.$3)],
           index: i,
           onChanged: (k) => setState(() {
             _i = k;
             _seen.add(k);
           }),
-        ),
+            ),
+          ),
+          if (subHelp != null) HelpInfoButton(pageId: subHelp),
+        ]),
       ),
       Expanded(
         child: IndexedStack(index: i, children: [
@@ -573,3 +581,13 @@ class OrgOverviewPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const OrgHomePage();
 }
+
+/// The help page of a hub's section (the chip row has no header of its own): the page ids of the help seed.
+const _subHelpIds = <String, String>{
+  'members': 'org.members',
+  'departments': 'org.departments',
+  'courses': 'org.courses',
+  'governance': 'org.governance',
+  'entities': 'org.governance',
+  'councils': 'org.governance',
+};

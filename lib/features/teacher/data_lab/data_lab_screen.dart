@@ -21,6 +21,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScrollEvent;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData, HardwareKeyboard, SystemChrome, SystemUiMode, SystemUiOverlay;
 import 'package:flutter_education_app/core/display/lazy_fonts.dart';
@@ -291,6 +292,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
             ]),
           ),
           const SizedBox(width: 8),
+          const HelpInfoButton(pageId: 'teacher.data_lab'),
           ..._modeButtons(p),
         ]),
         if (p.grid != null) ...[

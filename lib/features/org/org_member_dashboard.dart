@@ -36,6 +36,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeAgendaItemOf, homeDaySummaryOf, openHomeEvent;
@@ -910,6 +911,7 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
                       tooltip: t('صندوق الوارد', 'Inbox'),
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InboxScreen())),
                       icon: Icons.inbox_rounded),
+                const HelpInfoButton(pageId: 'org.member'),
               ],
               // Personal included: leaving replaces this root page with the personal dashboard (leaveToPersonal)
               bottom: const Row(children: [Expanded(child: ContextSwitcher()), ContextExitButton()]),

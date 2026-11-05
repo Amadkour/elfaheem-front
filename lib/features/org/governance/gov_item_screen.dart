@@ -923,7 +923,7 @@ class _GovItemScreenState extends State<GovItemScreen> {
     // staff of this organization: the dashboard's header (Back · ref · type, status and owner · Refresh · switcher);
     // a member (submitter / recipient), a deep link before the organization loaded: the screen's own app bar
     if (orgUsesDashboardHeader(context, _orgId)) {
-      return OrgPushedPage(
+      return OrgPushedPage(helpPageId: 'org.governance', 
         title: title,
         subtitle: it == null ? null : [itemTypeLabel(it.type), itemStatusLabel(it.status), if (it.ownerDept != null) it.ownerDept!.name].join(' · '),
         refresh: _refresh,

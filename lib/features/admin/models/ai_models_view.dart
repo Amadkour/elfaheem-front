@@ -37,6 +37,9 @@ class AiModelsActions {
     this.onCancelPending,
     this.onReindexNow,
     this.onAdd,
+    this.onActivateRole,
+    this.onApplyDefaults,
+    this.onAddByName,
     this.onGradingMode,
   });
 
@@ -47,6 +50,13 @@ class AiModelsActions {
   final void Function(HubDownload d)? onPause, onResume, onCancelDownload;
   final void Function(HubRole r)? onRollback, onLimits, onReview, onCancelPending, onReindexNow;
   final VoidCallback? onAdd;
+
+  /// Activate [m] for the role [r] (a task role: one model can serve several, so the role is part of the request);
+  /// wins over [onActivate] when set.
+  final void Function(HubRole r, HubModel m)? onActivateRole;
+
+  /// "Use the recommended models" and "Add a model by name" (an Ollama name), shown above the task sections.
+  final VoidCallback? onApplyDefaults, onAddByName;
 
   /// Switches Exam grading between shared / own / off (D-252).
   final void Function(HubRole r, String mode)? onGradingMode;
@@ -99,10 +109,13 @@ class AiModelsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final roles = overview.roles;
-    final active = roles.where((r) => r.activeId != null).length;
-    final s = system;
+    // the per-task generation roles (chat / exam / grading) come first; an older hub has none and lists as before
     final task = overview.task('exam_grading');
     final taskRoles = hubTaskLine(task) == null ? const <String>{} : task!.roles.toSet();
+    final tasks = [for (final r in roles) if (r.isTask && !taskRoles.contains(r.role)) r];
+    final others = [for (final r in roles) if (!r.isTask && !taskRoles.contains(r.role)) r];
+    final active = roles.where((r) => r.activeId != null).length;
+    final s = system;
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= kModelsTableWidth;
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -121,8 +134,20 @@ class AiModelsView extends StatelessWidget {
           const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.warning_amber_rounded, color: context.colors.warning, text: _alertText(a)),
         ],
-        // the roles of the Exam grading task sit together under its banner (the others keep the server's order)
-        for (final r in roles.where((r) => !taskRoles.contains(r.role))) ...[
+        // per-task roles first (an older hub has none); the Exam grading task's roles sit together under its banner (D-252)
+        if (tasks.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.md),
+          _TasksHeader(actions: actions),
+        ],
+        for (final r in tasks) ...[
+          const SizedBox(height: AppSpace.md),
+          HubRoleCard(role: r, wide: wide, downloads: downloads, busy: busy, actions: actions),
+        ],
+        if (tasks.isNotEmpty && others.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.lg),
+          AppSectionTitle(t('نماذج داعمة', 'Supporting models')),
+        ],
+        for (final r in others) ...[
           const SizedBox(height: AppSpace.md),
           HubRoleCard(role: r, wide: wide, downloads: downloads, busy: busy, actions: actions),
         ],
@@ -152,6 +177,44 @@ class AiModelsView extends StatelessWidget {
       'download_failed' => t('فشل تنزيل ${ref(d['ref'])}$err', 'The download of ${ref(d['ref'])} failed$err'),
       _ => '$role${a.key}',
     };
+  }
+}
+
+/// "Models by task": what each task runs on, with the two shortcuts.
+class _TasksHeader extends StatelessWidget {
+  const _TasksHeader({required this.actions});
+
+  final AiModelsActions actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppSectionTitle(t('النماذج حسب المهمة', 'Models by task')),
+      const SizedBox(height: 2),
+      Text(
+          t('اختر نموذجاً لكل مهمة: المحادثة وتوليد الامتحانات والتصحيح. يُنزَّل النموذج الجديد ويُختبر قبل أن يحلّ محل الحالي.',
+              'Pick a model for each task: chat, exam generation and grading. A new model is downloaded and tested before it replaces the current one.'),
+          style: AppType.meta(context)),
+      const SizedBox(height: AppSpace.xs),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        if (actions.onApplyDefaults != null)
+          FilledButton.icon(
+            key: const ValueKey('apply_defaults'),
+            onPressed: actions.onApplyDefaults,
+            style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+            icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+            label: Text(t('استخدام النماذج الموصى بها', 'Use the recommended models')),
+          ),
+        if (actions.onAddByName != null)
+          OutlinedButton.icon(
+            key: const ValueKey('add_by_name'),
+            onPressed: actions.onAddByName,
+            style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text(t('إضافة نموذج بالاسم', 'Add a model by name')),
+          ),
+      ]),
+    ]);
   }
 }
 
@@ -438,6 +501,10 @@ class _RowActions {
   final bool busy;
 
   bool get _pending => role.pending?.modelId == m.id;
+  bool get _activeHere => role.isActiveHere(m);
+  String get _status => role.statusOf(m);
+  void _activate() => a.onActivateRole != null ? a.onActivateRole!(role, m) : a.onActivate?.call(m);
+  bool get _canActivate => a.onActivateRole != null || a.onActivate != null;
 
   /// (label, icon, callback, key)
   (String, IconData, VoidCallback, String)? get primary {
@@ -447,11 +514,13 @@ class _RowActions {
       if (!d.paused && a.onPause != null) return (t('إيقاف مؤقت', 'Pause'), Icons.pause_rounded, () => a.onPause!(d), 'pause_${m.id}');
       return null;
     }
-    if (m.isActive || _pending) return null;
-    if ((m.status == 'not_downloaded' || m.status == 'failed') && a.onDownload != null) {
+    if (_activeHere || _pending) return null;
+    // a task model: "Activate" downloads first when needed (202), so it is offered on a model not on disk too
+    if (role.isTask && _canActivate && _status != 'failed') return (t('تفعيل', 'Activate'), Icons.bolt_rounded, _activate, 'activate_${m.id}');
+    if ((_status == 'not_downloaded' || _status == 'failed') && a.onDownload != null) {
       return (t('تنزيل', 'Download'), Icons.download_rounded, () => a.onDownload!(m), 'download_${m.id}');
     }
-    if (m.status == 'ready' && a.onActivate != null) return (t('تفعيل', 'Activate'), Icons.bolt_rounded, () => a.onActivate!(m), 'activate_${m.id}');
+    if (_status == 'ready' && _canActivate) return (t('تفعيل', 'Activate'), Icons.bolt_rounded, _activate, 'activate_${m.id}');
     return null;
   }
 
@@ -461,9 +530,9 @@ class _RowActions {
     final d = this.d;
     return [
       if (d != null && a.onCancelDownload != null) ('cancel', t('إلغاء التنزيل', 'Cancel download'), Icons.close_rounded, true),
-      if (!m.isActive && !_pending && m.status != 'ready' && d == null && a.onActivate != null && (p == null || p.$4 != 'activate_${m.id}'))
+      if (!_activeHere && !_pending && _status != 'ready' && d == null && _canActivate && (p == null || p.$4 != 'activate_${m.id}'))
         ('activate', t('تنزيل وتفعيل', 'Download and activate'), Icons.bolt_rounded, false),
-      if (!m.isActive && m.onDisk && a.onFallback != null)
+      if (!_activeHere && m.onDisk && a.onFallback != null)
         ('fallback', m.isFallback ? t('إزالة كاحتياطي', 'Remove as fallback') : t('تعيين كاحتياطي', 'Set as fallback'), Icons.shield_outlined, false),
       if (m.onDisk && d == null && a.onTest != null) ('test', t('اختبار السلامة', 'Run health test'), Icons.health_and_safety_outlined, false),
       if ((m.deletable || m.isActive || m.usedAs.isNotEmpty || m.pinned) && m.onDisk && a.onDelete != null)
@@ -476,7 +545,7 @@ class _RowActions {
       case 'cancel':
         if (d != null) a.onCancelDownload?.call(d!);
       case 'activate':
-        a.onActivate?.call(m);
+        _activate();
       case 'fallback':
         a.onFallback?.call(role, m);
       case 'test':
@@ -534,15 +603,17 @@ class _ActionsCell extends StatelessWidget {
 
 /// The status chip, with the download's progress under it.
 class _StatusCell extends StatelessWidget {
-  const _StatusCell({required this.model, this.download});
+  const _StatusCell({required this.model, this.download, this.role});
 
   final HubModel model;
   final HubDownload? download;
+  final HubRole? role;
 
   @override
   Widget build(BuildContext context) {
     final d = download;
-    final status = d == null ? model.status : (d.paused ? 'paused' : 'downloading');
+    final own = role?.statusOf(model) ?? model.status;
+    final status = d == null ? own : (d.paused ? 'paused' : 'downloading');
     final col = hubStatusColor(context, status);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
@@ -555,7 +626,7 @@ class _StatusCell extends StatelessWidget {
         SizedBox(width: 140, child: AppProgressBar(value: (d.fraction ?? 0) * 100, height: 5, color: col)),
         const SizedBox(height: 2),
         Text(hubDownloadLine(d), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-      ] else if (model.status == 'failed' && model.error != null) ...[
+      ] else if (own == 'failed' && model.error != null) ...[
         const SizedBox(height: 2),
         AutoDirText(model.error!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11, c: context.colors.danger)),
       ],
@@ -610,7 +681,8 @@ class _ModelsTable extends StatelessWidget {
           decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider))),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
-            child: Row(children: [
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
               cell(0, Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
                 Text([m.version, if (m.quantization != null) m.quantization!].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: meta),
@@ -620,7 +692,7 @@ class _ModelsTable extends StatelessWidget {
                 Text(hubSourceLabel(m.source), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
                 Text(m.provider, maxLines: 1, overflow: TextOverflow.ellipsis, style: meta),
               ])),
-              cell(3, _StatusCell(model: m, download: downloads[m.id])),
+              cell(3, _StatusCell(model: m, download: downloads[m.id], role: role)),
               cell(4, Text(_diskRam(m), style: AppType.row(context))),
               cell(5, Text(_lastTest(m), maxLines: 2, overflow: TextOverflow.ellipsis, style: meta)),
               SizedBox(
@@ -630,6 +702,8 @@ class _ModelsTable extends StatelessWidget {
                   child: _ActionsCell(x: _RowActions(role, m, downloads[m.id], actions, busy.contains(m.id))),
                 ),
               ),
+              ]),
+              if (ModelFacts.has(role, m)) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: ModelFacts(role: role, model: m)),
             ]),
           ),
         ),
@@ -663,8 +737,9 @@ class _ModelCard extends StatelessWidget {
       Text(m.name, style: appText(14, w: FontWeight.w700, c: c.textDark)),
       Text([m.version, if (m.quantization != null) m.quantization!].join(' · '), style: meta),
       const SizedBox(height: AppSpace.xs),
-      _StatusCell(model: m, download: download),
+      _StatusCell(model: m, download: download, role: role),
       const SizedBox(height: AppSpace.xs),
+      ModelFacts(role: role, model: m),
       // one fact per piece: each is its own paragraph, so Arabic labels and Latin numbers never interleave
       Wrap(spacing: AppSpace.md, runSpacing: 2, children: [
         _kv(context, t('الحجم', 'Size'), hubBytes(m.sizeBytes)),
@@ -752,5 +827,48 @@ class AiModelsHistory extends StatelessWidget {
       _ => null,
     };
     return [?model, if (change != null && '$change'.isNotEmpty && '$change' != model) '$change', if (a.detail != null) a.detail!].join(' · ');
+  }
+}
+
+/// The per-task facts of a model under its row: currently used / recommended badges, RAM needed, speed measured on
+/// this server, accuracy for the role (score, dataset, date). Draws nothing when the server sent none of them (an
+/// older server).
+class ModelFacts extends StatelessWidget {
+  const ModelFacts({super.key, required this.role, required this.model});
+
+  final HubRole role;
+  final HubModel model;
+
+  static bool has(HubRole role, HubModel m) =>
+      (role.isTask && role.isActiveHere(m)) || role.isRecommended(m) || m.speed != null || m.accuracy[role.role] != null || (role.isTask && m.ramMb > 0);
+
+  @override
+  Widget build(BuildContext context) {
+    if (!has(role, model)) return const SizedBox.shrink();
+    final c = context.colors;
+    final m = model;
+    final used = role.isTask && role.isActiveHere(m);
+    final speed = hubSpeedLine(m.speed);
+    final acc = hubAccuracyLine(m.accuracy[role.role]);
+    Widget line(IconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, size: 14, color: c.textLight)),
+          const SizedBox(width: AppSpace.xxs),
+          Flexible(child: Text(text, style: AppType.meta(context))),
+        ]);
+    return Column(key: ValueKey('facts_${model.id}'), crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (used || role.isRecommended(m))
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+          child: Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+            if (used) AppBadgePill(t('قيد الاستخدام', 'Currently used'), color: c.success, icon: Icons.check_circle_rounded),
+            if (role.isRecommended(m)) AppBadgePill(t('موصى به', 'Recommended'), color: c.primary, icon: Icons.thumb_up_alt_outlined),
+          ]),
+        ),
+      Wrap(spacing: AppSpace.md, runSpacing: 2, children: [
+        if (m.ramMb > 0) line(Icons.memory_rounded, '${t('الذاكرة', 'RAM')} ${hubMb(m.ramMb)}'),
+        if (speed.isNotEmpty) line(Icons.speed_rounded, '$speed · ${t('مقاس على هذا الخادم', 'measured on this server')}'),
+        if (acc.isNotEmpty) line(Icons.fact_check_outlined, acc),
+      ]),
+    ]);
   }
 }

@@ -17,6 +17,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 /// How a shell tab's Refresh reaches the page inside it without re-creating the page (which would drop its
@@ -61,6 +62,7 @@ class AdminPage extends StatelessWidget {
     this.floatingActionButton,
     this.maxWidth = maxContentWidth,
     this.showBack = true,
+    this.helpPageId,
   });
 
   final String title;
@@ -82,6 +84,10 @@ class AdminPage extends StatelessWidget {
   /// False for a page shown as a shell tab (it has nothing to go back to).
   final bool showBack;
 
+  /// The page's id in the route registry (D-170): the header shows its Info (i) button (CONTRACTS section 6); the
+  /// button hides itself when the viewer's role has no help for the page.
+  final String? helpPageId;
+
   /// Lists and forms stop growing here; a data table may pass double.infinity.
   static const double maxContentWidth = 1200;
 
@@ -99,7 +105,7 @@ class AdminPage extends StatelessWidget {
       subtitle: subtitle,
       icon: icon,
       primaryAction: primaryAction,
-      actions: actions,
+      actions: [...actions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!)],
       search: search,
       onRefresh: onRefresh,
       updatedAt: updatedAt,

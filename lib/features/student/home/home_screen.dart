@@ -27,6 +27,7 @@
 // Layout test: test/ui/student_home_layout_test.dart.
 library;
 
+import 'package:flutter_education_app/features/shared/help/help_tour.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -144,14 +145,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final guest = GuestState.active;
 
-    Widget search({EdgeInsetsGeometry? padding}) => ParentComponent(
+    Widget search({EdgeInsetsGeometry? padding}) => HelpTourTarget(pageId: 'home.student', id: 'search', child: ParentComponent(
           key: const ValueKey('student_home.search'),
           child: Selector<HomeProvider, List<CourseModel>>(
             selector: (_, p) => p.otherCourses,
             builder: (_, courses, _) =>
                 padding == null ? SearchBarIcon(courses: courses) : SearchBarIcon(courses: courses, padding: padding),
           ),
-        );
+        ));
 
     final header = ParentComponent(
       key: const ValueKey('student_home.top_bar'),
@@ -162,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context, user, _) => ListenableBuilder(
             listenable: Listenable.merge([MeHomeService.instance, AppModeController.instance]),
             builder: (context, _) => HomeHeader(
+              helpPageId: 'home.student',
               name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
               // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card — in
               // Organization mode from what that organization's home draws (M6)
@@ -428,7 +430,7 @@ class _Sections extends StatelessWidget {
             title: 'home_needs_you'.tr,
             // folded, the title still says how much waits (L8)
             foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '${todo + unread + data.orgWaiting}'),
-            child: HomeStatStrip(items: [
+            child: HelpTourTarget(pageId: 'home.student', id: 'needs_you', child: HomeStatStrip(items: [
               HomeStat(icon: Icons.task_alt_rounded, label: 'home_todo'.tr, count: todo, tone: c.danger, onTap: body.onOpenTodo),
               HomeStat(
                 icon: Icons.notifications_none_rounded,
@@ -444,7 +446,7 @@ class _Sections extends StatelessWidget {
                 tone: c.warning,
                 onTap: body.onOpenOrgs,
               ),
-            ]),
+            ])),
           ));
 
     // ── today: one line per item, live first, 3 + "Show all"; a free day folds by itself and names what comes next
@@ -512,7 +514,8 @@ class _Sections extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── live now: a room I'm invited to is on air → one tap into it (appears / leaves by itself); the only strong
       //    accent of the page
-      if (live.isNotEmpty) HomeLiveNow(rooms: live, now: data.now, padding: _bannerPad),
+      if (live.isNotEmpty)
+        HelpTourTarget(pageId: 'home.student', id: 'live_card', child: HomeLiveNow(rooms: live, now: data.now, padding: _bannerPad)),
 
       // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my courses) beside
       // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column

@@ -6,6 +6,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/engine_exams_section.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
+import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring_screen.dart' show QuestionBankBrowser;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
 import 'package:flutter_education_app/features/shared/models/exam_model.dart';
 import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exam_hub_screen.dart';
@@ -79,6 +81,28 @@ void main() {
     expect(got.length, 1);
     expect(got.single.length, 3);
     expect(got.single.where((e) => e['status'] == 'published').length, 2);
+  });
+
+  testWidgets('a course without exams says so under the title (the admin course page showed a bare title)', (tester) async {
+    AppConfig.lang = 'en';
+    final fake = FakeApi({'GET /api/v1/exam/exams': (_) => {'items': <Object>[]}}, latency: const Duration(milliseconds: 10))..install();
+    addTearDown(fake.uninstall);
+    await tester.pumpWidget(layoutHost(SingleChildScrollView(child: EngineReviewSection(courseId: 1, showEmpty: true)), scale: 1));
+    await frames(tester);
+    expect(find.textContaining('No exams for this course yet'), findsOneWidget);
+  });
+
+  testWidgets('the question bank: a search that finds nothing is not "The bank is empty"', (tester) async {
+    AppConfig.lang = 'en';
+    final fake = FakeApi({'GET /api/v1/exam/questions': (_) => {'items': <Object>[]}}, latency: const Duration(milliseconds: 10))..install();
+    addTearDown(fake.uninstall);
+    await tester.pumpWidget(layoutHost(QuestionBankBrowser(orgId: 1, courseId: 1, api: ExamAuthoringApi()), scale: 1));
+    await frames(tester);
+    expect(find.text('The bank is empty'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'python');
+    await frames(tester, 20);
+    expect(find.text('The bank is empty'), findsNothing);
+    expect(find.text('No questions match'), findsOneWidget);
   });
 
   // R3: on a desktop the hub's engine list stopped after two and a half rows with ~200 px empty under it (a box of a

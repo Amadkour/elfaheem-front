@@ -83,6 +83,15 @@ void main() {
   });
 
   group('requests and replies', () {
+    test('every warning code of the versions call is put in words, never shown raw', () {
+      for (final code in ['nothing_shuffled', 'identifier_not_set', 'form_markers_required', 'form_markers_unused', 'identifier_zone_mismatch', 'identifier_zone_may_not_fit']) {
+        final text = versionWarningText(code);
+        expect(text, isNot(code), reason: code);
+        expect(text.contains('_'), isFalse, reason: code);
+      }
+      // the generic line is the last resort, it is not a code either
+      expect(versionWarningText('some_new_code'), isNot('some_new_code'));
+    });
     test('versionBody clamps the count and spreads the copies', () {
       expect(versionBody(count: 3, shuffleQuestions: true, shuffleOptions: false, copies: 30), {
         'count': 3, 'shuffle_questions': true, 'shuffle_options': false, 'copies': {'A': 30, 'B': 30, 'C': 30},

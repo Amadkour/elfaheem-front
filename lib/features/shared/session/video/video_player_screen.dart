@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:flutter/services.dart';
@@ -2014,6 +2015,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           _ActiveStreamBadge(variant: _activeVariant),
           const SizedBox(width: 6),
         ],
+        if (!_isFullScreen) const HelpInfoButton(pageId: 'video.player'),
         if (_canDownload) ...[
           _buildDownloadBtn(),
           const SizedBox(width: 6),

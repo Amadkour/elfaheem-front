@@ -270,7 +270,6 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     try {
       final base = await _baseDoc(answerKey: false);
       final word = _word;
-      if (word && base.hasImages) appToast(wordNoImagesText);
       var tpl = resolvePaperTemplate(_tpl, highStakes: widget.view.exam.highStakes);
       if (tpl == PaperTemplate.custom) tpl = resolvePaperTemplate(PaperTemplate.auto, highStakes: widget.view.exam.highStakes);
       final style = PaperStyle.of(tpl);
@@ -304,7 +303,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         return;
       }
       var d = await _baseDoc(answerKey: answerKey);
-      if ((_word || _tpl == PaperTemplate.custom) && d.hasImages) appToast(wordNoImagesText);
+      if (_tpl == PaperTemplate.custom && d.hasImages) appToast(wordNoImagesText);
       if (v != null) {
         d = applyVersion(d, v);
         final id = widget.view.exam.id;
@@ -369,7 +368,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
       ]),
       const SizedBox(height: 8),
       Text(
-        _tpl == PaperTemplate.auto ? '${paperTemplateHint(_tpl)} → ${paperTemplateLabel(resolved)}' : paperTemplateHint(_tpl),
+        _tpl == PaperTemplate.auto ? '${paperTemplateHint(_tpl)} ${t('← الآن:', '→ now:')} ${paperTemplateLabel(resolved)}' : paperTemplateHint(_tpl),
         style: appText(12.5, c: c.textMedium),
       ),
       if (_tpl == PaperTemplate.custom)
@@ -486,7 +485,7 @@ class PaperTemplateCard extends StatelessWidget {
               if (selected) const SizedBox(width: 4),
               Expanded(
                   child: Text(paperTemplateLabel(template),
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.textDark))),
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.textDark))),
             ]),
             if (subtitle != null) Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10.5, c: c.textLight)),
           ]),
@@ -567,8 +566,8 @@ class PaperPreview extends StatelessWidget {
 }
 
 
-/// Word copies carry a "[image: …]" line where a question has a picture.
-String get wordNoImagesText => t('ملفات Word لا تتضمن صور الأسئلة (يظهر سطر بدلاً منها). استخدم PDF لطباعة الصور.', 'Word copies do not include question images (a placeholder line shows instead). Use PDF to print the images.');
+/// A creator's own .docx template is filled with text only: a "[image: …]" line stands where a question has a picture.
+String get wordNoImagesText => t('القالب المخصص (ملف .docx) لا يتضمن صور الأسئلة (يظهر سطر بدلاً منها). استخدم تصميماً جاهزاً أو PDF لطباعة الصور.', 'A custom .docx template does not include question images (a placeholder line shows instead). Use a built-in design or PDF to print the images.');
 
 /// The most pages per copy the print plan gives a QR to.
 const kMaxQrPages = 40;
@@ -589,7 +588,7 @@ class PaperCopiesResult {
 
 /// Per-student copies (D-print): lays each version out once to count its pages, asks `POST …/print-plan` for the QR
 /// payloads of that many pages, then renders one paper per plan item with the student's name and a QR on EVERY page,
-/// merged into one PDF. [word]: a zip of Word files instead (the name on every page; no QR in Word).
+/// merged into one PDF. [word]: a zip of Word files instead (the name in every page header; one section per planned page, each with its own QR in its footer).
 Future<PaperCopiesResult> buildPaperCopies({
   required ExamPaperDoc base,
   required ExamVersions versions,
@@ -611,7 +610,8 @@ Future<PaperCopiesResult> buildPaperCopies({
   for (final code in codes) {
     final v = versions.byCode(code);
     final doc = (v == null ? base : applyVersion(base, v)).copyWith(qrSlots: 1);
-    pagesOf[code] = (await examPaperPdfMany([doc], tpl, regular: regular, bold: bold)).pages.first;
+    // Word lays itself out: its page count is the writer's own split, not the PDF's
+    pagesOf[code] = word ? wordPageCount(doc, tpl) : (await examPaperPdfMany([doc], tpl, regular: regular, bold: bold)).pages.first;
   }
   final maxPages = pagesOf.values.fold(1, (m, x) => x > m ? x : m);
   final r = await api.printPlan(examId, printPlanBody(named: named, studentIds: named ? studentIds : null, copies: blank, pages: maxPages, form: form));
@@ -761,8 +761,9 @@ class PaperCopiesSection extends StatelessWidget {
         if (wordNote)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(t('في Word: ملف لكل طالب داخل ملف مضغوط، والاسم في كل صفحة (الرمز QR في PDF فقط).',
-                'Word: one file per student in a zip, the name on every page (the QR code is in PDF only).'), style: appText(11.5, c: c.textLight)),
+            child: Text(t('في Word: ملف لكل طالب داخل ملف مضغوط، والاسم ورمز QR في كل صفحة. Word يرتّب الصفحات بنفسه: افتح نسخة وتأكد أن كل صفحة برمز مختلف قبل الطباعة، أو اطبع PDF لتطابق مضمون.',
+                'Word: one file per student in a zip, the name and a QR code on every page. Word lays out the pages itself: open one copy and check every page has its own code before printing, or print the PDF for an exact match.'),
+                style: appText(11.5, c: c.textLight)),
           ),
         const SizedBox(height: 8),
         OutlinedButton.icon(

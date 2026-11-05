@@ -379,7 +379,7 @@ class _GovEntitiesPageState extends State<GovEntitiesPage> {
     }
     if (widget.embedded) return body;
     // staff only (the dashboard's Services section embeds it): the dashboard's header, Back first
-    return OrgPushedPage(title: t('الجهات', 'Entities'), child: body);
+    return OrgPushedPage(helpPageId: 'org.governance', title: t('الجهات', 'Entities'), child: body);
   }
 
   String _groupTitle(String k) => switch (k) {
@@ -409,7 +409,7 @@ class GovEntityDetailPage extends StatelessWidget {
     // pushed from the staff Entities list only: the dashboard's header (Back · name · kind line), the tabs head the body
     return DefaultTabController(
       length: chainTab ? 4 : 3,
-      child: OrgPushedPage(
+      child: OrgPushedPage(helpPageId: 'org.governance', 
         title: entity.name,
         subtitle: [entityKindLabel(entity.kind), if (entity.code.isNotEmpty) entity.code].join(' · '),
         child: Column(children: [

@@ -305,6 +305,7 @@ class OfflineExamTakingScreen extends StatefulWidget {
 
 class _OfflineExamTakingScreenState extends State<OfflineExamTakingScreen> {
   late final Paper _paper;
+  late final PackageMedia _media = PackageMedia.fromContent(widget.content);
   late final OfflineSitting _s;
   late final ExamIntegrity _integrity;
   final _sw = Stopwatch()..start();
@@ -447,6 +448,8 @@ class _OfflineExamTakingScreenState extends State<OfflineExamTakingScreen> {
                     question: q,
                     section: _paper.sections[q.sectionIndex],
                     enabled: !_finishing,
+                    imageBytes: q.image == null ? null : _media.of(q.image!.id),
+                    imageOmitted: q.image != null && _media.isOmitted(q.image!.id),
                     onAnswer: (a) => _answer(q, a),
                   ),
                 ),

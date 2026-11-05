@@ -1,4 +1,5 @@
 // What a student sees after an Exam Engine attempt: by the exam's results policy (nothing before it allows).
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -164,7 +165,7 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
   @override
   Widget build(BuildContext context) => BasePage(
         key: const ValueKey('exam.result'),
-        appBar: AppBar(title: Text(t('نتيجة الاختبار', 'Exam result'))),
+        appBar: AppBar(title: Text(t('نتيجة الاختبار', 'Exam result')), actions: const [HelpInfoButton(pageId: 'exam.result')]),
         child: ExamResultBody(result: widget.result, examTitle: widget.examTitle, appeals: _appeals, onAppeal: _canAppeal ? _appeal : null),
       );
 }

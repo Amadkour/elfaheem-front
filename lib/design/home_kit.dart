@@ -49,6 +49,7 @@ import 'package:flutter_education_app/design/app_contrast.dart' show ensureContr
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -122,7 +123,11 @@ class HomeHeader extends StatelessWidget {
     this.subtitle,
     this.wideTrailing,
     this.padding = const EdgeInsets.fromLTRB(20, 20, 20, 8),
+    this.helpPageId,
   });
+
+  /// The page id of the Info button (help entry), drawn on phones only (the shell's top bar carries it on wide screens).
+  final String? helpPageId;
 
   final String name;
 
@@ -151,7 +156,10 @@ class HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final buttons = [...actions, if (!shellTopBar(context)) ...shellActions];
+    final buttons = [
+      ...actions,
+      if (!shellTopBar(context)) ...[...shellActions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!)],
+    ];
     // greeting · buttons on the first line, then the name and the day line on the full width: three 48 px buttons
     // next to the name truncated "Mark Mark…" and the day line at 390 px (M9)
     return ValueListenableBuilder<int>(

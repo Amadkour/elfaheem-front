@@ -279,6 +279,20 @@ void main() {
   });
 
   group('layout', () {
+    testWidgets('the whole builder is one column on a desktop window, not 1400 px wide cards', (t) async {
+      t.view.devicePixelRatio = 1;
+      t.view.physicalSize = const Size(1440, 900);
+      addTearDown(() {
+        t.view.resetPhysicalSize();
+        t.view.resetDevicePixelRatio();
+      });
+      await t.pumpWidget(layoutHost(QuickExamScreen(exam: QuickExam(kind: QuickKind.quiz, courseId: 1)), scaffold: false, scale: 1));
+      for (var i = 0; i < 3; i++) {
+        await t.pump(const Duration(milliseconds: 100));
+      }
+      expect(t.takeException(), isNull);
+      expect(t.getSize(find.byType(QuickStartChooser)).width, lessThanOrEqualTo(quickScreenMaxWidth));
+    });
     testWidgets('start chooser', (t) async => expectNoLayoutErrors(t, () => SingleChildScrollView(child: QuickStartChooser(onPick: (_) {}, canGenerate: true))));
     testWidgets('start chooser without a course', (t) async => expectNoLayoutErrors(t, () => SingleChildScrollView(child: QuickStartChooser(onPick: (_) {}, canGenerate: false))));
     testWidgets('delivery chooser', (t) async => expectNoLayoutErrors(t, () => SingleChildScrollView(child: QuickDeliveryChooser(onPick: (_) {}))));

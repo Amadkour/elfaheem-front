@@ -12,6 +12,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../core/models_hub/hub_activation.dart' show HubRamCheck;
 import '../../../core/models_hub/models_hub_api.dart';
 import '../../../core/plural.dart';
 import '../../../design/app_bidi.dart';
@@ -246,6 +247,59 @@ class ActivateFailure extends StatelessWidget {
   }
 }
 
+/// 409 `checks_failed` on the RAM of all roles: the models that would be loaded together, their RAM and the budget.
+class RamBudgetSheet extends StatelessWidget {
+  const RamBudgetSheet({super.key, required this.role, required this.model, required this.ram, this.current});
+
+  final String role, model;
+  final String? current;
+  final HubRamCheck ram;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return _sheetBody(
+      context,
+      title: t('لا تتسع الذاكرة لهذا النموذج', 'Not enough memory for this model'),
+      children: [
+        Text(model, style: appText(15, w: FontWeight.w800, c: c.textDark)),
+        const SizedBox(height: AppSpace.sm),
+        AppBanner(
+            icon: Icons.memory_rounded,
+            color: c.danger,
+            text: t(
+                'النماذج معاً تحتاج ${hubMb(ram.needMb)} والمتاح ${hubMb(ram.budgetMb)}${ram.overMb > 0 ? ' — الزيادة ${hubMb(ram.overMb)}' : ''}.',
+                'Together the models need ${hubMb(ram.needMb)} but the budget is ${hubMb(ram.budgetMb)}${ram.overMb > 0 ? ' — over by ${hubMb(ram.overMb)}' : ''}.')),
+        const SizedBox(height: AppSpace.sm),
+        for (final i in ram.items)
+          Padding(
+            key: ValueKey('ram_item_${i.ref}'),
+            padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  AutoDirText(hubRefLabel(i.ref), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+                  if (i.roles.isNotEmpty) Text(i.roles.map(hubRoleName).join(' · '), style: AppType.meta(context)),
+                ]),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Text(hubMb(i.ramMb), style: appText(13, w: FontWeight.w800, c: c.textDark)),
+            ]),
+          ),
+        const SizedBox(height: AppSpace.sm),
+        Text(
+            t('اختر نموذجاً أصغر لإحدى المهام، أو أوقف نموذجاً لا تحتاجه. ',
+                'Pick a smaller model for one of the tasks, or free a model you do not need. ') +
+                (current == null
+                    ? t('لم يتغيّر شيء في ${hubRoleName(role)}.', 'Nothing changed for ${hubRoleName(role)}.')
+                    : t('$current يبقى مُفعّلاً.', '$current stays active.')),
+            style: appText(13, w: FontWeight.w600, c: c.textMedium)),
+      ],
+      buttons: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(t('حسناً', 'OK')))],
+    );
+  }
+}
+
 class _Stepper extends StatelessWidget {
   const _Stepper({required this.label, required this.value, required this.min, required this.max, required this.onChanged, this.hint});
 
@@ -368,9 +422,12 @@ class _LimitsSheetState extends State<LimitsSheet> {
 
 /// Add a model; pops with the body of `POST /api/v1/models`.
 class AddModelSheet extends StatefulWidget {
-  const AddModelSheet({super.key, this.role = 'generation', this.roles = kHubRoles});
+  const AddModelSheet({super.key, this.role = 'generation', this.roles = kHubRoles, this.initialSource = 'registry'});
 
   final String role;
+
+  /// registry | hf | ollama | url - the tab it opens on ("Add a model by name" opens on ollama).
+  final String initialSource;
   final List<String> roles;
 
   @override
@@ -378,7 +435,7 @@ class AddModelSheet extends StatefulWidget {
 }
 
 class _AddModelSheetState extends State<AddModelSheet> {
-  String _source = 'registry';
+  late String _source = widget.initialSource;
   late String _role = widget.role;
   final _ref = TextEditingController();
   final _repo = TextEditingController();
