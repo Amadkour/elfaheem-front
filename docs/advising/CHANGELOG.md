@@ -1,5 +1,34 @@
 # Academic Advising — changelog
 
+## Phase 4 — Advisor workspace — 2026-11-06
+Backend (`wt-back-advising`):
+- Workspace `GET /workspace`: an advisor's students (a director sees all), filters, sort risk · name · CGPA · last
+  contact, facets open · urgent · no contact in 30 days.
+- Risk score out of 100 from a pure `score.py` (grades 40, attendance 20, failed courses 15, open flags 15, contact
+  10) with reasons and their points; kept fresh in `adv_student_stats`.
+- Student 360 `GET /students/{mid}/profile`, built on the registrar's academic record.
+- Categories with accommodations (`accessibility` seeded): CRUD; making a category sensitive turns its student-visible
+  notes into team notes.
+- Flags: CRUD, status changes through one state machine (`allowed_next`, compare-and-swap), history from the audit
+  log, review reminders, escalation when overdue, urgent flags notify the advisors and the advising directors.
+- Notes: private · team · student, sensitive, contact mode, offline `client_id` (idempotent, 409 on reuse for
+  another student), 60 writes per 10 minutes.
+- Timeline with an opaque cursor; `/mine?members=1` gives each organization `advising: {role, advisees}`; `/status`
+  adds `flags_urgent` and `flags_overdue`.
+- Security review fixes (11): sensitive priorities and scores never reach co-advisors (public stats columns),
+  `/audit` hides advising rows from readers who don't manage, an audit-log index, bounded jobs, reopen escalation.
+- Migration `0053_advising_workspace` (down `0052_advising_assign`), round trip checked on PostgreSQL.
+
+App (`wt-front-advising`):
+- `adv_workspace_page` (risk cards, facets, filters sheet, pages), `adv_student_page` (360: risk reasons, overview,
+  academic record, Flags · Notes · Timeline), `adv_flags` (add / edit / status / history sheets, accommodations),
+  `adv_notes` (visibility, sensitive, contact mode, drafts kept on the device and sent when back online),
+  `adv_categories_page`; "Registration cases" opens the existing registrar screen.
+- Advisors who are not directors get "My students"; urgent and overdue counts on the advising page; push taps open
+  the student.
+- Every new server code has Arabic + English text; accommodation tags readable in dark mode; workspace toolbar and
+  list share one width.
+
 ## Phase 3 — Settings and assignment — 2026-11-05
 Backend (`wt-back-advising`):
 - Settings per scope (org · department · program · level · cohort) with inheritance: `GET / PUT /policy`,
