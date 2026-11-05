@@ -2823,7 +2823,7 @@ student's story needs (when they first came, were last active, finished, withdre
 plus paged sub-lists and a per-course timeline (`../back/docs/master_detail/CONTRACT.md`), serves every role; the server
 decides what a viewer may see (out of scope = 404, never 403) and lists the `sections` the app may open, so the app has
 one master-detail framework configured per entity, never a copy per role. The history lives on `enrollments`
-(migration 0050: first / last activity, completed_at, withdrawn_at + reason code + text, two indexes, idempotent
+(migration 0051: first / last activity, completed_at, withdrawn_at + reason code + text, two indexes, idempotent
 backfill from views, completions, video views and `cancelled` events). Status-driven stamps sit in ONE SQLAlchemy
 listener on `Enrollment.status`, so the ten paths that drop, reactivate or complete an enrollment (payments,
 registrar, imports, consoles, org runs, the trash) cannot forget them; `services/enrollment_history.py` adds the reason
