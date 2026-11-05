@@ -16,6 +16,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
+import 'package:flutter_education_app/features/shared/exam_engine/exam_quick_screen.dart' show openQuickExam;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class TeacherExamHubScreen extends StatelessWidget {
@@ -25,8 +26,8 @@ class TeacherExamHubScreen extends StatelessWidget {
   /// When set, the "new exam" sheet pre-selects this session.
   final int? initialSessionId;
 
-  /// When true, the "new exam" sheet opens automatically as soon as the hub
-  /// appears (used by the "Add exam" button on a session card).
+  /// When true, the CLASSIC "new exam" sheet (live quiz in the room, legacy Excel) opens automatically as soon as the
+  /// hub appears (the session menu's "Classic exam" link, and its fallback when the Exam Engine is unavailable).
   final bool openCreateOnStart;
 
   const TeacherExamHubScreen({
@@ -80,6 +81,7 @@ class _HubViewState extends State<_HubView>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
   List<Map<String, dynamic>> _engineExams = const [];      // the Exam Engine section's exams (counted in the header)
+  bool? _engineOk;                                          // the engine answered for this course (null = not asked yet)
 
   @override
   void initState() {
@@ -92,7 +94,7 @@ class _HubViewState extends State<_HubView>
     });
     if (widget.openCreateOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showCreateSheet(context);
+        if (mounted) _showCreateSheet(context);      // the classic sheet: the session menu's "Classic exam" link and its fallback
       });
     }
   }
@@ -115,7 +117,7 @@ class _HubViewState extends State<_HubView>
           ? FloatingActionButton.extended(
               heroTag: "teacher_exam_float",
               key: const ValueKey("teacher_exam_float"),
-              onPressed: () => _showCreateSheet(context),
+              onPressed: _newExam,
               backgroundColor: context.colors.primary,
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -203,6 +205,8 @@ class _HubViewState extends State<_HubView>
           SliverToBoxAdapter(
             child: EngineReviewSection(
               courseId: prov.courseId,
+              showCreate: false,                                   // ONE entry: the "New exam" button (D-197)
+              onAvailable: (ok) => _engineOk = ok,
               onItems: (items) {
                 if (mounted) setState(() => _engineExams = items);
               },
@@ -482,6 +486,26 @@ class _HubViewState extends State<_HubView>
         );
       }
     }
+  }
+
+  /// ONE "New exam" entry (D-197): the quick builder; the legacy sheet (live quiz in the room, legacy Excel) opens from
+  /// its quiet "Classic exam" link, or here when the engine is unavailable for this course.
+  Future<void> _newExam() async {
+    final courseId = context.read<TeacherExamProvider>().courseId;
+    var ok = _engineOk;
+    if (ok == null) {
+      ok = (await ExamAuthoringApi().resolveScope(courseId)).list.ok;
+      if (!mounted) return;
+      _engineOk = ok;
+    }
+    if (!ok) return _showCreateSheet(context);
+    await openQuickExam(context,
+        courseId: courseId,
+        sessionId: widget.initialSessionId,
+        course: widget.courseTitle,
+        onClassic: () {
+          if (mounted) _showCreateSheet(context);
+        });
   }
 
   void _showCreateSheet(BuildContext ctx) => showModalBottomSheet(

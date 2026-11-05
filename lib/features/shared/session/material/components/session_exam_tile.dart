@@ -77,7 +77,7 @@ class SessionExamTile extends StatelessWidget {
         '${'session_exam_required_score'.tr}: ${exam.passingScore.toStringAsFixed(0)}%',
       if (!isTeacher && exam.bestPercentage != null)
         '${'session_exam_best'.tr}: ${exam.bestPercentage!.toStringAsFixed(0)}%',
-      if (!isTeacher && exam.remainingSubmissions != null && !exam.passed)
+      if (!isTeacher && !exam.unlimitedAttempts && exam.remainingSubmissions != null && !exam.passed)
         '${'session_exam_attempts_left'.tr}: ${exam.remainingSubmissions}',
     ];
 

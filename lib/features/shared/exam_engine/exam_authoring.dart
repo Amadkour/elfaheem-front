@@ -602,6 +602,10 @@ class ExamDraft {
   int appealsPerAttempt = 5;
   bool independentReviewer = false;
 
+  /// The session whose lessons this exam locks (`settings.session_id`, D-197): students must pass it to open what
+  /// comes after that session. null = no lock.
+  int? sessionId;
+
   /// What students see once published (`settings.results_view`): score · answers · answers_key.
   String resultsView = 'score';
   DateTime? resultsPublishedAt;
@@ -637,6 +641,7 @@ class ExamDraft {
       ..appealDays = asInt(ap['days'], 14)
       ..appealsPerAttempt = asInt(ap['per_attempt'], 5)
       ..independentReviewer = ap['independent_reviewer'] == true
+      ..sessionId = s['session_id'] == null ? null : asInt(s['session_id'])
       ..resultsView = resultsViews.contains(s['results_view']) ? '${s['results_view']}' : 'score'
       ..resultsPublishedAt = parseEngineUtc(e['results_published_at'])
       ..settings = s;
@@ -656,6 +661,7 @@ class ExamDraft {
         ...settings,
         'passing_percent': passingPercent,
         'show_per_question': showPerQuestion,
+        if (sessionId != null) 'session_id': sessionId else if (settings.containsKey('session_id')) 'session_id': null,
         if (resultsView != 'score' || settings.containsKey('results_view')) 'results_view': resultsView,
         'appeals': {
           ...asMap(settings['appeals']),
@@ -701,7 +707,7 @@ class ExamDraft {
     if (title.trim().isEmpty) out.add('title_required');
     if (startsAt != null && endsAt != null && !endsAt!.isAfter(startsAt!)) out.add('bad_window');
     if (durationMinutes != null && durationMinutes! <= 0) out.add('bad_duration');
-    if (maxAttempts < 1) out.add('bad_attempts');
+    if (maxAttempts < 0 || maxAttempts > 100) out.add('bad_attempts');
     if (platforms.isEmpty) out.add('platform_required');
     if (passingPercent < 0 || passingPercent > 100) out.add('bad_passing');
     if (appealsEnabled && (appealDays < 1 || appealDays > 365)) out.add('bad_appeal_days');
@@ -1064,7 +1070,7 @@ String authoringCodeText(String code) => switch (code) {
       'title_required' => t('عنوان الاختبار مطلوب', 'The exam title is required'),
       'bad_window' => t('نهاية الاختبار يجب أن تكون بعد بدايته', 'The end must be after the start'),
       'bad_duration' => t('المدة بالدقائق يجب أن تكون موجبة', 'The duration must be positive minutes'),
-      'bad_attempts' => t('محاولة واحدة على الأقل', 'At least one attempt'),
+      'bad_attempts' => t('عدد المحاولات بين 0 (بلا حد) و100', 'Attempts: 0 (unlimited) to 100'),
       'platform_required' => t('اختر منصة واحدة على الأقل (ويب أو جوال)', 'Pick at least one platform (web or mobile)'),
       'bad_results_policy' => t('سياسة نتائج غير معروفة', 'Unknown results policy'),
       'bad_datetime' => t('صيغة تاريخ غير صالحة', 'Invalid date'),
@@ -1199,6 +1205,61 @@ class BankPaging {
 
 // ── API ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+/// A course session the "lock the lessons after" picker offers (D-197).
+class LockSession {
+  const LockSession({required this.id, required this.name, required this.order});
+  final int id;
+  final String name;
+  final int order;
+
+  static List<LockSession> list(dynamic body) {
+    final out = <LockSession>[];
+    if (body is Map && body['items'] is List) {
+      for (final s in asMapList(body['items'])) {
+        out.add(LockSession(id: asInt(s['id']), name: '${s['name'] ?? ''}', order: asInt(s['order'])));
+      }
+    }
+    out.sort((a, b) => a.order.compareTo(b.order));
+    return out;
+  }
+}
+
+/// The line under the session picker.
+String sessionLockHint() => t('لا يفتح الطلاب الدروس بعد هذه الجلسة حتى ينجحوا في الاختبار', 'Students cannot open the lessons after this session until they pass the exam');
+
+/// One row the Excel import refused.
+class ImportRowError {
+  const ImportRowError({required this.row, required this.code, required this.message});
+  final int row;
+  final String code;
+  final String message;
+}
+
+/// `POST /exams/{id}/questions/import`: how many questions were created and which rows were refused.
+class ImportReport {
+  const ImportReport({required this.created, required this.errors});
+  final int created;
+  final List<ImportRowError> errors;
+
+  static ImportReport fromJson(Map<String, dynamic> j) => ImportReport(
+        created: asInt(j['created']),
+        errors: [for (final e in asMapList(j['errors'])) ImportRowError(row: asInt(e['row']), code: '${e['code'] ?? ''}', message: '${e['message'] ?? ''}')],
+      );
+}
+
+/// A refused row in words: the known codes bilingual, any other code with the server's own message.
+String importRowText(ImportRowError e) {
+  final known = switch (e.code) {
+    'prompt_required' || 'question_required' => t('نص السؤال فارغ', 'The question text is empty'),
+    'options_required' => t('خيارات ناقصة', 'Not enough choices'),
+    'bad_correct' || 'pick_correct' || 'correct_required' => t('الإجابة الصحيحة غير موجودة بين الخيارات', 'The correct answer is not among the choices'),
+    'bad_type' || 'unknown_type' => t('نوع السؤال غير معروف', 'Unknown question type'),
+    'bad_points' || 'points_positive' => t('الدرجة غير صحيحة', 'The points are not valid'),
+    _ => null,
+  };
+  return known ?? (e.message.isNotEmpty ? e.message : e.code);
+}
+
 class ExamAuthoringApi {
   ExamAuthoringApi([ApiClient? api]) : _api = api ?? ApiClient();
   final ApiClient _api;
@@ -1307,6 +1368,30 @@ class ExamAuthoringApi {
       engineCall(() => _api.post('$base/exams/$examId/accommodations', body: body));
   Future<EngineResult> revokeAccommodation(int id) => engineCall(() => _api.delete('$base/accommodations/$id'));
   Future<EngineResult> consents({int? orgId}) => engineCall(() => _api.get('$base/consents', queryParams: {'org_id': ?orgId}));
+
+  /// The course's sessions in lesson order (core API, the hub's own call); an unreachable list is just empty.
+  Future<List<LockSession>> courseSessions(int courseId) async {
+    const page = 100;
+    final all = <LockSession>[];
+    try {
+      for (var skip = 0;; skip += page) {
+        final got = LockSession.list(await _api.get('/api/v1/courses/$courseId/sessions', queryParams: {'skip': skip, 'limit': page}));
+        all.addAll(got);
+        if (got.length < page) break;
+      }
+    } catch (_) {
+      // not fatal: the exam is simply not tied to a session
+    }
+    all.sort((a, b) => a.order.compareTo(b.order));
+    return all;
+  }
+
+  // Excel import of questions into a draft exam (D-197): the template, then the filled file.
+  Future<Uint8List> importTemplate(String lang) => _api.getBytes('$base/questions/import-template', queryParams: {'lang': lang});
+  Future<EngineResult> importQuestions(int examId, {required String fileName, Uint8List? bytes, String? path, int? sectionId}) => engineCall(() => _api.postMultipart(
+      '$base/exams/$examId/questions/import',
+      fields: {'section_id': ?(sectionId == null ? null : '$sectionId')},
+      fileField: 'file', fileName: fileName, fileBytes: bytes, filePath: path));
 
   // the exam as an uploaded file (quick exam, settings.paper_file)
   Future<EngineResult> uploadPaperFile(int examId, {required String fileName, Uint8List? bytes, String? path}) => engineCall(() => _api.postMultipart(
