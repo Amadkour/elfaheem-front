@@ -113,7 +113,7 @@ PaperDesignSave paperDesignSaveOf(EngineResult r) {
 }
 
 String paperDesignErrorText(EngineResult r) => switch (r.code) {
-      'design_too_big' || 'payload_too_large' => t('التصميم أكبر من المسموح (512 كيلوبايت)', 'The design is too large to save (512 KB)'),
+      'design_too_large' || 'design_too_big' || 'payload_too_large' => t('التصميم أكبر من المسموح (512 كيلوبايت)', 'The design is too large to save (512 KB)'),
       'forbidden' || 'not_manager' => t('لا تملك صلاحية تعديل تصميم هذا الامتحان', 'You may not change this exam\'s paper design'),
       _ => r.unavailable ? t('هذه الميزة تحتاج تحديث الخادم', 'This needs a server update') : (r.message.isEmpty ? t('تعذّر حفظ التصميم', 'Could not save the design') : r.message),
     };

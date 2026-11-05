@@ -2,6 +2,7 @@
 // the paper or the teacher's answer key. Institution, date, instructions and the small switches sit under Advanced
 // with sensible defaults; the last design, institution and custom template are remembered on this device.
 // Writers: exam_paper_pdf.dart / exam_paper_docx.dart over the model in exam_paper.dart.
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -202,6 +203,9 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     if (r.ok) {
       _designVersion = r.state!.version;
       _designDirty = false;
+      // the purge cannot read the engine's designs: keep their pictures alive (fire and forget)
+      final ids = {...paperAssetIds(_design), if (_coverOn) ...paperAssetIds(_cover.design)};
+      if (ids.isNotEmpty) unawaited(LayoutApi.instance.keepAssets(ids));
     } else if (r.error != null) {
       appToast(r.error!, error: true);
     } else {

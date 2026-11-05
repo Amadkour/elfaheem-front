@@ -209,13 +209,14 @@ class ExamPaperDoc {
 
   ExamPaperDoc copyWith({List<PaperSection>? sections, String? version, String? studentName, List<String>? qrPages, int? qrSlots,
           AnswerTablePlace? answerTable, bool? answerKey, List<PaperKeyLine>? keySummary, String? seat,
-          ExamCover? cover, bool dropCover = false}) =>
+          ExamCover? cover, bool dropCover = false, LayoutDocument? design, bool dropDesign = false, Map<String, Uint8List>? assets}) =>
       ExamPaperDoc(
         institution: institution, course: course, title: title, dateText: dateText, durationText: durationText, total: total,
         sections: sections ?? this.sections, instructions: instructions, rtl: rtl, logo: logo, accentHex: accentHex, showPoints: showPoints,
         seatNumber: seatNumber, answerKey: answerKey ?? this.answerKey, version: version ?? this.version, studentName: studentName ?? this.studentName,
         qrPages: qrPages ?? this.qrPages, qrSlots: qrSlots ?? this.qrSlots, answerTable: answerTable ?? this.answerTable,
-        keySummary: keySummary ?? this.keySummary, design: design, cover: dropCover ? null : (cover ?? this.cover), assets: assets,
+        keySummary: keySummary ?? this.keySummary, design: dropDesign ? null : (design ?? this.design),
+        cover: dropCover ? null : (cover ?? this.cover), assets: assets ?? this.assets,
         seat: seat ?? this.seat,
       );
 

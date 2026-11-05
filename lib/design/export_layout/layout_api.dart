@@ -312,6 +312,15 @@ class LayoutApi {
       );
 
 
+  /// `GET /assets/{id}` — a placed image's bytes (the app's own renderers draw exam papers on the device, D-196).
+  Future<ExportResult<Uint8List>> assetBytes(String id) =>
+      _call(() => api.getBytes('$_base/assets/${Uri.encodeComponent(id)}'), (r) => r as Uint8List);
+
+  /// `POST /assets/keep` — a design saved outside the export templates (an exam paper) names these images: the
+  /// server keeps them instead of expiring them 30 days after upload. → how many it kept.
+  Future<ExportResult<int>> keepAssets(Iterable<String> ids) =>
+      _call(() => api.post('$_base/assets/keep', body: {'tokens': ids.take(50).toList()}), (r) => (_map(r)['kept'] as num?)?.toInt() ?? 0);
+
   /// `POST /runs` — 202 {run_id}.
   Future<ExportResult<String>> startRun(LayoutDocument doc, {required String name}) => _call(
         () => api.post('$_base/runs', body: {'document': doc.toJson(), 'name': name}),

@@ -23,7 +23,8 @@ import '../../admin/admin_common.dart' show asInt, t;
 import '../rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
 import 'exam_authoring.dart';
 import 'exam_authoring_screen.dart' show ExamEditorScreen, SessionLockPicker, pickEngineDateTime;
-import 'exam_generate.dart' show ExamGenReview, GenMark, sendGenFeedback;
+import 'exam_gen_api.dart' show genMetaOf;
+import 'exam_generate.dart' show ExamGenReview, GenMark, deleteGenItem, regenerateGenItem, sendGenFeedback;
 import 'exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, QuickGenerateCard, openExamGenerator;
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
@@ -331,9 +332,28 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
   Future<void> _reject(QuickQuestion x) async {
     final reason = await showAppSheet<String>(context, (_) => const GenRejectSheet());
     if (reason == null || !mounted) return;
+    final ref = _review.of(x);
+    final v2 = genMetaOf(x) != null;
     final call = _review.reject(x, reason.isEmpty ? null : reason);
     setState(() => q.questions.remove(x));
     if (call != null) unawaited(sendGenFeedback(_learning, _review, [call]));
+    // generation v2 (D-194): the draft drops the item too, so a later regenerate never brings it back
+    if (ref != null && v2) unawaited(deleteGenItem(ref.draftId, ref.n));
+  }
+
+  /// "Regenerate" on a generated question: the server writes another from a different idea of the same section; it
+  /// takes the old one's place in the list and in the review. Null = it could not (the old one stays).
+  Future<QuickQuestion?> _regenerate(QuickQuestion old) async {
+    final ref = _review.of(old);
+    if (ref == null) return null;
+    final fresh = await regenerateGenItem(ref.draftId, ref.n);
+    if (fresh == null || !mounted) return null;
+    setState(() {
+      final at = q.questions.indexOf(old);
+      if (at >= 0) q.questions[at] = fresh;
+      _review.replace(old, fresh);
+    });
+    return fresh;
   }
 
   Future<void> _pickFile() async {
@@ -460,6 +480,8 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                               onAccept: () => setState(() => _review.mark(q.questions[i], GenMark.accepted)),
                               onEdit: () => setState(() => _review.mark(q.questions[i], GenMark.edited)),
                               onReject: () => _reject(q.questions[i]),
+                              meta: genMetaOf(q.questions[i]),
+                              onRegenerate: genMetaOf(q.questions[i]) == null ? null : () => _regenerate(q.questions[i]),
                             ),
                           QuickQuestionCard(
                             key: ObjectKey(q.questions[i]),

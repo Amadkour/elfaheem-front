@@ -21,24 +21,26 @@ import '../../../design/export_layout/layout_model.dart';
 import '../../admin/admin_common.dart' show t;
 import 'exam_paper.dart';
 import 'exam_paper_design_api.dart';
+import 'exam_paper_xlsx.dart';
 import 'exam_versions.dart';
 
-// ── FD1-ADAPTER ──────────────────────────────────────────────────────────────────────────────────────────────────
-// FD1 adds `design`, `cover` (`ExamCover {design, university, marksTable}`) and `assets` to ExamPaperDoc and
-// `examPaperXlsx(doc, {versions, roster})`. Until the merge these two stubs stand in; at merge time the coordinator
-// replaces their bodies (marked `// FD1-ADAPTER:`) with the real calls.
+// ── the renderers' side (exam_paper.dart / exam_paper_xlsx.dart) ─────────────────────────────────────────────────
 
 /// The paper with the stored design applied: [design] the page design, [cover] the cover page (null = no cover),
 /// [assets] the bytes of every picture id they use.
 ExamPaperDoc paperWithDesign(ExamPaperDoc d, {LayoutDocument? design, PaperCoverSpec? cover, Map<String, Uint8List> assets = const {}}) {
-  // FD1-ADAPTER: return d.copyWith(design: design, cover: cover == null ? null : ExamCover(design: cover.design, university: cover.university, marksTable: cover.marksTable), assets: assets);
-  return d;
+  return d.copyWith(
+      design: design,
+      dropDesign: design == null,
+      cover: cover == null ? null : ExamCover(design: cover.design, university: cover.university, marksTable: cover.marksTable),
+      dropCover: cover == null,
+      assets: assets);
 }
 
 /// The Excel file of the paper (questions, answer key per version, marks grid).
 Uint8List paperXlsxBytes(ExamPaperDoc d, {required ExamVersions versions, List<String> roster = const []}) {
-  // FD1-ADAPTER: return examPaperXlsx(d, versions: versions, roster: roster);
-  throw UnsupportedError('examPaperXlsx arrives with FD1');
+  // one paper per version (its question / option order and key), the exam's own order when there are none
+  return examPaperXlsx(d, versions: [for (final v in versions.items) applyVersion(d, v)], roster: roster);
 }
 
 // ── fields ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -140,7 +142,7 @@ const _maxCachedAsset = 1500000;
 /// The bytes of every picture the designs use, for the renderers (`ExamPaperDoc.assets`): from the designer's own
 /// memory, else the copy kept on this device (the server has no route that serves a stored picture). Pictures found
 /// are kept on the device for the next session; ids nobody can supply are left out (the paper prints without them).
-Future<Map<String, Uint8List>> resolvePaperAssets(Iterable<LayoutDocument?> docs) async {
+Future<Map<String, Uint8List>> resolvePaperAssets(Iterable<LayoutDocument?> docs, {LayoutApi? api}) async {
   final ids = <String>{for (final d in docs) ...paperAssetIds(d)};
   final out = <String, Uint8List>{};
   if (ids.isEmpty) return out;
@@ -156,6 +158,14 @@ Future<Map<String, Uint8List>> resolvePaperAssets(Iterable<LayoutDocument?> docs
         final s = prefs?.getString('$_kAssetPrefix$id');
         if (s != null) bytes = base64Decode(s);
       } catch (_) {}
+    }
+    if (bytes == null) {
+      // another device made the design (or the cache was cleared): the server keeps every placed image
+      final r = await (api ?? LayoutApi.instance).assetBytes(id);
+      if (r.ok && r.data != null && r.data!.isNotEmpty) {
+        bytes = r.data;
+        fresh = true;
+      }
     }
     if (bytes == null) continue;
     out[id] = bytes;
