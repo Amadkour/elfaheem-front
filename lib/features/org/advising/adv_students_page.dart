@@ -239,7 +239,7 @@ class AdvHistoryList extends StatelessWidget {
       if (from.isNotEmpty) when,
       if (e.source.isNotEmpty) advSourceLabel(e.source),
       if (e.locked) t('مقفل', 'locked'),
-      if (e.endReason != null) e.endReason!,
+      if (e.endReason != null) advEndReasonLabel(e.endReason!),
       if (e.actor != null) t('بواسطة ${e.actor}', 'by ${e.actor}'),
     ].join(' · ');
   }

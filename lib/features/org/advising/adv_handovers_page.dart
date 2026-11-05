@@ -73,14 +73,17 @@ class AdvHandoverCard extends StatelessWidget {
           }),
           if (h.reason != null) ...[
             const SizedBox(height: AppSpace.xs),
-            Text(h.reason!, style: AppType.body(context)),
+            Text(advHandoverReasonLabel(h.reason!), style: AppType.body(context)),
           ],
           if (h.note != null) ...[
             const SizedBox(height: AppSpace.xs),
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               ExcludeSemantics(child: Icon(Icons.format_quote_rounded, size: AppIconSize.md, color: c.primary)),
               const SizedBox(width: AppSpace.xs),
-              Expanded(child: Text(h.note!, style: AppType.body(context).copyWith(color: c.textDark))),
+              Expanded(
+                child: Text(h.note!,
+                    textDirection: advTextDirection(h.note!), style: AppType.body(context).copyWith(color: c.textDark)),
+              ),
             ]),
           ],
           const SizedBox(height: AppSpace.sm),

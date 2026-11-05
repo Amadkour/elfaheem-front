@@ -392,6 +392,27 @@ String advSourceLabel(String key) => switch (key) {
       _ => key,
     };
 
+/// Why a history row ended (`adv_assignments.end_reason`, services/organization/advising/assignments.py).
+String advEndReasonLabel(String key) => switch (key) {
+      'replaced' => t('استُبدل', 'Replaced'),
+      'cleared' => t('أُلغي الإسناد', 'Unassigned'),
+      'promoted' => t('أصبح أساسياً', 'Became primary'),
+      'legacy_sync' => t('تحديث من التسجيل', 'Registrar update'),
+      'rebalanced' => t('موازنة الأحمال', 'Rebalanced'),
+      'reassigned' => t('نقل الطلاب', 'Reassigned'),
+      'removed' => t('أُزيل', 'Removed'),
+      'changed' => t('تغيّر نوعه', 'Type changed'),
+      _ => t('انتهى', 'Ended'),
+    };
+
+/// Why a student was handed over (`handovers.REASONS` in services/organization/advising/handovers.py).
+String advHandoverReasonLabel(String key) => switch (key) {
+      'reassign' => t('نقل طلاب مرشد', 'Students moved from an advisor'),
+      'rebalance' => t('موازنة الأحمال', 'Load rebalancing'),
+      'manual' => t('تغيير المرشد يدوياً', 'Advisor changed by hand'),
+      _ => t('تغيير المرشد', 'Advisor changed'),
+    };
+
 const advModes = ['distribute', 'rebalance', 'reassign'];
 
 String advModeLabel(String key) => switch (key) {

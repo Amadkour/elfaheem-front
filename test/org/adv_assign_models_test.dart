@@ -222,7 +222,7 @@ Map<String, dynamic> sampleAdvHandoversJson() => {
           'student': 'Mona Ibrahim',
           'from': {'user_id': 33, 'name': 'د. ليلى منصور'},
           'to': {'user_id': 32, 'name': 'Prof. Omar Khaled'},
-          'reason': 'Advisor on leave until January',
+          'reason': 'reassign',
           'note': 'Two flags on attendance; the plan ends with the midterms.',
           'summary': {
             'flags_open': 2,
@@ -571,6 +571,24 @@ void main() {
     for (final c in codes) {
       expect(en[c], isNotNull, reason: c);
       expect(ar[c], isNot(en[c]), reason: c);
+    }
+  });
+
+  test('every history end reason the server writes has a label in both languages', () {
+    // services/organization/advising/assignments.py: _end(...) and END_REASON.
+    const reasons = ['replaced', 'cleared', 'promoted', 'legacy_sync', 'rebalanced', 'reassigned', 'removed', 'changed'];
+    for (final lang in ['ar', 'en']) {
+      AppConfig.lang = lang;
+      for (final r in reasons) {
+        expect(advEndReasonLabel(r), isNot(r), reason: '$lang $r');
+      }
+    }
+    // handovers.REASONS: a handover's reason is a code too, never shown raw.
+    for (final lang in ['ar', 'en']) {
+      AppConfig.lang = lang;
+      for (final r in ['reassign', 'rebalance', 'manual']) {
+        expect(advHandoverReasonLabel(r), isNot(r), reason: '$lang $r');
+      }
     }
   });
 }

@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -22,6 +23,16 @@ import '../../admin/admin_common.dart' show t;
 import '../org_v3.dart' show orgCall, orgErrorText;
 import 'adv_api.dart';
 import 'adv_models.dart';
+
+/// The direction of text someone typed (a note, a reason): its first strong letter decides, so an English note in
+/// the Arabic app (or the reverse) keeps its punctuation at the right end.
+TextDirection advTextDirection(String text) {
+  for (final r in text.runes) {
+    if ((r >= 0x0590 && r <= 0x08FF) || (r >= 0xFB1D && r <= 0xFDFF) || (r >= 0xFE70 && r <= 0xFEFF)) return TextDirection.rtl;
+    if ((r >= 0x41 && r <= 0x5A) || (r >= 0x61 && r <= 0x7A)) return TextDirection.ltr;
+  }
+  return AppConfig.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr;
+}
 
 /// A date-only value (status dates) or a timestamp, as a calm date in the organization's timezone.
 String advDate(DateTime? d, {bool dateOnly = false}) {

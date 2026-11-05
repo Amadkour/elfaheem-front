@@ -337,7 +337,9 @@ class AdvMyProfileView extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(label, style: AppType.meta(context)),
-                Text(value ?? t('لم تُكتب بعد', 'Not written yet'), style: value == null ? AppType.body(context) : AppType.row(context)),
+                Text(value ?? t('لم تُكتب بعد', 'Not written yet'),
+                    textDirection: value == null ? null : advTextDirection(value),
+                    style: value == null ? AppType.body(context) : AppType.row(context)),
               ]),
             ),
           ]),
