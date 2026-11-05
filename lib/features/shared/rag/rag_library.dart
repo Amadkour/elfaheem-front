@@ -17,16 +17,22 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, asStrOrNull, t;
 import '../../admin/admin_money_p8.dart' show parseNum;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'library/rag_doc_status.dart';
+import 'library/rag_upload_scope.dart' show RagCourseChoice, ragRolesField;
 import 'rag_chat.dart' show RagApi, ragCodeText;
 
 /// Extensions the server reads (it checks the content itself; this only keeps the picker honest).
 const ragUploadExtensions = ['pdf', 'docx', 'txt', 'md', 'markdown', 'html', 'htm', 'png', 'jpg', 'jpeg'];
 const ragScopes = ['org', 'staff', 'course'];
+
+/// Every scope the server knows (app / global = platform admins only).
+const ragAllScopes = ['app', 'global', 'org', 'staff', 'course'];
 const ragMaxUploadBytes = 30 * 1024 * 1024;
 
 String ragScopeText(String s) => switch (s) {
@@ -34,6 +40,7 @@ String ragScopeText(String s) => switch (s) {
       'staff' => t('الهيئة التعليمية والإدارية فقط', 'Staff only'),
       'course' => t('طلاب المقرر فقط', 'This course only'),
       'app' => t('كل مستخدمي التطبيق', 'Everyone using the app'),
+      'global' => t('كل الطلاب', 'All students'),
       _ => s,
     };
 
@@ -54,6 +61,11 @@ String ragLibraryCodeText(String? code, String fallback) => switch (code) {
       'document_busy' => t('المستند قيد المعالجة — انتظر قليلاً', 'The document is being processed — wait a moment'),
       'not_latest_version' => t('توجد نسخة أحدث من هذا المستند', 'There is a newer version of this document'),
       'file_too_large' => t('الملف أكبر من 30 م.ب', 'The file is larger than 30 MB'),
+      'too_large' => t('الملف أكبر من الحد المسموح', 'The file is larger than the allowed size'),
+      'images_not_accepted' => t('الصور غير مقبولة الآن — ارفع ملف Word أو PDF نصياً', 'Photos are not accepted right now — upload Word or a text PDF'),
+      'roles_only_org' => t('تحديد الأدوار لمستندات المؤسسة كلها فقط', 'Roles can only be set for whole-organization documents'),
+      'bad_roles' => t('قائمة الأدوار غير صالحة', 'The roles list is not valid'),
+      'no_readable_text' || 'no_text' => t('هذا الملف لا يحتوي على نص مقروء', 'This file has no readable text'),
       'empty_file' => t('الملف فارغ', 'The file is empty'),
       'bad_pdf' => t('ملف PDF غير صالح أو محمي بكلمة مرور', 'The PDF is invalid or password-protected'),
       'bad_docx' => t('ملف Word غير صالح', 'The Word file is invalid'),
@@ -90,10 +102,16 @@ String ragOrgStatusText(String status) => switch (status) {
 
 /// The text of a failed library call, with what the server's details add (the quota's numbers, the org status).
 String ragResultText(EngineResult r) => switch (r.code) {
+      'too_large' => ragTooLargeText(asInt(r.detail['limit_mb'])),
       'rag_quota_exceeded' => ragQuotaExceededText(r.detail),
       'org_not_approved' => ragOrgStatusText(asStr(r.detail['status'])),
       _ => ragLibraryCodeText(r.code, r.message),
     };
+
+/// 413 too_large: the limit comes in `limit_mb`; without it the generic sentence.
+String ragTooLargeText(int limitMb) => limitMb > 0
+    ? t('الملف أكبر من الحد المسموح ($limitMb م.ب)', 'The file is larger than the allowed $limitMb MB')
+    : ragLibraryCodeText('too_large', '');
 
 /// How full an organization's library is (`quota` from the server). A null limit = unlimited.
 class RagQuota {
@@ -157,17 +175,30 @@ class RagDocument {
     this.createdAt,
     this.error,
     this.ocrPages = 0,
+    this.progressDone = 0,
+    this.progressTotal = 0,
+    this.warnings = const [],
+    this.skippedPages = const [],
+    this.excluded = const [],
   });
   final int id;
   final int? orgId;
   final int? courseId;
   final String title, filename, kind, scope, status;
   final int version, familyId, chunks, size, ocrPages;
+
+  /// Pages read so far / in total while the worker reads the file (0 / 0 = an older server or nothing to show).
+  final int progressDone, progressTotal;
+  final List<RagWarning> warnings;
+  final List<int> skippedPages;
+  final List<RagExcluded> excluded;
   final int? pages;
   final String? createdAt;
   final String? error;
 
   bool get busy => status == 'queued' || status == 'processing';
+  bool get showProgress => status == 'processing' && progressTotal > 0;
+  bool get failed => status == 'failed';
   bool get canReindex => status == 'ready' || status == 'failed';
   bool get archived => status == 'archived';
   String get displayTitle => title.isEmpty ? filename : title;
@@ -188,19 +219,32 @@ class RagDocument {
       size: asInt(j['size']),
       createdAt: asStrOrNull(j['created_at']),
       error: asStrOrNull(j['error']),
-      ocrPages: asInt(j['ocr_pages']));
+      ocrPages: asInt(j['ocr_pages']),
+      progressDone: asInt(j['progress_done']),
+      progressTotal: asInt(j['progress_total']),
+      warnings: ragParseWarnings(j['warnings']),
+      skippedPages: ragParsePages(j['skipped_pages']),
+      excluded: ragParseExcluded(j['excluded']));
 }
 
 class RagLibrary {
-  const RagLibrary(this.items, this.manager, [this.quota]);
+  const RagLibrary(this.items, this.manager, [this.quota, this.ocrScanned, this.maxMb]);
   final List<RagDocument> items;
   final bool manager;
 
   /// Managers only, when the server reports it (Phase 10).
   final RagQuota? quota;
 
-  factory RagLibrary.fromJson(Map<String, dynamic> j) =>
-      RagLibrary(asMapList(j['items']).map(RagDocument.fromJson).toList(), asBool(j['manager']), RagQuota.fromJson(j['quota']));
+  /// From `"upload": {"ocr_scanned", "max_doc_mb"}` of the list; null = unknown (an older server).
+  final bool? ocrScanned;
+  final int? maxMb;
+
+  factory RagLibrary.fromJson(Map<String, dynamic> j) {
+    final up = j['upload'] is Map ? asMap(j['upload']) : const <String, dynamic>{};
+    final mb = up['max_doc_mb'] == null ? 0 : asInt(up['max_doc_mb']);
+    return RagLibrary(asMapList(j['items']).map(RagDocument.fromJson).toList(), asBool(j['manager']), RagQuota.fromJson(j['quota']),
+        up.containsKey('ocr_scanned') ? asBool(up['ocr_scanned']) : null, mb > 0 ? mb : null);
+  }
 
   /// true while the worker still has something to do — the screen keeps polling.
   bool get hasBusy => items.any((d) => d.busy);
@@ -290,8 +334,12 @@ String ragOutcomeSummary(List<String> outcomes) {
 }
 
 class RagUploadDraft {
-  RagUploadDraft({this.title = '', this.scope = 'org', this.courseId = '', this.replaces, this.fileName, this.fileBytes, this.onConflict});
+  RagUploadDraft({this.title = '', this.scope = 'org', this.courseId = '', this.replaces, this.fileName, this.fileBytes, this.onConflict, Set<String>? roles})
+      : roles = roles ?? <String>{};
   String title, scope, courseId;
+
+  /// org scope only: limit the document to these org roles (empty = everyone in the organization)
+  final Set<String> roles;
   RagConflictMode? onConflict;
   int? replaces;
   String? fileName;
@@ -305,8 +353,9 @@ class RagUploadDraft {
     final dot = fileName!.lastIndexOf('.');
     final ext = dot < 0 ? '' : fileName!.substring(dot + 1).toLowerCase();
     if (ext.isNotEmpty && !ragUploadExtensions.contains(ext)) return 'unsupported_type';
-    if (!ragScopes.contains(scope) && scope != 'app') return 'bad_scope';
-    if (scope == 'app') return null;
+    if (!ragAllScopes.contains(scope)) return 'bad_scope';
+    if (scope == 'app' || scope == 'global') return null;
+    if (roles.isNotEmpty && scope != 'org') return 'roles_only_org';
     if (scope == 'course') {
       if ((fixedCourseId ?? courseIdValue) == null) return 'course_required';
     } else if (orgId == null) {
@@ -323,7 +372,8 @@ class RagUploadDraft {
   Map<String, dynamic> fields({int? orgId, int? fixedCourseId}) => {
         'title': title.trim(),
         'scope': scope,
-        if (scope != 'app') 'org_id': ?orgId,
+        if (scope != 'app' && scope != 'global') 'org_id': ?orgId,
+        'roles': ?ragRolesField(scope, roles),
         if (scope == 'course') 'course_id': fixedCourseId ?? courseIdValue,
         'replaces': ?replaces,
         // replace = upload like keep; the app archives the old documents once every upload succeeded
@@ -409,6 +459,18 @@ class RagLibraryApi {
 
   Future<EngineResult> upload(RagUploadDraft d, {int? orgId, int? courseId}) => engineCall(() => _api.postFiles('$base/documents',
       files: [(d.fileName!, d.fileBytes!)], field: 'file', fields: d.fields(orgId: orgId, fixedCourseId: courseId)));
+
+  /// The organization's courses for the course picker of an org admin's upload (best effort: empty on any failure).
+  Future<List<RagCourseChoice>> orgCourses(int orgId) async {
+    final r = await engineCall(() => _api.get('/api/v1/org/orgs/$orgId/courses', queryParams: {'size': 100, 'scope': 'tree'}));
+    final raw = r.map['items'] ?? r.map['value'];
+    if (!r.ok || raw is! List) return const [];
+    return [
+      for (final m in asMapList(raw))
+        if (asInt(m['id']) > 0)
+          RagCourseChoice(asInt(m['id']), asStr(m[AppConfig.lang == 'ar' ? 'name_ar' : 'name_en'], asStr(m['title'], asStr(m['name_ar'], asStr(m['name_en'])))))
+    ];
+  }
 
   Future<Uint8List> file(int id) => _api.getBytes('$base/documents/$id/file');
   Future<EngineResult> archive(int id) => engineCall(() => _api.delete('$base/documents/$id'));

@@ -1,0 +1,183 @@
+{
+ "page_id": "home.student",
+ "role": "student",
+ "version": 1,
+ "title": {
+  "ar": "الرئيسية",
+  "en": "Home"
+ },
+ "summary": {
+  "ar": "نقطة بدايتك في التطبيق: تعرض الحصة المباشرة أو القادمة، وما يحتاج منك إجراءً، وجدول اليوم، وكورساتك.",
+  "en": "Your starting point: the live or next session, what needs you, today's schedule and your courses."
+ },
+ "sections": [
+  {
+   "key": "live_card",
+   "title": {
+    "ar": "الحصة المباشرة أو القادمة",
+    "en": "Live or next session"
+   },
+   "body": {
+    "ar": "بطاقة واحدة في الأعلى تعرض الحصة الجارية الآن أو التي ستبدأ قريباً.",
+    "en": "One card at the top for the session running now or starting soon."
+   },
+   "items": [
+    {
+     "label": {
+      "ar": "انضمام",
+      "en": "Join"
+     },
+     "text": {
+      "ar": "يفتح غرفة البث المباشر لدخول الحصة.",
+      "en": "Opens the live room so you can enter the session."
+     }
+    }
+   ]
+  },
+  {
+   "key": "needs_you",
+   "title": {
+    "ar": "يحتاج منك إجراءً",
+    "en": "Needs you"
+   },
+   "body": {
+    "ar": "شريط صغير من الأزرار يعرض عدد المهام: امتحانات، تحضير، طلبات، وغيرها. الأرقام الصفرية لا تظهر.",
+    "en": "A slim row of pills with counts of things waiting: exams, attendance, requests and more. Zero counts are hidden."
+   },
+   "items": [
+    {
+     "label": {
+      "ar": "زر المهمة",
+      "en": "A pill"
+     },
+     "text": {
+      "ar": "يأخذك مباشرة إلى المكان الذي تنهي فيه هذه المهمة.",
+      "en": "Takes you straight to where you finish that task."
+     }
+    }
+   ]
+  },
+  {
+   "key": "today",
+   "title": {
+    "ar": "اليوم",
+    "en": "Today"
+   },
+   "body": {
+    "ar": "حصصك ومواعيدك لهذا اليوم بالترتيب.",
+    "en": "Your sessions and appointments for today, in order."
+   },
+   "items": []
+  },
+  {
+   "key": "courses",
+   "title": {
+    "ar": "كورساتي",
+    "en": "My courses"
+   },
+   "body": {
+    "ar": "ملخص من ثلاثة أسطر لكورساتك مع نسبة التقدم، وزر «كل الكورسات».",
+    "en": "A three-line summary of your courses with progress, and an All courses button."
+   },
+   "items": [
+    {
+     "label": {
+      "ar": "كل الكورسات",
+      "en": "All courses"
+     },
+     "text": {
+      "ar": "يفتح تبويب كورساتي.",
+      "en": "Opens the My Courses tab."
+     }
+    }
+   ]
+  },
+  {
+   "key": "journey",
+   "title": {
+    "ar": "أكمل رحلتك",
+    "en": "Continue your journey"
+   },
+   "body": {
+    "ar": "تظهر لك الخطوة التالية في كورساتك لتكمل من حيث توقفت.",
+    "en": "Shows the next step in your courses so you can continue where you stopped."
+   },
+   "items": []
+  },
+  {
+   "key": "discover",
+   "title": {
+    "ar": "البحث والتصنيفات",
+    "en": "Search and categories"
+   },
+   "body": {
+    "ar": "ابحث عن كورسات جديدة أو تصفح التصنيفات وأفضل المدرسين.",
+    "en": "Search for new courses, or browse categories and top teachers."
+   },
+   "items": [
+    {
+     "label": {
+      "ar": "شريط البحث",
+      "en": "Search bar"
+     },
+     "text": {
+      "ar": "اكتب اسم كورس أو مدرس لتصل إليه.",
+      "en": "Type a course or teacher name to find it."
+     }
+    },
+    {
+     "label": {
+      "ar": "الجرس",
+      "en": "Bell"
+     },
+     "text": {
+      "ar": "يفتح صندوق الوارد على تبويب الإشعارات.",
+      "en": "Opens the inbox on the Notifications tab."
+     }
+    }
+   ]
+  },
+  {
+   "key": "inbox",
+   "title": {
+    "ar": "صندوق الوارد",
+    "en": "Inbox"
+   },
+   "body": {
+    "ar": "سطر واحد يظهر عند وجود مهام أو إعلانات أو عروض ويفتح الصفحة الكاملة.",
+    "en": "One line shown when there are to-dos, announcements or offers; it opens the full page."
+   },
+   "items": []
+  }
+ ],
+ "tour": [
+  {
+   "target": "live_card",
+   "text": {
+    "ar": "هنا تجد الحصة الجارية أو القادمة وزر الانضمام.",
+    "en": "The running or next session is here, with its Join button."
+   }
+  },
+  {
+   "target": "needs_you",
+   "text": {
+    "ar": "هذه الأشياء التي تنتظرك. اضغط أي رقم لتنهيه.",
+    "en": "These are the things waiting for you. Tap a number to finish it."
+   }
+  },
+  {
+   "target": "search",
+   "text": {
+    "ar": "ابحث عن كورس أو مدرس من هنا.",
+    "en": "Search for a course or teacher here."
+   }
+  },
+  {
+   "target": "tabs",
+   "text": {
+    "ar": "بقية أقسام التطبيق في الشريط السفلي أو الجانبي.",
+    "en": "The other sections of the app are in the bottom or side bar."
+   }
+  }
+ ]
+}

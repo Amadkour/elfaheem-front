@@ -15,6 +15,9 @@ const kModelsAdminFeatureKey = 'models.admin';
 String hubRoleName(String role) => switch (role) {
       'embedding' => t('التضمين', 'Embedding'),
       'generation' => t('التوليد', 'Generation'),
+      'generation.chat' => t('المحادثة', 'Chat'),
+      'generation.exam' => t('توليد الامتحانات', 'Exam generation'),
+      'grading' => t('التصحيح', 'Exam grading'),
       'reranker' => t('إعادة الترتيب', 'Re-ranker'),
       'nli' => t('الاستدلال اللغوي (NLI)', 'NLI'),
       'ocr_det' => t('OCR · كشف النص', 'OCR · text detection'),
@@ -30,6 +33,9 @@ String hubRoleName(String role) => switch (role) {
 String hubRoleHint(String role) => switch (role) {
       'embedding' => t('يحوّل النصوص إلى متجهات لفهرس المستندات والتصحيح', 'Turns text into vectors for the document index and grading'),
       'generation' => t('يكتب إجابات المساعد والأسئلة المولّدة', 'Writes the assistant’s answers and generated questions'),
+      'generation.chat' => t('النموذج الذي يجيب في محادثة المساعد', 'The model that answers in the assistant chat'),
+      'generation.exam' => t('النموذج الذي يكتب أسئلة الامتحانات', 'The model that writes the exam questions'),
+      'grading' => t('النموذج الذي يصحّح الإجابات المقالية', 'The model that grades written answers'),
       'reranker' => t('يرتّب المقاطع الأقرب للسؤال', 'Orders the passages closest to a question'),
       'nli' => t('يتحقق من أن الإجابة تستند إلى المصدر', 'Checks that an answer follows from its source'),
       'ocr_det' => t('جزء من محرك OCR: يجد أسطر النص في الصورة', 'Part of the OCR engine: finds the text lines in an image'),
@@ -264,4 +270,23 @@ String hubCheckLine(HubCheck c) {
   };
   final why = c.reason ?? (c.raw['problems'] is List && (c.raw['problems'] as List).isNotEmpty ? (c.raw['problems'] as List).join(', ') : null);
   return why == null ? name : '$name: ${bidiIsolate(why)}';
+}
+
+// ── the per-task facts of a model (accuracy, speed) ──────────────────────────────────────────────────────────
+
+/// "Speed 18 tok/s · first word 640 ms" — measured on this server (empty when it never was).
+String hubSpeedLine(HubSpeed? sp) {
+  if (sp == null || !sp.measured) return '';
+  final v = sp.value!;
+  final rate = hubLtr('${v >= 10 ? v.toStringAsFixed(0) : v.toStringAsFixed(1)} ${sp.unit}');
+  final ttft = sp.ttftMs == null ? '' : ' · ${t('أول كلمة', 'first word')} ${hubLtr('${sp.ttftMs} ms')}';
+  return '${t('السرعة', 'Speed')} $rate$ttft';
+}
+
+/// "Accuracy 82% · exam-ar-50 · 3 Nov" (empty when it never was measured for the role).
+String hubAccuracyLine(HubAccuracy? a) {
+  if (a == null || a.percent == null) return '';
+  final when = a.at == null ? '' : ' · ${hubLtr('${a.at!.day}/${a.at!.month}/${a.at!.year}')}';
+  final set = a.dataset.isEmpty ? '' : ' · ${hubLtr(a.dataset)}';
+  return '${t('الدقة', 'Accuracy')} ${hubLtr('${a.percent}%')}$set$when';
 }

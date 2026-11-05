@@ -49,7 +49,7 @@ class AdminOrganizationsPage extends StatelessWidget {
         return BasePage(
           useWebCard: true,
           maxWith: 1000,
-          appBar: ScreenAppBar(title: t('المؤسسات', 'Organizations'), actions: [
+          appBar: ScreenAppBar(helpPageId: 'admin.organizations', title: t('المؤسسات', 'Organizations'), actions: [
             IconButton(
               tooltip: t('مديرو المؤسسات', 'Organization admins'),
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminOrgAdminsPage())),

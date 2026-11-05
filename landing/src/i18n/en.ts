@@ -63,7 +63,20 @@ export const en: Dict = {
       { t: 'Institutions, timetables, dashboards', d: 'For schools and centers: timetables, departments, roles and a management dashboard.' },
     ],
   },
-  testimonials: { title: 'What learners say' },
+  preview: {
+    label: 'A look at courses on the platform',
+    students: '{n} students',
+    online: 'Online',
+    center: 'In a center',
+    rating: 'Rated {n} out of 5',
+  },
+  testimonials: {
+    title: 'What learners say',
+    region: 'Learner reviews',
+    prev: 'Previous reviews',
+    next: 'Next reviews',
+    stars: '{n} out of 5 stars',
+  },
   entry: {
     title: 'Who are you? Start here',
     cards: [

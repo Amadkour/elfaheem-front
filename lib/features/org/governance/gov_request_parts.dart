@@ -649,7 +649,7 @@ class _GovChainEditorPageState extends State<GovChainEditorPage> {
     final title = t('سلسلة الاعتماد', 'Approval chain');
     if (widget.embedded) return child;
     if (orgUsesDashboardHeader(context, widget.orgId)) {
-      return OrgPushedPage(title: title, subtitle: e.name, maxWidth: 760, child: child);
+      return OrgPushedPage(helpPageId: 'org.governance', title: title, subtitle: e.name, maxWidth: 760, child: child);
     }
     return BasePage(useWebCard: true, maxWith: 760, appBar: ScreenAppBar(title: title), child: child);
   }

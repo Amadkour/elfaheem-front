@@ -29,6 +29,9 @@ import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show t;
+import 'chat/rag_action_open.dart';
+import 'chat/rag_answer_extras.dart';
+import 'chat/rag_payload.dart';
 import 'rag_chat.dart';
 import 'rag_chat_sessions.dart';
 import 'rag_library.dart';
@@ -95,7 +98,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
   Widget _page(BuildContext context) {
     return BasePage(
       key: const ValueKey('rag.assistant'),
-      appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
+      appBar: ScreenAppBar(helpPageId: 'rag.chat', title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
           actions: [
             if (_sessions) IconButton(tooltip: 'rag_new_chat'.tr, icon: const Icon(Icons.add_comment_outlined), onPressed: () => _chat.currentState?.newChat()),
             if (_sessions) IconButton(tooltip: 'rag_chats'.tr, icon: const Icon(Icons.history_rounded), onPressed: () => _chat.currentState?.showSessions()),
@@ -668,7 +671,7 @@ class RagChatViewState extends State<RagChatView> {
     });
     _toEnd();
     final clock = Stopwatch()..start();
-    final done = await _api.waitFor(pending.id, onUpdate: (a) {
+    final done = await _api.waitForLive(pending.id, r.map, onUpdate: (a) {
       if (!mounted) return;
       final i = _items.indexWhere((x) => x.id == a.id);
       if (i < 0 || !ragAnswerChanged(_items[i], a)) return;
@@ -1053,9 +1056,13 @@ class RagAnswerCard extends StatelessWidget {
       this.onCitationOpen,
       this.onDeepLink,
       this.onSupport,
+      this.onAction,
       this.stalled = false,
       this.onRetry});
   final RagAnswer answer;
+
+  /// Opens an action button (null = [openRagAction], which closes the pop-up through [onNavigate] first).
+  final ValueChanged<RagAction>? onAction;
 
   /// The worker never finished this answer (M16): a calm note with Retry instead of the stage trail.
   final bool stalled;
@@ -1117,6 +1124,15 @@ class RagAnswerCard extends StatelessWidget {
                         ])
                       else
                         RagAnswerBody(text: answer.answer),
+                      // retrieval: the closest passages as cards; tool: the result as a compact card
+                      if (answer.mode == RagMode.retrieval && answer.chunks.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        RagChunkList(chunks: answer.chunks),
+                      ],
+                      if (answer.mode == RagMode.tool && answer.tool != null && !answer.tool!.refused) ...[
+                        const SizedBox(height: 10),
+                        RagToolCards(tool: answer.tool!),
+                      ],
                       if (answer.citations.isNotEmpty) ...[
                         const SizedBox(height: 10),
                         Text(t('المصادر', 'Sources'), style: theme.labelMedium?.copyWith(color: c.textMedium)),
@@ -1127,6 +1143,12 @@ class RagAnswerCard extends StatelessWidget {
                               onNavigate: onNavigate,
                               onOpen: onCitationOpen == null ? null : () => onCitationOpen!(ci),
                               onDeepLink: onDeepLink == null ? null : () => onDeepLink!(ci)),
+                      ],
+                      if (ragVisibleActions(answer.actions).isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        RagActionRow(
+                            actions: answer.actions,
+                            onOpen: (a) => onAction != null ? onAction!(a) : openRagAction(a, beforeOpen: onNavigate)),
                       ],
                       if (onSupport != null)
                         Align(

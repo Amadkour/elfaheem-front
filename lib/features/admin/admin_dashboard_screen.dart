@@ -18,6 +18,7 @@
 // Register the route in main.dart:  case '/admin_dashboard': → AdminDashboardScreen()
 library;
 
+import 'help/admin_help_page.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -529,6 +530,13 @@ class _MorePageState extends State<_MorePage> {
             if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device
             const AppAssistantOpenTile(),
             const AppAssistantBubbleTile(),
+            AppSettingsTile(
+              featureKey: 'admin.help',
+              icon: Icons.help_outline_rounded,
+              color: AdminPalette.indigo.last,
+              label: t('إدارة المساعدة', 'Help management'),
+              onTap: () => _push(const AdminHelpPage()),
+            ),
             AppSettingsTile(
               icon: Icons.dark_mode_rounded,
               color: c.textDark,

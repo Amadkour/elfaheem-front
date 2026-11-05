@@ -663,7 +663,7 @@ class _RagLearningBodyState extends State<RagLearningBody> {
           const SizedBox(height: 16),
           AppSectionTitle(t('إصدارات النماذج', 'Model versions'),
               subtitle: t('لا يُعتمد إصدار إلا إن لم يتراجع في بوابة التقييم', 'A version is promoted only if it does not regress on the evaluation gate')),
-          LearningModelsView(models: _models, busy: _busyModels, onPromote: _promote, onRollback: _rollback),
+          LearningModelsView(models: _stats?.loraDisabled == true ? [for (final m in _models) if (!loraKinds.contains(m.kind)) m] : _models, busy: _busyModels, onPromote: _promote, onRollback: _rollback),
         ],
       ]);
       }),

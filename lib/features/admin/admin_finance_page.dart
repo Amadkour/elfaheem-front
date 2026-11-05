@@ -81,6 +81,7 @@ class _View extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<AdminFinanceProvider>();
     return AdminPage(
+      helpPageId: 'admin.payments',
       title: t('المدفوعات والتحويلات', 'Payments & payouts'),
       icon: Icons.receipt_long_rounded,
       onRefresh: () {

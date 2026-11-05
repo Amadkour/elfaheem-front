@@ -119,7 +119,7 @@ Future<void> main() async {
     final base = Uri.base;
     _legacyHashRoute = legacyHashRoute(base);
     if (_legacyHashRoute != null) {
-      // under the app's <base href> (/app/, D-165): /app/#/payment/callback → /app/payment/callback
+      // under the app's <base href> (/app/, D-270): /app/#/payment/callback → /app/payment/callback
       replaceBrowserUrl(base.removeFragment().resolve('$webBasePath${_legacyHashRoute!.substring(1)}').toString());
     }
     _webEntry = _legacyHashRoute ?? webEntryRouteFromUri(base);

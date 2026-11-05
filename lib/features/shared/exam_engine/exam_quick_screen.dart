@@ -11,6 +11,7 @@ import 'dart:async' show unawaited;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -369,7 +370,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     final errors = rawErrors.where((e) => e != 'mode_required').toList();
     return BasePage(
       key: const ValueKey('exam.quick'),
-      appBar: AppBar(title: Text(t('اختبار جديد', 'New exam'))),
+      appBar: AppBar(title: Text(t('اختبار جديد', 'New exam')), actions: const [HelpInfoButton(pageId: 'teacher.exam_quick')]),
       // a desktop window: the builder reads as one column, not as 1400 px wide cards
       child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: quickScreenMaxWidth), child: !_started
           ? SingleChildScrollView(

@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -368,6 +369,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
         appBar: AppBar(
           title: AutoDirText(widget.examTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
           actions: [
+            const HelpInfoButton(pageId: 'exam.taking'),
             if (widget.hasPaperFile && widget.examId != null)
               IconButton(onPressed: _downloadPaper, icon: const Icon(Icons.file_download_rounded), tooltip: t('ملف الامتحان', 'Exam file')),
             ExamTimerChip(remainingSeconds: left, timed: _clock.timed),

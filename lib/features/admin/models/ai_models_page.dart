@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/live/event_wait.dart';
+import '../../../core/models_hub/hub_activation.dart';
 import '../../../core/models_hub/model_downloads.dart';
 import '../../../core/models_hub/models_hub_api.dart';
 import '../../../design/app_kit.dart';
@@ -77,6 +78,10 @@ class AiModelsPageState extends State<AiModelsPage> {
 
   /// Models this person asked to activate in this visit: their "ready to confirm" opens the prompt by itself.
   final _requested = <int>{};
+
+  /// Task activations in flight (model id -> role): the hub downloads, tests and switches by itself (202), so the page
+  /// watches the overview until the role serves the model, then says so once.
+  final _awaiting = <int, String>{};
   EventOrPoll? _poller;
   bool _fast = false;
   StreamSubscription<HubDownload>? _ended;
@@ -144,6 +149,7 @@ class AiModelsPageState extends State<AiModelsPage> {
       if (_tab == 1) unawaited(_loadAudit());
       if (_moving != _fast) _restartPoller(fast: _moving);
       _maybePrompt();
+      _checkAwaiting();
     } catch (e) {
       if (!mounted) return;
       if (!silent || _ov == null) setState(() => _error = HubFailure.from(e).message);
@@ -180,6 +186,27 @@ class AiModelsPageState extends State<AiModelsPage> {
     }
   }
 
+  /// A task activation reached its end (the role serves the model, or the hub stopped it): say so once.
+  void _checkAwaiting() {
+    final ov = _ov;
+    if (ov == null || _awaiting.isEmpty) return;
+    final done = <int>[];
+    _awaiting.forEach((id, role) {
+      final st = hubActivationState(ov, {for (final d in _dl.live) d.modelId: d}, id, role);
+      final r = ov.role(role);
+      final name = _modelName(r?.byId(id), '', r);
+      if (st.phase == ActivationPhase.active) {
+        done.add(id);
+        showAppNotice(t('$name يخدم الآن مهمة ${hubRoleName(role)}', '$name now serves ${hubRoleName(role)}'));
+      } else if (st.phase == ActivationPhase.failed) {
+        done.add(id);
+      } else if (st.phase == ActivationPhase.idle && r?.pending == null && _dl.live.every((d) => d.modelId != id)) {
+        done.add(id); // nothing is moving any more and it is not active: the hub dropped it (cancelled)
+      }
+    });
+    _awaiting.removeWhere((id, _) => done.contains(id));
+  }
+
   Future<void> _guard(int? modelId, Future<void> Function() f) async {
     if (modelId != null) setState(() => _busy.add(modelId));
     try {
@@ -199,53 +226,84 @@ class AiModelsPageState extends State<AiModelsPage> {
         await _load(silent: true);
       });
 
-  Future<void> _activate(HubModel m) async {
-    final r = _ov?.role(m.role);
+  Future<void> _activate(HubModel m) => _activateFor(_ov?.role(m.role), m);
+
+  /// Activates [m] for [r] (a task role sends its name: one model can serve several tasks).
+  Future<void> _activateFor(HubRole? r, HubModel m) async {
+    if (r == null) return;
     final current = _activeName(r);
     setState(() => _busy.add(m.id));
     try {
       _requested.add(m.id);
       _prompted.removeWhere((k) => k.startsWith('${m.id}:')); // a new request may prompt again
-      final step = await _api.activate(m.id);
-      switch (step.stage) {
-        case 'downloading':
+      final out = await hubActivate(_api, m.id, role: r.isTask ? r.role : null);
+      if (!mounted) return;
+      switch (out) {
+        case ActivationActive():
+          _requested.remove(m.id);
+          showAppNotice(t('${m.name} يخدم الآن مهمة ${hubRoleName(r.role)}', '${m.name} now serves ${hubRoleName(r.role)}'));
+        case ActivationDownloading():
+          if (r.isTask) _awaiting[m.id] = r.role;
           showAppNotice(current == null
-              ? t('يُنزَّل ${m.name} أولاً، ثم يُختبر قبل أن تؤكد التفعيل.', 'Downloading ${m.name} first; it is tested before you confirm.')
-              : t('يُنزَّل ${m.name} أولاً — $current يبقى مُفعّلاً حتى يجتاز الجديد اختبار السلامة وتؤكد.',
-                  'Downloading ${m.name} first — $current stays active until the new model passes its health test and you confirm.'));
+              ? t('يُنزَّل ${m.name} أولاً، ثم يُختبر ويُفعَّل تلقائياً.', 'Downloading ${m.name} first; it is tested and switched on automatically.')
+              : t('يُنزَّل ${m.name} أولاً — $current يبقى مُفعّلاً حتى يجتاز الجديد الاختبار ثم يُبدَّل تلقائياً.',
+                  'Downloading ${m.name} first — $current stays active until the new model passes its test, then it switches by itself.'));
           await _dl.refresh();
-        case 'testing':
-          showAppNotice(t('يجري اختبار السلامة لـ ${m.name}…', 'Running the health test of ${m.name}…'));
+        case ActivationInProgress(:final step):
+          if (r.isTask) _awaiting[m.id] = r.role;
+          if (step.stage == 'testing') showAppNotice(t('يجري اختبار السلامة لـ ${m.name}…', 'Running the health test of ${m.name}…'));
+        case ActivationFailed():
+          _requested.remove(m.id);
+        case ActivationBlocked(:final ram, :final failure):
+          _requested.remove(m.id);
+          if (ram != null) {
+            await showAppSheet<void>(context, (_) => RamBudgetSheet(role: r.role, model: m.name, current: current, ram: ram));
+          } else {
+            await showAppSheet<void>(context, (_) => ActivateFailure(role: r.role, model: m.name, current: current, checks: failure.checks, message: failure.message));
+          }
+        case ActivationRoleMismatch(:final failure):
+          _requested.remove(m.id);
+          showAppNotice(failure.message, error: true);
+        case ActivationError(:final failure):
+          _requested.remove(m.id);
+          showAppNotice(failure.message, error: true);
       }
       await _load(silent: true);
       // the test ran at once (a model already on disk): the prompt / the reason now, from the reply itself
-      final p = step.pending;
+      final p = switch (out) {
+        ActivationInProgress(:final step) => step.pending,
+        ActivationFailed(:final step) => step.pending,
+        _ => null,
+      };
       if (p != null && mounted && !_prompted.contains(p.stepKey) && (p.readyToConfirm || p.stage == 'failed')) {
         _prompted.add(p.stepKey);
-        final role = _ov?.role(m.role) ?? r;
-        if (role != null) {
-          if (mounted) setState(() => _busy.remove(m.id));
-          if (p.readyToConfirm) {
-            await _review(role, p);
-          } else {
-            _requested.remove(m.id);
-            await _explain(role, p);
-          }
+        final role = _ov?.role(r.role) ?? r;
+        if (mounted) setState(() => _busy.remove(m.id));
+        if (p.readyToConfirm) {
+          await _review(role, p);
+        } else {
+          _requested.remove(m.id);
+          await _explain(role, p);
         }
-      }
-    } catch (e) {
-      _requested.remove(m.id);
-      final f = HubFailure.from(e);
-      if (!mounted) return;
-      if (f.code == 'checks_failed' || f.code == 'embedding_dim_unsupported' || f.code == 'provider_unavailable') {
-        await showAppSheet<void>(context, (_) => ActivateFailure(role: m.role, model: m.name, current: current, checks: f.checks, message: f.message));
-        await _load(silent: true);
-      } else {
-        showAppNotice(f.message, error: true);
       }
     } finally {
       if (mounted) setState(() => _busy.remove(m.id));
     }
+  }
+
+  /// "Use the recommended models": the hub activates its recommendation of every task.
+  Future<void> _applyDefaults() async {
+    final ok = await appConfirm(context,
+        confirmLabel: t('استخدام الموصى به', 'Use recommended'),
+        message: t('تفعيل النماذج الموصى بها للمحادثة وتوليد الامتحانات والتصحيح؟ يُنزَّل ما ينقص ويُبدَّل تلقائياً بعد الاختبار.',
+            'Activate the recommended models for chat, exam generation and grading? What is missing is downloaded and switched on after its test.'));
+    if (!ok || !mounted) return;
+    await _guard(null, () async {
+      await _api.applyDefaults();
+      showAppNotice(t('بدأ تطبيق النماذج الموصى بها', 'Applying the recommended models'));
+      await _dl.refresh();
+      await _load(silent: true);
+    });
   }
 
   /// The confirm prompt for a role's pending model ("ready to confirm"), then the switch. When the server still asks
@@ -290,7 +348,7 @@ class AiModelsPageState extends State<AiModelsPage> {
     final name = _modelName(r.byId(p.modelId), p.ref, r);
     setState(() => _busy.add(p.modelId));
     try {
-      final step = await _api.activate(p.modelId, confirm: true, reindex: reindex);
+      final step = await _api.activate(p.modelId, confirm: true, reindex: reindex, role: r.isTask ? r.role : null);
       switch (step.stage) {
         case 'active':
           showAppNotice(r.active == null
@@ -414,10 +472,15 @@ class AiModelsPageState extends State<AiModelsPage> {
         await _load(silent: true);
       });
 
-  Future<void> _add() async {
+  Future<void> _addByName() => _add(source: 'ollama', role: 'generation.chat');
+
+  Future<void> _add({String? source, String? role}) async {
     final roles = _ov?.roles.map((r) => r.role).toList();
+    final list = roles == null || roles.isEmpty ? kHubRoles : roles;
     final body = await showAppSheet<Map<String, dynamic>>(
-        context, (_) => AddModelSheet(roles: roles == null || roles.isEmpty ? kHubRoles : roles));
+        context,
+        (_) => AddModelSheet(
+            roles: list, initialSource: source ?? 'registry', role: role != null && list.contains(role) ? role : (list.contains('generation') ? 'generation' : list.first)));
     if (body == null) return;
     await _guard(null, () async {
       final m = await _api.add(body);
@@ -450,6 +513,9 @@ class AiModelsPageState extends State<AiModelsPage> {
     final actions = AiModelsActions(
       onDownload: _download,
       onActivate: _activate,
+      onActivateRole: _activateFor,
+      onApplyDefaults: _applyDefaults,
+      onAddByName: _addByName,
       onFallback: _fallback,
       onTest: _test,
       onDelete: _delete,
@@ -466,7 +532,7 @@ class AiModelsPageState extends State<AiModelsPage> {
     );
     return BasePage(
       key: const ValueKey(kModelsAdminFeatureKey),
-      appBar: ScreenAppBar(
+      appBar: ScreenAppBar(helpPageId: 'admin.models', 
         title: t('نماذج الذكاء الاصطناعي', 'AI Models'),
         actions: [
           IconButton(key: const ValueKey('add_model'), tooltip: t('إضافة نموذج', 'Add model'), onPressed: _add, icon: const Icon(Icons.add_rounded)),
