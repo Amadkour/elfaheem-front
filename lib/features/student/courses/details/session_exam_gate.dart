@@ -36,6 +36,10 @@ class SessionExamInfo {
   final double? bestPercentage;
   final bool attempted;
   final bool passed;
+
+  /// Submitted, but the teacher has not published the result yet (engine exams): the next lessons open once it is
+  /// published; nothing about pass / fail is shown meanwhile.
+  final bool awaitingResults;
   final DateTime? startDate;
   final DateTime? endDate;
 
@@ -58,6 +62,7 @@ class SessionExamInfo {
     this.bestPercentage,
     required this.attempted,
     required this.passed,
+    this.awaitingResults = false,
     this.startDate,
     this.endDate,
     this.engine = false,
@@ -76,6 +81,7 @@ class SessionExamInfo {
         bestPercentage: (j['best_percentage'] as num?)?.toDouble(),
         attempted: j['attempted'] as bool? ?? false,
         passed: j['passed'] as bool? ?? false,
+        awaitingResults: j['awaiting_results'] == true,
         startDate: j['start_date'] != null
             ? DateTime.tryParse(j['start_date'] as String)
             : null,

@@ -46,6 +46,10 @@ class SessionExamTile extends StatelessWidget {
       color = c.success;
       icon = Icons.verified_rounded;
       status = 'session_exam_passed'.tr;
+    } else if (exam.awaitingResults) {
+      color = c.primary;
+      icon = Icons.hourglass_top_rounded;
+      status = 'session_exam_awaiting_results'.tr;
     } else if (exam.attemptsExhausted) {
       color = c.danger;
       icon = Icons.block_rounded;
@@ -70,7 +74,9 @@ class SessionExamTile extends StatelessWidget {
     // Move to your translations file if you prefer.
     final note = isTeacher
         ? 'على الطالب اجتياز هذا الاختبار لفتح الجلسة التالية'
-        : 'اجتز هذا الاختبار لفتح الجلسة التالية';
+        : exam.awaitingResults
+            ? 'session_exam_awaiting_note'.tr
+            : 'اجتز هذا الاختبار لفتح الجلسة التالية';
 
     final details = <String>[
       if (exam.passingScore > 0)
@@ -81,7 +87,7 @@ class SessionExamTile extends StatelessWidget {
         '${'session_exam_attempts_left'.tr}: ${exam.remainingSubmissions}',
     ];
 
-    final canAct = !isTeacher && enrolled && exam.canStart;
+    final canAct = !isTeacher && enrolled && exam.canStart && !exam.awaitingResults;
 
     return Directionality(
       textDirection: Helpers.textDirOf(details.first),
