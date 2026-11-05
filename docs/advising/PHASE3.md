@@ -135,7 +135,8 @@ Only when the advisor's user row no longer exists is nothing imported (the `advi
    determinism, 10 000 students under 1 s).
 3. `assignments.py`: plan/apply (hash check, idempotent apply, bulk writes, handovers, notices), manual PUT, history.
    `profiles.py`, `conflicts.py`, `handovers.py`, policy routes on top of `policy.py`, the job + join hook.
-   A new revision `0051_advising_assign` (down `0050`) only if a column is missing (e.g. run `mode` / `result`);
+   A new revision `0052_advising_assign` (down `0051`; written as 0051, renumbered at the merge because
+   organizations took `0051_enrollment_history`) only if a column is missing (e.g. run `mode` / `result`);
    same RLS rules.
 4. Routes in `org_advising_router.py` (or a second router file registered in `main.py`) exactly as above;
    `FLUTTER_API_CHANGES.md`; kill switch unchanged (`org.advising`); features guide entry updated (settings,
