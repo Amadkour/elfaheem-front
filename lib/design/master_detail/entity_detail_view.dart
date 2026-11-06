@@ -867,7 +867,7 @@ class _EntitySubListState extends State<EntitySubList> {
               : null;
           final search = showSearch
               ? AppSearchField(
-                  controller: _searchCtl, hint: '${'md_search'.tr} ${spec.title}', dense: true, onChanged: _setSearch)
+                  controller: _searchCtl, hint: '${'md_search'.tr} ${spec.title}', onChanged: _setSearch)
               : null;
           if (search != null && sort != null && box.maxWidth >= 440) {
             return Row(children: [

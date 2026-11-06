@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show ltrIsolate;
 import 'package:flutter_education_app/design/app_data_table.dart';
 import 'package:flutter_education_app/design/app_tabs.dart';
 import 'package:flutter_education_app/design/master_detail/entity_detail_page.dart';
@@ -173,7 +174,7 @@ void main() {
       await tapRow(tester, 'Omar Khaled 2');
       expect(panelOf(tester).current, const EntityRef(EntityKind.teacher, 101));
       expect(find.textContaining('Nile University'), findsOneWidget, reason: 'the organization in the header');
-      expect(find.text('Top rated · ${'⁦'}4.7${'⁩'}'), findsOneWidget);
+      expect(find.text('Top rated · ${ltrIsolate('4.7')}'), findsOneWidget);
       expect(find.text(mdCourses[0].$2), findsOneWidget, reason: 'the courses section loaded');
       expect(find.text('سارة أحمد'), findsOneWidget, reason: 'the students section loaded');
       expect(api.calls.map((c) => c.path), containsAll(['/api/v1/entities/teachers/101/courses', '/api/v1/entities/teachers/101/students']));
