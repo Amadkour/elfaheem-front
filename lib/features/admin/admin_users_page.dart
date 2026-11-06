@@ -1,8 +1,8 @@
 // lib/features/admin/admin_users_page.dart — students & teachers (list, detail, control).
 //
 // D-290: a row opens the connected detail panel (MasterDetailScaffold: the student's / teacher's courses, history,
-// payments …, every related entity a link); the old management sheet stays reachable as the panel's "Manage" quick
-// action (and the row's Manage action) until phase 4 folds it into the student detail.
+// payments …, every related entity a link). A student is managed inside that detail (admin_student_manage.dart); a
+// teacher and an admin still through the control sheet below (the panel's "Manage" quick action).
 library;
 
 import 'package:flutter/material.dart';
@@ -15,7 +15,6 @@ import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
 import 'admin_filters.dart';
-import 'admin_labels.dart';
 import 'admin_list.dart';
 import 'admin_page.dart';
 import 'admin_table_export.dart' show adminUsersExport, exportPagedList;
@@ -26,6 +25,7 @@ import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
 import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter/scheduler.dart' show SchedulerBinding, SchedulerPhase;
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
@@ -38,7 +38,6 @@ import 'package:flutter_education_app/design/app_data_table.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppEmpty, AppListSkeleton;
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart' show usernameFrom;
 import '../auth/username.dart' show UsernameError;
 import '../auth/username_field.dart' show UsernameStatus;
@@ -112,10 +111,11 @@ class _UsersViewState extends State<_UsersView> {
     super.dispose();
   }
 
-  /// The panel's quick actions: Manage (the old control sheet; admins, `can.manage`) and View as (super admins).
+  /// The panel's quick actions on a teacher: Manage (the control sheet; admins, `can.manage`) and View as (super
+  /// admins). A student's are part of their detail.
   List<EntityPanelAction> _panelActions(
       BuildContext context, AdminUsersProvider p, bool canViewAs, EntityRef ref, EntitySummary? s) {
-    if (!ref.isPerson) return const [];
+    if (ref.kind != EntityKind.teacher) return const [];
     return [
       if (s?.can.manage == true)
         EntityPanelAction(
@@ -173,6 +173,7 @@ class _UsersViewState extends State<_UsersView> {
     final canViewAs = isSuperNow(context);
     final users = [for (final r in p.rows) AdminUser(r)];
     _panel.siblings = [for (final u in users) _refOf(u)]; // previous / next and the keyboard walk these rows
+    _panel.onEntityChanged = p.refresh;
     final wide = MediaQuery.sizeOf(context).width >= 600;
 
     final state = p.error != null && p.rows.isEmpty
@@ -252,11 +253,12 @@ class _UsersViewState extends State<_UsersView> {
           label: t('فتح', 'Open'),
           onTap: () => _panel.open(_refOf(u)),
         ),
-        AppRowAction<AdminUser>(
-          icon: Icons.manage_accounts_rounded,
-          label: 'md_manage'.tr,
-          onTap: () => _openDetail(context, p, u.id),
-        ),
+        if (!isStudent)
+          AppRowAction<AdminUser>(
+            icon: Icons.manage_accounts_rounded,
+            label: 'md_manage'.tr,
+            onTap: () => _openDetail(context, p, u.id),
+          ),
       ],
       empty: p.hasActiveQuery
           ? AppEmpty(
@@ -498,9 +500,13 @@ List<FilterSpec> _userSpecs(bool isStudent) => [
 //  Detail / control sheet
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// Opens the detail / control sheet of ONE user by id (the global search uses it). [role] is the list the user
-/// belongs to ('student' | 'teacher' | 'admin'); the sheet loads the user itself, like a row tap does.
+/// Opens the detail / control sheet of ONE user by id. [role] is the list the user belongs to ('student' | 'teacher' |
+/// 'admin'); the sheet loads the user itself, like a row tap does. A student has no sheet: their detail manages them.
 Future<void> showAdminUserDetail(BuildContext context, {required int userId, required String role}) async {
+  if (role == 'student') {
+    await EntityNavigator.openFullPage(context, EntityRef(EntityKind.student, userId));
+    return;
+  }
   // not disposed on purpose: a request of the sheet may still be in flight when it closes, and a provider with no
   // timer and no listener left is simply garbage collected
   await _openDetail(context, AdminUsersProvider(role), userId);
@@ -604,7 +610,6 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
       );
     }
     final u = d!.user;
-    final isStudent = u.role == 'student';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -637,8 +642,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                   ],
                 ),
               ),
-              if (isStudent) ..._studentSections(context, p, u),
-              if (!isStudent && d!.j['teacher_profile'] is Map)
+              if (d!.j['teacher_profile'] is Map)
                 Section(
                   title: 'admin_teacher_profile'.tr,
                   child: Column(
@@ -787,397 +791,15 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
       ],
     );
   }
-
-  List<Widget> _studentSections(
-    BuildContext context,
-    AdminUsersProvider p,
-    AdminUser u,
-  ) {
-    final c = context.colors;
-    final sub = d!.subscriptions.isEmpty ? null : d!.subscriptions.first;
-
-    return [
-      Section(
-        title: 'admin_subscription'.tr,
-        trailing: TextButton.icon(
-          onPressed: () async {
-            await _grantDialog(context, p, u.id);
-            await _load();
-          },
-          icon: const Icon(Icons.card_giftcard_rounded, size: 18),
-          label: Text('admin_grant'.tr),
-        ),
-        child: sub == null
-            ? Text(
-                'admin_no_subscription'.tr,
-                style: TextStyle(fontFamily: AppFonts.family, color: c.textLight),
-              )
-            : Column(
-                children: [
-                  KeyValue('status'.tr, subscriptionStatusLabel(sub.status)),
-                  KeyValue('admin_plan'.tr, planLabel(sub.planCode)),
-                  KeyValue('admin_from'.tr, shortDate(sub.startsAt)),
-                  KeyValue('admin_until'.tr, shortDate(sub.endsAt)),
-                  KeyValue('admin_amount'.tr, money(sub.amount, sub.currency)),
-                ],
-              ),
-      ),
-      Section(
-        title: 'admin_subscribed_courses'.tr,
-        trailing: TextButton.icon(
-          onPressed: () async {
-            await _enrollDialog(context, p, u.id);
-            await _load();
-          },
-          icon: const Icon(Icons.add_rounded, size: 18),
-          label: Text('admin_enrol'.tr),
-        ),
-        child: d!.enrollments.isEmpty
-            ? Text(
-                'admin_no_courses'.tr,
-                style: TextStyle(fontFamily: AppFonts.family, color: c.textLight),
-              )
-            : Column(
-                children: [
-                  for (final e in d!.enrollments)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              asStr(e['course_name']),
-                              style: TextStyle(
-                                fontFamily: AppFonts.family,
-                                color: c.textDark,
-                              ),
-                            ),
-                          ),
-                          StatusChip(
-                            enrollmentStatusLabel(asStr(e['status'])),
-                            asStr(e['status']) == 'active'
-                                ? c.success
-                                : (asStr(e['status']) == 'dropped'
-                                      ? c.danger
-                                      : c.warning),
-                          ),
-                          if (e['can_resubscribe'] == true)
-                            IconButton(
-                              tooltip: 'admin_allow_resubscribe'.tr,
-                              icon: Icon(
-                                Icons.autorenew_rounded,
-                                color: c.success,
-                                size: 20,
-                              ),
-                              onPressed: () async {
-                                final mode = await _resubscribeDialog(context);
-                                if (mode == null) return;
-                                if (await p.allowResubscribe(
-                                  u.id,
-                                  asInt(e['course_id']),
-                                  mode: mode,
-                                )) {
-                                  await _load();
-                                }
-                              },
-                            ),
-                          if (asStr(e['status']) != 'dropped')
-                            IconButton(
-                              tooltip: 'admin_remove'.tr,
-                              icon: Icon(
-                                Icons.remove_circle_outline_rounded,
-                                color: c.danger,
-                                size: 20,
-                              ),
-                              onPressed: () async {
-                                final ok = await confirm(
-                                  context,
-                                  message:
-                                      'admin_remove_the_student_from_this_course'
-                                          .tr,
-                                  danger: true,
-                                );
-                                if (!ok) return;
-                                if (await p.unenroll(
-                                  u.id,
-                                  asInt(e['course_id']),
-                                )) {
-                                  await _load();
-                                }
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-      ),
-      Section(
-        title: 'admin_devices'.tr,
-        trailing: d!.devices.isEmpty
-            ? null
-            : TextButton(
-                onPressed: () async {
-                  final ok = await confirm(
-                    context,
-                    message: 'admin_remove_all_devices_and_reset_the'.tr,
-                    danger: true,
-                  );
-                  if (!ok) return;
-                  if (await p.resetDevices(u.id)) await _load();
-                },
-                child: Text(
-                  'admin_reset_all'.tr,
-                  style: TextStyle(color: c.danger),
-                ),
-              ),
-        child: d!.devices.isEmpty
-            ? Text(
-                'admin_no_registered_devices'.tr,
-                style: TextStyle(fontFamily: AppFonts.family, color: c.textLight),
-              )
-            : Column(
-                children: [
-                  for (final dev in d!.devices)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      leading: Icon(
-                        Icons.phone_android_rounded,
-                        color: c.primary,
-                      ),
-                      title: Text(
-                        dev.deviceName,
-                        style: TextStyle(fontFamily: AppFonts.family),
-                      ),
-                      subtitle: Text(
-                        '${'admin_since'.tr} ${shortDate(dev.boundAt)}',
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: 11.5,
-                        ),
-                      ),
-                      trailing: IconButton(tooltip: t('حذف', 'Delete'), 
-                        icon: Icon(
-                          Icons.delete_outline_rounded,
-                          color: c.danger,
-                          size: 20,
-                        ),
-                        onPressed: () async {
-                          if (await p.removeDevice(u.id, dev.id)) await _load();
-                        },
-                      ),
-                    ),
-                  if (d!.lastDeviceSwitchAt != null)
-                    KeyValue(
-                      'admin_last_switch'.tr,
-                      shortDate(d!.lastDeviceSwitchAt),
-                    ),
-                ],
-              ),
-      ),
-      if (d!.payments.isNotEmpty)
-        Section(
-          title: 'payments'.tr,
-          child: Column(
-            children: [
-              for (final pay in d!.payments.take(8))
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '#${pay['id']} • ${paymentMethodLabel(asStrOrNull(pay['method']))} • ${shortDate(asStrOrNull(pay['created_at']))}',
-                          style: TextStyle(
-                            fontFamily: AppFonts.family,
-                            fontSize: 12.5,
-                            color: c.textMedium,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        money(
-                          asDouble(pay['price_paid'], asDouble(pay['amount'])),
-                        ),
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontWeight: FontWeight.w700,
-                          color: c.textDark,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      StatusChip(
-                        paymentStatusLabel(asStr(pay['status'])),
-                        asStr(pay['status']) == 'completed'
-                            ? c.success
-                            : (asStr(pay['status']) == 'pending'
-                                  ? c.warning
-                                  : c.danger),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-    ];
-  }
-}
-
-Future<void> _grantDialog(
-  BuildContext context,
-  AdminUsersProvider p,
-  int userId,
-) async {
-  final daysCtrl = TextEditingController();
-  String plan = 'monthly';
-  await showDialog(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setS) => Directionality(
-        textDirection: dir,
-        child: AlertDialog(
-          scrollable: true,
-          title: Text(
-            'admin_grant_subscription'.tr,
-            style: TextStyle(fontFamily: AppFonts.family),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ChoiceRow<String>(
-                options: {
-                  'monthly': 'admin_monthly'.tr,
-                  'yearly': 'admin_yearly'.tr,
-                  'custom': 'admin_custom_days'.tr,
-                },
-                value: plan,
-                onChanged: (v) => setS(() => plan = v),
-              ),
-              if (plan == 'custom')
-                Field(
-                  controller: daysCtrl,
-                  label: 'admin_days_2'.tr,
-                  keyboard: TextInputType.number,
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('exam_cancel'.tr),
-            ),
-            TextButton(
-              onPressed: () async {
-                final days = int.tryParse(daysCtrl.text.trim());
-                if (plan == 'custom' && (days == null || days < 1)) {
-                  toast('admin_enter_a_valid_number_of_days'.tr, error: true);
-                  return;
-                }
-                Navigator.pop(ctx);
-                await p.grant(
-                  userId,
-                  planCode: plan == 'custom' ? null : plan,
-                  days: plan == 'custom' ? days : null,
-                );
-              },
-              child: Text('admin_grant'.tr),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-  disposeAfterRoute([daysCtrl]);
-}
-
-/// Returns 'allow_payment' (student pays again) | 'reopen' (re-activate, no payment) | null.
-Future<String?> _resubscribeDialog(BuildContext context) {
-  return showDialog<String>(
-    context: context,
-    builder: (ctx) => Directionality(
-      textDirection: dir,
-      child: SimpleDialog(
-        title: Text(
-          'admin_allow_resubscribe'.tr,
-          style: TextStyle(fontFamily: AppFonts.family),
-        ),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, 'allow_payment'),
-            child: Text(
-              'admin_resubscribe_allow_payment'.tr,
-              style: TextStyle(fontFamily: AppFonts.family),
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, 'reopen'),
-            child: Text(
-              'admin_resubscribe_reopen'.tr,
-              style: TextStyle(fontFamily: AppFonts.family),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-Future<void> _enrollDialog(
-  BuildContext context,
-  AdminUsersProvider p,
-  int userId,
-) async {
-  final courses = await p.courseChoices();
-  if (!context.mounted) return;
-  if (courses.isEmpty) {
-    toast('admin_no_courses'.tr, error: true);
-    return;
-  }
-  final picked = await showDialog<AdminCourse>(
-    context: context,
-    builder: (ctx) => Directionality(
-      textDirection: dir,
-      child: SimpleDialog(
-        title: Text(
-          'admin_choose_a_course'.tr,
-          style: TextStyle(fontFamily: AppFonts.family),
-        ),
-        children: [
-          SizedBox(
-            width: double.maxFinite,
-            height: 360,
-            child: ListView(
-              children: [
-                for (final c in courses)
-                  ListTile(
-                    title: Text(
-                      c.name,
-                      style: TextStyle(fontFamily: AppFonts.family),
-                    ),
-                    subtitle: Text(
-                      c.teacherName,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 12,
-                      ),
-                    ),
-                    onTap: () => Navigator.pop(ctx, c),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-  if (picked != null) await p.enroll(userId, picked.id);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Create / edit form
 // ═════════════════════════════════════════════════════════════════════════════
+
+/// The form that edits a user (the student detail opens it too).
+Future<void> openAdminUserForm(BuildContext context, AdminUsersProvider p, {required AdminUser existing}) =>
+    _openForm(context, p, existing: existing);
 
 Future<void> _openForm(
   BuildContext context,

@@ -5,7 +5,11 @@
 // quick actions), the badges worded per code, the stat tiles, the kind's blocks (a course's trend and withdrawal
 // reasons, a category's top courses, a learner's own enrollment) and every section the server listed, in its order:
 // a paged sub-list with search, the contract's filter and sort, whose rows are links (student → course → category →
-// teacher → …); a student's timeline per course; a course's content block.
+// teacher → …); a course's content block.
+//
+// A student (student_detail.dart): the overview card instead of the stat tiles, the courses section with each course's
+// facts and timeline unfolding under its row, and for `can.manage` the management part. A course opened from a student
+// keeps that student as its context.
 library;
 
 import 'package:flutter/material.dart';
@@ -22,15 +26,20 @@ import '../app_kit.dart';
 import 'entity_chip.dart';
 import 'entity_panel_controller.dart';
 import 'entity_specs.dart';
+import 'entity_timeline.dart';
+import 'student_detail.dart';
 
 /// A quick action of the panel (Manage, View as …), shown under the header.
 class EntityPanelAction {
-  const EntityPanelAction({required this.icon, required this.label, required this.onPressed, this.key});
+  const EntityPanelAction({required this.icon, required this.label, required this.onPressed, this.key, this.danger = false});
 
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
   final Key? key;
+
+  /// Drawn as a danger action where one is possible.
+  final bool danger;
 }
 
 /// The quick actions for [ref] once its summary is known ([summary] null while it loads).
@@ -73,7 +82,62 @@ class _EntityDetailViewState extends State<EntityDetailView> {
   bool _loading = false;
   int _revision = 0;
 
+  /// The management part of a student, for `can.manage` (loaded with the first summary that allows it).
+  StudentManage? _manage;
+  int? _manageFor;
+  Object? _manageError;
+
   EntityRef get ref => widget.entity;
+
+  void _syncManage(EntitySummary s) {
+    if (s.kind != EntityKind.student || !s.can.manage || _manageFor == s.id) return;
+    _manageFor = s.id;
+    _loadManage(s.ref);
+  }
+
+  Future<void> _loadManage(EntityRef student) async {
+    if (_manageError != null) setState(() => _manageError = null);
+    try {
+      final m = await loadStudentManage(student, onChanged: _entityChanged, onDeleted: () => widget.controller?.close());
+      if (!mounted || _manageFor != student.id) {
+        m.dispose();
+        return;
+      }
+      m.addListener(_manageChanged);
+      setState(() => _manage = m);
+    } catch (e) {
+      if (mounted) setState(() => _manageError = e);
+    }
+  }
+
+  void _manageChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// A change made here: the summary and the sub-lists load again, and the list behind the panel hears of it.
+  void _entityChanged() {
+    EntitiesApi.instance.invalidate(ref);
+    final c = widget.controller;
+    if (c != null) {
+      c.entityChanged();
+    } else if (mounted) {
+      _load(force: true);
+    }
+  }
+
+  void _dropManage() {
+    _manage?.removeListener(_manageChanged);
+    _manage?.dispose();
+    _manage = null;
+    _manageFor = null;
+    _manageError = null;
+  }
+
+  @override
+  void dispose() {
+    _dropManage();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -90,6 +154,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
       _summary = null;
       _error = null;
       _revision = rev;
+      _dropManage();
       _load();
     } else if (rev != _revision) {
       _revision = rev;
@@ -107,6 +172,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         _error = null;
         _loading = false;
       });
+      _syncManage(hit);
       return;
     }
     if (mounted) setState(() => _loading = true);
@@ -118,6 +184,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         _error = null;
         _loading = false;
       });
+      _syncManage(s);
     } catch (e) {
       if (!mounted || want != ref) return;
       setState(() {
@@ -142,7 +209,10 @@ class _EntityDetailViewState extends State<EntityDetailView> {
     final shown = s?.ref.withLabel(label: ref.label, labelEn: ref.labelEn, imageUrl: ref.imageUrl) ?? ref;
     final headerRef = s == null ? ref : s.ref;
     final children = <Widget>[
-      EntityHeader(entity: s == null ? shown : headerRef, summary: s, actions: widget.actions?.call(ref, s) ?? const []),
+      EntityHeader(entity: s == null ? shown : headerRef, summary: s, actions: [
+        ...?_manage?.headerActions(context),
+        ...?widget.actions?.call(ref, s),
+      ]),
     ];
     if (s == null) {
       if (_error != null && !_loading) {
@@ -164,7 +234,9 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         ));
       }
       final stats = statSpecsOf(s);
-      if (stats.isNotEmpty) {
+      if (s.kind == EntityKind.student) {
+        children.add(StudentOverviewCard(summary: s));
+      } else if (stats.isNotEmpty) {
         children.add(Padding(padding: const EdgeInsets.only(top: AppSpace.md), child: EntityStatGrid(stats)));
       }
       children.addAll(_blocks(context, s));
@@ -178,25 +250,51 @@ class _EntityDetailViewState extends State<EntityDetailView> {
 
       for (final section in s.sections) {
         final spec = sectionSpecOf(s.kind, section);
-        if (spec == null) continue;
+        if (spec == null) continue; // a student's `timeline` too: each course's history unfolds under its row
+        final studentCourses = s.kind == EntityKind.student && section == 'courses';
         final Widget body = switch (spec.shape) {
           EntitySectionShape.block => _ContentBlock(summary: s),
-          EntitySectionShape.timeline => s.kind == EntityKind.student
-              ? StudentTimelineSection(studentId: s.id, focusCourseId: focusCourse)
-              : _learnerTimeline(context, s, contextStudent),
+          EntitySectionShape.timeline => _learnerTimeline(context, s, contextStudent),
           EntitySectionShape.list => EntitySubList(
               key: ValueKey('md.${s.kind.name}.${s.id}.$section'),
               entity: s.ref,
               spec: spec,
               initialSearch: switch ((s.kind, section)) {
-                (EntityKind.student, 'courses') => nameOf(focusCourse, EntityKind.course),
                 (EntityKind.course, 'students') => nameOf(contextStudent, EntityKind.student),
                 _ => null,
               },
               highlightId: s.kind == EntityKind.student ? focusCourse : contextStudent,
+              revision: ctl?.revision ?? 0,
+              pinned: studentCourses && focusCourse != null
+                  ? () => EntitiesApi.instance.studentCourse(s.id, focusCourse)
+                  : null,
+              rowBuilder: studentCourses
+                  ? (context, item) => item is EnrollmentRow
+                      ? StudentCourseRow(
+                          key: ValueKey('md.student.row.${item.enrollment.enrollmentId}'),
+                          studentId: s.id,
+                          row: item,
+                          focused: item.subject.id == focusCourse,
+                          actions: _manage?.courseActions(context, item) ?? const [],
+                        )
+                      : null
+                  : null,
             ),
         };
-        children.add(EntitySectionCard(spec: spec, child: body));
+        children.add(EntitySectionCard(
+          spec: spec,
+          trailing: studentCourses ? _manage?.coursesAction(context) : null,
+          child: body,
+        ));
+      }
+      if (s.kind == EntityKind.student && s.can.manage) {
+        if (_manageError != null) {
+          children.add(Padding(
+            padding: const EdgeInsets.only(top: AppSpace.md),
+            child: AppErrorState(message: entityErrorText(_manageError), onRetry: () => _loadManage(s.ref), compact: true),
+          ));
+        }
+        children.addAll(_manage?.sections(context) ?? const []);
       }
     }
     return SingleChildScrollView(
@@ -219,6 +317,10 @@ class _EntityDetailViewState extends State<EntityDetailView> {
     final out = <Widget>[];
     switch (s.kind) {
       case EntityKind.course:
+        final student = widget.controller?.contextRef;
+        if (student != null && !s.sections.contains('timeline')) {
+          out.add(StudentInCourseBlock(key: ValueKey('md.context.${student.id}'), student: student, courseId: s.id));
+        }
         final mine = s.mine;
         if (mine != null) {
           out.add(_BlockCard(
@@ -297,6 +399,11 @@ class EntityHeader extends StatelessWidget {
           }
           if (s.text('email') != null) meta.add(s.text('email')!);
           if (s.text('phone') != null) meta.add(s.text('phone')!);
+          for (final o in s.organizations) {
+            if (o.name.isNotEmpty) {
+              pills.add(AppStatusBadge(label: o.name, tone: AppTone.info, icon: Icons.apartment_rounded, dense: true));
+            }
+          }
           if (s.time('created_at') != null) meta.add(mdText('md_joined', {'d': mdDate(s.time('created_at'))}));
           if (s.time('last_login') != null) meta.add(mdText('md_last_login', {'d': mdAgo(s.time('last_login'))}));
         case EntityKind.teacher:
@@ -585,10 +692,13 @@ class _ContentBlock extends StatelessWidget {
 
 /// A section of the detail: a card with its heading and body.
 class EntitySectionCard extends StatelessWidget {
-  const EntitySectionCard({super.key, required this.spec, required this.child});
+  const EntitySectionCard({super.key, required this.spec, required this.child, this.trailing});
 
   final EntitySectionSpec spec;
   final Widget child;
+
+  /// An action beside the heading.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -598,7 +708,10 @@ class EntitySectionCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
-              child: _SectionHeading(icon: spec.icon, title: spec.title),
+              child: Row(children: [
+                Expanded(child: _SectionHeading(icon: spec.icon, title: spec.title)),
+                ?trailing,
+              ]),
             ),
             const SizedBox(height: AppSpace.sm),
             child,
@@ -616,6 +729,9 @@ class EntitySubList extends StatefulWidget {
     required this.spec,
     this.initialSearch,
     this.highlightId,
+    this.revision = 0,
+    this.pinned,
+    this.rowBuilder,
   });
 
   final EntityRef entity;
@@ -624,6 +740,15 @@ class EntitySubList extends StatefulWidget {
   /// Starts searching for this (a course opened from a student starts at that student).
   final String? initialSearch;
   final int? highlightId;
+
+  /// The panel's revision: when it moves the rows load again, in place.
+  final int revision;
+
+  /// The row of [highlightId], drawn first when the unfiltered list's first page does not hold it.
+  final Future<EntityItem?> Function()? pinned;
+
+  /// Draws a row its own way (null: the usual row).
+  final Widget? Function(BuildContext context, EntityItem item)? rowBuilder;
 
   @override
   State<EntitySubList> createState() => _EntitySubListState();
@@ -644,6 +769,7 @@ class _EntitySubListState extends State<EntitySubList> {
   Object? _error;
   int _maxTotal = 0;
   int _ticket = 0;
+  EntityItem? _pinned;
 
   @override
   void initState() {
@@ -652,21 +778,45 @@ class _EntitySubListState extends State<EntitySubList> {
   }
 
   @override
+  void didUpdateWidget(covariant EntitySubList old) {
+    super.didUpdateWidget(old);
+    if (old.revision != widget.revision) _reload(quiet: true);
+  }
+
+  @override
   void dispose() {
     _searchCtl.dispose();
     super.dispose();
   }
 
-  Future<void> _reload() async {
+  bool _isPinned(EntityItem i) => i is EnrollmentRow && i.subject.id == widget.highlightId;
+
+  /// The focused row when the first page of the plain list lacks it. A failure only loses the pin.
+  Future<EntityItem?> _loadPin(List<EntityItem> firstPage) async {
+    final load = widget.pinned;
+    if (load == null || _query.search.isNotEmpty || _query.filter.isNotEmpty || firstPage.any(_isPinned)) return null;
+    try {
+      return await load();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// [quiet]: the rows on screen stay until the new ones arrive (a change made in the panel).
+  Future<void> _reload({bool quiet = false}) async {
     final t = ++_ticket;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (!quiet) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final p = await EntitiesApi.instance.page(widget.entity, widget.spec.section, query: _query.copyWith(page: 1));
+      final pin = await _loadPin(p.items);
       if (!mounted || t != _ticket) return;
       setState(() {
+        _pinned = pin;
         _items
           ..clear()
           ..addAll(p.items);
@@ -739,6 +889,8 @@ class _EntitySubListState extends State<EntitySubList> {
     final showSort = spec.sorts.length > 1 && (_maxTotal > 1);
     final isEnrollments = _items.isNotEmpty ? _items.first is EnrollmentRow : spec.filterKey == 'state';
     final ownerId = widget.entity.id;
+    final pinned = _pinned;
+    final rows = pinned == null ? _items : [pinned, ..._items.where((i) => !_isPinned(i))];
 
     final toolbar = <Widget>[
       if (showSearch || showSort)
@@ -797,10 +949,11 @@ class _EntitySubListState extends State<EntitySubList> {
       );
     } else {
       body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        for (var i = 0; i < _items.length; i++) ...[
+        for (var i = 0; i < rows.length; i++) ...[
           if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: context.colors.divider),
-          entityRowFor(context, _items[i],
-              onHistory: isEnrollments ? _openHistory : null, ownerId: ownerId, highlightId: widget.highlightId),
+          widget.rowBuilder?.call(context, rows[i]) ??
+              entityRowFor(context, rows[i],
+                  onHistory: isEnrollments ? _openHistory : null, ownerId: ownerId, highlightId: widget.highlightId),
         ],
         if (_hasMore)
           Padding(
@@ -831,166 +984,4 @@ class _RowsSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const AppListSkeleton(items: 3, padding: EdgeInsets.symmetric(vertical: AppSpace.xxs));
-}
-
-// ── Timeline ─────────────────────────────────────────────────────────────────
-
-/// A student's history in one course as a sheet (the History button of an enrollment row).
-Future<void> showEntityTimelineSheet(BuildContext context,
-        {required int studentId, required int courseId, String title = ''}) =>
-    showAppSheet<void>(
-      context,
-      (ctx) => AppSheetContent(
-        title: title.isEmpty ? 'md_history'.tr : '${'md_history'.tr} · $title',
-        children: [EntityTimelineList(studentId: studentId, courseId: courseId)],
-      ),
-    );
-
-/// A student's timeline section: the course picker (their courses, the one in context first) and that course's
-/// history.
-class StudentTimelineSection extends StatefulWidget {
-  const StudentTimelineSection({super.key, required this.studentId, this.focusCourseId});
-
-  final int studentId;
-  final int? focusCourseId;
-
-  @override
-  State<StudentTimelineSection> createState() => _StudentTimelineSectionState();
-}
-
-class _StudentTimelineSectionState extends State<StudentTimelineSection> {
-  List<EntityRef>? _courses;
-  Object? _error;
-  int? _courseId;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() => _error = null);
-    try {
-      final p = await EntitiesApi.instance.page(EntityRef(EntityKind.student, widget.studentId), 'courses',
-          query: const EntityListQuery(sort: 'activity_desc', size: 50));
-      if (!mounted) return;
-      final courses = [for (final r in p.items.whereType<EnrollmentRow>()) r.subject];
-      setState(() {
-        _courses = courses;
-        final focus = widget.focusCourseId;
-        _courseId = focus != null && courses.any((c) => c.id == focus)
-            ? focus
-            : (courses.isEmpty ? null : courses.first.id);
-      });
-    } catch (e) {
-      if (mounted) setState(() => _error = e);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_error != null) return AppErrorState(message: entityErrorText(_error), onRetry: _load, compact: true);
-    final courses = _courses;
-    if (courses == null) return const _RowsSkeleton();
-    if (courses.isEmpty || _courseId == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
-        child: Text('md_empty_section'.tr, textAlign: TextAlign.center, style: AppType.body(context)),
-      );
-    }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (courses.length > 1) ...[
-        AppDropdown<int>(
-          value: _courseId,
-          decoration: InputDecoration(labelText: 'md_timeline_course'.tr, isDense: true),
-          items: [
-            for (final c in courses)
-              DropdownMenuItem(value: c.id, child: Text(c.name.isEmpty ? '#${c.id}' : c.name)),
-          ],
-          onChanged: (v) => setState(() => _courseId = v),
-        ),
-        const SizedBox(height: AppSpace.sm),
-      ] else ...[
-        Text(courses.first.name, style: AppType.label(context)),
-        const SizedBox(height: AppSpace.sm),
-      ],
-      EntityTimelineList(key: ValueKey('md.tl.${widget.studentId}.$_courseId'), studentId: widget.studentId, courseId: _courseId!),
-    ]);
-  }
-}
-
-/// One student's history in one course, newest first, 20 at a time.
-class EntityTimelineList extends StatefulWidget {
-  const EntityTimelineList({super.key, required this.studentId, required this.courseId});
-
-  final int studentId;
-  final int courseId;
-
-  @override
-  State<EntityTimelineList> createState() => _EntityTimelineListState();
-}
-
-class _EntityTimelineListState extends State<EntityTimelineList> {
-  final _events = <EntityTimelineEvent>[];
-  int _page = 0;
-  bool _hasMore = false;
-  bool _loading = true;
-  Object? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _next();
-  }
-
-  Future<void> _next() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final p = await EntitiesApi.instance.timeline(widget.studentId, widget.courseId, page: _page + 1);
-      if (!mounted) return;
-      setState(() {
-        _events.addAll(p.items);
-        _page = p.page;
-        _hasMore = p.hasMore;
-        _loading = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e;
-          _loading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_events.isEmpty) {
-      if (_loading) return const _RowsSkeleton();
-      if (_error != null) return AppErrorState(message: entityErrorText(_error), onRetry: _next, compact: true);
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
-        child: Text('md_timeline_empty'.tr, textAlign: TextAlign.center, style: AppType.body(context)),
-      );
-    }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (var i = 0; i < _events.length; i++)
-        EntityTimelineTile(_events[i], last: i == _events.length - 1 && !_hasMore),
-      if (_hasMore)
-        Center(
-          child: AppButton.ghost(
-            label: 'md_load_more'.tr,
-            icon: Icons.expand_more_rounded,
-            busy: _loading,
-            size: AppButtonSize.sm,
-            onPressed: _next,
-          ),
-        ),
-    ]);
-  }
 }

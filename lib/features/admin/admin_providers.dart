@@ -356,8 +356,11 @@ class AdminUsersProvider extends AdminPagedProvider {
     return r != null;
   }
 
-  Future<bool> unenroll(int userId, int courseId) async {
-    final r = await call(() => api.delete('$_base/users/$userId/enrollments/$courseId'),
+  /// [reasonCode] / [reason]: what the withdrawal is recorded under (D-290).
+  Future<bool> unenroll(int userId, int courseId, {String? reasonCode, String? reason}) async {
+    final r = await call(
+        () => api.delete('$_base/users/$userId/enrollments/$courseId',
+            queryParams: {'reason_code': ?reasonCode, 'reason': ?reason}),
         ok: 'admin_removed_from_course'.tr);
     if (r != null) await refresh();
     return r != null;

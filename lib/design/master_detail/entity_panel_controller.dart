@@ -24,6 +24,9 @@ class EntityPanelController extends ChangeNotifier {
   /// The list's rows, in order (set by the page on every build; no notification).
   List<EntityRef> siblings = const [];
 
+  /// Set by the list: an entity changed in the panel (its rows may be out of date).
+  VoidCallback? onEntityChanged;
+
   bool get isOpen => _index >= 0;
 
   /// The entity shown, or null when closed.
@@ -58,6 +61,10 @@ class EntityPanelController extends ChangeNotifier {
   /// A course opened from a student: that student (the course's students start at them; their history is one tap
   /// away).
   int? get contextStudentId => _contextOf(EntityKind.course, EntityKind.student);
+
+  /// What the entity shown was opened from when that gives it a context (a student from a course, a course from a
+  /// student); the full page takes it along.
+  EntityRef? get contextRef => focusCourseId != null || contextStudentId != null ? _trail[_index - 1] : null;
 
   int? _contextOf(EntityKind shown, EntityKind from) {
     if (_index < 1 || _trail[_index].kind != shown) return null;
@@ -119,6 +126,12 @@ class EntityPanelController extends ChangeNotifier {
   void reload() {
     _revision++;
     notifyListeners();
+  }
+
+  /// The entity shown changed on the server: it loads again, and the list hears of it.
+  void entityChanged() {
+    reload();
+    onEntityChanged?.call();
   }
 
   int _siblingIndex(int? id) {

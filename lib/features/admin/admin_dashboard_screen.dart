@@ -31,6 +31,8 @@ import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppPageHeader;
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -318,8 +320,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void _openHit(BuildContext context, AdminSearchHit h) {
     Future<void> push(Widget w) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
     switch (h.kind) {
-      case 'students' || 'teachers' || 'admins':
-        showAdminUserDetail(context, userId: h.id, role: switch (h.kind) { 'teachers' => 'teacher', 'admins' => 'admin', _ => 'student' });
+      case 'teachers' || 'admins':
+        showAdminUserDetail(context, userId: h.id, role: h.kind == 'teachers' ? 'teacher' : 'admin');
+      case 'students':
+        EntityNavigator.openFullPage(context, EntityRef(EntityKind.student, h.id, label: h.label));
       case 'courses':
         _tabs.onChangeTab(2);
       case 'organizations':

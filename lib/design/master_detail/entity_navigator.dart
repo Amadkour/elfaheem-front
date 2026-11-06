@@ -30,9 +30,10 @@ class MasterDetailScope extends InheritedWidget {
 }
 
 abstract final class EntityNavigator {
-  /// The full page's URL of [ref].
-  static String location(EntityRef ref) =>
-      AppRoutes.location(AppRoutes.entityView.id, {'kind': ref.kind.name, 'id': ref.id});
+  /// The full page's URL of [ref]; [from] is what it was opened from (`?from=course:5`: a student keeps that course in
+  /// focus, a course keeps that student as its context).
+  static String location(EntityRef ref, {EntityRef? from}) => AppRoutes.location(
+      AppRoutes.entityView.id, {'kind': ref.kind.name, 'id': ref.id}, from == null ? null : {'from': from.toToken()});
 
   /// Opens [ref] where it belongs (see the file header).
   static void open(BuildContext context, EntityRef ref) {
@@ -49,6 +50,6 @@ abstract final class EntityNavigator {
   }
 
   /// Pushes the full page of [ref] (its own URL, refresh-safe).
-  static Future<void> openFullPage(BuildContext context, EntityRef ref) =>
-      Navigator.of(context).pushNamed(location(ref), arguments: ref);
+  static Future<void> openFullPage(BuildContext context, EntityRef ref, {EntityRef? from}) =>
+      Navigator.of(context).pushNamed(location(ref, from: from), arguments: ref);
 }

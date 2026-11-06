@@ -104,6 +104,18 @@ class EntityMoney {
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 
+/// An organization a student belongs to (`{id, name_ar, name_en}`).
+class EntityOrganization {
+  const EntityOrganization(this.id, this.nameAr, this.nameEn);
+
+  final int id;
+  final String? nameAr;
+  final String? nameEn;
+
+  /// The name in the app language, falling back to the other one.
+  String get name => EntityRef(EntityKind.category, id, label: nameAr, labelEn: nameEn).name;
+}
+
 /// A computed fact the app words itself (`code` + `level` + an optional number).
 class EntityBadge {
   const EntityBadge(this.code, this.level, this.value);
@@ -307,6 +319,17 @@ class EntitySummary {
 
   /// A course's or a teacher's revenue (money viewers only), one entry per currency.
   List<EntityMoney> get revenue => EntityMoney.listFrom(stats['revenue']);
+
+  // student
+  /// What the student paid, net of refunds, one entry per currency (money viewers only).
+  List<EntityMoney> get paid => EntityMoney.listFrom(stats['paid']);
+
+  /// The organizations the student belongs to (not sent to a teacher).
+  List<EntityOrganization> get organizations => [
+        for (final o in entityMaps(header['organizations']))
+          if (entityIntOrNull(o['id']) case final id?)
+            EntityOrganization(id, entityString(o['name_ar']), entityString(o['name_en'])),
+      ];
 
   // teacher
   EntityRef? get specialization => categoryRefFrom(header['specialization']);

@@ -199,7 +199,7 @@ class _ChromeBar extends StatelessWidget {
             key: const ValueKey('md.full_page'),
             icon: Icons.open_in_full_rounded,
             tooltip: 'md_open_full'.tr,
-            onPressed: () => EntityNavigator.openFullPage(context, current),
+            onPressed: () => EntityNavigator.openFullPage(context, current, from: controller.contextRef),
           ),
         if (!page)
           AppIconButton(

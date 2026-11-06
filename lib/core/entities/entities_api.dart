@@ -4,6 +4,7 @@
 //   EntitiesApi.instance.cached(ref)                      the cached summary or null (drawn at once, then refreshed)
 //   EntitiesApi.instance.prefetch(ref)                    warm the cache (a row hovered on the web)
 //   EntitiesApi.instance.page(ref, 'courses', query: …)   one page of a sub-list the summary listed
+//   EntitiesApi.instance.studentCourse(studentId, courseId)  one row of a student's courses
 //   EntitiesApi.instance.timeline(studentId, courseId)    one student's history in one course, newest first
 //   EntitiesApi.instance.invalidate(ref)                  after a change (the Manage sheet saved)
 //
@@ -116,6 +117,14 @@ class EntitiesApi {
     };
     if (r == null) return const EntityPage();
     return EntityPage.fromJson<EntityItem>(r, (j) => EntityItem.parse(ref.kind, section, j));
+  }
+
+  /// One student's row in one course (the course a detail focuses, whatever page it sorts onto); null when they are
+  /// not in it, or an older server that does not know the filter answered another row.
+  Future<EnrollmentRow?> studentCourse(int studentId, int courseId) async {
+    final p = await page(EntityRef(EntityKind.student, studentId), 'courses',
+        query: EntityListQuery(filter: {'course_id': '$courseId'}, size: 1));
+    return p.items.whereType<EnrollmentRow>().where((r) => r.subject.id == courseId).firstOrNull;
   }
 
   /// One student's history in one course, newest first.

@@ -318,8 +318,8 @@ Widget deferredTeacherSessionsScreen({bool? expandDetails, CourseProfileHub? pro
     builder: (_) => sessions.TeacherSessionsScreen(expandDetails: expandDetails, profileHub: profileHub, initialTab: initialTab));
 
 /// The full page of a student / course / teacher / category (`/view/:kind/:id`, D-290).
-Widget deferredEntityDetailPage(EntityRef entity) =>
-    DeferredPage(id: 'entity_page', load: entity_page.loadLibrary, builder: (_) => entity_page.EntityDetailPage(entity: entity));
+Widget deferredEntityDetailPage(EntityRef entity, {EntityRef? from}) => DeferredPage(
+    id: 'entity_page', load: entity_page.loadLibrary, builder: (_) => entity_page.EntityDetailPage(entity: entity, from: from));
 
 Widget deferredCourseForm({TeacherCourse? course}) =>
     DeferredPage(id: 'course_form', load: course_form.loadLibrary, builder: (_) => course_form.CourseFormScreen(course: course));

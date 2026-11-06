@@ -6,8 +6,7 @@
 //   stats          statSpecsOf(summary): the tiles a summary draws (only the figures the server sent)
 //   rows           entityRowFor(item, …): one row of a sub-list, a link to the entity it names
 //
-// Phase 3 draws the timeline as a plain chronological list and a course's trend as one sparkline; the rich timeline
-// and the course statistics come in phases 4 – 5.
+// A course's trend is one sparkline for now; the course statistics come in phase 5.
 library;
 
 import 'package:flutter/material.dart';
@@ -172,15 +171,15 @@ String mdBadgeText(EntityBadge b) {
 /// One history event as a sentence.
 String mdTimelineText(EntityTimelineEvent e) {
   final d = e.data;
-  final title = entityString(d['title']) ?? '';
+  final title = entityString(d['title']);
   switch (e.type) {
     case 'material_completed':
-      return mdText('md_tl_material_completed', {'t': title});
+      return title == null ? 'md_p4_tl_lesson'.tr : mdText('md_tl_material_completed', {'t': title});
     case 'live_attended':
-      return mdText('md_tl_live_attended', {'t': title});
+      return title == null ? 'md_p4_tl_live'.tr : mdText('md_tl_live_attended', {'t': title});
     case 'exam_submitted':
       final p = entityDouble(d['percentage']);
-      final head = mdText('md_tl_exam_submitted', {'t': title});
+      final head = title == null ? 'md_p4_tl_exam'.tr : mdText('md_tl_exam_submitted', {'t': title});
       return p == null ? head : '$head · ${mdPercent(p)}';
     case 'rated':
       return mdText('md_tl_rated', {'v': '${entityInt(d['value'])}'});
@@ -213,6 +212,12 @@ AppTone mdTimelineTone(EntityTimelineEvent e) => switch (e.type) {
       'withdrawn' => AppTone.danger,
       'exam_submitted' => e.data['passed'] == false ? AppTone.warning : AppTone.success,
       'enrolled' || 'first_visit' => AppTone.brand,
+      'subscription' => switch (entityString(e.data['event'])) {
+          'cancelled' || 'refunded' || 'payment_failed' || 'access_denied' => AppTone.danger,
+          'expired' => AppTone.warning,
+          'payment_succeeded' || 'activated' || 'renewed' => AppTone.success,
+          _ => AppTone.info,
+        },
       _ => AppTone.info,
     };
 
@@ -231,6 +236,7 @@ class EntitySectionSpec {
     this.filterOptions = const [],
     this.searchable = true,
     this.pageSize = 10,
+    this.titleKey,
   });
 
   final String section;
@@ -246,7 +252,10 @@ class EntitySectionSpec {
   final bool searchable;
   final int pageSize;
 
-  String get title => mdSectionTitle(section);
+  /// The heading's translation key when it is not the section's usual one.
+  final String? titleKey;
+
+  String get title => titleKey?.tr ?? mdSectionTitle(section);
 
   String filterLabel(String value) => filterKey == 'state' ? mdStateLabel(value) : mdCourseStatusLabel(value);
 }
@@ -260,8 +269,8 @@ EntitySectionSpec? sectionSpecOf(EntityKind kind, String section) => switch ((ki
           icon: Icons.auto_stories_rounded,
           sorts: _enrollmentSorts,
           filterKey: 'state',
-          filterOptions: entityEnrollmentStates),
-      (EntityKind.student, 'timeline') ||
+          filterOptions: entityEnrollmentStates,
+          titleKey: 'md_p4_sec_courses'),
       (EntityKind.course, 'timeline') =>
         const EntitySectionSpec('timeline', icon: Icons.history_rounded, shape: EntitySectionShape.timeline),
       (EntityKind.student, 'payments') => const EntitySectionSpec('payments',
@@ -345,6 +354,10 @@ List<EntityStat> statSpecsOf(EntitySummary s) {
         out.add(EntityStat('last_activity_at', 'md_stat_last_activity'.tr, Icons.schedule_rounded,
             s.statTime('last_activity_at') == null ? 'md_no_activity'.tr : mdAgo(s.statTime('last_activity_at')),
             tone: AppTone.info));
+      }
+      if (s.paid.isNotEmpty) {
+        out.add(EntityStat('paid', 'md_p4_stat_paid'.tr, Icons.account_balance_wallet_outlined,
+            s.paid.map(mdMoney).join(' · '), tone: AppTone.success));
       }
     case EntityKind.course:
       count('enrolled', 'md_stat_students', Icons.groups_rounded);
@@ -639,7 +652,7 @@ Widget entityRowFor(BuildContext context, EntityItem item,
           mdDate(item.paidAt ?? item.createdAt),
           if (item.method != null) mdHumanize(item.method!),
         ].join(' · '),
-        leading: _toneIcon(context, Icons.payments_outlined, mdPaymentTone(item.status)),
+        leading: entityToneIcon(context, Icons.payments_outlined, mdPaymentTone(item.status)),
         trailing: Text(
           item.amount == null ? '—' : mdMoney(EntityMoney(item.amount!, item.currency)),
           style: AppType.bodyStrong(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
@@ -659,7 +672,7 @@ Widget entityRowFor(BuildContext context, EntityItem item,
         ref: ref,
         title: mdSubscriptionText(item.type),
         subtitle: [ref.name, mdDateTime(item.occurredAt)].where((s) => s.isNotEmpty).join(' · '),
-        leading: _toneIcon(context, Icons.receipt_long_outlined, AppTone.info),
+        leading: entityToneIcon(context, Icons.receipt_long_outlined, AppTone.info),
         body: [
           if (mdActorText(item.actorType) != null)
             Text(mdActorText(item.actorType)!, style: AppType.meta(context)),
@@ -672,61 +685,10 @@ Widget entityRowFor(BuildContext context, EntityItem item,
   }
 }
 
-Widget _toneIcon(BuildContext context, IconData icon, AppTone tone) => Container(
-      width: 40,
-      height: 40,
+/// An icon on a circle of its tone (a payment, a line of a timeline).
+Widget entityToneIcon(BuildContext context, IconData icon, AppTone tone, {double size = 40}) => Container(
+      width: size,
+      height: size,
       decoration: BoxDecoration(color: appToneTint(context, tone), shape: BoxShape.circle),
-      child: Icon(icon, size: AppIconSize.md, color: appToneInk(context, tone)),
+      child: Icon(icon, size: size < 40 ? AppIconSize.sm : AppIconSize.md, color: appToneInk(context, tone)),
     );
-
-/// One event of a student's history in a course: the icon on its tone, the sentence, the date and time.
-class EntityTimelineTile extends StatelessWidget {
-  const EntityTimelineTile(this.event, {super.key, this.last = false});
-
-  final EntityTimelineEvent event;
-  final bool last;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final tone = mdTimelineTone(event);
-    final review = event.type == 'rated' ? entityString(event.data['review']) : null;
-    final reason = event.type == 'withdrawn' ? entityString(event.data['reason']) : null;
-    final passed = event.type == 'exam_submitted' ? event.data['passed'] : null;
-    return IntrinsicHeight(
-      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        SizedBox(
-          width: 40,
-          child: Column(children: [
-            _toneIcon(context, mdTimelineIcon(event.type), tone),
-            if (!last)
-              Expanded(child: Container(width: AppBorder.strong, margin: const EdgeInsets.symmetric(vertical: 2), color: c.divider)),
-          ]),
-        ),
-        AppSpace.gapSm,
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(top: AppSpace.xs, bottom: last ? 0 : AppSpace.md),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(mdTimelineText(event), maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
-              const SizedBox(height: 2),
-              Text(mdDateTime(event.at), style: AppType.meta(context)),
-              if (passed is bool) ...[
-                const SizedBox(height: AppSpace.xxs),
-                AppStatusBadge(
-                    label: passed ? 'md_passed'.tr : 'md_failed'.tr,
-                    tone: passed ? AppTone.success : AppTone.warning,
-                    dense: true),
-              ],
-              if (review != null || reason != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpace.xxs),
-                  child: Text('“${review ?? reason}”', maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-                ),
-            ]),
-          ),
-        ),
-      ]),
-    );
-  }
-}
