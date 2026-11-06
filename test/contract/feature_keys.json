@@ -211,6 +211,7 @@
  "notifications.today",
  "notifications.yesterday",
  "org.advising",
+ "org.advising.warning",
  "org.billing_view",
  "org.governance",
  "org.governance.export_hub",
