@@ -221,6 +221,11 @@ class AppNavigator {
       case 'advising':
         final inner = data['data'];
         final member = int.tryParse('${data['member_id'] ?? (inner is Map ? inner['member_id'] : null) ?? ''}');
+        // Phase 6 early warning: a notice naming a screen (alerts · workspace · advisor) or "propose a meeting"
+        final flat = <String, dynamic>{...data, if (inner is Map) for (final e in inner.entries) '${e.key}': e.value};
+        if (orgId != null && !AppConfig.disableList.contains('org.advising') && (flat['screen'] != null || flat['action'] == 'propose_meeting')) {
+          if (await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenScreenLink(nav, orgId: orgId, data: flat))) return;
+        }
         if (member != null && orgId != null && !AppConfig.disableList.contains('org.advising')) {
           await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenStudentLink(nav, orgId: orgId, memberId: member));
         } else {

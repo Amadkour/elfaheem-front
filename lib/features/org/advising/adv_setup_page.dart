@@ -27,6 +27,9 @@ import 'adv_handovers_page.dart';
 import 'adv_models.dart';
 import 'adv_students_page.dart';
 import 'adv_workspace_page.dart';
+import 'adv_alerts_page.dart' show AdvAlertsPage;
+import 'adv_rules_page.dart' show AdvRulesPage;
+import 'adv_warning_parts.dart' show advWarningSetupTiles;
 
 /// What the page shows.
 enum AdvSetupState { loading, failed, unavailable, off, on }
@@ -396,6 +399,8 @@ extension _AdvSetupLinks on AdvSetupView {
           onTap: () => open('handovers'),
         ),
       ],
+      // Phase 6: early warning
+      ...advWarningSetupTiles(context, leads: me.leads, advisor: me.advisor, open: open),
     ];
     return [
       _SectionTitle(t('العمل', 'Work')),
@@ -793,6 +798,8 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
       'handovers' => AdvHandoversPage(orgId: id, manage: false),
       'workspace' => AdvWorkspacePage(orgId: id, manage: lead),
       'categories' => AdvCategoriesPage(orgId: id),
+      'rules' => AdvRulesPage(orgId: id),
+      'alerts' => AdvAlertsPage(orgId: id, manage: lead),
       _ => AdvStudentsPage(orgId: id, manage: lead),
     };
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));

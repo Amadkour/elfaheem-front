@@ -32,11 +32,14 @@ String advFlagViewLabel(String v) => switch (v) {
     };
 
 class AdvFlagCard extends StatelessWidget {
-  const AdvFlagCard({super.key, required this.flag, this.onStatus, this.onEdit, this.onHistory});
+  const AdvFlagCard({super.key, required this.flag, this.onStatus, this.onEdit, this.onHistory, this.onAlerts});
   final AdvFlag flag;
 
   /// null: the action is not offered (not the owner, nothing allowed next).
   final VoidCallback? onStatus, onEdit, onHistory;
+
+  /// Phase 6: a rule flag's early-warning alerts (shown for `source: rule` only).
+  final VoidCallback? onAlerts;
 
   @override
   Widget build(BuildContext context) {
@@ -123,12 +126,13 @@ class AdvFlagCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: Text(_took(f.resolvedInHours!), style: AppType.meta(context)),
             ),
-          if (onStatus != null || onEdit != null || onHistory != null) ...[
+          if (onStatus != null || onEdit != null || onHistory != null || (onAlerts != null && f.source == 'rule')) ...[
             const SizedBox(height: AppSpace.xxs),
             Wrap(spacing: AppSpace.xxs, children: [
               if (onStatus != null) _Action(icon: Icons.published_with_changes_rounded, label: f.closed ? t('إعادة فتح', 'Reopen') : t('تغيير الحالة', 'Change status'), onTap: onStatus!),
               if (onEdit != null) _Action(icon: Icons.edit_outlined, label: t('تعديل', 'Edit'), onTap: onEdit!),
               if (onHistory != null) _Action(icon: Icons.history_rounded, label: t('السجل', 'History'), onTap: onHistory!),
+              if (onAlerts != null && f.source == 'rule') _Action(icon: Icons.radar_rounded, label: t('تنبيهات القواعد', 'Rule alerts'), onTap: onAlerts!),
             ]),
           ],
         ]),
@@ -174,6 +178,7 @@ class AdvFlagsPane extends StatelessWidget {
     this.onStatus,
     this.onEdit,
     this.onHistory,
+    this.onAlerts,
   });
 
   final AdvLoad load;
@@ -188,6 +193,9 @@ class AdvFlagsPane extends StatelessWidget {
   /// May the caller move / edit this flag (its owner or a director).
   final bool Function(AdvFlag)? canChange, canEdit;
   final ValueChanged<AdvFlag>? onStatus, onEdit, onHistory;
+
+  /// Phase 6: a rule flag's alerts.
+  final ValueChanged<AdvFlag>? onAlerts;
 
   @override
   Widget build(BuildContext context) {
@@ -242,6 +250,7 @@ class AdvFlagsPane extends StatelessWidget {
           onStatus: onStatus == null || !may ? null : () => onStatus!(f),
           onEdit: onEdit == null || f.closed || !(canEdit?.call(f) ?? false) ? null : () => onEdit!(f),
           onHistory: onHistory == null ? null : () => onHistory!(f),
+          onAlerts: onAlerts == null ? null : () => onAlerts!(f),
         ));
       }
       children.add(AdvRestrictedLine(count: p.restricted));

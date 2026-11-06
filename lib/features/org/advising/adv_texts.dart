@@ -44,7 +44,27 @@ Map<String, String> advCodeTexts() => {
       'advising_bad_contact_at': t('وقت التواصل لا يكون في المستقبل', 'The contact time cannot be in the future'),
       'advising_bad_cursor': t('تعذّر متابعة السجل الزمني من هذا الموضع — حدّث الصفحة', 'The timeline cannot continue from that point — refresh the page'),
       'advising_client_id_conflict': t('رقم الملاحظة المحفوظة استُخدم لطالب آخر — تُرسل برقم جديد', 'That saved note\'s id was used for another student — it is sent with a new id'),
+      // Phase 6: early warning (rules, engine runs)
+      'advising_bad_rule': t('إعدادات القاعدة غير صالحة — راجع القيم وحدودها', 'The rule\'s settings are not valid — check the values and their limits'),
+      'advising_rule_system': t('قواعد النظام لا تُحذف — أوقفها بدلاً من ذلك', 'Built-in rules cannot be deleted — switch them off instead'),
+      'advising_rule_limit': t('بلغت المؤسسة الحد الأقصى: 50 قاعدة — احذف قاعدة أو عدّل قاعدة قائمة', 'The organization has the most rules allowed (50) — delete one or edit an existing rule'),
+      'advising_run_busy': t('فحص القواعد يعمل الآن — تظهر نتيجته هنا حين ينتهي', 'A rule check is running now — its result shows here when it ends'),
     };
 
 /// The risk-reason codes of the workspace (`score.py`); `advRiskReasonText` in adv_models.dart writes each one.
 const advRiskReasonCodes = ['cgpa_low', 'gpa_drop', 'absence_high', 'failed_courses', 'open_flags', 'no_contact'];
+
+/// Phase 6: what a rule kind checks, for an alert or a hit that came without its explanation (an older server).
+/// Only the sentence: the numbers stay in the evidence, which the server words.
+String advWarningKindFallback(String kind) => switch (kind) {
+      'gpa_below' => t('المعدل التراكمي أقل من حد القاعدة', 'The CGPA is below the rule\'s limit'),
+      'gpa_drop' => t('معدل آخر فصل تراجع عن المعدل التراكمي أكثر من حد القاعدة', 'The last term GPA fell further below the CGPA than the rule allows'),
+      'failed_courses' => t('عدد المقررات الراسبة بلغ حد القاعدة', 'The number of failed courses reached the rule\'s limit'),
+      'repeated_fail' => t('رسوب متكرر في المقرر نفسه', 'The same course was failed again'),
+      'absence_pct' => t('نسبة الغياب في أحد المقررات الحالية بلغت حد القاعدة', 'Absence in a current course reached the rule\'s limit'),
+      'absence_count' => t('عدد المحاضرات الفائتة في أحد المقررات الحالية بلغ حد القاعدة', 'Missed sessions in a current course reached the rule\'s limit'),
+      'no_contact' => t('لا تواصل مع الطالب منذ مدة أطول من حد القاعدة', 'No contact with the student for longer than the rule allows'),
+      'graduation_delay' => t('التخرج في موعده لم يعد ممكناً بالخطة الحالية', 'Graduating on time is no longer possible at the current pace'),
+      'midterm_fail' => t('درجة منتصف الفصل دون حد القاعدة في مقرر أو أكثر', 'A midterm mark is below the rule\'s limit in one course or more'),
+      _ => t('الطالب يطابق إحدى قواعد الإنذار المبكر', 'The student matches an early-warning rule'),
+    };
