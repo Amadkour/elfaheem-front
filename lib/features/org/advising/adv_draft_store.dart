@@ -28,6 +28,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr;
 import 'adv_api.dart';
+import 'adv_message_store.dart' show AdvMessageStore;
 import 'adv_models.dart';
 import 'adv_parts.dart' show advErrorText;
 
@@ -342,8 +343,9 @@ class AdvDraftStore {
     return d;
   }
 
-  /// The phone got its connection back (TopRouteObserver).
+  /// The phone got its connection back (TopRouteObserver): the notes, then the messages (Phase 5).
   Future<void> onReconnect() async {
+    unawaited(AdvMessageStore.instance.onReconnect());
     try {
       final n = await flush();
       if (n > 0) debugPrint('advising: posted $n note(s) written offline');

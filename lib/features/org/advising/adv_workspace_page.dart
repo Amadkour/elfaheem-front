@@ -27,6 +27,7 @@ import '../org_registrar_member.dart' show openAdvising;
 import '../org_v3.dart' show orgCall;
 import 'adv_api.dart';
 import 'adv_case_parts.dart';
+import 'adv_comm_entries.dart' show AdvCommStrip;
 import 'adv_categories_page.dart';
 import 'adv_draft_store.dart';
 import 'adv_models.dart';
@@ -316,6 +317,7 @@ class AdvWorkspaceView extends StatelessWidget {
     this.onOpen,
     this.onRegistrationCases,
     this.onCategories,
+    this.comm,
   });
 
   final AdvLoad load;
@@ -331,6 +333,9 @@ class AdvWorkspaceView extends StatelessWidget {
   final ValueChanged<String>? onSearch;
   final ValueChanged<int>? onPage;
   final ValueChanged<AdvCaseItem>? onOpen;
+
+  /// Phase 5: unread messages · today's appointments (AdvCommStrip).
+  final Widget? comm;
 
   @override
   Widget build(BuildContext context) {
@@ -366,6 +371,7 @@ class AdvWorkspaceView extends StatelessWidget {
       ]);
     }
     return OrgPageBody(
+      top: comm,
       search: onSearch == null ? null : OrgSearchField(hint: t('ابحث بالاسم أو الرقم', 'Search by name or ID'), onChanged: onSearch!),
       filter: onFilters == null
           ? null
@@ -536,5 +542,6 @@ class _AdvWorkspaceBodyState extends State<_AdvWorkspaceBody> {
         onOpen: _open,
         onRegistrationCases: () => openAdvising(context, widget.orgId),
         onCategories: widget.manage ? _openCategories : null,
+        comm: AdvCommStrip(orgId: widget.orgId),
       );
 }

@@ -20,6 +20,7 @@ import '../org_page_kit.dart';
 import '../org_v3.dart' show orgCall, orgErrorText;
 import 'adv_advisors_page.dart';
 import 'adv_api.dart';
+import 'adv_comm_entries.dart' show advCommPage, advCommSetupTiles, advOpenOrgFeedback;
 import 'adv_categories_page.dart';
 import 'adv_config_page.dart';
 import 'adv_distribute_page.dart';
@@ -396,6 +397,7 @@ extension _AdvSetupLinks on AdvSetupView {
           onTap: () => open('handovers'),
         ),
       ],
+      ...advCommSetupTiles(context, st, open), // Phase 5: appointments, messages, office hours, templates, ratings
     ];
     return [
       _SectionTitle(t('العمل', 'Work')),
@@ -783,7 +785,8 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
     final s = _status;
     if (s == null) return;
     final id = widget.orgId, lead = s.me.leads;
-    final Widget page = switch (key) {
+    if (key == 'feedback') return advOpenOrgFeedback(context, widget.orgId);
+    final Widget page = advCommPage(context, key, orgId: widget.orgId, status: s) ?? switch (key) {
       'settings' => AdvConfigPage(orgId: id),
       'advisors' => AdvAdvisorsPage(orgId: id, manage: true),
       'profile' => AdvAdvisorsPage(orgId: id, manage: false),

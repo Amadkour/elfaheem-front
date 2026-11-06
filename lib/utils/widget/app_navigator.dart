@@ -219,7 +219,15 @@ class AppNavigator {
         return;
       // academic advising (D-289): an urgent flag · an escalation · a review due names the student → their 360
       case 'advising':
+      case 'org_adv_appointment': // Phase 5 (push data `kind`): an appointment · a conversation · a survey
+      case 'org_adv_thread':
+      case 'org_adv_survey':
         final inner = data['data'];
+        final advKind = '${data['kind'] ?? (inner is Map ? inner['kind'] : null) ?? (module == 'advising' ? kind : module) ?? ''}';
+        if (orgId != null && advKind.startsWith('org_adv_') && !AppConfig.disableList.contains('org.advising') &&
+            await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenCommLink(nav, orgId: orgId, data: {...data, 'kind': advKind}))) {
+          return;
+        }
         final member = int.tryParse('${data['member_id'] ?? (inner is Map ? inner['member_id'] : null) ?? ''}');
         if (member != null && orgId != null && !AppConfig.disableList.contains('org.advising')) {
           await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenStudentLink(nav, orgId: orgId, memberId: member));
