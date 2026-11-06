@@ -84,8 +84,11 @@ class _TabStripState extends State<_TabStrip> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || widget.index >= _keys.length) return;
         final ctx = _keys[widget.index].currentContext;
-        if (ctx != null) {
-          Scrollable.ensureVisible(ctx, duration: AppMotion.of(context).base, curve: AppMotion.curve, alignment: 0.5);
+        final box = ctx?.findRenderObject();
+        // the strip's own scroll only: Scrollable.ensureVisible would also move the page the tabs sit on
+        final strip = ctx == null ? null : Scrollable.maybeOf(ctx);
+        if (box != null && strip != null && strip.position.axis == Axis.horizontal) {
+          strip.position.ensureVisible(box, duration: AppMotion.of(context).base, curve: AppMotion.curve, alignment: 0.5);
         }
       });
     }

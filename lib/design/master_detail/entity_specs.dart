@@ -624,11 +624,6 @@ Widget entityRowFor(BuildContext context, EntityItem item,
             : EntityHistoryButton(onPressed: () => onHistory(studentId, courseId, subject.name)),
       );
     case CourseRow(:final course):
-      final facts = [
-        mdStudents(item.students),
-        if (item.ratingAvg != null) ltrIsolate('★ ${item.ratingAvg!.toStringAsFixed(1)}'),
-        if (item.revenue != null) mdMoney(item.revenue!),
-      ];
       final belongs = [
         if (ownerKind != EntityKind.teacher) course.teacher?.name,
         if (ownerKind != EntityKind.category) course.category?.name,
@@ -644,9 +639,26 @@ Widget entityRowFor(BuildContext context, EntityItem item,
             tone: status == 'published' ? AppTone.success : (status == 'archived' ? AppTone.danger : AppTone.neutral),
             dense: true),
         body: [
-          Text(facts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(text: mdStudents(item.students)),
+              if (item.ratingAvg != null) ...[
+                const TextSpan(text: ' · '),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Icon(Icons.star_rounded, size: AppIconSize.xs, color: appToneInk(context, AppTone.warning)),
+                ),
+                TextSpan(text: ' ${ltrIsolate(item.ratingAvg!.toStringAsFixed(1))}'),
+              ],
+              if (item.revenue != null) TextSpan(text: ' · ${mdMoney(item.revenue!)}'),
+            ]),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.meta(context),
+          ),
           if (item.completionRate != null && item.students > 0)
-            EntityProgress(item.completionRate, label: 'md_stat_completion'.tr),
+            // a fact about the class, not a grade: the brand colour whatever the figure
+            EntityProgress(item.completionRate, label: 'md_stat_completion'.tr, tone: context.colors.primary),
         ],
       );
     case PersonRow(:final person):

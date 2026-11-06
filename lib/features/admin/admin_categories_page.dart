@@ -62,6 +62,9 @@ String _coursesText(int n) => countText(n,
 String _totalText(int n) => countText(n,
     ar1: 'تصنيف واحد', ar2: 'تصنيفان', arFew: '{n} تصنيفات', arMany: '{n} تصنيفًا', en1: '1 category', en: '{n} categories');
 
+/// A figure column: its header and sort arrow keep their width while a detail narrows the list.
+const double _figureWidth = 116;
+
 EntityRef _refOf(AdminCategory c) =>
     EntityRef(EntityKind.category, c.id, label: c.nameAr, labelEn: c.nameEn, imageUrl: c.imageUrl);
 
@@ -218,9 +221,10 @@ class _ViewState extends State<_View> {
         ),
         AppTableColumn<AdminCategory>.text(
           key: 'courses',
-          label: t('الكورسات', 'Courses'),
+          label: 'md_stat_courses'.tr,
           sortable: true,
           numeric: true,
+          width: _figureWidth,
           text: (cat) => '${cat.coursesCount}',
         ),
         AppTableColumn<AdminCategory>.text(
@@ -228,6 +232,7 @@ class _ViewState extends State<_View> {
           label: 'md_stat_teachers'.tr,
           sortable: true,
           numeric: true,
+          width: _figureWidth,
           text: (cat) => '${cat.teachersCount}',
         ),
         AppTableColumn<AdminCategory>.text(
@@ -235,6 +240,7 @@ class _ViewState extends State<_View> {
           label: 'md_stat_students'.tr,
           sortable: true,
           numeric: true,
+          width: _figureWidth,
           text: (cat) => '${cat.studentsCount}',
         ),
       ],
@@ -276,16 +282,21 @@ class _NameCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = cat.nameAr.isEmpty ? cat.nameEn : cat.nameAr;
+    // the name in the app language first, the other language under it, each in its own direction
+    final english = AppConfig.lang == 'en';
+    final other = english ? cat.nameAr : cat.nameEn;
     return Row(children: [
       EntityThumb(_refOf(cat), size: 36),
       AppSpace.gapSm,
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+          Text(cat.display, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
           if (cat.nameEn.isNotEmpty && cat.nameAr.isNotEmpty)
-            Text(cat.nameEn,
-                maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context)),
+            Text(other,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textDirection: english ? TextDirection.rtl : TextDirection.ltr,
+                style: AppType.meta(context)),
         ]),
       ),
     ]);
