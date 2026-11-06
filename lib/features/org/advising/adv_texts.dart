@@ -44,6 +44,14 @@ Map<String, String> advCodeTexts() => {
       'advising_bad_contact_at': t('وقت التواصل لا يكون في المستقبل', 'The contact time cannot be in the future'),
       'advising_bad_cursor': t('تعذّر متابعة السجل الزمني من هذا الموضع — حدّث الصفحة', 'The timeline cannot continue from that point — refresh the page'),
       'advising_client_id_conflict': t('رقم الملاحظة المحفوظة استُخدم لطالب آخر — تُرسل برقم جديد', 'That saved note\'s id was used for another student — it is sent with a new id'),
+      // Phase 8: analytics, outreach, reports, data check
+      'advising_bad_range': t('المدة غير صالحة: البداية قبل النهاية، و400 يوم على الأكثر', 'That period is not valid: the start before the end, 400 days at most'),
+      'advising_bad_metric': t('هذا الرقم لا يُفتح كقائمة طلاب — حدّث الصفحة', 'That figure cannot be opened as a student list — refresh the page'),
+      'advising_run_busy': t('تحديث يعمل بالفعل — انتظر حتى ينتهي', 'An update is already running — wait for it to end'),
+      'advising_bad_template': t('القالب المختار متوقف أو ليس قالب رسائل — اختر غيره', 'The chosen template is switched off or is not a message template — choose another one'),
+      'advising_audience_empty': t('لا أحد يستلم هذه الرسالة — اختر مجموعة أخرى', 'Nobody would receive this message — choose another group'),
+      'advising_audience_too_large': t('المجموعة أكبر من 5000 طالب — اختر مجموعة أصغر', 'The group is larger than 5,000 students — choose a smaller one'),
+      'advising_audience_changed': t('تغيّرت قائمة المستلمين منذ المعاينة — راجعها ثم أرسل', 'The recipients changed since the preview — check them, then send'),
     };
 
 /// The risk-reason codes of the workspace (`score.py`); `advRiskReasonText` in adv_models.dart writes each one.

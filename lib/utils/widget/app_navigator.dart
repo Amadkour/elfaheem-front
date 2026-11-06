@@ -220,6 +220,11 @@ class AppNavigator {
       // academic advising (D-289): an urgent flag · an escalation · a review due names the student → their 360
       case 'advising':
         final inner = data['data'];
+        // Phase 8: a group message (student → the message, sender → its tracking) · the daily data check
+        if (orgId != null && !AppConfig.disableList.contains('org.advising') &&
+            await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenAnalyticsLink(nav, orgId: orgId, data: {...data, if (inner is Map) ...inner.cast<String, dynamic>()}))) {
+          return;
+        }
         final member = int.tryParse('${data['member_id'] ?? (inner is Map ? inner['member_id'] : null) ?? ''}');
         if (member != null && orgId != null && !AppConfig.disableList.contains('org.advising')) {
           await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenStudentLink(nav, orgId: orgId, memberId: member));

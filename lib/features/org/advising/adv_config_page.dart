@@ -23,6 +23,7 @@ import '../org_v3.dart' show orgCall, orgErrorText;
 import 'adv_api.dart';
 import 'adv_models.dart';
 import 'adv_parts.dart';
+import 'adv_reports.dart' show advReportsPolicyFields;
 
 /// The key of a scope in the page: `org`, or `dept:12` · `program:4` · `level:2` · `cohort:2024`.
 String advScopeKey(String type, String? ref) => type == 'org' ? 'org' : '$type:${ref ?? ''}';
@@ -241,6 +242,7 @@ class AdvConfigView extends StatelessWidget {
           hint('warn_pct'),
         ]),
       ),
+      if (d.scopeType == 'org') ...advReportsPolicyFields(context, shown: shown, onField: on, hint: hint),
     ];
   }
 

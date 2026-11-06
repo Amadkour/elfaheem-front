@@ -10,6 +10,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import '../../admin/admin_common.dart' show t;
 import '../org_providers.dart' show OrgSession;
 import 'adv_models.dart' show AdvMineInfo, advMaybeEligible;
+import 'adv_director_page.dart' show AdvDirectorPage;
+import 'adv_outreach.dart' show AdvOutreachTrackingPage, AdvStudentMessagesPage;
 import 'adv_setup_page.dart';
 import 'adv_student_page.dart' show AdvStudentPage;
 
@@ -40,3 +42,23 @@ List<(String, String, IconData, Widget)> advServiceSubs(OrgSession s) {
 /// `module: advising` with `member_id` / `flag_id`): that student's 360. `AppNavigator` opens the organization first.
 Future<void> advOpenStudentLink(NavigatorState nav, {required int orgId, required int memberId}) =>
     nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentPage(orgId: orgId, memberId: memberId)));
+
+/// Phase 8 deep links (push data `module: advising`): `kind: org_adv_outreach` + `outreach_id` → the student's
+/// message (`audience: student`) or the sender's tracking page; `screen: health` → the analytics page with its data
+/// check. False when [data] is neither (the caller goes on with its own handling).
+Future<bool> advOpenAnalyticsLink(NavigatorState nav, {required int orgId, required Map<String, dynamic> data}) async {
+  final outreach = int.tryParse('${data['outreach_id'] ?? ''}');
+  if (data['kind'] == 'org_adv_outreach' && outreach != null) {
+    if (data['audience'] == 'student') {
+      nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentMessagesPage(orgId: orgId)));
+    } else {
+      nav.push(MaterialPageRoute<void>(builder: (_) => AdvOutreachTrackingPage(orgId: orgId, outreachId: outreach)));
+    }
+    return true;
+  }
+  if (data['screen'] == 'health') {
+    nav.push(MaterialPageRoute<void>(builder: (_) => AdvDirectorPage(orgId: orgId)));
+    return true;
+  }
+  return false;
+}
