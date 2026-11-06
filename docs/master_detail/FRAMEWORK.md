@@ -105,3 +105,21 @@ course's history unfolds under its row, fetched on the first open) · payments �
 Publish, Mark completed, Move to trash); Manage is the sheet for what needs a form (payment provider, methods, fee,
 private access code, resubscribe, plans and income in full, recent payments, exams). A course opened from a student
 starts with that student's history, folded with one tap.
+
+## Management inside the detail (phase 6)
+
+What an admin does on a teacher or a category lives in the detail itself, so every host has it (any list's panel, a
+drilled trail, the full page): `EntityDetailView` asks for `deferredAdminEntityManage(summary, onChanged:, onRemoved:)`
+when `can.manage` is true, a deferred library (`lib/features/admin/admin_entity_manage.dart`) that only such viewers
+download, and draws it under the header's quick actions. A teacher's block is Message · View as · Manage, which unfolds
+the old management sheet embedded (`_UserDetailSheet(embedded: true)`); a category's is Edit · Delete. A save calls
+`onChanged` (the detail reloads through `EntityPanelController.reload`); the list behind reads the controller's
+`revision` in its listener and reloads its rows. A delete calls `onRemoved`: the panel steps back or closes, a full page
+goes back.
+
+A category's connected lists are tabs with their counts (`EntityConnectedTabs`): a tab loads on its first visit and
+keeps its search, filter and rows; the open tab is remembered in the route's `PageStorage`, so coming back from a
+student shows the same tab.
+
+`adminEntityCell(context, kind, json)` (`admin_common.dart`) is the link to a student / teacher / course in an admin
+row: it needs the row's `id`, and shows a dash without one.

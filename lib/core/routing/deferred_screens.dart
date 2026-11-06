@@ -26,9 +26,11 @@ import 'package:flutter_education_app/design/boot_splash.dart' show BootSplash;
 import 'package:flutter_education_app/utils/widget/url_strategy.dart' show reloadPage;
 import 'package:flutter_education_app/features/shared/course_profile/course_profile_hub.dart' show CourseProfileHub;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse;
+import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityRef;
 
 import '../../features/admin/admin_dashboard_screen.dart' deferred as admin_dashboard;
+import '../../features/admin/admin_entity_manage.dart' deferred as admin_entity_manage;
 import '../../features/admin/app_releases/app_release_detail.dart' deferred as app_release_detail;
 import '../../features/admin/app_releases/app_releases_page.dart' deferred as app_releases_page;
 import '../../design/master_detail/entity_detail_page.dart' deferred as entity_page;
@@ -320,6 +322,12 @@ Widget deferredTeacherSessionsScreen({bool? expandDetails, CourseProfileHub? pro
 /// The full page of a student / course / teacher / category (`/view/:kind/:id`, D-290).
 Widget deferredEntityDetailPage(EntityRef entity, {EntityRef? from}) => DeferredPage(
     id: 'entity_page', load: entity_page.loadLibrary, builder: (_) => entity_page.EntityDetailPage(entity: entity, from: from));
+
+/// The management block of a detail, for viewers the server lets manage it (D-290): only they download it.
+Widget deferredAdminEntityManage(EntitySummary summary, {VoidCallback? onChanged, VoidCallback? onRemoved}) => DeferredSlot(
+    id: 'admin_entity_manage',
+    load: admin_entity_manage.loadLibrary,
+    builder: (_) => admin_entity_manage.adminEntityManage(summary, onChanged: onChanged, onRemoved: onRemoved));
 
 Widget deferredCourseForm({TeacherCourse? course}) =>
     DeferredPage(id: 'course_form', load: course_form.loadLibrary, builder: (_) => course_form.CourseFormScreen(course: course));

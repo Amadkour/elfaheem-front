@@ -324,7 +324,7 @@ class EntitySummary {
   /// What the student paid, net of refunds, one entry per currency (money viewers only).
   List<EntityMoney> get paid => EntityMoney.listFrom(stats['paid']);
 
-  /// The organizations the student belongs to (not sent to a teacher).
+  /// The organizations a student or a teacher belongs to (full viewers only).
   List<EntityOrganization> get organizations => [
         for (final o in entityMaps(header['organizations']))
           if (entityIntOrNull(o['id']) case final id?)

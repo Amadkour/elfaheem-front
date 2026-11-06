@@ -16,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_bidi.dart' show ltrIsolate;
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -492,10 +493,15 @@ List<AppTableColumn<Map<String, dynamic>>> _paymentColumns() => [
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(asStr(asMap(p['student'])['name'], '—'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(ctx)),
-        Text(AppLangPick.name(asMap(p['course'])), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(ctx)),
+        adminEntityCell(ctx, EntityKind.student, p['student']),
       ],
     ),
+  ),
+  AppTableColumn<Map<String, dynamic>>(
+    key: 'course',
+    label: t('الكورس', 'Course'),
+    flex: 3,
+    cell: (ctx, p) => adminEntityCell(ctx, EntityKind.course, p['course']),
   ),
   AppTableColumn<Map<String, dynamic>>(
     key: 'amount',
@@ -531,7 +537,7 @@ List<AppTableColumn<Map<String, dynamic>>> _payoutColumns() => [
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(asStr(asMap(w['teacher'])['name'], '—'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(ctx)),
+        adminEntityCell(ctx, EntityKind.teacher, w['teacher']),
         Text('${t('طلب سحب', 'Withdrawal')} #${w['id']}', style: AppType.meta(ctx)),
       ],
     ),

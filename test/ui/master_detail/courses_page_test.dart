@@ -21,7 +21,8 @@ import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
 import 'package:flutter_education_app/design/master_detail/entity_specs.dart'
-    show EntityTimelineTile, mdCourseInsight, mdReasonLabel, mdStateLabel, mdTrendChange;
+    show mdCourseInsight, mdReasonLabel, mdStateLabel, mdTrendChange;
+import 'package:flutter_education_app/design/master_detail/entity_timeline.dart' show EntityTimelineTile;
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/features/admin/admin_courses_page.dart';

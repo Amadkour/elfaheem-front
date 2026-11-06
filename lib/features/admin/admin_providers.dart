@@ -504,90 +504,19 @@ class AdminCoursesProvider extends AdminPagedProvider {
 //  Categories
 // ═════════════════════════════════════════════════════════════════════════════
 
-class AdminCategoriesProvider extends AdminBase implements AdminQueryHost {
-  List<AdminCategory> items = [];
-  String? error;
+class AdminCategoriesProvider extends AdminPagedProvider {
+  /// [reloads] false: a detail's Edit / Delete outside the list; nothing here needs the rows again.
+  AdminCategoriesProvider({this.reloads = true});
 
-  // premium search / filter / sort (same contract as AdminPagedProvider)
-  String search = '';
-  final Map<String, Object?> adv = {};
-  String? sort;
-  Timer? _debounce;
-  bool _disposed = false;
-  int _gen = 0;
+  final bool reloads;
 
   @override
-  bool get hasActiveQuery => search.isNotEmpty || adv.isNotEmpty || sort != null;
+  String get path => '$_base/categories';
 
   @override
-  int? get resultCount => _loadedOnce ? items.length : null;
-  bool _loadedOnce = false;
+  Map<String, dynamic> get filters => const {};
 
-  @override
-  void dispose() {
-    _disposed = true;
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Future<void> setSearch(String v) async {
-    final t = v.trim();
-    if (t == search) return;
-    search = t;
-    _debounce?.cancel();
-    _debounce = Timer(Duration.zero, () {
-      if (!_disposed) load();
-    });
-  }
-
-  Future<void> applyAdv(Map<String, Object?> values, {String? sortKey}) {
-    adv
-      ..clear()
-      ..addAll({
-        for (final e in values.entries)
-          if (e.value != null) e.key: e.value,
-      });
-    sort = sortKey;
-    return load();
-  }
-
-  Future<void> removeAdv(Iterable<String> keys) {
-    keys.forEach(adv.remove);
-    return load();
-  }
-
-  Future<void> setSort(String? v) {
-    sort = v;
-    return load();
-  }
-
-  Future<void> clearAll() {
-    _debounce?.cancel();
-    search = '';
-    adv.clear();
-    sort = null;
-    return load();
-  }
-
-  Future<void> load() async {
-    _debounce?.cancel();
-    final gen = ++_gen;
-    final r = await run(() => api.get('$_base/categories', queryParams: {
-      ...encodeFilters(adv),
-      if (search.isNotEmpty) 'search': search,
-      if (sort != null) 'sort': sort,
-    }));
-    if (_disposed || gen != _gen) return;
-    if (r is Map) {
-      items = asMapList(r['items']).map(AdminCategory.new).toList();
-      error = null;
-      _loadedOnce = true;
-    } else {
-      error = errorMessage ?? 'admin_could_not_load_data'.tr;
-    }
-    notifyListeners();
-  }
+  List<AdminCategory> get items => rows.map(AdminCategory.new).toList();
 
   Future<bool> save({int? id, required Map<String, dynamic> body}) async {
     final r = await call(
@@ -595,14 +524,14 @@ class AdminCategoriesProvider extends AdminBase implements AdminQueryHost {
             ? api.post('$_base/categories', body: body)
             : api.put('$_base/categories/$id', body: body),
         ok: 'admin_saved'.tr);
-    if (r != null) await load();
+    if (r != null && reloads) await refresh();
     return r != null;
   }
 
   Future<bool> remove(int id) async {
     final r = await call(() => api.delete('$_base/categories/$id'),
         ok: 'admin_deleted'.tr);
-    if (r != null) await load();
+    if (r != null && reloads) await refresh();
     return r != null;
   }
 }
