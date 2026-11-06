@@ -1291,6 +1291,21 @@ class AdvMemberHub {
         hub: asBool(j['hub']),
         counts: AdvCommCounts.fromJson(asMap(j['me'])),
       );
+
+  /// The `advising` block of one membership of `GET /org/public/me/overview` (also `/me/home` `org_overview`, Phase 9):
+  /// `{hub, unread, appointments_today, surveys_pending}`, present only for a live student of an organization with
+  /// advising on who has an active advisor. null when the key is absent (none of that, or an older server: the row
+  /// then asks the member status itself).
+  static AdvMemberHub? fromOverview(Object? block) {
+    if (block is! Map) return null;
+    final j = asMap(block);
+    return AdvMemberHub(
+      enabled: true,
+      student: true,
+      hub: asBool(j['hub']),
+      counts: AdvCommCounts(threadsUnread: asInt(j['unread']), appointmentsToday: asInt(j['appointments_today']), surveysPending: asInt(j['surveys_pending'])),
+    );
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

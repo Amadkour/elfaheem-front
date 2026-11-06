@@ -416,16 +416,25 @@ class OrgSegmented<T> extends StatelessWidget {
   }
 
   Widget _segments(BuildContext context, ThemeConfigProvider c) {
+    // The track's inset belongs to each segment's touch area (a cell is the full 48 high, the pill inside it 40), so
+    // the tap target meets the 48 x 48 guideline while the pills look the same.
+    final last = options.length - 1;
     return Container(
-      padding: const EdgeInsets.all(AppSpace.xxs),
       decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip + AppSpace.xxs)),
       child: Row(children: [
-        for (final (v, label) in options)
+        for (final (i, (v, label)) in options.indexed)
           Expanded(
             child: Semantics(
               button: true,
               selected: v == value,
-              child: Material(
+              onTap: v == value ? null : () => onChanged(v),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                excludeFromSemantics: true,
+                onTap: v == value ? null : () => onChanged(v),
+                child: Padding(
+                  padding: EdgeInsetsDirectional.only(top: AppSpace.xxs, bottom: AppSpace.xxs, start: i == 0 ? AppSpace.xxs : 0, end: i == last ? AppSpace.xxs : 0),
+                  child: Material(
                 color: v == value ? c.cardBg : Colors.transparent,
                 shape: RoundedRectangleBorder(
                   borderRadius: AppRadius.chipAll,
@@ -434,6 +443,7 @@ class OrgSegmented<T> extends StatelessWidget {
                 child: InkWell(
                   key: ValueKey('org.segment.$v'),
                   borderRadius: AppRadius.chipAll,
+                  excludeFromSemantics: true,
                   onTap: v == value ? null : () => onChanged(v),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(minHeight: AppTouch.min - 2 * AppSpace.xxs),
@@ -453,6 +463,8 @@ class OrgSegmented<T> extends StatelessWidget {
                       ),
                     ),
                   ),
+                ),
+              ),
                 ),
               ),
             ),

@@ -130,7 +130,13 @@
       "total": 0
      },
      "news": 0,
-     "requests_in_progress": 0
+     "requests_in_progress": 0,
+     "advising": {
+      "hub": true,
+      "unread": 1,
+      "appointments_today": 0,
+      "surveys_pending": 0
+     }
     }
    ],
    "has_live_membership": true,

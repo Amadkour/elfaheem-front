@@ -18,6 +18,7 @@ import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../org_page_header.dart' show OrgPageRefresh;
+import '../org_page_kit.dart' show orgInk;
 import '../org_v3.dart' show orgCall;
 import 'adv_appointments.dart';
 import 'adv_appt_models.dart';
@@ -164,7 +165,14 @@ class AdvHubView extends StatelessWidget {
             icon: Icons.star_outline_rounded,
             color: c.warning,
             text: t('كيف كان لقاؤك مع ${s.advisorName}${s.dateText.isEmpty ? '' : ' (${s.dateText})'}؟ قيّمه دون اسمك.', 'How was your meeting with ${s.advisorName}${s.dateText.isEmpty ? '' : ' (${s.dateText})'}? Rate it anonymously.'),
-            action: onSurvey == null ? null : TextButton(style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min)), onPressed: () => onSurvey!(s), child: Text(t('تقييم', 'Rate'))),
+            action: onSurvey == null
+                ? null
+                : TextButton(
+                    // the brand ink, readable on the banner's warning tint in both themes
+                    style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min), foregroundColor: orgInk(context)),
+                    onPressed: () => onSurvey!(s),
+                    child: Text(t('تقييم', 'Rate')),
+                  ),
           ),
         ),
     ];

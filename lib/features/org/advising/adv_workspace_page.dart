@@ -4,9 +4,13 @@
 // students); each card shows the risk score as a calm meter with its top reason, the highest open-flag priority and
 // the last contact. Tapping a card opens the student 360 (adv_student_page.dart). The registrar's advising cases keep
 // their screen (OrgAdvisingScreen), linked here as "Registration cases"; directors also reach the categories.
+// Phase 9: whoever may send group messages (status `me.outreach`) selects students — a long press on a card, or
+// "Select students to message" under More — and "Message selected" opens the outreach composer with exactly them.
 //
 //   AdvCaseCard             one student                  AdvWorkspaceView     the list (plain values)
 //   AdvWorkspaceFilterForm  the filter sheet's content   AdvFiltersButton     the one filter control
+//   AdvSelection            the chosen students (pure)   AdvSelectionBar      "3 students selected" · this page · Done
+//   AdvSelectionActions     "Message 3 selected students" under the list
 //   AdvWorkspacePage        loads `GET …/workspace`
 library;
 
@@ -25,12 +29,14 @@ import '../org_page_kit.dart';
 import '../org_registrar.dart' show standingText;
 import '../org_registrar_member.dart' show openAdvising;
 import '../org_v3.dart' show orgCall;
+import 'adv_analytics_models.dart' show AdvAudience, advOutreachMaxRecipients;
 import 'adv_api.dart';
 import 'adv_case_parts.dart';
 import 'adv_comm_entries.dart' show AdvCommStrip;
 import 'adv_categories_page.dart';
 import 'adv_draft_store.dart';
 import 'adv_models.dart';
+import 'adv_outreach.dart' show advOutreachOn, showAdvOutreachComposer;
 import 'adv_parts.dart';
 import 'adv_student_page.dart';
 
@@ -41,7 +47,7 @@ String advStandingLabel(String s) {
 }
 
 class AdvCaseCard extends StatelessWidget {
-  const AdvCaseCard({super.key, required this.item, this.categoryNames = const {}, this.showAdvisor = false, this.onTap, this.now});
+  const AdvCaseCard({super.key, required this.item, this.categoryNames = const {}, this.showAdvisor = false, this.onTap, this.onLongPress, this.selected, this.now});
   final AdvCaseItem item;
 
   /// Category key → name (the categories list); an unknown key shows its built-in name.
@@ -49,7 +55,10 @@ class AdvCaseCard extends StatelessWidget {
 
   /// Directors: the student's primary advisor under the card.
   final bool showAdvisor;
-  final VoidCallback? onTap;
+  final VoidCallback? onTap, onLongPress;
+
+  /// null: the list is not selecting; else whether this student is chosen (a check mark instead of the avatar).
+  final bool? selected;
 
   /// The clock for "last contact" (tests pin it).
   final DateTime? now;
@@ -78,6 +87,8 @@ class AdvCaseCard extends StatelessWidget {
       ].join('، '),
       trailing: highest == null ? null : AdvPriorityPill(priority: highest, count: s.openFlags.of(highest)),
       onTap: onTap,
+      onLongPress: onLongPress,
+      selected: selected,
       below: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AdvRiskMeter(score: s.riskScore, reason: reason),
         const SizedBox(height: AppSpace.xs),
@@ -273,6 +284,161 @@ class AdvWorkspaceFilterForm extends StatelessWidget {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+//  Selection (Phase 9)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The students chosen in the workspace, across pages, searches and filters (member id → the card). Pure and
+/// immutable; at most [max] (one group message's limit).
+class AdvSelection {
+  const AdvSelection([this.items = const {}, this.max = advOutreachMaxRecipients]);
+  final Map<int, AdvCaseItem> items;
+  final int max;
+
+  int get count => items.length;
+  bool get isEmpty => items.isEmpty;
+  bool get full => items.length >= max;
+  bool has(int memberId) => items.containsKey(memberId);
+  List<int> get memberIds => items.keys.toList()..sort();
+
+  /// Adds or removes one student; adding past [max] answers this same object.
+  AdvSelection toggle(AdvCaseItem s) {
+    if (has(s.memberId)) return AdvSelection({...items}..remove(s.memberId), max);
+    if (full) return this;
+    return AdvSelection({...items, s.memberId: s}, max);
+  }
+
+  /// The check box of a page: true every student on it is chosen · false none · null some.
+  bool? pageState(Iterable<AdvCaseItem> page) {
+    var on = 0, all = 0;
+    for (final s in page) {
+      all++;
+      if (has(s.memberId)) on++;
+    }
+    if (on == 0) return false;
+    return on == all ? true : null;
+  }
+
+  /// Every student of the page chosen → they are all removed; else the missing ones are added (up to [max]).
+  AdvSelection togglePage(Iterable<AdvCaseItem> page) {
+    final ids = {for (final s in page) s.memberId};
+    if (pageState(page) == true) return AdvSelection({...items}..removeWhere((k, _) => ids.contains(k)), max);
+    final next = {...items};
+    for (final s in page) {
+      if (next.length >= max) break;
+      next[s.memberId] = s;
+    }
+    return AdvSelection(next, max);
+  }
+
+  /// The outreach audience: exactly these students.
+  AdvAudience get audience => AdvAudience.members(memberIds);
+}
+
+/// "3 students selected".
+String advSelectedText(int n) => countText(n,
+    ar1: 'طالب واحد مختار', ar2: 'طالبان مختاران', arFew: '$n طلاب مختارون', arMany: '$n طالباً مختاراً', en1: '1 student selected', en: '$n students selected');
+
+/// The bar above the list while selecting: the page's check box, how many are chosen, and Done.
+class AdvSelectionBar extends StatelessWidget {
+  const AdvSelectionBar({super.key, required this.count, required this.pageState, this.onTogglePage, required this.onDone, this.full = false});
+  final int count;
+
+  /// The page's check box (AdvSelection.pageState).
+  final bool? pageState;
+  final VoidCallback? onTogglePage;
+  final VoidCallback onDone;
+
+  /// The selection reached one message's limit.
+  final bool full;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = orgInk(context);
+    final pageLabel = pageState == true ? t('إلغاء اختيار طلاب هذه الصفحة', 'Unselect the students on this page') : t('اختيار طلاب هذه الصفحة', 'Select the students on this page');
+    return Container(
+      constraints: const BoxConstraints(minHeight: AppTouch.min),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
+      decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll, border: Border.all(color: ink.withValues(alpha: 0.35))),
+      child: Row(children: [
+        Tooltip(
+          message: pageLabel,
+          child: Semantics(
+            label: pageLabel,
+            child: Checkbox(
+              key: const ValueKey('adv.workspace.select.page'),
+              tristate: true,
+              value: pageState,
+              onChanged: onTogglePage == null ? null : (_) => onTogglePage!(),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(count == 0 ? t('اختر الطلاب', 'Select students') : advSelectedText(count),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w700, color: ink)),
+              Text(
+                full
+                    ? t('بلغت الحد: $advOutreachMaxRecipients طالب في الرسالة الواحدة', 'Limit reached: $advOutreachMaxRecipients students per message')
+                    : t('المس البطاقات لتختار أو تلغي الاختيار', 'Tap the cards to select or unselect'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.meta(context).copyWith(color: full ? appInk(context, c.warning) : null),
+              ),
+            ]),
+          ),
+        ),
+        TextButton(
+          key: const ValueKey('adv.workspace.select.done'),
+          style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: ink),
+          onPressed: onDone,
+          child: Text(t('تم', 'Done')),
+        ),
+      ]),
+    );
+  }
+}
+
+/// The action under the list while selecting: "Message 3 selected students" (off while nobody is chosen).
+class AdvSelectionActions extends StatelessWidget {
+  const AdvSelectionActions({super.key, required this.count, this.onMessage});
+  final int count;
+  final VoidCallback? onMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: AppPrimaryButton(
+                key: const ValueKey('adv.workspace.select.message'),
+                icon: Icons.campaign_outlined,
+                label: count == 0
+                    ? t('راسل المختارين', 'Message selected')
+                    : countText(count,
+                        ar1: 'راسل الطالب المختار', ar2: 'راسل الطالبين المختارين', arFew: 'راسل $count طلاب مختارين', arMany: 'راسل $count طالباً مختاراً',
+                        en1: 'Message the selected student', en: 'Message $count selected students'),
+                onPressed: count == 0 ? null : onMessage,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The calm counts above the list: how many students, open flags, urgent, no contact in 30 days.
 class _Facets extends StatelessWidget {
   const _Facets({required this.page});
@@ -318,6 +484,12 @@ class AdvWorkspaceView extends StatelessWidget {
     this.onRegistrationCases,
     this.onCategories,
     this.comm,
+    this.selection,
+    this.onSelectStart,
+    this.onToggle,
+    this.onTogglePage,
+    this.onSelectDone,
+    this.onMessageSelected,
   });
 
   final AdvLoad load;
@@ -337,9 +509,19 @@ class AdvWorkspaceView extends StatelessWidget {
   /// Phase 5: unread messages · today's appointments (AdvCommStrip).
   final Widget? comm;
 
+  /// Phase 9: non-null while selecting students for a group message.
+  final AdvSelection? selection;
+
+  /// Starts selecting: a long press on a card (that student) or "Select students to message" under More (null).
+  /// Null: I may not send group messages.
+  final ValueChanged<AdvCaseItem?>? onSelectStart;
+  final ValueChanged<AdvCaseItem>? onToggle;
+  final VoidCallback? onTogglePage, onSelectDone, onMessageSelected;
+
   @override
   Widget build(BuildContext context) {
     final p = page;
+    final sel = selection;
     final filtered = query.activeFilters > 0 || query.q.trim().isNotEmpty;
     Widget body;
     if (load != AdvLoad.ready || p == null) {
@@ -363,7 +545,16 @@ class AdvWorkspaceView extends StatelessWidget {
     } else {
       body = AdvPageFrame(maxWidth: 960, children: [
         _Facets(page: p),
-        for (final s in p.items) AdvCaseCard(item: s, categoryNames: categoryNames, showAdvisor: manage, now: now, onTap: onOpen == null ? null : () => onOpen!(s)),
+        for (final s in p.items)
+          AdvCaseCard(
+            item: s,
+            categoryNames: categoryNames,
+            showAdvisor: manage,
+            now: now,
+            selected: sel?.has(s.memberId),
+            onTap: sel != null ? (onToggle == null ? null : () => onToggle!(s)) : (onOpen == null ? null : () => onOpen!(s)),
+            onLongPress: sel == null && onSelectStart != null ? () => onSelectStart!(s) : null,
+          ),
         if (p.pages > 1 && onPage != null) ...[
           const SizedBox(height: AppSpace.sm),
           AppPagination(page: p.page, pageCount: p.pages, total: p.total, pageSize: p.size, onPage: onPage!),
@@ -371,7 +562,15 @@ class AdvWorkspaceView extends StatelessWidget {
       ]);
     }
     return OrgPageBody(
-      top: comm,
+      top: sel != null
+          ? AdvSelectionBar(
+              count: sel.count,
+              full: sel.full,
+              pageState: p == null ? false : sel.pageState(p.items),
+              onTogglePage: p == null || p.items.isEmpty ? null : onTogglePage,
+              onDone: onSelectDone ?? () {},
+            )
+          : comm,
       search: onSearch == null ? null : OrgSearchField(hint: t('ابحث بالاسم أو الرقم', 'Search by name or ID'), onChanged: onSearch!),
       filter: onFilters == null
           ? null
@@ -379,8 +578,10 @@ class AdvWorkspaceView extends StatelessWidget {
       more: [
         if (onRegistrationCases != null) OrgMenuItem(icon: Icons.assignment_outlined, label: t('حالات التسجيل', 'Registration cases'), onTap: onRegistrationCases!),
         if (onCategories != null) OrgMenuItem(icon: Icons.label_outline_rounded, label: t('التصنيفات', 'Categories'), onTap: onCategories!),
+        if (sel == null && onSelectStart != null && (p?.items.isNotEmpty ?? false))
+          OrgMenuItem(icon: Icons.checklist_rounded, label: t('اختيار طلاب لمراسلتهم', 'Select students to message'), onTap: () => onSelectStart!(null)),
       ],
-      child: body,
+      child: sel == null ? body : Column(children: [Expanded(child: body), AdvSelectionActions(count: sel.count, onMessage: onMessageSelected)]),
     );
   }
 }
@@ -390,8 +591,11 @@ class AdvWorkspaceView extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class AdvWorkspacePage extends StatelessWidget {
-  const AdvWorkspacePage({super.key, required this.orgId, required this.manage, this.sort = 'risk'});
+  const AdvWorkspacePage({super.key, required this.orgId, required this.manage, this.sort = 'risk', this.outreach = false});
   final int orgId;
+
+  /// I may send group messages (status `me.outreach`): students can be selected and messaged.
+  final bool outreach;
 
   /// An org admin / advising director (else an advisor's own students).
   final bool manage;
@@ -404,15 +608,16 @@ class AdvWorkspacePage extends StatelessWidget {
         title: manage ? t('مساحة الإرشاد', 'Advising workspace') : t('طلابي', 'My students'),
         helpPageId: 'org.advising',
         maxWidth: 960,
-        child: _AdvWorkspaceBody(orgId: orgId, manage: manage, sort: sort),
+        child: _AdvWorkspaceBody(orgId: orgId, manage: manage, sort: sort, outreach: outreach),
       );
 }
 
 class _AdvWorkspaceBody extends StatefulWidget {
-  const _AdvWorkspaceBody({required this.orgId, required this.manage, this.sort = 'risk'});
+  const _AdvWorkspaceBody({required this.orgId, required this.manage, this.sort = 'risk', this.outreach = false});
   final int orgId;
   final bool manage;
   final String sort;
+  final bool outreach;
 
   @override
   State<_AdvWorkspaceBody> createState() => _AdvWorkspaceBodyState();
@@ -432,6 +637,12 @@ class _AdvWorkspaceBodyState extends State<_AdvWorkspaceBody> {
 
   /// Every student listed so far (an advisor's filter choices come from them).
   final Map<int, AdvCaseItem> _seen = {};
+
+  /// Non-null while selecting students for a group message.
+  AdvSelection? _selection;
+
+  /// Group messages are allowed here: the status said so and the kill switch is on.
+  bool get _canMessage => widget.outreach && advOutreachOn();
 
   @override
   void initState() {
@@ -525,6 +736,41 @@ class _AdvWorkspaceBodyState extends State<_AdvWorkspaceBody> {
     if (mounted) _reload();
   }
 
+  void _startSelect(AdvCaseItem? first) {
+    if (!_canMessage) return;
+    const empty = AdvSelection();
+    setState(() => _selection = first == null ? empty : empty.toggle(first));
+  }
+
+  void _toggle(AdvCaseItem s) {
+    final sel = _selection;
+    if (sel == null) return;
+    final next = sel.toggle(s);
+    if (identical(next, sel)) {
+      showAppNotice(t('الحد الأقصى $advOutreachMaxRecipients طالب في الرسالة الواحدة.', 'At most $advOutreachMaxRecipients students per message.'), error: true);
+      return;
+    }
+    setState(() => _selection = next);
+  }
+
+  void _togglePage() {
+    final p = _page, sel = _selection;
+    if (p == null || sel == null) return;
+    final next = sel.togglePage(p.items);
+    if (next.full && sel.pageState(p.items) != true && next.pageState(p.items) != true) {
+      showAppNotice(t('الحد الأقصى $advOutreachMaxRecipients طالب في الرسالة الواحدة.', 'At most $advOutreachMaxRecipients students per message.'), error: true);
+    }
+    setState(() => _selection = next);
+  }
+
+  /// The composer with exactly the chosen students; once it sent (it says so itself), selecting ends.
+  Future<void> _messageSelected() async {
+    final sel = _selection;
+    if (sel == null || sel.isEmpty) return;
+    final sent = await showAdvOutreachComposer(context, orgId: widget.orgId, audience: sel.audience, audienceTitle: advSelectedText(sel.count));
+    if (sent != null && mounted) setState(() => _selection = null);
+  }
+
   Future<void> _openCategories() async {
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvCategoriesPage(orgId: widget.orgId)));
     if (mounted) _loadChoices();
@@ -547,5 +793,11 @@ class _AdvWorkspaceBodyState extends State<_AdvWorkspaceBody> {
         onRegistrationCases: () => openAdvising(context, widget.orgId),
         onCategories: widget.manage ? _openCategories : null,
         comm: AdvCommStrip(orgId: widget.orgId),
+        selection: _selection,
+        onSelectStart: _canMessage ? _startSelect : null,
+        onToggle: _toggle,
+        onTogglePage: _togglePage,
+        onSelectDone: () => setState(() => _selection = null),
+        onMessageSelected: _messageSelected,
       );
 }

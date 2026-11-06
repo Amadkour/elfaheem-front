@@ -4,6 +4,7 @@
 // the deep links here.
 library;
 
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/plural.dart';
@@ -11,12 +12,13 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, A
 
 import '../../admin/admin_common.dart' show t;
 import '../org_providers.dart' show OrgSession;
+import 'adv_analytics_api.dart' show AdvAnalyticsApi, AdvStatusPlus;
 import 'adv_api.dart' show AdvApi;
 import 'adv_appointments.dart' show AdvAppointmentsPage;
 import 'adv_appt_models.dart' show AdvMemberHub;
 import 'adv_comm_api.dart' show AdvCommApi;
 import 'adv_director_page.dart' show AdvDirectorPage;
-import 'adv_models.dart' show AdvMineInfo, AdvStatus, advMaybeEligible;
+import 'adv_models.dart' show AdvMineInfo, advMaybeEligible;
 import 'adv_outreach.dart' show AdvOutreachTrackingPage, AdvStudentMessagesPage;
 import 'adv_setup_page.dart';
 import 'adv_student_hub.dart' show AdvStudentHubPage;
@@ -75,25 +77,31 @@ Future<bool> advOpenScreenLink(NavigatorState nav, {required int orgId, required
     return true;
   }
   if (screen != 'alerts' && screen != 'workspace') return false;
-  // a director sees the whole organization, an advisor their own students
-  final st = await orgCall(() => AdvApi(orgId).status(), quiet: true);
-  final lead = st.ok && (st.data as AdvStatus).me.leads;
+  // a director sees the whole organization, an advisor their own students; the same answer says who may message
+  final st = await orgCall(() => AdvAnalyticsApi(orgId).status(), quiet: true);
+  final plus = st.ok ? st.data as AdvStatusPlus : null;
+  final lead = plus?.status.me.leads ?? false;
   await nav.push(MaterialPageRoute<void>(
     builder: (_) => screen == 'alerts'
         ? AdvAlertsPage(orgId: orgId, manage: lead, since: orgParseUtc(data['since']))
-        : AdvWorkspacePage(orgId: orgId, manage: lead, sort: '${data['sort'] ?? 'contact'}'),
+        : AdvWorkspacePage(orgId: orgId, manage: lead, sort: '${data['sort'] ?? 'contact'}', outreach: plus?.analytics.outreach ?? false),
   ));
   return true;
 }
 
 // ── Phase 5: the student hub pill and the appointment / conversation / survey deep links ──────────────────────────
 
-/// The member home's "My academic advisor" row (students with an active advisor in [orgId]). It asks the member
-/// status itself (one cached answer per organization, shared by every copy of the row) and draws nothing until the
-/// answer says I have an advisor there; the unread messages, today's appointments and pending surveys are its badge.
+/// The member home's "My academic advisor" row (students with an active advisor in [orgId]); the unread messages,
+/// today's appointments and pending surveys are its badge. Phase 9: the membership's `advising` block of the overview
+/// ([overview]) carries all of it, so no request is made; without it (no block, or an older server) the row asks the
+/// member status itself (one cached answer per organization, shared by every copy of the row) and draws nothing until
+/// the answer says I have an advisor there. Back from the hub, the counts are asked fresh.
 class AdvMemberHubEntry extends StatefulWidget {
-  const AdvMemberHubEntry({super.key, required this.orgId, this.padding = const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm)});
+  const AdvMemberHubEntry({super.key, required this.orgId, this.overview, this.padding = const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm)});
   final int orgId;
+
+  /// The `advising` value of this membership's overview item (`entry['advising']`), as the server sent it.
+  final Object? overview;
   final EdgeInsetsGeometry padding;
 
   /// org id → the member status answer (one request per organization while the app runs; a hub visit refreshes it).
@@ -112,13 +120,22 @@ class AdvMemberHubEntry extends StatefulWidget {
 }
 
 class _AdvMemberHubEntryState extends State<AdvMemberHubEntry> {
-  late Future<AdvMemberHub?> _hub = AdvMemberHubEntry._load(widget.orgId);
+  late Future<AdvMemberHub?> _hub = _initial();
+
+  /// The overview's block when the server sent one, else the member status.
+  Future<AdvMemberHub?> _initial() {
+    final b = AdvMemberHub.fromOverview(widget.overview);
+    return b != null ? Future.value(b) : AdvMemberHubEntry._load(widget.orgId);
+  }
 
   @override
   void didUpdateWidget(AdvMemberHubEntry old) {
     super.didUpdateWidget(old);
-    if (old.orgId != widget.orgId) _hub = AdvMemberHubEntry._load(widget.orgId);
+    // another organization, or a refreshed overview (pull to refresh, a new /me/home)
+    if (old.orgId != widget.orgId || !mapEquals(_asMap(old.overview), _asMap(widget.overview))) _hub = _initial();
   }
+
+  static Map<String, dynamic>? _asMap(Object? v) => v is Map ? v.cast<String, dynamic>() : null;
 
   Future<void> _open() async {
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvStudentHubPage(orgId: widget.orgId)));
@@ -190,13 +207,13 @@ Future<bool> advOpenCommLink(NavigatorState nav, {required int orgId, required M
 }
 
 /// Phase 8 deep links (push data `module: advising`): `kind: org_adv_outreach` + `outreach_id` → the student's
-/// message (`audience: student`) or the sender's tracking page; `screen: health` → the analytics page with its data
+/// messages with that one open on top (`audience: student`, Phase 9) or the sender's tracking page; `screen: health` → the analytics page with its data
 /// check. False when [data] is neither (the caller goes on with its own handling).
 Future<bool> advOpenAnalyticsLink(NavigatorState nav, {required int orgId, required Map<String, dynamic> data}) async {
   final outreach = int.tryParse('${data['outreach_id'] ?? ''}');
   if (data['kind'] == 'org_adv_outreach' && outreach != null) {
     if (data['audience'] == 'student') {
-      nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentMessagesPage(orgId: orgId)));
+      nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentMessagesPage(orgId: orgId, openId: outreach)));
     } else {
       nav.push(MaterialPageRoute<void>(builder: (_) => AdvOutreachTrackingPage(orgId: orgId, outreachId: outreach)));
     }

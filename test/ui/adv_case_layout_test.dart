@@ -33,7 +33,7 @@ AdvCaseProfile _profile({bool academic = true}) => AdvCaseProfile.fromJson(sampl
 
 Widget _sheet(Widget child) => SingleChildScrollView(padding: const EdgeInsets.all(16), child: child);
 
-AdvWorkspaceView _workspace({AdvLoad load = AdvLoad.ready, bool manage = true, AdvPage<AdvCaseItem>? page, AdvWorkspaceQuery query = const AdvWorkspaceQuery()}) =>
+AdvWorkspaceView _workspace({AdvLoad load = AdvLoad.ready, bool manage = true, AdvPage<AdvCaseItem>? page, AdvWorkspaceQuery query = const AdvWorkspaceQuery(), AdvSelection? selection}) =>
     AdvWorkspaceView(
       load: load,
       manage: manage,
@@ -50,6 +50,12 @@ AdvWorkspaceView _workspace({AdvLoad load = AdvLoad.ready, bool manage = true, A
       onOpen: (_) {},
       onRegistrationCases: () {},
       onCategories: manage ? () {} : null,
+      selection: selection,
+      onSelectStart: (_) {},
+      onToggle: (_) {},
+      onTogglePage: () {},
+      onSelectDone: () {},
+      onMessageSelected: () {},
     );
 
 AdvFlagsPane _flagsPane({AdvLoad load = AdvLoad.ready, AdvPage<AdvFlag>? page, String view = 'all'}) => AdvFlagsPane(
@@ -139,6 +145,10 @@ final _refusedNote = AdvQueuedNote(
   message: 'A sensitive note is never shown to the student — choose Private or Advising team',
 );
 
+/// The workspace and the student 360 with this file's data, for the accessibility checks (a11y_guidelines_test.dart).
+AdvWorkspaceView advWorkspaceSample({bool manage = true, AdvSelection? selection}) => _workspace(manage: manage, selection: selection);
+AdvStudentView advStudentSample(String section) => _student(section);
+
 const _waitingNote = AdvQueuedNote(userId: 31, orgId: 3, memberId: 601, draft: AdvNoteDraft(body: 'Written offline', clientId: 'n2'));
 
 void main() {
@@ -153,6 +163,11 @@ void main() {
     for (final load in [AdvLoad.loading, AdvLoad.offline, AdvLoad.failed, AdvLoad.missing]) {
       testWidgets('state ${load.name}', (t) => expectNoLayoutErrors(t, () => _workspace(load: load)));
     }
+    // Phase 9: selecting students for a group message (some of the page · all of it · at the limit · none yet)
+    testWidgets('selecting: two chosen', (t) => expectNoLayoutErrors(t, () => _workspace(selection: const AdvSelection().toggle(_work.items[0]).toggle(_work.items[2]))));
+    testWidgets('selecting: the whole page, at the limit',
+        (t) => expectNoLayoutErrors(t, () => _workspace(selection: AdvSelection(const {}, _work.items.length).togglePage(_work.items))));
+    testWidgets('selecting: nobody yet, advisor', (t) => expectNoLayoutErrors(t, () => _workspace(manage: false, selection: const AdvSelection())));
     testWidgets('a case card on its own (urgent, never contacted, four categories)', (t) => expectNoLayoutErrors(t, () {
           return _sheet(AdvCaseCard(item: _work.items.first, showAdvisor: true, now: advCaseNow, onTap: () {}));
         }));

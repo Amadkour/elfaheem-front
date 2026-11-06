@@ -48,12 +48,15 @@ Color dlScoreColor(BuildContext context, double? v) {
 
 /// Rounded card used by every block of the Data Lab.
 class DlCard extends StatelessWidget {
-  const DlCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.margin, this.onTap});
+  const DlCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.margin, this.onTap, this.onLongPress});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry? margin;
   final VoidCallback? onTap;
+
+  /// A long press (e.g. starts a selection); null: none.
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +74,7 @@ class DlCard extends StatelessWidget {
         borderRadius: r,
         child: Material(
           color: Colors.transparent,
-          child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
+          child: InkWell(onTap: onTap, onLongPress: onLongPress, child: Padding(padding: padding, child: child)),
         ),
       ),
     );

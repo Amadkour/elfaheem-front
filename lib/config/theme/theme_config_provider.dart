@@ -709,7 +709,10 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     // The primary as TEXT on the page / card / sheet surfaces (text and outlined buttons): the raw indigo is about
     // 2:1 on the dark surfaces, so its lightness is moved until it reaches WCAG AA (4.5:1) on all of them, hue
     // kept. A primary that already passes (the light theme) is unchanged. Fills and borders keep the raw primary.
-    final pText = ensureContrast(p, [bg, card, surface]);
+    // Without a server theme, cards are drawn in the card theme's colour (= context.colors.cardBg), which is not
+    // ThemeData.cardColor there (the darker surface): the text colour is checked against it too.
+    final cardDrawn = m == null ? (base.cardTheme.color ?? card) : card;
+    final pText = ensureContrast(p, [bg, card, surface, cardDrawn]);
     // The same for a selected chip's label and check: it sits on the 14 % primary tint, where the raw indigo was
     // 1.9:1 in dark (every selected ChoiceChip / FilterChip); light is unchanged (6.6:1 already).
     final chipTint = p.withValues(alpha: 0.14);

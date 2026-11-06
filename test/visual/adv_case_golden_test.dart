@@ -6,6 +6,7 @@
 // → test/visual/goldens/adv_case_<scene>_<width>_<lang>_<light|dark>.png at 390×844 and 1440×900.
 //   workspace          a director's workspace: risk-sorted cards, facets, urgent pills, categories
 //   workspace_empty    an advisor with no students yet
+//   workspace_select   Phase 9: a director selecting students (two chosen) with "Message 2 selected students"
 //   filters            the filter sheet (a director: advisor, category, program, level)
 //   student            the 360 (phone: header + Overview; wide: Overview + Academic beside Flags)
 //   student_academic   the Academic section (GPA by term, terms with courses)
@@ -160,7 +161,7 @@ void main() {
   });
   setUp(() => AppConfig.disableList = []);
 
-  AdvWorkspaceView workspace({bool manage = true, AdvPage<AdvCaseItem>? page}) => AdvWorkspaceView(
+  AdvWorkspaceView workspace({bool manage = true, AdvPage<AdvCaseItem>? page, AdvSelection? selection}) => AdvWorkspaceView(
         load: AdvLoad.ready,
         manage: manage,
         query: const AdvWorkspaceQuery(),
@@ -173,6 +174,12 @@ void main() {
         onOpen: (_) {},
         onRegistrationCases: () {},
         onCategories: manage ? () {} : null,
+        selection: selection,
+        onSelectStart: (_) {},
+        onToggle: (_) {},
+        onTogglePage: () {},
+        onSelectDone: () {},
+        onMessageSelected: () {},
       );
 
   AdvNoteComposer composer({bool offline = false, List<AdvQueuedNote> queued = const []}) => AdvNoteComposer(
@@ -234,6 +241,10 @@ void main() {
   }
 
   testWidgets('workspace', (t) => _render(t, 'workspace', () => Scaffold(body: workspace())));
+  testWidgets('workspace_select', (t) => _render(t, 'workspace_select', () {
+        final items = AdvPage.fromJson(sampleAdvWorkspaceJson(), AdvCaseItem.fromJson).items;
+        return Scaffold(body: workspace(selection: const AdvSelection().toggle(items[0]).toggle(items[2])));
+      }));
   testWidgets('workspace_empty', (t) => _render(t, 'workspace_empty', () => Scaffold(body: workspace(manage: false, page: const AdvPage()))));
   testWidgets('filters', (t) => _render(t, 'filters', () {
         return _sheet(AdvWorkspaceFilterForm(
