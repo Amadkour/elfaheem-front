@@ -3,6 +3,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
@@ -64,23 +68,47 @@ class _OrgPeoplePageState extends State<OrgPeoplePage> {
   }
 }
 
-class _MembersTab extends StatelessWidget {
+class _MembersTab extends StatefulWidget {
   const _MembersTab({super.key, required this.roles, required this.module, required this.kind});
   final String roles, module, kind;
 
   @override
+  State<_MembersTab> createState() => _MembersTabState();
+}
+
+/// A student or teacher opens their connected panel (D-290): what THIS organization's rights show of them, decided by
+/// the server. Staff have no such detail; their row keeps its menu only.
+class _MembersTabState extends State<_MembersTab> {
+  late final _panel = EntityPanelController(rowKind: _kind);
+
+  EntityKind? get _kind => switch (widget.kind) {
+        'students' => EntityKind.student,
+        'teachers' => EntityKind.teacher,
+        _ => null,
+      };
+
+  @override
+  void dispose() {
+    _panel.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final s = context.read<OrgSession>();
-    return ChangeNotifierProvider(
-      create: (_) => OrgMembersProvider(s, roles)..refresh(),
-      child: _MembersView(module: module, kind: kind, roles: roles),
+    final view = ChangeNotifierProvider(
+      create: (_) => OrgMembersProvider(s, widget.roles)..refresh(),
+      child: _MembersView(module: widget.module, kind: widget.kind, roles: widget.roles, entityKind: _kind),
     );
+    if (_kind == null) return view;
+    return MasterDetailScaffold(controller: _panel, rootLabel: t('الأعضاء', 'Members'), list: view);
   }
 }
 
 class _MembersView extends StatelessWidget {
-  const _MembersView({required this.module, required this.kind, required this.roles});
+  const _MembersView({required this.module, required this.kind, required this.roles, this.entityKind});
   final String module, kind, roles;
+  final EntityKind? entityKind;
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +190,7 @@ class _MembersView extends StatelessWidget {
             : p.status == 'active'
                 ? t('لا يوجد أعضاء بعد — أضف أول عضو أو استورد قائمة من Excel', 'No members yet — add the first one or import a list from Excel')
                 : t('لا أحد بهذه الحالة', 'Nobody with this status'),
-        itemBuilder: (ctx, row) => _MemberTile(row: row, module: module),
+        itemBuilder: (ctx, row) => _MemberTile(row: row, module: module, entityKind: entityKind),
       ),
     );
   }
@@ -177,9 +205,10 @@ String _roleLabel(String r) => {
     r;
 
 class _MemberTile extends StatelessWidget {
-  const _MemberTile({required this.row, required this.module});
+  const _MemberTile({required this.row, required this.module, this.entityKind});
   final Map<String, dynamic> row;
   final String module;
+  final EntityKind? entityKind;
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +223,13 @@ class _MemberTile extends StatelessWidget {
     final ended = eff == 'expired' || eff == 'suspended';
     final id = asInt(row['id']);
     final depts = asMapList(row['departments']);
+    final kind = entityKind;
     return OrgMemberRowView(
+      // a live member only: a join request or a removed member is out of this organization's scope
+      onTap: kind == null || pending || removed
+          ? null
+          : () => EntityNavigator.open(
+              context, EntityRef(kind, asInt(u['id']), label: '${u['name']}', imageUrl: u['image_url'] as String?)),
       name: '${u['name']}',
       email: '${u['email']}',
       username: usernameFrom(u),
@@ -282,9 +317,13 @@ class OrgMemberRowView extends StatelessWidget {
     this.period,
     this.periodEnded = false,
     this.trailing = const [],
+    this.onTap,
   });
 
   final String name, email;
+
+  /// Opens the member's detail (null: the row opens nothing).
+  final VoidCallback? onTap;
 
   /// The member's @username (without "@"), shown under the name; null = none.
   final String? username;
@@ -304,6 +343,7 @@ class OrgMemberRowView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
         accent: accent,
+        onTap: onTap,
         child: Row(children: [
           AdminAvatar(name: name, url: imageUrl),
           const SizedBox(width: 12),

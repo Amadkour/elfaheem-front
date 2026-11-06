@@ -18,10 +18,22 @@ import 'package:flutter_education_app/features/org/org_member_pages.dart' show O
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
 import 'package:flutter_education_app/design/home_kit.dart' show homeCardWidth, kHomeWideMax;
+import 'package:flutter_education_app/core/entities/entity_models.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
+import 'package:flutter_education_app/design/master_detail/entity_list_page.dart';
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/entity_viewer_actions.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
+import 'package:flutter_education_app/features/student/record/student_record_pages.dart';
 
 /// The student's "My courses": which side (scope chips, only when the courses live on several), then ONE calm
-/// toolbar (search · All / In progress / Completed with their counts), then the shared course cards
-/// (course_list_card.dart: rows on a phone, a grid of tiles wider).
+/// toolbar (search · All / In progress / Completed with their counts · Left), then the shared course cards
+/// (course_list_card.dart: rows on a phone, a grid of tiles wider). A card opens the course's panel, the student's
+/// own story in it (progress, what is due, lessons, grades, history; if they left, the date and reason), and
+/// Continue learning its page.
 class MyCoursesScreen extends StatefulWidget {
   const MyCoursesScreen({super.key, required this.courses});
   final List<CourseModel> courses;
@@ -31,8 +43,21 @@ class MyCoursesScreen extends StatefulWidget {
 
 class _MyCoursesScreenState extends State<MyCoursesScreen> {
   final _search = TextEditingController();
+  final _panel = EntityPanelController(rowKind: EntityKind.course);
   late final HomeProvider _home;
   List<CourseModel>? _synced;
+
+  void _openPage(BuildContext context, CourseModel c) => Navigator.push(
+      context,
+      MaterialPageRoute(
+          settings: RouteSettings(name: '/course-detail', arguments: c), builder: (_) => CourseDetailScreen(course: c)));
+
+  List<EntityPanelAction> _actions(BuildContext context, EntityRef ref, EntitySummary? s) {
+    final course = context.read<MyCoursesProvider>().allCourses.where((c) => '${c.id}' == '${ref.id}').firstOrNull;
+    return entityViewerActions(context, ref, s,
+        controller: _panel,
+        openCourse: s?.kind == EntityKind.course && course != null ? () => _openPage(context, course) : null);
+  }
 
   /// [widget.courses] is only a snapshot taken when the dashboard was built (usually still empty, and
   /// stale after any later refresh / enrolment). Follow the HomeProvider's CURRENT list instead and
@@ -50,6 +75,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
   @override
   void dispose() {
     _home.removeListener(_syncFromHome);
+    _panel.dispose();
     _search.dispose();
     super.dispose();
   }
@@ -71,7 +97,15 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
         appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
         useWebCard: true,
         maxWith: homeCardWidth(area.maxWidth),
-        child: SafeArea(child: MyCoursesBody(controller: _search)),
+        child: SafeArea(
+          child: MasterDetailScaffold(
+            controller: _panel,
+            rootLabel: 'courses'.tr,
+            deepLinks: true,
+            actions: (ref, s) => _actions(context, ref, s),
+            list: MyCoursesBody(controller: _search, panel: _panel),
+          ),
+        ),
       ),
     );
   }
@@ -79,9 +113,12 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
 
 /// The page under the app bar (also what the visual renders pump with a seeded provider).
 class MyCoursesBody extends StatelessWidget {
-  const MyCoursesBody({super.key, required this.controller});
+  const MyCoursesBody({super.key, required this.controller, this.panel});
 
   final TextEditingController controller;
+
+  /// The screen's panel (a card opens it, Previous / Next walk the cards).
+  final EntityPanelController? panel;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +131,7 @@ class MyCoursesBody extends StatelessWidget {
           children: [
             const _ScopeBar(),
             _Toolbar(controller: controller),
-            Expanded(child: _CourseList(controller: controller)),
+            Expanded(child: _CourseList(controller: controller, panel: panel)),
           ],
         ),
       ),
@@ -159,6 +196,7 @@ class _Toolbar extends StatelessWidget {
                   count: counts ? p.inProgressCount : null,
                 ),
                 CourseSegment(CourseStatus.completed, 'completed_courses'.tr, count: counts ? p.completedCount : null),
+                CourseSegment(CourseStatus.withdrawn, 'md_p7_left'.tr),
               ],
             )
           : null,
@@ -169,13 +207,20 @@ class _Toolbar extends StatelessWidget {
 // ── Course list ───────────────────────────────────────────────────────────────
 
 class _CourseList extends StatelessWidget {
-  const _CourseList({required this.controller});
+  const _CourseList({required this.controller, this.panel});
 
   final TextEditingController controller;
+  final EntityPanelController? panel;
+
+  EntityRef _refOf(CourseModel c) => EntityRef(EntityKind.course, int.tryParse('${c.id}') ?? 0, label: c.titleAr, labelEn: c.titleEn, imageUrl: c.imageUrl);
 
   @override
   Widget build(BuildContext context) {
     return Consumer<MyCoursesProvider>(builder: (context, provider, child) {
+      final me = context.select<MyAuthProvider, int?>((a) => a.currentUser?.id);
+      if (provider.activeFilter == CourseStatus.withdrawn && me != null && panel != null) {
+        return EntityListBody<EnrollmentRow>(config: studentLeftCoursesList(me), panel: panel!);
+      }
       if (provider.isLoading && provider.allCourses.isEmpty) {
         return const CourseListSkeleton();
       }
@@ -187,6 +232,7 @@ class _CourseList extends StatelessWidget {
       }
 
       final courses = provider.filteredCourses;
+      panel?.siblings = [for (final c in courses) _refOf(c)];
       // the list mixes the personal account and organizations → every card says where it lives
       final mixed = courses.map((c) => c.org?.id).toSet().length > 1;
       final scope = provider.scope;
@@ -219,9 +265,7 @@ class _CourseList extends StatelessWidget {
                     onLoadMore: provider.loadMore,
                     onRetry: () => provider.loadMore(retry: true),
                     onRefresh: provider.refresh,
-                    onTap: (CourseModel c) {
-                      Navigator.push(context, MaterialPageRoute(settings: RouteSettings(name: '/course-detail', arguments: c), builder: (_) => CourseDetailScreen(course: c)));
-                    },
+                    onTap: (CourseModel c) => EntityNavigator.open(context, _refOf(c)),
                     isTeacher: false,
                     pageName: 'My-courses-profile-filtered',
                     maxWidth: kHomeWideMax,

@@ -75,8 +75,8 @@ server again. `learn(ref)` gives a trail entry the name its summary brought (a d
 
 ## First users (phase 3)
 
-The admin Students and Teachers lists (`admin_users_page.dart`): a row opens the panel. A teacher's control sheet stays
-reachable as the panel's "Manage" quick action until the teacher detail folds it in.
+The admin Students and Teachers lists (`admin_users_page.dart`): a row opens the panel; both are managed inside
+the detail (phase 4 for students, phase 6 for teachers).
 
 ## The student detail (phase 4)
 
@@ -123,3 +123,26 @@ student shows the same tab.
 
 `adminEntityCell(context, kind, json)` (`admin_common.dart`) is the link to a student / teacher / course in an admin
 row: it needs the row's `id`, and shows a dash without one.
+
+## Every role (phase 7)
+
+A role never writes a list. `lib/design/master_detail/entity_list_page.dart` is ONE paged list: an `EntityListConfig`
+says what to load, the columns, the phone card, the sorts and the filter, and `EntityListPage` gives the same table,
+cards, panel, states and keyboard everywhere (the server pages, searches, filters and sorts).
+
+| role | configurations | where |
+|---|---|---|
+| teacher | `teacherStudentsList`, `teacherSubmissionsList`, `teacherReviewsList` (`features/teacher/classroom/`) | the strip on My courses: Courses · My students · Submissions · Reviews (`?view=`) |
+| student | `studentGradesList`, `studentPaymentsList`, `studentSubscriptionsList`, `studentLeftCoursesList` (`features/student/record/`) | Profile: Grades and certificates, Payments and subscriptions; My courses: Left |
+| parent | the panel over the children cards (the child's own record); the alerts' child chip | Children, Alerts |
+| org staff | the panel over People (students, teachers) and Courses; a guarded chip on a request's source | `org_people_page`, `org_courses_page`, `gov_item_screen` |
+
+- A course card (teacher, student, org) opens the panel; the page is its primary action (`EntityPanelAction.primary`):
+  Continue learning, Open course. `entityViewerActions` is the default of a panel without actions of its own, and adds
+  Message where `can.message`.
+- `EntityLearnerCard` tops a learner's course (ring + one sentence, the dates, the withdrawal date and reason);
+  `deadlines`, `lessons`, `grades`, `timeline` are ordinary sections.
+- `EntityChip(ref, enabled: false)` is the same name without a link. `EntityGuardedChip(ref)` is for a mention that is
+  not the viewer's by construction: `EntityAccess` asks `POST /entities/access` once per frame for a whole list.
+  Notifications carry their answer in `entities[].can_open`.
+- Logout clears the summary cache and the access answers.

@@ -317,6 +317,9 @@ class EntitySummary {
 
   bool get isLearnerView => stats.containsKey('mine');
 
+  /// Whose enrollment [mine] is (a parent's child; the student themselves).
+  int? get learnerId => stat('student_id')?.toInt();
+
   /// A course's or a teacher's revenue (money viewers only), one entry per currency.
   List<EntityMoney> get revenue => EntityMoney.listFrom(stats['revenue']);
 
@@ -420,6 +423,10 @@ sealed class EntityItem {
         (EntityKind.category, 'teachers') => PersonRow.fromJson(j, EntityKind.teacher),
         (EntityKind.student, 'payments') => PaymentRow.fromJson(j),
         (EntityKind.student, 'subscriptions') => SubscriptionRow.fromJson(j),
+        (EntityKind.student || EntityKind.course, 'grades') || (EntityKind.teacher, 'submissions') => GradeRow.fromJson(j),
+        (EntityKind.course, 'lessons') => LessonRow.fromJson(j),
+        (EntityKind.course, 'deadlines') => DeadlineRow.fromJson(j),
+        (EntityKind.course || EntityKind.teacher, 'reviews') => ReviewRow.fromJson(j),
         _ => RawRow(j),
       };
 }
@@ -482,7 +489,13 @@ class CourseRow extends EntityItem {
 /// A student or teacher with their figures across a teacher's / category's courses.
 class PersonRow extends EntityItem {
   const PersonRow(super.json,
-      {required this.person, this.username, this.courses = 0, this.students, this.avgProgress, this.lastActivityAt});
+      {required this.person,
+      this.username,
+      this.courses = 0,
+      this.students,
+      this.avgProgress,
+      this.lastActivityAt,
+      this.attention = false});
 
   final EntityRef person;
   final String? username;
@@ -493,6 +506,9 @@ class PersonRow extends EntityItem {
   final double? avgProgress;
   final DateTime? lastActivityAt;
 
+  /// Quiet for two weeks, or still under 20 % a month in.
+  final bool attention;
+
   static PersonRow fromJson(Map<String, dynamic> j, EntityKind kind) => PersonRow(
         j,
         person: personRefFrom(kind, j[kind.name]) ?? EntityRef(kind, 0),
@@ -501,7 +517,155 @@ class PersonRow extends EntityItem {
         students: entityIntOrNull(j['students']),
         avgProgress: entityDouble(j['avg_progress']),
         lastActivityAt: entityTime(j['last_activity_at']),
+        attention: j['attention'] == true,
       );
+}
+
+/// One assessment: a legacy exam, an Exam Engine result or an assignment (`source`). A held result reaches a student
+/// or parent with `held` and no figures.
+class GradeRow extends EntityItem {
+  const GradeRow(super.json,
+      {required this.id,
+      required this.source,
+      this.title = '',
+      this.course,
+      this.student,
+      this.at,
+      this.percentage,
+      this.score,
+      this.maxScore,
+      this.passed,
+      this.held = false,
+      this.needsReview = false});
+
+  final int id;
+  final String source;
+  final String title;
+  final EntityCourse? course;
+  final EntityRef? student;
+  final DateTime? at;
+  final double? percentage;
+  final double? score;
+  final double? maxScore;
+  final bool? passed;
+  final bool held;
+  final bool needsReview;
+
+  static GradeRow fromJson(Map<String, dynamic> j) => GradeRow(
+        j,
+        id: entityInt(j['id']),
+        source: entityString(j['source']) ?? 'exam',
+        title: entityString(j['title']) ?? '',
+        course: EntityCourse.fromJson(j['course']),
+        student: personRefFrom(EntityKind.student, j['student']),
+        at: entityTime(j['at']),
+        percentage: entityDouble(j['percentage']),
+        score: entityDouble(j['score']),
+        maxScore: entityDouble(j['max_score']),
+        passed: j['passed'] is bool ? j['passed'] as bool : null,
+        held: j['held'] == true,
+        needsReview: j['needs_review'] == true,
+      );
+}
+
+/// One session of a learner's course: `done` · `in_progress` · `upcoming` · `open`.
+class LessonRow extends EntityItem {
+  const LessonRow(super.json,
+      {required this.id,
+      this.name = '',
+      this.scheduledAt,
+      this.materials = 0,
+      this.completed = 0,
+      this.attended = false,
+      this.state = 'open'});
+
+  final int id;
+  final String name;
+  final DateTime? scheduledAt;
+  final int materials;
+  final int completed;
+  final bool attended;
+  final String state;
+
+  static LessonRow fromJson(Map<String, dynamic> j) => LessonRow(
+        j,
+        id: entityInt(j['id']),
+        name: entityString(j['name']) ?? '',
+        scheduledAt: entityTime(j['scheduled_at']),
+        materials: entityInt(j['materials']),
+        completed: entityInt(j['completed']),
+        attended: j['attended'] == true,
+        state: entityString(j['state']) ?? 'open',
+      );
+}
+
+/// What is due next in a learner's course: `exam` · `assignment` · `session` · `access_end`.
+class DeadlineRow extends EntityItem {
+  const DeadlineRow(super.json, {required this.type, required this.id, this.title = '', this.at, this.opensAt});
+
+  final String type;
+  final int id;
+  final String title;
+  final DateTime? at;
+  final DateTime? opensAt;
+
+  static DeadlineRow fromJson(Map<String, dynamic> j) => DeadlineRow(
+        j,
+        type: entityString(j['type']) ?? 'session',
+        id: entityInt(j['id']),
+        title: entityString(j['title']) ?? '',
+        at: entityTime(j['at']),
+        opensAt: entityTime(j['opens_at']),
+      );
+}
+
+/// A course's rating with its text.
+class ReviewRow extends EntityItem {
+  const ReviewRow(super.json, {required this.id, this.value = 0, this.review, this.at, this.course, this.student});
+
+  final int id;
+  final int value;
+  final String? review;
+  final DateTime? at;
+  final EntityCourse? course;
+  final EntityRef? student;
+
+  static ReviewRow fromJson(Map<String, dynamic> j) => ReviewRow(
+        j,
+        id: entityInt(j['id']),
+        value: entityInt(j['value']),
+        review: entityString(j['review']),
+        at: entityTime(j['at']),
+        course: EntityCourse.fromJson(j['course']),
+        student: personRefFrom(EntityKind.student, j['student']),
+      );
+}
+
+/// A course or teacher a notification (or any server text) mentions: a chip, a link only when [canOpen].
+class EntityMention {
+  const EntityMention(this.ref, {this.canOpen = true});
+
+  final EntityRef ref;
+  final bool canOpen;
+
+  static List<EntityMention> listFrom(Object? json) {
+    if (json is! List) return const [];
+    final out = <EntityMention>[];
+    for (final raw in json) {
+      final j = entityMap(raw);
+      final kind = EntityKind.tryParse(entityString(j?['kind']));
+      final id = entityIntOrNull(j?['id']);
+      if (j == null || kind == null || id == null) continue;
+      out.add(EntityMention(
+        EntityRef(kind, id,
+            label: entityString(j['name']) ?? entityString(j['name_ar']),
+            labelEn: entityString(j['name_en']),
+            imageUrl: entityString(j['image_url'])),
+        canOpen: j['can_open'] != false,
+      ));
+    }
+    return out;
+  }
 }
 
 /// A student's payment (admins).

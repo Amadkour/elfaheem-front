@@ -30,6 +30,8 @@ import 'dart:typed_data';
 
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -355,6 +357,12 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             Navigator.pop(ctx);
             _join(cur);
           },
+          onCourseDetails: cur.courseId == null
+              ? null
+              : () {
+                  Navigator.pop(ctx);
+                  EntityNavigator.open(context, EntityRef(EntityKind.course, cur.courseId!));
+                },
           onOpenCourse: cur.courseId == null
               ? null
               : () {

@@ -1,5 +1,7 @@
 library;
 
+import 'package:flutter_education_app/core/entities/entities_api.dart';
+import 'package:flutter_education_app/core/entities/entity_access.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer';
 
@@ -1056,6 +1058,8 @@ class MyAuthProvider extends BaseProvider {
   Future<void> logout() async {
     ViewAsState.instance.stop(); // never carry view-as into the next session
     AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
+    EntitiesApi.instance.invalidate(); // a cached detail or access answer is this user's, never the next one's (D-290)
+    EntityAccess.instance.clear();
     // the fingerprint key survives a sign-out (D-082), but the login screen that follows must not prompt by itself
     BiometricAuth.instance.suppressAutoPrompt();
     // Unregister the push token BEFORE the tokens are wiped — afterwards the DELETE had no auth header,

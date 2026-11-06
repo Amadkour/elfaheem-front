@@ -18,6 +18,7 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/core/entities/entity_models.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 
@@ -53,6 +54,9 @@ class NotificationModel {
   /// Raw notification `type` from the API (session_started / recording_ready / payment_success …).
   final String type;
 
+  /// The course and teacher this notification is about (D-290): chips, a link only when the viewer has access.
+  final List<EntityMention> entities;
+
   NotificationModel({
     required this.id,
     required this.title,
@@ -63,6 +67,7 @@ class NotificationModel {
     required this.sourceId,
     this.relatedType = '',
     this.type = '',
+    this.entities = const [],
   });
 
   // ── fromJson ────────────────────────────────────────────────────────────────
@@ -101,6 +106,7 @@ class NotificationModel {
       group: group,
       relatedType: type,
       type: (json['type'] as String? ?? '').toLowerCase(),
+      entities: EntityMention.listFrom(json['entities']),
     );
   }
 
@@ -134,6 +140,7 @@ class NotificationModel {
     sourceId: sourceId,
     relatedType: relatedType,
     type: type,
+    entities: entities,
   );
 }
 

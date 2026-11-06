@@ -1049,6 +1049,7 @@ class CalEventSheet extends StatelessWidget {
     this.joinable = false,
     this.onJoin,
     this.onOpenCourse,
+    this.onCourseDetails,
     this.onOpenExams,
     this.onOpenTimetable,
     this.onAnswer,
@@ -1060,7 +1061,7 @@ class CalEventSheet extends StatelessWidget {
   final CalEvent event;
   final DateTime nowUtc;
   final bool live, joinable, busy;
-  final VoidCallback? onJoin, onOpenCourse, onOpenExams, onOpenTimetable, onOpenLink, onUndo;
+  final VoidCallback? onJoin, onOpenCourse, onCourseDetails, onOpenExams, onOpenTimetable, onOpenLink, onUndo;
   final ValueChanged<String>? onAnswer;
 
   @override
@@ -1172,6 +1173,8 @@ class CalEventSheet extends StatelessWidget {
         ],
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (onOpenCourse != null) AppPill(icon: Icons.menu_book_rounded, label: t('فتح المقرر', 'Open course'), onTap: onOpenCourse),
+          if (onCourseDetails != null)
+            AppPill(icon: Icons.insights_rounded, label: t('تقدمي في المقرر', 'Course progress'), onTap: onCourseDetails),
           if (onOpenExams != null) AppPill(icon: Icons.assignment_rounded, label: t('امتحاناتي', 'My exams'), onTap: onOpenExams),
           if (onOpenTimetable != null) AppPill(icon: Icons.view_week_rounded, label: t('جدولي في الجهة', 'My timetable'), onTap: onOpenTimetable),
         ]),

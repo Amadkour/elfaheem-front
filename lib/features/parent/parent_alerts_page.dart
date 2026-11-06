@@ -5,6 +5,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
@@ -320,9 +322,9 @@ class _AlertCard extends StatelessWidget {
                         Text(_text(), style: const TextStyle(fontSize: 13.5, height: 1.4)),
                         const SizedBox(height: 8),
                         Row(children: [
-                          Icon(Icons.person_rounded, size: 14, color: c.primary),
-                          const SizedBox(width: 3),
-                          Flexible(child: Text('${child['name']}', style: TextStyle(fontSize: 12, color: c.primary, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
+                          Flexible(
+                            child: EntityChip(EntityRef(EntityKind.student, child['id'] as int, label: '${child['name']}'), maxWidth: 160),
+                          ),
                           const SizedBox(width: 10),
                           Icon(Icons.schedule_rounded, size: 14, color: context.colors.textMedium),
                           const SizedBox(width: 3),

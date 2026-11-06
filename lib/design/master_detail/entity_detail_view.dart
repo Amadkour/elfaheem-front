@@ -29,14 +29,17 @@ import 'package:provider/provider.dart';
 import '../app_bidi.dart' show ltrIsolate;
 import '../app_kit.dart';
 import 'entity_chip.dart';
+import 'entity_learner.dart';
 import 'entity_panel_controller.dart';
 import 'entity_specs.dart';
 import 'entity_timeline.dart';
+import 'entity_viewer_actions.dart';
 import 'student_detail.dart';
 
 /// A quick action of the panel (Manage, View as …), shown under the header.
 class EntityPanelAction {
-  const EntityPanelAction({required this.icon, required this.label, required this.onPressed, this.key, this.danger = false});
+  const EntityPanelAction(
+      {required this.icon, required this.label, required this.onPressed, this.key, this.danger = false, this.primary = false});
 
   final IconData icon;
   final String label;
@@ -45,6 +48,8 @@ class EntityPanelAction {
 
   /// Drawn as a danger action where one is possible.
   final bool danger;
+  /// The one main action of the panel (Continue learning): drawn as the primary button, at full width.
+  final bool primary;
 }
 
 /// The quick actions for [ref] once its summary is known ([summary] null while it loads).
@@ -182,7 +187,8 @@ class _EntityDetailViewState extends State<EntityDetailView> {
     }
     if (mounted) setState(() => _loading = true);
     try {
-      final s = await EntitiesApi.instance.summary(want, force: force);
+      // a parent's course opened from one child's row: that child's enrollment, whichever other child is enrolled too
+      final s = await EntitiesApi.instance.summary(want, force: force, studentId: widget.controller?.contextStudentId);
       if (!mounted || want != ref) return;
       setState(() {
         _summary = s;
@@ -265,7 +271,10 @@ class _EntityDetailViewState extends State<EntityDetailView> {
       EntityHeader(
         entity: s == null ? shown : headerRef,
         summary: s,
-        actions: [...?_manage?.headerActions(context), ...?widget.actions?.call(ref, s)],
+        actions: [
+          ...?_manage?.headerActions(context),
+          ...(widget.actions != null ? widget.actions!(ref, s) : entityViewerActions(context, ref, s, controller: ctl)),
+        ],
         manage: s == null ? null : _manageOf(s),
       ),
     ];
@@ -351,6 +360,9 @@ class _EntityDetailViewState extends State<EntityDetailView> {
                       : null
                   : null,
               filterCounts: s.kind == EntityKind.course && section == 'students' ? _stateCounts(s) : const {},
+              // a parent names the child; a learner's own course draws its rows without links (nothing to open)
+              fixedFilter: s.learnerId != null && s.mine != null ? {'student_id': '${s.learnerId}'} : const {},
+              linkRows: s.mine == null,
             ),
         };
         children.add(EntitySectionCard(
@@ -388,7 +400,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
       };
 
   Widget _learnerTimeline(BuildContext context, EntitySummary s, int? contextStudent) {
-    final sid = contextStudent ?? _viewerId(context);
+    final sid = s.learnerId ?? contextStudent ?? _viewerId(context);
     if (sid == null) return const SizedBox.shrink();
     return EntityTimelineList(studentId: sid, courseId: s.id);
   }
@@ -399,18 +411,9 @@ class _EntityDetailViewState extends State<EntityDetailView> {
       case EntityKind.course:
         final mine = s.mine;
         if (mine != null) {
-          out.add(_BlockCard(
-            title: 'md_my_enrollment'.tr,
-            icon: Icons.person_pin_circle_outlined,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: AppStatusBadge(label: mdStateLabel(mine.state), tone: mdStateTone(mine.state), dense: true),
-              ),
-              const SizedBox(height: AppSpace.xs),
-              if (mine.state != 'pending') EntityProgress(mine.progress),
-              for (final w in enrollmentMeta(context, mine)) ...[const SizedBox(height: AppSpace.xxs), w],
-            ]),
+          out.add(Padding(
+            padding: const EdgeInsets.only(top: AppSpace.md),
+            child: EntityLearnerCard(mine: mine, self: s.learnerId == null || (_viewerId(context) ?? s.learnerId) == s.learnerId),
           ));
         }
         final trend = s.trend;
@@ -575,8 +578,12 @@ class EntityHeader extends StatelessWidget {
         ],
         if (actions.isNotEmpty) ...[
           const SizedBox(height: AppSpace.sm),
+          for (final a in actions.where((a) => a.primary)) ...[
+            AppButton.primary(key: a.key, label: a.label, icon: a.icon, expand: true, onPressed: a.onPressed),
+            const SizedBox(height: AppSpace.xs),
+          ],
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-            for (final a in actions)
+            for (final a in actions.where((a) => !a.primary))
               AppButton.tonal(key: a.key, label: a.label, icon: a.icon, size: AppButtonSize.sm, onPressed: a.onPressed),
           ]),
         ],
@@ -934,10 +941,16 @@ class EntitySubList extends StatefulWidget {
     this.pinned,
     this.rowBuilder,
     this.filterCounts = const {},
+    this.fixedFilter = const {},
+    this.linkRows = true,
   });
 
   final EntityRef entity;
   final EntitySectionSpec spec;
+
+  /// Sent with every page and not shown (a parent's child).
+  final Map<String, String> fixedFilter;
+  final bool linkRows;
 
   /// Starts searching for this (a course opened from a student starts at that student).
   final String? initialSearch;
@@ -1034,6 +1047,9 @@ class _EntitySubListState extends State<EntitySubList> {
   void _remember() => PageStorage.maybeOf(context)
       ?.writeState(context, _SubListMemo(_query, List.of(_items), _total, _hasMore, _maxTotal), identifier: _memoId);
 
+  EntityListQuery _withFixed(EntityListQuery q) =>
+      widget.fixedFilter.isEmpty ? q : q.copyWith(filter: {...q.filter, ...widget.fixedFilter});
+
   /// [quiet]: the rows on screen stay until the new ones arrive (a change made in the panel).
   Future<void> _reload({bool quiet = false}) async {
     final t = ++_ticket;
@@ -1044,7 +1060,7 @@ class _EntitySubListState extends State<EntitySubList> {
       });
     }
     try {
-      final p = await EntitiesApi.instance.page(widget.entity, widget.spec.section, query: _query.copyWith(page: 1));
+      final p = await EntitiesApi.instance.page(widget.entity, widget.spec.section, query: _withFixed(_query.copyWith(page: 1)));
       final pin = await _loadPin(p.items);
       if (!mounted || t != _ticket) return;
       setState(() {
@@ -1074,7 +1090,7 @@ class _EntitySubListState extends State<EntitySubList> {
     setState(() => _loadingMore = true);
     final next = _query.copyWith(page: _query.page + 1);
     try {
-      final p = await EntitiesApi.instance.page(widget.entity, widget.spec.section, query: next);
+      final p = await EntitiesApi.instance.page(widget.entity, widget.spec.section, query: _withFixed(next));
       if (!mounted || t != _ticket) return;
       setState(() {
         _items.addAll(p.items);
@@ -1181,7 +1197,7 @@ class _EntitySubListState extends State<EntitySubList> {
     } else if (_items.isEmpty) {
       body = Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpace.md, horizontal: AppSpace.xs),
-        child: Text(querying ? 'md_no_results'.tr : 'md_empty_section'.tr,
+        child: Text(querying ? 'md_no_results'.tr : (spec.emptyKey ?? 'md_empty_section').tr,
             textAlign: TextAlign.center, style: AppType.body(context)),
       );
     } else {
@@ -1193,7 +1209,8 @@ class _EntitySubListState extends State<EntitySubList> {
                   onHistory: isEnrollments ? _openHistory : null,
                   ownerId: ownerId,
                   highlightId: widget.highlightId,
-                  ownerKind: widget.entity.kind),
+                  ownerKind: widget.entity.kind,
+                  link: widget.linkRows),
         ],
         if (_hasMore)
           Padding(
