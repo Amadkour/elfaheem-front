@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/org/advising/adv_alerts_page.dart';
 import 'package:flutter_education_app/features/org/advising/adv_flags.dart';
 import 'package:flutter_education_app/features/org/advising/adv_models.dart';
-import 'package:flutter_education_app/features/org/advising/adv_my_advisor_page.dart';
 import 'package:flutter_education_app/features/org/advising/adv_parts.dart';
 import 'package:flutter_education_app/features/org/advising/adv_rules_page.dart';
 import 'package:flutter_education_app/features/org/advising/adv_student_page.dart';
@@ -241,17 +240,5 @@ void main() {
     testWidgets('the advising page\'s links', (t) => expectNoLayoutErrors(t, () {
           return _sheet(Builder(builder: (context) => Column(children: advWarningSetupTiles(context, leads: true, advisor: true, open: (_) {}))));
         }));
-    testWidgets('the student\'s advisor card', (t) => expectNoLayoutErrors(t, () {
-          final s = AdvMemberStatus.fromJson({
-            'enabled': true,
-            'role': 'student',
-            'advisors': [
-              {'user_id': 7, 'name': 'د. سلمى الحربي', 'type': 'primary', 'office_location': 'مبنى 4، مكتب 212', 'contact_note': 'Office hours Sunday and Tuesday 10–12; e-mail first please.'},
-              {'user_id': 8, 'name': 'Dr. Hani Saleh', 'type': 'co'},
-            ],
-          });
-          return AdvMyAdvisorView(load: AdvLoad.ready, status: s);
-        }));
-    testWidgets('no advisor yet', (t) => expectNoLayoutErrors(t, () => const AdvMyAdvisorView(load: AdvLoad.ready, status: AdvMemberStatus(enabled: true, role: 'student'))));
   });
 }

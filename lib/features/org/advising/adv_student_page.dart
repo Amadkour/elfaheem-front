@@ -27,6 +27,7 @@ import '../org_registrar.dart' show regStatusText, standingText;
 import '../org_v3.dart' show orgCall;
 import 'adv_api.dart';
 import 'adv_case_parts.dart';
+import 'adv_comm_entries.dart' show AdvStudentCommPane;
 import 'adv_draft_store.dart';
 import 'adv_flags.dart';
 import 'adv_models.dart';
@@ -39,10 +40,10 @@ import 'adv_support_360.dart' show AdvSupportSection;
 import 'adv_support_parts.dart' show advSupportTimelineIcon;
 
 /// The 360's sections, in order.
-const advCaseSections = ['overview', 'academic', 'flags', 'warning', 'notes', 'support', 'timeline'];
+const advCaseSections = ['overview', 'academic', 'flags', 'warning', 'notes', 'meetings', 'support', 'timeline'];
 
 /// The sections of the wide layout's second column.
-const advCasePanes = ['flags', 'warning', 'notes', 'support', 'timeline'];
+const advCasePanes = ['flags', 'warning', 'notes', 'meetings', 'support', 'timeline'];
 
 String advCaseSectionLabel(String s) => switch (s) {
       'academic' => t('الأكاديمي', 'Academic'),
@@ -51,6 +52,7 @@ String advCaseSectionLabel(String s) => switch (s) {
       'timeline' => t('السجل الزمني', 'Timeline'),
       'warning' => t('الإنذار المبكر', 'Early warning'),
       'support' => t('الدعم', 'Support'), // Phase 7 (adv_support_360.dart)
+      'meetings' => t('اللقاءات', 'Meetings'),
       _ => t('نظرة عامة', 'Overview'),
     };
 
@@ -61,6 +63,7 @@ IconData advCaseSectionIcon(String s) => switch (s) {
       'timeline' => Icons.timeline_rounded,
       'warning' => Icons.radar_rounded,
       'support' => Icons.support_outlined,
+      'meetings' => Icons.event_note_rounded,
       _ => Icons.dashboard_outlined,
     };
 
@@ -462,6 +465,11 @@ IconData advTimelineIcon(String kind) => switch (kind) {
       'flag_status' => Icons.published_with_changes_rounded,
       'note' => Icons.sticky_note_2_outlined,
       'contact' => Icons.forum_outlined,
+      'appointment_booked' || 'appointment_completed' => Icons.event_available_rounded,
+      'appointment_cancelled' => Icons.event_busy_rounded,
+      'appointment_no_show' => Icons.person_off_rounded,
+      'thread_opened' => Icons.chat_bubble_outline_rounded,
+      'thread_escalated' => Icons.north_rounded,
       _ => advSupportTimelineIcon(kind),
     };
 
@@ -470,7 +478,9 @@ Color advTimelineColor(BuildContext context, AdvTimelineEntry e) {
   return switch (e.kind) {
     'flag_opened' => e.data['priority'] == 'urgent' ? c.danger : c.warning,
     'flag_status' => c.warning,
-    'contact' => c.success,
+    'contact' || 'appointment_completed' => c.success,
+    'appointment_no_show' || 'thread_escalated' => c.danger,
+    'appointment_booked' || 'thread_opened' => c.primary,
     'assigned' || 'handover' => c.primary,
     _ => c.textMedium,
   };
@@ -545,6 +555,7 @@ class AdvStudentView extends StatelessWidget {
     this.timeline = const SizedBox.shrink(),
     this.warning,
     this.support = const SizedBox.shrink(),
+    this.meetings = const SizedBox.shrink(),
     this.now,
     this.onRetry,
     this.onSection,
@@ -565,6 +576,8 @@ class AdvStudentView extends StatelessWidget {
   final Widget? warning;
   /// Phase 7: requests, referrals, plans, accommodations (AdvSupportSection / AdvSupportPane).
   final Widget support;
+  /// Phase 5: the Meetings section (AdvStudentCommPane).
+  final Widget meetings;
   final DateTime? now;
   final VoidCallback? onRetry, onChangeAdvisor;
   final ValueChanged<String>? onSection;
@@ -577,6 +590,7 @@ class AdvStudentView extends StatelessWidget {
         'timeline' => timeline,
         'warning' => warning ?? const SizedBox.shrink(),
         'support' => support,
+        'meetings' => meetings,
         _ => flags,
       };
 
@@ -637,7 +651,7 @@ class AdvStudentView extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: pad.left),
           child: switch (current) {
             'academic' => AdvAcademicSection(profile: p),
-            'flags' || 'warning' || 'notes' || 'support' || 'timeline' => _pane(current),
+            'flags' || 'warning' || 'notes' || 'meetings' || 'support' || 'timeline' => _pane(current),
             _ => AdvOverviewSection(profile: p, now: now),
           },
         ),
@@ -649,6 +663,7 @@ class AdvStudentView extends StatelessWidget {
   static String _paneLabel(String s, AdvCaseProfile p) => switch (s) {
         'flags' when p.counts.flagsOpen > 0 => '${advCaseSectionLabel(s)} · ${p.counts.flagsOpen}',
         'notes' when p.counts.notes > 0 => '${advCaseSectionLabel(s)} · ${p.counts.notes}',
+        'meetings' when p.meetings.upcoming.isNotEmpty => '${advCaseSectionLabel(s)} · ${p.meetings.upcoming.length}',
         _ => advCaseSectionLabel(s),
       };
 }
@@ -1134,6 +1149,7 @@ class _AdvStudentBodyState extends State<_AdvStudentBody> {
         onEdit: _editNote,
         onDelete: _deleteNote,
       ),
+      meetings: p == null ? const SizedBox.shrink() : AdvStudentCommPane(orgId: _org, profile: p, onChanged: _afterWrite),
       timeline: AdvTimelinePane(
         load: _tlLoad,
         entries: _tlLoad == AdvLoad.ready ? _timeline : null,

@@ -33,7 +33,7 @@ const advAlertTabs = ['alerts', 'graduation'];
 
 /// Opens [memberId]'s 360 ready to log a contact (the note composer with "log as contact" on).
 Future<void> advProposeMeeting(BuildContext context, {required int orgId, required int memberId, String? name}) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvStudentPage(orgId: orgId, memberId: memberId, name: name, section: 'notes', logContact: true)));
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvStudentPage(orgId: orgId, memberId: memberId, name: name, section: 'meetings')));
 
 class _AlertFacets extends StatelessWidget {
   const _AlertFacets({required this.page});

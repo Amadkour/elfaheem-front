@@ -44,6 +44,9 @@ String advPolicyValueText(String field, dynamic v, AdvPolicyOptions o) {
     'strategy' => opt(o.strategies, '$v', advStrategyLabel),
     'auto_assign' => v == true ? t('مفعّل', 'On') : t('متوقف', 'Off'),
     'warn_pct' => '${asInt(v)}%',
+    'booking_min_notice_hours' || 'cancel_min_notice_hours' => t('${asInt(v)} ساعة', '${asInt(v)} h'),
+    'booking_horizon_days' => t('${asInt(v)} يوم', '${asInt(v)} days'),
+    'no_show_after_minutes' => t('${asInt(v)} دقيقة', '${asInt(v)} min'),
     _ => '${v ?? ''}',
   };
 }
@@ -242,6 +245,49 @@ class AdvConfigView extends StatelessWidget {
             ),
           ),
           hint('warn_pct'),
+        ]),
+      ),
+      ..._appointments(context, shown, hint, on),
+    ];
+  }
+
+  /// Phase 5: the booking rules (policy keys with the server's defaults and ranges).
+  List<Widget> _appointments(BuildContext context, AdvPolicy shown, Widget Function(String) hint, void Function(String, dynamic)? on) {
+    int v(String f, int d) => shown.raw.containsKey(f) ? asInt(shown.raw[f], d) : d;
+    Widget row(String field, int def, {required String title, required String subtitle, required String label, required int min, required int max, int step = 1, String? suffix}) =>
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _StepperRow(
+            title: title,
+            subtitle: subtitle,
+            stepper: AdvStepper(label: label, value: v(field, def), min: min, max: max, step: step, suffix: suffix, onChanged: on == null ? null : (x) => on(field, x)),
+          ),
+          hint(field),
+        ]);
+    final divider = Divider(height: AppSpace.lg, color: context.colors.divider);
+    return [
+      AdvSectionTitle(t('المواعيد', 'Appointments'), subtitle: t('قواعد حجز الطلاب لساعات المرشدين المكتبية', 'How students book their advisors\' office hours')),
+      AppCard(
+        padding: AppSpace.card,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          row('booking_min_notice_hours', 2,
+              title: t('مهلة الحجز', 'Booking notice'), subtitle: t('أقل وقت بين الحجز والموعد (ساعات)', 'The least time between booking and the meeting (hours)'),
+              label: t('مهلة الحجز بالساعات', 'Booking notice in hours'), min: 0, max: 336, suffix: t(' س', ' h')),
+          divider,
+          row('booking_horizon_days', 30,
+              title: t('مدى الحجز', 'Booking window'), subtitle: t('إلى أي مدى مقدماً يحجز الطالب (أيام)', 'How far ahead a student can book (days)'),
+              label: t('مدى الحجز بالأيام', 'Booking window in days'), min: 1, max: 365, suffix: t(' يوم', ' d')),
+          divider,
+          row('cancel_min_notice_hours', 2,
+              title: t('مهلة الإلغاء', 'Cancellation notice'), subtitle: t('الإلغاء بعدها يُحتسب متأخراً ويُبلَّغ المرشد (ساعات)', 'Cancelling later counts as late and the advisor is told (hours)'),
+              label: t('مهلة الإلغاء بالساعات', 'Cancellation notice in hours'), min: 0, max: 336, suffix: t(' س', ' h')),
+          divider,
+          row('max_active_bookings', 2,
+              title: t('المواعيد القادمة للطالب', 'Upcoming appointments per student'), subtitle: t('أقصى عدد يحجزه الطالب في الوقت نفسه', 'The most a student can hold at once'),
+              label: t('أقصى عدد مواعيد قادمة للطالب', 'Most upcoming appointments per student'), min: 1, max: 20),
+          divider,
+          row('no_show_after_minutes', 15,
+              title: t('مهلة عدم الحضور', 'No-show grace'), subtitle: t('بعد بدء الموعد بها يمكن تسجيل غياب الطالب (دقائق)', 'After the start, a no-show can be recorded from then (minutes)'),
+              label: t('مهلة عدم الحضور بالدقائق', 'No-show grace in minutes'), min: 0, max: 240, step: 5, suffix: t(' د', ' min')),
         ]),
       ),
     ];

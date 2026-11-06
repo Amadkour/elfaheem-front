@@ -19,6 +19,7 @@ import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;
 import '../org_page_kit.dart';
 import '../org_v3.dart' show orgCall, orgErrorText;
 import 'adv_api.dart';
+import 'adv_comm_entries.dart' show advAdvisorCommLinks;
 import 'adv_distribute_page.dart';
 import 'adv_models.dart';
 import 'adv_parts.dart';
@@ -581,6 +582,7 @@ class _AdvAdvisorsBodyState extends State<_AdvAdvisorsBody> {
                 onRemoveConflict: manage ? removeConflict : null,
                 onSubmit: submit,
               ),
+              ...advAdvisorCommLinks(ctx, orgId: widget.orgId, advisor: a, manage: manage), // Phase 5: office hours, ratings
             ],
           );
         }));

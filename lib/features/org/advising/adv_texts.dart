@@ -52,6 +52,31 @@ Map<String, String> advCodeTexts() => {
       'advising_run_busy': t('فحص القواعد يعمل الآن — تظهر نتيجته هنا حين ينتهي', 'A rule check is running now — its result shows here when it ends'),
       // Phase 7: requests, referrals, the approval chain, support plans, accommodations (adv_support_texts.dart)
       ...advSupportCodeTexts(),
+      // Phase 5: availability, appointments, conversations, templates, survey
+      'advising_bad_link': t('رابط الاجتماع يجب أن يكون رابطاً آمناً يبدأ بـ https://', 'The meeting link must be a secure link starting with https://'),
+      'advising_rules_overlap': t('في اليوم نفسه فترتان متداخلتان من الساعات المكتبية — عدّل إحداهما', 'Two office-hour windows overlap on the same day — change one of them'),
+      'advising_bad_time': t('وقت النهاية يجب أن يكون بعد البداية بمدة موعد واحد على الأقل', 'The end time must be at least one appointment length after the start time'),
+      'advising_bad_range': t('نطاق التواريخ غير صالح (31 يوماً على الأكثر، والنهاية بعد البداية)', 'The date range is not valid (31 days at most, the end after the start)'),
+      'advising_slot_taken': t('حُجز هذا الموعد للتو — اختر موعداً آخر', 'This time was just booked — pick another one'),
+      'advising_student_busy': t('لدى الطالب ارتباط آخر في هذا الوقت', 'The student has something else at that time'),
+      'advising_bad_slot': t('هذا الوقت لم يعد متاحاً (خارج الساعات المكتبية أو مهلة الحجز أو المدى المسموح) — اختر وقتاً آخر',
+          'That time is no longer available (outside office hours, the booking notice or the booking window) — pick another one'),
+      'advising_booking_limit': t('لديك الحد الأقصى من المواعيد القادمة — ألغِ أحدها أو انتظر حتى ينتهي', 'You already have the most upcoming appointments allowed — cancel one or wait until it has taken place'),
+      'advising_not_your_advisor': t('يمكنك الحجز ومراسلة مرشديك فقط', 'You can book with and write to your own advisors only'),
+      'advising_too_early': t('لا يمكن تسجيل ذلك قبل وقت الموعد (أو قبل مهلة عدم الحضور)', 'That cannot be recorded before the appointment time (or before the no-show grace time)'),
+      'advising_appointment_closed': t('هذا الموعد لم يعد قائماً أو انتهى وقته — حدّث الصفحة', 'This appointment is no longer booked or its time has passed — refresh the page'),
+      'advising_cancel_reason_required': t('اكتب سبب الإلغاء ليصل للطالب', 'Give the reason for cancelling; the student will see it'),
+      'advising_thread_closed': t('المحادثة مغلقة — أعد فتحها أولاً', 'The conversation is closed — reopen it first'),
+      'advising_already_escalated': t('صُعّدت هذه المحادثة من قبل', 'This conversation was already escalated'),
+      'advising_bad_file': t('نوع الملف غير مسموح (PDF، صور، مستندات Office، نص)', 'That file type is not allowed (PDF, images, Office documents, text)'),
+      'advising_file_too_large': t('الملف أكبر من الحد المسموح', 'The file is larger than allowed'),
+      'advising_file_unavailable': t('تعذّر فتح الملف الآن — أعد المحاولة بعد قليل', 'The file cannot be opened right now — try again shortly'),
+      'advising_bad_attachment': t('المرفقات غير صالحة (5 على الأكثر، من رفعك أنت ولم تُرسل من قبل)', 'The attachments are not valid (5 at most, uploaded by you and not sent before)'),
+      'advising_template_system': t('القوالب الأساسية يُعدَّل نصها فقط ولا تُحذف', 'Built-in templates can only have their text edited; they cannot be deleted'),
+      'advising_bad_template': t('القالب المختار غير موجود في هذه المؤسسة', 'The chosen template does not exist in this organization'),
+      'advising_survey_gone': t('رابط الاستبيان غير صالح أو أُجيب عنه من قبل', 'This survey link is not valid or was already answered'),
+      'advising_no_advisor': t('ليس لك مرشد أكاديمي بعد في هذه المؤسسة', 'You have no academic advisor in this organization yet'),
+      'advising_bad_appointment': t('الموعد المختار لا يخص هذا الطالب أو لم يعد قائماً', 'The chosen appointment is not this student\'s or no longer stands'),
     };
 
 /// The risk-reason codes of the workspace (`score.py`); `advRiskReasonText` in adv_models.dart writes each one.
