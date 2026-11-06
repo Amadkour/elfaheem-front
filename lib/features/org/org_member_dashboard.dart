@@ -64,6 +64,7 @@ import 'org_schedule_pages.dart' show OrgSchedulePage;
 import 'org_registrar_member.dart' show openAdvising, openConsents, openMyWeek, openRecord, openRegistration, openTeaching;
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
+import 'advising/adv_wiring.dart' show AdvMemberHubEntry;
 import 'governance/gov_wiring.dart' show govMemberPills;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 
@@ -547,6 +548,9 @@ class OrgMemberHomeBody extends StatelessWidget {
                 : AppPill(label: t('فتح لوحة الإدارة', 'Open the dashboard'), icon: Icons.dashboard_customize_rounded, onTap: () => openOrgManagement(context, orgId)),
           ),
         ),
+
+      // academic advising (D-289 Phase 5): a student with an active advisor gets the hub row (draws nothing otherwise)
+      if (roles.contains('student')) AdvMemberHubEntry(orgId: orgId),
 
       // ── the numbers, once: one card of small tiles (the same strip as the personal homes) — only while one counts
       if (stats.any((x) => x.count > 0)) ...[

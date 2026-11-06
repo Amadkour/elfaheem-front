@@ -27,6 +27,7 @@ import '../org_registrar_member.dart' show openAdvising;
 import '../org_v3.dart' show orgCall;
 import 'adv_api.dart';
 import 'adv_case_parts.dart';
+import 'adv_comm_entries.dart' show AdvCommStrip;
 import 'adv_categories_page.dart';
 import 'adv_draft_store.dart';
 import 'adv_models.dart';
@@ -316,6 +317,7 @@ class AdvWorkspaceView extends StatelessWidget {
     this.onOpen,
     this.onRegistrationCases,
     this.onCategories,
+    this.comm,
   });
 
   final AdvLoad load;
@@ -331,6 +333,9 @@ class AdvWorkspaceView extends StatelessWidget {
   final ValueChanged<String>? onSearch;
   final ValueChanged<int>? onPage;
   final ValueChanged<AdvCaseItem>? onOpen;
+
+  /// Phase 5: unread messages · today's appointments (AdvCommStrip).
+  final Widget? comm;
 
   @override
   Widget build(BuildContext context) {
@@ -366,6 +371,7 @@ class AdvWorkspaceView extends StatelessWidget {
       ]);
     }
     return OrgPageBody(
+      top: comm,
       search: onSearch == null ? null : OrgSearchField(hint: t('ابحث بالاسم أو الرقم', 'Search by name or ID'), onChanged: onSearch!),
       filter: onFilters == null
           ? null
@@ -384,25 +390,29 @@ class AdvWorkspaceView extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class AdvWorkspacePage extends StatelessWidget {
-  const AdvWorkspacePage({super.key, required this.orgId, required this.manage});
+  const AdvWorkspacePage({super.key, required this.orgId, required this.manage, this.sort = 'risk'});
   final int orgId;
 
   /// An org admin / advising director (else an advisor's own students).
   final bool manage;
+
+  /// The first order (Phase 6: a "no contact" reminder opens it by last contact).
+  final String sort;
 
   @override
   Widget build(BuildContext context) => OrgPushedPage(
         title: manage ? t('مساحة الإرشاد', 'Advising workspace') : t('طلابي', 'My students'),
         helpPageId: 'org.advising',
         maxWidth: 960,
-        child: _AdvWorkspaceBody(orgId: orgId, manage: manage),
+        child: _AdvWorkspaceBody(orgId: orgId, manage: manage, sort: sort),
       );
 }
 
 class _AdvWorkspaceBody extends StatefulWidget {
-  const _AdvWorkspaceBody({required this.orgId, required this.manage});
+  const _AdvWorkspaceBody({required this.orgId, required this.manage, this.sort = 'risk'});
   final int orgId;
   final bool manage;
+  final String sort;
 
   @override
   State<_AdvWorkspaceBody> createState() => _AdvWorkspaceBodyState();
@@ -415,7 +425,7 @@ class _AdvWorkspaceBodyState extends State<_AdvWorkspaceBody> {
   AdvPage<AdvCaseItem>? _page;
   AdvLoad _load = AdvLoad.loading;
   String? _error;
-  AdvWorkspaceQuery _query = const AdvWorkspaceQuery();
+  late AdvWorkspaceQuery _query = AdvWorkspaceQuery(sort: advWorkspaceSorts.contains(widget.sort) ? widget.sort : 'risk');
   int _seq = 0;
   List<AdvCategory> _categories = const [];
   AdvPolicyOptions? _options;
@@ -536,5 +546,6 @@ class _AdvWorkspaceBodyState extends State<_AdvWorkspaceBody> {
         onOpen: _open,
         onRegistrationCases: () => openAdvising(context, widget.orgId),
         onCategories: widget.manage ? _openCategories : null,
+        comm: AdvCommStrip(orgId: widget.orgId),
       );
 }

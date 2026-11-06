@@ -217,10 +217,39 @@ class AppNavigator {
           await root.pushNamed('/org_dashboard');
         }
         return;
+      // academic advising requests / referrals / plans / accommodations (D-289 Phase 7): push `kind` request · plan ·
+      // accommodation, or the app links org_adv_request · org_adv_plan → the request / the Support section, by audience
+      case 'org_adv_request':
+      case 'org_adv_plan':
+      case 'advising' when const {'request', 'plan', 'accommodation'}.contains('${data['kind'] ?? (data['data'] is Map ? (data['data'] as Map)['kind'] : null) ?? kind}'):
+        if (orgId != null && !AppConfig.disableList.contains('org.advising') &&
+            await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenSupportLink(nav, orgId: orgId, data: data, module: module, kind: kind))) {
+          return;
+        }
+        await nav.pushNamed('/notifications');
+        return;
       // academic advising (D-289): an urgent flag · an escalation · a review due names the student → their 360
       case 'advising':
+      case 'org_adv_appointment': // Phase 5 (push data `kind`): an appointment · a conversation · a survey
+      case 'org_adv_thread':
+      case 'org_adv_survey':
         final inner = data['data'];
+        // Phase 8: a group message (student → the message, sender → its tracking) · the daily data check
+        if (orgId != null && !AppConfig.disableList.contains('org.advising') &&
+            await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenAnalyticsLink(nav, orgId: orgId, data: {...data, if (inner is Map) ...inner.cast<String, dynamic>()}))) {
+          return;
+        }
+        final advKind = '${data['kind'] ?? (inner is Map ? inner['kind'] : null) ?? (module == 'advising' ? kind : module) ?? ''}';
+        if (orgId != null && advKind.startsWith('org_adv_') && !AppConfig.disableList.contains('org.advising') &&
+            await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenCommLink(nav, orgId: orgId, data: {...data, 'kind': advKind}))) {
+          return;
+        }
         final member = int.tryParse('${data['member_id'] ?? (inner is Map ? inner['member_id'] : null) ?? ''}');
+        // Phase 6 early warning: a notice naming a screen (alerts · workspace · advisor) or "propose a meeting"
+        final flat = <String, dynamic>{...data, if (inner is Map) for (final e in inner.entries) '${e.key}': e.value};
+        if (orgId != null && !AppConfig.disableList.contains('org.advising') && (flat['screen'] != null || flat['action'] == 'propose_meeting')) {
+          if (await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenScreenLink(nav, orgId: orgId, data: flat))) return;
+        }
         if (member != null && orgId != null && !AppConfig.disableList.contains('org.advising')) {
           await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenStudentLink(nav, orgId: orgId, memberId: member));
         } else {

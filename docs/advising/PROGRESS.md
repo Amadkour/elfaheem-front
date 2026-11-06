@@ -11,8 +11,8 @@ job (owner deploys once after all sessions).
 | 2 Foundation | done | brief `PHASE2.md`; back 4d00406 · fb66c38 · 3478985, front a117d608 · 2daa1942 · b7031cf1; security review: 3 fixes (no migration data step, live-only directors); migration renumbered 0050 at the merge |
 | 3 Config + assignment | done | brief `PHASE3.md`; owner 2026-11-05: keep links to departed advisors (counted away); back 88579cd · 0909cfe (security review: 5 fixes) · 296f1ee (merge, migration renumbered 0052), front 2583d460 · 0c6dfbe1 · 9932dd14 + label fixes; **Phase 4 first task**: advisors who are not directors reach My profile / Handovers (the entry under Services is admin / director only today; PLAN §3.10 department tab + attention keys) |
 | 4 Advisor workspace | done | brief `PHASE4.md`; back a282619 · 7cde087 (security review: 11 fixes) · 688d624 (merge), front a3dc2714 + docs; advisors who are not directors now reach My students through `/mine` `advising`; migration 0053 |
-| 5 Appointments + messages | todo | |
-| 6 Early warning | todo | |
-| 7 Requests + councils | todo | |
-| 8 Analytics | todo | |
+| 5 Appointments + messages | done | brief `PHASE5.md`; office hours, booking with notice/window/limits, no-shows, conversations with files, templates, post-meeting survey, student hub; student routes on the member base `/org/public/{org}/advising`; migration 0054 |
+| 6 Early warning | done | brief `PHASE6.md`; rule engine (system + custom rules, daily run, run now), alerts with "propose a meeting", digests, graduation checks; migration 0055 (rechained after 0054 at the merge) |
+| 7 Requests + councils | done | brief `PHASE7.md`; requests and referrals with an approval chain, support plans with reviews, accommodations; migration 0056 (rechained after 0055) |
+| 8 Analytics | done | brief `PHASE8.md`; director dashboard + aggregate tier (small groups hidden), 27 drill-downs, six `adv.*` Export Studio datasets, compliance, daily data check, group outreach with read tracking; migration 0057; merged with Phases 5-7 and `organizations`, full gates once, PG round trip 0053 → 0057 |
 | 9 Hardening | todo | |

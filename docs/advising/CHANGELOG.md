@@ -1,5 +1,35 @@
 # Academic Advising — changelog
 
+## Phases 5-8 — Appointments, early warning, requests, analytics — 2026-11-06
+Built in parallel (one worktree pair per phase), merged into `feature/academic-advising`, then with `organizations`;
+migrations chained 0053 → 0054 → 0055 → 0056 → 0057 and checked up and down on PostgreSQL.
+
+Phase 5 — appointments and messages:
+- Office hours per advisor, bookable slots, booking rules in policy (notice, window, cancel notice, active bookings,
+  no-show grace; editable under "Appointments" in the settings), no-shows and late cancellations, meeting links https
+  only.
+- Conversations between a student and their advisors (files, escalation, close / reopen), message templates, the
+  post-meeting survey, ratings; the student hub (`AdvStudentHubPage`) with "My academic advisor" on the member home.
+
+Phase 6 — early warning:
+- Rule engine (built-in + up to 50 custom rules per organization), daily run and "run now", alerts with reasons,
+  "propose a meeting" (opens the student's 360 on Meetings), digests to advisors and directors, graduation checks.
+
+Phase 7 — requests and support:
+- Requests and referrals with a configurable approval chain, support plans with reviews, accommodations; the student
+  sees theirs from the hub ("Requests and support plan").
+
+Phase 8 — analytics and outreach:
+- Director dashboard (KPIs with the previous period, charts, filters, refresh as a job), an aggregate-only tier that
+  hides groups under the small-count threshold, 27 drill-down lists, advisor stats, compliance per term.
+- Six Export Studio datasets (`adv.students`, `adv.advisors`, `adv.flags`, `adv.appointments`, `adv.compliance`,
+  `adv.outreach`) with schedules; daily data check with a badge on the advising page.
+- Group outreach (advisors to their own advisees only, weekly cap per student, hourly send limit) with delivery and
+  read tracking; students see the latest messages on their hub.
+
+Merge notes: error codes used by several phases (`advising_bad_range`, `advising_run_busy`, `advising_bad_template`)
+have one text that fits each use; the temporary advisor page of Phase 6 was replaced by the Phase 5 hub.
+
 ## Phase 4 — Advisor workspace — 2026-11-06
 Backend (`wt-back-advising`):
 - Workspace `GET /workspace`: an advisor's students (a director sees all), filters, sort risk · name · CGPA · last

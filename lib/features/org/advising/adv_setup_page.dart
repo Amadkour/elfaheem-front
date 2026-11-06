@@ -19,14 +19,23 @@ import '../../admin/admin_common.dart' show t;
 import '../org_page_kit.dart';
 import '../org_v3.dart' show orgCall, orgErrorText;
 import 'adv_advisors_page.dart';
+import 'adv_analytics_api.dart';
+import 'adv_analytics_models.dart' show AdvAnalyticsMe;
+import 'adv_director_page.dart';
+import 'adv_outreach.dart' show AdvOutreachListPage;
 import 'adv_api.dart';
+import 'adv_comm_entries.dart' show advCommPage, advCommSetupTiles, advOpenOrgFeedback;
 import 'adv_categories_page.dart';
 import 'adv_config_page.dart';
 import 'adv_distribute_page.dart';
 import 'adv_handovers_page.dart';
 import 'adv_models.dart';
 import 'adv_students_page.dart';
+import 'adv_support_wiring.dart' show advSupportSetupPage, advSupportSetupTiles;
 import 'adv_workspace_page.dart';
+import 'adv_alerts_page.dart' show AdvAlertsPage;
+import 'adv_rules_page.dart' show AdvRulesPage;
+import 'adv_warning_parts.dart' show advWarningSetupTiles;
 
 /// What the page shows.
 enum AdvSetupState { loading, failed, unavailable, off, on }
@@ -51,6 +60,7 @@ class AdvSetupView extends StatelessWidget {
     this.onEnable,
     this.onDisable,
     this.onOpen,
+    this.analytics = const AdvAnalyticsMe(),
   });
 
   final AdvSetupState state;
@@ -67,6 +77,9 @@ class AdvSetupView extends StatelessWidget {
   /// Opens a Phase 3 page: `settings` · `advisors` · `distribute` · `rebalance` · `students` · `students_away` ·
   /// `profile` · `handovers` (null: the links are left out).
   final ValueChanged<String>? onOpen;
+
+  /// Phase 8 keys of `me` (analytics tier, may send group messages, data issues).
+  final AdvAnalyticsMe analytics;
 
   @override
   Widget build(BuildContext context) {
@@ -272,7 +285,7 @@ class AdvSetupView extends StatelessWidget {
           ),
         ],
       ],
-      if (onOpen != null && (me.leads || me.advisor)) ..._links(context, st),
+      if (onOpen != null && (me.leads || me.advisor || analytics.any)) ..._links(context, st),
       _SectionTitle(
         st.directors.length > 1 ? t('مديرو الإرشاد', 'Advising directors') : t('مدير الإرشاد', 'Advising director'),
         subtitle: t('رئيس إدارة الإرشاد الأكاديمي ومن مُنح دور مدير الإرشاد', 'The head of the Academic Advising department and anyone given the advising director role'),
@@ -396,6 +409,32 @@ extension _AdvSetupLinks on AdvSetupView {
           onTap: () => open('handovers'),
         ),
       ],
+      // Phase 6: early warning
+      ...advWarningSetupTiles(context, leads: me.leads, advisor: me.advisor, open: open),
+      // Phase 7: requests and referrals · the approval chain · accommodations (adv_support_wiring.dart)
+      ...advSupportSetupTiles(context, me, open),
+      ...advCommSetupTiles(context, st, open), // Phase 5: appointments, messages, office hours, templates, ratings
+      // Phase 8: the analytics dashboard (manage · aggregate) with the data-check badge, group messages
+      if (analytics.any)
+        AppActionCard(
+          icon: Icons.insights_rounded,
+          title: t('تحليلات الإرشاد', 'Advising analytics'),
+          subtitle: analytics.healthIssues > 0
+              ? countText(analytics.healthIssues,
+                  ar1: 'مشكلة بيانات واحدة', ar2: 'مشكلتا بيانات', arFew: '${analytics.healthIssues} مشكلات بيانات', arMany: '${analytics.healthIssues} مشكلة بيانات',
+                  en1: '1 data issue', en: '${analytics.healthIssues} data issues')
+              : t('الأحمال والمتعثرون واللقاءات والنتائج والتقارير', 'Load, struggling students, meetings, outcomes, reports'),
+          badge: analytics.healthIssues,
+          color: analytics.healthIssues > 0 ? c.warning : null,
+          onTap: () => open('analytics'),
+        ),
+      if (analytics.outreach)
+        AppActionCard(
+          icon: Icons.campaign_outlined,
+          title: t('الرسائل الجماعية', 'Group messages'),
+          subtitle: t('راسل مجموعة طلاب وتابع من قرأ', 'Message a group of students and see who read it'),
+          onTap: () => open('outreach'),
+        ),
     ];
     return [
       _SectionTitle(t('العمل', 'Work')),
@@ -656,6 +695,7 @@ class AdvSetupPage extends StatefulWidget {
 
 class _AdvSetupPageState extends State<AdvSetupPage> {
   AdvStatus? _status;
+  AdvAnalyticsMe _analytics = const AdvAnalyticsMe();
   String? _error;
   bool _busy = false;
 
@@ -682,11 +722,12 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
       _status = null;
       _error = null;
     });
-    final r = await orgCall(() => _api.status(), quiet: true);
+    final r = await orgCall(() => AdvAnalyticsApi(widget.orgId).status(), quiet: true);
     if (!mounted) return;
     setState(() {
       if (r.ok) {
-        _status = r.data as AdvStatus;
+        _status = (r.data as AdvStatusPlus).status;
+        _analytics = (r.data as AdvStatusPlus).analytics;
       } else {
         _error = r.endpointMissing
             ? t('الإرشاد الأكاديمي يحتاج تحديث الخادم.', 'Academic advising needs a server update.')
@@ -783,7 +824,8 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
     final s = _status;
     if (s == null) return;
     final id = widget.orgId, lead = s.me.leads;
-    final Widget page = switch (key) {
+    if (key == 'feedback') return advOpenOrgFeedback(context, widget.orgId);
+    final Widget page = advSupportSetupPage(key, id, s.me) ?? advCommPage(context, key, orgId: widget.orgId, status: s) ?? switch (key) {
       'settings' => AdvConfigPage(orgId: id),
       'advisors' => AdvAdvisorsPage(orgId: id, manage: true),
       'profile' => AdvAdvisorsPage(orgId: id, manage: false),
@@ -793,18 +835,29 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
       'handovers' => AdvHandoversPage(orgId: id, manage: false),
       'workspace' => AdvWorkspacePage(orgId: id, manage: lead),
       'categories' => AdvCategoriesPage(orgId: id),
+      'rules' => AdvRulesPage(orgId: id),
+      'alerts' => AdvAlertsPage(orgId: id, manage: lead),
+      'analytics' => AdvDirectorPage(orgId: id, outreach: _analytics.outreach),
+      'outreach' => AdvOutreachListPage(orgId: id, manage: lead),
       _ => AdvStudentsPage(orgId: id, manage: lead),
     };
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
     if (!mounted) return;
-    final r = await orgCall(() => _api.status(), quiet: true);
-    if (mounted && r.ok) setState(() => _status = r.data as AdvStatus);
+    final r = await orgCall(() => AdvAnalyticsApi(widget.orgId).status(), quiet: true);
+    if (mounted && r.ok) {
+      final plus = r.data as AdvStatusPlus;
+      setState(() {
+        _status = plus.status;
+        _analytics = plus.analytics;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) => AdvSetupView(
         state: advSetupState(status: _status, failed: _error != null),
         status: _status,
+        analytics: _analytics,
         deptName: _deptName,
         errorText: _error,
         busy: _busy,
