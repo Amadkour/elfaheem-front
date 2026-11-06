@@ -52,9 +52,7 @@ const homeBudgets = <String, HomeBudget>{
   // 2026-10-31: open 3 → 4 — GET /me/home carries the mode's side (scope / org_id, the server's default is the
   // personal account). On a first launch the mode is only known from the overview's smart default, so the home asked
   // in parallel is the personal side's: its course block is dropped and the organization's home is asked once more.
-  // 2026-11-06: open 4 → 5 — the "My academic advisor" card (academic advising, D-289) asks its organization's
-  // member status once, in parallel with the feed (depth unchanged); folding it into /me/overview is a Phase 9 item.
-  'org-member': (open: 5, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
+  'org-member': (open: 4, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
 };
 
 class HomeMetrics {
@@ -104,6 +102,8 @@ Map<String, FakeHandler> homeRoutes({bool memberOfOrg = false}) => {
                   'todo': {'total': 2},
                   'approvals': {'total': 0},
                   'news': 1,
+                  // academic advising (D-289 Phase 9): the "My academic advisor" card reads it, no status call
+                  'advising': {'hub': true, 'unread': 1, 'appointments_today': 0, 'surveys_pending': 0},
                 },
               ],
               'default_org_id': 1,

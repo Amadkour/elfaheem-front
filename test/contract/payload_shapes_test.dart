@@ -15,6 +15,7 @@ import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart' show SseParser;
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
+import 'package:flutter_education_app/features/org/advising/adv_appt_models.dart' show AdvMemberHub;
 import 'package:flutter_education_app/features/org/org_dashboard_model.dart';
 import 'package:flutter_education_app/features/parent/parent_overview.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
@@ -158,6 +159,25 @@ void main() {
           expect(c.nextLecture!.track, n['track']);
         }
       }
+    });
+
+    // academic advising (D-289 Phase 9): the membership's `advising` block feeds the "My academic advisor" card;
+    // an older server (or a student without an advisor) leaves the key out and the card asks the member status
+    test('student membership: the advising block of the overview item', () {
+      final j = fixture('me_home_student');
+      final item = ms(j['org_overview']['items']).first;
+      hasKeys(m(item['advising']), const ['hub', 'unread', 'appointments_today', 'surveys_pending'], 'org_overview advising');
+      final h = MeHome.fromJson(j);
+      final hub = AdvMemberHub.fromOverview(h.orgEntry(item['organization']['id'] as int)!['advising'])!;
+      final b = m(item['advising']);
+      expect(hub.hub, b['hub']);
+      expect(hub.counts.threadsUnread, b['unread']);
+      expect(hub.counts.appointmentsToday, b['appointments_today']);
+      expect(hub.counts.surveysPending, b['surveys_pending']);
+      expect(hub.counts.total, (b['unread'] as int) + (b['appointments_today'] as int) + (b['surveys_pending'] as int));
+      // older server: the key is absent
+      final old = Map<String, dynamic>.of(item)..remove('advising');
+      expect(AdvMemberHub.fromOverview(old['advising']), isNull);
     });
 
     test('student without a membership: org_overview null, no courses', () {

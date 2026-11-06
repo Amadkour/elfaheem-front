@@ -4,6 +4,7 @@
 // the deep links here.
 library;
 
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/plural.dart';
@@ -90,12 +91,17 @@ Future<bool> advOpenScreenLink(NavigatorState nav, {required int orgId, required
 
 // ── Phase 5: the student hub pill and the appointment / conversation / survey deep links ──────────────────────────
 
-/// The member home's "My academic advisor" row (students with an active advisor in [orgId]). It asks the member
-/// status itself (one cached answer per organization, shared by every copy of the row) and draws nothing until the
-/// answer says I have an advisor there; the unread messages, today's appointments and pending surveys are its badge.
+/// The member home's "My academic advisor" row (students with an active advisor in [orgId]); the unread messages,
+/// today's appointments and pending surveys are its badge. Phase 9: the membership's `advising` block of the overview
+/// ([overview]) carries all of it, so no request is made; without it (no block, or an older server) the row asks the
+/// member status itself (one cached answer per organization, shared by every copy of the row) and draws nothing until
+/// the answer says I have an advisor there. Back from the hub, the counts are asked fresh.
 class AdvMemberHubEntry extends StatefulWidget {
-  const AdvMemberHubEntry({super.key, required this.orgId, this.padding = const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm)});
+  const AdvMemberHubEntry({super.key, required this.orgId, this.overview, this.padding = const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm)});
   final int orgId;
+
+  /// The `advising` value of this membership's overview item (`entry['advising']`), as the server sent it.
+  final Object? overview;
   final EdgeInsetsGeometry padding;
 
   /// org id → the member status answer (one request per organization while the app runs; a hub visit refreshes it).
@@ -114,13 +120,22 @@ class AdvMemberHubEntry extends StatefulWidget {
 }
 
 class _AdvMemberHubEntryState extends State<AdvMemberHubEntry> {
-  late Future<AdvMemberHub?> _hub = AdvMemberHubEntry._load(widget.orgId);
+  late Future<AdvMemberHub?> _hub = _initial();
+
+  /// The overview's block when the server sent one, else the member status.
+  Future<AdvMemberHub?> _initial() {
+    final b = AdvMemberHub.fromOverview(widget.overview);
+    return b != null ? Future.value(b) : AdvMemberHubEntry._load(widget.orgId);
+  }
 
   @override
   void didUpdateWidget(AdvMemberHubEntry old) {
     super.didUpdateWidget(old);
-    if (old.orgId != widget.orgId) _hub = AdvMemberHubEntry._load(widget.orgId);
+    // another organization, or a refreshed overview (pull to refresh, a new /me/home)
+    if (old.orgId != widget.orgId || !mapEquals(_asMap(old.overview), _asMap(widget.overview))) _hub = _initial();
   }
+
+  static Map<String, dynamic>? _asMap(Object? v) => v is Map ? v.cast<String, dynamic>() : null;
 
   Future<void> _open() async {
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvStudentHubPage(orgId: widget.orgId)));

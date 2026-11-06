@@ -549,8 +549,9 @@ class OrgMemberHomeBody extends StatelessWidget {
           ),
         ),
 
-      // academic advising (D-289 Phase 5): a student with an active advisor gets the hub row (draws nothing otherwise)
-      if (roles.contains('student')) AdvMemberHubEntry(orgId: orgId),
+      // academic advising (D-289 Phase 5): a student with an active advisor gets the hub row (draws nothing otherwise);
+      // Phase 9: the overview's `advising` block feeds it without a request
+      if (roles.contains('student')) AdvMemberHubEntry(orgId: orgId, overview: entry['advising']),
 
       // ── the numbers, once: one card of small tiles (the same strip as the personal homes) — only while one counts
       if (stats.any((x) => x.count > 0)) ...[
