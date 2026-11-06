@@ -195,15 +195,15 @@ void main() {
         expect(find.byKey(ValueKey(key)), findsOneWidget, reason: key);
       }
       expect(find.text('admin_teacher_profile'.tr), findsOneWidget);
-      expect(find.text('user0@example.test'), findsNothing);
-      expect(find.text('user1@example.test'), findsWidgets, reason: 'the profile of the sheet');
+      expect(find.descendant(of: find.byKey(const ValueKey('md.inline')), matching: find.text('user1@example.test')), findsOneWidget,
+          reason: 'the profile of the sheet');
       expect(find.byKey(const ValueKey('admin.user_view_as')), findsNothing, reason: 'the detail has View as already');
       expect(find.byKey(const ValueKey('md.view_as')), findsOneWidget);
 
       final before = api.calls.where((c) => c.path == '/api/v1/entities/teachers/101').length;
       final listBefore = api.calls.where((c) => c.path == '/api/v1/admin/users').length;
       await tapKey(tester, 'admin.user_verify');
-      await tester.tap(find.byType(TextButton).last);
+      await tester.tap(find.byType(FilledButton).last);
       await frames(tester, 14);
       expect(api.calls.where((c) => c.method == 'PUT' || c.method == 'POST').isNotEmpty, isTrue);
       expect(api.calls.where((c) => c.path == '/api/v1/entities/teachers/101').length, greaterThan(before), reason: 'the detail reloaded');
@@ -217,7 +217,7 @@ void main() {
       await tapRow(tester, 'Omar Khaled 2');
       await tapKey(tester, 'md.manage');
       await tapKey(tester, 'admin.user_delete');
-      await tester.tap(find.byType(TextButton).last);
+      await tester.tap(find.byType(FilledButton).last);
       await frames(tester, 14);
       expect(api.calls.map((c) => '${c.method} ${c.path}'), contains('DELETE /api/v1/admin/users/101'));
       expect(panelOf(tester).isOpen, isFalse);
@@ -269,7 +269,11 @@ void main() {
     testWidgets('a tab with its filter; a student opened from it comes back to it', (tester) async {
       await categoriesPage(tester);
       await tapRow(tester, 'Computer Science 1');
-      await tester.tap(find.text('md_sec_students'.tr).last);
+      // the tab strip scrolls when the test's wide font does not fit the panel
+      final tab = find.descendant(of: find.byType(AppUnderlineTabs), matching: find.text('md_sec_students'.tr));
+      await tester.ensureVisible(tab);
+      await frames(tester, 4);
+      await tester.tap(tab);
       await frames(tester);
       expect(api.calls.map((c) => c.path), contains('/api/v1/entities/categories/5/students'));
       await tester.tap(find.text('md_p6_activity_inactive'.tr));
@@ -305,7 +309,7 @@ void main() {
       await categoriesPage(tester);
       await tapRow(tester, 'Computer Science 1');
       await tapKey(tester, 'md.category_delete');
-      await tester.tap(find.byType(TextButton).last);
+      await tester.tap(find.byType(FilledButton).last);
       await frames(tester, 14);
       expect(api.calls.map((c) => '${c.method} ${c.path}'), contains('DELETE /api/v1/admin/categories/5'));
       expect(panelOf(tester).isOpen, isFalse);
@@ -342,7 +346,27 @@ void main() {
   });
 
   group('layout (320 x 640 · 1400 x 900 · ar / en · text 1.3)', () {
-    testWidgets('a teacher with management unfolded', (tester) async {
+    testWidgets('a teacher, management unfolded at 320 in both languages', (tester) async {
+      window(tester, const Size(320, 640));
+      final auth = await start();
+      for (final lang in const ['ar', 'en']) {
+        AppConfig.lang = lang;
+        final c = EntityPanelController(rowKind: EntityKind.teacher)..open(const EntityRef(EntityKind.teacher, 101));
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(hosted(
+            auth, layoutHost(MasterDetailScaffold(controller: c, list: const SizedBox.expand()), scale: 1.3)));
+        await frames(tester);
+        await tapKey(tester, 'md.manage');
+        await tester.ensureVisible(find.byKey(const ValueKey('admin.user_delete')));
+        await frames(tester, 4);
+        expect(find.byKey(const ValueKey('admin.user_delete')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+      AppConfig.lang = 'en';
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a teacher', (tester) async {
       final auth = await start();
       await expectNoLayoutErrors(
         tester,

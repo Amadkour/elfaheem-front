@@ -189,13 +189,11 @@ class _AppButtonState extends State<AppButton> {
     final h = _heightOf(widget.size);
     final disabled = widget.onPressed == null && !widget.busy;
 
-    // text / icon ink of an unfilled button: the primary made readable on the open mode's surface (appInk — the raw
-    // indigo is about 1.6:1 on a dark card); fills and borders keep the raw tone
+    // text / icon ink of an unfilled button: the primary or danger made readable on the open mode's surface (appInk —
+    // the raw indigo is about 1.6:1 on a dark card, the raw red 3.7:1 on white); fills and borders keep the raw tone
     final Color ink = filled
         ? c.onHero
-        : outlineDanger
-            ? c.danger
-            : appInk(context, c.primary);
+        : appInk(context, outlineDanger ? c.danger : c.primary);
     final fs = switch (widget.size) {
       AppButtonSize.sm => 13.0,
       AppButtonSize.md => 14.0,
