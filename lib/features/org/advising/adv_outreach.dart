@@ -11,13 +11,16 @@
 //   AdvOutreachTrackingView   its content (plain values)
 //   showAdvStudentMessage     the student's sheet for one message (marks it read)
 //   AdvHubOutreachSection     the student hub's block: unread count and the latest messages (placed by the hub)
-//   AdvStudentMessagesPage    every message the student received
+//   AdvStudentMessagesPage    every message the student received; [openId] (a push tap) opens that message's sheet
+//                             over the list (Phase 9)
+//   advOutreachOn             the kill switch `org.advising.outreach` (with the module's)
 library;
 
 import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/core/plural.dart';
@@ -38,6 +41,9 @@ import 'adv_parts.dart';
 //  Composer
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// Group messages are on (`org.advising.outreach` and the module's switch `org.advising`); hidden features disappear.
+bool advOutreachOn() => !AppConfig.disableList.contains('org.advising') && !AppConfig.disableList.contains('org.advising.outreach');
+
 /// A fresh draft id: one per opened composer, so a retried send never sends twice.
 String advOutreachClientId() {
   final r = math.Random.secure();
@@ -55,6 +61,7 @@ class AdvOutreachComposerForm extends StatelessWidget {
     this.previewLoading = false,
     this.previewError,
     this.audienceTitle,
+    this.explicitAudience = false,
     this.presets,
     this.preset = 0,
     this.onPreset,
@@ -75,6 +82,9 @@ class AdvOutreachComposerForm extends StatelessWidget {
   final bool previewLoading;
   final String? previewError;
   final String? audienceTitle;
+
+  /// The audience is a list of chosen students: [audienceTitle] names it, not the server's label.
+  final bool explicitAudience;
   final List<(String, String?, String)>? presets;
   final int preset;
   final ValueChanged<int>? onPreset;
@@ -103,7 +113,7 @@ class AdvOutreachComposerForm extends StatelessWidget {
         ]),
         const SizedBox(height: AppSpace.sm),
       ],
-      _AudienceBox(preview: p, loading: previewLoading, error: previewError, title: audienceTitle),
+      _AudienceBox(preview: p, loading: previewLoading, error: previewError, title: audienceTitle, titleFirst: explicitAudience),
       const SizedBox(height: AppSpace.md),
       if (templates.isNotEmpty) ...[
         AppDropdown<int?>(
@@ -157,9 +167,9 @@ class AdvOutreachComposerForm extends StatelessWidget {
 }
 
 class _AudienceBox extends StatelessWidget {
-  const _AudienceBox({this.preview, this.loading = false, this.error, this.title});
+  const _AudienceBox({this.preview, this.loading = false, this.error, this.title, this.titleFirst = false});
   final AdvOutreachPreview? preview;
-  final bool loading;
+  final bool loading, titleFirst;
   final String? error, title;
 
   @override
@@ -172,7 +182,7 @@ class _AudienceBox extends StatelessWidget {
     } else if (p == null) {
       inner = Text(error ?? t('تعذّر معرفة المستلمين.', 'The recipients could not be worked out.'), style: AppType.meta(context).copyWith(color: c.danger));
     } else {
-      final label = p.label.isNotEmpty ? p.label : (title ?? '');
+      final label = titleFirst && (title ?? '').isNotEmpty ? title! : (p.label.isNotEmpty ? p.label : (title ?? ''));
       final names = [for (final s in p.sample.take(5)) s.shown].join('، ');
       inner = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -352,6 +362,7 @@ class _ComposerSheetState extends State<_ComposerSheet> {
             previewLoading: _loading,
             previewError: _previewError,
             audienceTitle: widget.audienceTitle,
+            explicitAudience: widget.audience?.explicit ?? false,
             presets: widget.audience == null ? _presets : null,
             preset: _preset,
             onPreset: (i) {
@@ -901,10 +912,12 @@ class _MessageRow extends StatelessWidget {
   }
 }
 
-/// Every message the student received.
+/// Every message the student received. [openId] (the push of one message): that message's sheet opens over the
+/// list once it is found; the list is looked through page by page (newest first, so a fresh message is on the first).
 class AdvStudentMessagesPage extends StatefulWidget {
-  const AdvStudentMessagesPage({super.key, required this.orgId});
+  const AdvStudentMessagesPage({super.key, required this.orgId, this.openId});
   final int orgId;
+  final int? openId;
 
   @override
   State<AdvStudentMessagesPage> createState() => _AdvStudentMessagesPageState();
@@ -919,13 +932,14 @@ class _AdvStudentMessagesPageState extends State<AdvStudentMessagesPage> {
   @override
   void initState() {
     super.initState();
-    unawaited(_reload());
+    unawaited(_reload().then((_) => _openFromLink()));
   }
 
-  Future<void> _reload({bool more = false}) async {
+  /// Answers whether the page loaded.
+  Future<bool> _reload({bool more = false}) async {
     final page = more ? _page + 1 : 1;
     final r = await orgCall(() => AdvAnalyticsApi.memberOutreach(widget.orgId, page: page), quiet: true);
-    if (!mounted) return;
+    if (!mounted) return false;
     setState(() {
       if (r.ok) {
         final (p, _) = r.data as (AdvPage<AdvStudentMessage>, int);
@@ -938,6 +952,25 @@ class _AdvStudentMessagesPageState extends State<AdvStudentMessagesPage> {
         _error = advErrorText(r.error!);
       }
     });
+    return r.ok;
+  }
+
+  /// The message a push named: found in the pages → its sheet over the list; not there (no longer delivered to me)
+  /// → a notice, and the list stays.
+  Future<void> _openFromLink() async {
+    final id = widget.openId;
+    if (id == null || !mounted || _load != AdvLoad.ready) return;
+    AdvStudentMessage? hit() => _items.where((m) => m.id == id).firstOrNull;
+    while (hit() == null && _page < _pages) {
+      if (!await _reload(more: true)) return;
+    }
+    if (!mounted) return;
+    final m = hit();
+    if (m == null) {
+      showAppNotice(t('لم تعد هذه الرسالة متاحة.', 'This message is no longer available.'), error: true);
+      return;
+    }
+    await _open(m);
   }
 
   Future<void> _open(AdvStudentMessage m) async {

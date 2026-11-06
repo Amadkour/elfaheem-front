@@ -11,12 +11,13 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, A
 
 import '../../admin/admin_common.dart' show t;
 import '../org_providers.dart' show OrgSession;
+import 'adv_analytics_api.dart' show AdvAnalyticsApi, AdvStatusPlus;
 import 'adv_api.dart' show AdvApi;
 import 'adv_appointments.dart' show AdvAppointmentsPage;
 import 'adv_appt_models.dart' show AdvMemberHub;
 import 'adv_comm_api.dart' show AdvCommApi;
 import 'adv_director_page.dart' show AdvDirectorPage;
-import 'adv_models.dart' show AdvMineInfo, AdvStatus, advMaybeEligible;
+import 'adv_models.dart' show AdvMineInfo, advMaybeEligible;
 import 'adv_outreach.dart' show AdvOutreachTrackingPage, AdvStudentMessagesPage;
 import 'adv_setup_page.dart';
 import 'adv_student_hub.dart' show AdvStudentHubPage;
@@ -75,13 +76,14 @@ Future<bool> advOpenScreenLink(NavigatorState nav, {required int orgId, required
     return true;
   }
   if (screen != 'alerts' && screen != 'workspace') return false;
-  // a director sees the whole organization, an advisor their own students
-  final st = await orgCall(() => AdvApi(orgId).status(), quiet: true);
-  final lead = st.ok && (st.data as AdvStatus).me.leads;
+  // a director sees the whole organization, an advisor their own students; the same answer says who may message
+  final st = await orgCall(() => AdvAnalyticsApi(orgId).status(), quiet: true);
+  final plus = st.ok ? st.data as AdvStatusPlus : null;
+  final lead = plus?.status.me.leads ?? false;
   await nav.push(MaterialPageRoute<void>(
     builder: (_) => screen == 'alerts'
         ? AdvAlertsPage(orgId: orgId, manage: lead, since: orgParseUtc(data['since']))
-        : AdvWorkspacePage(orgId: orgId, manage: lead, sort: '${data['sort'] ?? 'contact'}'),
+        : AdvWorkspacePage(orgId: orgId, manage: lead, sort: '${data['sort'] ?? 'contact'}', outreach: plus?.analytics.outreach ?? false),
   ));
   return true;
 }
@@ -190,13 +192,13 @@ Future<bool> advOpenCommLink(NavigatorState nav, {required int orgId, required M
 }
 
 /// Phase 8 deep links (push data `module: advising`): `kind: org_adv_outreach` + `outreach_id` → the student's
-/// message (`audience: student`) or the sender's tracking page; `screen: health` → the analytics page with its data
+/// messages with that one open on top (`audience: student`, Phase 9) or the sender's tracking page; `screen: health` → the analytics page with its data
 /// check. False when [data] is neither (the caller goes on with its own handling).
 Future<bool> advOpenAnalyticsLink(NavigatorState nav, {required int orgId, required Map<String, dynamic> data}) async {
   final outreach = int.tryParse('${data['outreach_id'] ?? ''}');
   if (data['kind'] == 'org_adv_outreach' && outreach != null) {
     if (data['audience'] == 'student') {
-      nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentMessagesPage(orgId: orgId)));
+      nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentMessagesPage(orgId: orgId, openId: outreach)));
     } else {
       nav.push(MaterialPageRoute<void>(builder: (_) => AdvOutreachTrackingPage(orgId: orgId, outreachId: outreach)));
     }

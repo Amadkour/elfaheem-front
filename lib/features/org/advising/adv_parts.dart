@@ -3,7 +3,8 @@
 //   AdvSectionTitle     a section title inside that list
 //   AdvLoadBar          an advisor's load against their maximum (warn / over colours), optionally with a "before"
 //   AdvStatusPill       available · on leave · sabbatical · left
-//   AdvRowCard          one tappable card row: avatar, title, subtitle, a trailing pill and an extra block
+//   AdvRowCard          one tappable card row: avatar, title, subtitle, a trailing pill and an extra block; while a
+//                       list selects, a check mark (AdvSelectMark) instead of the avatar
 //   AdvStepper          − value + for a whole number (max load, warn %)
 //   AdvPersonField      a field showing the chosen person (advisor / student), tap to pick, clear
 //   AdvConflictList     the conflicts of an advisor or a student, add / remove
@@ -173,7 +174,8 @@ class AdvStatusPill extends StatelessWidget {
   }
 }
 
-/// One tappable card: avatar · title · subtitle · a trailing pill, and an optional block under them.
+/// One tappable card: avatar · title · subtitle · a trailing pill, and an optional block under them. While a list
+/// is selecting ([selected] non-null) the avatar becomes a check mark and the card is outlined when chosen.
 class AdvRowCard extends StatelessWidget {
   const AdvRowCard({
     super.key,
@@ -184,6 +186,8 @@ class AdvRowCard extends StatelessWidget {
     this.trailing,
     this.below,
     this.onTap,
+    this.onLongPress,
+    this.selected,
     this.semanticLabel,
   });
 
@@ -193,20 +197,27 @@ class AdvRowCard extends StatelessWidget {
   /// The avatar's initials come from it (null: [leading], else no avatar).
   final String? avatarName;
   final Widget? leading, trailing, below;
-  final VoidCallback? onTap;
+  final VoidCallback? onTap, onLongPress;
+
+  /// null: the list is not selecting; else whether this card is chosen.
+  final bool? selected;
   final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final sub = subtitle;
-    final lead = avatarName != null ? AppAvatar(name: avatarName!, size: 40) : leading;
-    return Padding(
+    final sel = selected;
+    final lead = sel != null ? AdvSelectMark(selected: sel) : (avatarName != null ? AppAvatar(name: avatarName!, size: 40) : leading);
+    final card = Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Semantics(
         button: onTap != null,
+        checked: sel,
         label: semanticLabel,
         child: AppCard(
           onTap: onTap,
+          onLongPress: onLongPress,
           padding: const EdgeInsets.all(AppSpace.sm),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: AppTouch.min),
@@ -233,6 +244,41 @@ class AdvRowCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+    if (sel != true) return card;
+    // a chosen card: outlined in the brand colour over the card's own border
+    return Stack(children: [
+      card,
+      Positioned.fill(
+        bottom: AppSpace.xs,
+        child: IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(c.radiusLarge - 4), border: Border.all(color: c.primary, width: 2)),
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+
+/// The check mark that stands in for a card's avatar while a list is selecting (40 wide, like the avatar).
+class AdvSelectMark extends StatelessWidget {
+  const AdvSelectMark({super.key, required this.selected});
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AnimatedContainer(
+      duration: AppMotion.of(context).fast,
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected ? c.primary : c.inputBg,
+        border: Border.all(color: selected ? c.primary : c.textLight, width: 2),
+      ),
+      child: selected ? Icon(Icons.check_rounded, size: AppIconSize.md, color: Theme.of(context).colorScheme.onPrimary) : null,
     );
   }
 }

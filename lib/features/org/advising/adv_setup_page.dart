@@ -833,7 +833,7 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
       'rebalance' => AdvDistributePage(orgId: id, initial: const AdvPlanRequest(mode: 'rebalance')),
       'students_away' => AdvStudentsPage(orgId: id, manage: lead, filter: 'away'),
       'handovers' => AdvHandoversPage(orgId: id, manage: false),
-      'workspace' => AdvWorkspacePage(orgId: id, manage: lead),
+      'workspace' => AdvWorkspacePage(orgId: id, manage: lead, outreach: _analytics.outreach),
       'categories' => AdvCategoriesPage(orgId: id),
       'rules' => AdvRulesPage(orgId: id),
       'alerts' => AdvAlertsPage(orgId: id, manage: lead),
