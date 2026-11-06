@@ -342,6 +342,9 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
   /// A column's width as last laid out (the start of a drag on a flex column).
   final Map<String, double> _measured = {};
 
+  /// The table's own width in this build (a side panel narrows it: the toolbar tightens to stay on one row).
+  double _tableWidth = double.infinity;
+
   static const double _minColumn = 72;
   static const double _maxColumn = 480;
 
@@ -447,6 +450,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         compact: _compact,
         child: LayoutBuilder(builder: (context, box) {
         final phone = box.maxWidth < Breakpoints.mobile;
+        _tableWidth = box.maxWidth;
         _wide = [for (final x in _shown) if (x.hideBelow == null || box.maxWidth >= x.hideBelow!) x];
         _fitWidths(box.maxWidth);
         final ready = widget.state == AppTableState.ready;
@@ -533,7 +537,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                   ConstrainedBox(
                     constraints: BoxConstraints(minWidth: phone ? 0 : 240, maxWidth: phone ? double.infinity : 360),
                     child: SizedBox(
-                      width: phone ? double.infinity : 360,
+                      width: phone ? double.infinity : (_tableWidth * 0.38).clamp(240, 360).toDouble(),
                       child: AppSearchField(
                         hint: widget.searchHint,
                         controller: widget.searchController,
@@ -548,7 +552,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                 if (widget.toolbarTrailing != null) widget.toolbarTrailing!,
                 // a card of the page's own design has no columns to arrange
                 if (_showDensity && !(phone && widget.mobileCard != null)) _densityButton(context),
-                if (widget.columnMenu && !(phone && widget.mobileCard != null)) _columnsButton(context, phone),
+                if (widget.columnMenu && !(phone && widget.mobileCard != null)) _columnsButton(context, phone || _tableWidth < 900),
               ],
             ),
           for (final f in filters) ...[

@@ -121,7 +121,7 @@ String _nameOf(AdminCourse c) {
 (String, AppTone) _statusOf(AdminCourse c) {
   if (c.archived) return (mdCourseStatusLabel('archived'), AppTone.danger);
   if (!c.isPublished) return (mdCourseStatusLabel('draft'), AppTone.neutral);
-  if (c.status == 'completed') return (mdCourseStatusLabel('completed'), AppTone.info);
+  if (c.status == 'completed') return (mdCourseStatusLabel('completed'), AppTone.brand);
   return (mdCourseStatusLabel('published'), AppTone.success);
 }
 
@@ -351,7 +351,7 @@ class _CoursesViewState extends State<_CoursesView> {
         AppTableColumn(
           key: 'category',
           label: 'category_label'.tr,
-          flex: 2,
+          flex: 3,
           hideBelow: 1040,
           cell: (ctx, c) => _LinkCell(_categoryRef(c)),
         ),
@@ -409,14 +409,14 @@ class _CoursesViewState extends State<_CoursesView> {
           numeric: true,
           width: 112,
           hideBelow: 1320,
-          text: (c) => money(c.income, c.currency),
+          text: (c) => ltrIsolate(money(c.income, c.currency)),
         ),
         AppTableColumn.text(
           key: 'created',
           label: 'admin_filter_created'.tr,
           sortable: true,
           width: 104,
-          hideBelow: 1140,
+          hideBelow: 1240,
           text: (c) => shortDate(c.createdAt),
         ),
       ];
@@ -898,7 +898,7 @@ class _CourseDetailState extends State<_CourseDetail> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SheetHeader(co.name),
+        SheetHeader(_nameOf(co)),
         Flexible(
           child: ListView(
             shrinkWrap: true,

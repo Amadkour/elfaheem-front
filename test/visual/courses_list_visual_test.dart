@@ -81,7 +81,7 @@ void main() {
   setUpAll(_loadFonts);
 
   Future<void> render(WidgetTester tester, String name, List<Size> sizes,
-      {String? open, List<EntityRef> push = const [], bool bothThemes = true, bool bothLangs = true}) async {
+      {String? open, bool bothThemes = true, bool bothLangs = true, Future<void> Function(WidgetTester)? act}) async {
     final prevLang = AppConfig.lang;
     debugDisableShadows = false;
     try {
@@ -101,6 +101,7 @@ void main() {
             await tester.pumpWidget(peopleProviders(
                 auth, _host(const AdminCoursesPage(embedded: true), dark: dark, sidebar: size.width >= 1000 ? 220 : 0)));
             await pumpFrames(tester, 16);
+            if (act != null) await act(tester);
             expect(tester.takeException(), isNull, reason: '$name ${size.width.toInt()} $lang');
             await expectLater(find.byKey(_shot),
                 matchesGoldenFile('goldens/${name}_${size.width.toInt()}_${lang}_${dark ? 'dark' : 'light'}.png'));
@@ -125,6 +126,14 @@ void main() {
 
   testWidgets('a course panel (1440) and the phone sheet (390)', (tester) async {
     await render(tester, 'md_courses_panel', const [Size(1440, 900), Size(390, 844)], open: 'course:40');
+  });
+
+  testWidgets('the Manage sheet over a course panel', (tester) async {
+    await render(tester, 'md_courses_manage', const [Size(1440, 1100)],
+        open: 'course:41', bothThemes: false, bothLangs: false, act: (tester) async {
+      await tester.tap(find.byKey(const ValueKey('md.course.manage')));
+      await pumpFrames(tester, 12);
+    });
   });
 
   testWidgets('the whole course panel (a tall window)', (tester) async {
