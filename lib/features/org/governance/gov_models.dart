@@ -772,13 +772,15 @@ class BeneficiaryDraft {
   }
 }
 
-const chainStepKinds = ['manager', 'entity', 'council', 'faculty_council'];
+const chainStepKinds = ['manager', 'entity', 'council', 'faculty_council', 'student_department_council'];
 
 String chainKindLabel(String k) => switch (k) {
       'manager' => t('مدير الجهة', 'Manager'),
       'entity' => t('جهة أخرى', 'Another entity'),
       'council' => t('مجلس القسم', 'Department council'),
       'faculty_council' => t('مجلس الكلية', 'Faculty council'),
+      // D-289: the council of the beneficiary's (else the submitter's) department, resolved when the item is sent
+      'student_department_council' => t('مجلس قسم صاحب الطلب', "The requester's department council"),
       _ => k,
     };
 

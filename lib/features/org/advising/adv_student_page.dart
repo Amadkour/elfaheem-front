@@ -33,18 +33,21 @@ import 'adv_models.dart';
 import 'adv_notes.dart';
 import 'adv_parts.dart';
 import 'adv_students_page.dart' show showAdvStudentSheet;
+import 'adv_support_360.dart' show AdvSupportSection;
+import 'adv_support_parts.dart' show advSupportTimelineIcon;
 
 /// The 360's sections, in order.
-const advCaseSections = ['overview', 'academic', 'flags', 'notes', 'timeline'];
+const advCaseSections = ['overview', 'academic', 'flags', 'notes', 'support', 'timeline'];
 
 /// The sections of the wide layout's second column.
-const advCasePanes = ['flags', 'notes', 'timeline'];
+const advCasePanes = ['flags', 'notes', 'support', 'timeline'];
 
 String advCaseSectionLabel(String s) => switch (s) {
       'academic' => t('الأكاديمي', 'Academic'),
       'flags' => t('التنبيهات', 'Flags'),
       'notes' => t('الملاحظات', 'Notes'),
       'timeline' => t('السجل الزمني', 'Timeline'),
+      'support' => t('الدعم', 'Support'), // Phase 7 (adv_support_360.dart)
       _ => t('نظرة عامة', 'Overview'),
     };
 
@@ -53,6 +56,7 @@ IconData advCaseSectionIcon(String s) => switch (s) {
       'flags' => Icons.flag_outlined,
       'notes' => Icons.sticky_note_2_outlined,
       'timeline' => Icons.timeline_rounded,
+      'support' => Icons.support_outlined,
       _ => Icons.dashboard_outlined,
     };
 
@@ -454,7 +458,7 @@ IconData advTimelineIcon(String kind) => switch (kind) {
       'flag_status' => Icons.published_with_changes_rounded,
       'note' => Icons.sticky_note_2_outlined,
       'contact' => Icons.forum_outlined,
-      _ => Icons.circle_outlined,
+      _ => advSupportTimelineIcon(kind),
     };
 
 Color advTimelineColor(BuildContext context, AdvTimelineEntry e) {
@@ -535,6 +539,7 @@ class AdvStudentView extends StatelessWidget {
     this.flags = const SizedBox.shrink(),
     this.notes = const SizedBox.shrink(),
     this.timeline = const SizedBox.shrink(),
+    this.support = const SizedBox.shrink(),
     this.now,
     this.onRetry,
     this.onSection,
@@ -550,6 +555,9 @@ class AdvStudentView extends StatelessWidget {
 
   /// The panes, built by the caller from AdvFlagsPane · AdvNotesPane · AdvTimelinePane.
   final Widget flags, notes, timeline;
+
+  /// Phase 7: requests, referrals, plans, accommodations (AdvSupportSection / AdvSupportPane).
+  final Widget support;
   final DateTime? now;
   final VoidCallback? onRetry, onChangeAdvisor;
   final ValueChanged<String>? onSection;
@@ -560,6 +568,7 @@ class AdvStudentView extends StatelessWidget {
   Widget _pane(String s) => switch (s) {
         'notes' => notes,
         'timeline' => timeline,
+        'support' => support,
         _ => flags,
       };
 
@@ -616,7 +625,7 @@ class AdvStudentView extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: pad.left),
           child: switch (current) {
             'academic' => AdvAcademicSection(profile: p),
-            'flags' || 'notes' || 'timeline' => _pane(current),
+            'flags' || 'notes' || 'support' || 'timeline' => _pane(current),
             _ => AdvOverviewSection(profile: p, now: now),
           },
         ),
@@ -637,8 +646,11 @@ class AdvStudentView extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class AdvStudentPage extends StatelessWidget {
-  const AdvStudentPage({super.key, required this.orgId, required this.memberId, this.name});
+  const AdvStudentPage({super.key, required this.orgId, required this.memberId, this.name, this.section = 'overview'});
   final int orgId, memberId;
+
+  /// The section it opens on (a request / plan notice: `support`).
+  final String section;
 
   /// Shown as the title until the profile loads.
   final String? name;
@@ -649,13 +661,14 @@ class AdvStudentPage extends StatelessWidget {
         subtitle: t('ملف الإرشاد', 'Advising record'),
         helpPageId: 'org.advising',
         maxWidth: 1280,
-        child: _AdvStudentBody(orgId: orgId, memberId: memberId),
+        child: _AdvStudentBody(orgId: orgId, memberId: memberId, section: section),
       );
 }
 
 class _AdvStudentBody extends StatefulWidget {
-  const _AdvStudentBody({required this.orgId, required this.memberId});
+  const _AdvStudentBody({required this.orgId, required this.memberId, this.section = 'overview'});
   final int orgId, memberId;
+  final String section;
 
   @override
   State<_AdvStudentBody> createState() => _AdvStudentBodyState();
@@ -670,7 +683,7 @@ class _AdvStudentBodyState extends State<_AdvStudentBody> {
   AdvCaseProfile? _profile;
   AdvLoad _load = AdvLoad.loading;
   String? _error;
-  String _section = 'overview';
+  late String _section = widget.section;
   List<AdvCategory> _categories = const [];
 
   String _flagView = 'open';
@@ -1105,6 +1118,7 @@ class _AdvStudentBodyState extends State<_AdvStudentBody> {
         },
         onMore: () => _loadTimeline(more: true),
       ),
+      support: AdvSupportSection(orgId: _org, memberId: _member, studentName: p?.shown, categories: _categories, manage: _manage, onChanged: _afterWrite),
     );
   }
 }

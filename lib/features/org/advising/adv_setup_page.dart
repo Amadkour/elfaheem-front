@@ -26,6 +26,7 @@ import 'adv_distribute_page.dart';
 import 'adv_handovers_page.dart';
 import 'adv_models.dart';
 import 'adv_students_page.dart';
+import 'adv_support_wiring.dart' show advSupportSetupPage, advSupportSetupTiles;
 import 'adv_workspace_page.dart';
 
 /// What the page shows.
@@ -396,6 +397,8 @@ extension _AdvSetupLinks on AdvSetupView {
           onTap: () => open('handovers'),
         ),
       ],
+      // Phase 7: requests and referrals · the approval chain · accommodations (adv_support_wiring.dart)
+      ...advSupportSetupTiles(context, me, open),
     ];
     return [
       _SectionTitle(t('العمل', 'Work')),
@@ -783,7 +786,7 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
     final s = _status;
     if (s == null) return;
     final id = widget.orgId, lead = s.me.leads;
-    final Widget page = switch (key) {
+    final Widget page = advSupportSetupPage(key, id, s.me) ?? switch (key) {
       'settings' => AdvConfigPage(orgId: id),
       'advisors' => AdvAdvisorsPage(orgId: id, manage: true),
       'profile' => AdvAdvisorsPage(orgId: id, manage: false),

@@ -4,6 +4,7 @@
 library;
 
 import '../../admin/admin_common.dart' show t;
+import 'adv_support_texts.dart' show advSupportCodeTexts;
 
 Map<String, String> advCodeTexts() => {
       'advising_not_available': t('الإرشاد الأكاديمي متاح للجامعات والكليات والأقسام التابعة لها فقط',
@@ -44,6 +45,8 @@ Map<String, String> advCodeTexts() => {
       'advising_bad_contact_at': t('وقت التواصل لا يكون في المستقبل', 'The contact time cannot be in the future'),
       'advising_bad_cursor': t('تعذّر متابعة السجل الزمني من هذا الموضع — حدّث الصفحة', 'The timeline cannot continue from that point — refresh the page'),
       'advising_client_id_conflict': t('رقم الملاحظة المحفوظة استُخدم لطالب آخر — تُرسل برقم جديد', 'That saved note\'s id was used for another student — it is sent with a new id'),
+      // Phase 7: requests, referrals, the approval chain, support plans, accommodations (adv_support_texts.dart)
+      ...advSupportCodeTexts(),
     };
 
 /// The risk-reason codes of the workspace (`score.py`); `advRiskReasonText` in adv_models.dart writes each one.

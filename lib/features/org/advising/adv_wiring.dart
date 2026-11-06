@@ -13,6 +13,9 @@ import 'adv_models.dart' show AdvMineInfo, advMaybeEligible;
 import 'adv_setup_page.dart';
 import 'adv_student_page.dart' show AdvStudentPage;
 
+// Phase 7: the request / plan / accommodation deep links and the advising page's Requests links
+export 'adv_support_wiring.dart' show advOpenSupportLink;
+
 /// Kill switch of the whole module (`org.advising`, feature_catalog.py; not org-manageable). Hidden features
 /// disappear.
 bool advEnabled() => !AppConfig.disableList.contains('org.advising');
