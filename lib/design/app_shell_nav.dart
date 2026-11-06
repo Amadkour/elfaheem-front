@@ -100,7 +100,9 @@ class ShellTab {
   Route<dynamic>? root;
 
   Route<dynamic>? get top => routes.isEmpty ? null : routes.last;
-  bool get canPop => routes.length > 1;
+  /// A page to go back from, or a top page that closes something of its own first (a local history entry: an open
+  /// detail panel, D-290).
+  bool get canPop => routes.length > 1 || (routes.isNotEmpty && routes.last.willHandlePopInternally);
   NavigatorState? get navigator => navKey.currentState;
 
   /// The tab's first page: draws the tab's screen (read from [ShellTabScreen], so a new screen widget from the
@@ -305,6 +307,10 @@ class ShellTabs extends ChangeNotifier {
   void popActiveToRoot() => active?.popToRoot();
 
   void _tabChanged(ShellTab t) => _notifySoon();
+
+  /// A tab's page added or removed a local history entry (an open detail panel, D-290): the shell's Back decision
+  /// ([shellBackAction]) changes.
+  void popStateChanged() => _notifySoon();
 
   bool _queued = false;
   bool _disposed = false;

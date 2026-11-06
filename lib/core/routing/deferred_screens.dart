@@ -26,10 +26,12 @@ import 'package:flutter_education_app/design/boot_splash.dart' show BootSplash;
 import 'package:flutter_education_app/utils/widget/url_strategy.dart' show reloadPage;
 import 'package:flutter_education_app/features/shared/course_profile/course_profile_hub.dart' show CourseProfileHub;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse;
+import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityRef;
 
 import '../../features/admin/admin_dashboard_screen.dart' deferred as admin_dashboard;
 import '../../features/admin/app_releases/app_release_detail.dart' deferred as app_release_detail;
 import '../../features/admin/app_releases/app_releases_page.dart' deferred as app_releases_page;
+import '../../design/master_detail/entity_detail_page.dart' deferred as entity_page;
 import '../../features/org/org_academic_pages.dart' deferred as org_academic;
 import '../../features/org/org_access_joining.dart' deferred as org_access_joining;
 import '../../features/org/org_availability_pages.dart' deferred as org_availability;
@@ -314,6 +316,10 @@ Widget deferredTeacherSessionsScreen({bool? expandDetails, CourseProfileHub? pro
     id: 'sessions',
     load: sessions.loadLibrary,
     builder: (_) => sessions.TeacherSessionsScreen(expandDetails: expandDetails, profileHub: profileHub, initialTab: initialTab));
+
+/// The full page of a student / course / teacher / category (`/view/:kind/:id`, D-290).
+Widget deferredEntityDetailPage(EntityRef entity) =>
+    DeferredPage(id: 'entity_page', load: entity_page.loadLibrary, builder: (_) => entity_page.EntityDetailPage(entity: entity));
 
 Widget deferredCourseForm({TeacherCourse? course}) =>
     DeferredPage(id: 'course_form', load: course_form.loadLibrary, builder: (_) => course_form.CourseFormScreen(course: course));

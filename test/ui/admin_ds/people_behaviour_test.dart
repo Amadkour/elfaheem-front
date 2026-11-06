@@ -17,10 +17,12 @@ import 'package:flutter_education_app/features/admin/admin_profile_page.dart';
 import 'package:flutter_education_app/features/admin/admin_users_page.dart';
 import 'package:flutter_education_app/features/admin/admin_view_as_page.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import '../../support/fake_api.dart';
+import '../master_detail/md_support.dart' show entityRoutes;
 import '../layout_harness.dart';
 import 'people_support.dart';
 
@@ -101,14 +103,19 @@ void main() {
       await close(tester);
     });
 
-    testWidgets('a row opens the detail sheet; View as is a row action for the super admin', (tester) async {
+    testWidgets('a row opens the detail panel (D-290), its Manage opens the detail sheet; View as is a row action',
+        (tester) async {
       await bigView(tester);
-      final api = FakeApi(peopleRoutes(), latency: const Duration(milliseconds: 50));
+      EntitiesApi.instance.invalidate();
+      final api = FakeApi({...peopleRoutes(), ...entityRoutes()}, latency: const Duration(milliseconds: 50));
       final auth = await peopleSetUp(api);
       await tester.pumpWidget(peopleProviders(auth, layoutHost(const AdminUsersPage(role: 'student', embedded: true), scale: 1)));
       await pumpFrames(tester);
       expect(find.byIcon(Icons.visibility_rounded), findsWidgets);
-      await tester.tap(find.text('سارة أحمد 1'));
+      await tester.tap(find.text('سارة أحمد 1').first);
+      await pumpFrames(tester);
+      expect(api.calls.map((c) => c.path), contains('/api/v1/entities/students/100'));
+      await tester.tap(find.byKey(const ValueKey('md.manage')));
       await pumpFrames(tester);
       expect(api.calls.map((c) => c.path), contains('/api/v1/admin/users/100'));
       await close(tester);

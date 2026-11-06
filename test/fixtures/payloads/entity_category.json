@@ -1,0 +1,138 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/categories/5",
+  "uid": 20
+ },
+ "payload": {
+  "kind": "category",
+  "id": 5,
+  "header": {
+   "id": 5,
+   "name_ar": "cb",
+   "name_en": "cb",
+   "description": null,
+   "image_url": null,
+   "parent": null,
+   "children": []
+  },
+  "stats": {
+   "courses": 30,
+   "teachers": 1,
+   "students": 31,
+   "completion_rate": 0.0,
+   "top_courses": [
+    {
+     "course": {
+      "id": 9,
+      "name_ar": "Pb-0 ar",
+      "name_en": "Pb-0",
+      "image_url": null,
+      "category": {
+       "id": 5,
+       "name_ar": "cb",
+       "name_en": "cb"
+      },
+      "teacher": {
+       "id": 20,
+       "name": "Ptb",
+       "username": "ptb",
+       "image_url": null
+      }
+     },
+     "students": 31
+    },
+    {
+     "course": {
+      "id": 38,
+      "name_ar": "Pb-29 ar",
+      "name_en": "Pb-29",
+      "image_url": null,
+      "category": {
+       "id": 5,
+       "name_ar": "cb",
+       "name_en": "cb"
+      },
+      "teacher": {
+       "id": 20,
+       "name": "Ptb",
+       "username": "ptb",
+       "image_url": null
+      }
+     },
+     "students": 1
+    },
+    {
+     "course": {
+      "id": 37,
+      "name_ar": "Pb-28 ar",
+      "name_en": "Pb-28",
+      "image_url": null,
+      "category": {
+       "id": 5,
+       "name_ar": "cb",
+       "name_en": "cb"
+      },
+      "teacher": {
+       "id": 20,
+       "name": "Ptb",
+       "username": "ptb",
+       "image_url": null
+      }
+     },
+     "students": 1
+    },
+    {
+     "course": {
+      "id": 36,
+      "name_ar": "Pb-27 ar",
+      "name_en": "Pb-27",
+      "image_url": null,
+      "category": {
+       "id": 5,
+       "name_ar": "cb",
+       "name_en": "cb"
+      },
+      "teacher": {
+       "id": 20,
+       "name": "Ptb",
+       "username": "ptb",
+       "image_url": null
+      }
+     },
+     "students": 1
+    },
+    {
+     "course": {
+      "id": 35,
+      "name_ar": "Pb-26 ar",
+      "name_en": "Pb-26",
+      "image_url": null,
+      "category": {
+       "id": 5,
+       "name_ar": "cb",
+       "name_en": "cb"
+      },
+      "teacher": {
+       "id": 20,
+       "name": "Ptb",
+       "username": "ptb",
+       "image_url": null
+      }
+     },
+     "students": 1
+    }
+   ]
+  },
+  "badges": [],
+  "sections": [
+   "courses",
+   "teachers",
+   "students"
+  ],
+  "can": {
+   "manage": false,
+   "message": false,
+   "see_money": false
+  }
+ }
+}

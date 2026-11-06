@@ -14,15 +14,30 @@
 //
 // It sits on cardBg with the card radius and a hairline border: no gradient behind a table (app_gradients.dart).
 // Embedding: `shrinkWrap: false` (default) fills the height it is given and scrolls its own rows (give it a bounded
-// height, e.g. inside an Expanded); `shrinkWrap: true` lays out every row so it can live in a ListView.
+// height, e.g. inside an Expanded); `shrinkWrap: true` lays out every row so it can live in a ListView. The header
+// row sits outside the rows' scroll view, so it stays put while the rows scroll.
+//
+// Opt-in extras (D-290; a table without them looks exactly as before):
+//   tableId       this device remembers the column order / hidden columns and the density under this id
+//                 (SharedPreferences `app_data_table.v1.<id>`, like the export choice; never the server ui-prefs)
+//   columnMenu    a "Columns" toolbar button: show / hide and move up / down; a `primary` column cannot be hidden;
+//                 "Reset" restores the defaults. Hidden columns leave the phone card too. Column keys must be unique.
+//   density       comfortable (the default look) / compact; the toggle shows when tableId is set or densityToggle
+//   selectedRowId the open row (a detail panel): selected fill + a start-side accent bar, on the phone card too
+//   onRowHover    the pointer entered a row (mouse / stylus only, never touch): prefetch the detail
 library;
 
+import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/features/teacher/data_lab/data_lab_widgets.dart' as dl;
 
 import 'app_kit.dart' show AppChoiceChip, AppDropdown, AppEmpty, AppSheetContent, AppSkeletonBox, showAppSheet;
@@ -100,6 +115,71 @@ class AppRowAction<T> {
   final bool danger;
 }
 
+enum AppTableDensity { comfortable, compact }
+
+/// What this device remembers of one table: the column order, the hidden columns and the density. Pure: [apply]
+/// merges it with the table's current columns (a column added since is put at its default place, a removed one is
+/// dropped; a `primary` column is never hidden).
+class AppTableLayout {
+  const AppTableLayout({this.order = const [], this.hidden = const {}, this.density});
+
+  /// Column keys in the person's order (may miss columns added since).
+  final List<String> order;
+  final Set<String> hidden;
+
+  /// Null = the table's own default.
+  final AppTableDensity? density;
+
+  static String prefKey(String tableId) => 'app_data_table.v1.$tableId';
+
+  bool get isDefault => order.isEmpty && hidden.isEmpty && density == null;
+
+  AppTableLayout copyWith({List<String>? order, Set<String>? hidden, AppTableDensity? density, bool clearDensity = false}) =>
+      AppTableLayout(
+        order: order ?? this.order,
+        hidden: hidden ?? this.hidden,
+        density: clearDensity ? null : (density ?? this.density),
+      );
+
+  /// Every column of [columns] in the person's order (hidden ones included).
+  List<AppTableColumn<T>> ordered<T>(List<AppTableColumn<T>> columns) {
+    if (order.isEmpty) return columns;
+    final byKey = {for (final c in columns) c.key: c};
+    final out = <AppTableColumn<T>>[
+      for (final k in order)
+        if (byKey.containsKey(k)) byKey[k]!,
+    ];
+    final placed = out.map((c) => c.key).toSet();
+    for (var i = 0; i < columns.length; i++) {
+      if (!placed.contains(columns[i].key)) out.insert(math.min(i, out.length), columns[i]);
+    }
+    return out;
+  }
+
+  /// The shown columns of [columns], in the person's order.
+  List<AppTableColumn<T>> apply<T>(List<AppTableColumn<T>> columns) =>
+      [for (final c in ordered(columns)) if (c.primary || !hidden.contains(c.key)) c];
+
+  Map<String, dynamic> toJson() => {
+        'order': order,
+        'hidden': hidden.toList(),
+        if (density != null) 'density': density!.name,
+      };
+
+  factory AppTableLayout.fromJson(Map<String, dynamic> j) => AppTableLayout(
+        order: [for (final k in (j['order'] as List? ?? const [])) '$k'],
+        hidden: {for (final k in (j['hidden'] as List? ?? const [])) '$k'},
+        density: AppTableDensity.values.where((d) => d.name == j['density']).firstOrNull,
+      );
+}
+
+/// Remembered layouts already read this run, so a remounted table draws its columns in the first frame.
+final Map<String, AppTableLayout> _cache = {};
+
+/// Forgets the layouts read this run (tests: the next table reads SharedPreferences again).
+@visibleForTesting
+void debugClearAppTableLayouts() => _cache.clear();
+
 class AppDataTable<T> extends StatefulWidget {
   const AppDataTable({
     super.key,
@@ -131,6 +211,12 @@ class AppDataTable<T> extends StatefulWidget {
     this.onLoadMore,
     this.hasMore = false,
     this.loadingMore = false,
+    this.tableId,
+    this.columnMenu = false,
+    this.density = AppTableDensity.comfortable,
+    this.densityToggle,
+    this.selectedRowId,
+    this.onRowHover,
   });
 
   final List<AppTableColumn<T>> columns;
@@ -173,6 +259,27 @@ class AppDataTable<T> extends StatefulWidget {
   final bool hasMore;
   final bool loadingMore;
 
+  /// The key under which this device remembers the columns and the density (null = nothing is remembered).
+  final String? tableId;
+
+  /// A "Columns" toolbar button: show / hide and reorder the columns.
+  final bool columnMenu;
+
+  /// The density until the person picks one.
+  final AppTableDensity density;
+
+  /// The comfortable / compact toggle; null = shown when [tableId] is set.
+  final bool? densityToggle;
+
+  /// The row drawn as selected / open (compared with [rowId], or the row itself without it).
+  final Object? selectedRowId;
+
+  /// Called once each time a mouse (or stylus) pointer enters a row; never on touch.
+  final ValueChanged<T>? onRowHover;
+
+  /// The key of the row (or phone card) body whose id is [id] (tests, scroll-into-view).
+  static Key rowKey(Object id) => ValueKey<(String, Object)>(('app_table_row', id));
+
   @override
   State<AppDataTable<T>> createState() => _AppDataTableState<T>();
 }
@@ -182,12 +289,73 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
   String _query = '';
   bool _loadRequested = false;
 
+  AppTableLayout _layout = const AppTableLayout();
+
+  /// The shown columns of this build, in the person's order.
+  List<AppTableColumn<T>> _shown = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLayout();
+  }
+
   @override
   void didUpdateWidget(covariant AppDataTable<T> old) {
     super.didUpdateWidget(old);
     // a new load-more cycle may start once the previous one ended or brought rows
     if ((old.loadingMore && !widget.loadingMore) || old.rows.length != widget.rows.length) _loadRequested = false;
+    if (old.tableId != widget.tableId) _loadLayout();
   }
+
+  // ── remembered layout ─────────────────────────────────────────────────────
+
+  void _loadLayout() {
+    final id = widget.tableId;
+    if (id == null) return;
+    final hit = _cache[id];
+    if (hit != null) {
+      _layout = hit;
+      return;
+    }
+    _layout = const AppTableLayout();
+    SharedPreferences.getInstance().then((p) {
+      final raw = p.getString(AppTableLayout.prefKey(id));
+      if (raw == null || !mounted || widget.tableId != id) return;
+      final l = AppTableLayout.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      _cache[id] = l;
+      setState(() => _layout = l);
+    }).catchError((Object e) {
+      debugPrint('AppDataTable($id): layout not read: $e');
+    });
+  }
+
+  void _setLayout(AppTableLayout l) {
+    setState(() => _layout = l);
+    final id = widget.tableId;
+    if (id == null) return;
+    _cache[id] = l;
+    SharedPreferences.getInstance().then((p) {
+      final key = AppTableLayout.prefKey(id);
+      return l.isDefault ? p.remove(key) : p.setString(key, jsonEncode(l.toJson()));
+    }).catchError((Object e) {
+      debugPrint('AppDataTable($id): layout not saved: $e');
+      return false;
+    });
+  }
+
+  AppTableDensity get _density => _layout.density ?? widget.density;
+  bool get _compact => _density == AppTableDensity.compact;
+  bool get _showDensity => widget.densityToggle ?? widget.tableId != null;
+
+  /// A row's (and the header's) minimum height: 48 comfortable, 36 compact.
+  double get _rowMin => _compact ? AppSpace.xl + AppSpace.xxs : AppTouch.min;
+
+  /// Compact rows shrink the checkboxes' and icon buttons' tap padding to the row (pointer devices).
+  VisualDensity? get _vd => _compact ? VisualDensity.compact : null;
+  MaterialTapTargetSize? get _tap => _compact ? MaterialTapTargetSize.shrinkWrap : null;
+
+  bool _isCurrent(T row) => widget.selectedRowId != null && _id(row) == widget.selectedRowId;
 
   Set<Object> get _sel => widget.selected ?? _internal;
   Object _id(T r) => widget.rowId != null ? widget.rowId!(r) : (r as Object);
@@ -207,11 +375,16 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
   bool get _filtersActive => (widget.filters ?? const []).any((f) => f.value != null) || _query.isNotEmpty;
 
   bool get _hasToolbar =>
-      widget.onSearch != null || (widget.filters?.isNotEmpty ?? false) || widget.toolbarTrailing != null;
+      widget.onSearch != null ||
+      (widget.filters?.isNotEmpty ?? false) ||
+      widget.toolbarTrailing != null ||
+      widget.columnMenu ||
+      _showDensity;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    _shown = (widget.columnMenu || widget.tableId != null) ? _layout.apply(widget.columns) : widget.columns;
     return Material(
       color: c.cardBg,
       clipBehavior: Clip.antiAlias,
@@ -263,7 +436,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
       child: Padding(
         padding: const EdgeInsets.all(AppSpace.sm),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          if (widget.onSearch != null || widget.toolbarTrailing != null)
+          if (widget.onSearch != null || widget.toolbarTrailing != null || widget.columnMenu || _showDensity)
             Wrap(
               spacing: AppSpace.sm,
               runSpacing: AppSpace.xs,
@@ -286,6 +459,8 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                     ),
                   ),
                 if (widget.toolbarTrailing != null) widget.toolbarTrailing!,
+                if (_showDensity) _densityButton(context),
+                if (widget.columnMenu) _columnsButton(context, phone),
               ],
             ),
           for (final f in filters) ...[
@@ -293,6 +468,63 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
             _filter(context, f),
           ],
         ]),
+      ),
+    );
+  }
+
+  Widget _densityButton(BuildContext context) {
+    final c = context.colors;
+    final compact = _compact;
+    // the icon shows the density a tap switches to
+    return IconButton(
+      key: const ValueKey('app_table_density'),
+      tooltip: compact ? 'ds_density_comfortable'.tr : 'ds_density_compact'.tr,
+      isSelected: compact,
+      constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+      icon: Icon(compact ? Icons.density_medium_rounded : Icons.density_small_rounded,
+          size: AppIconSize.md, color: c.textMedium),
+      onPressed: () => _setLayout(_layout.copyWith(
+          density: compact ? AppTableDensity.comfortable : AppTableDensity.compact)),
+    );
+  }
+
+  Widget _columnsButton(BuildContext context, bool phone) {
+    final c = context.colors;
+    final nHidden = widget.columns.length - _shown.length;
+    final hidden = countText(nHidden,
+        ar1: 'عمود مخفي',
+        ar2: 'عمودان مخفيان',
+        arFew: '{n} أعمدة مخفية',
+        arMany: '{n} عمودًا مخفيًا',
+        en1: '1 hidden',
+        en: '{n} hidden');
+    final label = nHidden > 0 ? '${'ds_columns'.tr} · $hidden' : 'ds_columns'.tr;
+    final icon = Icon(Icons.view_column_outlined, size: AppIconSize.md, color: c.textMedium);
+    if (phone) {
+      return IconButton(
+        key: const ValueKey('app_table_columns'),
+        tooltip: label,
+        constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+        icon: icon,
+        onPressed: () => _openColumns(context),
+      );
+    }
+    return TextButton.icon(
+      key: const ValueKey('app_table_columns'),
+      style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: c.textDark),
+      onPressed: () => _openColumns(context),
+      icon: icon,
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+    );
+  }
+
+  void _openColumns(BuildContext context) {
+    showAppSheet<void>(
+      context,
+      (ctx) => _ColumnsSheet<T>(
+        columns: widget.columns,
+        initial: _layout,
+        onChanged: _setLayout,
       ),
     );
   }
@@ -406,15 +638,17 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
             if (widget.selectable)
               SizedBox(
                 width: AppTouch.min,
-                height: AppTouch.min,
+                height: _rowMin,
                 child: Checkbox(
                   tristate: true,
                   value: nSel == 0 ? false : (nSel == ids.length ? true : null),
                   semanticLabel: 'ds_select_all'.tr,
+                  visualDensity: _vd,
+                  materialTapTargetSize: _tap,
                   onChanged: (_) => _setSel(nSel == ids.length ? {} : {...ids}),
                 ),
               ),
-            for (final col in widget.columns)
+            for (final col in _shown)
               _slot(col, _headerCell(context, col, ar)),
             if (_actionsWidth > 0) SizedBox(width: _actionsWidth),
           ]),
@@ -427,14 +661,27 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     final c = context.colors;
     final active = widget.sortKey == col.key;
     final asc = widget.sortAscending;
-    final label = Text(col.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context));
+    // a long label ends in "…" (one line); an end-aligned (numeric) label ends where its figures end
+    final label = Text(col.label,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
+        textAlign: _textAlign(col),
+        style: AppType.label(context));
     if (!col.sortable || widget.onSort == null) {
       return ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: AppTouch.min),
+        constraints: BoxConstraints(minHeight: _rowMin),
         child: Align(alignment: _align(col), child: label),
       );
     }
     final state = active ? (asc ? 'ds_sort_asc'.tr : 'ds_sort_desc'.tr) : 'ds_sort'.tr;
+    final arrow = Icon(
+      active ? (asc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded) : Icons.unfold_more_rounded,
+      size: AppIconSize.sm,
+      color: active ? c.primary : c.textLight,
+    );
+    // end-aligned: the arrow goes before the label, so the label's end lines up with the column's figures
+    final atEnd = _textAlign(col) == TextAlign.end;
     return Semantics(
       button: true,
       selected: active,
@@ -444,23 +691,26 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         borderRadius: AppRadius.chipAll,
         onTap: () => widget.onSort!(col.key, active ? !asc : true),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppTouch.min),
+          constraints: BoxConstraints(minHeight: _rowMin),
           child: Align(
             alignment: _align(col),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Flexible(child: label),
-              const SizedBox(width: AppSpace.xxs),
-              Icon(
-                active ? (asc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded) : Icons.unfold_more_rounded,
-                size: AppIconSize.sm,
-                color: active ? c.primary : c.textLight,
-              ),
-            ]),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: atEnd
+                  ? [arrow, const SizedBox(width: AppSpace.xxs), Flexible(child: label)]
+                  : [Flexible(child: label), const SizedBox(width: AppSpace.xxs), arrow],
+            ),
           ),
         ),
       ),
     );
   }
+
+  TextAlign _textAlign(AppTableColumn<T> col) => switch (col.align) {
+        AppColAlignment.start => col.numeric ? TextAlign.end : TextAlign.start,
+        AppColAlignment.center => TextAlign.center,
+        AppColAlignment.end => TextAlign.end,
+      };
 
   Widget _rowsList(BuildContext context, bool phone, bool fit) {
     final c = context.colors;
@@ -521,22 +771,31 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     final selected = _sel.contains(_id(row));
     final actions = widget.rowActions?.call(row) ?? const [];
     return _RowShell(
+      bodyKey: AppDataTable.rowKey(_id(row)),
       selected: selected,
+      current: _isCurrent(row),
+      minHeight: _rowMin,
       onTap: widget.onRowTap == null ? null : () => widget.onRowTap!(row),
+      onHover: widget.onRowHover == null ? null : () => widget.onRowHover!(row),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           if (widget.selectable)
             SizedBox(
               width: AppTouch.min,
-              height: AppTouch.min,
-              child: Checkbox(value: selected, onChanged: (_) => _toggle(row)),
+              height: _rowMin,
+              child: Checkbox(
+                value: selected,
+                visualDensity: _vd,
+                materialTapTargetSize: _tap,
+                onChanged: (_) => _toggle(row),
+              ),
             ),
-          for (final col in widget.columns)
+          for (final col in _shown)
             _slot(
               col,
               ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: AppTouch.min),
+                constraints: BoxConstraints(minHeight: _rowMin),
                 child: Align(alignment: _align(col), child: _cell(context, col, row)),
               ),
             ),
@@ -555,9 +814,15 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
           color: context.colors.textDark,
           fontFeatures: col.numeric ? const [FontFeature.tabularFigures()] : null,
         ),
+        // a value that wraps keeps its column's side (figures end-aligned in Arabic as in English)
+        textAlign: _textAlign(col),
         overflow: TextOverflow.ellipsis,
         child: col.cell(context, row),
       );
+
+  ButtonStyle? get _compactButton => _compact
+      ? IconButton.styleFrom(visualDensity: VisualDensity.compact, tapTargetSize: MaterialTapTargetSize.shrinkWrap)
+      : null;
 
   List<Widget> _inlineActions(BuildContext context, List<AppRowAction<T>> actions) {
     final c = context.colors;
@@ -567,13 +832,15 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
       for (final a in inline)
         IconButton(
           tooltip: a.label,
-          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          constraints: BoxConstraints(minWidth: AppTouch.min, minHeight: _rowMin),
+          style: _compactButton,
           icon: Icon(a.icon, size: AppIconSize.md, color: a.danger ? c.danger : c.textMedium),
           onPressed: a.onTap,
         ),
       if (rest.isNotEmpty)
         PopupMenuButton<int>(
           tooltip: 'ds_more_actions'.tr,
+          style: _compactButton,
           constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
           icon: Icon(Icons.more_vert_rounded, size: AppIconSize.md, color: c.textMedium),
           onSelected: (i) => rest[i].onTap(),
@@ -601,7 +868,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     final c = context.colors;
     final selected = _sel.contains(_id(row));
     final actions = widget.rowActions?.call(row) ?? <AppRowAction<T>>[];
-    final cols = widget.columns.where((x) => x.showOnPhone).toList();
+    final cols = _shown.where((x) => x.showOnPhone).toList();
     final title = cols.where((x) => x.primary).firstOrNull ?? cols.firstOrNull;
     final body = widget.mobileCard != null
         ? widget.mobileCard!(context, row)
@@ -635,9 +902,14 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                   ]),
                 ),
           ]);
+    // compact cards only tighten the vertical padding: a phone keeps 48 px touch targets
+    final v = _compact ? AppSpace.xs : AppSpace.sm;
     return _RowShell(
+      bodyKey: AppDataTable.rowKey(_id(row)),
       selected: selected,
+      current: _isCurrent(row),
       onTap: widget.onRowTap == null ? null : () => widget.onRowTap!(row),
+      onHover: widget.onRowHover == null ? null : () => widget.onRowHover!(row),
       onLongPress: widget.selectable
           ? () {
               HapticFeedback.selectionClick();
@@ -645,7 +917,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
             }
           : null,
       child: Padding(
-        padding: const EdgeInsetsDirectional.only(start: AppSpace.md, top: AppSpace.sm, bottom: AppSpace.sm),
+        padding: EdgeInsetsDirectional.only(start: AppSpace.md, top: v, bottom: v),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (widget.selectable)
             Padding(
@@ -697,7 +969,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
 
   Widget _loading(BuildContext context, bool phone) {
     final c = context.colors;
-    final cols = widget.columns.where((x) => phone ? x.showOnPhone : true).toList();
+    final cols = _shown.where((x) => phone ? x.showOnPhone : true).toList();
     Widget row(int i) {
       if (phone) {
         return Padding(
@@ -714,7 +986,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
         child: SizedBox(
-          height: AppTouch.min + AppSpace.xs,
+          height: _rowMin + AppSpace.xs,
           child: Row(children: [
             if (widget.selectable) const SizedBox(width: AppTouch.min),
             for (final col in cols)
@@ -787,13 +1059,30 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
   }
 }
 
-/// One row's surface: hover (web / desktop) and selection tint, ink on tap, 48 px minimum.
+/// One row's surface: hover (web / desktop) and selection tint, ink on tap, [minHeight] minimum (48 by default).
+/// [current] = the open row: the selected fill plus a start-side accent bar (the hover tint is lighter and has no
+/// bar). [onHover] fires once per mouse / stylus enter, never for touch.
 class _RowShell extends StatefulWidget {
-  const _RowShell({required this.child, required this.selected, this.onTap, this.onLongPress});
+  const _RowShell({
+    required this.child,
+    required this.selected,
+    this.current = false,
+    this.minHeight = AppTouch.min,
+    this.bodyKey,
+    this.onTap,
+    this.onLongPress,
+    this.onHover,
+  });
   final Widget child;
   final bool selected;
+  final bool current;
+  final double minHeight;
+
+  /// Keys the row's body (not the shell: two rows with the same id must not collide as siblings).
+  final Key? bodyKey;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onHover;
 
   @override
   State<_RowShell> createState() => _RowShellState();
@@ -805,11 +1094,14 @@ class _RowShellState extends State<_RowShell> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tint = widget.selected
+    final tint = widget.selected || widget.current
         ? c.primaryTint
         : (_hover && widget.onTap != null ? c.primary.withValues(alpha: 0.06) : Colors.transparent);
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
+    Widget shell = MouseRegion(
+      onEnter: (e) {
+        setState(() => _hover = true);
+        if (e.kind != PointerDeviceKind.touch) widget.onHover?.call();
+      },
       onExit: (_) => setState(() => _hover = false),
       cursor: widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
       child: Material(
@@ -818,9 +1110,165 @@ class _RowShellState extends State<_RowShell> {
         child: InkWell(
           onTap: widget.onTap,
           onLongPress: widget.onLongPress,
-          child: ConstrainedBox(constraints: const BoxConstraints(minHeight: AppTouch.min), child: widget.child),
+          child: ConstrainedBox(
+            key: widget.bodyKey,
+            constraints: BoxConstraints(minHeight: widget.minHeight),
+            child: widget.child,
+          ),
         ),
       ),
+    );
+    if (widget.current) {
+      shell = Semantics(
+        selected: true,
+        child: Stack(children: [
+          shell,
+          PositionedDirectional(
+            start: 0,
+            top: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: SizedBox(
+                key: const ValueKey('app_table_current_bar'),
+                width: AppSpace.xxs,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: c.isDark ? c.primaryLight : c.primary,
+                    borderRadius: const BorderRadiusDirectional.horizontal(end: Radius.circular(AppSpace.xxs))
+                        .resolve(Directionality.of(context)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ]),
+      );
+    }
+    return shell;
+  }
+}
+
+/// The "Columns" sheet: a checkbox per column (a primary one is locked on), move up / down, and Reset. Every change
+/// goes straight to the table through [onChanged] (the table remembers it).
+class _ColumnsSheet<T> extends StatefulWidget {
+  const _ColumnsSheet({required this.columns, required this.initial, required this.onChanged});
+  final List<AppTableColumn<T>> columns;
+  final AppTableLayout initial;
+  final ValueChanged<AppTableLayout> onChanged;
+
+  @override
+  State<_ColumnsSheet<T>> createState() => _ColumnsSheetState<T>();
+}
+
+class _ColumnsSheetState<T> extends State<_ColumnsSheet<T>> {
+  late AppTableLayout _l = widget.initial;
+
+  void _set(AppTableLayout l) {
+    setState(() => _l = l);
+    widget.onChanged(l);
+  }
+
+  void _move(List<AppTableColumn<T>> cols, int i, int delta) {
+    final keys = [for (final c in cols) c.key];
+    final k = keys.removeAt(i);
+    keys.insert(i + delta, k);
+    // the default order again = nothing to remember
+    final same = listEquals([for (final c in widget.columns) c.key], keys);
+    _set(_l.copyWith(order: same ? const [] : keys));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final cols = _l.ordered(widget.columns);
+    final changed = _l.order.isNotEmpty || _l.hidden.isNotEmpty;
+    return AppSheetContent(
+      title: 'ds_columns'.tr,
+      headerTrailing: TextButton(
+        key: const ValueKey('app_table_columns_reset'),
+        style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+        onPressed: changed ? () => _set(AppTableLayout(density: _l.density)) : null,
+        child: Text('ds_reset'.tr),
+      ),
+      children: [
+        Text('ds_columns_hint'.tr, style: AppType.meta(context)),
+        const SizedBox(height: AppSpace.xs),
+        for (var i = 0; i < cols.length; i++)
+          _ColumnTile(
+            key: ValueKey('app_table_col_${cols[i].key}'),
+            label: cols[i].label,
+            shown: cols[i].primary || !_l.hidden.contains(cols[i].key),
+            locked: cols[i].primary,
+            onShown: cols[i].primary
+                ? null
+                : (v) => _set(_l.copyWith(
+                    hidden: v ? ({..._l.hidden}..remove(cols[i].key)) : {..._l.hidden, cols[i].key})),
+            onUp: i > 0 ? () => _move(cols, i, -1) : null,
+            onDown: i < cols.length - 1 ? () => _move(cols, i, 1) : null,
+            divider: i > 0 ? c.divider : null,
+          ),
+      ],
+    );
+  }
+}
+
+class _ColumnTile extends StatelessWidget {
+  const _ColumnTile({
+    super.key,
+    required this.label,
+    required this.shown,
+    required this.locked,
+    required this.onShown,
+    required this.onUp,
+    required this.onDown,
+    this.divider,
+  });
+  final String label;
+  final bool shown;
+  final bool locked;
+  final ValueChanged<bool>? onShown;
+  final VoidCallback? onUp;
+  final VoidCallback? onDown;
+  final Color? divider;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    Widget arrow(IconData icon, String tip, VoidCallback? onTap, String key) => IconButton(
+          key: ValueKey(key),
+          tooltip: '$tip: $label',
+          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          icon: Icon(icon, size: AppIconSize.md, color: onTap == null ? c.textLight : c.textMedium),
+          onPressed: onTap,
+        );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: divider == null ? null : Border(top: BorderSide(color: divider!, width: AppBorder.hairline)),
+      ),
+      child: Row(children: [
+        Expanded(
+          child: MergeSemantics(
+            child: InkWell(
+              borderRadius: AppRadius.chipAll,
+              onTap: onShown == null ? null : () => onShown!(!shown),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.min),
+                child: Row(children: [
+                  Checkbox(value: shown, onChanged: onShown == null ? null : (v) => onShown!(v ?? false)),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                      if (locked) Text('ds_column_locked'.tr, style: AppType.meta(context)),
+                    ]),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+        arrow(Icons.arrow_upward_rounded, 'ds_move_up'.tr, onUp, 'up'),
+        arrow(Icons.arrow_downward_rounded, 'ds_move_down'.tr, onDown, 'down'),
+      ]),
     );
   }
 }

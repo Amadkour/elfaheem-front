@@ -1,0 +1,974 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/students/21/subscriptions?size=100",
+  "uid": 1
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 34,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 38,
+     "name_ar": "Pb-29 ar",
+     "name_en": "Pb-29",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 38,
+    "enrollment_id": 44,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:32.276282"
+   },
+   {
+    "id": 33,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 37,
+     "name_ar": "Pb-28 ar",
+     "name_en": "Pb-28",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 37,
+    "enrollment_id": 43,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:32.216390"
+   },
+   {
+    "id": 32,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 36,
+     "name_ar": "Pb-27 ar",
+     "name_en": "Pb-27",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 36,
+    "enrollment_id": 42,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:32.157127"
+   },
+   {
+    "id": 31,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 35,
+     "name_ar": "Pb-26 ar",
+     "name_en": "Pb-26",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 35,
+    "enrollment_id": 41,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:32.120588"
+   },
+   {
+    "id": 30,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 34,
+     "name_ar": "Pb-25 ar",
+     "name_en": "Pb-25",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 34,
+    "enrollment_id": 40,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:32.060066"
+   },
+   {
+    "id": 29,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 33,
+     "name_ar": "Pb-24 ar",
+     "name_en": "Pb-24",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 33,
+    "enrollment_id": 39,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:32.005248"
+   },
+   {
+    "id": 28,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 32,
+     "name_ar": "Pb-23 ar",
+     "name_en": "Pb-23",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 32,
+    "enrollment_id": 38,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.937965"
+   },
+   {
+    "id": 27,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 31,
+     "name_ar": "Pb-22 ar",
+     "name_en": "Pb-22",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 31,
+    "enrollment_id": 37,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.841116"
+   },
+   {
+    "id": 26,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 30,
+     "name_ar": "Pb-21 ar",
+     "name_en": "Pb-21",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 30,
+    "enrollment_id": 36,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.760877"
+   },
+   {
+    "id": 25,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 29,
+     "name_ar": "Pb-20 ar",
+     "name_en": "Pb-20",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 29,
+    "enrollment_id": 35,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.711899"
+   },
+   {
+    "id": 24,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 28,
+     "name_ar": "Pb-19 ar",
+     "name_en": "Pb-19",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 28,
+    "enrollment_id": 34,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.640582"
+   },
+   {
+    "id": 23,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 27,
+     "name_ar": "Pb-18 ar",
+     "name_en": "Pb-18",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 27,
+    "enrollment_id": 33,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.508230"
+   },
+   {
+    "id": 22,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 26,
+     "name_ar": "Pb-17 ar",
+     "name_en": "Pb-17",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 26,
+    "enrollment_id": 32,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.466055"
+   },
+   {
+    "id": 21,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 25,
+     "name_ar": "Pb-16 ar",
+     "name_en": "Pb-16",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 25,
+    "enrollment_id": 31,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.429570"
+   },
+   {
+    "id": 20,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 24,
+     "name_ar": "Pb-15 ar",
+     "name_en": "Pb-15",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 24,
+    "enrollment_id": 30,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.373420"
+   },
+   {
+    "id": 19,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 23,
+     "name_ar": "Pb-14 ar",
+     "name_en": "Pb-14",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 23,
+    "enrollment_id": 29,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.298931"
+   },
+   {
+    "id": 18,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 22,
+     "name_ar": "Pb-13 ar",
+     "name_en": "Pb-13",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 22,
+    "enrollment_id": 28,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.245016"
+   },
+   {
+    "id": 17,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 21,
+     "name_ar": "Pb-12 ar",
+     "name_en": "Pb-12",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 21,
+    "enrollment_id": 27,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:31.177523"
+   },
+   {
+    "id": 16,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 20,
+     "name_ar": "Pb-11 ar",
+     "name_en": "Pb-11",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 20,
+    "enrollment_id": 26,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.980867"
+   },
+   {
+    "id": 15,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 19,
+     "name_ar": "Pb-10 ar",
+     "name_en": "Pb-10",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 19,
+    "enrollment_id": 25,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.860984"
+   },
+   {
+    "id": 14,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 18,
+     "name_ar": "Pb-9 ar",
+     "name_en": "Pb-9",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 18,
+    "enrollment_id": 24,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.819021"
+   },
+   {
+    "id": 13,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 17,
+     "name_ar": "Pb-8 ar",
+     "name_en": "Pb-8",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 17,
+    "enrollment_id": 23,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.779901"
+   },
+   {
+    "id": 12,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 16,
+     "name_ar": "Pb-7 ar",
+     "name_en": "Pb-7",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 16,
+    "enrollment_id": 22,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.738693"
+   },
+   {
+    "id": 11,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 15,
+     "name_ar": "Pb-6 ar",
+     "name_en": "Pb-6",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 15,
+    "enrollment_id": 21,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.550430"
+   },
+   {
+    "id": 10,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 14,
+     "name_ar": "Pb-5 ar",
+     "name_en": "Pb-5",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 14,
+    "enrollment_id": 20,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.496988"
+   },
+   {
+    "id": 9,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 13,
+     "name_ar": "Pb-4 ar",
+     "name_en": "Pb-4",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 13,
+    "enrollment_id": 19,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.428525"
+   },
+   {
+    "id": 8,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 12,
+     "name_ar": "Pb-3 ar",
+     "name_en": "Pb-3",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 12,
+    "enrollment_id": 18,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.355079"
+   },
+   {
+    "id": 7,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 11,
+     "name_ar": "Pb-2 ar",
+     "name_en": "Pb-2",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 11,
+    "enrollment_id": 17,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.293315"
+   },
+   {
+    "id": 6,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 10,
+     "name_ar": "Pb-1 ar",
+     "name_en": "Pb-1",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 10,
+    "enrollment_id": 16,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.228505"
+   },
+   {
+    "id": 5,
+    "type": "created",
+    "actor_type": "user",
+    "actor_id": null,
+    "reason": null,
+    "course": {
+     "id": 9,
+     "name_ar": "Pb-0 ar",
+     "name_en": "Pb-0",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "course_id": 9,
+    "enrollment_id": 15,
+    "payment_id": null,
+    "before": null,
+    "after": null,
+    "meta": null,
+    "backfilled": false,
+    "occurred_at": "2026-11-05T21:58:30.180582"
+   }
+  ],
+  "total": 30,
+  "page": 1,
+  "size": 100,
+  "pages": 1
+ }
+}

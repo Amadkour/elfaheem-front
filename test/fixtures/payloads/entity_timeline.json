@@ -1,0 +1,324 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/students/21/courses/9/timeline?size=100",
+  "uid": 1
+ },
+ "payload": {
+  "items": [
+   {
+    "at": "2026-11-05T21:58:34.100072",
+    "type": "material_completed",
+    "data": {
+     "material_id": 34,
+     "session_id": 3,
+     "title": "m29"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:34.078537",
+    "type": "material_completed",
+    "data": {
+     "material_id": 33,
+     "session_id": 3,
+     "title": "m28"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:34.049715",
+    "type": "material_completed",
+    "data": {
+     "material_id": 32,
+     "session_id": 3,
+     "title": "m27"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:34.006463",
+    "type": "material_completed",
+    "data": {
+     "material_id": 31,
+     "session_id": 3,
+     "title": "m26"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.965582",
+    "type": "material_completed",
+    "data": {
+     "material_id": 30,
+     "session_id": 3,
+     "title": "m25"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.910611",
+    "type": "material_completed",
+    "data": {
+     "material_id": 29,
+     "session_id": 3,
+     "title": "m24"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.875955",
+    "type": "material_completed",
+    "data": {
+     "material_id": 28,
+     "session_id": 3,
+     "title": "m23"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.849511",
+    "type": "material_completed",
+    "data": {
+     "material_id": 27,
+     "session_id": 3,
+     "title": "m22"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.831086",
+    "type": "material_completed",
+    "data": {
+     "material_id": 26,
+     "session_id": 3,
+     "title": "m21"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.806070",
+    "type": "material_completed",
+    "data": {
+     "material_id": 25,
+     "session_id": 3,
+     "title": "m20"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.788172",
+    "type": "material_completed",
+    "data": {
+     "material_id": 24,
+     "session_id": 3,
+     "title": "m19"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.772319",
+    "type": "material_completed",
+    "data": {
+     "material_id": 23,
+     "session_id": 3,
+     "title": "m18"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.745723",
+    "type": "material_completed",
+    "data": {
+     "material_id": 22,
+     "session_id": 3,
+     "title": "m17"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.726639",
+    "type": "material_completed",
+    "data": {
+     "material_id": 21,
+     "session_id": 3,
+     "title": "m16"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.694927",
+    "type": "material_completed",
+    "data": {
+     "material_id": 20,
+     "session_id": 3,
+     "title": "m15"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.657340",
+    "type": "material_completed",
+    "data": {
+     "material_id": 19,
+     "session_id": 3,
+     "title": "m14"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.614069",
+    "type": "material_completed",
+    "data": {
+     "material_id": 18,
+     "session_id": 3,
+     "title": "m13"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.593473",
+    "type": "material_completed",
+    "data": {
+     "material_id": 17,
+     "session_id": 3,
+     "title": "m12"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.561869",
+    "type": "material_completed",
+    "data": {
+     "material_id": 16,
+     "session_id": 3,
+     "title": "m11"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.499936",
+    "type": "material_completed",
+    "data": {
+     "material_id": 15,
+     "session_id": 3,
+     "title": "m10"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.450429",
+    "type": "material_completed",
+    "data": {
+     "material_id": 14,
+     "session_id": 3,
+     "title": "m9"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.409592",
+    "type": "material_completed",
+    "data": {
+     "material_id": 13,
+     "session_id": 3,
+     "title": "m8"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.363103",
+    "type": "material_completed",
+    "data": {
+     "material_id": 12,
+     "session_id": 3,
+     "title": "m7"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.335575",
+    "type": "material_completed",
+    "data": {
+     "material_id": 11,
+     "session_id": 3,
+     "title": "m6"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.319481",
+    "type": "material_completed",
+    "data": {
+     "material_id": 10,
+     "session_id": 3,
+     "title": "m5"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.294883",
+    "type": "material_completed",
+    "data": {
+     "material_id": 9,
+     "session_id": 3,
+     "title": "m4"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.249193",
+    "type": "material_completed",
+    "data": {
+     "material_id": 8,
+     "session_id": 3,
+     "title": "m3"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.160365",
+    "type": "material_completed",
+    "data": {
+     "material_id": 7,
+     "session_id": 3,
+     "title": "m2"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:33.042902",
+    "type": "material_completed",
+    "data": {
+     "material_id": 6,
+     "session_id": 3,
+     "title": "m1"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:32.974397",
+    "type": "material_completed",
+    "data": {
+     "material_id": 5,
+     "session_id": 3,
+     "title": "m0"
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:30.180582",
+    "type": "subscription",
+    "data": {
+     "event": "created",
+     "actor": "user",
+     "actor_id": null,
+     "reason": null
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:30.179036",
+    "type": "exam_submitted",
+    "data": {
+     "exam_id": 6,
+     "title": "x",
+     "percentage": 50.0,
+     "passed": true
+    }
+   },
+   {
+    "at": "2026-11-05T21:58:30.154627",
+    "type": "favorited",
+    "data": {}
+   },
+   {
+    "at": "2026-11-05T21:58:30.154627",
+    "type": "rated",
+    "data": {
+     "value": 3,
+     "review": null
+    }
+   },
+   {
+    "at": "2026-10-26T21:58:16.686171",
+    "type": "enrolled",
+    "data": {
+     "enrollment_id": 15
+    }
+   }
+  ],
+  "total": 35,
+  "page": 1,
+  "size": 100,
+  "pages": 1
+ }
+}

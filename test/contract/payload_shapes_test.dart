@@ -11,6 +11,8 @@ import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
+import 'package:flutter_education_app/core/entities/entity_models.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart' show SseParser;
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_model.dart';
@@ -46,7 +48,8 @@ DateTime? utc(dynamic v) {
   if (v == null) return null;
   final s = '$v';
   final zoned = s.endsWith('Z') || RegExp(r'[+-]\d\d:?\d\d$').hasMatch(s);
-  return DateTime.parse(zoned ? s : '${s}Z').toUtc();
+  final plainDate = RegExp(r'^\d{4}-\d\d-\d\d$').hasMatch(s); // a date column (`start_date`) has no time of day
+  return DateTime.parse(zoned ? s : (plainDate ? '${s}T00:00:00Z' : '${s}Z')).toUtc();
 }
 
 int? asIntOrNull(dynamic v) => v == null ? null : (v as num).toInt();
@@ -736,6 +739,332 @@ void main() {
       await sub.cancel();
       expect(got.single.id, 'e1');
       expect(got.single.kind, 'export');
+    });
+  });
+
+  // ── GET /api/v1/entities/... (D-290) ───────────────────────────────────────
+  group('GET /api/v1/entities/* → entity models', () {
+    const enrollmentKeys = ['enrollment_id', 'state', 'enrolled_at', 'expected_end_at', 'progress', 'first_activity_at',
+        'last_activity_at', 'completed_at', 'withdrawn_at', 'withdrawal_reason_code', 'withdrawal_reason', 'favorited',
+        'rating', 'exams'];
+
+    void samePerson(EntityRef? r, dynamic j, EntityKind kind, String where) {
+      hasKeys(m(j), const ['id', 'name', 'username', 'image_url'], where);
+      expect(r, EntityRef(kind, j['id'] as int));
+      expect(r!.label, j['name']);
+      expect(r.imageUrl, j['image_url']);
+    }
+
+    void sameCategory(EntityRef? r, dynamic j, String where) {
+      if (j == null) return expect(r, isNull);
+      hasKeys(m(j), const ['id', 'name_ar', 'name_en'], where);
+      expect(r, EntityRef(EntityKind.category, j['id'] as int));
+      expect(r!.label, j['name_ar']);
+      expect(r.labelEn, j['name_en']);
+    }
+
+    void sameCourse(EntityCourse? c, dynamic j, String where) {
+      hasKeys(m(j), const ['id', 'name_ar', 'name_en', 'image_url', 'category', 'teacher'], where);
+      expect(c!.ref, EntityRef(EntityKind.course, j['id'] as int));
+      expect(c.ref.label, j['name_ar']);
+      expect(c.ref.labelEn, j['name_en']);
+      sameCategory(c.category, j['category'], '$where.category');
+      if (j['teacher'] != null) samePerson(c.teacher, j['teacher'], EntityKind.teacher, '$where.teacher');
+    }
+
+    void sameEnrollment(EntityEnrollment e, Map<String, dynamic> j, String where) {
+      hasKeys(j, enrollmentKeys, where);
+      expect(e.enrollmentId, j['enrollment_id']);
+      expect(e.state, j['state']);
+      expect(entityEnrollmentStates, contains(e.state));
+      expect(e.enrolledAt, utc(j['enrolled_at']));
+      expect(e.expectedEndAt, utc(j['expected_end_at']));
+      expect(e.progress, asDoubleOrNull(j['progress']));
+      expect(e.firstActivityAt, utc(j['first_activity_at']));
+      expect(e.lastActivityAt, utc(j['last_activity_at']));
+      expect(e.completedAt, utc(j['completed_at']));
+      expect(e.withdrawnAt, utc(j['withdrawn_at']));
+      expect(e.withdrawalReasonCode, j['withdrawal_reason_code']);
+      expect(e.withdrawalReason, j['withdrawal_reason']);
+      expect(e.favorited, j['favorited']);
+      if (j['rating'] == null) {
+        expect(e.rating, isNull);
+      } else {
+        hasKeys(m(j['rating']), const ['value', 'review', 'at'], '$where.rating');
+        expect(e.rating!.value, j['rating']['value']);
+        expect(e.rating!.review, j['rating']['review']);
+        expect(e.rating!.at, utc(j['rating']['at']));
+      }
+      hasKeys(m(j['exams']), const ['count', 'avg_percentage', 'passed'], '$where.exams');
+      expect(e.exams!.count, j['exams']['count']);
+      expect(e.exams!.avgPercentage, asDoubleOrNull(j['exams']['avg_percentage']));
+      expect(e.exams!.passed, j['exams']['passed']);
+    }
+
+    void sameSummary(EntitySummary s, Map<String, dynamic> j, String where) {
+      hasKeys(j, const ['kind', 'id', 'header', 'stats', 'badges', 'sections', 'can'], where);
+      expect(s.kind.name, j['kind']);
+      expect(s.id, j['id']);
+      expect(s.header, j['header']);
+      expect(s.stats, j['stats']);
+      expect(s.sections, j['sections']);
+      expect(s.badges.length, (j['badges'] as List).length);
+      for (var i = 0; i < s.badges.length; i++) {
+        final b = m(j['badges'][i]);
+        hasKeys(b, const ['code', 'level', 'value'], '$where.badges');
+        expect(s.badges[i].code, b['code']);
+        expect(s.badges[i].level, b['level']);
+        expect(s.badges[i].value, b['value']);
+      }
+      hasKeys(m(j['can']), const ['manage', 'message', 'see_money'], '$where.can');
+      expect(s.can.manage, j['can']['manage']);
+      expect(s.can.message, j['can']['message']);
+      expect(s.can.seeMoney, j['can']['see_money']);
+    }
+
+    test('a student (admin view)', () {
+      final j = fixture('entity_student');
+      final s = EntitySummary.fromJson(j);
+      sameSummary(s, j, 'student');
+      hasKeys(m(j['header']), const ['id', 'name', 'username', 'image_url', 'country', 'is_active', 'created_at',
+          'last_login', 'email', 'phone'], 'student.header');
+      hasKeys(m(j['stats']), const ['enrolled', 'in_progress', 'completed', 'withdrawn', 'expired', 'pending',
+          'avg_progress', 'last_activity_at'], 'student.stats');
+      expect(s.ref.name, j['header']['name']);
+      expect(s.time('created_at'), utc(j['header']['created_at']));
+      expect(s.statTime('last_activity_at'), utc(j['stats']['last_activity_at']));
+      expect(s.sections, containsAll(['courses', 'timeline']));
+    });
+
+    test('a course (staff view, money) and a learner\'s view of it (stats.mine)', () {
+      final j = fixture('entity_course');
+      final s = EntitySummary.fromJson(j);
+      sameSummary(s, j, 'course');
+      final h = m(j['header']);
+      hasKeys(h, const ['id', 'name_ar', 'name_en', 'image_url', 'category', 'teacher', 'status', 'is_published',
+          'is_private', 'price', 'start_date', 'end_date', 'created_at', 'archived_at'], 'course.header');
+      hasKeys(m(h['price']), const ['fees', 'monthly', 'six_months', 'currency'], 'course.header.price');
+      sameCategory(s.category, h['category'], 'course.header.category');
+      samePerson(s.teacher, h['teacher'], EntityKind.teacher, 'course.header.teacher');
+      final st = m(j['stats']);
+      hasKeys(st, const ['enrolled', 'in_progress', 'completed', 'withdrawn', 'expired', 'pending', 'completion_rate',
+          'avg_progress', 'rating_avg', 'rating_count', 'favorites', 'sessions', 'materials', 'withdrawal_reasons', 'trend',
+          'revenue'], 'course.stats');
+      final trend = ms(st['trend']);
+      expect(s.trend.length, trend.length);
+      for (var i = 0; i < trend.length; i++) {
+        hasKeys(trend[i], const ['week_start', 'count'], 'course.stats.trend');
+        expect(s.trend[i].weekStart, utc(trend[i]['week_start']));
+        expect(s.trend[i].count, trend[i]['count']);
+      }
+      final reasons = ms(st['withdrawal_reasons']);
+      expect(s.withdrawalReasons, [for (final r in reasons) (r['code'], r['count'])]);
+      hasKeys(m(st['revenue']), const ['amount', 'currency'], 'course.stats.revenue');
+      expect(s.revenue.single.amount, asDoubleOrNull(st['revenue']['amount']));
+      expect(s.revenue.single.currency, st['revenue']['currency']);
+      expect(s.isLearnerView, isFalse);
+
+      final lj = fixture('entity_course_learner');
+      final l = EntitySummary.fromJson(lj);
+      sameSummary(l, lj, 'course (learner)');
+      hasKeys(m(lj['stats']), const ['rating_avg', 'rating_count', 'enrolled', 'sessions', 'materials', 'mine'],
+          'course.stats (learner)');
+      expect(l.isLearnerView, isTrue);
+      sameEnrollment(l.mine!, m(lj['stats']['mine']), 'course.stats.mine');
+      expect(l.revenue, isEmpty, reason: 'no money for a learner');
+    });
+
+    test('a teacher (revenue per currency) and a category (top courses)', () {
+      final j = fixture('entity_teacher');
+      final s = EntitySummary.fromJson(j);
+      sameSummary(s, j, 'teacher');
+      hasKeys(m(j['header']), const ['id', 'name', 'username', 'image_url', 'bio', 'is_active', 'specialization',
+          'created_at'], 'teacher.header');
+      sameCategory(s.specialization, j['header']['specialization'], 'teacher.header.specialization');
+      final st = m(j['stats']);
+      hasKeys(st, const ['courses', 'published_courses', 'students', 'active_students_30d', 'rating_avg',
+          'teacher_rating_avg', 'completion_rate', 'revenue'], 'teacher.stats');
+      final rev = ms(st['revenue']);
+      expect(s.revenue.length, rev.length);
+      for (var i = 0; i < rev.length; i++) {
+        hasKeys(rev[i], const ['currency', 'amount'], 'teacher.stats.revenue');
+        expect(s.revenue[i].amount, asDoubleOrNull(rev[i]['amount']));
+        expect(s.revenue[i].currency, rev[i]['currency']);
+      }
+
+      final cj = fixture('entity_category');
+      final c = EntitySummary.fromJson(cj);
+      sameSummary(c, cj, 'category');
+      hasKeys(m(cj['header']), const ['id', 'name_ar', 'name_en', 'description', 'image_url', 'parent', 'children'],
+          'category.header');
+      sameCategory(c.parent, cj['header']['parent'], 'category.header.parent');
+      expect(c.children.length, (cj['header']['children'] as List).length);
+      final cs = m(cj['stats']);
+      hasKeys(cs, const ['courses', 'teachers', 'students', 'completion_rate', 'top_courses'], 'category.stats');
+      final top = ms(cs['top_courses']);
+      expect(c.topCourses.length, top.length);
+      for (var i = 0; i < top.length; i++) {
+        hasKeys(top[i], const ['course', 'students'], 'category.stats.top_courses');
+        sameCourse(c.topCourses[i].$1, top[i]['course'], 'category.stats.top_courses.course');
+        expect(c.topCourses[i].$2, top[i]['students']);
+      }
+    });
+
+    EntityPage<EntityItem> pageOf(EntityKind kind, String section, Map<String, dynamic> j) {
+      hasKeys(j, const ['items', 'total', 'page', 'size', 'pages'], '$kind/$section');
+      final p = EntityPage.fromJson<EntityItem>(j, (x) => EntityItem.parse(kind, section, x));
+      expect(p.total, j['total']);
+      expect(p.page, j['page']);
+      expect(p.size, j['size']);
+      expect(p.pages, j['pages']);
+      expect(p.items.length, (j['items'] as List).length);
+      expect(p.items, isNotEmpty, reason: '$kind/$section: the harness seeds rows');
+      return p;
+    }
+
+    test('enrollment rows: a student\'s courses, a course\'s students', () {
+      final sc = fixture('entity_student_courses');
+      final p1 = pageOf(EntityKind.student, 'courses', sc);
+      for (var i = 0; i < p1.items.length; i++) {
+        final r = p1.items[i] as EnrollmentRow, j = m(sc['items'][i]);
+        sameCourse(r.course, j['course'], 'student.courses.course');
+        expect(r.subject, r.course!.ref);
+        sameEnrollment(r.enrollment, j, 'student.courses');
+      }
+      final cs = fixture('entity_course_students');
+      final p2 = pageOf(EntityKind.course, 'students', cs);
+      for (var i = 0; i < p2.items.length; i++) {
+        final r = p2.items[i] as EnrollmentRow, j = m(cs['items'][i]);
+        samePerson(r.subject, j['student'], EntityKind.student, 'course.students.student');
+        sameEnrollment(r.enrollment, j, 'course.students');
+      }
+    });
+
+    test('course rows of a teacher / a category', () {
+      for (final (kind, name) in [(EntityKind.teacher, 'entity_teacher_courses'), (EntityKind.category, 'entity_category_courses')]) {
+        final j = fixture(name);
+        final p = pageOf(kind, 'courses', j);
+        for (var i = 0; i < p.items.length; i++) {
+          final r = p.items[i] as CourseRow, x = m(j['items'][i]);
+          hasKeys(x, const ['course', 'status', 'is_published', 'archived_at', 'students', 'completion_rate', 'rating_avg',
+              'revenue'], name);
+          sameCourse(r.course, x['course'], '$name.course');
+          expect(r.status, x['status']);
+          expect(r.isPublished, x['is_published']);
+          expect(r.archivedAt, utc(x['archived_at']));
+          expect(r.students, x['students']);
+          expect(r.completionRate, asDoubleOrNull(x['completion_rate']));
+          expect(r.ratingAvg, asDoubleOrNull(x['rating_avg']));
+          expect(r.revenue?.amount, asDoubleOrNull(x['revenue']?['amount']));
+        }
+      }
+    });
+
+    test('people rows: a teacher\'s / category\'s students, a category\'s teachers', () {
+      for (final (kind, section, name, person) in [
+        (EntityKind.teacher, 'students', 'entity_teacher_students', EntityKind.student),
+        (EntityKind.category, 'students', 'entity_category_students', EntityKind.student),
+        (EntityKind.category, 'teachers', 'entity_category_teachers', EntityKind.teacher),
+      ]) {
+        final j = fixture(name);
+        final p = pageOf(kind, section, j);
+        for (var i = 0; i < p.items.length; i++) {
+          final r = p.items[i] as PersonRow, x = m(j['items'][i]);
+          samePerson(r.person, x[person.name], person, '$name.${person.name}');
+          expect(r.username, x[person.name]['username']);
+          expect(r.courses, x['courses']);
+          if (person == EntityKind.student) {
+            hasKeys(x, const ['courses', 'avg_progress', 'last_activity_at'], name);
+            expect(r.avgProgress, asDoubleOrNull(x['avg_progress']));
+            expect(r.lastActivityAt, utc(x['last_activity_at']));
+          } else {
+            hasKeys(x, const ['courses', 'students'], name);
+            expect(r.students, x['students']);
+          }
+        }
+      }
+    });
+
+    test('a student\'s payments and subscription events (admins)', () {
+      final pj = fixture('entity_student_payments');
+      final p = pageOf(EntityKind.student, 'payments', pj);
+      for (var i = 0; i < p.items.length; i++) {
+        final r = p.items[i] as PaymentRow, x = m(pj['items'][i]);
+        hasKeys(x, const ['id', 'course', 'amount', 'currency', 'status', 'method', 'provider', 'paid_at', 'refunded_at',
+            'created_at'], 'payments');
+        sameCourse(r.course, x['course'], 'payments.course');
+        expect(r.id, x['id']);
+        expect(r.amount, asDoubleOrNull(x['amount']));
+        expect(r.currency, x['currency']);
+        expect(r.status, x['status']);
+        expect(r.method, x['method'] ?? x['provider']);
+        expect(r.paidAt, utc(x['paid_at']));
+        expect(r.refundedAt, utc(x['refunded_at']));
+      }
+      final sj = fixture('entity_student_subscriptions');
+      final s = pageOf(EntityKind.student, 'subscriptions', sj);
+      for (var i = 0; i < s.items.length; i++) {
+        final r = s.items[i] as SubscriptionRow, x = m(sj['items'][i]);
+        hasKeys(x, const ['id', 'type', 'actor_type', 'reason', 'course', 'occurred_at'], 'subscriptions');
+        sameCourse(r.course, x['course'], 'subscriptions.course');
+        expect(r.id, x['id']);
+        expect(r.type, x['type']);
+        expect(r.actorType, x['actor_type']);
+        expect(r.reason, x['reason']);
+        expect(r.occurredAt, utc(x['occurred_at']));
+      }
+    });
+
+    test('a student\'s timeline in one course: every event with the data the app reads', () {
+      final j = fixture('entity_timeline');
+      hasKeys(j, const ['items', 'total', 'page', 'size', 'pages'], 'timeline');
+      final p = EntityPage.fromJson(j, EntityTimelineEvent.fromJson);
+      const dataKeys = {
+        'material_completed': ['title'],
+        'live_attended': ['title'],
+        'exam_submitted': ['title', 'percentage', 'passed'],
+        'rated': ['value', 'review'],
+        'subscription': ['event', 'actor'],
+        'withdrawn': ['reason_code'],
+      };
+      for (var i = 0; i < p.items.length; i++) {
+        final e = p.items[i], x = m(j['items'][i]);
+        hasKeys(x, const ['at', 'type', 'data'], 'timeline item');
+        expect(e.at, utc(x['at']));
+        expect(e.type, x['type']);
+        expect(e.data, x['data']);
+        hasKeys(m(x['data']), dataKeys[e.type] ?? const [], 'timeline ${e.type}.data');
+      }
+    });
+
+    test('older server: no badges / sections / can / the new stats, rows without the 0051 history → drawn less', () {
+      final j = fixture('entity_student')
+        ..remove('badges')
+        ..remove('sections')
+        ..remove('can');
+      (j['stats'] as Map).remove('last_activity_at');
+      final s = EntitySummary.fromJson(j);
+      expect(s.badges, isEmpty);
+      expect(s.sections, isEmpty, reason: 'the panel opens nothing it was not told about');
+      expect(s.can.manage, isFalse);
+      expect(s.statTime('last_activity_at'), isNull);
+      final c = fixture('entity_course');
+      (c['stats'] as Map)
+        ..remove('trend')
+        ..remove('withdrawal_reasons')
+        ..remove('revenue');
+      final cs = EntitySummary.fromJson(c);
+      expect(cs.trend, isEmpty);
+      expect(cs.withdrawalReasons, isEmpty);
+      expect(cs.revenue, isEmpty);
+      final row = m(fixture('entity_student_courses')['items'][0])
+        ..removeWhere((k, _) => const ['first_activity_at', 'last_activity_at', 'completed_at', 'withdrawn_at',
+            'withdrawal_reason_code', 'withdrawal_reason', 'favorited', 'rating', 'exams', 'expected_end_at'].contains(k));
+      final r = EntityItem.parse(EntityKind.student, 'courses', row) as EnrollmentRow;
+      expect(r.enrollment.lastActivityAt, isNull);
+      expect(r.enrollment.withdrawalReasonCode, isNull);
+      expect(r.enrollment.exams, isNull);
+      expect(r.enrollment.state, row['state']);
     });
   });
 }

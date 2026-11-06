@@ -1,9 +1,10 @@
 // lib/design/app_pagination.dart
 //
 // Pagination bar for server-paged lists: previous / next, compact numbered pages with ellipses on wide widths,
-// "Page x of y" on phones, an optional rows-per-page dropdown and a "1-20 of 345" summary. Controlled: the page owns
-// [page] (1-based); every tap calls [onPage]. Chevrons mirror in Arabic by themselves, so they are never picked by
-// language. Never overflows: the parts wrap and the controls scale down.
+// "Page x of y" on phones, an optional rows-per-page dropdown (20 / 50 / 100 unless [pageSizes] says otherwise) and
+// a "1-20 of 345" summary. Controlled: the page owns [page] (1-based); every tap calls [onPage]. Chevrons mirror in
+// Arabic by themselves, so they are never picked by language. Never overflows: the parts wrap and the controls
+// scale down.
 library;
 
 import 'package:flutter/material.dart';
@@ -37,8 +38,24 @@ class AppPagination extends StatelessWidget {
   /// All rows on the server; with [pageSize] it gives the "1-20 of 345" summary.
   final int? total;
   final int? pageSize;
+  /// The rows-per-page choices; null with [onPageSize] + [pageSize] = [defaultPageSizes] (plus [pageSize] when it
+  /// is not one of them).
   final List<int>? pageSizes;
+
+  /// Called with the picked page size; the page usually goes back to page 1 then.
   final ValueChanged<int>? onPageSize;
+
+  static const defaultPageSizes = <int>[20, 50, 100];
+
+  /// The choices drawn, or null for no rows-per-page control.
+  List<int>? get sizeChoices {
+    if (onPageSize == null) return null;
+    final own = pageSizes;
+    if (own != null) return own.isEmpty ? null : own;
+    final s = pageSize;
+    if (s == null) return null;
+    return defaultPageSizes.contains(s) ? defaultPageSizes : ([...defaultPageSizes, s]..sort());
+  }
 
   /// The page numbers to draw, with null for an ellipsis: 1 … 4 5 [6] 7 8 … 20.
   static List<int?> windowOf(int page, int count, {int siblings = 1}) {
@@ -71,7 +88,7 @@ class AppPagination extends StatelessWidget {
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= Breakpoints.mobile;
       final summary = _summary(cur);
-      final sizes = (pageSizes != null && pageSizes!.isNotEmpty && onPageSize != null) ? pageSizes! : null;
+      final sizes = sizeChoices;
       final maxW = box.maxWidth.isFinite ? box.maxWidth - AppSpace.md : double.infinity;
 
       final nav = Row(mainAxisSize: MainAxisSize.min, children: [
