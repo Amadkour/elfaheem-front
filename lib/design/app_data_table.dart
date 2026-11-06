@@ -25,6 +25,12 @@
 //   density       comfortable (the default look) / compact; the toggle shows when tableId is set or densityToggle
 //   selectedRowId the open row (a detail panel): selected fill + a start-side accent bar, on the phone card too
 //   onRowHover    the pointer entered a row (mouse / stylus only, never touch): prefetch the detail
+//   columnResize  drag a column's edge in the header (double tap: back to its default); remembered with the layout. A
+//                 `primary` column takes the room left and has no handle; widths shrink to fit when the table narrows
+//   hideBelow     (column) the wide table leaves this column out under that table width, e.g. while a side panel is
+//                 open; it stays in the Columns menu and on the phone card
+//   maxInlineActions how many row actions sit beside the row; 0 = the row has one menu
+//   compactOf     a cell's own density, so a thumbnail or a chip can follow the toggle
 library;
 
 import 'dart:convert';
@@ -63,6 +69,7 @@ class AppTableColumn<T> {
     this.numeric = false,
     this.showOnPhone = true,
     this.primary = false,
+    this.hideBelow,
   });
 
   AppTableColumn.text({
@@ -76,6 +83,7 @@ class AppTableColumn<T> {
     this.numeric = false,
     this.showOnPhone = true,
     this.primary = false,
+    this.hideBelow,
   }) : cell = ((context, row) => Text(text(row), maxLines: 2, overflow: TextOverflow.ellipsis));
 
   /// The sort key handed to `onSort`.
@@ -95,6 +103,9 @@ class AppTableColumn<T> {
 
   /// The title line of the phone card.
   final bool primary;
+
+  /// Left out of the wide table when the table is narrower than this (null: always shown).
+  final double? hideBelow;
 }
 
 /// A filter of the toolbar. [value] null = "All". Up to 5 options draw as chips, more as a dropdown.
@@ -121,7 +132,7 @@ enum AppTableDensity { comfortable, compact }
 /// merges it with the table's current columns (a column added since is put at its default place, a removed one is
 /// dropped; a `primary` column is never hidden).
 class AppTableLayout {
-  const AppTableLayout({this.order = const [], this.hidden = const {}, this.density});
+  const AppTableLayout({this.order = const [], this.hidden = const {}, this.density, this.widths = const {}});
 
   /// Column keys in the person's order (may miss columns added since).
   final List<String> order;
@@ -130,15 +141,25 @@ class AppTableLayout {
   /// Null = the table's own default.
   final AppTableDensity? density;
 
+  /// The widths dragged by the person, by column key (the others keep their own width / flex).
+  final Map<String, double> widths;
+
   static String prefKey(String tableId) => 'app_data_table.v1.$tableId';
 
-  bool get isDefault => order.isEmpty && hidden.isEmpty && density == null;
+  bool get isDefault => order.isEmpty && hidden.isEmpty && density == null && widths.isEmpty;
 
-  AppTableLayout copyWith({List<String>? order, Set<String>? hidden, AppTableDensity? density, bool clearDensity = false}) =>
+  AppTableLayout copyWith({
+    List<String>? order,
+    Set<String>? hidden,
+    AppTableDensity? density,
+    bool clearDensity = false,
+    Map<String, double>? widths,
+  }) =>
       AppTableLayout(
         order: order ?? this.order,
         hidden: hidden ?? this.hidden,
         density: clearDensity ? null : (density ?? this.density),
+        widths: widths ?? this.widths,
       );
 
   /// Every column of [columns] in the person's order (hidden ones included).
@@ -164,12 +185,18 @@ class AppTableLayout {
         'order': order,
         'hidden': hidden.toList(),
         if (density != null) 'density': density!.name,
+        if (widths.isNotEmpty) 'widths': widths,
       };
 
   factory AppTableLayout.fromJson(Map<String, dynamic> j) => AppTableLayout(
         order: [for (final k in (j['order'] as List? ?? const [])) '$k'],
         hidden: {for (final k in (j['hidden'] as List? ?? const [])) '$k'},
         density: AppTableDensity.values.where((d) => d.name == j['density']).firstOrNull,
+        widths: {
+          if (j['widths'] is Map)
+            for (final e in (j['widths'] as Map).entries)
+              if (e.value is num) '${e.key}': (e.value as num).toDouble(),
+        },
       );
 }
 
@@ -217,6 +244,8 @@ class AppDataTable<T> extends StatefulWidget {
     this.densityToggle,
     this.selectedRowId,
     this.onRowHover,
+    this.columnResize = false,
+    this.maxInlineActions,
   });
 
   final List<AppTableColumn<T>> columns;
@@ -277,6 +306,16 @@ class AppDataTable<T> extends StatefulWidget {
   /// Called once each time a mouse (or stylus) pointer enters a row; never on touch.
   final ValueChanged<T>? onRowHover;
 
+  /// A drag handle at each column's edge in the header (the person's widths are remembered with the layout).
+  final bool columnResize;
+
+  /// The row actions drawn beside a wide row, the rest in a menu; null = up to 3, or 2 and the menu.
+  final int? maxInlineActions;
+
+  /// Whether the table around [context] is in compact density (a cell shrinks its thumbnail or chip).
+  static bool compactOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_TableDensityScope>()?.compact ?? false;
+
   /// The key of the row (or phone card) body whose id is [id] (tests, scroll-into-view).
   static Key rowKey(Object id) => ValueKey<(String, Object)>(('app_table_row', id));
 
@@ -293,6 +332,18 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
 
   /// The shown columns of this build, in the person's order.
   List<AppTableColumn<T>> _shown = const [];
+
+  /// [_shown] without the columns this table's width leaves out ([AppTableColumn.hideBelow]).
+  List<AppTableColumn<T>> _wide = const [];
+
+  /// The widths drawn when [AppDataTable.columnResize] is on, shrunk to the table's width when they do not fit.
+  Map<String, double> _fitted = const {};
+
+  /// A column's width as last laid out (the start of a drag on a flex column).
+  final Map<String, double> _measured = {};
+
+  static const double _minColumn = 72;
+  static const double _maxColumn = 480;
 
   @override
   void initState() {
@@ -392,8 +443,12 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         borderRadius: AppRadius.cardAll,
         side: BorderSide(color: c.divider, width: AppBorder.hairline),
       ),
-      child: LayoutBuilder(builder: (context, box) {
+      child: _TableDensityScope(
+        compact: _compact,
+        child: LayoutBuilder(builder: (context, box) {
         final phone = box.maxWidth < Breakpoints.mobile;
+        _wide = [for (final x in _shown) if (x.hideBelow == null || box.maxWidth >= x.hideBelow!) x];
+        _fitWidths(box.maxWidth);
         final ready = widget.state == AppTableState.ready;
         final empty = ready && widget.rows.isEmpty;
         final fit = widget.shrinkWrap;
@@ -417,7 +472,39 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
           ],
         );
       }),
+      ),
     );
+  }
+
+  /// Fills [_fitted]: the column widths, scaled down when they leave the flex columns less than their minimum.
+  void _fitWidths(double tableWidth) {
+    if (!widget.columnResize) {
+      _fitted = const {};
+      return;
+    }
+    final sized = <String, double>{
+      for (final x in _wide)
+        if ((_layout.widths[x.key] ?? x.width) != null) x.key: _layout.widths[x.key] ?? x.width!,
+    };
+    final flex = _wide.length - sized.length;
+    final room = tableWidth - 2 * AppSpace.xs - _actionsWidth - (widget.selectable ? AppTouch.min : 0) - flex * _minColumn;
+    final sum = sized.values.fold<double>(0, (a, w) => a + w);
+    final k = sum > room && sum > 0 ? math.max(room, 0) / sum : 1.0;
+    _fitted = {for (final e in sized.entries) e.key: e.value * k};
+  }
+
+  double? _widthOf(AppTableColumn<T> col) => _fitted[col.key] ?? col.width;
+
+  void _dragColumn(AppTableColumn<T> col, double dx) {
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final from = _layout.widths[col.key] ?? _measured[col.key] ?? col.width ?? _minColumn;
+    final next = (from + (rtl ? -dx : dx)).clamp(_minColumn, _maxColumn).toDouble();
+    setState(() => _layout = _layout.copyWith(widths: {..._layout.widths, col.key: next}));
+  }
+
+  void _resetColumn(AppTableColumn<T> col) {
+    if (!_layout.widths.containsKey(col.key)) return;
+    _setLayout(_layout.copyWith(widths: {..._layout.widths}..remove(col.key)));
   }
 
   /// In fit mode the body just takes its height; otherwise it fills the rest and scrolls (rows scroll themselves).
@@ -459,8 +546,9 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                     ),
                   ),
                 if (widget.toolbarTrailing != null) widget.toolbarTrailing!,
-                if (_showDensity) _densityButton(context),
-                if (widget.columnMenu) _columnsButton(context, phone),
+                // a card of the page's own design has no columns to arrange
+                if (_showDensity && !(phone && widget.mobileCard != null)) _densityButton(context),
+                if (widget.columnMenu && !(phone && widget.mobileCard != null)) _columnsButton(context, phone),
               ],
             ),
           for (final f in filters) ...[
@@ -606,7 +694,11 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     return m;
   }
 
-  double get _actionsWidth => AppTouch.min * math.min(_maxActions, 3);
+  double get _actionsWidth {
+    final inline = widget.maxInlineActions;
+    final slots = inline == null ? math.min(_maxActions, 3) : math.min(_maxActions, inline + 1);
+    return AppTouch.min * slots;
+  }
 
   Alignment _align(AppTableColumn<T> col) => AlignmentDirectional(
           switch (col.align) {
@@ -617,9 +709,29 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
           0)
       .resolve(Directionality.of(context));
 
-  Widget _slot(AppTableColumn<T> col, Widget child) {
+  Widget _slot(AppTableColumn<T> col, Widget child, {bool header = false}) {
     final padded = Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), child: child);
-    return col.width != null ? SizedBox(width: col.width, child: padded) : Expanded(flex: col.flex, child: padded);
+    final Widget body = !header || !widget.columnResize || col.primary
+        ? padded
+        : LayoutBuilder(builder: (context, box) {
+            _measured[col.key] = box.maxWidth;
+            return Stack(children: [
+              padded,
+              PositionedDirectional(
+                end: 0,
+                top: 0,
+                bottom: 0,
+                child: _ResizeHandle(
+                  key: ValueKey('app_table_resize_${col.key}'),
+                  onDrag: (dx) => _dragColumn(col, dx),
+                  onEnd: () => _setLayout(_layout),
+                  onReset: () => _resetColumn(col),
+                ),
+              ),
+            ]);
+          });
+    final w = _widthOf(col);
+    return w != null ? SizedBox(width: w, child: body) : Expanded(flex: col.flex, child: body);
   }
 
   Widget _headerRow(BuildContext context) {
@@ -648,8 +760,8 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                   onChanged: (_) => _setSel(nSel == ids.length ? {} : {...ids}),
                 ),
               ),
-            for (final col in _shown)
-              _slot(col, _headerCell(context, col, ar)),
+            for (final col in _wide)
+              _slot(col, _headerCell(context, col, ar), header: true),
             if (_actionsWidth > 0) SizedBox(width: _actionsWidth),
           ]),
         ),
@@ -726,6 +838,8 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     }
     final footer = widget.loadingMore;
     final list = ListView.separated(
+      // a numbered table starts each page at its top
+      key: widget.pagination == null ? null : ValueKey('app_table_page_${widget.pagination!.page}'),
       padding: EdgeInsets.zero,
       itemCount: rows.length + (footer ? 1 : 0),
       separatorBuilder: (_, _) => Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
@@ -791,7 +905,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                 onChanged: (_) => _toggle(row),
               ),
             ),
-          for (final col in _shown)
+          for (final col in _wide)
             _slot(
               col,
               ConstrainedBox(
@@ -826,8 +940,10 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
 
   List<Widget> _inlineActions(BuildContext context, List<AppRowAction<T>> actions) {
     final c = context.colors;
-    final inline = actions.length > 3 ? actions.take(2).toList() : actions;
-    final rest = actions.length > 3 ? actions.skip(2).toList() : <AppRowAction<T>>[];
+    final limit = widget.maxInlineActions;
+    final shown = limit ?? (actions.length > 3 ? 2 : actions.length);
+    final inline = actions.take(shown).toList();
+    final rest = actions.skip(shown).toList();
     return [
       for (final a in inline)
         IconButton(
@@ -969,7 +1085,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
 
   Widget _loading(BuildContext context, bool phone) {
     final c = context.colors;
-    final cols = _shown.where((x) => phone ? x.showOnPhone : true).toList();
+    final cols = phone ? _shown.where((x) => x.showOnPhone).toList() : _wide;
     Widget row(int i) {
       if (phone) {
         return Padding(
@@ -990,8 +1106,8 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
           child: Row(children: [
             if (widget.selectable) const SizedBox(width: AppTouch.min),
             for (final col in cols)
-              col.width != null
-                  ? SizedBox(width: col.width, child: const Padding(padding: EdgeInsets.symmetric(horizontal: AppSpace.xs), child: AppSkeletonBox(height: 12)))
+              _widthOf(col) != null
+                  ? SizedBox(width: _widthOf(col), child: const Padding(padding: EdgeInsets.symmetric(horizontal: AppSpace.xs), child: AppSkeletonBox(height: 12)))
                   : Expanded(
                       flex: col.flex,
                       child: Padding(
@@ -1055,6 +1171,71 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
       message: active ? 'ds_no_results_hint'.tr : null,
       actionLabel: active && widget.onClearFilters != null ? 'ds_clear_filters'.tr : null,
       onAction: active ? widget.onClearFilters : null,
+    );
+  }
+}
+
+/// The table's density, for a cell that follows it ([AppDataTable.compactOf]).
+class _TableDensityScope extends InheritedWidget {
+  const _TableDensityScope({required this.compact, required super.child});
+
+  final bool compact;
+
+  @override
+  bool updateShouldNotify(_TableDensityScope oldWidget) => oldWidget.compact != compact;
+}
+
+/// The edge of a header cell: drag to resize the column, double tap for its default width; it shows under the pointer
+/// (the resize cursor) so a resting header stays calm. Pointer only, so it is kept out of the semantics tree (the
+/// Columns sheet's Reset is the other way back).
+class _ResizeHandle extends StatefulWidget {
+  const _ResizeHandle({super.key, required this.onDrag, required this.onEnd, required this.onReset});
+
+  final ValueChanged<double> onDrag;
+  final VoidCallback onEnd;
+  final VoidCallback onReset;
+
+  @override
+  State<_ResizeHandle> createState() => _ResizeHandleState();
+}
+
+class _ResizeHandleState extends State<_ResizeHandle> {
+  bool _hot = false;
+
+  void _set(bool v) {
+    if (v != _hot) setState(() => _hot = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return ExcludeSemantics(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        onEnter: (_) => _set(true),
+        onExit: (_) => _set(false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: (_) => _set(true),
+          onHorizontalDragUpdate: (d) => widget.onDrag(d.delta.dx),
+          onHorizontalDragEnd: (_) {
+            _set(false);
+            widget.onEnd();
+          },
+          onDoubleTap: widget.onReset,
+          child: SizedBox(
+            width: AppSpace.sm,
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: SizedBox(
+                width: AppBorder.focus,
+                height: AppSpace.md,
+                child: ColoredBox(color: _hot ? c.primary : Colors.transparent),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1181,7 +1362,7 @@ class _ColumnsSheetState<T> extends State<_ColumnsSheet<T>> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final cols = _l.ordered(widget.columns);
-    final changed = _l.order.isNotEmpty || _l.hidden.isNotEmpty;
+    final changed = _l.order.isNotEmpty || _l.hidden.isNotEmpty || _l.widths.isNotEmpty;
     return AppSheetContent(
       title: 'ds_columns'.tr,
       headerTrailing: TextButton(

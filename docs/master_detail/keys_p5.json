@@ -1,0 +1,16 @@
+{
+  "md_p5_open": {"en": "Open", "ar": "فتح"},
+  "md_p5_export": {"en": "Export", "ar": "تصدير"},
+  "md_p5_show": {"en": "Show", "ar": "إظهار"},
+  "md_p5_hide": {"en": "Hide", "ar": "إخفاء"},
+  "md_p5_starts": {"en": "Starts {d}", "ar": "تبدأ {d}"},
+  "md_p5_ends": {"en": "Ends {d}", "ar": "تنتهي {d}"},
+  "md_p5_history_of": {"en": "{name} in this course", "ar": "{name} في هذه الدورة"},
+  "md_p5_trend_change": {"en": "{p} vs the 4 weeks before", "ar": "{p} مقارنة بالأسابيع الأربعة السابقة"},
+  "md_p5_insight_completed": {"en": "{n} of {total} students finished", "ar": "أتمّ {n} من {total} طالب"},
+  "md_p5_insight_reason": {"en": "Main reason for leaving: {r}", "ar": "أكثر أسباب الانسحاب: {r}"},
+  "md_p5_sort_students_asc": {"en": "Fewest students", "ar": "الأقل طلاباً"},
+  "md_p5_sort_rating_asc": {"en": "Lowest rated", "ar": "الأقل تقييماً"},
+  "md_p5_sort_completion_desc": {"en": "Highest completion", "ar": "الأعلى إتماماً"},
+  "md_p5_sort_completion_asc": {"en": "Lowest completion", "ar": "الأقل إتماماً"}
+}

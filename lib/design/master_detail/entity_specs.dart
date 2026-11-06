@@ -6,8 +6,7 @@
 //   stats          statSpecsOf(summary): the tiles a summary draws (only the figures the server sent)
 //   rows           entityRowFor(item, …): one row of a sub-list, a link to the entity it names
 //
-// Phase 3 draws the timeline as a plain chronological list and a course's trend as one sparkline; the rich timeline
-// and the course statistics come in phases 4 – 5.
+// A course adds a one-line reading of its figures (mdCourseInsight) and of its trend (mdTrendChange).
 library;
 
 import 'package:flutter/material.dart';
@@ -42,6 +41,13 @@ String mdNumber(num? v) => v == null ? '—' : appCompactNumber(v.toDouble());
 /// "250 EGP" (left to right inside Arabic).
 String mdMoney(EntityMoney m) {
   final a = m.amount == m.amount.roundToDouble() ? m.amount.toInt().toString() : m.amount.toStringAsFixed(2);
+  return ltrIsolate(m.currency.isEmpty ? a : '$a ${m.currency}');
+}
+
+/// [mdMoney] for a stat tile: "41.3K EGP" from ten thousand up, so the figure stays on one line.
+String mdMoneyShort(EntityMoney m) {
+  if (m.amount.abs() < 10000) return mdMoney(m);
+  final a = appCompactNumber(m.amount);
   return ltrIsolate(m.currency.isEmpty ? a : '$a ${m.currency}');
 }
 
@@ -216,6 +222,32 @@ AppTone mdTimelineTone(EntityTimelineEvent e) => switch (e.type) {
       _ => AppTone.info,
     };
 
+/// The last 4 weeks of [trend] against the 4 before, in whole percent; null without 8 weeks or with nothing to compare
+/// (no enrollment in the 4 before).
+int? mdTrendChange(List<EntityTrendPoint> trend) {
+  if (trend.length < 8) return null;
+  int sum(Iterable<EntityTrendPoint> ps) => ps.fold<int>(0, (a, p) => a + p.count);
+  final recent = sum(trend.skip(trend.length - 4)), before = sum(trend.skip(trend.length - 8).take(4));
+  if (before == 0) return null;
+  return (100 * (recent - before) / before).round();
+}
+
+/// A staff view of a course in one line: how many finished, and the main reason for leaving; null before anyone
+/// counts.
+String? mdCourseInsight(EntitySummary s) {
+  if (s.kind != EntityKind.course || s.isLearnerView) return null;
+  final enrolled = s.stat('enrolled'), done = s.stat('completed');
+  if (enrolled == null || done == null) return null;
+  final counted = (enrolled - (s.stat('pending') ?? 0)).round();
+  if (counted <= 0) return null;
+  final parts = [
+    mdText('md_p5_insight_completed', {'n': mdNumber(done), 'total': mdNumber(counted)}),
+  ];
+  final reasons = s.withdrawalReasons.where((r) => r.$1 != 'unknown').toList()..sort((a, b) => b.$2.compareTo(a.$2));
+  if (reasons.isNotEmpty) parts.add(mdText('md_p5_insight_reason', {'r': mdReasonLabel(reasons.first.$1)}));
+  return parts.join(' · ');
+}
+
 // ── Sections ─────────────────────────────────────────────────────────────────
 
 enum EntitySectionShape { list, timeline, block }
@@ -329,7 +361,7 @@ List<EntityStat> statSpecsOf(EntitySummary s) {
     final r = s.revenue;
     if (r.isEmpty) return;
     out.add(EntityStat('revenue', 'md_stat_revenue'.tr, Icons.account_balance_wallet_outlined,
-        r.map(mdMoney).join(' · '), tone: AppTone.success));
+        r.map(mdMoneyShort).join(' · '), tone: AppTone.success));
   }
 
   switch (s.kind) {
@@ -349,19 +381,24 @@ List<EntityStat> statSpecsOf(EntitySummary s) {
     case EntityKind.course:
       count('enrolled', 'md_stat_students', Icons.groups_rounded);
       if (!s.isLearnerView) {
+        count('in_progress', 'md_stat_in_progress', Icons.play_circle_outline_rounded);
+        count('completed', 'md_stat_completed', Icons.task_alt_rounded, tone: AppTone.success);
+        count('withdrawn', 'md_stat_withdrawn', DirIcons.logout, tone: AppTone.danger);
         percent('completion_rate', 'md_stat_completion', Icons.workspace_premium_outlined, tone: AppTone.success);
         percent('avg_progress', 'md_stat_avg_progress', Icons.trending_up_rounded);
-        count('in_progress', 'md_stat_in_progress', Icons.play_circle_outline_rounded, hideZero: true);
-        count('withdrawn', 'md_stat_withdrawn', DirIcons.logout, tone: AppTone.danger, hideZero: true);
-        count('expired', 'md_stat_expired', Icons.timer_off_outlined, tone: AppTone.warning, hideZero: true);
-        count('favorites', 'md_stat_favorites', Icons.favorite_border_rounded, tone: AppTone.danger, hideZero: true);
       }
       rating('rating_avg', 'md_stat_rating', countKey: 'rating_count');
       if (s.isLearnerView) {
         count('sessions', 'md_stat_sessions', Icons.event_note_outlined);
         count('materials', 'md_stat_materials', Icons.video_library_outlined);
+      } else {
+        count('favorites', 'md_stat_favorites', Icons.favorite_border_rounded, tone: AppTone.danger);
       }
       money();
+      if (!s.isLearnerView) {
+        count('expired', 'md_stat_expired', Icons.timer_off_outlined, tone: AppTone.warning, hideZero: true);
+        count('pending', 'md_stat_pending', Icons.hourglass_empty_rounded, tone: AppTone.neutral, hideZero: true);
+      }
     case EntityKind.teacher:
       count('courses', 'md_stat_courses', Icons.library_books_outlined);
       count('published_courses', 'md_stat_published', Icons.public_rounded);

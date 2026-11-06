@@ -136,6 +136,20 @@ class AdminCourse {
   int get pendingPayments => asInt(j['pending_payments']);
   List<Map<String, dynamic>> get recentPayments => asMapList(j['recent_payments']);
 
+  // D-290: what the courses table shows
+  String? get createdAt => asStrOrNull(j['created_at']);
+  bool get isPrivate => asBool(j['is_private']);
+
+  /// In the trash (D-260): admins still see it.
+  bool get archived => asBool(j['archived']);
+  double get completionRate => asDouble(j['completion_rate']);
+  double get avgProgress => asDouble(j['avg_progress']);
+  int get withdrawnCount => asInt(j['withdrawn_count']);
+
+  /// Null: nobody rated it yet.
+  double? get ratingAvg => j['rating_avg'] == null ? null : asDouble(j['rating_avg']);
+  int get ratingCount => asInt(j['rating_count']);
+
   /// What students ACTUALLY paid for the course (after discounts) — `income` above.
   /// `collected` also includes platform fee / VAT / gateway fee.
   double get collected => asDouble(j['collected']);
