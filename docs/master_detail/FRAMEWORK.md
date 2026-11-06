@@ -166,3 +166,5 @@ cards, panel, states and keyboard everywhere (the server pages, searches, filter
 - Saved views are per person and per list id on the server (`saved_views`, migration 0058, 20 per list); a shared
   link is only the URL, so whoever opens it still sees only what the server lets them see.
 - The table's row checkboxes are labelled for screen readers (`ds_select_row`).
+
+Phase 9 (the hardening audit, every role's lists classified, what was converted and what remains): `PHASE9_AUDIT.md`.
