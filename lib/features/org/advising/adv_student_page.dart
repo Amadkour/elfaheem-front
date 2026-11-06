@@ -14,8 +14,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:provider/provider.dart';
@@ -99,6 +101,8 @@ class AdvStudentHeader extends StatelessWidget {
             const SizedBox(height: AppSpace.xxs),
             Text(p.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           ],
+          // D-290: the student's platform record (courses, history), when the server lets this advisor open it
+          if (p.userId > 0) EntityGuardedChip(EntityRef(EntityKind.student, p.userId, label: p.shown), maxWidth: 280),
           if (standing.isNotEmpty || p.joinedAt != null) ...[
             const SizedBox(height: AppSpace.xs),
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [

@@ -257,7 +257,8 @@ void main() {
         'GET /api/v1/admin/parent-link/requests/1': (_) => const FakeResponse(500, {'detail': 'boom'}),
       });
       await pumpPage(t, const AdminParentRequestsPage());
-      await t.tap(find.textContaining('Student Name 0').first);
+      // the row (the parent's name); the student is a link of its own (D-290)
+      await t.tap(find.textContaining('عبد الرحمن').first);
       for (var i = 0; i < 12; i++) {
         await t.pump(const Duration(milliseconds: 100));
       }

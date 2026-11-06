@@ -16,7 +16,8 @@ import '../../config/app_config.dart';
 import '../parent/parent_link_providers.dart';
 import '../parent/parent_widgets.dart' show plDateTime, plLabel, plList;
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'admin_common.dart' show t;
+import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
+import 'admin_common.dart' show adminEntityCell, t;
 import 'admin_labels.dart';
 import 'admin_page.dart';
 
@@ -114,12 +115,17 @@ class ParentRequestsBody extends StatelessWidget {
             builder: (_) => ChangeNotifierProvider.value(value: p, child: _Detail(id: (r['id'] as num).toInt())),
           )),
           columns: [
-            AppTableColumn<Map<String, dynamic>>.text(
+            AppTableColumn<Map<String, dynamic>>(
               key: 'who',
               label: t('الطلب', 'Request'),
               primary: true,
               flex: 3,
-              text: (r) => '${r['parent_name']}  →  ${r['student_name']}',
+              // the parent is not an entity (plain text); the student opens the panel / full page (D-290)
+              cell: (ctx, r) => Wrap(spacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                Text('${r['parent_name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(ctx)),
+                Icon(Icons.arrow_forward_rounded, size: AppIconSize.xs, color: ctx.colors.textMedium),
+                adminEntityCell(ctx, EntityKind.student, {'id': r['student_id'], 'name': r['student_name']}),
+              ]),
             ),
             AppTableColumn<Map<String, dynamic>>.text(
               key: 'mode',
@@ -279,8 +285,17 @@ class _DetailState extends State<_Detail> {
         ),
       );
 
-  Widget _person(String title, Map m) => _block(title, [
-        _kv('pl_name'.tr, '${m['name'] ?? ''}'),
+  Widget _person(String title, Map m, {bool student = false}) => _block(title, [
+        if (student)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+            child: Row(children: [
+              SizedBox(width: 120, child: Text('pl_name'.tr, style: AppType.meta(context))),
+              Flexible(child: adminEntityCell(context, EntityKind.student, m)),
+            ]),
+          )
+        else
+          _kv('pl_name'.tr, '${m['name'] ?? ''}'),
         _kv(t('البريد', 'E-mail'), '${m['email'] ?? ''}'),
         _kv('pl_phone'.tr, '${m['phone'] ?? ''}'),
       ]);
@@ -299,7 +314,7 @@ class _DetailState extends State<_Detail> {
         ]),
       ),
       _person('pl_parent'.tr, d['parent'] as Map? ?? {}),
-      _person('pl_student'.tr, d['student'] as Map? ?? {}),
+      _person('pl_student'.tr, d['student'] as Map? ?? {}, student: true),
       if (answers.isNotEmpty) _block('pl_answers'.tr, [for (final a in answers) _kv(plLabel(a), '${a['value']}')]),
       if (docs.isNotEmpty)
         _block('pl_documents'.tr, [

@@ -6,6 +6,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -418,7 +420,11 @@ class CertListBody extends StatelessWidget {
                   const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(name.isEmpty ? 'ci_no_name'.tr : name, style: AppType.row(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      // on the platform: the student's record, when the server lets this issuer open it (D-290)
+                      if (r['student_id'] is num && (r['student_id'] as num) > 0)
+                        EntityGuardedChip(EntityRef(EntityKind.student, (r['student_id'] as num).toInt(), label: name), maxWidth: 360)
+                      else
+                        Text(name.isEmpty ? 'ci_no_name'.tr : name, style: AppType.row(context), maxLines: 1, overflow: TextOverflow.ellipsis),
                       if (others.isNotEmpty)
                         Text(others.join(' · '), style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
                       if (r['student_id'] != null)

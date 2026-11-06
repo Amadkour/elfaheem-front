@@ -21,6 +21,8 @@ import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
 import '../admin/admin_list.dart';
 import '../shared/calendar/calendar_meeting.dart' show showComplaintMeetingSheet;
 import 'org_common.dart';
@@ -546,6 +548,38 @@ class _ResponseTile extends StatelessWidget {
   }
 }
 
+/// "From" on a form response / a complaint: a guarded chip when the server names the person a student or a teacher
+/// (`person_kind`, D-290; a hidden identity has none), else the name. Whether the record opens is the server's answer.
+class OrgPersonFrom extends StatelessWidget {
+  const OrgPersonFrom(this.label, this.user, {super.key});
+  final String label;
+  final Map user;
+
+  static EntityRef? refOf(Map u) {
+    final kind = switch ('${u['person_kind']}') {
+      'student' => EntityKind.student,
+      'teacher' => EntityKind.teacher,
+      _ => null,
+    };
+    final id = asInt(u['id']);
+    if (kind == null || id <= 0) return null;
+    return EntityRef(kind, id, label: '${u['name'] ?? ''}', imageUrl: u['image_url'] as String?);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = refOf(user);
+    if (ref == null) return KeyValue(label, '${user['name'] ?? ''}');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+      child: Row(children: [
+        SizedBox(width: 110, child: Text(label, style: AppType.meta(context))),
+        Flexible(child: EntityGuardedChip(ref, maxWidth: 320)),
+      ]),
+    );
+  }
+}
+
 Future<void> _openResponse(BuildContext context, Map<String, dynamic> row, Map<String, dynamic> form, int? dept) async {
   final s = context.read<OrgSession>();
   final p = context.read<OrgPaged>();
@@ -578,7 +612,7 @@ Future<void> _openResponse(BuildContext context, Map<String, dynamic> row, Map<S
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SheetHeader('${row['ref'] ?? ''}'),
-        KeyValue(t('مقدم الطلب', 'From'), '${asMap(row['user'])['name'] ?? ''}'),
+        OrgPersonFrom(t('مقدم الطلب', 'From'), asMap(row['user'])),
         KeyValue(t('التاريخ', 'Date'), shortDateTime('${row['created_at']}')),
         const Divider(height: 24),
         for (final f in fields) ...[
@@ -1112,7 +1146,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                           for (final a in asMapList(d['attachments']))
                             TextButton.icon(onPressed: () => openFileUrl('${a['url']}'), icon: const Icon(Icons.attach_file_rounded), label: Text('${a['name']}')),
                           const Divider(height: 22),
-                          KeyValue(t('من', 'From'), '${asMap(d['user'])['name'] ?? ''}'),
+                          OrgPersonFrom(t('من', 'From'), asMap(d['user'])),
                           if (canAct && d['is_anonymous'] != true && d['status'] != 'closed')
                             Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(onPressed: () async { if (await showComplaintMeetingSheet(context, orgId: widget.orgId ?? s.currentId!, complaintId: widget.id, subject: '${d['subject']}')) _load(); }, icon: const Icon(Icons.event_available_rounded), label: Text(t('تحويل إلى اجتماع', 'Turn into a meeting')))),
                           if (d['assigned_to'] != null) KeyValue(t('المسؤول', 'Handled by'), '${asMap(d['assigned_to'])['name']}'),
