@@ -128,6 +128,19 @@ class EntityPanelController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Fills in the name of a trail entry that came without one (a deep link names only the kind and id).
+  void learn(EntityRef named) {
+    if (named.name.isEmpty) return;
+    var changed = false;
+    for (var i = 0; i < _trail.length; i++) {
+      if (_trail[i] == named && _trail[i].name.isEmpty) {
+        _trail[i] = named;
+        changed = true;
+      }
+    }
+    if (changed) notifyListeners();
+  }
+
   /// The entity shown changed on the server: it loads again, and the list hears of it.
   void entityChanged() {
     reload();

@@ -96,6 +96,9 @@ void main() {
       await tester.pumpWidget(layoutHost(_panel(EntityPanelController()..open(_sara)), scale: 1));
       await _settle(tester);
       expect(find.text('1 of 6 courses completed'), findsOneWidget);
+      final bar = find.descendant(of: find.byType(StudentOverviewCard), matching: find.byType(ColoredBox));
+      expect(bar, findsNWidgets(5)); // one segment per state
+      expect(tester.getSize(bar.first).height, greaterThan(0)); // drawn, not a blank gap
       expect(find.text('Paid'), findsWidgets);
       expect(find.textContaining('1350'), findsOneWidget);
       expect(find.text('Courses and history'), findsOneWidget);
@@ -223,9 +226,12 @@ void main() {
       await _wide(tester);
       expect(EntityNavigator.location(_sara, from: const EntityRef(EntityKind.course, 41)), '/view/student/100?from=course%3A41');
       expect(EntityNavigator.location(_sara), '/view/student/100');
-      await tester.pumpWidget(layoutHost(const EntityDetailPage(entity: _sara, from: EntityRef(EntityKind.course, 41)), scale: 1));
+      await tester.pumpWidget(layoutHost(const EntityDetailPage(entity: EntityRef(EntityKind.student, 100), from: EntityRef(EntityKind.course, 41)), scale: 1));
       await _settle(tester, 20);
       expect(find.text('Finished 3 lessons'), findsOneWidget);
+      // a URL names only ids: the breadcrumbs learn the names
+      expect(find.textContaining('#'), findsNothing);
+      expect(api.calls.map((c) => c.path), contains('/api/v1/entities/courses/41'));
       await tester.pumpWidget(const SizedBox());
     });
   });

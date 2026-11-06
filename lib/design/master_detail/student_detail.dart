@@ -166,7 +166,7 @@ class _StateBar extends StatelessWidget {
         borderRadius: AppRadius.chipAll,
         child: SizedBox(
           height: AppSpace.xs,
-          child: Row(children: [
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             for (var i = 0; i < counts.length; i++) ...[
               if (i > 0) const SizedBox(width: AppBorder.strong),
               Expanded(

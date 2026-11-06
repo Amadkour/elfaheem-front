@@ -22,7 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import '../../support/fake_api.dart';
-import '../master_detail/md_support.dart' show entityRoutes;
+import '../master_detail/md_support.dart' show entityRoutes, teacherSummary;
 import '../layout_harness.dart';
 import 'people_support.dart';
 

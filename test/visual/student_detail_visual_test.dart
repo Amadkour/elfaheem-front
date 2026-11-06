@@ -132,6 +132,10 @@ void main() {
         tap: const ValueKey('md.student.history.42'));
   });
 
+  testWidgets('the top of the page on a phone: header, overview, first rows', (tester) async {
+    await render(tester, 'md4_top_390', () => const EntityDetailPage(entity: sara), const Size(390, 1300));
+  });
+
   testWidgets('a student opened from a course: that course open, in view', (tester) async {
     await render(tester, 'md4_focus_390', () => const EntityDetailPage(entity: sara, from: python), const Size(390, 844),
         bothThemes: false);

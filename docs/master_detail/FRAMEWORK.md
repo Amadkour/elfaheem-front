@@ -79,4 +79,5 @@ course's history unfolds under its row, fetched on the first open) Â· payments Â
   the Subscription, Account, Devices and Controls cards. A change calls `EntityPanelController.entityChanged()`: the
   detail and its sub-lists reload in place (`EntitySubList.revision`) and the list hears of it (`onEntityChanged`).
   Remove asks for the withdrawal reason and sends it (`reason_code`, `reason`).
+- A deep link names only kinds and ids: `EntityDetailView` tells the controller the names it learns (`learn`), and fetches the summary of any unnamed trail entry, so breadcrumbs and the student context draw names.
 - A hit on a student in the admin's global search opens the full page; `showAdminUserDetail` with role `student` too.

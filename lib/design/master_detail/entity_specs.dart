@@ -442,6 +442,9 @@ class EntityRowFrame extends StatelessWidget {
   final Widget? action;
   final bool highlight;
 
+  /// The most a trailing chip takes from the title.
+  static const double _trailingWidth = 112;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -459,11 +462,9 @@ class EntityRowFrame extends StatelessWidget {
               if (trailing != null) ...[
                 const SizedBox(width: AppSpace.xs),
                 // a narrow sheet at a large text size: the chip shrinks instead of pushing the title out
-                Flexible(
-                  child: Align(
-                    alignment: AlignmentDirectional.topEnd,
-                    child: FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.topEnd, child: trailing!),
-                  ),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: _trailingWidth),
+                  child: FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.topEnd, child: trailing!),
                 ),
               ],
             ]),

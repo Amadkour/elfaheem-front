@@ -172,7 +172,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         _error = null;
         _loading = false;
       });
-      _syncManage(hit);
+      _summaryArrived(hit);
       return;
     }
     if (mounted) setState(() => _loading = true);
@@ -184,7 +184,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         _error = null;
         _loading = false;
       });
-      _syncManage(s);
+      _summaryArrived(s);
     } catch (e) {
       if (!mounted || want != ref) return;
       setState(() {
@@ -192,6 +192,25 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         _loading = false;
       });
     }
+  }
+
+  /// What the summary tells the rest of the panel: the management part, and the names the trail lacks (a deep link
+  /// gives only kinds and ids, and the breadcrumbs and a course's student context draw names).
+  void _summaryArrived(EntitySummary s) {
+    _syncManage(s);
+    final c = widget.controller;
+    if (c == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      c.learn(s.ref);
+      for (final r in c.trail) {
+        if (r.name.isEmpty) {
+          EntitiesApi.instance.summary(r).then((named) {
+            if (mounted) c.learn(named.ref);
+          }, onError: (Object _) {});
+        }
+      }
+    });
   }
 
   int? _viewerId(BuildContext context) {
@@ -233,6 +252,11 @@ class _EntityDetailViewState extends State<EntityDetailView> {
           ]),
         ));
       }
+      final contextStudent = ctl?.contextStudentId == null ? null : ctl?.contextRef;
+      if (contextStudent != null && !s.sections.contains('timeline')) {
+        children.add(StudentInCourseBlock(
+            key: ValueKey('md.context.${contextStudent.id}'), student: contextStudent, courseId: s.id));
+      }
       final stats = statSpecsOf(s);
       if (s.kind == EntityKind.student) {
         children.add(StudentOverviewCard(summary: s));
@@ -241,7 +265,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
       }
       children.addAll(_blocks(context, s));
       final focusCourse = ctl?.focusCourseId;
-      final contextStudent = ctl?.contextStudentId;
+      final contextStudentId = ctl?.contextStudentId;
       String? nameOf(int? id, EntityKind kind) {
         if (ctl == null || id == null) return null;
         final hit = ctl.trail.where((r) => r.kind == kind && r.id == id);
@@ -254,16 +278,16 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         final studentCourses = s.kind == EntityKind.student && section == 'courses';
         final Widget body = switch (spec.shape) {
           EntitySectionShape.block => _ContentBlock(summary: s),
-          EntitySectionShape.timeline => _learnerTimeline(context, s, contextStudent),
+          EntitySectionShape.timeline => _learnerTimeline(context, s, contextStudentId),
           EntitySectionShape.list => EntitySubList(
               key: ValueKey('md.${s.kind.name}.${s.id}.$section'),
               entity: s.ref,
               spec: spec,
               initialSearch: switch ((s.kind, section)) {
-                (EntityKind.course, 'students') => nameOf(contextStudent, EntityKind.student),
+                (EntityKind.course, 'students') => nameOf(contextStudentId, EntityKind.student),
                 _ => null,
               },
-              highlightId: s.kind == EntityKind.student ? focusCourse : contextStudent,
+              highlightId: s.kind == EntityKind.student ? focusCourse : contextStudentId,
               revision: ctl?.revision ?? 0,
               pinned: studentCourses && focusCourse != null
                   ? () => EntitiesApi.instance.studentCourse(s.id, focusCourse)
@@ -317,10 +341,6 @@ class _EntityDetailViewState extends State<EntityDetailView> {
     final out = <Widget>[];
     switch (s.kind) {
       case EntityKind.course:
-        final student = widget.controller?.contextRef;
-        if (student != null && !s.sections.contains('timeline')) {
-          out.add(StudentInCourseBlock(key: ValueKey('md.context.${student.id}'), student: student, courseId: s.id));
-        }
         final mine = s.mine;
         if (mine != null) {
           out.add(_BlockCard(
