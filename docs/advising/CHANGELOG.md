@@ -1,5 +1,31 @@
 # Academic Advising — changelog
 
+## Phase 9 — Hardening — 2026-11-07
+Backend:
+- Isolation e2e (`e2e_advising_isolation.py`): every advising route read from the app's OpenAPI and attacked across
+  organizations, from the wrong role and with foreign ids; every attempt 403 / 404, nothing leaked.
+- Security review: rate limits on 28 write routes (`adv_write`, new `adv_config`; 429 `advising_rate_limited`), audit
+  of staff reads of accommodations, `%` / `_` / `\` escaped in searches, two PostgreSQL-only 500s fixed
+  (`org_code_attempts.scope` widened, the dashboard's epoch Decimal).
+- Performance on PostgreSQL at 100 000 students and 400 advisors: tenant RLS policies evaluate `nb_tenant_ids()` once
+  per query (migration 0060 rewrites every policy that calls it, platform-wide, same predicate); 32 of 87 list cases
+  under 300 ms p95 (5 before). Still over: the director's org-wide workspace, the dashboard, most drill-downs.
+- Retention: sensitive notes, term rows and outreach recipients of memberships ended more than `retention_months`
+  ago, and old daily snapshots, purged once a day in bounded batches with an audit row of counts.
+- Privacy: the personal export gains an `advising` area (never flags, risk or internal notes); account deletion
+  removes the person's advising rows and files, keeps aggregates and staff audit.
+- A department / program / level / cohort policy's max load caps the advisor for that scope's students (409
+  `advising_over_capacity`); the welcome e-mail rule checked against the plan (no change).
+- `GET /org/public/me/overview` (and `/me/home`) items carry `advising` for a student with an advisor.
+- `docs/advising/openapi.json` + `scripts/contract/export_advising_openapi.py`.
+
+App:
+- Workspace multi-select (long press or More) and "Message selected" through the outreach composer.
+- An outreach push opens that message; the member home's advisor card reads `overview.advising` (open budget back to 4).
+- Advising pages in the accessibility test; `OrgSegmented` touch height 48; fallback theme text-button contrast.
+- `docs/guides/advising.md`; the Word / PowerPoint guide `documents/08_Academic_Advising.*` (local, `documents/` is
+  not tracked).
+
 ## Phases 5-8 — Appointments, early warning, requests, analytics — 2026-11-06
 Built in parallel (one worktree pair per phase), merged into `feature/academic-advising`, then with `organizations`;
 migrations chained 0053 → 0054 → 0055 → 0056 → 0057 and checked up and down on PostgreSQL.
