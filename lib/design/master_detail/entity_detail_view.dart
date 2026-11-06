@@ -401,7 +401,7 @@ class EntityHeader extends StatelessWidget {
           if (s.text('phone') != null) meta.add(s.text('phone')!);
           for (final o in s.organizations) {
             if (o.name.isNotEmpty) {
-              pills.add(AppStatusBadge(label: o.name, tone: AppTone.info, icon: Icons.apartment_rounded, dense: true));
+              pills.add(AppStatusBadge(label: o.name, tone: AppTone.neutral, icon: Icons.apartment_rounded, dense: true));
             }
           }
           if (s.time('created_at') != null) meta.add(mdText('md_joined', {'d': mdDate(s.time('created_at'))}));
@@ -586,18 +586,22 @@ class _BlockCard extends StatelessWidget {
 }
 
 class _SectionHeading extends StatelessWidget {
-  const _SectionHeading({required this.icon, required this.title});
+  const _SectionHeading({required this.icon, required this.title, this.shrink = false});
 
   final IconData icon;
   final String title;
 
+  /// As wide as its text instead of the whole line.
+  final bool shrink;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Row(children: [
+    return Row(mainAxisSize: shrink ? MainAxisSize.min : MainAxisSize.max, children: [
       Icon(icon, size: AppIconSize.md, color: Color.lerp(c.primary, c.textDark, 0.25)),
       AppSpace.gapXs,
-      Expanded(
+      Flexible(
+        fit: shrink ? FlexFit.loose : FlexFit.tight,
         child: Semantics(
           header: true,
           child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
@@ -708,10 +712,16 @@ class EntitySectionCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
-              child: Row(children: [
-                Expanded(child: _SectionHeading(icon: spec.icon, title: spec.title)),
-                ?trailing,
-              ]),
+              child: trailing == null
+                  ? _SectionHeading(icon: spec.icon, title: spec.title)
+                  // the action drops under the heading when the two do not fit on one line
+                  : Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: AppSpace.xs,
+                      runSpacing: AppSpace.xxs,
+                      children: [_SectionHeading(icon: spec.icon, title: spec.title, shrink: true), trailing!],
+                    ),
             ),
             const SizedBox(height: AppSpace.sm),
             child,

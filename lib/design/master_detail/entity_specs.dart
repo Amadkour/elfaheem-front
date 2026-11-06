@@ -398,7 +398,8 @@ class EntityThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (ref.isPerson) return AppAvatar(name: ref.name, url: ref.imageUrl, size: size);
+    // the initial is decoration: the name is read beside it
+    if (ref.isPerson) return ExcludeSemantics(child: AppAvatar(name: ref.name, url: ref.imageUrl, size: size));
     final c = context.colors;
     final r = BorderRadius.circular(size * 0.28);
     final icon = Container(

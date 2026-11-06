@@ -274,7 +274,7 @@ void main() {
       await tester.pumpWidget(layoutHost(const EntityDetailPage(entity: EntityRef(EntityKind.student, 12)), scale: 1, scaffold: false));
       await frames(tester, 8);
       expect(find.text('سارة أحمد 1'), findsWidgets);
-      expect(find.text('md_sec_courses'.tr), findsWidgets); // a stat tile and the section title
+      expect(find.text('md_p4_sec_courses'.tr), findsWidgets);
       expect(find.text('md_sec_payments'.tr), findsOneWidget);
       expect(find.byKey(const ValueKey('md.close')), findsNothing, reason: 'a page has Back, not Close');
       await tester.pumpWidget(const SizedBox());

@@ -221,7 +221,7 @@ Widget? _signals(EntityEnrollment e) {
           icon: Icons.star_rounded,
           dense: true),
     if (ex != null && ex.count > 0)
-      AppStatusBadge(label: studentExamsText(ex), tone: AppTone.info, icon: Icons.quiz_outlined, dense: true),
+      AppStatusBadge(label: studentExamsText(ex), tone: AppTone.neutral, icon: Icons.quiz_outlined, dense: true),
   ];
   return pills.isEmpty ? null : Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: pills);
 }

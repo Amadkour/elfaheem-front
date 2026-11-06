@@ -107,7 +107,14 @@ void main() {
         (tester) async {
       await bigView(tester);
       EntitiesApi.instance.invalidate();
-      final api = FakeApi({...peopleRoutes(), ...entityRoutes()}, latency: const Duration(milliseconds: 50));
+      final api = FakeApi({
+        ...peopleRoutes(),
+        ...entityRoutes(),
+        'GET /api/v1/entities/teachers/*': (o) => {
+              ...teacherSummary(100),
+              'can': {'manage': true, 'message': true, 'see_money': true},
+            },
+      }, latency: const Duration(milliseconds: 50));
       final auth = await peopleSetUp(api);
       await tester.pumpWidget(peopleProviders(auth, layoutHost(const AdminUsersPage(role: 'student', embedded: true), scale: 1)));
       await pumpFrames(tester);
@@ -197,7 +204,7 @@ void main() {
 
     testWidgets('closing the sheet while a request is running does not throw', (tester) async {
       await bigView(tester, const Size(900, 1800));
-      await openDetail(tester, FakeApi(peopleRoutes(), latency: const Duration(milliseconds: 400)), id: 100, role: 'student');
+      await openDetail(tester, FakeApi(peopleRoutes(detailRole: 'teacher'), latency: const Duration(milliseconds: 400)), id: 100, role: 'teacher');
       // the sheet is still loading: close it and let the answer land
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(seconds: 2));
