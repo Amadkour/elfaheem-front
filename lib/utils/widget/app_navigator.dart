@@ -217,6 +217,17 @@ class AppNavigator {
           await root.pushNamed('/org_dashboard');
         }
         return;
+      // academic advising requests / referrals / plans / accommodations (D-289 Phase 7): push `kind` request · plan ·
+      // accommodation, or the app links org_adv_request · org_adv_plan → the request / the Support section, by audience
+      case 'org_adv_request':
+      case 'org_adv_plan':
+      case 'advising' when const {'request', 'plan', 'accommodation'}.contains('${data['kind'] ?? (data['data'] is Map ? (data['data'] as Map)['kind'] : null) ?? kind}'):
+        if (orgId != null && !AppConfig.disableList.contains('org.advising') &&
+            await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenSupportLink(nav, orgId: orgId, data: data, module: module, kind: kind))) {
+          return;
+        }
+        await nav.pushNamed('/notifications');
+        return;
       // academic advising (D-289): an urgent flag · an escalation · a review due names the student → their 360
       case 'advising':
         final inner = data['data'];

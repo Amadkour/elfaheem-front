@@ -16,6 +16,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import '../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, t;
 import '../org_registrar.dart' show termTitle;
 import '../org_v3.dart' show orgDay, orgParseUtc, orgUtc;
+import 'adv_support_models.dart' show AdvRequestCounts, advSupportTimelineText;
 
 /// Organization types that may switch advising on; a sub-organization of one of them is eligible too
 /// (the server's `ADVISING_ORG_TYPES`).
@@ -78,6 +79,7 @@ class AdvMe {
     this.handoversPending = 0,
     this.flagsUrgent = 0,
     this.flagsOverdue = 0,
+    this.requests = const AdvRequestCounts(),
   });
 
   final bool admin, director, advisor;
@@ -91,6 +93,9 @@ class AdvMe {
   /// Phase 4: urgent open flags of my students · flags past their review date (0 from an older server).
   final int flagsUrgent, flagsOverdue;
 
+  /// Phase 7: requests at the director's review (manage) · waiting on my information · overdue (manage).
+  final AdvRequestCounts requests;
+
   factory AdvMe.fromJson(Map<String, dynamic> j) => AdvMe(
         admin: asBool(j['admin']),
         director: asBool(j['director']),
@@ -99,6 +104,7 @@ class AdvMe {
         handoversPending: asInt(j['handovers_pending']),
         flagsUrgent: asInt(j['flags_urgent']),
         flagsOverdue: asInt(j['flags_overdue']),
+        requests: AdvRequestCounts.fromMe(j),
       );
 
   /// The highest of my roles: `admin` · `director` · `advisor` · `none`.
@@ -2458,7 +2464,8 @@ class AdvTimelineEntry {
         final m = _text(d['mode'] ?? d['contact_mode']);
         return m == null ? t('تواصل مع الطالب', 'Contact with the student') : t('تواصل: ${advMeetingModeLabel(m)}', 'Contact: ${advMeetingModeLabel(m)}');
       default:
-        return t('نشاط في الملف', 'Activity on the record');
+        // Phase 7 kinds (requests, referrals, plans, accommodations): adv_support_models.dart
+        return advSupportTimelineText(kind, d) ?? t('نشاط في الملف', 'Activity on the record');
     }
   }
 }

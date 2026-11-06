@@ -20,6 +20,9 @@ import 'adv_my_advisor_page.dart' show AdvMyAdvisorPage;
 import 'adv_warning_parts.dart' show advWarningOn;
 import 'adv_workspace_page.dart' show AdvWorkspacePage;
 
+// Phase 7: the request / plan / accommodation deep links and the advising page's Requests links
+export 'adv_support_wiring.dart' show advOpenSupportLink;
+
 /// Kill switch of the whole module (`org.advising`, feature_catalog.py; not org-manageable). Hidden features
 /// disappear.
 bool advEnabled() => !AppConfig.disableList.contains('org.advising');

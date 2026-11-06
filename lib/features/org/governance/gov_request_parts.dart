@@ -492,6 +492,7 @@ class GovChainEditor extends StatelessWidget {
       'entity',
       if (hasCouncil) 'council',
       'faculty_council',
+      'student_department_council', // D-289: refused (422 chain_invalid) while no department has a council
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (steps.isEmpty)
@@ -602,7 +603,15 @@ class _GovChainEditorPageState extends State<GovChainEditorPage> {
     setState(() => _busy = false);
     if (!r.ok) {
       setState(() => _errorIndex = r.detail['index'] == null ? null : asInt(r.detail['index']));
-      showAppNotice(_codeText(r), error: true);
+      final at = _errorIndex;
+      // D-289: the requester's department council needs at least one department council to exist
+      final noDeptCouncil = r.code == 'chain_invalid' && at != null && at < _steps!.length && _steps![at].kind == 'student_department_council';
+      showAppNotice(
+          noDeptCouncil
+              ? t('لا توجد مجالس أقسام بعد — أنشئ مجلس القسم العلمي أولاً أو احذف خطوة «مجلس قسم صاحب الطلب»',
+                  "There are no department councils yet — create the scientific department's council first, or remove the \"requester's department council\" step")
+              : _codeText(r),
+          error: true);
       return;
     }
     setState(() => _steps = r.data as List<ChainStep>);

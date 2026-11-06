@@ -26,6 +26,7 @@ import 'adv_distribute_page.dart';
 import 'adv_handovers_page.dart';
 import 'adv_models.dart';
 import 'adv_students_page.dart';
+import 'adv_support_wiring.dart' show advSupportSetupPage, advSupportSetupTiles;
 import 'adv_workspace_page.dart';
 import 'adv_alerts_page.dart' show AdvAlertsPage;
 import 'adv_rules_page.dart' show AdvRulesPage;
@@ -401,6 +402,8 @@ extension _AdvSetupLinks on AdvSetupView {
       ],
       // Phase 6: early warning
       ...advWarningSetupTiles(context, leads: me.leads, advisor: me.advisor, open: open),
+      // Phase 7: requests and referrals · the approval chain · accommodations (adv_support_wiring.dart)
+      ...advSupportSetupTiles(context, me, open),
     ];
     return [
       _SectionTitle(t('العمل', 'Work')),
@@ -788,7 +791,7 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
     final s = _status;
     if (s == null) return;
     final id = widget.orgId, lead = s.me.leads;
-    final Widget page = switch (key) {
+    final Widget page = advSupportSetupPage(key, id, s.me) ?? switch (key) {
       'settings' => AdvConfigPage(orgId: id),
       'advisors' => AdvAdvisorsPage(orgId: id, manage: true),
       'profile' => AdvAdvisorsPage(orgId: id, manage: false),

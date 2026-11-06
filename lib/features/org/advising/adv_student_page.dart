@@ -35,12 +35,14 @@ import 'adv_parts.dart';
 import 'adv_students_page.dart' show showAdvStudentSheet;
 import 'adv_warning_parts.dart' show advWarningOn;
 import 'adv_warning_section.dart';
+import 'adv_support_360.dart' show AdvSupportSection;
+import 'adv_support_parts.dart' show advSupportTimelineIcon;
 
 /// The 360's sections, in order.
-const advCaseSections = ['overview', 'academic', 'flags', 'warning', 'notes', 'timeline'];
+const advCaseSections = ['overview', 'academic', 'flags', 'warning', 'notes', 'support', 'timeline'];
 
 /// The sections of the wide layout's second column.
-const advCasePanes = ['flags', 'warning', 'notes', 'timeline'];
+const advCasePanes = ['flags', 'warning', 'notes', 'support', 'timeline'];
 
 String advCaseSectionLabel(String s) => switch (s) {
       'academic' => t('الأكاديمي', 'Academic'),
@@ -48,6 +50,7 @@ String advCaseSectionLabel(String s) => switch (s) {
       'notes' => t('الملاحظات', 'Notes'),
       'timeline' => t('السجل الزمني', 'Timeline'),
       'warning' => t('الإنذار المبكر', 'Early warning'),
+      'support' => t('الدعم', 'Support'), // Phase 7 (adv_support_360.dart)
       _ => t('نظرة عامة', 'Overview'),
     };
 
@@ -57,6 +60,7 @@ IconData advCaseSectionIcon(String s) => switch (s) {
       'notes' => Icons.sticky_note_2_outlined,
       'timeline' => Icons.timeline_rounded,
       'warning' => Icons.radar_rounded,
+      'support' => Icons.support_outlined,
       _ => Icons.dashboard_outlined,
     };
 
@@ -458,7 +462,7 @@ IconData advTimelineIcon(String kind) => switch (kind) {
       'flag_status' => Icons.published_with_changes_rounded,
       'note' => Icons.sticky_note_2_outlined,
       'contact' => Icons.forum_outlined,
-      _ => Icons.circle_outlined,
+      _ => advSupportTimelineIcon(kind),
     };
 
 Color advTimelineColor(BuildContext context, AdvTimelineEntry e) {
@@ -540,6 +544,7 @@ class AdvStudentView extends StatelessWidget {
     this.notes = const SizedBox.shrink(),
     this.timeline = const SizedBox.shrink(),
     this.warning,
+    this.support = const SizedBox.shrink(),
     this.now,
     this.onRetry,
     this.onSection,
@@ -558,6 +563,8 @@ class AdvStudentView extends StatelessWidget {
 
   /// Phase 6: the "Early warning" pane (AdvWarningSection); null leaves the section out (switched off).
   final Widget? warning;
+  /// Phase 7: requests, referrals, plans, accommodations (AdvSupportSection / AdvSupportPane).
+  final Widget support;
   final DateTime? now;
   final VoidCallback? onRetry, onChangeAdvisor;
   final ValueChanged<String>? onSection;
@@ -569,6 +576,7 @@ class AdvStudentView extends StatelessWidget {
         'notes' => notes,
         'timeline' => timeline,
         'warning' => warning ?? const SizedBox.shrink(),
+        'support' => support,
         _ => flags,
       };
 
@@ -629,7 +637,7 @@ class AdvStudentView extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: pad.left),
           child: switch (current) {
             'academic' => AdvAcademicSection(profile: p),
-            'flags' || 'warning' || 'notes' || 'timeline' => _pane(current),
+            'flags' || 'warning' || 'notes' || 'support' || 'timeline' => _pane(current),
             _ => AdvOverviewSection(profile: p, now: now),
           },
         ),
@@ -656,7 +664,7 @@ class AdvStudentPage extends StatelessWidget {
   /// Shown as the title until the profile loads.
   final String? name;
 
-  /// Phase 6: the section it opens on, and "Propose a meeting" (the note composer set to log a contact).
+  /// The section it opens on (`warning`, a request / plan notice: `support`), and "Propose a meeting" (the note composer set to log a contact).
   final String section;
   final bool logContact;
 
@@ -1138,6 +1146,7 @@ class _AdvStudentBodyState extends State<_AdvStudentBody> {
         },
         onMore: () => _loadTimeline(more: true),
       ),
+      support: AdvSupportSection(orgId: _org, memberId: _member, studentName: p?.shown, categories: _categories, manage: _manage, onChanged: _afterWrite),
     );
   }
 }

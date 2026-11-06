@@ -4,6 +4,7 @@
 library;
 
 import '../../admin/admin_common.dart' show t;
+import 'adv_support_texts.dart' show advSupportCodeTexts;
 
 Map<String, String> advCodeTexts() => {
       'advising_not_available': t('الإرشاد الأكاديمي متاح للجامعات والكليات والأقسام التابعة لها فقط',
@@ -49,6 +50,8 @@ Map<String, String> advCodeTexts() => {
       'advising_rule_system': t('قواعد النظام لا تُحذف — أوقفها بدلاً من ذلك', 'Built-in rules cannot be deleted — switch them off instead'),
       'advising_rule_limit': t('بلغت المؤسسة الحد الأقصى: 50 قاعدة — احذف قاعدة أو عدّل قاعدة قائمة', 'The organization has the most rules allowed (50) — delete one or edit an existing rule'),
       'advising_run_busy': t('فحص القواعد يعمل الآن — تظهر نتيجته هنا حين ينتهي', 'A rule check is running now — its result shows here when it ends'),
+      // Phase 7: requests, referrals, the approval chain, support plans, accommodations (adv_support_texts.dart)
+      ...advSupportCodeTexts(),
     };
 
 /// The risk-reason codes of the workspace (`score.py`); `advRiskReasonText` in adv_models.dart writes each one.
