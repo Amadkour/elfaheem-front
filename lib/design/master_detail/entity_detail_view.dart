@@ -107,6 +107,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         _error = null;
         _loading = false;
       });
+      _nameTrail(hit);
       return;
     }
     if (mounted) setState(() => _loading = true);
@@ -118,6 +119,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         _error = null;
         _loading = false;
       });
+      _nameTrail(s);
     } catch (e) {
       if (!mounted || want != ref) return;
       setState(() {
@@ -125,6 +127,14 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         _loading = false;
       });
     }
+  }
+
+  /// An entity opened by id alone (`?open=`, a chip without a name): its breadcrumb takes the loaded name. After the
+  /// frame, because a cached summary arrives during the first build.
+  void _nameTrail(EntitySummary s) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.controller?.adopt(s.ref);
+    });
   }
 
   int? _viewerId(BuildContext context) {
@@ -753,7 +763,7 @@ class _EntitySubListState extends State<EntitySubList> {
               : null;
           final search = showSearch
               ? AppSearchField(
-                  controller: _searchCtl, hint: '${'md_search'.tr} ${spec.title}', dense: true, onChanged: _setSearch)
+                  controller: _searchCtl, hint: '${'md_search'.tr} ${spec.title}', onChanged: _setSearch)
               : null;
           if (search != null && sort != null && box.maxWidth >= 440) {
             return Row(children: [

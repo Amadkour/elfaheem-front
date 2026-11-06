@@ -216,7 +216,7 @@ class _UsersViewState extends State<_UsersView> {
         AppTableColumn<AdminUser>.text(
           key: 'courses',
           label: t('الدورات', 'Courses'),
-          flex: 1,
+          flex: 2,
           text: (u) => _coursesText(isStudent ? u.enrolledCourses.length : u.coursesCount),
         ),
         AppTableColumn<AdminUser>.text(

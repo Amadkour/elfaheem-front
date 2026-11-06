@@ -102,6 +102,18 @@ class EntityPanelController extends ChangeNotifier {
   }
 
   /// A breadcrumb: shows trail[index] (what is ahead stays for [forward]).
+  /// [named] is the loaded form of a ref already on the trail: an entry without a name takes it (the breadcrumbs).
+  void adopt(EntityRef named) {
+    var changed = false;
+    for (var i = 0; i < _trail.length; i++) {
+      if (_trail[i] == named && (_trail[i].label ?? '').isEmpty && (_trail[i].labelEn ?? '').isEmpty) {
+        _trail[i] = named;
+        changed = true;
+      }
+    }
+    if (changed) notifyListeners();
+  }
+
   void jumpTo(int index) {
     if (!isOpen || index < 0 || index >= _trail.length || index == _index) return;
     _index = index;

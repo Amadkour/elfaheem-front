@@ -213,6 +213,19 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
+    testWidgets('a ref opened by id alone takes the loaded name on its breadcrumb', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1300, 800);
+      addTearDown(tester.view.resetPhysicalSize);
+      final c = EntityPanelController(rowKind: EntityKind.student);
+      await tester.pumpWidget(layoutHost(scaffoldWith(_rows.first, controller: c), scale: 1));
+      await frames(tester, 4);
+      c.push(const EntityRef(EntityKind.course, 40));
+      await frames(tester, 6);
+      expect(c.current?.name, 'Python Programming Basics');
+      await tester.pumpWidget(const SizedBox());
+    });
+
     testWidgets('a link inside the panel drills in (student → course)', (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(1300, 1400);
