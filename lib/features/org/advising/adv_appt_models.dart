@@ -14,6 +14,7 @@ import 'package:flutter_education_app/core/plural.dart';
 
 import '../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, t;
 import '../org_v3.dart' show orgParseUtc, orgUtc;
+import 'adv_analytics_models.dart' show AdvHubOutreach;
 import 'adv_models.dart' show AdvPage, AdvRef, advAdvisorTypeLabel, advMeetingModeLabel, advPriorityLabel;
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1203,6 +1204,7 @@ class AdvHub {
     this.surveys = const [],
     this.canBook = false,
     this.rules = const AdvBookingRules(),
+    this.outreach = const AdvHubOutreach(),
   });
 
   /// Primary first.
@@ -1213,6 +1215,9 @@ class AdvHub {
   final List<AdvSurveyInfo> surveys;
   final bool canBook;
   final AdvBookingRules rules;
+
+  /// Phase 8: the latest group messages from my advising staff (absent on an older server → empty).
+  final AdvHubOutreach outreach;
 
   factory AdvHub.fromJson(Map<String, dynamic> j) {
     const order = ['primary', 'co', 'support'];
@@ -1226,6 +1231,7 @@ class AdvHub {
       surveys: [for (final m in asMapList(j['surveys'])) AdvSurveyInfo.fromJson(m)],
       canBook: asBool(j['can_book']),
       rules: AdvBookingRules.fromJson(asMap(j['booking_rules'])),
+      outreach: AdvHubOutreach.fromJson(j['outreach']),
     );
   }
 

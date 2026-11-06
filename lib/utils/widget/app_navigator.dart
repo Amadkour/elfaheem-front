@@ -234,6 +234,11 @@ class AppNavigator {
       case 'org_adv_thread':
       case 'org_adv_survey':
         final inner = data['data'];
+        // Phase 8: a group message (student → the message, sender → its tracking) · the daily data check
+        if (orgId != null && !AppConfig.disableList.contains('org.advising') &&
+            await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenAnalyticsLink(nav, orgId: orgId, data: {...data, if (inner is Map) ...inner.cast<String, dynamic>()}))) {
+          return;
+        }
         final advKind = '${data['kind'] ?? (inner is Map ? inner['kind'] : null) ?? (module == 'advising' ? kind : module) ?? ''}';
         if (orgId != null && advKind.startsWith('org_adv_') && !AppConfig.disableList.contains('org.advising') &&
             await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenCommLink(nav, orgId: orgId, data: {...data, 'kind': advKind}))) {

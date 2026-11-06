@@ -26,6 +26,8 @@ import 'adv_comm_api.dart';
 import 'adv_comm_parts.dart';
 import 'adv_parts.dart';
 import 'adv_survey_sheet.dart';
+import 'adv_analytics_models.dart' show AdvStudentMessage;
+import 'adv_outreach.dart' show AdvHubOutreachSection, AdvStudentMessagesPage, showAdvStudentMessage;
 import 'adv_support_hub.dart' show AdvStudentSupportPage;
 import 'adv_threads.dart';
 
@@ -112,6 +114,8 @@ class AdvHubView extends StatelessWidget {
     this.onSurvey,
     this.onAllAppointments,
     this.onSupport,
+    this.onOutreach,
+    this.onAllOutreach,
     this.apptActions = const AdvApptActions(),
   });
 
@@ -123,6 +127,10 @@ class AdvHubView extends StatelessWidget {
 
   /// Phase 7: the requests filed for me, my support plans and accommodations (AdvStudentSupportPage).
   final VoidCallback? onSupport;
+
+  /// Phase 8: open one group message (marks it read) · all my advising messages.
+  final ValueChanged<AdvStudentMessage>? onOutreach;
+  final VoidCallback? onAllOutreach;
   final ValueChanged<AdvHubAdvisor>? onBook, onMessage;
   final ValueChanged<AdvSurveyInfo>? onSurvey;
   final AdvApptActions apptActions;
@@ -142,6 +150,12 @@ class AdvHubView extends StatelessWidget {
       );
     }
     final blocked = h.bookBlocked;
+    final outreach = [
+      if (h.outreach.latest.isNotEmpty) ...[
+        AdvHubOutreachSection(hub: h.outreach, onOpen: onOutreach, onAll: onAllOutreach),
+        const SizedBox(height: AppSpace.sm),
+      ],
+    ];
     final surveys = [
       for (final s in h.surveys)
         Padding(
@@ -231,6 +245,7 @@ class AdvHubView extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 1200),
             child: ListView(padding: pad, children: [
               ...surveys,
+              ...outreach,
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(flex: 5, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...advisors, const SizedBox(height: AppSpace.sm), messages, support])),
                 const SizedBox(width: AppSpace.lg),
@@ -240,7 +255,7 @@ class AdvHubView extends StatelessWidget {
           ),
         );
       }
-      return AdvPageFrame(maxWidth: 720, children: [...surveys, ...advisors, const SizedBox(height: AppSpace.xs), messages, support, const SizedBox(height: AppSpace.md), ...meetings, ...notes]);
+      return AdvPageFrame(maxWidth: 720, children: [...surveys, ...outreach, ...advisors, const SizedBox(height: AppSpace.xs), messages, support, const SizedBox(height: AppSpace.md), ...meetings, ...notes]);
     });
   }
 }
@@ -368,6 +383,14 @@ class _AdvHubBodyState extends State<_AdvHubBody> {
         if (mounted) _reload();
       },
       onSupport: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvStudentSupportPage(orgId: widget.orgId))),
+      onOutreach: (m) async {
+        await showAdvStudentMessage(context, orgId: widget.orgId, message: m);
+        if (mounted) _reload();
+      },
+      onAllOutreach: () async {
+        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvStudentMessagesPage(orgId: widget.orgId)));
+        if (mounted) _reload();
+      },
       apptActions: flow.actions(context),
     );
   }

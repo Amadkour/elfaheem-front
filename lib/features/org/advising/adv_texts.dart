@@ -49,14 +49,12 @@ Map<String, String> advCodeTexts() => {
       'advising_bad_rule': t('إعدادات القاعدة غير صالحة — راجع القيم وحدودها', 'The rule\'s settings are not valid — check the values and their limits'),
       'advising_rule_system': t('قواعد النظام لا تُحذف — أوقفها بدلاً من ذلك', 'Built-in rules cannot be deleted — switch them off instead'),
       'advising_rule_limit': t('بلغت المؤسسة الحد الأقصى: 50 قاعدة — احذف قاعدة أو عدّل قاعدة قائمة', 'The organization has the most rules allowed (50) — delete one or edit an existing rule'),
-      'advising_run_busy': t('فحص القواعد يعمل الآن — تظهر نتيجته هنا حين ينتهي', 'A rule check is running now — its result shows here when it ends'),
       // Phase 7: requests, referrals, the approval chain, support plans, accommodations (adv_support_texts.dart)
       ...advSupportCodeTexts(),
       // Phase 5: availability, appointments, conversations, templates, survey
       'advising_bad_link': t('رابط الاجتماع يجب أن يكون رابطاً آمناً يبدأ بـ https://', 'The meeting link must be a secure link starting with https://'),
       'advising_rules_overlap': t('في اليوم نفسه فترتان متداخلتان من الساعات المكتبية — عدّل إحداهما', 'Two office-hour windows overlap on the same day — change one of them'),
       'advising_bad_time': t('وقت النهاية يجب أن يكون بعد البداية بمدة موعد واحد على الأقل', 'The end time must be at least one appointment length after the start time'),
-      'advising_bad_range': t('نطاق التواريخ غير صالح (31 يوماً على الأكثر، والنهاية بعد البداية)', 'The date range is not valid (31 days at most, the end after the start)'),
       'advising_slot_taken': t('حُجز هذا الموعد للتو — اختر موعداً آخر', 'This time was just booked — pick another one'),
       'advising_student_busy': t('لدى الطالب ارتباط آخر في هذا الوقت', 'The student has something else at that time'),
       'advising_bad_slot': t('هذا الوقت لم يعد متاحاً (خارج الساعات المكتبية أو مهلة الحجز أو المدى المسموح) — اختر وقتاً آخر',
@@ -73,10 +71,18 @@ Map<String, String> advCodeTexts() => {
       'advising_file_unavailable': t('تعذّر فتح الملف الآن — أعد المحاولة بعد قليل', 'The file cannot be opened right now — try again shortly'),
       'advising_bad_attachment': t('المرفقات غير صالحة (5 على الأكثر، من رفعك أنت ولم تُرسل من قبل)', 'The attachments are not valid (5 at most, uploaded by you and not sent before)'),
       'advising_template_system': t('القوالب الأساسية يُعدَّل نصها فقط ولا تُحذف', 'Built-in templates can only have their text edited; they cannot be deleted'),
-      'advising_bad_template': t('القالب المختار غير موجود في هذه المؤسسة', 'The chosen template does not exist in this organization'),
       'advising_survey_gone': t('رابط الاستبيان غير صالح أو أُجيب عنه من قبل', 'This survey link is not valid or was already answered'),
       'advising_no_advisor': t('ليس لك مرشد أكاديمي بعد في هذه المؤسسة', 'You have no academic advisor in this organization yet'),
       'advising_bad_appointment': t('الموعد المختار لا يخص هذا الطالب أو لم يعد قائماً', 'The chosen appointment is not this student\'s or no longer stands'),
+      // Phase 8: analytics, outreach, reports, data check
+      'advising_bad_metric': t('هذا الرقم لا يُفتح كقائمة طلاب — حدّث الصفحة', 'That figure cannot be opened as a student list — refresh the page'),
+      'advising_audience_empty': t('لا أحد يستلم هذه الرسالة — اختر مجموعة أخرى', 'Nobody would receive this message — choose another group'),
+      'advising_audience_too_large': t('المجموعة أكبر من 5000 طالب — اختر مجموعة أصغر', 'The group is larger than 5,000 students — choose a smaller one'),
+      'advising_audience_changed': t('تغيّرت قائمة المستلمين منذ المعاينة — راجعها ثم أرسل', 'The recipients changed since the preview — check them, then send'),
+      // shared by several phases (one text that fits every use)
+      'advising_bad_range': t('نطاق التواريخ غير صالح — النهاية بعد البداية وضمن المدة المسموحة', 'The date range is not valid — the end must come after the start, within the allowed length'),
+      'advising_run_busy': t('فحص أو تحديث يعمل الآن — تظهر نتيجته هنا حين ينتهي', 'A check or update is running now — its result shows here when it ends'),
+      'advising_bad_template': t('القالب المختار غير متاح (غير موجود أو متوقف أو من نوع آخر) — اختر غيره', 'The chosen template is not available (missing, switched off or of another kind) — choose another'),
     };
 
 /// The risk-reason codes of the workspace (`score.py`); `advRiskReasonText` in adv_models.dart writes each one.

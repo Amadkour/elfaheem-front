@@ -15,7 +15,9 @@ import 'adv_api.dart' show AdvApi;
 import 'adv_appointments.dart' show AdvAppointmentsPage;
 import 'adv_appt_models.dart' show AdvMemberHub;
 import 'adv_comm_api.dart' show AdvCommApi;
+import 'adv_director_page.dart' show AdvDirectorPage;
 import 'adv_models.dart' show AdvMineInfo, AdvStatus, advMaybeEligible;
+import 'adv_outreach.dart' show AdvOutreachTrackingPage, AdvStudentMessagesPage;
 import 'adv_setup_page.dart';
 import 'adv_student_hub.dart' show AdvStudentHubPage;
 import 'adv_student_page.dart' show AdvStudentPage;
@@ -183,6 +185,26 @@ Future<bool> advOpenCommLink(NavigatorState nav, {required int orgId, required M
       if (!student) return false;
       await nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentHubPage(orgId: orgId, surveyToken: token.isEmpty ? null : token)));
       return true;
+  }
+  return false;
+}
+
+/// Phase 8 deep links (push data `module: advising`): `kind: org_adv_outreach` + `outreach_id` → the student's
+/// message (`audience: student`) or the sender's tracking page; `screen: health` → the analytics page with its data
+/// check. False when [data] is neither (the caller goes on with its own handling).
+Future<bool> advOpenAnalyticsLink(NavigatorState nav, {required int orgId, required Map<String, dynamic> data}) async {
+  final outreach = int.tryParse('${data['outreach_id'] ?? ''}');
+  if (data['kind'] == 'org_adv_outreach' && outreach != null) {
+    if (data['audience'] == 'student') {
+      nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentMessagesPage(orgId: orgId)));
+    } else {
+      nav.push(MaterialPageRoute<void>(builder: (_) => AdvOutreachTrackingPage(orgId: orgId, outreachId: outreach)));
+    }
+    return true;
+  }
+  if (data['screen'] == 'health') {
+    nav.push(MaterialPageRoute<void>(builder: (_) => AdvDirectorPage(orgId: orgId)));
+    return true;
   }
   return false;
 }

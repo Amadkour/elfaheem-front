@@ -24,6 +24,7 @@ import 'adv_api.dart';
 import 'adv_models.dart';
 import 'adv_parts.dart';
 import 'adv_warning_parts.dart' show AdvAlertSettingsGroup, advWarningOn;
+import 'adv_reports.dart' show advReportsPolicyFields;
 
 /// The key of a scope in the page: `org`, or `dept:12` · `program:4` · `level:2` · `cohort:2024`.
 String advScopeKey(String type, String? ref) => type == 'org' ? 'org' : '$type:${ref ?? ''}';
@@ -248,6 +249,7 @@ class AdvConfigView extends StatelessWidget {
         ]),
       ),
       ..._appointments(context, shown, hint, on),
+      if (d.scopeType == 'org') ...advReportsPolicyFields(context, shown: shown, onField: on, hint: hint),
     ];
   }
 
