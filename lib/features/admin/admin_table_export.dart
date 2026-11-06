@@ -211,6 +211,22 @@ AppTableExport adminUsersExport(String role, List<Map<String, dynamic>> rows) =>
       ],
     );
 
+/// Categories.
+AppTableExport adminCategoriesExport(List<Map<String, dynamic>> rows) => AppTableExport(
+      id: 'admin.categories',
+      title: t('التصنيفات', 'Categories'),
+      columns: [
+        AppExportColumn('id', '#', type: AppColType.integer, width: 8, visible: false),
+        AppExportColumn('name_ar', t('الاسم بالعربية', 'Arabic name'), locked: true, total: AppTotal.count),
+        AppExportColumn('name_en', t('الاسم بالإنجليزية', 'English name')),
+        AppExportColumn('description', t('الوصف', 'Description'), visible: false),
+        AppExportColumn('courses_count', t('الكورسات', 'Courses'), type: AppColType.integer, total: AppTotal.sum),
+        AppExportColumn('teachers_count', t('المعلمون', 'Teachers'), type: AppColType.integer),
+        AppExportColumn('students_count', t('الطلاب', 'Students'), type: AppColType.integer),
+      ],
+      rows: rows,
+    );
+
 /// Subscription requests.
 AppTableExport adminSubscriptionsExport(List<Map<String, dynamic>> rows) => AppTableExport(
       id: 'admin.subscriptions',

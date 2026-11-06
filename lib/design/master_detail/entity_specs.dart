@@ -147,6 +147,10 @@ IconData mdBadgeIcon(String code) => switch (code) {
       'trending' => Icons.trending_up_rounded,
       'dropping' => Icons.trending_down_rounded,
       'high_withdrawal' => DirIcons.logout,
+      'top_rated' => Icons.star_rounded,
+      'low_engagement' => Icons.bedtime_outlined,
+      'low_completion' => Icons.trending_down_rounded,
+      'no_courses' || 'nothing_published' => Icons.inbox_outlined,
       _ => Icons.info_outline_rounded,
     };
 
@@ -164,6 +168,14 @@ String mdBadgeText(EntityBadge b) {
       return countText(n,
           ar1: 'دورة واحدة متعثرة', ar2: 'دورتان متعثرتان', arFew: '{n} دورات متعثرة', arMany: '{n} دورة متعثرة',
           en1: '1 course at risk', en: '{n} courses at risk');
+    case 'top_rated':
+      return mdText('md_p6_badge_top_rated', {'v': ltrIsolate((b.value ?? 0).toStringAsFixed(1))});
+    case 'low_engagement':
+      return mdText('md_p6_badge_low_engagement', {'v': mdPercent(b.value)});
+    case 'low_completion':
+      return mdText('md_p6_badge_low_completion', {'v': mdPercent(b.value)});
+    case 'no_courses' || 'nothing_published':
+      return 'md_p6_badge_${b.code}'.tr;
     default:
       return _worded('md_badge_', b.code);
   }
@@ -248,11 +260,19 @@ class EntitySectionSpec {
 
   String get title => mdSectionTitle(section);
 
-  String filterLabel(String value) => filterKey == 'state' ? mdStateLabel(value) : mdCourseStatusLabel(value);
+  String filterLabel(String value) => switch (filterKey) {
+        'state' => mdStateLabel(value),
+        'activity' => 'md_p6_activity_$value'.tr,
+        'account' => 'md_$value'.tr,
+        _ => mdCourseStatusLabel(value),
+      };
 }
 
 const _enrollmentSorts = ['enrolled_desc', 'enrolled_asc', 'progress_desc', 'progress_asc', 'activity_desc', 'name'];
 const _courseStatuses = ['published', 'draft', 'archived', 'in_progress', 'completed'];
+
+/// The people lists' filters (`activity` of a learner, `account` of a teacher).
+const _activities = ['active', 'inactive'];
 
 /// The spec of [section] of a [kind] entity; null for a section this app version does not know (left out).
 EntitySectionSpec? sectionSpecOf(EntityKind kind, String section) => switch ((kind, section)) {
@@ -278,14 +298,20 @@ EntitySectionSpec? sectionSpecOf(EntityKind kind, String section) => switch ((ki
           filterKey: 'status',
           filterOptions: _courseStatuses),
       (EntityKind.teacher, 'students') || (EntityKind.category, 'students') => const EntitySectionSpec('students',
-          icon: Icons.groups_rounded, sorts: ['activity_desc', 'progress_desc', 'name']),
+          icon: Icons.groups_rounded,
+          sorts: ['activity_desc', 'progress_desc', 'name'],
+          filterKey: 'activity',
+          filterOptions: _activities),
       (EntityKind.category, 'courses') => const EntitySectionSpec('courses',
           icon: Icons.auto_stories_rounded,
           sorts: ['students_desc', 'newest', 'rating_desc', 'name'],
           filterKey: 'status',
           filterOptions: _courseStatuses),
-      (EntityKind.category, 'teachers') =>
-        const EntitySectionSpec('teachers', icon: Icons.co_present_rounded, sorts: ['students_desc', 'name']),
+      (EntityKind.category, 'teachers') => const EntitySectionSpec('teachers',
+          icon: Icons.co_present_rounded,
+          sorts: ['students_desc', 'name'],
+          filterKey: 'account',
+          filterOptions: _activities),
       _ => null,
     };
 
@@ -484,20 +510,25 @@ class EntityRowFrame extends StatelessWidget {
   }
 }
 
-/// A progress bar with its percentage.
+/// A progress bar with its percentage, after [label] when given ("Completion").
 class EntityProgress extends StatelessWidget {
-  const EntityProgress(this.value, {super.key, this.tone});
+  const EntityProgress(this.value, {super.key, this.tone, this.label});
 
   final double? value;
   final Color? tone;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
     final v = (value ?? 0).clamp(0, 100).toDouble();
     return Semantics(
-      label: '${'md_progress'.tr} ${mdPercent(v)}',
+      label: '${label ?? 'md_progress'.tr} ${mdPercent(v)}',
       excludeSemantics: true,
       child: Row(children: [
+        if (label != null) ...[
+          Flexible(child: Text(label!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
+          AppSpace.gapXs,
+        ],
         Expanded(child: AppProgressBar(value: v, height: 6, color: tone ?? appScoreColor(context, v))),
         AppSpace.gapXs,
         SizedBox(
@@ -562,9 +593,13 @@ class EntityHistoryButton extends StatelessWidget {
       AppIconButton(icon: Icons.history_rounded, tooltip: 'md_history'.tr, onPressed: onPressed);
 }
 
-/// One row of a sub-list. [onHistory] (enrollment rows) opens the student's timeline in that course.
+/// One row of a sub-list. [onHistory] (enrollment rows) opens the student's timeline in that course. [ownerKind] is
+/// the entity the list belongs to: a teacher's course rows leave the teacher out, a category's the category.
 Widget entityRowFor(BuildContext context, EntityItem item,
-    {void Function(int studentId, int courseId, String title)? onHistory, int? ownerId, int? highlightId}) {
+    {void Function(int studentId, int courseId, String title)? onHistory,
+    int? ownerId,
+    int? highlightId,
+    EntityKind? ownerKind}) {
   switch (item) {
     case EnrollmentRow(:final subject, :final course, :final enrollment):
       final isCourse = subject.kind == EntityKind.course;
@@ -591,21 +626,28 @@ Widget entityRowFor(BuildContext context, EntityItem item,
     case CourseRow(:final course):
       final facts = [
         mdStudents(item.students),
-        if (item.completionRate != null) '${'md_stat_completion'.tr} ${mdPercent(item.completionRate)}',
         if (item.ratingAvg != null) ltrIsolate('★ ${item.ratingAvg!.toStringAsFixed(1)}'),
         if (item.revenue != null) mdMoney(item.revenue!),
+      ];
+      final belongs = [
+        if (ownerKind != EntityKind.teacher) course.teacher?.name,
+        if (ownerKind != EntityKind.category) course.category?.name,
       ];
       final status = item.archivedAt != null ? 'archived' : (item.isPublished ? 'published' : 'draft');
       return EntityRowFrame(
         ref: course.ref,
         title: course.ref.name.isEmpty ? '#${course.ref.id}' : course.ref.name,
-        subtitle: [course.teacher?.name, course.category?.name].whereType<String>().where((s) => s.isNotEmpty).join(' · '),
+        subtitle: belongs.whereType<String>().where((s) => s.isNotEmpty).join(' · '),
         highlight: highlightId == course.ref.id,
         trailing: AppStatusBadge(
             label: mdCourseStatusLabel(status),
             tone: status == 'published' ? AppTone.success : (status == 'archived' ? AppTone.danger : AppTone.neutral),
             dense: true),
-        body: [Text(facts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context))],
+        body: [
+          Text(facts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          if (item.completionRate != null && item.students > 0)
+            EntityProgress(item.completionRate, label: 'md_stat_completion'.tr),
+        ],
       );
     case PersonRow(:final person):
       final facts = [

@@ -15,6 +15,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredAdminEntityManage;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:provider/provider.dart';
 
@@ -127,6 +128,35 @@ class _EntityDetailViewState extends State<EntityDetailView> {
     }
   }
 
+  /// The management block of a teacher / category this viewer manages: it lives in the detail itself, so every host
+  /// (any list's panel, the full page) has it.
+  Widget? _manageOf(EntitySummary s) => s.can.manage && (s.kind == EntityKind.teacher || s.kind == EntityKind.category)
+      ? deferredAdminEntityManage(s, onChanged: _managed, onRemoved: _removed)
+      : null;
+
+  void _managed() {
+    EntitiesApi.instance.invalidate(ref);
+    final c = widget.controller;
+    if (c != null) {
+      c.reload();
+    } else {
+      _load(force: true);
+    }
+  }
+
+  /// The entity is gone: the panel steps back or closes, a full page of its own (no list behind it) goes back. The
+  /// revision tells the list behind to reload.
+  void _removed() {
+    EntitiesApi.instance.invalidate(ref);
+    final c = widget.controller;
+    if (c == null || (c.rowKind == null && !c.canBack)) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    c.reload();
+    if (!c.back()) c.close();
+  }
+
   int? _viewerId(BuildContext context) {
     try {
       return Provider.of<MyAuthProvider>(context, listen: false).currentUser?.id;
@@ -142,7 +172,12 @@ class _EntityDetailViewState extends State<EntityDetailView> {
     final shown = s?.ref.withLabel(label: ref.label, labelEn: ref.labelEn, imageUrl: ref.imageUrl) ?? ref;
     final headerRef = s == null ? ref : s.ref;
     final children = <Widget>[
-      EntityHeader(entity: s == null ? shown : headerRef, summary: s, actions: widget.actions?.call(ref, s) ?? const []),
+      EntityHeader(
+        entity: s == null ? shown : headerRef,
+        summary: s,
+        actions: widget.actions?.call(ref, s) ?? const [],
+        manage: s == null ? null : _manageOf(s),
+      ),
     ];
     if (s == null) {
       if (_error != null && !_loading) {
@@ -176,7 +211,11 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         return hit.isEmpty ? null : hit.last.name;
       }
 
-      for (final section in s.sections) {
+      if (s.kind == EntityKind.category) {
+        final specs = [for (final section in s.sections) ?sectionSpecOf(s.kind, section)];
+        if (specs.isNotEmpty) children.add(EntityConnectedTabs(summary: s, specs: specs));
+      }
+      for (final section in s.kind == EntityKind.category ? const <String>[] : s.sections) {
         final spec = sectionSpecOf(s.kind, section);
         if (spec == null) continue;
         final Widget body = switch (spec.shape) {
@@ -268,11 +307,14 @@ class _EntityDetailViewState extends State<EntityDetailView> {
 
 /// The top of a detail: the picture, the name, what it belongs to (links), its status and the quick actions.
 class EntityHeader extends StatelessWidget {
-  const EntityHeader({super.key, required this.entity, this.summary, this.actions = const []});
+  const EntityHeader({super.key, required this.entity, this.summary, this.actions = const [], this.manage});
 
   final EntityRef entity;
   final EntitySummary? summary;
   final List<EntityPanelAction> actions;
+
+  /// The management block under the quick actions (a teacher / category this viewer manages).
+  final Widget? manage;
 
   @override
   Widget build(BuildContext context) {
@@ -310,6 +352,7 @@ class EntityHeader extends StatelessWidget {
           }
           if (s.specialization != null) links.add(s.specialization!);
           body = s.text('bio');
+          if (s.organizations.isNotEmpty) meta.add(mdText('md_p6_member_of', {'o': s.organizations.join(' · ')}));
           if (s.time('created_at') != null) meta.add(mdText('md_joined', {'d': mdDate(s.time('created_at'))}));
         case EntityKind.course:
           if (s.category != null) links.add(s.category!);
@@ -338,6 +381,7 @@ class EntityHeader extends StatelessWidget {
           if (s.parent != null) links.add(s.parent!);
           links.addAll(s.children.take(6));
           body = s.text('description');
+          if (s.children.length > 6) meta.add(mdText('md_p6_more_children', {'n': '${s.children.length - 6}'}));
       }
     }
     final title = Text(name.isEmpty ? '—' : name,
@@ -385,6 +429,10 @@ class EntityHeader extends StatelessWidget {
             for (final a in actions)
               AppButton.tonal(key: a.key, label: a.label, icon: a.icon, size: AppButtonSize.sm, onPressed: a.onPressed),
           ]),
+        ],
+        if (manage != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          manage!,
         ],
         const SizedBox(height: AppSpace.xxs),
         Divider(height: AppSpace.md, thickness: AppBorder.hairline, color: c.divider),
@@ -607,6 +655,72 @@ class EntitySectionCard extends StatelessWidget {
       );
 }
 
+/// A category's connected lists (its courses, teachers and students) as tabs with their counts. A tab loads on its
+/// first visit and keeps its search, filter and rows; the open tab survives drilling in and coming back.
+class EntityConnectedTabs extends StatefulWidget {
+  const EntityConnectedTabs({super.key, required this.summary, required this.specs});
+
+  final EntitySummary summary;
+  final List<EntitySectionSpec> specs;
+
+  @override
+  State<EntityConnectedTabs> createState() => _EntityConnectedTabsState();
+}
+
+class _EntityConnectedTabsState extends State<EntityConnectedTabs> {
+  late int _tab;
+  final _visited = <int>{};
+
+  String get _memory => 'md.tabs.${widget.summary.ref.toToken()}';
+
+  @override
+  void initState() {
+    super.initState();
+    final saved = PageStorage.maybeOf(context)?.readState(context, identifier: _memory);
+    _tab = saved is int && saved < widget.specs.length ? saved : 0;
+    _visited.add(_tab);
+  }
+
+  void _select(int i) {
+    PageStorage.maybeOf(context)?.writeState(context, i, identifier: _memory);
+    setState(() {
+      _tab = i;
+      _visited.add(i);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.summary;
+    final specs = widget.specs;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpace.md),
+      child: AppCard(
+        padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.sm),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppUnderlineTabs(
+            expand: true,
+            index: _tab.clamp(0, specs.length - 1),
+            onChanged: _select,
+            items: [
+              for (final spec in specs) AppTabItem(spec.title, icon: spec.icon, count: s.stat(spec.section)?.toInt()),
+            ],
+          ),
+          const SizedBox(height: AppSpace.sm),
+          for (var i = 0; i < specs.length; i++)
+            if (_visited.contains(i))
+              Visibility(
+                key: ValueKey('md.tab.${specs[i].section}'),
+                visible: i == _tab,
+                maintainState: true,
+                child: EntitySubList(entity: s.ref, spec: specs[i]),
+              ),
+        ]),
+      ),
+    );
+  }
+}
+
 /// One sub-list: search (once there is enough to search), the contract's filter as chips, the sort, the rows (links)
 /// and "Show more".
 class EntitySubList extends StatefulWidget {
@@ -800,7 +914,10 @@ class _EntitySubListState extends State<EntitySubList> {
         for (var i = 0; i < _items.length; i++) ...[
           if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: context.colors.divider),
           entityRowFor(context, _items[i],
-              onHistory: isEnrollments ? _openHistory : null, ownerId: ownerId, highlightId: widget.highlightId),
+              onHistory: isEnrollments ? _openHistory : null,
+              ownerId: ownerId,
+              highlightId: widget.highlightId,
+              ownerKind: widget.entity.kind),
         ],
         if (_hasMore)
           Padding(

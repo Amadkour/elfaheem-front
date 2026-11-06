@@ -1,0 +1,14 @@
+{
+  "md_p6_badge_top_rated": {"en": "Top rated · {v}", "ar": "الأعلى تقييماً · {v}"},
+  "md_p6_badge_low_engagement": {"en": "Only {v} of students active this month", "ar": "{v} فقط من الطلاب نشطون هذا الشهر"},
+  "md_p6_badge_low_completion": {"en": "Low completion · {v}", "ar": "إتمام منخفض · {v}"},
+  "md_p6_badge_no_courses": {"en": "No courses yet", "ar": "لا دورات بعد"},
+  "md_p6_badge_nothing_published": {"en": "Nothing published yet", "ar": "لم يُنشر شيء بعد"},
+  "md_p6_activity_active": {"en": "Active this month", "ar": "نشطون هذا الشهر"},
+  "md_p6_activity_inactive": {"en": "Inactive", "ar": "غير نشطين"},
+  "md_p6_member_of": {"en": "Organization: {o}", "ar": "المؤسسة: {o}"},
+  "md_p6_more_children": {"en": "and {n} more sub-categories", "ar": "و{n} تصنيفات فرعية أخرى"},
+  "md_p6_message": {"en": "Message", "ar": "مراسلة"},
+  "md_p6_sort_most_teachers": {"en": "Most teachers", "ar": "الأكثر معلمين"},
+  "md_p6_sort_most_students": {"en": "Most students", "ar": "الأكثر طلاباً"}
+}

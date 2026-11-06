@@ -25,6 +25,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
 import 'package:flutter_education_app/core/attention/decision_refresh.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind, EntityRef;
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart' show EntityNavigator;
 import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
@@ -313,13 +315,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     ];
   }
 
-  /// A server hit: a person -> their detail, a course -> the Courses tab, an organization -> its page, a payment ->
-  /// the payments page.
+  /// A server hit: a person -> their detail, a teacher or category -> their connected detail (D-290), a course -> the
+  /// Courses tab, an organization -> its page, a payment -> the payments page.
   void _openHit(BuildContext context, AdminSearchHit h) {
     Future<void> push(Widget w) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
     switch (h.kind) {
-      case 'students' || 'teachers' || 'admins':
-        showAdminUserDetail(context, userId: h.id, role: switch (h.kind) { 'teachers' => 'teacher', 'admins' => 'admin', _ => 'student' });
+      case 'teachers':
+        EntityNavigator.openFullPage(context, EntityRef(EntityKind.teacher, h.id));
+      case 'categories':
+        EntityNavigator.openFullPage(context, EntityRef(EntityKind.category, h.id));
+      case 'students' || 'admins':
+        showAdminUserDetail(context, userId: h.id, role: switch (h.kind) { 'admins' => 'admin', _ => 'student' });
       case 'courses':
         _tabs.onChangeTab(2);
       case 'organizations':

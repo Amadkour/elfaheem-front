@@ -164,6 +164,9 @@ class AdminCategory {
   String get description => asStr(j['description']);
   int? get parentId => j['parent_id'] == null ? null : asInt(j['parent_id']);
   int get coursesCount => asInt(j['courses_count']);
+  int get teachersCount => asInt(j['teachers_count']);
+  int get studentsCount => asInt(j['students_count']);
+  String? get imageUrl => asStrOrNull(j['image_url']);
 }
 
 class Plan {

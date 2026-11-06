@@ -1,8 +1,9 @@
 // lib/features/admin/admin_users_page.dart — students & teachers (list, detail, control).
 //
 // D-290: a row opens the connected detail panel (MasterDetailScaffold: the student's / teacher's courses, history,
-// payments …, every related entity a link); the old management sheet stays reachable as the panel's "Manage" quick
-// action (and the row's Manage action) until phase 4 folds it into the student detail.
+// payments …, every related entity a link). A teacher's management lives inside the detail ([AdminTeacherManage], on
+// every host of the panel); a student's stays the old sheet, reached by the panel's "Manage" quick action and the row's
+// Manage action, until phase 4 folds it too.
 library;
 
 import 'package:flutter/material.dart';
@@ -28,6 +29,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter/scheduler.dart' show SchedulerBinding, SchedulerPhase;
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
+import 'admin_send_message_page.dart' show AdminSendMessagePage;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
@@ -85,6 +87,9 @@ class _UsersViewState extends State<_UsersView> {
   /// The row drawn as selected: the panel's, kept here so the table redraws only when it changes.
   int? _selected;
 
+  /// The panel's revision this list has seen: a change made in the detail reloads the rows behind it.
+  int _revision = 0;
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +97,10 @@ class _UsersViewState extends State<_UsersView> {
   }
 
   void _panelChanged() {
+    if (_panel.revision != _revision) {
+      _revision = _panel.revision;
+      context.read<AdminUsersProvider>().refresh();
+    }
     final id = _panel.selectedId;
     if (id == _selected) return;
     void apply() {
@@ -115,7 +124,7 @@ class _UsersViewState extends State<_UsersView> {
   /// The panel's quick actions: Manage (the old control sheet; admins, `can.manage`) and View as (super admins).
   List<EntityPanelAction> _panelActions(
       BuildContext context, AdminUsersProvider p, bool canViewAs, EntityRef ref, EntitySummary? s) {
-    if (!ref.isPerson) return const [];
+    if (!ref.isPerson || ref.kind == EntityKind.teacher) return const [];
     return [
       if (s?.can.manage == true)
         EntityPanelAction(
@@ -252,11 +261,12 @@ class _UsersViewState extends State<_UsersView> {
           label: t('فتح', 'Open'),
           onTap: () => _panel.open(_refOf(u)),
         ),
-        AppRowAction<AdminUser>(
-          icon: Icons.manage_accounts_rounded,
-          label: 'md_manage'.tr,
-          onTap: () => _openDetail(context, p, u.id),
-        ),
+        if (isStudent)
+          AppRowAction<AdminUser>(
+            icon: Icons.manage_accounts_rounded,
+            label: 'md_manage'.tr,
+            onTap: () => _openDetail(context, p, u.id),
+          ),
       ],
       empty: p.hasActiveQuery
           ? AppEmpty(
@@ -550,10 +560,80 @@ Future<void> _openDetail(
   );
 }
 
+/// The actions of a teacher's detail for an admin: Message, View as (super admins) and Manage, which unfolds the same
+/// profile and controls as the management sheet ([_UserDetailSheet], embedded) under them.
+class AdminTeacherManage extends StatefulWidget {
+  const AdminTeacherManage({super.key, required this.summary, this.onChanged, this.onRemoved});
+
+  final EntitySummary summary;
+  final VoidCallback? onChanged;
+  final VoidCallback? onRemoved;
+
+  @override
+  State<AdminTeacherManage> createState() => _AdminTeacherManageState();
+}
+
+class _AdminTeacherManageState extends State<AdminTeacherManage> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.summary;
+    final name = s.ref.name;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        if (s.can.message)
+          AppButton.tonal(
+            key: const ValueKey('md.message'),
+            label: 'md_p6_message'.tr,
+            icon: Icons.mail_outline_rounded,
+            size: AppButtonSize.sm,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => AdminSendMessagePage(teacher: {'id': s.id, 'name': name}))),
+          ),
+        if (isSuperNow(context))
+          AppButton.tonal(
+            key: const ValueKey('md.view_as'),
+            label: 'view_as_user'.tr,
+            icon: Icons.visibility_rounded,
+            size: AppButtonSize.sm,
+            onPressed: () => startViewAs(Navigator.of(context, rootNavigator: true), id: s.id, name: name, role: 'teacher'),
+          ),
+        AppButton.tonal(
+          key: const ValueKey('md.manage'),
+          label: 'md_manage'.tr,
+          icon: _open ? Icons.expand_less_rounded : Icons.manage_accounts_rounded,
+          size: AppButtonSize.sm,
+          onPressed: () => setState(() => _open = !_open),
+        ),
+      ]),
+      if (_open) ...[
+        const SizedBox(height: AppSpace.sm),
+        ChangeNotifierProvider(
+          create: (_) => AdminUsersProvider('teacher'),
+          child: _UserDetailSheet(
+            userId: s.id,
+            embedded: true,
+            onChanged: widget.onChanged,
+            onRemoved: widget.onRemoved,
+          ),
+        ),
+      ],
+    ]);
+  }
+}
+
 class _UserDetailSheet extends StatefulWidget {
-  const _UserDetailSheet({required this.userId});
+  const _UserDetailSheet({required this.userId, this.embedded = false, this.onChanged, this.onRemoved});
 
   final int userId;
+
+  /// Inside a detail ([AdminTeacherManage]): no header, no scroll of its own, no View as (the detail's actions have it).
+  final bool embedded;
+
+  /// After a change was saved / after the user was deleted (embedded; the sheet just reloads / closes).
+  final VoidCallback? onChanged;
+  final VoidCallback? onRemoved;
 
   @override
   State<_UserDetailSheet> createState() => _UserDetailSheetState();
@@ -578,10 +658,12 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
     final provider = context.read<AdminUsersProvider>();
     final r = await provider.detail(widget.userId);
     if (!mounted) return;
+    final reloaded = d != null;
     setState(() {
       d = r;
       loading = false;
     });
+    if (reloaded) widget.onChanged?.call();
   }
 
   @override
@@ -606,15 +688,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
     final u = d!.user;
     final isStudent = u.role == 'student';
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SheetHeader(u.name),
-        Flexible(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            shrinkWrap: true,
-            children: [
+    final sections = <Widget>[
               Section(
                 title: 'admin_profile_2'.tr,
                 child: Column(
@@ -666,7 +740,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                       spacing: AppSpace.sm,
                       runSpacing: AppSpace.xs,
                       children: [
-                        if (isSuperNow(context) && (u.role == 'student' || u.role == 'teacher'))
+                        if (isSuperNow(context) && !widget.embedded && (u.role == 'student' || u.role == 'teacher'))
                           AppButton.tonal(
                             key: const ValueKey('admin.user_view_as'),
                             label: 'view_as_user'.tr,
@@ -772,7 +846,11 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                             );
                             if (!ok || !mounted) return;
                             if (await p.remove(u.id) && context.mounted) {
-                              Navigator.pop(context);
+                              if (widget.embedded) {
+                                widget.onRemoved?.call();
+                              } else {
+                                Navigator.pop(context);
+                              }
                             }
                           },
                         ),
@@ -781,7 +859,19 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                   ],
                 ),
               ),
-            ],
+    ];
+    if (widget.embedded) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: sections);
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SheetHeader(u.name),
+        Flexible(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            shrinkWrap: true,
+            children: sections,
           ),
         ),
       ],

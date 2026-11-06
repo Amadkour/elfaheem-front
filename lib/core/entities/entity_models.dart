@@ -311,6 +311,12 @@ class EntitySummary {
   // teacher
   EntityRef? get specialization => categoryRefFrom(header['specialization']);
 
+  /// The organizations a teacher belongs to (full viewers), named in the app language (`{id, name_ar, name_en}`).
+  List<String> get organizations => [
+        for (final o in entityMaps(header['organizations']))
+          if (categoryRefFrom(o)?.name case final name? when name.isNotEmpty) name,
+      ];
+
   // category
   EntityRef? get parent => categoryRefFrom(header['parent']);
   List<EntityRef> get children => [
