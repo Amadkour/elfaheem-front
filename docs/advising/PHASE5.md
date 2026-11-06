@@ -57,7 +57,11 @@ defaults #6 (thread priority + SLA escalation), #15 (templates), #16 (anonymous 
 - **Offline drafts (#23)**: the app's `adv_draft_store` keeps unsent messages too; `POST .../messages` takes
   `client_id` (idempotent per thread; reused for another thread → 409 `advising_client_id_conflict`).
 
-## API (base `/api/v1/org/orgs/{org_id}/advising`)
+## API (staff base `/api/v1/org/orgs/{org_id}/advising`)
+
+**Student routes** (hub `/me`, the student's own appointments, slots / office hours of their own advisors, their own
+threads / messages / attachments, the survey) live on the Phase 2 member base `/api/v1/org/public/{org_id}/advising`
+with the same paths below; the backend report lists the final student paths.
 
 ### Availability (advisor edits own; manage edits any advisor)
 - `GET /advisors/{uid}/availability` → `{"rules":[{"id","weekday":0-6 (Mon=0),"start":"HH:MM","end":"HH:MM",
