@@ -31,6 +31,7 @@ import 'package:flutter_education_app/utils/web_base_path.dart';
 import 'package:flutter_education_app/utils/web_entry_route.dart';
 import 'package:flutter_education_app/core/routing/app_router.dart';
 import 'package:flutter_education_app/core/routing/app_routes.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind, EntityLinkRequest, EntityRef;
 import 'package:flutter_education_app/core/routing/web_history.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
@@ -549,6 +550,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       nav.popUntil((r) => r.isFirst);
       AppShellNav.popVisibleToRoot();
       final want = tab?.tab ?? AppShellNav.visibleShell()?.homeLabel;
+      EntityLinkRequest.offer(location); // `?open=student:12` on a list's URL (D-290)
       if (want != null) {
         AppNavigator.requestedTab.value = null; // re-fire for the same tab
         AppNavigator.requestedTab.value = want;
@@ -657,7 +659,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       // `/profile` or `/dashboard/my-courses` by URL: the home, on that tab (N10, D-170) — the dashboard reads the
       // request when it mounts.
       final tab = auth.isAuthenticated ? webEntryTab(_webEntry) : null;
-      if (tab != null) AppNavigator.requestedTab.value = tab;
+      if (tab != null) {
+        EntityLinkRequest.offer(_webEntry); // `?open=student:12`: the list opens that panel (D-290)
+        AppNavigator.requestedTab.value = tab;
+      }
       _webEntry = null; // one start only: a later Navigator (sign-out / sign-in) opens the usual way
       if (entry != null && entry.overHome && name == entry.route) {
         return [_router(RouteSettings(name: auth.homeRoute))!, _router(RouteSettings(name: name))!];
@@ -813,10 +818,21 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       case 'org.member':
         final id = page!.intParam('orgId');
         if (id != null) return _fade(_Guard(child: OrgsGate(child: deferredOrgMemberDashboard(orgId: id))), settings);
+      case 'entity.view': // a student / course / teacher / category on a page of its own (D-290), every role
+        final kind = EntityKind.tryParse(page!.params['kind']);
+        final id = page.intParam('id');
+        if (kind != null && id != null && id > 0) {
+          final args = settings.arguments;
+          final ref = args is EntityRef && args.kind == kind && args.id == id ? args : EntityRef(kind, id);
+          return _fade(_Guard(child: deferredEntityDetailPage(ref)), settings);
+        }
     }
     // a role home on one of its tabs (`/dashboard/my-courses`): the person's own home, switched to that tab
     final homeTab = AppRoutes.splitTab(settings.name);
-    if (homeTab != null) return _fade(_Guard(child: _RedirectHome(tab: homeTab.tab)), settings);
+    if (homeTab != null) {
+      EntityLinkRequest.offer(settings.name); // `?open=student:12`: that list opens the panel (D-290)
+      return _fade(_Guard(child: _RedirectHome(tab: homeTab.tab)), settings);
+    }
     // the inbox page — the inbox and the notifications on one page with tabs: '/inbox' (?tab= / an InboxTab
     // argument) on its tab, the old '/notifications' on the Notifications tab
     // the landing website's links (also reachable by URL while signed out): the explorer, an institution applying, a

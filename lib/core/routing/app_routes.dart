@@ -93,6 +93,8 @@ class AppRoutes {
   static const exportLog = AppRouteDef('exports.log', '/exports/log', description: 'Export log');
   static const exportSchedules = AppRouteDef('exports.schedules', '/exports/schedules', description: 'Scheduled exports');
   static const exportLinks = AppRouteDef('exports.links', '/exports/links', description: 'Export share links');
+  static const entityView = AppRouteDef('entity.view', '/view/:kind/:id',
+      description: 'A student, course, teacher or category on a page of its own (D-290), every role');
 
   // ── Public links (no account needed, or sign-in first then the page) ─────
   static const courseLink = AppRouteDef('link.course', '/c/:courseId', description: 'A course share link (`?ref=`)');
@@ -111,7 +113,7 @@ class AppRoutes {
     login, register, forgotPassword,
     studentHome, teacherHome, adminHome, parentHome, orgHome,
     course, orgMember, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
-    downloads, exports, exportLog, exportSchedules, exportLinks,
+    downloads, exports, exportLog, exportSchedules, exportLinks, entityView,
     courseLink, profileLink, liveLink, verifyLink, exportLink, orgJoinLink, orgInvitationLink,
   ];
 

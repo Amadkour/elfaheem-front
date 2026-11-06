@@ -8,6 +8,7 @@ import 'package:flutter_education_app/design/app_data_table.dart';
 import 'package:flutter_education_app/design/app_pagination.dart';
 import 'package:flutter_education_app/design/app_search_field.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../layout_harness.dart';
 
@@ -101,6 +102,59 @@ void main() {
         AppDataTable<_Row>(columns: _cols(), rows: _rows.take(5).toList(), shrinkWrap: true, rowActions: _actions),
       ]),
     );
+  });
+  group('8 columns with the column menu, density toggle and an open row (D-290)', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      debugClearAppTableLayouts();
+    });
+    List<AppTableColumn<_Row>> cols8() => [
+          ..._cols(),
+          AppTableColumn.text(
+              key: 'e',
+              label: 'A very long header label that must end in an ellipsis',
+              text: (r) => '${r.id * 1000}',
+              numeric: true),
+          AppTableColumn.text(
+              key: 'f',
+              label: 'المعدل التراكمي للفصل الدراسي الحالي',
+              text: (r) => '3.${r.id}',
+              numeric: true,
+              sortable: true),
+        ];
+    Widget t8() => Padding(
+          padding: const EdgeInsets.all(8),
+          child: AppDataTable<_Row>(
+            columns: cols8(),
+            rows: _rows,
+            rowId: (r) => r.id,
+            tableId: 'layout.t8',
+            columnMenu: true,
+            selectedRowId: 2,
+            onSearch: (_) {},
+            sortKey: 'f',
+            onSort: (_, _) {},
+            onRowTap: (_) {},
+            onRowHover: (_) {},
+            rowActions: _actions,
+            toolbarTrailing: OutlinedButton(onPressed: () {}, child: const Text('Export')),
+            pagination:
+                AppPagination(page: 1, pageCount: 9, onPage: (_) {}, total: 170, pageSize: 20, onPageSize: (_) {}),
+          ),
+        );
+    testWidgets('table', (tester) async {
+      await expectNoLayoutErrors(tester, t8);
+    });
+    testWidgets('compact', (tester) async {
+      await expectNoLayoutErrors(tester, t8, act: (tester) async {
+        await tester.tap(find.byKey(const ValueKey('app_table_density')));
+      });
+    });
+    testWidgets('the Columns sheet', (tester) async {
+      await expectNoLayoutErrors(tester, t8, act: (tester) async {
+        await tester.tap(find.byKey(const ValueKey('app_table_columns')));
+      });
+    });
   });
   testWidgets('AppPagination alone', (tester) async {
     await expectNoLayoutErrors(

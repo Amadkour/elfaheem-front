@@ -1,0 +1,61 @@
+# Master-detail framework (D-290, phase 3)
+
+ONE pattern for every list of every role: a row opens the connected detail of a student, course, teacher or
+category; inside a detail every related entity is a link that swaps the panel (with a breadcrumb trail). The server
+contract is `../back/docs/master_detail/CONTRACT.md` (`/api/v1/entities/...`); the server decides what a viewer may
+see and lists the `sections` the app may open: the app never decides permissions, it only draws what it is given.
+
+## Files
+
+| file | what |
+|---|---|
+| `lib/core/entities/entity_ref.dart` | `EntityKind {student, course, teacher, category}`, `EntityRef(kind, id, {label, imageUrl})`, token `student:12` (`toToken` / `EntityRef.tryParse`) |
+| `lib/core/entities/entities_api.dart` | `EntitiesApi.instance`: `summary(ref, {studentId})`, `page(ref, section, {query})`, `timeline(studentId, courseId, {page})`; an LRU cache of summaries (50, 2 min) so a re-open is instant; `prefetch(ref)` (hover); `invalidate(ref)` |
+| `lib/core/entities/entity_models.dart` | `EntitySummary` (kind, id, header, stats, badges, sections, can), `EntityBadge`, `EntityCan`, `EntityPage` (items, total, page, size, pages), `EntityListQuery` (search, sort, filter, page, size); plain parsers over the contract's JSON, tolerant of missing keys (an older server) |
+| `lib/design/master_detail/entity_panel_controller.dart` | `EntityPanelController` (ChangeNotifier): the open trail (`List<EntityRef>`), `current`, `open(ref)` (new trail), `push(ref)` (drill in: trail grows), `back()`, `forward()`, `jumpTo(index)` (breadcrumb), `close()`, `siblings` + `next()` / `previous()` (the list's rows), `selectedId` (row highlight), `focusCourseId` (a student opened from a course scrolls to that course) |
+| `lib/design/master_detail/master_detail_scaffold.dart` | `MasterDetailScaffold(controller:, list:)`: the adaptive host (below) |
+| `lib/design/master_detail/entity_panel.dart` | the panel chrome: breadcrumbs, back / forward, previous / next, quick actions, Open full page, close; body = `EntityDetailView` |
+| `lib/design/master_detail/entity_detail_view.dart` | loads the summary (cache → skeleton → hydrate; error + Retry), draws header, badges, stats and the sections the server listed, through the per-kind spec |
+| `lib/design/master_detail/entity_specs.dart` | per kind: header layout, stat tiles, how each section draws (a sub-list with search / filter / sort / paging, or a block), which badges read how |
+| `lib/design/master_detail/entity_chip.dart` | `EntityChip(ref)` / `EntityLink(ref, child)`: THE way to mention a student / course / teacher / category anywhere; opens through `EntityNavigator.open(context, ref)` |
+| `lib/design/master_detail/entity_navigator.dart` | `EntityNavigator.open(context, ref)`: the nearest `MasterDetailScaffold` swaps / opens its panel; with none (a notification, a mention on any page) the full page `/view/<kind>/<id>` is pushed |
+| `lib/design/master_detail/entity_detail_page.dart` | the full page (route `entity.view`, `/view/:kind/:id`, refresh-safe, every role) |
+
+## Adaptive behaviour
+
+Measured on the scaffold's own width (a page inside the shell is narrower than the window):
+
+| width | list | detail |
+|---|---|---|
+| ≥ 1000 | stays visible, scrollable, the open row highlighted | an inline panel at the END side (left in Arabic), resizable by a drag handle (360 – 60 % of the width, remembered per device), closable, "Open full page" |
+| 700 – 999 | stays under a scrim | an end-side overlay panel over the list (same chrome) |
+| < 700 | — | a draggable bottom sheet (half → full height) with the same chrome; "Open full page" pushes `/view/<kind>/<id>` |
+
+- Navigation inside the panel swaps its content; the trail shows as breadcrumbs (`Students / Sara Ali / Python
+  Basics`); back / forward walk the trail. A course opened from a student keeps that student as context: its students
+  section starts at that student, and the student's timeline for that course is one tap away.
+- Previous / next step through the list's rows (the page hands `siblings`) without closing the panel.
+- Deep links: an open panel writes `?open=<kind>:<id>` on the list's URL (replace, not push: Back closes the panel
+  first); a list page opened with `?open=` opens that panel. The full page has its own URL.
+- Instant open: the cached summary (or the row's own label / image as a header) draws at once, a skeleton for the
+  rest, then the server's summary; hovering a row on web prefetches it.
+- Keyboard (web / desktop): ↑ / ↓ move between rows (the panel follows when open), Enter opens, Esc closes,
+  Alt+← / Alt+→ walk the trail.
+- Screen readers: opening / closing / swapping the panel is announced; the panel is a labelled region.
+- Motion through `AppMotion` (zero under Reduce motion).
+
+## Tables
+
+`AppDataTable` gains (all optional, older pages unchanged):
+
+- `tableId`: the key under which this device remembers column visibility / order and density.
+- `columnMenu: true`: a "Columns" menu (show / hide, move up / down; a `primary` column cannot be hidden).
+- `density`: comfortable / compact toggle in the toolbar (row height and paddings from `AppSpace`).
+- `selectedRowId`: the row drawn as selected (the open detail).
+- `onRowHover`: called once per row hover (prefetch).
+- `AppPagination` page-size choices (20 / 50 / 100) when the page passes `onPageSize`.
+
+## First users (phase 3)
+
+The admin Students and Teachers lists (`admin_users_page.dart`): a row opens the panel; the old management sheet
+stays reachable as the panel's "Manage" quick action until phase 4 folds it into the student detail.

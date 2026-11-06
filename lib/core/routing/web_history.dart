@@ -121,6 +121,23 @@ List<HistoryOp> planHistory(List<HistoryEntry> have, List<HistoryEntry> want) {
   return ops;
 }
 
+/// [location] with the query parameter [key] set to [value] (null removes it), the other parameters kept. The value
+/// keeps `:` readable (`?open=student:12`, D-290).
+String withPageQuery(String location, String key, String? value) {
+  final uri = Uri.tryParse(location);
+  if (uri == null) return location;
+  final q = Map<String, String>.of(uri.queryParameters);
+  if (value == null || value.isEmpty) {
+    q.remove(key);
+  } else {
+    q[key] = value;
+  }
+  final path = uri.path.isEmpty ? '/' : uri.path;
+  if (q.isEmpty) return path;
+  String enc(String v) => Uri.encodeQueryComponent(v).replaceAll('%3A', ':');
+  return '$path?${q.entries.map((e) => '${enc(e.key)}=${enc(e.value)}').join('&')}';
+}
+
 /// Keeps the browser's history in step with the app's pages. A [NavigatorObserver] of the root navigator; the role
 /// shells report through [AppShellNav.changes].
 class WebHistory extends NavigatorObserver {
@@ -229,16 +246,54 @@ class WebHistory extends NavigatorObserver {
 
   List<Route<dynamic>> _pages() => AppShellNav.pageStack(_root);
 
+  /// Each page's serial and its URL without the page queries (a page without a URL of its own keeps the one under it).
+  List<(int, String)> _pageLocations() {
+    var loc = _have.isEmpty ? '/' : _have.first.location;
+    return [
+      for (final r in _pages()) (_serialOf(r), loc = _locationOf(r) ?? loc),
+    ];
+  }
+
   /// The entries the app's pages call for, guard first.
   List<HistoryEntry> _want() {
-    final pages = _pages();
     final out = <HistoryEntry>[];
     var loc = _have.isEmpty ? '/' : _have.first.location;
-    for (final r in pages) {
-      loc = _locationOf(r) ?? loc;
-      out.add(HistoryEntry(_serialOf(r), loc));
+    for (final (serial, base) in _pageLocations()) {
+      loc = base;
+      var own = base;
+      for (final q in _pageQueries.values) {
+        if (q.serial == serial && q.base == base) own = withPageQuery(own, q.key, q.value);
+      }
+      out.add(HistoryEntry(serial, own));
     }
     return [HistoryEntry(0, out.isEmpty ? loc : out.first.location), ...out];
+  }
+
+  // ── Page queries (D-290) ──────────────────────────────────────────────────
+
+  final _pageQueries = <Object, ({int serial, String base, String key, String value})>{};
+
+  /// A page writes `key=value` into its own URL in place, without a new browser entry (an open detail panel:
+  /// `?open=student:12`, D-290); null takes it out again. One value per [owner]. The value belongs to the page on top
+  /// when it is first written, at the URL it had then: a tab switch hides it, coming back to that tab shows it again,
+  /// and a page pushed on top keeps its own URL. Back is unaffected (the panel closes itself first).
+  void setPageQuery(Object owner, String key, String? value) {
+    if (!_enabled) return;
+    if (value == null || value.isEmpty) {
+      if (_pageQueries.remove(owner) != null) _changed();
+      return;
+    }
+    final prev = _pageQueries[owner];
+    if (prev != null) {
+      if (prev.key == key && prev.value == value) return;
+      _pageQueries[owner] = (serial: prev.serial, base: prev.base, key: key, value: value);
+    } else {
+      final pages = _pageLocations();
+      if (pages.isEmpty) return;
+      final (serial, base) = pages.last;
+      _pageQueries[owner] = (serial: serial, base: base, key: key, value: value);
+    }
+    _changed();
   }
 
   Future<void> _report(HistoryEntry e, {bool replace = false}) async {
@@ -368,6 +423,7 @@ class WebHistory extends NavigatorObserver {
     _have = [];
     _nextSerial = 1;
     _adopt = null;
+    _pageQueries.clear();
     _tail = Future<void>.value();
   }
 }

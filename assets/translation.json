@@ -22488,5 +22488,612 @@
   "course_move_to_trash": {
     "en": "Move to trash",
     "ar": "نقل إلى السلة"
-  }
+  },
+  "md_panel_label": {
+    "en": "Details",
+    "ar": "التفاصيل"
+  },
+  "md_back": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "md_forward": {
+    "en": "Forward",
+    "ar": "للأمام"
+  },
+  "md_back_page": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "md_previous": {
+    "en": "Previous",
+    "ar": "السابق"
+  },
+  "md_next": {
+    "en": "Next",
+    "ar": "التالي"
+  },
+  "md_open_full": {
+    "en": "Open full page",
+    "ar": "فتح في صفحة كاملة"
+  },
+  "md_close": {
+    "en": "Close details",
+    "ar": "إغلاق التفاصيل"
+  },
+  "md_breadcrumbs": {
+    "en": "Path",
+    "ar": "المسار"
+  },
+  "md_sheet_handle": {
+    "en": "Expand or collapse details",
+    "ar": "توسيع التفاصيل أو تصغيرها"
+  },
+  "md_announce_open": {
+    "en": "Details of {name}",
+    "ar": "تفاصيل {name}"
+  },
+  "md_announce_closed": {
+    "en": "Details closed",
+    "ar": "أُغلقت التفاصيل"
+  },
+  "md_manage": {
+    "en": "Manage",
+    "ar": "إدارة"
+  },
+  "md_not_found": {
+    "en": "Not found, or not available to you.",
+    "ar": "غير موجود، أو غير متاح لك."
+  },
+  "md_forbidden": {
+    "en": "These details are not available for your account.",
+    "ar": "هذه التفاصيل غير متاحة لحسابك."
+  },
+  "md_kind_student": {
+    "en": "Student",
+    "ar": "طالب"
+  },
+  "md_kind_course": {
+    "en": "Course",
+    "ar": "دورة"
+  },
+  "md_kind_teacher": {
+    "en": "Teacher",
+    "ar": "معلّم"
+  },
+  "md_kind_category": {
+    "en": "Category",
+    "ar": "تصنيف"
+  },
+  "md_sec_courses": {
+    "en": "Courses",
+    "ar": "الدورات"
+  },
+  "md_sec_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "md_sec_teachers": {
+    "en": "Teachers",
+    "ar": "المعلّمون"
+  },
+  "md_sec_timeline": {
+    "en": "Activity",
+    "ar": "سجل النشاط"
+  },
+  "md_sec_payments": {
+    "en": "Payments",
+    "ar": "المدفوعات"
+  },
+  "md_sec_subscriptions": {
+    "en": "Subscription history",
+    "ar": "سجل الاشتراك"
+  },
+  "md_sec_content": {
+    "en": "Content",
+    "ar": "المحتوى"
+  },
+  "md_search": {
+    "en": "Search",
+    "ar": "ابحث في"
+  },
+  "md_sort": {
+    "en": "Sort",
+    "ar": "الترتيب"
+  },
+  "md_filter_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "md_load_more": {
+    "en": "Show more",
+    "ar": "عرض المزيد"
+  },
+  "md_shown_of": {
+    "en": "{n} of {total}",
+    "ar": "{n} من {total}"
+  },
+  "md_empty_section": {
+    "en": "Nothing here yet",
+    "ar": "لا شيء هنا بعد"
+  },
+  "md_no_results": {
+    "en": "No results. Try another search or filter.",
+    "ar": "لا نتائج. جرّب بحثاً أو تصفية أخرى."
+  },
+  "md_history": {
+    "en": "History",
+    "ar": "السجل"
+  },
+  "md_timeline_course": {
+    "en": "Course",
+    "ar": "الدورة"
+  },
+  "md_timeline_empty": {
+    "en": "No activity in this course yet",
+    "ar": "لا نشاط في هذه الدورة بعد"
+  },
+  "md_state_pending": {
+    "en": "Pending",
+    "ar": "بانتظار التفعيل"
+  },
+  "md_state_in_progress": {
+    "en": "In progress",
+    "ar": "يدرس"
+  },
+  "md_state_completed": {
+    "en": "Completed",
+    "ar": "أكمل"
+  },
+  "md_state_withdrawn": {
+    "en": "Withdrawn",
+    "ar": "انسحب"
+  },
+  "md_state_expired": {
+    "en": "Expired",
+    "ar": "انتهى"
+  },
+  "md_status_published": {
+    "en": "Published",
+    "ar": "منشورة"
+  },
+  "md_status_draft": {
+    "en": "Draft",
+    "ar": "مسودة"
+  },
+  "md_status_archived": {
+    "en": "In the trash",
+    "ar": "في سلة المحذوفات"
+  },
+  "md_status_in_progress": {
+    "en": "Running",
+    "ar": "جارية"
+  },
+  "md_status_completed": {
+    "en": "Finished",
+    "ar": "منتهية"
+  },
+  "md_reason_price": {
+    "en": "Price",
+    "ar": "السعر"
+  },
+  "md_reason_time": {
+    "en": "No time",
+    "ar": "ضيق الوقت"
+  },
+  "md_reason_content_mismatch": {
+    "en": "Not what they expected",
+    "ar": "المحتوى لم يناسب توقعاته"
+  },
+  "md_reason_quality": {
+    "en": "Quality",
+    "ar": "الجودة"
+  },
+  "md_reason_technical": {
+    "en": "Technical problems",
+    "ar": "مشكلات تقنية"
+  },
+  "md_reason_personal": {
+    "en": "Personal reasons",
+    "ar": "أسباب شخصية"
+  },
+  "md_reason_not_passed": {
+    "en": "Did not pass",
+    "ar": "لم يجتز"
+  },
+  "md_reason_admin": {
+    "en": "Removed by staff",
+    "ar": "أزالته الإدارة"
+  },
+  "md_reason_course_removed": {
+    "en": "Course removed",
+    "ar": "حُذفت الدورة"
+  },
+  "md_reason_other": {
+    "en": "Other",
+    "ar": "سبب آخر"
+  },
+  "md_reason_unknown": {
+    "en": "Not recorded",
+    "ar": "غير مسجّل"
+  },
+  "md_badge_inactive": {
+    "en": "Inactive",
+    "ar": "غير نشط"
+  },
+  "md_badge_at_risk": {
+    "en": "Courses at risk",
+    "ar": "دورات متعثرة"
+  },
+  "md_badge_all_done": {
+    "en": "Finished every course",
+    "ar": "أنهى كل دوراته"
+  },
+  "md_badge_trending": {
+    "en": "Trending",
+    "ar": "رائجة"
+  },
+  "md_badge_dropping": {
+    "en": "Enrollments dropping",
+    "ar": "التسجيل يتراجع"
+  },
+  "md_badge_high_withdrawal": {
+    "en": "Many withdrawals",
+    "ar": "انسحاب مرتفع"
+  },
+  "md_stat_courses": {
+    "en": "Courses",
+    "ar": "الدورات"
+  },
+  "md_stat_in_progress": {
+    "en": "In progress",
+    "ar": "قيد الدراسة"
+  },
+  "md_stat_completed": {
+    "en": "Completed",
+    "ar": "مكتملة"
+  },
+  "md_stat_withdrawn": {
+    "en": "Withdrawn",
+    "ar": "انسحابات"
+  },
+  "md_stat_expired": {
+    "en": "Expired",
+    "ar": "منتهية"
+  },
+  "md_stat_pending": {
+    "en": "Pending",
+    "ar": "بانتظار التفعيل"
+  },
+  "md_stat_avg_progress": {
+    "en": "Avg. progress",
+    "ar": "متوسط التقدم"
+  },
+  "md_stat_last_activity": {
+    "en": "Last activity",
+    "ar": "آخر نشاط"
+  },
+  "md_stat_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "md_stat_completion": {
+    "en": "Completion",
+    "ar": "نسبة الإتمام"
+  },
+  "md_stat_rating": {
+    "en": "Rating",
+    "ar": "التقييم"
+  },
+  "md_stat_favorites": {
+    "en": "Favorites",
+    "ar": "في المفضلة"
+  },
+  "md_stat_sessions": {
+    "en": "Sessions",
+    "ar": "الحصص"
+  },
+  "md_stat_materials": {
+    "en": "Materials",
+    "ar": "المواد"
+  },
+  "md_stat_revenue": {
+    "en": "Revenue",
+    "ar": "الإيرادات"
+  },
+  "md_stat_published": {
+    "en": "Published",
+    "ar": "المنشورة"
+  },
+  "md_stat_active_30d": {
+    "en": "Active (30 days)",
+    "ar": "نشطون (30 يوماً)"
+  },
+  "md_stat_course_rating": {
+    "en": "Course rating",
+    "ar": "تقييم الدورات"
+  },
+  "md_stat_teacher_rating": {
+    "en": "Teacher rating",
+    "ar": "تقييم المعلّم"
+  },
+  "md_stat_teachers": {
+    "en": "Teachers",
+    "ar": "المعلّمون"
+  },
+  "md_trend_title": {
+    "en": "New enrollments, last 12 weeks",
+    "ar": "التسجيلات الجديدة، آخر 12 أسبوعاً"
+  },
+  "md_trend_total": {
+    "en": "{n} new",
+    "ar": "{n} جديد"
+  },
+  "md_reasons_title": {
+    "en": "Why students withdrew",
+    "ar": "أسباب الانسحاب"
+  },
+  "md_top_courses": {
+    "en": "Top courses",
+    "ar": "الدورات الأكثر طلاباً"
+  },
+  "md_my_enrollment": {
+    "en": "My enrollment",
+    "ar": "اشتراكي"
+  },
+  "md_active": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "md_inactive": {
+    "en": "Inactive",
+    "ar": "غير نشط"
+  },
+  "md_private": {
+    "en": "Private",
+    "ar": "خاصة"
+  },
+  "md_free": {
+    "en": "Free",
+    "ar": "مجانية"
+  },
+  "md_per_month": {
+    "en": "{p} / month",
+    "ar": "{p} شهرياً"
+  },
+  "md_joined": {
+    "en": "Joined {d}",
+    "ar": "انضم في {d}"
+  },
+  "md_last_login": {
+    "en": "Last sign-in {d}",
+    "ar": "آخر دخول {d}"
+  },
+  "md_progress": {
+    "en": "Progress",
+    "ar": "التقدم"
+  },
+  "md_enrolled_on": {
+    "en": "Enrolled {d}",
+    "ar": "سُجّل في {d}"
+  },
+  "md_last_activity": {
+    "en": "Last activity {d}",
+    "ar": "آخر نشاط {d}"
+  },
+  "md_no_activity": {
+    "en": "No activity yet",
+    "ar": "لا نشاط بعد"
+  },
+  "md_just_now": {
+    "en": "just now",
+    "ar": "الآن"
+  },
+  "md_completed_on": {
+    "en": "Completed {d}",
+    "ar": "أكمل في {d}"
+  },
+  "md_withdrawn_on": {
+    "en": "Withdrew {d}",
+    "ar": "انسحب في {d}"
+  },
+  "md_reason": {
+    "en": "Reason: {r}",
+    "ar": "السبب: {r}"
+  },
+  "md_expected_end": {
+    "en": "Ends {d}",
+    "ar": "ينتهي في {d}"
+  },
+  "md_ended_on": {
+    "en": "Ended {d}",
+    "ar": "انتهى في {d}"
+  },
+  "md_refunded_on": {
+    "en": "Refunded {d}",
+    "ar": "استُرد في {d}"
+  },
+  "md_passed": {
+    "en": "Passed",
+    "ar": "ناجح"
+  },
+  "md_failed": {
+    "en": "Not passed",
+    "ar": "لم ينجح"
+  },
+  "md_pay_completed": {
+    "en": "Paid",
+    "ar": "مدفوع"
+  },
+  "md_pay_pending": {
+    "en": "Pending",
+    "ar": "قيد الانتظار"
+  },
+  "md_pay_failed": {
+    "en": "Failed",
+    "ar": "فشل"
+  },
+  "md_pay_refunded": {
+    "en": "Refunded",
+    "ar": "مسترد"
+  },
+  "md_tl_enrolled": {
+    "en": "Enrolled in the course",
+    "ar": "سُجّل في الدورة"
+  },
+  "md_tl_first_visit": {
+    "en": "First visit",
+    "ar": "أول زيارة"
+  },
+  "md_tl_material_completed": {
+    "en": "Finished “{t}”",
+    "ar": "أنهى «{t}»"
+  },
+  "md_tl_live_attended": {
+    "en": "Attended “{t}”",
+    "ar": "حضر «{t}»"
+  },
+  "md_tl_exam_submitted": {
+    "en": "Exam “{t}”",
+    "ar": "اختبار «{t}»"
+  },
+  "md_tl_favorited": {
+    "en": "Added to favorites",
+    "ar": "أضافها إلى المفضلة"
+  },
+  "md_tl_rated": {
+    "en": "Rated {v}/5",
+    "ar": "قيّمها {v}/5"
+  },
+  "md_tl_completed": {
+    "en": "Completed the course",
+    "ar": "أكمل الدورة"
+  },
+  "md_tl_withdrawn": {
+    "en": "Withdrew",
+    "ar": "انسحب"
+  },
+  "md_tl_subscription": {
+    "en": "Subscription: {e}",
+    "ar": "الاشتراك: {e}"
+  },
+  "md_sub_created": {
+    "en": "Subscribed",
+    "ar": "اشترك"
+  },
+  "md_sub_payment_succeeded": {
+    "en": "Payment received",
+    "ar": "تم الدفع"
+  },
+  "md_sub_payment_failed": {
+    "en": "Payment failed",
+    "ar": "فشل الدفع"
+  },
+  "md_sub_activated": {
+    "en": "Activated",
+    "ar": "تم التفعيل"
+  },
+  "md_sub_renewed": {
+    "en": "Renewed",
+    "ar": "تم التجديد"
+  },
+  "md_sub_expired": {
+    "en": "Expired",
+    "ar": "انتهى"
+  },
+  "md_sub_cancelled": {
+    "en": "Cancelled",
+    "ar": "أُلغي"
+  },
+  "md_sub_refunded": {
+    "en": "Refunded",
+    "ar": "استُرد المبلغ"
+  },
+  "md_sub_admin_extended": {
+    "en": "Extended by staff",
+    "ar": "مدّدته الإدارة"
+  },
+  "md_sub_admin_reactivated": {
+    "en": "Reactivated by staff",
+    "ar": "أعادت الإدارة تفعيله"
+  },
+  "md_sub_admin_granted": {
+    "en": "Granted by staff",
+    "ar": "منحته الإدارة"
+  },
+  "md_sub_plan_backfilled": {
+    "en": "Plan recorded",
+    "ar": "سُجّلت الخطة"
+  },
+  "md_sub_access_denied": {
+    "en": "Access denied",
+    "ar": "رُفض الوصول"
+  },
+  "md_actor_user": {
+    "en": "By the student",
+    "ar": "بواسطة الطالب"
+  },
+  "md_actor_admin": {
+    "en": "By staff",
+    "ar": "بواسطة الإدارة"
+  },
+  "md_actor_system": {
+    "en": "Automatic",
+    "ar": "تلقائياً"
+  },
+  "md_actor_teacher": {
+    "en": "By the teacher",
+    "ar": "بواسطة المعلّم"
+  },
+  "md_sort_enrolled_desc": {
+    "en": "Newest enrollment",
+    "ar": "الأحدث تسجيلاً"
+  },
+  "md_sort_enrolled_asc": {
+    "en": "Oldest enrollment",
+    "ar": "الأقدم تسجيلاً"
+  },
+  "md_sort_progress_desc": {
+    "en": "Most progress",
+    "ar": "الأعلى تقدماً"
+  },
+  "md_sort_progress_asc": {
+    "en": "Least progress",
+    "ar": "الأقل تقدماً"
+  },
+  "md_sort_activity_desc": {
+    "en": "Recent activity",
+    "ar": "الأحدث نشاطاً"
+  },
+  "md_sort_name": {
+    "en": "Name",
+    "ar": "الاسم"
+  },
+  "md_sort_newest": {
+    "en": "Newest",
+    "ar": "الأحدث"
+  },
+  "md_sort_oldest": {
+    "en": "Oldest",
+    "ar": "الأقدم"
+  },
+  "md_sort_amount_desc": {
+    "en": "Highest amount",
+    "ar": "الأعلى مبلغاً"
+  },
+  "md_sort_students_desc": {
+    "en": "Most students",
+    "ar": "الأكثر طلاباً"
+  },
+  "md_sort_rating_desc": {
+    "en": "Top rated",
+    "ar": "الأعلى تقييماً"
+  },
+  "ds_columns": {"en": "Columns", "ar": "الأعمدة"},
+  "ds_columns_hint": {"en": "Choose the columns to show and their order. This device remembers it.", "ar": "اختر الأعمدة الظاهرة وترتيبها. يتذكّر هذا الجهاز اختيارك."},
+  "ds_column_locked": {"en": "Always shown", "ar": "يظهر دائمًا"},
+  "ds_move_up": {"en": "Move up", "ar": "نقل لأعلى"},
+  "ds_move_down": {"en": "Move down", "ar": "نقل لأسفل"},
+  "ds_density_compact": {"en": "Compact rows", "ar": "صفوف مضغوطة"},
+  "ds_density_comfortable": {"en": "Comfortable rows", "ar": "صفوف مريحة"}
 }

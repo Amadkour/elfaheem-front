@@ -43,6 +43,28 @@ void main() {
     });
   });
 
+  group('page query (D-290: an open detail panel writes ?open= on the list URL)', () {
+    test('withPageQuery sets, replaces and removes one parameter; the others stay; the colon stays readable', () {
+      expect(withPageQuery('/admin_dashboard/admin-students', 'open', 'student:12'), '/admin_dashboard/admin-students?open=student:12');
+      expect(withPageQuery('/inbox?tab=news', 'open', 'course:3'), '/inbox?tab=news&open=course:3');
+      expect(withPageQuery('/x?open=student:1', 'open', 'student:2'), '/x?open=student:2');
+      expect(withPageQuery('/x?open=student:1&tab=a', 'open', null), '/x?tab=a');
+      expect(withPageQuery('/x?open=student:1', 'open', null), '/x');
+    });
+
+    test('opening / closing the panel rewrites the top entry in place: no new entry, so Back closes the panel', () {
+      const base = '/admin_dashboard/admin-students';
+      final open = withPageQuery(base, 'open', 'student:12');
+      expect(planHistory([g, e(1, base)], [g, e(1, open)]), [HistoryReplace(e(1, open))]);
+      expect(planHistory([g, e(1, open)], [g, e(1, base)]), [HistoryReplace(e(1, base))]);
+    });
+
+    test('the URL opens the list page on its tab, and the router offers the panel', () {
+      expect(webEntryTab('/admin_dashboard/admin-students?open=student:12'), 'admin_students');
+      expect(AppRoutes.match('/view/course/5')!.id, 'entity.view');
+    });
+  });
+
   group('AppRoutes', () {
     test('ids are unique and every pattern is a path', () {
       final ids = AppRoutes.all.map((r) => r.id).toList();

@@ -361,7 +361,7 @@ class AdminAvatar extends StatelessWidget {
           fontFamily: AppFonts.family,
           fontWeight: FontWeight.w800,
           fontSize: size * 0.4,
-          color: c.primary,
+          color: Theme.of(context).brightness == Brightness.dark ? c.textDark : c.primary,
         ),
       ),
     );

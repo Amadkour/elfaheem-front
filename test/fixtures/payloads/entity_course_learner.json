@@ -1,0 +1,80 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/courses/1",
+  "uid": 8
+ },
+ "payload": {
+  "kind": "course",
+  "id": 1,
+  "header": {
+   "id": 1,
+   "name_ar": "Mechanics ar",
+   "name_en": "Mechanics",
+   "image_url": null,
+   "category": {
+    "id": 3,
+    "name_ar": "فيزياء",
+    "name_en": "Physics"
+   },
+   "teacher": {
+    "id": 6,
+    "name": "Mr Teacher",
+    "username": "teacher",
+    "image_url": null
+   },
+   "status": "in_progress",
+   "is_published": true,
+   "is_private": false,
+   "price": {
+    "fees": 300.0,
+    "monthly": null,
+    "six_months": null,
+    "currency": "EGP"
+   },
+   "start_date": null,
+   "end_date": "2027-02-03T21:58:16.686171",
+   "created_at": "2026-11-05T21:58:17.041493",
+   "archived_at": null
+  },
+  "stats": {
+   "rating_avg": 4.0,
+   "rating_count": 1,
+   "sessions": 1,
+   "materials": 1,
+   "enrolled": 3,
+   "mine": {
+    "enrollment_id": 1,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-26T21:58:16.686171",
+    "expected_end_at": "2027-02-03T21:58:16.686171",
+    "progress": 50.0,
+    "first_activity_at": "2026-10-27T21:58:16.686171",
+    "last_activity_at": "2026-11-03T21:58:16.686171",
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 4,
+     "review": "good",
+     "at": "2026-10-29T21:58:16.686171"
+    },
+    "exams": {
+     "count": 2,
+     "avg_percentage": 60.0,
+     "passed": 1
+    }
+   }
+  },
+  "badges": [],
+  "sections": [
+   "timeline"
+  ],
+  "can": {
+   "manage": false,
+   "message": false,
+   "see_money": false
+  }
+ }
+}

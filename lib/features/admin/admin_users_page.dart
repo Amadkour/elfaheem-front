@@ -1,4 +1,8 @@
 // lib/features/admin/admin_users_page.dart — students & teachers (list, detail, control).
+//
+// D-290: a row opens the connected detail panel (MasterDetailScaffold: the student's / teacher's courses, history,
+// payments …, every related entity a link); the old management sheet stays reachable as the panel's "Manage" quick
+// action (and the row's Manage action) until phase 4 folds it into the student detail.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,6 +25,13 @@ import 'admin_view_as_page.dart' show startViewAs;
 import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
 import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter/scheduler.dart' show SchedulerBinding, SchedulerPhase;
+import 'package:flutter_education_app/core/entities/entities_api.dart';
+import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/design/app_badges.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_data_table.dart';
@@ -64,6 +75,73 @@ class _UsersView extends StatefulWidget {
 class _UsersViewState extends State<_UsersView> {
   bool get isStudent => widget.role == 'student';
 
+  EntityKind get _kind => isStudent ? EntityKind.student : EntityKind.teacher;
+
+  /// The detail panel of the list (D-290).
+  late final EntityPanelController _panel = EntityPanelController(rowKind: _kind);
+
+  EntityRef _refOf(AdminUser u) => EntityRef(_kind, u.id, label: u.name, imageUrl: u.imageUrl);
+
+  /// The row drawn as selected: the panel's, kept here so the table redraws only when it changes.
+  int? _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _panel.addListener(_panelChanged);
+  }
+
+  void _panelChanged() {
+    final id = _panel.selectedId;
+    if (id == _selected) return;
+    void apply() {
+      if (mounted) setState(() => _selected = _panel.selectedId);
+    }
+    // `?open=` opens the panel while the list is being built: redraw after that frame.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    } else {
+      apply();
+    }
+  }
+
+  @override
+  void dispose() {
+    _panel.removeListener(_panelChanged);
+    _panel.dispose();
+    super.dispose();
+  }
+
+  /// The panel's quick actions: Manage (the old control sheet; admins, `can.manage`) and View as (super admins).
+  List<EntityPanelAction> _panelActions(
+      BuildContext context, AdminUsersProvider p, bool canViewAs, EntityRef ref, EntitySummary? s) {
+    if (!ref.isPerson) return const [];
+    return [
+      if (s?.can.manage == true)
+        EntityPanelAction(
+          key: const ValueKey('md.manage'),
+          icon: Icons.manage_accounts_rounded,
+          label: 'md_manage'.tr,
+          onPressed: () async {
+            if (ref.kind == _kind) {
+              await _openDetail(context, p, ref.id);
+            } else {
+              await showAdminUserDetail(context, userId: ref.id, role: ref.kind.name);
+            }
+            EntitiesApi.instance.invalidate(ref);
+            if (mounted && _panel.current == ref) _panel.reload();
+          },
+        ),
+      if (canViewAs)
+        EntityPanelAction(
+          icon: Icons.visibility_rounded,
+          label: 'view_as_user'.tr,
+          onPressed: () => startViewAs(Navigator.of(context, rootNavigator: true),
+              id: ref.id, name: ref.name, role: ref.kind.name),
+        ),
+    ];
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -94,6 +172,7 @@ class _UsersViewState extends State<_UsersView> {
     final specs = _userSpecs(isStudent);
     final canViewAs = isSuperNow(context);
     final users = [for (final r in p.rows) AdminUser(r)];
+    _panel.siblings = [for (final u in users) _refOf(u)]; // previous / next and the keyboard walk these rows
     final wide = MediaQuery.sizeOf(context).width >= 600;
 
     final state = p.error != null && p.rows.isEmpty
@@ -106,6 +185,10 @@ class _UsersViewState extends State<_UsersView> {
       onRetry: p.refresh,
       rows: users,
       rowId: (u) => u.id,
+      tableId: isStudent ? 'admin_students' : 'admin_teachers',
+      columnMenu: true,
+      selectedRowId: _selected,
+      onRowHover: (u) => EntitiesApi.instance.prefetch(_refOf(u)),
       searchHint: 'admin_search_name_email_or_phone'.tr,
       onSearch: p.setSearch,
       toolbarTrailing: _controls(context, p, specs),
@@ -156,7 +239,7 @@ class _UsersViewState extends State<_UsersView> {
       sortKey: _sortKey(p.sort),
       sortAscending: p.sort == 'name_asc' || p.sort == 'oldest',
       onSort: (k, asc) => _onSort(p, k, asc),
-      onRowTap: (u) => _openDetail(context, p, u.id),
+      onRowTap: (u) => _panel.open(_refOf(u)),
       rowActions: (u) => [
         if (canViewAs && (u.role == 'student' || u.role == 'teacher'))
           AppRowAction<AdminUser>(
@@ -167,6 +250,11 @@ class _UsersViewState extends State<_UsersView> {
         AppRowAction<AdminUser>(
           icon: Icons.open_in_new_rounded,
           label: t('فتح', 'Open'),
+          onTap: () => _panel.open(_refOf(u)),
+        ),
+        AppRowAction<AdminUser>(
+          icon: Icons.manage_accounts_rounded,
+          label: 'md_manage'.tr,
           onTap: () => _openDetail(context, p, u.id),
         ),
       ],
@@ -188,7 +276,7 @@ class _UsersViewState extends State<_UsersView> {
       loadingMore: p.loadingMore,
     );
 
-    return AdminPage(
+    final page = AdminPage(
       helpPageId: 'admin.users',
       title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
       icon: isStudent ? Icons.school_rounded : Icons.person_pin_rounded,
@@ -209,6 +297,13 @@ class _UsersViewState extends State<_UsersView> {
           Expanded(child: table),
         ]),
       ),
+    );
+    return MasterDetailScaffold(
+      controller: _panel,
+      list: page,
+      rootLabel: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
+      deepLinks: widget.embedded,
+      actions: (ref, s) => _panelActions(context, p, canViewAs, ref, s),
     );
   }
 
