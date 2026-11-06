@@ -145,6 +145,10 @@ final _refusedNote = AdvQueuedNote(
   message: 'A sensitive note is never shown to the student — choose Private or Advising team',
 );
 
+/// The workspace and the student 360 with this file's data, for the accessibility checks (a11y_guidelines_test.dart).
+AdvWorkspaceView advWorkspaceSample({bool manage = true, AdvSelection? selection}) => _workspace(manage: manage, selection: selection);
+AdvStudentView advStudentSample(String section) => _student(section);
+
 const _waitingNote = AdvQueuedNote(userId: 31, orgId: 3, memberId: 601, draft: AdvNoteDraft(body: 'Written offline', clientId: 'n2'));
 
 void main() {

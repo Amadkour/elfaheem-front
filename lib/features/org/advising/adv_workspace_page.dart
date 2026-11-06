@@ -393,7 +393,7 @@ class AdvSelectionBar extends StatelessWidget {
         ),
         TextButton(
           key: const ValueKey('adv.workspace.select.done'),
-          style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+          style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: ink),
           onPressed: onDone,
           child: Text(t('تم', 'Done')),
         ),

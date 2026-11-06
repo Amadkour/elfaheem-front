@@ -2,7 +2,9 @@
 // assistant chat parts, the sign-in / registration / verification screens and the re-auth sheet — Arabic and
 // English, light and dark, on a phone and a wide window: Android 48x48 and iOS 44x44 tap targets, a label on every
 // tappable node, WCAG text contrast. The home data is the plain-value data the `*_home_layout_test.dart` files pump
-// (imported from them); the auth screens run with the app's providers over a fake backend.
+// (imported from them); the auth screens run with the app's providers over a fake backend. Academic Advising (D-289,
+// Phase 9): the workspace (also while selecting), the student 360, the student hub and the director dashboard, with
+// the data of the adv_*_layout_test.dart files.
 //
 // A failure that cannot be fixed yet (the widget sits in a file another change has open) is listed in [_blocked]
 // with the reason. The guidelines themselves are never relaxed, and an entry that no longer fails anything makes the
@@ -29,6 +31,11 @@ import 'package:flutter_education_app/features/auth/login_screen.dart';
 import 'package:flutter_education_app/features/auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/auth/register_screen.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
+import 'package:flutter_education_app/features/org/advising/adv_appointments.dart' show AdvApptActions;
+import 'package:flutter_education_app/features/org/advising/adv_appt_models.dart' show AdvHub;
+import 'package:flutter_education_app/features/org/advising/adv_parts.dart' show AdvLoad;
+import 'package:flutter_education_app/features/org/advising/adv_student_hub.dart' show AdvHubView;
+import 'package:flutter_education_app/features/org/advising/adv_workspace_page.dart' show AdvSelection;
 import 'package:flutter_education_app/features/org/home/org_home_logic.dart' show OrgDeptTab;
 import 'package:flutter_education_app/features/org/org_dashboard_model.dart';
 import 'package:flutter_education_app/features/org/org_department_dashboard.dart';
@@ -44,7 +51,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../org/adv_appt_models_test.dart' show advApptNow, sampleAdvHubJson;
 import '../support/fake_api.dart';
+import 'adv_analytics_layout_test.dart' as adv_analytics;
+import 'adv_case_layout_test.dart' as adv_case;
 import 'admin_home_layout_test.dart' as admin;
 import 'layout_harness.dart';
 import 'member_home_layout_test.dart' as member;
@@ -291,6 +301,52 @@ void main() {
         ),
       );
       await tester.pump(const Duration(seconds: 5)); // the tabs' own loads and notices settle
+    });
+  });
+
+  // Academic Advising (D-289): the advisor's and the director's daily pages and the student's hub.
+  group('academic advising', () {
+    testWidgets('workspace (director)', (tester) async {
+      await expectA11y(tester, 'adv workspace', () => adv_case.advWorkspaceSample());
+    });
+
+    testWidgets('workspace while selecting students (advisor)', (tester) async {
+      final items = adv_case.advWorkspaceSample().page!.items;
+      await expectA11y(tester, 'adv workspace selecting',
+          () => adv_case.advWorkspaceSample(manage: false, selection: const AdvSelection().toggle(items[0]).toggle(items[2])));
+    });
+
+    testWidgets('student 360', (tester) async {
+      for (final section in const ['overview', 'flags', 'notes']) {
+        await expectA11y(tester, 'adv 360 $section', () => adv_case.advStudentSample(section));
+      }
+    });
+
+    testWidgets('student hub', (tester) async {
+      await expectA11y(
+        tester,
+        'adv hub',
+        () => AdvHubView(
+          load: AdvLoad.ready,
+          hub: AdvHub.fromJson(sampleAdvHubJson()),
+          now: advApptNow,
+          onRetry: () {},
+          onBook: (_) {},
+          onMessage: (_) {},
+          onThreads: () {},
+          onSurvey: (_) {},
+          onAllAppointments: () {},
+          onSupport: () {},
+          onOutreach: (_) {},
+          onAllOutreach: () {},
+          apptActions: AdvApptActions(onJoin: (_) {}, onCalendar: (_) {}, onReschedule: (_) {}, onCancel: (_) {}, onChat: (_) {}),
+        ),
+      );
+    });
+
+    testWidgets('director dashboard (manage and aggregate)', (tester) async {
+      await expectA11y(tester, 'adv director', () => adv_analytics.director());
+      await expectA11y(tester, 'adv director aggregate', () => adv_analytics.director(aggregate: true));
     });
   });
 
