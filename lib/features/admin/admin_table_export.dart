@@ -294,6 +294,40 @@ String _localName(Map<String, dynamic> j, {String fallback = ''}) {
   return name.isEmpty ? fallback : name;
 }
 
+/// Organizations (the platform admin's review list). [typeLabels]: the organization type -> its label.
+AppTableExport adminOrganizationsExport(List<Map<String, dynamic>> rows, {Map<String, String> typeLabels = const {}}) => AppTableExport(
+      id: 'admin.organizations',
+      title: t('المؤسسات', 'Organizations'),
+      columns: [
+        AppExportColumn('id', '#', type: AppColType.integer, width: 8, visible: false),
+        AppExportColumn('name', t('المؤسسة', 'Organization'), locked: true, total: AppTotal.count),
+        AppExportColumn('type_label', t('النوع', 'Type')),
+        _status('status', t('الحالة', 'Status'), {
+          'pending': t('بانتظار المراجعة', 'Waiting'),
+          'approved': t('معتمدة', 'Approved'),
+          'rejected': t('تحتاج تعديل', 'Needs changes'),
+          'suspended': t('موقوفة', 'Suspended'),
+          'deleted': t('محذوفة', 'Deleted'),
+        }),
+        AppExportColumn('parent_name', t('تابعة لـ', 'Under')),
+        AppExportColumn('license_no', t('رقم الترخيص', 'Licence number'), visible: false),
+        AppExportColumn('creator_name', t('مقدم الطلب', 'Applicant')),
+        AppExportColumn('creator_email', t('البريد', 'Email'), visible: false),
+        AppExportColumn('submitted_at', t('أُرسل', 'Sent'), type: AppColType.dateTime),
+      ],
+      rows: [
+        for (final r in rows)
+          {
+            ...r,
+            'name': _localName(r),
+            'type_label': typeLabels[asStr(r['type'])] ?? asStr(r['type']),
+            'parent_name': r['parent'] is Map ? _localName(asMap(r['parent'])) : '',
+            'creator_name': asStr(asMap(r['creator'])['name']),
+            'creator_email': asStr(asMap(r['creator'])['email']),
+          },
+      ],
+    );
+
 /// Teacher withdrawal (payout) requests.
 AppTableExport adminWithdrawalsExport(List<Map<String, dynamic>> rows) => AppTableExport(
       id: 'admin.withdrawals',

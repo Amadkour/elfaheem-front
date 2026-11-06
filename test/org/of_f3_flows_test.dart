@@ -316,6 +316,42 @@ void main() {
     await close(tester);
   });
 
+  testWidgets('organizations list: two ticked rows offer Approve / Reactivate / Export; Approve posts only the waiting one', (tester) async {
+    api = FakeApi({
+      'GET /api/v1/admin/orgs/stats': (o) => {'pending': 1, 'suspended': 1},
+      'GET /api/v1/admin/orgs': (o) => {
+            'items': [
+              {'id': 5, 'name_ar': 'جامعة النيل', 'name_en': 'Nile University', 'status': 'pending', 'type': 'university', 'creator': {'name': 'Sara'}},
+              {'id': 6, 'name_ar': 'مدرسة النور', 'name_en': 'Noor School', 'status': 'suspended', 'type': 'school', 'creator': {'name': 'Ali'}},
+            ],
+            'total': 2,
+            'page': 1,
+            'pages': 1,
+          },
+      'POST /api/v1/admin/orgs/*': (o) => {'ok': true},
+    }, latency: const Duration(milliseconds: 20))
+      ..install();
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1400, 900);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_host(const AdminOrganizationsPage(), scroll: false));
+    await _settle(tester, 8);
+    final boxes = find.byType(Checkbox);
+    expect(boxes, findsNWidgets(3)); // select-all + two rows
+    await _tap(tester, boxes.at(1));
+    await _tap(tester, boxes.at(2));
+    expect(find.widgetWithText(AppButton, 'Approve'), findsOneWidget);
+    expect(find.widgetWithText(AppButton, 'Reactivate'), findsOneWidget);
+    expect(find.widgetWithText(AppButton, 'md_p8_export_selected'.tr), findsOneWidget);
+
+    await _tap(tester, find.widgetWithText(AppButton, 'Approve'));
+    await _tap(tester, find.text('Approve').last); // the confirm
+    await _settle(tester, 6);
+    final posts = api.calls.where((c) => c.method == 'POST').map((c) => c.path).toList();
+    expect(posts, ['/api/v1/admin/orgs/5/approve']);
+    await close(tester);
+  });
+
   testWidgets('organizations list: a failed load is an error with Retry, not an empty list', (tester) async {
     var fail = true;
     api = FakeApi({
