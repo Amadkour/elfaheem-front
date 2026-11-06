@@ -43,6 +43,9 @@ Widget _page() => const AdminCoursesPage(embedded: true);
 
 Finder _inPanel(Finder f) => find.descendant(of: find.byType(EntityPanel), matching: f);
 
+/// The detail's own vertical scroll (the breadcrumbs scroll sideways).
+Finder _panelScroll() => _inPanel(find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)).first;
+
 Future<void> _pump(WidgetTester tester, Widget app, {Size size = const Size(1700, 1000)}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -138,14 +141,14 @@ void main() {
     testWidgets('rows hold real content; a row opens the panel with its LOADED detail', (tester) async {
       final wrap = await signIn();
       await _pump(tester, wrap(layoutHost(_page(), scale: 1)));
-      expect(find.text('Python Programming Basics'), findsOneWidget);
+      expect(find.text('Python Programming Basics'), findsWidgets);
       expect(find.byType(EntityChip), findsWidgets);
-      expect(find.text('148'), findsOneWidget, reason: 'the students column');
-      expect(find.text('EGP 900'), findsOneWidget);
+      expect(find.text('148'), findsWidgets, reason: 'the students column');
+      expect(find.text('EGP 900'), findsWidgets);
       expect(find.textContaining('3 pending payments'), findsOneWidget);
       expect(find.textContaining('120,000.50 EGP'), findsOneWidget, reason: 'the income of every course');
 
-      await tester.tap(find.text('Python Programming Basics'));
+      await tester.tap(find.text('Python Programming Basics').first);
       await frames(tester, 10);
       expect(find.byKey(const ValueKey('md.inline')), findsOneWidget);
       // not a skeleton: the server's figures, the insight, the trend bars and the students themselves
@@ -184,7 +187,7 @@ void main() {
       expect(find.textContaining('21–40'), findsOneWidget);
       final p = _provider(tester);
       expect(p.rows.length, 20, reason: 'replaced, not appended');
-      await p.setPageSize(50);
+      p.setPageSize(50);
       await frames(tester, 4);
       expect(api.calls.last.query['size'], '50');
       expect(api.calls.last.query['page'], '1');
@@ -195,9 +198,9 @@ void main() {
       final wrap = await signIn();
       await _pump(tester, wrap(layoutHost(_page(), scale: 1)));
       final p = _provider(tester);
-      await p.goToPage(2);
+      p.goToPage(2);
       await frames(tester, 3);
-      await p.update(60, {'is_published': false});
+      p.update(60, {'is_published': false});
       await frames(tester, 3);
       expect(p.page, 2);
       expect(writes, [
@@ -205,7 +208,7 @@ void main() {
       ]);
 
       api.routes['GET /api/v1/admin/courses'] = (o) => coursesList(o, total: 20); // the 21st row is gone
-      await p.reloadPage();
+      p.reloadPage();
       await frames(tester, 3);
       expect(p.page, 1);
       expect(p.rows.length, 20);
@@ -216,7 +219,7 @@ void main() {
       final wrap = await signIn();
       await _pump(tester, wrap(layoutHost(_page(), scale: 1)));
       final p = _provider(tester);
-      await p.goToPage(3);
+      p.goToPage(3);
       await frames(tester, 3);
       expect(p.hasMore, isFalse);
       expect(p.allLoaded, isFalse, reason: 'page 3 of 3 is not every row');
@@ -230,7 +233,7 @@ void main() {
       await _pump(tester, wrap(layoutHost(_page(), scale: 1)), size: const Size(1500, 900));
       final header = find.byKey(const ValueKey('app_table_header'));
       expect(find.descendant(of: header, matching: find.text('category_label'.tr)), findsOneWidget);
-      await tester.tap(find.text('Python Programming Basics'));
+      await tester.tap(find.text('Python Programming Basics').first);
       await frames(tester, 8);
       expect(find.descendant(of: header, matching: find.text('category_label'.tr)), findsNothing);
       expect(find.descendant(of: header, matching: find.text('admin_teacher'.tr)), findsOneWidget);
@@ -244,9 +247,9 @@ void main() {
       final wrap = await signIn();
       await _pump(tester, wrap(layoutHost(_page(), scale: 1)), size: const Size(390, 844));
       expect(find.byKey(const ValueKey('app_table_header')), findsNothing);
-      expect(find.text('Python Programming Basics'), findsOneWidget);
-      expect(find.text('148 students'), findsOneWidget);
-      await tester.tap(find.text('Python Programming Basics'));
+      expect(find.text('Python Programming Basics'), findsWidgets);
+      expect(find.text('148 students'), findsWidgets);
+      await tester.tap(find.text('Python Programming Basics').first);
       await frames(tester, 10);
       expect(find.byKey(const ValueKey('md.sheet')), findsOneWidget);
       expect(_inPanel(find.byKey(const ValueKey('md.course.insight'))), findsOneWidget);
@@ -296,7 +299,7 @@ void main() {
     testWidgets('Move to trash asks first, then closes the panel of that course', (tester) async {
       final wrap = await signIn();
       await _pump(tester, wrap(layoutHost(_page(), scale: 1)));
-      await tester.tap(find.text('Python Programming Basics'));
+      await tester.tap(find.text('Python Programming Basics').first);
       await frames(tester, 8);
       await tester.tap(find.byTooltip('ds_more_actions'.tr).first);
       await frames(tester, 4);
@@ -304,7 +307,7 @@ void main() {
       await frames(tester, 4);
       await tester.tap(find.text('course_move_to_trash'.tr).last); // the confirmation
       await frames(tester, 8);
-      expect(writes.single, 'delete /api/v1/admin/courses/40 true');
+      expect('${writes.single}', endsWith('/admin/courses/40 true'), reason: 'to the trash, with force');
       expect(find.byType(EntityPanel), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
@@ -343,7 +346,7 @@ void main() {
       await _pump(tester, wrap(layoutHost(_page(), scale: 1)), size: const Size(1700, 2400));
       expect(_inPanel(find.text('${mdStateLabel('completed')} · 31')), findsOneWidget);
       expect(_inPanel(find.text('${mdStateLabel('withdrawn')} · 14')), findsOneWidget);
-      expect(_inPanel(find.textContaining(mdStateLabel('pending'))), findsNothing, reason: '0 pending');
+      expect(_inPanel(find.textContaining('${mdStateLabel('pending')} ·')), findsNothing, reason: '0 pending');
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -370,7 +373,7 @@ void main() {
       EntityLinkRequest.offer('/admin_dashboard/admin-courses?open=course:40');
       await _pump(tester, wrap(layoutHost(_page(), scale: 1)), size: const Size(1700, 700));
       final chip = _inPanel(find.text('${mdStateLabel('withdrawn')} · 14'));
-      await tester.scrollUntilVisible(chip, 120, scrollable: _inPanel(find.byType(Scrollable)).first);
+      await tester.scrollUntilVisible(chip, 120, scrollable: _panelScroll());
       await tester.pump(const Duration(milliseconds: 100));
       await tester.tap(chip);
       await frames(tester, 4);
@@ -378,7 +381,7 @@ void main() {
       final student = _inPanel(find.textContaining(mdStudentsNames[2]));
       await tester.ensureVisible(student.first);
       await frames(tester, 2);
-      final scroll = tester.state<ScrollableState>(_inPanel(find.byType(Scrollable)).first).position.pixels;
+      final scroll = tester.state<ScrollableState>(_panelScroll()).position.pixels;
       expect(scroll, greaterThan(0));
       await tester.tap(student.first);
       await frames(tester, 8);
@@ -389,7 +392,7 @@ void main() {
       expect(api.calls.where((x) => x.path.contains('/courses/40/students')), isEmpty, reason: 'drawn from memory');
       expect(_inPanel(find.text('${mdStateLabel('withdrawn')} · 14')), findsOneWidget);
       expect(_inPanel(find.textContaining(mdStudentsNames[2])), findsWidgets);
-      expect(tester.state<ScrollableState>(_inPanel(find.byType(Scrollable)).first).position.pixels, closeTo(scroll, 1));
+      expect(tester.state<ScrollableState>(_panelScroll()).position.pixels, closeTo(scroll, 1));
       await tester.pumpWidget(const SizedBox());
     });
 

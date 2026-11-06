@@ -54,8 +54,32 @@ Measured on the scaffold's own width (a page inside the shell is narrower than t
 - `selectedRowId`: the row drawn as selected (the open detail).
 - `onRowHover`: called once per row hover (prefetch).
 - `AppPagination` page-size choices (20 / 50 / 100) when the page passes `onPageSize`.
+- `columnResize`: drag a column's edge in the header (double tap: its default); remembered with the layout. A `primary`
+  column takes the room left; widths shrink to fit when the table narrows.
+- `hideBelow` (column): left out of the wide table under that table width, e.g. while a side panel is open.
+- `maxInlineActions`: 0 = each row has one menu instead of inline buttons.
+- `AppDataTable.compactOf(context)`: a cell's density, so a thumbnail or chip follows the toggle.
+- With a `mobileCard`, a phone drops the Columns and density buttons (the card is not made of columns).
+
+`AdminPagedProvider` gains numbered paging next to `loadMore`: `goToPage`, `setPageSize`, `reloadPage` (after an action
+a numbered table stays where it was; a page a delete emptied falls back); `allLoaded` tells an export whether the rows
+on screen are every row.
+
+## Going back
+
+`EntityPanelController.storage` is a `PageStorageBucket` for the trail (a new trail starts clean). The detail's scroll
+offset and each `EntitySubList`'s query and rows live there, so Back draws the course as it was, without asking the
+server again. `learn(ref)` gives a trail entry the name its summary brought (a deep link's ref has none).
 
 ## First users (phase 3)
 
 The admin Students and Teachers lists (`admin_users_page.dart`): a row opens the panel; the old management sheet
 stays reachable as the panel's "Manage" quick action until phase 4 folds it into the student detail.
+
+## Admin courses (phase 5)
+
+`admin_courses_page.dart`: the table of section 4 (numbered server pages, both directions of every sortable column,
+`?open=course:<id>`), one card per course on a phone. The panel's quick actions and the row's menu act directly (Edit,
+Publish, Mark completed, Move to trash); Manage is the sheet for what needs a form (payment provider, methods, fee,
+private access code, resubscribe, plans and income in full, recent payments, exams). A course opened from a student
+starts with that student's history, folded with one tap.
