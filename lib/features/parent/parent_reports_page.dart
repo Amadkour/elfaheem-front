@@ -451,7 +451,7 @@ class _ChildReportCard extends StatelessWidget {
           title: 'pl_exams_list'.tr,
           child: Column(children: [
             for (final x in exams)
-              ListTile(
+              _childCourseLink(context, x, 'exam', ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
@@ -464,7 +464,7 @@ class _ChildReportCard extends StatelessWidget {
                 subtitle: Text('${plLabel(x, 'course')} · ${plDateTime(x['at'])}'),
                 trailing: Text(x['percentage'] == null ? '—' : '${(x['percentage'] as num).round()}%',
                     style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: x['percentage'] == null ? null : plPctColor(context, x['percentage'] as num))),
-              ),
+              )),
           ]),
         ),
       if (log.isNotEmpty)
@@ -473,14 +473,14 @@ class _ChildReportCard extends StatelessWidget {
           title: 'pl_attendance_list'.tr,
           child: Column(children: [
             for (final x in log)
-              ListTile(
+              _childCourseLink(context, x, 'session', ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.videocam_rounded, color: c.primary),
                 title: Text('${x['session']}'),
                 subtitle: Text('${plLabel(x, 'course')} · ${plDateTime(x['at'])}'),
                 trailing: Text(plMinutes(x['minutes'])),
-              ),
+              )),
           ]),
         ),
       if (assignments.isNotEmpty)
@@ -624,16 +624,21 @@ class _ChildReportCard extends StatelessWidget {
     ]),
   );
 
-  Widget _courseRow(BuildContext context, Map<String, dynamic> x) {
-    final row = _courseRowBody(context, x);
+  Widget _courseRow(BuildContext context, Map<String, dynamic> x) =>
+      _childCourseLink(context, x, 'course', _courseRowBody(context, x), labelKey: 'name');
+
+  /// [row] as a link to its course, opened as the child sees it (an exam / session row of an older server, which
+  /// sends no `course_id`, stays plain).
+  Widget _childCourseLink(BuildContext context, Map<String, dynamic> x, String keyKind, Widget row,
+      {String labelKey = 'course'}) {
     final courseId = (x['course_id'] as num?)?.toInt();
     final childId = this.childId;
     if (courseId == null || childId == null) return row;
-    final course = EntityRef(EntityKind.course, courseId, label: plLabel(x, 'name'));
+    final course = EntityRef(EntityKind.course, courseId, label: plLabel(x, labelKey));
     final child = EntityRef(EntityKind.student, childId, label: name);
     return EntityLink(
       course,
-      key: ValueKey('md.parent_report.course.$courseId'),
+      key: keyKind == 'course' ? ValueKey('md.parent_report.course.$courseId') : null,
       onOpen: () {
         // the child first, then their course: the course reads as the child sees it, the breadcrumb leads back
         final panel = MasterDetailScope.maybeOf(context)?.controller;
