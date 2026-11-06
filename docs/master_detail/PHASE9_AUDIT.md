@@ -18,13 +18,13 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 
 | role | on | P9 | gap | out | rows |
 |---|---|---|---|---|---|
-| teacher | 2 | 4 | 3 | 7 | 16 |
-| student | 3 | 1 | 2 | 3 | 9 |
+| teacher | 2 | 5 | 0 | 9 | 16 |
+| student | 3 | 2 | 0 | 4 | 9 |
 | parent | 2 | 1 | 2 | 2 | 7 |
 | org staff | 3 | 2 | 3 | 4 | 12 |
 | admin | 4 | 0 | 3 | 1 | 8 |
 | shared | 2 | 0 | 1 | 2 | 5 |
-| **total** | **16** | **8** | **14** | **19** | **57** |
+| **total** | **16** | **10** | **9** | **22** | **57** |
 
 ## Teacher
 
@@ -36,9 +36,9 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | Certificate requests | `teacher/certificates/certificate_requests_screen.dart` | request cards | **P9**: `MasterDetailScaffold`; the student and the course are `EntityChip`s (avatar card keeps approve / reject) |
 | Device switch requests | `teacher/profile/switch_device_requests/teacher_device_requests_screen.dart` | request cards | **P9**: `EntityGuardedChip` for the student and the course (`student_id` / `course_id` were already in the payload, now parsed, null-safe for an older server) |
 | Grade review (paper marks) | `shared/exam_engine/marks/review/grade_review_rows.dart` | its own list + detail | **P9**: the matched student is an `EntityGuardedChip` in the row detail (the screen keeps its own review master-detail) |
-| Attendance roll call | `teacher/analysis/attendance/teacher_attendance_screen.dart` | sessions, students | gap: the student rows are present / absent toggles; a chip beside the name would need a second tap target per row |
-| Exam hub | `teacher/analysis/exam/teacher_exam_hub_screen.dart` | exams, submissions | gap: submission rows name students in plain text |
-| Read flags | `teacher/analysis/flags/teacher_read_flags_screen.dart` | flagged items → students | gap (low): a student opens the analytics profile on purpose; a chip could sit beside it |
+| Attendance roll call | `teacher/analysis/attendance/teacher_attendance_screen.dart` | sessions, students | out (decided, gaps A): a row is already two targets, the name opens the course's analytics profile (on purpose, the one parents see) and the switch marks presence; the avatar as a record link would give one person two "open" destinations side by side |
+| Exam hub | `teacher/analysis/exam/teacher_exam_hub_screen.dart` | exams, submissions | **P9** (gaps A): `MasterDetailScaffold` around the hub; a result's student name is an `EntityGuardedChip` (`md.exam_result.student.<id>`), the card still opens the answers |
+| Read flags | `teacher/analysis/flags/teacher_read_flags_screen.dart` | flagged items → students | out (decided, gaps A): each student row is one link to the analytics profile; a chip inside it would be a link in a link (`EntityLink` rule: one row, one link) |
 | Data Lab | `teacher/data_lab/*` | spreadsheet grid | out (an editor) |
 | Analytics hub | `teacher/analysis/analytics_hub_screen.dart` | course tool cards | out (navigation hub) |
 | Schedules, sessions section | `teacher/schedules/`, `teacher/sessions/components/` | sessions | out |
@@ -55,8 +55,8 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | Grades, Payments, Subscriptions | `student/record/student_record_pages.dart` | paged lists | on (`EntityListPage`) |
 | My certificates | `student/certificates/my_certificates_screen.dart` | certificates | on (course chip, P7) |
 | My exams | `student/analysis/exam/student_exam_list_screen.dart` | exam cards in 4 tabs | **P9**: `MasterDetailScaffold` around the tabs; the course of each exam is an `EntityChip` (opens the course panel: progress, what is due, Continue learning); the card still opens the exam |
-| Dashboard exam tab | `student/dashboard/component/student_exam_tab.dart` | exam cards | gap: the same course mention as My exams |
-| Analytics | `student/analysis/student_analytics_screen.dart` | course cards → analytics | gap (low): a course chip in the card header; the card keeps its analytics destination |
+| Dashboard exam tab | `student/dashboard/component/student_exam_tab.dart` | exam cards | **P9** (gaps A): the course is an `EntityChip` (`md.exam_tab.course.<id>`), as in My exams. The widget has no importer today (dead code, see `docs/polish/screen-audit-learning.md`); no scaffold of its own, so a chip opens the full page unless a host wraps it |
+| Analytics | `student/analysis/student_analytics_screen.dart` | course cards → analytics | out (decided, gaps A): the whole card opens the course's analytics; a chip in its header would be a second link inside it, and My courses already opens the course panel |
 | Home teachers row | `student/home/component/instractor_roe.dart` | teacher avatars | out: opens the public teacher profile (`/@name`, D-074) on purpose |
 | Home categories, Categories | `student/home/component/category_row.dart`, `shared/category/categories_screen.dart` | catalogue | out: catalogue browsing opens the course page |
 | Rewards, flags, exam quiz / result | `student/reward/`, `analysis/flags/`, `analysis/exam/*_quiz/result*` | | out |
@@ -68,7 +68,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | Children | `parent/parent_children_page.dart` | child cards | on (P7 panel) |
 | Alerts | `parent/parent_alerts_page.dart` | alerts | on (child chip, P7) |
 | Reports (tab + one child's report) | `parent/parent_reports_page.dart` | courses, exams, attendance log | **P9**: `MasterDetailScaffold` around the report; a course row is an `EntityLink` that opens the CHILD then pushes the course (`open(child)..push(course)`), so the server answers as the child (`?student_id=` through `contextStudentId`) and the breadcrumb leads back; outside a scaffold the full page gets `?from=student:<id>` |
-| Report exams / attendance rows | same file | exam and session rows | gap: the course in the subtitle is plain text (the payload names it, `course_id` not checked there) |
+| Report exams / attendance rows | same file | exam and session rows | gap (server): `exams[]` and `attendance_log[]` of `parent_report_service.py` send `course_ar` / `course_en` but no `course_id` (the service has it: `e["course_id"]`, `r["course_id"]`); once sent, the subtitle's course becomes the same child-then-course link as the course rows |
 | Organization view | `parent/parent_org_view.dart` | schedule, grades | gap: course names in plain text (no ids in the payload; needs `course_id` from the server) |
 | Overview | `parent/parent_overview_page.dart` | child tiles → report | out (dashboard) |
 | Link screens | `parent/parent_link_screen.dart`, `student_link_code_screen.dart` | link requests | out |
@@ -115,15 +115,15 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 
 ## Remains (in order)
 
-1. Teacher exam hub submissions and attendance roll call: a student chip beside the name.
-2. Student dashboard exam tab: the course chip, as in My exams.
+1. ~~Teacher exam hub submissions~~ (done, gaps A); attendance roll call left out on purpose (see its row).
+2. ~~Student dashboard exam tab~~ (done, gaps A).
 3. Admin teacher transfers and parent link requests: `adminEntityCell` for the student / teacher / course.
 4. Shared certificate issue lists: student chips.
-5. Parent report exam / attendance rows and the organization view: course chips (the org view needs `course_id`
-   from the server).
+5. Parent report exam / attendance rows and the organization view: course chips; both need `course_id` from the
+   server first (the report's `exams[]` / `attendance_log[]`, the org view's rows).
 6. Org form responses / complaints: the server should send the person's kind so the app can draw a guarded chip.
 7. Advising hub header: a guarded student chip to the connected record.
-8. The low items: read flags, analytics course cards, received reports, organizations.
+8. The low items: received reports, organizations (read flags and analytics course cards: left out on purpose).
 
 ## Tests
 

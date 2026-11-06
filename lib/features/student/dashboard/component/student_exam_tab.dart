@@ -7,6 +7,8 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 class StudentExamsTab extends StatefulWidget {
   const StudentExamsTab({super.key});
 
@@ -262,8 +264,10 @@ class _ExamCard extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 2),
-                      Text('📚 ${exam.courseName}',
-                          style: context.colors.caption.copyWith(fontSize: 11)),
+                      // the exam's course opens the course (progress, what is due, Continue learning), D-290
+                      EntityChip(
+                          key: ValueKey('md.exam_tab.course.${exam.id}'),
+                          EntityRef(EntityKind.course, exam.courseId, label: exam.courseName)),
                     ])),
             Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

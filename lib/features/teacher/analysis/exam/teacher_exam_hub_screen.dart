@@ -18,6 +18,10 @@ import 'package:flutter_education_app/features/shared/exam_engine/exam_review_sc
 import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_quick_screen.dart' show openQuickExam;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 
 class TeacherExamHubScreen extends StatelessWidget {
   final int courseId;
@@ -82,6 +86,8 @@ class _HubViewState extends State<_HubView>
   late TabController _tab;
   List<Map<String, dynamic>> _engineExams = const [];      // the Exam Engine section's exams (counted in the header)
   bool? _engineOk;                                          // the engine answered for this course (null = not asked yet)
+  // A result's student chip opens the student in the shared panel (D-290); the card itself still opens the answers.
+  final _panel = EntityPanelController(rowKind: EntityKind.student);
 
   @override
   void initState() {
@@ -102,6 +108,7 @@ class _HubViewState extends State<_HubView>
   @override
   void dispose() {
     _tab.dispose();
+    _panel.dispose();
     super.dispose();
   }
 
@@ -130,7 +137,10 @@ class _HubViewState extends State<_HubView>
               ),
             )
           : null,
-      child: NestedScrollView(
+      child: MasterDetailScaffold(
+      controller: _panel,
+      rootLabel: 'tab_student_results'.tr,
+      list: NestedScrollView(
         headerSliverBuilder: (ctx, _) => [
           SliverToBoxAdapter(child: _buildHero(prov)),
           SliverPersistentHeader(
@@ -148,6 +158,7 @@ class _HubViewState extends State<_HubView>
           controller: _tab,
           children: [_buildExamsTab(prov), _buildResultsTab(prov)],
         ),
+      ),
       ),
     );
   }
@@ -2656,13 +2667,14 @@ class _ResultTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  result.studentName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: examT(14, w: FontWeight.w800, c: c.textDark),
+                // the student's name opens the student (a link once the server says so); the card opens the answers
+                EntityGuardedChip(
+                  key: ValueKey('md.exam_result.student.${result.studentId}'),
+                  EntityRef(EntityKind.student, result.studentId,
+                      label: result.studentName, imageUrl: result.studentImage),
+                  showIcon: false,
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 2),
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
