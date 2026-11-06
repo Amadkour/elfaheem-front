@@ -12,7 +12,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 
-import '../app_kit.dart' show appText;
+import '../app_kit.dart' show AppAvatar, appText;
 import '../app_tokens.dart';
 import 'entity_navigator.dart';
 
@@ -28,13 +28,17 @@ IconData entityKindIcon(EntityKind kind) => switch (kind) {
 String entityKindLabel(EntityKind kind) => 'md_kind_${kind.name}'.tr;
 
 /// A tappable mention of [ref]: the kind's icon and the name, on a soft tint. At least 48 px tall to tap (the pill
-/// itself is smaller and centred in that area).
+/// itself is smaller and centred in that area); [minHeight] lowers that in a compact table on a pointer device.
+/// [avatar] draws a person's picture (or initials) instead of the kind's icon.
 class EntityChip extends StatelessWidget {
-  const EntityChip(this.ref, {super.key, this.showIcon = true, this.maxWidth = 220, this.onOpen});
+  const EntityChip(this.ref,
+      {super.key, this.showIcon = true, this.maxWidth = 220, this.onOpen, this.avatar = false, this.minHeight = AppTouch.min});
 
   final EntityRef ref;
   final bool showIcon;
   final double maxWidth;
+  final bool avatar;
+  final double minHeight;
 
   /// Instead of [EntityNavigator.open] (tests, a page that opens it its own way).
   final VoidCallback? onOpen;
@@ -52,14 +56,17 @@ class EntityChip extends StatelessWidget {
         onTap: onOpen ?? () => EntityNavigator.open(context, ref),
         borderRadius: AppRadius.chipAll,
         child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: AppTouch.min, maxWidth: maxWidth),
+          constraints: BoxConstraints(minHeight: minHeight, maxWidth: maxWidth),
           child: Align(
             widthFactor: 1,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
               decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                if (showIcon) ...[
+                if (avatar && ref.isPerson) ...[
+                  AppAvatar(name: name, url: ref.imageUrl, size: AppSpace.md + AppSpace.xxs),
+                  const SizedBox(width: AppSpace.xxs),
+                ] else if (showIcon) ...[
                   Icon(entityKindIcon(ref.kind), size: AppIconSize.xs, color: ink),
                   const SizedBox(width: AppSpace.xxs),
                 ],

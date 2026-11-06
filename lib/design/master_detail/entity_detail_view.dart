@@ -2,8 +2,9 @@
 //
 // Loads the summary (the cached one at once, else the row's own name + image over a skeleton, then the server's;
 // an error with Retry), then draws, in this order: the header (picture, name, links to the related entities, the
-// quick actions), the badges worded per code, the stat tiles, the kind's blocks (a course's trend and withdrawal
-// reasons, a category's top courses, a learner's own enrollment) and every section the server listed, in its order:
+// quick actions), the badges worded per code, the stat tiles, the kind's blocks (a course's insight line, trend and
+// withdrawal reasons, the history of the student it was opened from, a category's top courses, a learner's own
+// enrollment) and every section the server listed, in its order:
 // a paged sub-list with search, the contract's filter and sort, whose rows are links (student → course → category →
 // teacher → …); a course's content block.
 //
@@ -20,8 +21,11 @@ import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
+import 'package:flutter_education_app/features/shared/course/course_price_tag.dart' show coursePriceLabel;
+import 'package:flutter_education_app/features/student/models.dart' show AppCurrencyX;
 import 'package:provider/provider.dart';
 
+import '../app_bidi.dart' show ltrIsolate;
 import '../app_kit.dart';
 import 'entity_chip.dart';
 import 'entity_panel_controller.dart';
@@ -257,14 +261,21 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         children.add(StudentInCourseBlock(
             key: ValueKey('md.context.${contextStudent.id}'), student: contextStudent, courseId: s.id));
       }
+      final insight = mdCourseInsight(s);
+      if (insight != null) {
+        children.add(Padding(
+          padding: const EdgeInsets.only(top: AppSpace.sm),
+          child: Text(insight, key: const ValueKey('md.course.insight'), style: AppType.row(context)),
+        ));
+      }
       final stats = statSpecsOf(s);
       if (s.kind == EntityKind.student) {
         children.add(StudentOverviewCard(summary: s));
       } else if (stats.isNotEmpty) {
         children.add(Padding(padding: const EdgeInsets.only(top: AppSpace.md), child: EntityStatGrid(stats)));
       }
-      children.addAll(_blocks(context, s));
       final focusCourse = ctl?.focusCourseId;
+      children.addAll(_blocks(context, s));
       final contextStudentId = ctl?.contextStudentId;
       String? nameOf(int? id, EntityKind kind) {
         if (ctl == null || id == null) return null;
@@ -303,6 +314,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
                         )
                       : null
                   : null,
+              filterCounts: s.kind == EntityKind.course && section == 'students' ? _stateCounts(s) : const {},
             ),
         };
         children.add(EntitySectionCard(
@@ -322,6 +334,8 @@ class _EntityDetailViewState extends State<EntityDetailView> {
       }
     }
     return SingleChildScrollView(
+      // one entry per place in the trail: Back returns to the offset it left, a second visit starts at the top
+      key: PageStorageKey('md.scroll.${ref.toToken()}.${ctl?.index ?? 0}'),
       controller: widget.scrollController,
       padding: widget.padding,
       child: KeyedSubtree(
@@ -330,6 +344,12 @@ class _EntityDetailViewState extends State<EntityDetailView> {
       ),
     );
   }
+
+  /// How many students sit behind each state chip of a course's students list.
+  Map<String, int> _stateCounts(EntitySummary s) => {
+        for (final st in entityEnrollmentStates)
+          if (s.stat(st) != null) st: s.stat(st)!.round(),
+      };
 
   Widget _learnerTimeline(BuildContext context, EntitySummary s, int? contextStudent) {
     final sid = contextStudent ?? _viewerId(context);
@@ -460,7 +480,13 @@ class EntityHeader extends StatelessWidget {
           final price = _priceText(s.price);
           if (price != null) meta.add(price);
           final start = s.time('start_date'), end = s.time('end_date');
-          if (start != null || end != null) meta.add('${mdDate(start)} – ${mdDate(end)}');
+          if (start != null && end != null) {
+            meta.add('${mdDate(start)} – ${mdDate(end)}');
+          } else if (start != null) {
+            meta.add(mdText('md_p5_starts', {'d': mdDate(start)}));
+          } else if (end != null) {
+            meta.add(mdText('md_p5_ends', {'d': mdDate(end)}));
+          }
         case EntityKind.category:
           if (s.parent != null) links.add(s.parent!);
           links.addAll(s.children.take(6));
@@ -524,9 +550,10 @@ class EntityHeader extends StatelessWidget {
     final cur = entityString(p['currency']) ?? '';
     final fees = entityDouble(p['fees']), monthly = entityDouble(p['monthly']);
     if ((fees == null || fees == 0) && (monthly == null || monthly == 0)) return 'md_free'.tr;
+    final currency = AppCurrencyX.fromCode(cur);
     final parts = [
-      if (fees != null && fees > 0) mdMoney(EntityMoney(fees, cur)),
-      if (monthly != null && monthly > 0) mdText('md_per_month', {'p': mdMoney(EntityMoney(monthly, cur))}),
+      if (fees != null && fees > 0) coursePriceLabel(currency, fees),
+      if (monthly != null && monthly > 0) mdText('md_per_month', {'p': coursePriceLabel(currency, monthly)}),
     ];
     return parts.join(' · ');
   }
@@ -541,7 +568,7 @@ class EntityStatGrid extends StatelessWidget {
   final List<EntityStat> stats;
 
   @override
-  Widget build(BuildContext context) => AppGrid(minTile: 150, spacing: AppSpace.xs, children: [
+  Widget build(BuildContext context) => AppGrid(minTile: 150, spacing: AppSpace.xs, padding: EdgeInsets.zero, children: [
         for (final s in stats)
           Semantics(
             label: '${s.label}: ${s.value}',
@@ -631,7 +658,7 @@ class _SectionHeading extends StatelessWidget {
   }
 }
 
-/// New enrollments of the last 12 weeks as one sparkline (phase 3; the charts are phase 5).
+/// New enrollments of the last 12 weeks: the total, how the last 4 weeks compare with the 4 before, a bar per week.
 class _TrendBlock extends StatelessWidget {
   const _TrendBlock({required this.trend});
 
@@ -642,14 +669,44 @@ class _TrendBlock extends StatelessWidget {
     final total = trend.fold<int>(0, (a, p) => a + p.count);
     final values = [for (final p in trend) p.count.toDouble()];
     final first = trend.first.weekStart, last = trend.last.weekStart;
+    final change = mdTrendChange(trend);
+    final totalText = mdText('md_trend_total', {'n': mdNumber(total)});
     return _BlockCard(
       title: 'md_trend_title'.tr,
-      icon: Icons.show_chart_rounded,
+      icon: Icons.bar_chart_rounded,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(mdText('md_trend_total', {'n': mdNumber(total)}), style: AppType.figure(context)),
-        const SizedBox(height: AppSpace.xs),
-        AppSparkline(values, height: 48, label: mdText('md_trend_total', {'n': mdNumber(total)})),
-        const SizedBox(height: AppSpace.xxs),
+        Wrap(
+          spacing: AppSpace.xs,
+          runSpacing: AppSpace.xxs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(totalText, style: AppType.figure(context)),
+            if (change != null)
+              AppStatusBadge(
+                label: mdText('md_p5_trend_change', {'p': ltrIsolate('${change > 0 ? '+' : ''}$change%')}),
+                tone: change > 0 ? AppTone.success : (change < 0 ? AppTone.warning : AppTone.neutral),
+                dense: true,
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpace.sm),
+        // the bars speak for the whole block: week by week, with the dates the axis leaves out
+        Semantics(
+          container: true,
+          label: [
+            '${'md_trend_title'.tr}: $totalText',
+            for (final p in trend) '${mdDate(p.weekStart)}: ${p.count}',
+          ].join('. '),
+          child: ExcludeSemantics(
+            child: AppBarChart(
+              height: 112,
+              maxBarWidth: AppSpace.md,
+              integerAxis: true,
+              series: [AppChartSeries('md_trend_title'.tr, values)],
+              labels: [for (final _ in trend) ''],
+            ),
+          ),
+        ),
         Row(children: [
           Expanded(child: Text(mdDate(first), style: AppType.meta(context))),
           Text(mdDate(last), style: AppType.meta(context)),
@@ -659,7 +716,7 @@ class _TrendBlock extends StatelessWidget {
   }
 }
 
-/// Why students withdrew: each reason with its count and a bar against the largest.
+/// Why students withdrew: each reason with its count, its share and a bar against the largest, the largest first.
 class _ReasonsBlock extends StatelessWidget {
   const _ReasonsBlock({required this.reasons});
 
@@ -669,15 +726,17 @@ class _ReasonsBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final max = reasons.fold<int>(1, (a, r) => r.$2 > a ? r.$2 : a);
+    final total = reasons.fold<int>(0, (a, r) => a + r.$2);
+    final sorted = [...reasons]..sort((a, b) => b.$2.compareTo(a.$2));
     return _BlockCard(
       title: 'md_reasons_title'.tr,
       icon: Icons.help_outline_rounded,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        for (final (code, n) in reasons)
+        for (final (code, n) in sorted)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Semantics(
-              label: '${mdReasonLabel(code)}: $n',
+              label: '${mdReasonLabel(code)}: $n, ${mdPercent(100 * n / (total == 0 ? 1 : total))}',
               excludeSemantics: true,
               child: Row(children: [
                 Expanded(
@@ -687,8 +746,9 @@ class _ReasonsBlock extends StatelessWidget {
                 AppSpace.gapXs,
                 Expanded(flex: 2, child: AppProgressBar(value: n.toDouble(), max: max.toDouble(), height: 6, color: c.danger)),
                 SizedBox(
-                  width: 36,
-                  child: Text('$n', textAlign: TextAlign.end, style: AppType.meta(context).copyWith(color: c.textDark)),
+                  width: 68,
+                  child: Text('$n · ${mdPercent(100 * n / (total == 0 ? 1 : total))}',
+                      textAlign: TextAlign.end, style: AppType.meta(context).copyWith(color: c.textDark)),
                 ),
               ]),
             ),
@@ -762,6 +822,7 @@ class EntitySubList extends StatefulWidget {
     this.revision = 0,
     this.pinned,
     this.rowBuilder,
+    this.filterCounts = const {},
   });
 
   final EntityRef entity;
@@ -779,9 +840,23 @@ class EntitySubList extends StatefulWidget {
 
   /// Draws a row its own way (null: the usual row).
   final Widget? Function(BuildContext context, EntityItem item)? rowBuilder;
+  /// How many rows sit behind each filter chip, when the summary knows.
+  final Map<String, int> filterCounts;
 
   @override
   State<EntitySubList> createState() => _EntitySubListState();
+}
+
+/// What a sub-list holds when the panel swaps to another entity: Back draws it again at once, with its filters and
+/// the rows it had (so the scroll offset still fits).
+class _SubListMemo {
+  const _SubListMemo(this.query, this.items, this.total, this.hasMore, this.maxTotal);
+
+  final EntityListQuery query;
+  final List<EntityItem> items;
+  final int total;
+  final bool hasMore;
+  final int maxTotal;
 }
 
 class _EntitySubListState extends State<EntitySubList> {
@@ -801,10 +876,23 @@ class _EntitySubListState extends State<EntitySubList> {
   int _ticket = 0;
   EntityItem? _pinned;
 
+  String get _memoId => 'md.sub.${widget.entity.toToken()}.${widget.spec.section}.${widget.initialSearch ?? ''}';
+
   @override
   void initState() {
     super.initState();
-    _reload();
+    final memo = PageStorage.maybeOf(context)?.readState(context, identifier: _memoId);
+    if (memo is _SubListMemo) {
+      _query = memo.query;
+      _searchCtl.text = memo.query.search;
+      _items.addAll(memo.items);
+      _total = memo.total;
+      _hasMore = memo.hasMore;
+      _maxTotal = memo.maxTotal;
+      _loading = false;
+    } else {
+      _reload();
+    }
   }
 
   @override
@@ -832,6 +920,9 @@ class _EntitySubListState extends State<EntitySubList> {
     }
   }
 
+  void _remember() => PageStorage.maybeOf(context)
+      ?.writeState(context, _SubListMemo(_query, List.of(_items), _total, _hasMore, _maxTotal), identifier: _memoId);
+
   /// [quiet]: the rows on screen stay until the new ones arrive (a change made in the panel).
   Future<void> _reload({bool quiet = false}) async {
     final t = ++_ticket;
@@ -856,6 +947,7 @@ class _EntitySubListState extends State<EntitySubList> {
         _loading = false;
         _query = _query.copyWith(page: 1);
       });
+      _remember();
     } catch (e) {
       if (!mounted || t != _ticket) return;
       setState(() {
@@ -880,6 +972,7 @@ class _EntitySubListState extends State<EntitySubList> {
         _query = next;
         _loadingMore = false;
       });
+      _remember();
     } catch (e) {
       if (!mounted || t != _ticket) return;
       setState(() => _loadingMore = false);
@@ -953,16 +1046,19 @@ class _EntitySubListState extends State<EntitySubList> {
       if (showFilter)
         Padding(
           padding: const EdgeInsets.only(top: AppSpace.xxs),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(children: [
-              AppChoiceChip(label: 'md_filter_all'.tr, selected: filterValue == null, onTap: () => _setFilter(null)),
-              for (final o in spec.filterOptions) ...[
-                const SizedBox(width: AppSpace.xxs),
-                AppChoiceChip(label: spec.filterLabel(o), selected: filterValue == o, onTap: () => _setFilter(o)),
-              ],
-            ]),
-          ),
+          child: Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+            AppChoiceChip(label: 'md_filter_all'.tr, selected: filterValue == null, onTap: () => _setFilter(null)),
+            for (final o in spec.filterOptions)
+              // an empty state is not worth a chip, unless it is the one in use
+              if (widget.filterCounts[o] != 0 || filterValue == o)
+                AppChoiceChip(
+                  label: widget.filterCounts[o] == null
+                      ? spec.filterLabel(o)
+                      : '${spec.filterLabel(o)} · ${mdNumber(widget.filterCounts[o])}',
+                  selected: filterValue == o,
+                  onTap: () => _setFilter(o),
+                ),
+          ]),
         ),
     ];
 

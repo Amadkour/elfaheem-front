@@ -80,12 +80,15 @@ class EntityPanel extends StatelessWidget {
                   _Breadcrumbs(controller: controller, trail: trail, rootLabel: mode == EntityPanelMode.page ? null : rootLabel),
                 Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
                 Expanded(
-                  child: EntityDetailView(
-                    key: ValueKey('md.detail.${current.toToken()}'),
-                    entity: _withSiblingLabel(current),
-                    controller: controller,
-                    actions: actions,
-                    scrollController: scrollController,
+                  child: PageStorage(
+                    bucket: controller.storage,
+                    child: EntityDetailView(
+                      key: ValueKey('md.detail.${current.toToken()}'),
+                      entity: _withSiblingLabel(current),
+                      controller: controller,
+                      actions: actions,
+                      scrollController: scrollController,
+                    ),
                   ),
                 ),
               ]),

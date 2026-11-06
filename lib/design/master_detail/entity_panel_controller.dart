@@ -4,10 +4,11 @@
 // trail grows and drops whatever was ahead); [back] / [forward] walk it and keep what is ahead, like a browser;
 // [jumpTo] is a breadcrumb tap. [siblings] are the list's rows (the page hands them on every build), so [next] /
 // [previous] step through the list without closing the panel. [selectedId] is the row to draw as selected: the open
-// root, else the keyboard's cursor.
+// root, else the keyboard's cursor. [storage] keeps what the views of this trail held (a scroll offset, a sub-list's
+// query and rows), so Back returns to them as they were.
 library;
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 
 class EntityPanelController extends ChangeNotifier {
@@ -26,6 +27,9 @@ class EntityPanelController extends ChangeNotifier {
 
   /// Set by the list: an entity changed in the panel (its rows may be out of date).
   VoidCallback? onEntityChanged;
+  /// What the views of this trail remember; a new trail starts clean.
+  PageStorageBucket get storage => _storage;
+  PageStorageBucket _storage = PageStorageBucket();
 
   bool get isOpen => _index >= 0;
 
@@ -79,6 +83,7 @@ class EntityPanelController extends ChangeNotifier {
       ..clear()
       ..add(ref);
     _index = 0;
+    _storage = PageStorageBucket();
     if (rowKind == null || ref.kind == rowKind) _cursor = ref.id;
     notifyListeners();
   }
@@ -119,16 +124,11 @@ class EntityPanelController extends ChangeNotifier {
     if (!isOpen) return;
     _trail.clear();
     _index = -1;
+    _storage = PageStorageBucket();
     notifyListeners();
   }
 
-  /// Loads the entity shown again (after a change made elsewhere, e.g. the Manage sheet).
-  void reload() {
-    _revision++;
-    notifyListeners();
-  }
-
-  /// Fills in the name of a trail entry that came without one (a deep link names only the kind and id).
+  /// The name a summary brought, for the trail's entries that came without one (a deep link): the breadcrumbs read it.
   void learn(EntityRef named) {
     if (named.name.isEmpty) return;
     var changed = false;
@@ -139,6 +139,12 @@ class EntityPanelController extends ChangeNotifier {
       }
     }
     if (changed) notifyListeners();
+  }
+
+  /// Loads the entity shown again (after a change made elsewhere, e.g. the Manage sheet).
+  void reload() {
+    _revision++;
+    notifyListeners();
   }
 
   /// The entity shown changed on the server: it loads again, and the list hears of it.
@@ -177,6 +183,7 @@ class EntityPanelController extends ChangeNotifier {
         ..clear()
         ..add(siblings[j]);
       _index = 0;
+      _storage = PageStorageBucket();
     }
     _cursor = siblings[j].id;
     notifyListeners();
