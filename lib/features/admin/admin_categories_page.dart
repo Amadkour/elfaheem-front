@@ -10,6 +10,7 @@ import 'package:flutter/scheduler.dart' show SchedulerBinding, SchedulerPhase;
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
 import 'package:flutter_education_app/design/master_detail/entity_specs.dart' show EntityThumb;
@@ -17,6 +18,7 @@ import 'package:flutter_education_app/design/master_detail/master_detail_scaffol
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import 'admin_bulk.dart';
 import 'admin_common.dart' show t, toast;
 import 'admin_filter_models.dart';
 import 'admin_filters.dart';
@@ -157,6 +159,43 @@ class _ViewState extends State<_View> {
     if (gone && mounted && _panel.current == _refOf(cat)) _panel.close();
   }
 
+  /// The rows ticked in the table (bulk actions, D-290 phase 8).
+  final Set<Object> _picked = {};
+
+  List<AdminCategory> _pickedRows(List<AdminCategory> rows) => [
+        for (final cat in rows)
+          if (_picked.contains(cat.id)) cat,
+      ];
+
+  /// Deletes the picked categories no course uses (the server refuses the others, as the row's Delete explains); a
+  /// category with sub-categories is refused by the server and counted as failed.
+  Future<void> _bulkDelete(AdminCategoriesProvider p, List<AdminCategory> rows) async {
+    final free = [for (final cat in rows) if (cat.coursesCount == 0) cat];
+    if (free.isEmpty) {
+      showAppNotice(t('كل التصنيفات المحددة مرتبطة بكورسات — انقل الكورسات أولًا.',
+          'Every selected category is used by courses — move them first.'), error: true);
+      return;
+    }
+    if (!await confirmAdminBulk(context, 'delete'.tr, free.length, danger: true) || !mounted) return;
+    await runAdminBulk([for (final cat in free) cat.id], (id) => ApiClient.instance.delete('/api/v1/admin/categories/$id'),
+        refresh: p.refresh);
+    for (final cat in free) {
+      EntitiesApi.instance.invalidate(_refOf(cat));
+    }
+    if (!mounted) return;
+    if (free.any((cat) => _panel.current == _refOf(cat))) _panel.close();
+    setState(_picked.clear);
+  }
+
+  List<Widget> _bulkActions(AdminCategoriesProvider p, List<AdminCategory> rows) {
+    final picked = _pickedRows(rows);
+    return [
+      adminBulkButton('delete'.tr, Icons.delete_outline_rounded, () => _bulkDelete(p, picked)),
+      adminBulkButton('md_p8_export_selected'.tr, Icons.file_download_outlined,
+          () => showAppExportSheet(context, adminCategoriesExport([for (final cat in picked) cat.j]))),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     context.watch<LangProvider>();
@@ -176,6 +215,12 @@ class _ViewState extends State<_View> {
       tableId: 'admin_categories',
       columnMenu: true,
       selectedRowId: _selected,
+      selectable: true,
+      selected: _picked,
+      onSelectionChanged: (s) => setState(() => _picked
+        ..clear()
+        ..addAll(s)),
+      bulkActions: (_) => _bulkActions(p, items),
       onRowHover: (cat) => EntitiesApi.instance.prefetch(_refOf(cat)),
       searchHint: 'admin_search_categories'.tr,
       onSearch: p.setSearch,
