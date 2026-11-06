@@ -6,11 +6,14 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, AppSpace;
 
 import '../../admin/admin_common.dart' show t;
 import '../org_providers.dart' show OrgSession;
 import 'adv_api.dart' show AdvApi;
 import 'adv_appointments.dart' show AdvAppointmentsPage;
+import 'adv_appt_models.dart' show AdvMemberHub;
 import 'adv_comm_api.dart' show AdvCommApi;
 import 'adv_models.dart' show AdvMineInfo, advMaybeEligible;
 import 'adv_setup_page.dart';
@@ -48,34 +51,70 @@ Future<void> advOpenStudentLink(NavigatorState nav, {required int orgId, require
 
 // ── Phase 5: the student hub pill and the appointment / conversation / survey deep links ──────────────────────────
 
-/// Organizations where I study whose advising hub is known: org id → I have an active advisor there (member status
-/// `hub`). Filled on demand by [advMemberPills]; a hub page refreshes it.
-final Map<int, bool> _hubKnown = {};
-final Set<int> _hubLoading = {};
+/// The member home's "My academic advisor" row (students with an active advisor in [orgId]). It asks the member
+/// status itself (one cached answer per organization, shared by every copy of the row) and draws nothing until the
+/// answer says I have an advisor there; the unread messages, today's appointments and pending surveys are its badge.
+class AdvMemberHubEntry extends StatefulWidget {
+  const AdvMemberHubEntry({super.key, required this.orgId, this.padding = const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm)});
+  final int orgId;
+  final EdgeInsetsGeometry padding;
 
-/// The member home's "My advisor" pill (students with an active advisor in [orgId]), in the gov_wiring pill shape.
-/// The first build asks the member status once and redraws the home when the answer comes.
-List<Widget> advMemberPills(BuildContext context, int orgId, Widget Function({required IconData icon, required String label, required VoidCallback onTap}) pill) {
-  if (!advEnabled() || orgId == 0) return const [];
-  final known = _hubKnown[orgId];
-  if (known == null) {
-    if (_hubLoading.add(orgId)) {
-      AdvCommApi(orgId, student: true).memberHub().then((h) => _hubKnown[orgId] = h.enabled && h.student && h.hub, onError: (_) => _hubKnown[orgId] = false).whenComplete(() {
-        _hubLoading.remove(orgId);
-        // the member home builds its pills synchronously: redraw it now that the answer is known
-        if (context.mounted && _hubKnown[orgId] == true) (context as Element).markNeedsBuild();
-      });
-    }
-    return const [];
+  /// org id → the member status answer (one request per organization while the app runs; a hub visit refreshes it).
+  static final Map<int, Future<AdvMemberHub?>> _cache = {};
+
+  static Future<AdvMemberHub?> _load(int orgId, {bool fresh = false}) {
+    if (fresh) _cache.remove(orgId);
+    return _cache.putIfAbsent(orgId, () => AdvCommApi(orgId, student: true).memberHub().then<AdvMemberHub?>((h) => h, onError: (_) {
+          _cache.remove(orgId); // a failed answer is asked again next time
+          return null;
+        }));
   }
-  if (!known) return const [];
-  return [
-    pill(
-      icon: Icons.co_present_rounded,
-      label: t('مرشدي الأكاديمي', 'My academic advisor'),
-      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvStudentHubPage(orgId: orgId))),
-    ),
-  ];
+
+  @override
+  State<AdvMemberHubEntry> createState() => _AdvMemberHubEntryState();
+}
+
+class _AdvMemberHubEntryState extends State<AdvMemberHubEntry> {
+  late Future<AdvMemberHub?> _hub = AdvMemberHubEntry._load(widget.orgId);
+
+  @override
+  void didUpdateWidget(AdvMemberHubEntry old) {
+    super.didUpdateWidget(old);
+    if (old.orgId != widget.orgId) _hub = AdvMemberHubEntry._load(widget.orgId);
+  }
+
+  Future<void> _open() async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvStudentHubPage(orgId: widget.orgId)));
+    if (mounted) setState(() => _hub = AdvMemberHubEntry._load(widget.orgId, fresh: true));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!advEnabled() || widget.orgId == 0) return const SizedBox.shrink();
+    return FutureBuilder<AdvMemberHub?>(
+      future: _hub,
+      builder: (context, snap) {
+        final h = snap.data;
+        if (h == null || !(h.enabled && h.student && h.hub)) return const SizedBox.shrink();
+        final k = h.counts;
+        final parts = [
+          if (k.threadsUnread > 0) countText(k.threadsUnread, ar1: 'رسالة جديدة', ar2: 'رسالتان جديدتان', arFew: '${k.threadsUnread} رسائل جديدة', arMany: '${k.threadsUnread} رسالة جديدة', en1: '1 new message', en: '${k.threadsUnread} new messages'),
+          if (k.appointmentsToday > 0) countText(k.appointmentsToday, ar1: 'موعد اليوم', ar2: 'موعدان اليوم', arFew: '${k.appointmentsToday} مواعيد اليوم', arMany: '${k.appointmentsToday} موعداً اليوم', en1: '1 appointment today', en: '${k.appointmentsToday} appointments today'),
+          if (k.surveysPending > 0) t('استبيان بانتظارك', 'A survey waits for you'),
+        ];
+        return Padding(
+          padding: widget.padding,
+          child: AppActionCard(
+            icon: Icons.co_present_rounded,
+            title: t('مرشدي الأكاديمي', 'My academic advisor'),
+            subtitle: parts.isEmpty ? t('الساعات المكتبية، المواعيد والرسائل', 'Office hours, appointments and messages') : parts.join(' · '),
+            badge: k.total,
+            onTap: _open,
+          ),
+        );
+      },
+    );
+  }
 }
 
 /// Am I a student in [orgId] (the member base) rather than staff? Asked once per link.

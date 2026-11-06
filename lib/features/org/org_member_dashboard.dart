@@ -64,7 +64,7 @@ import 'org_schedule_pages.dart' show OrgSchedulePage;
 import 'org_registrar_member.dart' show openAdvising, openConsents, openMyWeek, openRecord, openRegistration, openTeaching;
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
-import 'advising/adv_wiring.dart' show advMemberPills;
+import 'advising/adv_wiring.dart' show AdvMemberHubEntry;
 import 'governance/gov_wiring.dart' show govMemberPills;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 
@@ -249,10 +249,6 @@ List<OrgQuickGroup> orgQuickGroups(BuildContext context, Map<String, dynamic> en
           OrgQuickAction(icon: Icons.history_edu_rounded, label: t('سجلي الأكاديمي', 'My academic record'), onTap: () => openRecord(context, orgId)),
           OrgQuickAction(icon: Icons.calendar_view_week_rounded, label: t('أسبوعي الدراسي', 'My week'), onTap: () => openMyWeek(context, orgId)),
           OrgQuickAction(icon: Icons.route_rounded, label: t('مساري', 'My path'), onTap: () => space(5)),
-          // academic advising (D-289 Phase 5): the student hub, for a student with an active advisor
-          for (final w in advMemberPills(context, orgId,
-              ({required icon, required label, required onTap}) => _ActionCarrier(OrgQuickAction(icon: icon, label: label, onTap: onTap))))
-            if (w is _ActionCarrier) w.action,
         ],
         if (teaching) ...[
           OrgQuickAction(icon: Icons.grading_rounded, label: t('رصد الدرجات', 'Grade entry'), onTap: () => openTeaching(context, orgId)),
@@ -552,6 +548,9 @@ class OrgMemberHomeBody extends StatelessWidget {
                 : AppPill(label: t('فتح لوحة الإدارة', 'Open the dashboard'), icon: Icons.dashboard_customize_rounded, onTap: () => openOrgManagement(context, orgId)),
           ),
         ),
+
+      // academic advising (D-289 Phase 5): a student with an active advisor gets the hub row (draws nothing otherwise)
+      if (roles.contains('student')) AdvMemberHubEntry(orgId: orgId),
 
       // ── the numbers, once: one card of small tiles (the same strip as the personal homes) — only while one counts
       if (stats.any((x) => x.count > 0)) ...[
