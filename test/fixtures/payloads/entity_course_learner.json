@@ -32,8 +32,8 @@
     "currency": "EGP"
    },
    "start_date": null,
-   "end_date": "2027-02-03T21:58:16.686171",
-   "created_at": "2026-11-05T21:58:17.041493",
+   "end_date": "2027-02-04T01:21:20.957888",
+   "created_at": "2026-11-06T01:21:21.105739",
    "archived_at": null
   },
   "stats": {
@@ -45,11 +45,11 @@
    "mine": {
     "enrollment_id": 1,
     "state": "in_progress",
-    "enrolled_at": "2026-10-26T21:58:16.686171",
-    "expected_end_at": "2027-02-03T21:58:16.686171",
+    "enrolled_at": "2026-10-27T01:21:20.957888",
+    "expected_end_at": "2027-02-04T01:21:20.957888",
     "progress": 50.0,
-    "first_activity_at": "2026-10-27T21:58:16.686171",
-    "last_activity_at": "2026-11-03T21:58:16.686171",
+    "first_activity_at": "2026-10-28T01:21:20.957888",
+    "last_activity_at": "2026-11-04T01:21:20.957888",
     "completed_at": null,
     "withdrawn_at": null,
     "withdrawal_reason_code": null,
@@ -58,7 +58,7 @@
     "rating": {
      "value": 4,
      "review": "good",
-     "at": "2026-10-29T21:58:16.686171"
+     "at": "2026-10-30T01:21:20.957888"
     },
     "exams": {
      "count": 2,

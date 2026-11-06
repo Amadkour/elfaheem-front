@@ -397,7 +397,8 @@ class DlAvatar extends StatelessWidget {
         gradient: LinearGradient(colors: [c.primary.withValues(alpha: 0.24), c.primary.withValues(alpha: 0.10)]),
       ),
       child: Text(name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase(),
-          style: dlText(size * 0.42, w: FontWeight.w800, c: c.primary)),
+          style: dlText(size * 0.42,
+              w: FontWeight.w800, c: Theme.of(context).brightness == Brightness.dark ? c.textDark : c.primary)),
     );
     if (url == null || url!.isEmpty) return fallback;
     return ClipOval(
