@@ -19,7 +19,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -97,6 +99,7 @@ class ParentOrgSession {
   const ParentOrgSession({
     this.title = '',
     this.courseName = '',
+    this.courseId,
     this.startsAt,
     this.endsAt,
     this.room = '',
@@ -104,6 +107,9 @@ class ParentOrgSession {
     this.status = ParentSessionStatus.scheduled,
   });
   final String title, courseName, room;
+
+  /// The course (an older server sends none: the name stays plain text).
+  final int? courseId;
   final DateTime? startsAt, endsAt; // UTC
   final bool online;
   final ParentSessionStatus status;
@@ -113,6 +119,7 @@ class ParentOrgSession {
   factory ParentOrgSession.parse(Map<String, dynamic> j) => ParentOrgSession(
         title: _s(j['title']),
         courseName: _s(j['course_name']),
+        courseId: _id(j['course_id']),
         startsAt: orgParseUtc(j['starts_at'])?.toUtc(),
         endsAt: orgParseUtc(j['ends_at'])?.toUtc(),
         room: _s(j['room']),
@@ -133,8 +140,9 @@ class ParentOrgAnnouncement {
 }
 
 class ParentOrgGrade {
-  const ParentOrgGrade({this.courseName = '', this.grade = '', this.points, this.termLabel = '', this.publishedAt});
+  const ParentOrgGrade({this.courseName = '', this.courseId, this.grade = '', this.points, this.termLabel = '', this.publishedAt});
   final String courseName, grade, termLabel;
+  final int? courseId;
   final double? points;
   final DateTime? publishedAt;
 }
@@ -181,6 +189,7 @@ class ParentOrgView {
         for (final x in asMapList(j['grades']))
           ParentOrgGrade(
             courseName: _s(x['course_name']),
+            courseId: _id(x['course_id']),
             grade: _s(x['grade']),
             points: x['points'] is num ? (x['points'] as num).toDouble() : double.tryParse(_s(x['points'])),
             termLabel: _s(x['term_label']),
@@ -193,6 +202,14 @@ class ParentOrgView {
     );
   }
 }
+
+int? _id(Object? v) {
+  final n = asInt(v);
+  return n > 0 ? n : null;
+}
+
+/// The guarded chip of a course the payload names (D-290): a link only when the server lets the parent open it.
+Widget _courseChip(int id, String name) => EntityGuardedChip(EntityRef(EntityKind.course, id, label: name), maxWidth: 260);
 
 /// The week's sessions grouped by calendar day (in the effective timezone), days in order, each day by start time.
 List<(DateTime day, List<ParentOrgSession> sessions)> parentWeekByDay(List<ParentOrgSession> week) {
@@ -553,7 +570,7 @@ class _SessionRow extends StatelessWidget {
     final cancelled = s.status == ParentSessionStatus.cancelled;
     final a = s.startsAt, b = s.endsAt;
     final sub = [
-      if (s.title.isNotEmpty && s.courseName.isNotEmpty) s.courseName,
+      if (s.title.isNotEmpty && s.courseName.isNotEmpty && s.courseId == null) s.courseName,
       if (s.room.isNotEmpty) s.room,
     ].join(' · ');
     return MemberSlotTile(
@@ -563,6 +580,7 @@ class _SessionRow extends StatelessWidget {
       where: sub,
       cancelled: cancelled,
       tags: [
+        if (s.courseId != null) _courseChip(s.courseId!, s.courseName.isEmpty ? s.heading : s.courseName),
         if (s.status == ParentSessionStatus.changed) AppStatusBadge(label: t('تغيّرت', 'Changed'), tone: AppTone.warning, dense: true),
         if (cancelled) AppStatusBadge(label: t('أُلغيت', 'Cancelled'), tone: AppTone.danger, dense: true),
         if (s.online) AppStatusBadge(label: t('أونلاين', 'Online'), tone: AppTone.info, icon: Icons.videocam_outlined, dense: true),
@@ -605,7 +623,10 @@ class _GradeRow extends StatelessWidget {
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(g.courseName, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+              if (g.courseId != null)
+                _courseChip(g.courseId!, g.courseName)
+              else
+                Text(g.courseName, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
               if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
             ]),
           ),

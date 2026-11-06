@@ -7,6 +7,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:provider/provider.dart';
@@ -226,21 +228,15 @@ class _TransferCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        transfer.studentName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: c.label.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
+                      // D-290: a teacher and an admin both read this queue, so the server says per mention
+                      // whether the record opens (POST /entities/access, one request for the whole list).
+                      EntityGuardedChip(
+                        EntityRef(EntityKind.student, transfer.studentId, label: transfer.studentName),
+                        maxWidth: 320,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        transfer.courseName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: c.caption,
+                      EntityGuardedChip(
+                        EntityRef(EntityKind.course, transfer.courseId, label: transfer.courseName),
+                        maxWidth: 320,
                       ),
                     ],
                   ),
