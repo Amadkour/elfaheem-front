@@ -1,5 +1,41 @@
 # Academic Advising — changelog
 
+## Phase 3 — Settings and assignment — 2026-11-05
+Backend (`wt-back-advising`):
+- Settings per scope (org · department · program · level · cohort) with inheritance: `GET / PUT /policy`,
+  `DELETE /policy/{id}`.
+- Advisors and their profiles (status leave · sabbatical · left with dates, max-load override, office, contact note,
+  bio; the advisor edits only their own contact fields): `GET /advisors`, `GET /advisors/me`, `PUT /advisors/{uid}`.
+- Conflicts of interest (block a pairing everywhere): `GET / POST /conflicts`, `DELETE /conflicts/{id}`.
+- Students and manual assignment with history: `GET /students`, `PUT /students/{mid}/advisors`,
+  `GET /students/{mid}/history`.
+- One distribution engine (`assign_algo.py`, pure, deterministic; strategies balanced · round robin · department ·
+  continuity) for distribute · rebalance · reassign: `POST /assign/preview` → `POST /assign/apply` (plan hash,
+  409 `plan_stale`, idempotent re-apply, capacity override only with a reason), `GET /assign/runs`.
+- Handovers with a case summary: `GET /handovers`, `POST /handovers/{id}/ack`.
+- New students are assigned automatically (10-minute job + right after a join is approved) with a welcome notice to
+  the student and ONE grouped notice per advisor (deduped); e-mail through the existing helper, text escaped.
+- Owner decision: an existing link to a departed advisor is kept (locked legacy primary, counted "away").
+- Security review fixes: only the newest preview's hash applies; the registrar's advisor routes obey conflicts, away
+  and capacity; a PostgreSQL advisory lock per organization stops two applies racing past capacity; escaped e-mail;
+  the job skips suspended organizations and filters in SQL.
+- Migration `0052_advising_assign` (down `0051_enrollment_history`): `adv_assign_runs.mode`, `params`, `result`.
+
+App (`wt-front-advising`):
+- `adv_config_page` (settings with "inherited from" hints and scope overrides, leave guard), `adv_advisors_page`
+  (load bars, status, edit sheet, "Reassign their students"; an advisor sees their own card), `adv_distribute_page`
+  (mode · strategy · scope → preview → apply, run history), `adv_students_page` (filters, student sheet: primary,
+  co / support advisors, lock, override with reason, conflicts, history), `adv_handovers_page` (summary,
+  Acknowledge), `adv_parts`; the advising page's "on" state links to them.
+- Every new server code and warning has Arabic + English text; end / handover reasons are labelled; typed notes keep
+  their own direction.
+
+Tests: `advising_algo_unit` 52, `e2e_advising_assign` 376, `pg_advising_lock` 4 (PostgreSQL), `e2e_advising_foundation`
+176; regressions `e2e_registrar` 85, `e2e_org_v2` 71, `e2e_enrollment_history` 35, `e2e_gov_requests` 253,
+`e2e_governance` 318, `e2e_engine_exam_gate` 52, `spec_help` 10; 0050 → 0052 up / down / up on SQLite and PostgreSQL.
+App: `adv_assign_models_test` + `adv_assign_layout_test`; suites contract 63, org 2324, ui 1787, export 257, auth 154,
+perf 29; web build.
+
 ## Phase 2 — Foundation — 2026-11-05
 Backend (`wt-back-advising`):
 - `data/advising_models.py`: the 29 `adv_*` tables of PLAN §3.2, each with `org_id`; partial unique indexes (one

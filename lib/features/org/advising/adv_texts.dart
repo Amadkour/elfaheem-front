@@ -18,4 +18,15 @@ Map<String, String> advCodeTexts() => {
       'advising_self_advisor': t('لا يمكن أن يكون الطالب مرشد نفسه', 'A student cannot advise themselves'),
       'advising_primary_exists': t('للطالب مرشد أساسي بالفعل — حدّث الصفحة وأعد المحاولة', 'The student already has a primary advisor — refresh and try again'),
       'advising_bad_policy': t('إعدادات الإرشاد غير صالحة', 'The advising settings are not valid'),
+      // Phase 3: settings, profiles, conflicts, assignment, distribution, handovers
+      'advising_bad_scope': t('نطاق الإعدادات غير صالح لهذه المؤسسة', 'That settings scope is not valid for this organization'),
+      'advising_single_mode': t('المؤسسة على وضع المرشد الواحد — لا مرشدين مشاركين أو داعمين', 'The organization uses one advisor per student — no co or support advisors'),
+      'advising_conflict': t('بين هذا المرشد والطالب تعارض مصالح مسجّل', 'A conflict of interest is recorded between this advisor and the student'),
+      'advising_conflict_exists': t('هذا التعارض مسجّل بالفعل', 'This conflict is already recorded'),
+      'advising_over_capacity': t('المرشد بلغ حده الأقصى من الطلاب', 'The advisor is at their maximum number of students'),
+      'advising_reason_required': t('اكتب سبب تجاوز الحد الأقصى', 'Give the reason for going over the maximum'),
+      'advising_not_found': t('العنصر غير موجود في الإرشاد الأكاديمي لهذه المؤسسة — حدّث الصفحة', 'That item no longer exists in this organization\'s academic advising — refresh the page'),
+      'advising_bad_dates': t('تاريخ النهاية يجب أن يكون بعد تاريخ البداية', 'The end date must be after the start date'),
+      'advising_bad_request': t('الطلب غير مكتمل: اختر المرشد الذي يُنقل طلابه', 'The request is incomplete: choose the advisor whose students move'),
+      'plan_stale': t('تغيّرت البيانات منذ المعاينة — عاين من جديد', 'The data changed since the preview — preview again'),
     };

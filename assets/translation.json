@@ -4013,6 +4013,14 @@
     "en": "Session exam",
     "ar": "اختبار الدرس"
   },
+  "session_exam_awaiting_results": {
+    "en": "Waiting for results",
+    "ar": "بانتظار النتيجة"
+  },
+  "session_exam_awaiting_note": {
+    "en": "The next lesson opens when your teacher publishes the results",
+    "ar": "يُفتح الدرس التالي عندما ينشر المعلم النتائج"
+  },
   "session_exam_must_pass": {
     "en": "Pass this exam to unlock the next sessions",
     "ar": "اجتز هذا الاختبار لفتح الدروس التالية"

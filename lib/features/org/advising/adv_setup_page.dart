@@ -2,8 +2,10 @@
 // Academic advising) for org admins and advising directors (Phase 2, docs/advising/PHASE2.md):
 //   not eligible  → why ("available to universities, faculties and the units under them")
 //   off           → what it brings + Enable (org admin): pick the department that leads it, or create one
-//   on            → the leading department, the director(s), my role, the counts (admins / directors) and
-//                   Turn off in More (org admin, `appConfirm`; every record is kept)
+//   on            → the leading department, the director(s), my role, the counts (admins / directors), the way
+//                   into the Phase 3 pages (manage: Settings · Advisors · Distribute · Students; an advisor: My
+//                   profile · Handovers with the pending count) and Turn off in More (org admin, `appConfirm`; every
+//                   record is kept)
 // `AdvSetupView` and `AdvEnableForm` take plain values (test/ui/adv_layout_test.dart); `AdvSetupPage` loads and
 // calls `AdvApi`. Refresh comes from the dashboard header (the page is re-keyed).
 library;
@@ -16,8 +18,13 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import '../../admin/admin_common.dart' show t;
 import '../org_page_kit.dart';
 import '../org_v3.dart' show orgCall, orgErrorText;
+import 'adv_advisors_page.dart';
 import 'adv_api.dart';
+import 'adv_config_page.dart';
+import 'adv_distribute_page.dart';
+import 'adv_handovers_page.dart';
 import 'adv_models.dart';
+import 'adv_students_page.dart';
 
 /// What the page shows.
 enum AdvSetupState { loading, failed, unavailable, off, on }
@@ -41,6 +48,7 @@ class AdvSetupView extends StatelessWidget {
     this.onRetry,
     this.onEnable,
     this.onDisable,
+    this.onOpen,
   });
 
   final AdvSetupState state;
@@ -53,6 +61,10 @@ class AdvSetupView extends StatelessWidget {
   /// A switch-on / switch-off call is running.
   final bool busy;
   final VoidCallback? onRetry, onEnable, onDisable;
+
+  /// Opens a Phase 3 page: `settings` · `advisors` · `distribute` · `rebalance` · `students` · `students_away` ·
+  /// `profile` · `handovers` (null: the links are left out).
+  final ValueChanged<String>? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -232,9 +244,33 @@ class AdvSetupView extends StatelessWidget {
                 ar1: 'طالب واحد بلا مرشد أكاديمي بعد', ar2: 'طالبان بلا مرشد أكاديمي بعد',
                 arFew: '${counts.unassigned} طلاب بلا مرشد أكاديمي بعد', arMany: '${counts.unassigned} طالباً بلا مرشد أكاديمي بعد',
                 en1: '1 student has no academic advisor yet', en: '${counts.unassigned} students have no academic advisor yet'),
+            action: _bannerAction(t('توزيع', 'Distribute'), 'distribute'),
+          ),
+        ],
+        if (counts.away > 0) ...[
+          const SizedBox(height: AppSpace.sm),
+          AppBanner(
+            icon: Icons.person_off_rounded,
+            color: c.warning,
+            text: countText(counts.away,
+                ar1: 'طالب واحد مرشده غائب', ar2: 'طالبان مرشدهما غائب', arFew: '${counts.away} طلاب مرشدوهم غائبون', arMany: '${counts.away} طالباً مرشدوهم غائبون',
+                en1: '1 student\'s advisor is away', en: '${counts.away} students\' advisors are away'),
+            action: _bannerAction(t('عرض', 'View'), 'students_away'),
+          ),
+        ],
+        if (counts.over > 0) ...[
+          const SizedBox(height: AppSpace.sm),
+          AppBanner(
+            icon: Icons.balance_rounded,
+            color: c.danger,
+            text: countText(counts.over,
+                ar1: 'مرشد واحد فوق حده الأقصى', ar2: 'مرشدان فوق حدهما الأقصى', arFew: '${counts.over} مرشدين فوق حدهم الأقصى', arMany: '${counts.over} مرشداً فوق حدهم الأقصى',
+                en1: '1 advisor is over their maximum', en: '${counts.over} advisors are over their maximum'),
+            action: _bannerAction(t('موازنة', 'Rebalance'), 'rebalance'),
           ),
         ],
       ],
+      if (onOpen != null && (me.leads || me.advisor)) ..._links(context, st),
       _SectionTitle(
         st.directors.length > 1 ? t('مديرو الإرشاد', 'Advising directors') : t('مدير الإرشاد', 'Advising director'),
         subtitle: t('رئيس إدارة الإرشاد الأكاديمي ومن مُنح دور مدير الإرشاد', 'The head of the Academic Advising department and anyone given the advising director role'),
@@ -270,6 +306,84 @@ class AdvSetupView extends StatelessWidget {
                 ],
               ]),
       ),
+    ];
+  }
+}
+
+extension _AdvSetupLinks on AdvSetupView {
+  /// "Distribute" / "View" at the end of a banner (null without [AdvSetupView.onOpen]).
+  Widget? _bannerAction(String label, String key) => onOpen == null
+      ? null
+      : TextButton(style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min)), onPressed: () => onOpen!(key), child: Text(label));
+
+  /// The way into the Phase 3 pages: what an admin / director manages, then what an advisor uses.
+  List<Widget> _links(BuildContext context, AdvStatus st) {
+    final c = context.colors;
+    final me = st.me;
+    final open = onOpen!;
+    final pending = me.handoversPending;
+    final tiles = <Widget>[
+      if (me.leads) ...[
+        AppActionCard(
+          icon: Icons.tune_rounded,
+          title: t('الإعدادات', 'Settings'),
+          subtitle: t('من يرشد، الحد الأقصى، طريقة التوزيع', 'Who advises, the maximum, the strategy'),
+          onTap: () => open('settings'),
+        ),
+        AppActionCard(
+          icon: Icons.supervisor_account_rounded,
+          title: t('المرشدون', 'Advisors'),
+          subtitle: t('الأحمال والحالات والإجازات', 'Loads, statuses and leave'),
+          onTap: () => open('advisors'),
+        ),
+        AppActionCard(
+          icon: Icons.call_split_rounded,
+          title: t('التوزيع', 'Distribute'),
+          subtitle: t('معاينة ثم تطبيق: توزيع، موازنة، نقل', 'Preview, then apply: distribute, rebalance, reassign'),
+          color: c.success,
+          onTap: () => open('distribute'),
+        ),
+        AppActionCard(
+          icon: Icons.school_rounded,
+          title: t('الطلاب', 'Students'),
+          subtitle: t('مرشد كل طالب، الإقفال، تعارض المصالح', 'Each student\'s advisor, locks, conflicts'),
+          onTap: () => open('students'),
+        ),
+      ],
+      if (me.advisor) ...[
+        AppActionCard(
+          icon: Icons.badge_outlined,
+          title: t('ملفي كمرشد', 'My advisor profile'),
+          subtitle: t('مكتبك وطريقة التواصل معك', 'Your office and how to reach you'),
+          onTap: () => open('profile'),
+        ),
+        AppActionCard(
+          icon: Icons.handshake_outlined,
+          title: t('ملفات التسليم', 'Handovers'),
+          subtitle: pending > 0
+              ? countText(pending,
+                  ar1: 'ملف واحد بانتظارك', ar2: 'ملفان بانتظارك', arFew: '$pending ملفات بانتظارك', arMany: '$pending ملفاً بانتظارك',
+                  en1: '1 waiting for you', en: '$pending waiting for you')
+              : t('ملخص حالة كل طالب ينتقل إليك', 'A case summary for each student who moves to you'),
+          badge: pending,
+          color: pending > 0 ? c.warning : null,
+          onTap: () => open('handovers'),
+        ),
+        if (!me.leads)
+          AppActionCard(
+            icon: Icons.groups_rounded,
+            title: t('طلابي', 'My students'),
+            subtitle: t('من ترشدهم وسجل كل منهم', 'Who you advise and their history'),
+            onTap: () => open('students'),
+          ),
+      ],
+    ];
+    return [
+      _SectionTitle(t('العمل', 'Work')),
+      LayoutBuilder(builder: (context, box) {
+        final cols = box.maxWidth >= 560 ? 2 : 1;
+        return AppGrid(minTile: (box.maxWidth - AppSpace.sm * (cols - 1)) / cols, spacing: AppSpace.sm, padding: EdgeInsets.zero, children: tiles);
+      }),
     ];
   }
 }
@@ -645,6 +759,27 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
     return r.ok;
   }
 
+  /// Pushes a Phase 3 page; back here, the counts are read again (quietly).
+  Future<void> _open(String key) async {
+    final s = _status;
+    if (s == null) return;
+    final id = widget.orgId, lead = s.me.leads;
+    final Widget page = switch (key) {
+      'settings' => AdvConfigPage(orgId: id),
+      'advisors' => AdvAdvisorsPage(orgId: id, manage: true),
+      'profile' => AdvAdvisorsPage(orgId: id, manage: false),
+      'distribute' => AdvDistributePage(orgId: id),
+      'rebalance' => AdvDistributePage(orgId: id, initial: const AdvPlanRequest(mode: 'rebalance')),
+      'students_away' => AdvStudentsPage(orgId: id, manage: lead, filter: 'away'),
+      'handovers' => AdvHandoversPage(orgId: id, manage: false),
+      _ => AdvStudentsPage(orgId: id, manage: lead),
+    };
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+    if (!mounted) return;
+    final r = await orgCall(() => _api.status(), quiet: true);
+    if (mounted && r.ok) setState(() => _status = r.data as AdvStatus);
+  }
+
   @override
   Widget build(BuildContext context) => AdvSetupView(
         state: advSetupState(status: _status, failed: _error != null),
@@ -655,5 +790,6 @@ class _AdvSetupPageState extends State<AdvSetupPage> {
         onRetry: _load,
         onEnable: _enable,
         onDisable: _disable,
+        onOpen: _open,
       );
 }
