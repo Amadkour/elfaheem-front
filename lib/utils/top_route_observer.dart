@@ -11,6 +11,7 @@ import 'package:flutter_education_app/utils/live_events.dart';
 import '../features/shared/attendance/attendance_offline_sync.dart';
 import '../features/shared/attendance/attendance_store.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/offline/offline_exam_service.dart';
+import 'package:flutter_education_app/features/org/advising/adv_draft_store.dart' show AdvDraftStore;
 import 'package:flutter_education_app/features/auth/username_confirm.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 
@@ -178,6 +179,7 @@ class TopRouteObserver extends NavigatorObserver {
     //    requests, refresh of the cached attendance windows).
     AttendanceOfflineSync.instance.onReconnect();
     OfflineExamSync.instance.onReconnect();          // finished offline exam sittings + answers carried for classmates
+    AdvDraftStore.instance.onReconnect();            // advising notes written offline (idempotent by client_id)
 
     // 2) Close the Downloads page only if the APP opened it.
     _awaitingAutoRoute = false;

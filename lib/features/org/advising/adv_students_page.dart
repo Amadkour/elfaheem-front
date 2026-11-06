@@ -505,28 +505,57 @@ class _AdvStudentsBodyState extends State<_AdvStudentsBody> {
   }
 
   Future<void> _open(AdvStudent s) async {
+    final saved = await showAdvStudentSheet(context, _api, s, manage: widget.manage, multi: _multi);
+    if (saved != null && mounted) _reload();
+  }
+
+  Future<void> _distribute() async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvDistributePage(orgId: widget.orgId)));
+    if (mounted) _reload();
+  }
+
+  @override
+  Widget build(BuildContext context) => AdvStudentsView(
+        load: _load,
+        manage: widget.manage,
+        page: _page,
+        filter: _filter,
+        errorText: _error,
+        onRetry: () => _query(),
+        onSearch: (q) => _query(q: q),
+        onFilter: (f) => _query(filter: f),
+        onPage: (p) => _query(page: p),
+        onOpen: _open,
+        onDistribute: widget.manage ? _distribute : null,
+      );
+}
+
+/// The student sheet: [manage] edits the whole assignment (primary, others when [multi], lock, reason, "assign
+/// anyway", conflicts), an advisor sees the history. Also opened from the student 360's "Change advisor". Returns
+/// the saved student.
+Future<AdvStudent?> showAdvStudentSheet(BuildContext context, AdvApi api, AdvStudent s, {required bool manage, required bool multi}) {
     final reason = TextEditingController();
     var draft = AdvAdvisorsDraft.of(s);
     var busy = false, overCapacity = false, started = false;
     String? error;
     List<AdvHistoryEntry>? history;
     List<AdvConflict>? conflicts;
-    final manage = widget.manage, multi = _multi;
-    final saved = await showAppSheet<AdvStudent>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+
+    return showAppSheet<AdvStudent>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           if (!started) {
             started = true;
-            orgCall(() => _api.history(s.memberId), quiet: true).then((r) {
+            orgCall(() => api.history(s.memberId), quiet: true).then((r) {
               if (ctx.mounted) set(() => history = r.ok ? r.data as List<AdvHistoryEntry> : const []);
             });
             if (manage) {
-              orgCall(() => _api.conflicts(memberId: s.memberId), quiet: true).then((r) {
+              orgCall(() => api.conflicts(memberId: s.memberId), quiet: true).then((r) {
                 if (ctx.mounted) set(() => conflicts = r.ok ? (r.data as AdvPage<AdvConflict>).items : const []);
               });
             }
           }
 
           Future<void> pickPrimary() async {
-            final a = await pickAdvAdvisor(ctx, _api, title: t('المرشد الأساسي', 'Primary advisor'), exclude: {for (final o in draft.others) o.userId});
+            final a = await pickAdvAdvisor(ctx, api, title: t('المرشد الأساسي', 'Primary advisor'), exclude: {for (final o in draft.others) o.userId});
             if (a != null) {
               set(() {
                 draft = draft.copyWith(primary: () => AdvRef(userId: a.userId, name: a.name), force: false);
@@ -537,7 +566,7 @@ class _AdvStudentsBodyState extends State<_AdvStudentsBody> {
           }
 
           Future<void> addOther(String type) async {
-            final a = await pickAdvAdvisor(ctx, _api,
+            final a = await pickAdvAdvisor(ctx, api,
                 title: type == 'co' ? t('مرشد مشارك', 'Co-advisor') : t('مرشد داعم', 'Support advisor'),
                 exclude: {if (draft.primary != null) draft.primary!.userId, for (final o in draft.others) o.userId});
             if (a != null) set(() => draft = draft.addOther(AdvRef(userId: a.userId, name: a.name), type));
@@ -554,7 +583,7 @@ class _AdvStudentsBodyState extends State<_AdvStudentsBody> {
               busy = true;
               error = null;
             });
-            final r = await orgCall(() => _api.saveAdvisors(s.memberId, body, multi: multi), quiet: true);
+            final r = await orgCall(() => api.saveAdvisors(s.memberId, body, multi: multi), quiet: true);
             if (!ctx.mounted) return;
             if (!r.ok) {
               set(() {
@@ -572,7 +601,7 @@ class _AdvStudentsBodyState extends State<_AdvStudentsBody> {
           }
 
           Future<void> addConflict() async {
-            final x = await showAdvConflictSheet(ctx, _api, student: s);
+            final x = await showAdvConflictSheet(ctx, api, student: s);
             if (x == null || !ctx.mounted) return;
             set(() => conflicts = [...?conflicts, x]);
             if (x.assignedNow) {
@@ -584,7 +613,7 @@ class _AdvStudentsBodyState extends State<_AdvStudentsBody> {
             if (!await appConfirm(ctx, danger: true, confirmLabel: t('إزالة', 'Remove'), message: t('إزالة تعارض المصالح مع ${x.advisor.shown}؟', 'Remove the conflict of interest with ${x.advisor.shown}?'))) {
               return;
             }
-            final r = await orgCall(() => _api.removeConflict(x.id), ok: t('أُزيل التعارض', 'Conflict removed'));
+            final r = await orgCall(() => api.removeConflict(x.id), ok: t('أُزيل التعارض', 'Conflict removed'));
             if (r.ok && ctx.mounted) set(() => conflicts = [for (final y in conflicts ?? const <AdvConflict>[]) if (y.id != x.id) y]);
           }
 
@@ -615,26 +644,4 @@ class _AdvStudentsBodyState extends State<_AdvStudentsBody> {
             ],
           );
         }));
-    if (saved != null && mounted) _reload();
-  }
-
-  Future<void> _distribute() async {
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvDistributePage(orgId: widget.orgId)));
-    if (mounted) _reload();
-  }
-
-  @override
-  Widget build(BuildContext context) => AdvStudentsView(
-        load: _load,
-        manage: widget.manage,
-        page: _page,
-        filter: _filter,
-        errorText: _error,
-        onRetry: () => _query(),
-        onSearch: (q) => _query(q: q),
-        onFilter: (f) => _query(filter: f),
-        onPage: (p) => _query(page: p),
-        onOpen: _open,
-        onDistribute: widget.manage ? _distribute : null,
-      );
 }

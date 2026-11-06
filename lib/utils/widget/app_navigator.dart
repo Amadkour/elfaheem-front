@@ -33,6 +33,7 @@ import '../../features/org/org_providers.dart' show OrgSession;
 import '../../features/org/org_invitation_prompt.dart' show OrgInvitationPrompt;
 import '../../features/org/org_invitations.dart' show invitationsFeatureKey;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
+import '../../features/org/advising/adv_wiring.dart' deferred as adv_wiring;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
 import '../../features/shared/points/points_api.dart' show kPointsFeatureKey, pointsModuleFor;
@@ -214,6 +215,16 @@ class AppNavigator {
           WidgetsBinding.instance.addPostFrameCallback((_) => AppShellNav.popVisibleToRoot()); // the section, not a page above it
         } else {
           await root.pushNamed('/org_dashboard');
+        }
+        return;
+      // academic advising (D-289): an urgent flag · an escalation · a review due names the student → their 360
+      case 'advising':
+        final inner = data['data'];
+        final member = int.tryParse('${data['member_id'] ?? (inner is Map ? inner['member_id'] : null) ?? ''}');
+        if (member != null && orgId != null && !AppConfig.disableList.contains('org.advising')) {
+          await _deferred('adv_wiring', adv_wiring.loadLibrary, () => adv_wiring.advOpenStudentLink(nav, orgId: orgId, memberId: member));
+        } else {
+          await nav.pushNamed('/notifications');
         }
         return;
       // governance (D-057): an item · a council session · a delegation · a form I must answer

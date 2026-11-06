@@ -1,5 +1,6 @@
 // lib/features/org/advising/adv_models.dart — pure models of the Academic Advising module. No Flutter widgets:
-// unit-tested in test/org/adv_models_test.dart (Phase 2) and test/org/adv_assign_models_test.dart (Phase 3).
+// unit-tested in test/org/adv_models_test.dart (Phase 2), test/org/adv_assign_models_test.dart (Phase 3) and
+// test/org/adv_case_models_test.dart (Phase 4: workspace, 360, categories, flags, notes, timeline).
 // Contracts: docs/advising/PHASE2.md (status, enable / disable, member status) and docs/advising/PHASE3.md (settings,
 // advisors and their profiles, conflicts, students and manual assignment, distribution, handovers); backend
 // ../back/routers/organization/org_advising_router.py.
@@ -13,7 +14,8 @@ import 'dart:convert' show jsonEncode;
 import 'package:flutter_education_app/core/plural.dart';
 
 import '../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, t;
-import '../org_v3.dart' show orgDay, orgParseUtc;
+import '../org_registrar.dart' show termTitle;
+import '../org_v3.dart' show orgDay, orgParseUtc, orgUtc;
 
 /// Organization types that may switch advising on; a sub-organization of one of them is eligible too
 /// (the server's `ADVISING_ORG_TYPES`).
@@ -68,7 +70,15 @@ class AdvPerson {
 
 /// What I am in the advising of this organization (`me`).
 class AdvMe {
-  const AdvMe({this.admin = false, this.director = false, this.advisor = false, this.advisees = 0, this.handoversPending = 0});
+  const AdvMe({
+    this.admin = false,
+    this.director = false,
+    this.advisor = false,
+    this.advisees = 0,
+    this.handoversPending = 0,
+    this.flagsUrgent = 0,
+    this.flagsOverdue = 0,
+  });
 
   final bool admin, director, advisor;
 
@@ -78,12 +88,17 @@ class AdvMe {
   /// Handovers to me that I have not acknowledged yet (Phase 3; 0 from an older server).
   final int handoversPending;
 
+  /// Phase 4: urgent open flags of my students · flags past their review date (0 from an older server).
+  final int flagsUrgent, flagsOverdue;
+
   factory AdvMe.fromJson(Map<String, dynamic> j) => AdvMe(
         admin: asBool(j['admin']),
         director: asBool(j['director']),
         advisor: asBool(j['advisor']),
         advisees: asInt(j['advisees']),
         handoversPending: asInt(j['handovers_pending']),
+        flagsUrgent: asInt(j['flags_urgent']),
+        flagsOverdue: asInt(j['flags_overdue']),
       );
 
   /// The highest of my roles: `admin` · `director` · `advisor` · `none`.
@@ -292,7 +307,7 @@ Map<String, int> _intMap(dynamic v) => {for (final e in asMap(v).entries) e.key:
 
 /// A list answer of the advising routes: `{"items","total","page","size","pages","facets"}`.
 class AdvPage<T> {
-  const AdvPage({this.items = const [], this.total = 0, this.page = 1, this.size = 25, this.pages = 1, this.facets = const {}});
+  const AdvPage({this.items = const [], this.total = 0, this.page = 1, this.size = 25, this.pages = 1, this.facets = const {}, this.restricted = 0});
 
   final List<T> items;
   final int total, page, size, pages;
@@ -300,12 +315,23 @@ class AdvPage<T> {
   /// Counts per filter value (`available` · `away` · `warn` · `over`, or `unassigned` · `away` · `locked`).
   final Map<String, int> facets;
 
+  /// Phase 4 (flags, notes): rows the caller may not read (sensitive or private), only counted.
+  final int restricted;
+
   factory AdvPage.fromJson(Map<String, dynamic> j, T Function(Map<String, dynamic>) item) {
     final items = [for (final m in asMapList(j['items'])) item(m)];
     final size = asInt(j['size'], 25);
     final total = j.containsKey('total') ? asInt(j['total']) : items.length;
     final pages = j.containsKey('pages') ? asInt(j['pages'], 1) : (size <= 0 ? 1 : ((total + size - 1) ~/ size));
-    return AdvPage(items: items, total: total, page: asInt(j['page'], 1), size: size, pages: pages < 1 ? 1 : pages, facets: _intMap(j['facets']));
+    return AdvPage(
+      items: items,
+      total: total,
+      page: asInt(j['page'], 1),
+      size: size,
+      pages: pages < 1 ? 1 : pages,
+      facets: _intMap(j['facets']),
+      restricted: asInt(j['restricted']),
+    );
   }
 
   int facet(String key) => facets[key] ?? 0;
@@ -1475,5 +1501,1230 @@ String advMeetingModeLabel(String mode) => switch (mode) {
       'video' => t('مرئي', 'Video'),
       'phone' => t('هاتف', 'Phone'),
       'chat' => t('محادثة', 'Chat'),
+      'email' => t('بريد إلكتروني', 'E-mail'),
       _ => mode,
     };
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Phase 4 — the advisor's workspace (docs/advising/PHASE4.md): my students by risk, the student 360, categories,
+//  flags and their lifecycle, notes, the timeline, the advising key of `/org/mine`
+// ═════════════════════════════════════════════════════════════════════════════
+
+double? _num(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  return double.tryParse('$v');
+}
+
+/// "1.62" (two decimals) · "" for null.
+String advGpa(double? v) => v == null ? '' : v.toStringAsFixed(2);
+
+/// "27%" (whole percent, one decimal under 10) · "" for null.
+String advPct(double? v) {
+  if (v == null) return '';
+  final r = v < 10 && v != v.roundToDouble() ? v.toStringAsFixed(1) : v.round().toString();
+  return '$r%';
+}
+
+// ── Priority, flag status, visibility, contact ───────────────────────────────
+
+/// One scale for flags (PLAN §2 #6), lowest first.
+const advPriorities = ['low', 'normal', 'high', 'urgent'];
+
+/// 0 (low) – 3 (urgent); an unknown value counts as normal.
+int advPriorityRank(String? p) {
+  final i = advPriorities.indexOf(p ?? '');
+  return i < 0 ? 1 : i;
+}
+
+String advPriorityLabel(String? p) => switch (p) {
+      'low' => t('منخفضة', 'Low'),
+      'high' => t('عالية', 'High'),
+      'urgent' => t('عاجلة', 'Urgent'),
+      _ => t('عادية', 'Normal'),
+    };
+
+/// The flag lifecycle (`flags_flow.py`), in order.
+const advFlagStatuses = ['open', 'acknowledged', 'contacted', 'resolved', 'dismissed'];
+
+String advFlagStatusLabel(String? s) => switch (s) {
+      'open' => t('مفتوح', 'Open'),
+      'acknowledged' => t('تم الاطلاع', 'Acknowledged'),
+      'contacted' => t('تم التواصل', 'Contacted'),
+      'resolved' => t('تمت المعالجة', 'Resolved'),
+      'dismissed' => t('مستبعد', 'Dismissed'),
+      _ => s ?? '',
+    };
+
+/// What moving a flag to [s] means, under its label in the status sheet.
+String advFlagStatusHint(String s) => switch (s) {
+      'open' => t('إعادة فتح التنبيه لمتابعته من جديد', 'Open the flag again to follow it up'),
+      'acknowledged' => t('اطلعت عليه وستتابعه', 'You have seen it and will follow it up'),
+      'contacted' => t('تواصلت مع الطالب (يُسجّل كآخر تواصل)', 'You reached the student (recorded as the last contact)'),
+      'resolved' => t('عولج الأمر — اكتب النتيجة', 'The matter is dealt with — write the outcome'),
+      'dismissed' => t('لا يحتاج متابعة', 'It needs no follow-up'),
+      _ => '',
+    };
+
+bool advFlagClosed(String? s) => s == 'resolved' || s == 'dismissed';
+
+/// The states a flag may move to from [status] (the server's `flags_flow.py`); a closed flag reopens only for its
+/// owner or a director ([canReopen]).
+List<String> advFlagNext(String? status, {bool canReopen = true}) => switch (status) {
+      'open' => const ['acknowledged', 'contacted', 'resolved', 'dismissed'],
+      'acknowledged' => const ['contacted', 'resolved', 'dismissed'],
+      'contacted' => const ['resolved', 'dismissed'],
+      'resolved' || 'dismissed' => canReopen ? const ['open'] : const [],
+      _ => const [],
+    };
+
+/// Who may read a note: the author only · the student's advisors and the directors · also the student.
+const advNoteVisibilities = ['private', 'team', 'student'];
+
+String advVisibilityLabel(String? v) => switch (v) {
+      'private' => t('خاصة', 'Private'),
+      'student' => t('يراها الطالب', 'Shared with the student'),
+      _ => t('فريق الإرشاد', 'Advising team'),
+    };
+
+String advVisibilityHint(String v) => switch (v) {
+      'private' => t('أنت فقط', 'Only you'),
+      'student' => t('مرشدو الطالب والمديرون والطالب نفسه', 'The student\'s advisors, the directors and the student'),
+      _ => t('مرشدو الطالب ومديرو الإرشاد', 'The student\'s advisors and the advising directors'),
+    };
+
+/// How a logged contact happened.
+const advContactModes = ['in_person', 'phone', 'video', 'chat', 'email'];
+
+// ── Categories ───────────────────────────────────────────────────────────────
+
+/// The built-in categories' names, for a category whose names came empty.
+String advCategoryKeyLabel(String key) => switch (key) {
+      'academic' => t('أكاديمي', 'Academic'),
+      'financial' => t('مالي', 'Financial'),
+      'career' => t('مهني', 'Career'),
+      'health' => t('صحي', 'Health'),
+      'psychological' => t('نفسي واجتماعي', 'Psychological and social'),
+      'disciplinary' => t('انضباطي', 'Disciplinary'),
+      'accessibility' => t('احتياجات خاصة وإتاحة', 'Accessibility'),
+      'other' => t('أخرى', 'Other'),
+      _ => key,
+    };
+
+/// A recommended accommodation of a category (e.g. extra exam time for `accessibility`).
+class AdvAccommodation {
+  const AdvAccommodation({this.key = '', this.labelAr = '', this.labelEn = ''});
+  final String key, labelAr, labelEn;
+
+  factory AdvAccommodation.fromJson(Map<String, dynamic> j) =>
+      AdvAccommodation(key: asStr(j['key']), labelAr: asStr(j['label_ar']).trim(), labelEn: asStr(j['label_en']).trim());
+
+  String get label {
+    final s = t(labelAr, labelEn);
+    if (s.isNotEmpty) return s;
+    final other = labelAr.isNotEmpty ? labelAr : labelEn;
+    return other.isNotEmpty ? other : key;
+  }
+
+  /// A new row has no key yet: the server makes one from the label.
+  Map<String, dynamic> toJson() => {'key': key.isEmpty ? null : key, 'label_ar': labelAr.trim(), 'label_en': labelEn.trim()};
+
+  AdvAccommodation copyWith({String? labelAr, String? labelEn}) =>
+      AdvAccommodation(key: key, labelAr: labelAr ?? this.labelAr, labelEn: labelEn ?? this.labelEn);
+}
+
+/// A flag / note category (`GET …/categories`; also the `category` block of a flag or a note).
+class AdvCategory {
+  const AdvCategory({
+    required this.id,
+    this.key = '',
+    this.nameAr = '',
+    this.nameEn = '',
+    this.sensitive = false,
+    this.system = false,
+    this.active = true,
+    this.accommodations = const [],
+  });
+
+  final int id;
+  final String key, nameAr, nameEn;
+
+  /// Its flags and notes are read only by their author, the primary advisor and the directors.
+  final bool sensitive;
+
+  /// Seeded by the platform: renamable, never deletable.
+  final bool system;
+  final bool active;
+  final List<AdvAccommodation> accommodations;
+
+  factory AdvCategory.fromJson(Map<String, dynamic> j) => AdvCategory(
+        id: asInt(j['id']),
+        key: asStr(j['key']),
+        nameAr: asStr(j['name_ar']).trim(),
+        nameEn: asStr(j['name_en']).trim(),
+        sensitive: asBool(j['sensitive']),
+        system: asBool(j['system']),
+        active: asBool(j['active'], true),
+        accommodations: [for (final m in asMapList(j['accommodations'])) AdvAccommodation.fromJson(m)],
+      );
+
+  static AdvCategory? maybe(dynamic v) {
+    if (v is! Map) return null;
+    final c = AdvCategory.fromJson(asMap(v));
+    return c.id == 0 && c.key.isEmpty ? null : c;
+  }
+
+  String get name {
+    final s = t(nameAr, nameEn);
+    if (s.isNotEmpty) return s;
+    final other = nameAr.isNotEmpty ? nameAr : nameEn;
+    return other.isNotEmpty ? other : advCategoryKeyLabel(key);
+  }
+
+  /// The label of one of its accommodation keys (the key itself when the category no longer lists it).
+  String accommodationLabel(String k) => accommodations.where((a) => a.key == k).firstOrNull?.label ?? k;
+}
+
+/// The category editor's body: POST (new) and the whole-object PUT.
+class AdvCategoryDraft {
+  const AdvCategoryDraft({this.nameAr = '', this.nameEn = '', this.sensitive = false, this.active = true, this.accommodations = const []});
+
+  factory AdvCategoryDraft.of(AdvCategory c) =>
+      AdvCategoryDraft(nameAr: c.nameAr, nameEn: c.nameEn, sensitive: c.sensitive, active: c.active, accommodations: c.accommodations);
+
+  final String nameAr, nameEn;
+  final bool sensitive, active;
+  final List<AdvAccommodation> accommodations;
+
+  AdvCategoryDraft copyWith({String? nameAr, String? nameEn, bool? sensitive, bool? active, List<AdvAccommodation>? accommodations}) =>
+      AdvCategoryDraft(
+        nameAr: nameAr ?? this.nameAr,
+        nameEn: nameEn ?? this.nameEn,
+        sensitive: sensitive ?? this.sensitive,
+        active: active ?? this.active,
+        accommodations: accommodations ?? this.accommodations,
+      );
+
+  /// Why it cannot be saved, null when it can.
+  String? error() {
+    if (nameAr.trim().isEmpty && nameEn.trim().isEmpty) return t('اكتب اسم التصنيف', 'Give the category a name');
+    if (accommodations.any((a) => a.labelAr.trim().isEmpty && a.labelEn.trim().isEmpty)) {
+      return t('اكتب اسم كل تسهيل أو احذفه', 'Name every accommodation or remove it');
+    }
+    return null;
+  }
+
+  bool changedFrom(AdvCategory c) => !_same(toJson(), AdvCategoryDraft.of(c).toJson());
+
+  /// [create]: the POST body (no `active`: a new category is active).
+  Map<String, dynamic> toJson({bool create = false}) => {
+        'name_ar': nameAr.trim(),
+        'name_en': nameEn.trim(),
+        'sensitive': sensitive,
+        if (!create) 'active': active,
+        'accommodations': [for (final a in accommodations) a.toJson()],
+      };
+}
+
+// ── Risk ─────────────────────────────────────────────────────────────────────
+
+/// A non-zero part of the risk score (`score.py`): `cgpa_low` · `gpa_drop` · `absence_high` · `failed_courses` ·
+/// `open_flags` · `no_contact`, with its value.
+class AdvRiskReason {
+  const AdvRiskReason(this.code, [this.value, this.points = 0]);
+  final String code;
+  final double? value;
+
+  /// What this part adds to the score (the server lists the parts largest first).
+  final int points;
+
+  factory AdvRiskReason.fromJson(Map<String, dynamic> j) => AdvRiskReason(asStr(j['code']), _num(j['value']), asInt(j['points']));
+}
+
+/// The sentence of a risk reason. [flags] (the student's open flags) words `open_flags`.
+String advRiskReasonText(AdvRiskReason r, {AdvFlagCounts? flags}) {
+  final v = r.value;
+  final n = v?.round() ?? 0;
+  switch (r.code) {
+    case 'cgpa_low':
+      return v == null ? t('المعدل التراكمي منخفض', 'Low CGPA') : t('المعدل التراكمي ${advGpa(v)} دون 2.00', 'CGPA ${advGpa(v)}, under 2.00');
+    case 'gpa_drop':
+      return v == null
+          ? t('تراجع معدل الفصل الأخير', 'Last term GPA dropped')
+          : t('معدل الفصل الأخير أقل من التراكمي بـ ${advGpa(v)}', 'Last term GPA ${advGpa(v)} under the CGPA');
+    case 'absence_high':
+      return v == null ? t('غياب مرتفع', 'High absence') : t('غياب ${advPct(v)} في أحد المقررات', '${advPct(v)} absence in a course');
+    case 'failed_courses':
+      return v == null
+          ? t('رسوب في مقررات', 'Failed courses')
+          : countText(n, ar1: 'رسوب في مقرر واحد', ar2: 'رسوب في مقررين', arFew: 'رسوب في $n مقررات', arMany: 'رسوب في $n مقرراً', en1: '1 failed course', en: '$n failed courses');
+    case 'open_flags':
+      final f = flags;
+      if (f == null || f.total == 0) return t('تنبيهات مفتوحة', 'Open flags');
+      final top = advPriorityLabel(f.highest);
+      return countText(f.total,
+          ar1: 'تنبيه مفتوح ($top)', ar2: 'تنبيهان مفتوحان، أعلاها $top', arFew: '${f.total} تنبيهات مفتوحة، أعلاها $top', arMany: '${f.total} تنبيهاً مفتوحاً، أعلاها $top',
+          en1: '1 open flag ($top)', en: '${f.total} open flags, highest $top');
+    case 'no_contact':
+      return v == null
+          ? t('لا تواصل مسجّل بعد', 'No contact recorded yet')
+          : countText(n, ar1: 'لا تواصل منذ يوم', ar2: 'لا تواصل منذ يومين', arFew: 'لا تواصل منذ $n أيام', arMany: 'لا تواصل منذ $n يوماً', en1: 'No contact for 1 day', en: 'No contact for $n days');
+    default:
+      return r.code;
+  }
+}
+
+/// How worrying a 0 – 100 risk score is: `low` (under 30) · `watch` (30 – 59) · `high` (60 and above).
+String advRiskBand(int score) => score >= 60 ? 'high' : (score >= 30 ? 'watch' : 'low');
+
+String advRiskBandLabel(String band) => switch (band) {
+      'high' => t('خطر مرتفع', 'High risk'),
+      'watch' => t('يحتاج متابعة', 'Needs watching'),
+      _ => t('مستقر', 'Steady'),
+    };
+
+/// Open flags by priority (`open_flags`).
+class AdvFlagCounts {
+  const AdvFlagCounts({this.low = 0, this.normal = 0, this.high = 0, this.urgent = 0});
+  final int low, normal, high, urgent;
+
+  factory AdvFlagCounts.fromJson(dynamic v) {
+    if (v is! Map) return AdvFlagCounts(normal: asInt(v));
+    final j = asMap(v);
+    return AdvFlagCounts(low: asInt(j['low']), normal: asInt(j['normal']), high: asInt(j['high']), urgent: asInt(j['urgent']));
+  }
+
+  int get total => low + normal + high + urgent;
+
+  /// The highest priority with an open flag (null: none open).
+  String? get highest => urgent > 0
+      ? 'urgent'
+      : high > 0
+          ? 'high'
+          : normal > 0
+              ? 'normal'
+              : low > 0
+                  ? 'low'
+                  : null;
+
+  int of(String priority) => switch (priority) {
+        'low' => low,
+        'high' => high,
+        'urgent' => urgent,
+        _ => normal,
+      };
+}
+
+/// Whole days since [at] (null: never), counted from [now] (default: the clock).
+int? advDaysSince(DateTime? at, {DateTime? now}) {
+  if (at == null) return null;
+  final d = (now ?? DateTime.now()).toUtc().difference(at.toUtc()).inDays;
+  return d < 0 ? 0 : d;
+}
+
+/// "Last contact 12 days ago" · "Contacted today" · "Never contacted".
+String advLastContactText(DateTime? at, {DateTime? now}) {
+  final d = advDaysSince(at, now: now);
+  if (d == null) return t('لم يُتواصل معه بعد', 'Never contacted');
+  if (d == 0) return t('تُوصّل معه اليوم', 'Contacted today');
+  return countText(d,
+      ar1: 'آخر تواصل منذ يوم', ar2: 'آخر تواصل منذ يومين', arFew: 'آخر تواصل منذ $d أيام', arMany: 'آخر تواصل منذ $d يوماً',
+      en1: 'Last contact 1 day ago', en: 'Last contact $d days ago');
+}
+
+// ── Workspace ────────────────────────────────────────────────────────────────
+
+/// One student of `GET …/workspace` (and the numbers of the 360's `stats`).
+class AdvCaseItem {
+  const AdvCaseItem({
+    required this.memberId,
+    this.userId = 0,
+    this.name = '',
+    this.code,
+    this.program,
+    this.level,
+    this.cohort,
+    this.standing,
+    this.cgpa,
+    this.lastTermGpa,
+    this.absenceMax,
+    this.failedCount = 0,
+    this.openFlags = const AdvFlagCounts(),
+    this.categories = const [],
+    this.riskScore = 0,
+    this.riskReasons = const [],
+    this.lastContactAt,
+    this.primary,
+  });
+
+  final int memberId, userId;
+  final String name;
+  final String? code, program, level, cohort, standing;
+  final double? cgpa, lastTermGpa, absenceMax;
+  final int failedCount;
+  final AdvFlagCounts openFlags;
+
+  /// Keys of the categories of the open flags the caller may see.
+  final List<String> categories;
+
+  /// 0 – 100.
+  final int riskScore;
+  final List<AdvRiskReason> riskReasons;
+  final DateTime? lastContactAt;
+  final AdvRef? primary;
+
+  factory AdvCaseItem.fromJson(Map<String, dynamic> j) => AdvCaseItem(
+        memberId: asInt(j['member_id']),
+        userId: asInt(j['user_id']),
+        name: asStr(j['name']).trim(),
+        code: _text(j['code']),
+        program: _text(j['program']),
+        level: _text(j['level']),
+        cohort: _text(j['cohort']),
+        standing: _text(j['standing']),
+        cgpa: _num(j['cgpa']),
+        lastTermGpa: _num(j['last_term_gpa']),
+        absenceMax: _num(j['absence_max']),
+        failedCount: asInt(j['failed_count']),
+        openFlags: AdvFlagCounts.fromJson(j['open_flags']),
+        categories: _strList(j['categories']),
+        riskScore: asInt(j['risk_score']).clamp(0, 100),
+        riskReasons: [for (final m in asMapList(j['risk_reasons'])) AdvRiskReason.fromJson(m)],
+        lastContactAt: orgParseUtc(j['last_contact_at']),
+        primary: AdvRef.maybe(j['primary']),
+      );
+
+  String get shown => name.isEmpty ? '#$memberId' : name;
+
+  /// "2023001 · Computer Science · Level 2 · 2023" (what is known).
+  String get subtitle => [?code, ?program, ?level, ?cohort].join(' · ');
+
+  /// The first reason the server listed (the parts come largest first), null when the score is 0.
+  AdvRiskReason? get topReason => riskReasons.firstOrNull;
+}
+
+/// The workspace's sort orders.
+const advWorkspaceSorts = ['risk', 'name', 'cgpa', 'contact'];
+
+String advWorkspaceSortLabel(String s) => switch (s) {
+      'name' => t('الاسم', 'Name'),
+      'cgpa' => t('المعدل التراكمي', 'CGPA'),
+      'contact' => t('أقدم تواصل', 'Oldest contact'),
+      _ => t('الأعلى خطراً', 'Highest risk'),
+    };
+
+/// The open-flags filter: '' (any) · `open` · `urgent` · `none`.
+const advFlagFilters = ['', 'open', 'urgent', 'none'];
+
+String advFlagFilterLabel(String f) => switch (f) {
+      'open' => t('لهم تنبيهات مفتوحة', 'With open flags'),
+      'urgent' => t('تنبيه عاجل', 'An urgent flag'),
+      'none' => t('بلا تنبيهات', 'No open flags'),
+      _ => t('الكل', 'Any'),
+    };
+
+/// The workspace's query: search, the filters of the one filter sheet, the sort and the page.
+class AdvWorkspaceQuery {
+  const AdvWorkspaceQuery({
+    this.q = '',
+    this.advisor,
+    this.cohort,
+    this.level,
+    this.programId,
+    this.standing,
+    this.categoryId,
+    this.priority,
+    this.flag = '',
+    this.sort = 'risk',
+    this.page = 1,
+    this.size = 25,
+  });
+
+  final String q;
+
+  /// Manage only: one advisor's students.
+  final AdvRef? advisor;
+  final String? cohort, level, standing, priority;
+  final int? programId, categoryId;
+
+  /// '' · `open` · `urgent` · `none`.
+  final String flag;
+
+  /// `risk` · `name` · `cgpa` · `contact`.
+  final String sort;
+  final int page, size;
+
+  AdvWorkspaceQuery copyWith({
+    String? q,
+    AdvRef? Function()? advisor,
+    String? Function()? cohort,
+    String? Function()? level,
+    int? Function()? programId,
+    String? Function()? standing,
+    int? Function()? categoryId,
+    String? Function()? priority,
+    String? flag,
+    String? sort,
+    int? page,
+  }) =>
+      AdvWorkspaceQuery(
+        q: q ?? this.q,
+        advisor: advisor == null ? this.advisor : advisor(),
+        cohort: cohort == null ? this.cohort : cohort(),
+        level: level == null ? this.level : level(),
+        programId: programId == null ? this.programId : programId(),
+        standing: standing == null ? this.standing : standing(),
+        categoryId: categoryId == null ? this.categoryId : categoryId(),
+        priority: priority == null ? this.priority : priority(),
+        flag: flag ?? this.flag,
+        sort: sort ?? this.sort,
+        page: page ?? this.page,
+        size: size,
+      );
+
+  /// Every filter off; the search and the sort stay.
+  AdvWorkspaceQuery cleared() => AdvWorkspaceQuery(q: q, sort: sort, size: size);
+
+  /// How many filters are on (the search and the sort are not filters).
+  int get activeFilters => [advisor, cohort, level, programId, standing, categoryId, priority].where((v) => v != null).length + (flag.isEmpty ? 0 : 1);
+
+  /// The query string. [manage]: the advisor filter is sent (the server ignores it for an advisor anyway).
+  Map<String, dynamic> toQuery({required bool manage}) => {
+        if (q.trim().isNotEmpty) 'q': q.trim(),
+        if (manage && advisor != null) 'advisor_user_id': advisor!.userId,
+        'cohort': ?cohort,
+        'level': ?level,
+        'program_id': ?programId,
+        'standing': ?standing,
+        'category_id': ?categoryId,
+        'priority': ?priority,
+        if (flag.isNotEmpty) 'flag': flag,
+        'sort': sort,
+        'page': page,
+        'size': size,
+      };
+}
+
+/// The choices of the filter sheet: from the settings (directors), else from the students already listed.
+class AdvWorkspaceChoices {
+  const AdvWorkspaceChoices({this.cohorts = const [], this.levels = const [], this.programs = const [], this.standings = const [], this.categories = const []});
+
+  final List<String> cohorts, levels, standings;
+  final List<AdvNamed> programs;
+  final List<AdvCategory> categories;
+
+  /// [options] (`GET …/policy`, directors) give every level, cohort and program; [seen] adds what the listed students
+  /// carry (an advisor has no settings access); standings come from the students and the registrar's three.
+  factory AdvWorkspaceChoices.from({AdvPolicyOptions? options, Iterable<AdvCaseItem> seen = const [], List<AdvCategory> categories = const []}) {
+    List<String> merge(List<String> a, Iterable<String?> b) {
+      final out = <String>{...a, for (final x in b) ?x}.toList()..sort();
+      return out;
+    }
+
+    return AdvWorkspaceChoices(
+      cohorts: merge(options?.cohorts ?? const [], seen.map((s) => s.cohort)),
+      levels: merge(options?.levels ?? const [], seen.map((s) => s.level)),
+      programs: options?.programs ?? const [],
+      standings: merge(const ['good', 'probation', 'honours'], seen.map((s) => s.standing)),
+      categories: [for (final c in categories) if (c.active) c],
+    );
+  }
+}
+
+// ── Flags ────────────────────────────────────────────────────────────────────
+
+class AdvFlag {
+  const AdvFlag({
+    required this.id,
+    required this.category,
+    this.priority = 'normal',
+    this.status = 'open',
+    this.source = 'manual',
+    this.note,
+    this.outcomeNote,
+    this.reviewDueAt,
+    this.owner,
+    this.accommodations = const [],
+    this.createdBy,
+    this.createdAt,
+    this.updatedAt,
+    this.resolvedAt,
+    this.resolvedInHours,
+    this.escalatedAt,
+    this.overdue = false,
+    this.allowedNext,
+    this.reopenedAt,
+  });
+
+  final int id;
+  final AdvCategory category;
+
+  /// `low` · `normal` · `high` · `urgent`.
+  final String priority;
+
+  /// `open` · `acknowledged` · `contacted` · `resolved` · `dismissed`.
+  final String status;
+
+  /// `manual` · `rule` (the early-warning engine, Phase 6).
+  final String source;
+  final String? note, outcomeNote;
+  final DateTime? reviewDueAt;
+  final AdvRef? owner, createdBy;
+
+  /// Keys of the category's accommodations.
+  final List<String> accommodations;
+  final DateTime? createdAt, updatedAt, resolvedAt, escalatedAt;
+
+  /// When it was last reopened (reopening clears the outcome and the escalation).
+  final DateTime? reopenedAt;
+  final int? resolvedInHours;
+
+  /// Its review date has passed.
+  final bool overdue;
+
+  /// The states this caller may move the flag to (the server's state machine); null from an older server, where
+  /// [advFlagNext] stands in.
+  final List<String>? allowedNext;
+
+  factory AdvFlag.fromJson(Map<String, dynamic> j) {
+    final p = asStr(j['priority'], 'normal');
+    final hours = j['resolved_in_hours'];
+    return AdvFlag(
+      id: asInt(j['id']),
+      category: AdvCategory.maybe(j['category']) ?? const AdvCategory(id: 0, key: 'other'),
+      priority: advPriorities.contains(p) ? p : 'normal',
+      status: asStr(j['status'], 'open'),
+      source: asStr(j['source'], 'manual'),
+      note: _text(j['note']),
+      outcomeNote: _text(j['outcome_note']),
+      reviewDueAt: orgParseUtc(j['review_due_at']),
+      owner: AdvRef.maybe(j['owner']),
+      accommodations: _strList(j['accommodations']),
+      createdBy: AdvRef.maybe(j['created_by']),
+      createdAt: orgParseUtc(j['created_at']),
+      updatedAt: orgParseUtc(j['updated_at']),
+      resolvedAt: orgParseUtc(j['resolved_at']),
+      resolvedInHours: hours == null ? null : asInt(hours),
+      escalatedAt: orgParseUtc(j['escalated_at']),
+      overdue: asBool(j['overdue']),
+      allowedNext: j['allowed_next'] is List ? [for (final s in _strList(j['allowed_next'])) if (advFlagStatuses.contains(s)) s] : null,
+      reopenedAt: orgParseUtc(j['reopened_at']),
+    );
+  }
+
+  bool get closed => advFlagClosed(status);
+
+  /// Where this caller may move it: the server's `allowed_next`, else the lifecycle ([canReopen]: owner or director).
+  List<String> nextStates({bool canReopen = true}) => allowedNext ?? advFlagNext(status, canReopen: canReopen);
+}
+
+/// The flag sheet's body: POST and the whole-object PUT.
+class AdvFlagDraft {
+  const AdvFlagDraft({this.categoryId, this.priority = 'normal', this.note = '', this.reviewDueAt, this.accommodations = const []});
+
+  factory AdvFlagDraft.of(AdvFlag f) => AdvFlagDraft(
+        categoryId: f.category.id == 0 ? null : f.category.id,
+        priority: f.priority,
+        note: f.note ?? '',
+        reviewDueAt: f.reviewDueAt,
+        accommodations: f.accommodations,
+      );
+
+  final int? categoryId;
+  final String priority, note;
+  final DateTime? reviewDueAt;
+  final List<String> accommodations;
+
+  AdvFlagDraft copyWith({int? Function()? categoryId, String? priority, String? note, DateTime? Function()? reviewDueAt, List<String>? accommodations}) =>
+      AdvFlagDraft(
+        categoryId: categoryId == null ? this.categoryId : categoryId(),
+        priority: priority ?? this.priority,
+        note: note ?? this.note,
+        reviewDueAt: reviewDueAt == null ? this.reviewDueAt : reviewDueAt(),
+        accommodations: accommodations ?? this.accommodations,
+      );
+
+  /// A new category keeps only the accommodations it lists.
+  AdvFlagDraft withCategory(AdvCategory c) =>
+      copyWith(categoryId: () => c.id, accommodations: [for (final a in accommodations) if (c.accommodations.any((x) => x.key == a)) a]);
+
+  AdvFlagDraft toggleAccommodation(String key) =>
+      copyWith(accommodations: accommodations.contains(key) ? [for (final a in accommodations) if (a != key) a] : [...accommodations, key]);
+
+  /// Why it cannot be saved, null when it can. [category] = the chosen one (its accommodations).
+  String? error({AdvCategory? category}) {
+    if (categoryId == null) return t('اختر تصنيف التنبيه', 'Choose the flag\'s category');
+    if (note.length > 10000) return t('الملاحظة أطول من 10000 حرف', 'The note is longer than 10,000 characters');
+    if (category != null && accommodations.any((a) => !category.accommodations.any((x) => x.key == a))) {
+      return t('التسهيلات لا تتبع هذا التصنيف', 'Those accommodations do not belong to this category');
+    }
+    return null;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'category_id': categoryId,
+        'priority': priority,
+        'note': note.trim().isEmpty ? null : note.trim(),
+        'review_due_at': orgUtc(reviewDueAt),
+        'accommodations': accommodations,
+      };
+}
+
+/// One row of `GET …/flags/{id}/history` (newest first).
+class AdvFlagEvent {
+  const AdvFlagEvent({this.at, this.actor, this.action = '', this.before = const {}, this.after = const {}});
+  final DateTime? at;
+  final String? actor;
+  final String action;
+  final Map<String, dynamic> before, after;
+
+  factory AdvFlagEvent.fromJson(Map<String, dynamic> j) => AdvFlagEvent(
+        at: orgParseUtc(j['at']),
+        actor: _personName(j['actor']),
+        action: asStr(j['action']),
+        before: asMap(j['before']),
+        after: asMap(j['after']),
+      );
+
+  /// "Status: Open → Contacted" · "Opened" · "Edited" · "Escalated to the directors".
+  String get text {
+    final a = action.toLowerCase();
+    final s0 = asStr(before['status']), s1 = asStr(after['status']);
+    if (s1.isNotEmpty && s0 != s1 && s0.isNotEmpty) {
+      return t('الحالة: ${advFlagStatusLabel(s0)} ← ${advFlagStatusLabel(s1)}', 'Status: ${advFlagStatusLabel(s0)} → ${advFlagStatusLabel(s1)}');
+    }
+    if (a.contains('escalat')) return t('صُعّد إلى مديري الإرشاد', 'Escalated to the advising directors');
+    if (a.contains('create') || a.contains('open') || before.isEmpty) return t('فُتح التنبيه', 'Flag opened');
+    final p0 = asStr(before['priority']), p1 = asStr(after['priority']);
+    if (p1.isNotEmpty && p0 != p1 && p0.isNotEmpty) {
+      return t('الأولوية: ${advPriorityLabel(p0)} ← ${advPriorityLabel(p1)}', 'Priority: ${advPriorityLabel(p0)} → ${advPriorityLabel(p1)}');
+    }
+    return t('عُدّل التنبيه', 'Flag edited');
+  }
+
+  /// The outcome note written with this change, when there is one.
+  String? get outcome => _text(after['outcome_note']);
+}
+
+// ── Notes ────────────────────────────────────────────────────────────────────
+
+class AdvNote {
+  const AdvNote({
+    required this.id,
+    required this.author,
+    this.visibility = 'team',
+    this.sensitive = false,
+    this.category,
+    this.body = '',
+    this.contactMode,
+    this.contactAt,
+    this.createdAt,
+    this.editedAt,
+    this.mine = false,
+    this.clientId,
+  });
+
+  final int id;
+  final AdvRef author;
+
+  /// `private` · `team` · `student`.
+  final String visibility;
+  final bool sensitive;
+  final AdvCategory? category;
+
+  /// Plain text, never rendered as markup.
+  final String body;
+
+  /// Set when the note logs a contact: `in_person` · `phone` · `video` · `chat` · `email`.
+  final String? contactMode;
+  final DateTime? contactAt, createdAt, editedAt;
+  final bool mine;
+
+  /// The offline draft id it was posted with (matches a queued note already on the server).
+  final String? clientId;
+
+  factory AdvNote.fromJson(Map<String, dynamic> j) {
+    final v = asStr(j['visibility'], 'team');
+    return AdvNote(
+      id: asInt(j['id']),
+      author: AdvRef.maybe(j['author']) ?? const AdvRef(userId: 0, name: ''),
+      visibility: advNoteVisibilities.contains(v) ? v : 'team',
+      sensitive: asBool(j['sensitive']),
+      category: AdvCategory.maybe(j['category']),
+      body: asStr(j['body']),
+      contactMode: _text(j['contact_mode']),
+      contactAt: orgParseUtc(j['contact_at']),
+      createdAt: orgParseUtc(j['created_at']),
+      editedAt: orgParseUtc(j['edited_at']),
+      mine: asBool(j['mine']),
+      clientId: _text(j['client_id']),
+    );
+  }
+}
+
+/// The longest note the server keeps.
+const advNoteMaxLength = 10000;
+
+/// A note being written: the composer, the offline draft and the queued note (POST), or an edit (the whole-object
+/// PUT). [clientId] makes a POST idempotent: the same id twice answers the note already made.
+class AdvNoteDraft {
+  const AdvNoteDraft({
+    this.body = '',
+    this.visibility = 'team',
+    this.sensitive = false,
+    this.categoryId,
+    this.contactMode,
+    this.contactAt,
+    this.clientId,
+  });
+
+  factory AdvNoteDraft.of(AdvNote n) => AdvNoteDraft(
+        body: n.body,
+        visibility: n.visibility,
+        sensitive: n.sensitive,
+        categoryId: n.category?.id,
+        contactMode: n.contactMode,
+        contactAt: n.contactAt,
+      );
+
+  final String body;
+  final String visibility;
+  final bool sensitive;
+  final int? categoryId;
+
+  /// null: not a logged contact.
+  final String? contactMode;
+  final DateTime? contactAt;
+  final String? clientId;
+
+  AdvNoteDraft copyWith({
+    String? body,
+    String? visibility,
+    bool? sensitive,
+    int? Function()? categoryId,
+    String? Function()? contactMode,
+    DateTime? Function()? contactAt,
+    String? Function()? clientId,
+  }) {
+    final s = sensitive ?? this.sensitive;
+    final v = visibility ?? this.visibility;
+    return AdvNoteDraft(
+      body: body ?? this.body,
+      // a sensitive note is never shown to the student
+      visibility: s && v == 'student' ? 'team' : v,
+      sensitive: s,
+      categoryId: categoryId == null ? this.categoryId : categoryId(),
+      contactMode: contactMode == null ? this.contactMode : contactMode(),
+      contactAt: contactAt == null ? this.contactAt : contactAt(),
+      clientId: clientId == null ? this.clientId : clientId(),
+    );
+  }
+
+  bool get isContact => contactMode != null;
+  bool get isEmpty => body.trim().isEmpty;
+
+  /// Why it cannot be sent, null when it can.
+  String? error() {
+    if (body.trim().isEmpty) return t('اكتب الملاحظة', 'Write the note');
+    if (body.length > advNoteMaxLength) return t('الملاحظة أطول من 10000 حرف', 'The note is longer than 10,000 characters');
+    if (sensitive && visibility == 'student') return t('الملاحظة الحساسة لا تُعرض على الطالب', 'A sensitive note is never shown to the student');
+    return null;
+  }
+
+  /// The POST / PUT body. [create] adds the offline id.
+  Map<String, dynamic> toJson({bool create = true}) => {
+        'body': body.trim(),
+        'visibility': visibility,
+        'sensitive': sensitive,
+        'category_id': categoryId,
+        'contact_mode': contactMode,
+        'contact_at': contactMode == null ? null : orgUtc(contactAt ?? DateTime.now()),
+        if (create) 'client_id': clientId,
+      };
+
+  /// What the device keeps (the draft store): the body as typed, nothing trimmed.
+  Map<String, dynamic> toStore() => {
+        'body': body,
+        'visibility': visibility,
+        'sensitive': sensitive,
+        'category_id': categoryId,
+        'contact_mode': contactMode,
+        'contact_at': contactAt?.toUtc().toIso8601String(),
+        'client_id': clientId,
+      };
+
+  factory AdvNoteDraft.fromStore(Map<String, dynamic> j) {
+    final v = asStr(j['visibility'], 'team');
+    final cat = j['category_id'];
+    return AdvNoteDraft(
+      body: asStr(j['body']),
+      visibility: advNoteVisibilities.contains(v) ? v : 'team',
+      sensitive: asBool(j['sensitive']),
+      categoryId: cat == null ? null : asInt(cat),
+      contactMode: _text(j['contact_mode']),
+      contactAt: orgParseUtc(j['contact_at']),
+      clientId: _text(j['client_id']),
+    );
+  }
+
+  /// Something worth keeping on the device.
+  bool get worthKeeping => !isEmpty;
+}
+
+// ── Timeline ─────────────────────────────────────────────────────────────────
+
+/// A person a payload names as `{"user_id","name"}` or as a plain name.
+String? _personName(dynamic v) {
+  if (v is Map) {
+    final m = asMap(v);
+    final n = asStr(m['name']).trim();
+    if (n.isNotEmpty) return n;
+    final id = asInt(m['user_id'] ?? m['id']);
+    return id == 0 ? null : '#$id';
+  }
+  return _text(v);
+}
+
+/// A category a payload names as a block (`{"key","name_ar","name_en"}`) or as its key.
+String? _categoryName(dynamic v) {
+  if (v is Map) return AdvCategory.fromJson(asMap(v)).name;
+  final k = _text(v);
+  return k == null ? null : advCategoryKeyLabel(k);
+}
+
+/// The timeline's kinds.
+const advTimelineKinds = ['assigned', 'unassigned', 'handover', 'flag_opened', 'flag_status', 'note', 'contact'];
+
+class AdvTimelineEntry {
+  const AdvTimelineEntry({this.at, this.kind = '', this.refId, this.actor, this.data = const {}});
+  final DateTime? at;
+  final String kind;
+  final int? refId;
+  final String? actor;
+  final Map<String, dynamic> data;
+
+  factory AdvTimelineEntry.fromJson(Map<String, dynamic> j) {
+    final ref = j['ref_id'];
+    return AdvTimelineEntry(
+      at: orgParseUtc(j['at']),
+      kind: asStr(j['kind']),
+      refId: ref == null ? null : asInt(ref),
+      actor: _personName(j['actor']),
+      data: asMap(j['data']),
+    );
+  }
+
+  /// The line the app writes from [kind] and [data].
+  String get text {
+    final d = data;
+    final advisor = _personName(d['advisor'] ?? d['to'] ?? d['user']);
+    final type = asStr(d['type']);
+    switch (kind) {
+      case 'assigned':
+        if (advisor == null) return t('أُسند مرشد للطالب', 'An advisor was assigned');
+        final en = switch (type) { 'co' => 'co-advisor', 'support' => 'support advisor', _ => 'academic advisor' };
+        return t('أصبح $advisor ${advAdvisorTypeLabel(type.isEmpty ? 'primary' : type)}', '$advisor became the $en');
+      case 'unassigned':
+        final who = _personName(d['advisor'] ?? d['user']);
+        final why = _text(d['reason'] ?? d['end_reason']);
+        final base = who == null ? t('انتهى إسناد مرشد', 'An advisor stopped advising') : t('توقف $who عن الإرشاد', '$who stopped advising');
+        return why == null ? base : '$base · ${advEndReasonLabel(why)}';
+      case 'handover':
+        final from = _personName(d['from']), to = _personName(d['to']);
+        if (from != null && to != null) return t('تسليم من $from إلى $to', 'Handed over from $from to $to');
+        return to == null ? t('سُلّم الملف لمرشد جديد', 'Handed over to a new advisor') : t('سُلّم الملف إلى $to', 'Handed over to $to');
+      case 'flag_opened':
+        final cat = _categoryName(d['category']);
+        final p = _text(d['priority']);
+        return [t('تنبيه جديد', 'Flag opened'), ?cat, if (p != null) advPriorityLabel(p)].join(' · ');
+      case 'flag_status':
+        final cat = _categoryName(d['category']);
+        final from = _text(d['from'] ?? d['before']), to = _text(d['to'] ?? d['after'] ?? d['status']);
+        final move = to == null
+            ? t('تغيّرت حالة تنبيه', 'A flag changed status')
+            : from == null
+                ? t('تنبيه: ${advFlagStatusLabel(to)}', 'Flag: ${advFlagStatusLabel(to)}')
+                : t('تنبيه: ${advFlagStatusLabel(from)} ← ${advFlagStatusLabel(to)}', 'Flag: ${advFlagStatusLabel(from)} → ${advFlagStatusLabel(to)}');
+        return cat == null ? move : '$move · $cat';
+      case 'note':
+        final v = _text(d['visibility']);
+        final sensitive = asBool(d['sensitive']);
+        return [
+          t('ملاحظة إرشادية', 'Advising note'),
+          if (v != null) advVisibilityLabel(v),
+          if (sensitive) t('حساسة', 'sensitive'),
+        ].join(' · ');
+      case 'contact':
+        final m = _text(d['mode'] ?? d['contact_mode']);
+        return m == null ? t('تواصل مع الطالب', 'Contact with the student') : t('تواصل: ${advMeetingModeLabel(m)}', 'Contact: ${advMeetingModeLabel(m)}');
+      default:
+        return t('نشاط في الملف', 'Activity on the record');
+    }
+  }
+}
+
+class AdvTimelinePage {
+  const AdvTimelinePage({this.items = const [], this.next});
+  final List<AdvTimelineEntry> items;
+
+  /// The cursor of the next (older) page; null at the end.
+  final String? next;
+
+  factory AdvTimelinePage.fromJson(Map<String, dynamic> j) =>
+      AdvTimelinePage(items: [for (final m in asMapList(j['items'])) AdvTimelineEntry.fromJson(m)], next: _text(j['next']));
+}
+
+// ── Student 360 ──────────────────────────────────────────────────────────────
+
+class AdvCaseAdvisor {
+  const AdvCaseAdvisor({required this.userId, this.name = '', this.type = 'primary', this.since, this.locked = false});
+  final int userId;
+  final String name, type;
+  final DateTime? since;
+  final bool locked;
+
+  factory AdvCaseAdvisor.fromJson(Map<String, dynamic> j) {
+    final type = asStr(j['type'], 'primary');
+    return AdvCaseAdvisor(
+      userId: asInt(j['user_id']),
+      name: asStr(j['name']).trim(),
+      type: advAdvisorTypes.contains(type) ? type : 'co',
+      since: orgParseUtc(j['since']),
+      locked: asBool(j['locked']),
+    );
+  }
+
+  String get shown => name.isEmpty ? '#$userId' : name;
+}
+
+/// One course row of a registrar term (`academic.terms[].courses`).
+class AdvCourseRow {
+  const AdvCourseRow({this.code, this.nameAr = '', this.nameEn = '', this.credits, this.status = '', this.letter, this.absencePct, this.denied = false, this.attempt = 1});
+  final String? code, letter;
+  final String nameAr, nameEn, status;
+  final double? credits, absencePct;
+  final bool denied;
+  final int attempt;
+
+  factory AdvCourseRow.fromJson(Map<String, dynamic> j) => AdvCourseRow(
+        code: _text(j['code']),
+        nameAr: asStr(j['name_ar']).trim(),
+        nameEn: asStr(j['name_en']).trim(),
+        credits: _num(j['credits']),
+        status: asStr(j['status']),
+        letter: _text(j['letter']),
+        absencePct: _num(j['absence_pct']),
+        denied: asBool(j['denied']),
+        attempt: asInt(j['attempt'], 1),
+      );
+
+  String get name {
+    final s = t(nameAr, nameEn);
+    return s.isNotEmpty ? s : (nameAr.isNotEmpty ? nameAr : nameEn);
+  }
+
+  /// A final letter that fails the course.
+  bool get failed => letter == 'F' || letter == 'FA' || denied;
+}
+
+class AdvAcademicTerm {
+  const AdvAcademicTerm({this.id = 0, this.label = '', this.termGpa, this.courses = const []});
+  final int id;
+  final String label;
+  final double? termGpa;
+  final List<AdvCourseRow> courses;
+
+  factory AdvAcademicTerm.fromJson(Map<String, dynamic> j) {
+    final term = asMap(j['term']);
+    return AdvAcademicTerm(
+      id: asInt(term['id']),
+      label: termTitle(term),
+      termGpa: _num(j['term_gpa']),
+      courses: [for (final m in asMapList(j['courses'])) AdvCourseRow.fromJson(m)],
+    );
+  }
+
+  double get credits => courses.fold(0.0, (s, c) => s + (c.credits ?? 0));
+}
+
+/// The registrar's record of the student (`record()`), the parts the 360 shows.
+class AdvAcademic {
+  const AdvAcademic({this.cgpa, this.earned, this.attempted, this.standing, this.stage, this.programName, this.terms = const []});
+  final double? cgpa, earned, attempted;
+  final String? standing, stage, programName;
+
+  /// Oldest first, as the registrar lists them.
+  final List<AdvAcademicTerm> terms;
+
+  factory AdvAcademic.fromJson(Map<String, dynamic> j) {
+    final p = asMap(j['program']);
+    final pAr = asStr(p['name_ar']).trim(), pEn = asStr(p['name_en']).trim();
+    final pn = t(pAr.isNotEmpty ? pAr : pEn, pEn.isNotEmpty ? pEn : pAr);
+    return AdvAcademic(
+      cgpa: _num(j['cgpa']),
+      earned: _num(j['earned']),
+      attempted: _num(j['attempted']),
+      standing: _text(j['standing']),
+      stage: _text(j['stage']),
+      programName: pn.isEmpty ? null : pn,
+      terms: [for (final m in asMapList(j['terms'])) AdvAcademicTerm.fromJson(m)],
+    );
+  }
+}
+
+class AdvGpaPoint {
+  const AdvGpaPoint({this.termId = 0, this.label = '', this.termGpa, this.cgpa});
+  final int termId;
+  final String label;
+  final double? termGpa, cgpa;
+
+  /// `label` is the term's year label and `kind` its term (term1 · term2 · summer): together "Fall 2025-2026".
+  factory AdvGpaPoint.fromJson(Map<String, dynamic> j) {
+    final label = asStr(j['label']).trim(), kind = _text(j['kind']);
+    return AdvGpaPoint(
+      termId: asInt(j['term_id']),
+      label: kind == null ? label : termTitle({'kind': kind, 'year_label': label}),
+      termGpa: _num(j['term_gpa']),
+      cgpa: _num(j['cgpa']),
+    );
+  }
+}
+
+class AdvCaseCounts {
+  const AdvCaseCounts({this.flagsOpen = 0, this.notes = 0, this.restricted = 0, this.handovers = 0});
+  final int flagsOpen, notes, restricted, handovers;
+
+  factory AdvCaseCounts.fromJson(Map<String, dynamic> j) => AdvCaseCounts(
+        flagsOpen: asInt(j['flags_open']),
+        notes: asInt(j['notes']),
+        restricted: asInt(j['restricted']),
+        handovers: asInt(j['handovers']),
+      );
+}
+
+/// What the caller may do on this student.
+class AdvCaseCan {
+  const AdvCaseCan({this.flag = false, this.note = false, this.assign = false, this.sensitive = false});
+
+  /// Open / change flags · write notes · change the advisors (directors) · read and write sensitive content.
+  final bool flag, note, assign, sensitive;
+
+  factory AdvCaseCan.fromJson(Map<String, dynamic> j) =>
+      AdvCaseCan(flag: asBool(j['flag']), note: asBool(j['note']), assign: asBool(j['assign']), sensitive: asBool(j['sensitive']));
+}
+
+/// `GET …/students/{member_id}/profile`.
+class AdvCaseProfile {
+  const AdvCaseProfile({
+    required this.memberId,
+    this.userId = 0,
+    this.name = '',
+    this.code,
+    this.program,
+    this.level,
+    this.cohort,
+    this.standing,
+    this.joinedAt,
+    this.advisors = const [],
+    this.stats = const AdvCaseItem(memberId: 0),
+    this.meetingsTerm = 0,
+    this.academic,
+    this.gpaTrend = const [],
+    this.counts = const AdvCaseCounts(),
+    this.can = const AdvCaseCan(),
+  });
+
+  final int memberId, userId;
+  final String name;
+  final String? code, level, cohort, standing;
+  final AdvNamed? program;
+  final DateTime? joinedAt;
+
+  /// Primary first.
+  final List<AdvCaseAdvisor> advisors;
+
+  /// The workspace numbers (cgpa, absence, flags, score, reasons, last contact).
+  final AdvCaseItem stats;
+  final int meetingsTerm;
+
+  /// The registrar's record; null when the organization does not use the registrar.
+  final AdvAcademic? academic;
+
+  /// Oldest first.
+  final List<AdvGpaPoint> gpaTrend;
+  final AdvCaseCounts counts;
+  final AdvCaseCan can;
+
+  factory AdvCaseProfile.fromJson(Map<String, dynamic> j) {
+    final s = asMap(j['student']);
+    final p = s['program'];
+    final st = asMap(j['stats']);
+    final ac = j['academic'];
+    final advisors = [for (final m in asMapList(j['advisors'])) AdvCaseAdvisor.fromJson(m)]..sort((a, b) => _typeRank(a.type) - _typeRank(b.type));
+    final memberId = asInt(s['member_id']);
+    return AdvCaseProfile(
+      memberId: memberId,
+      userId: asInt(s['user_id']),
+      name: asStr(s['name']).trim(),
+      code: _text(s['code']),
+      program: p is Map ? AdvNamed.fromJson(asMap(p)) : null,
+      level: _text(s['level']),
+      cohort: _text(s['cohort']),
+      standing: _text(s['standing']),
+      joinedAt: orgParseUtc(s['joined_at']),
+      advisors: advisors,
+      stats: AdvCaseItem.fromJson({...st, 'member_id': memberId}),
+      meetingsTerm: asInt(st['meetings_term']),
+      academic: ac is Map ? AdvAcademic.fromJson(asMap(ac)) : null,
+      gpaTrend: [for (final m in asMapList(j['gpa_trend'])) AdvGpaPoint.fromJson(m)],
+      counts: AdvCaseCounts.fromJson(asMap(j['counts'])),
+      can: AdvCaseCan.fromJson(asMap(j['can'])),
+    );
+  }
+
+  String get shown => name.isEmpty ? '#$memberId' : name;
+
+  /// "2023001 · Computer Science · Level 2 · 2023".
+  String get subtitle => [?code, ?program?.name, ?level, ?cohort].join(' · ');
+
+  AdvCaseAdvisor? get primary => advisors.where((a) => a.type == 'primary').firstOrNull;
+
+  /// The Phase 3 student sheet's row for "Change advisor".
+  AdvStudent toStudent() {
+    final p = primary;
+    return AdvStudent(
+      memberId: memberId,
+      userId: userId,
+      name: name,
+      code: code,
+      program: program?.name,
+      level: level,
+      cohort: cohort,
+      primary: p == null ? null : AdvPrimary(userId: p.userId, name: p.name, locked: p.locked, since: p.since),
+      others: [for (final a in advisors) if (a.type != 'primary') AdvOther(userId: a.userId, name: a.name, type: a.type)],
+    );
+  }
+}
+
+// ── `/org/mine` ──────────────────────────────────────────────────────────────
+
+/// The `advising` key of a `/org/mine?members=1` item: present when advising is on there and I direct it or hold
+/// active assignments.
+class AdvMineInfo {
+  const AdvMineInfo({required this.role, this.advisees = 0});
+
+  /// `director` · `advisor`.
+  final String role;
+  final int advisees;
+
+  static AdvMineInfo? of(Map<String, dynamic>? item) {
+    final a = item?['advising'];
+    if (a is! Map) return null;
+    final m = asMap(a);
+    final role = asStr(m['role']);
+    if (role != 'director' && role != 'advisor') return null;
+    return AdvMineInfo(role: role, advisees: asInt(m['advisees']));
+  }
+
+  bool get director => role == 'director';
+}
