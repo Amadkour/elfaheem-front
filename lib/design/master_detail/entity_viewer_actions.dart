@@ -3,6 +3,7 @@
 //
 //   entityViewerActions(context, ref, summary)   Open course (a learner's own: Continue learning) · Message
 //   showEntityMessageSheet(context, ref)         the quick message: to one student, delivered as a notification
+//   showEntityMessageManySheet(context, refs)    phase 8: the same note to a list's selected students (≤ 100)
 //
 // The default of every panel and full page without actions of its own; a role's list adds to it (`openCourse:` keeps
 // that list's own way into a course).
@@ -57,13 +58,25 @@ List<EntityPanelAction> entityViewerActions(BuildContext context, EntityRef ref,
 /// Writes a short note to [student] ([courseId]: the course it is about).
 Future<void> showEntityMessageSheet(BuildContext context, EntityRef student, {int? courseId}) => showAppSheet<void>(
       context,
-      (ctx) => _MessageSheet(student: student, courseId: courseId),
+      (ctx) => _MessageSheet(students: [student], courseId: courseId),
     );
 
-class _MessageSheet extends StatefulWidget {
-  const _MessageSheet({required this.student, this.courseId});
+/// The bulk send's most recipients (the server's `BULK_MAX`).
+const entityMessageMax = 100;
 
-  final EntityRef student;
+/// The same note to [students] (a list's selection; the first [entityMessageMax] are sent).
+Future<void> showEntityMessageManySheet(BuildContext context, List<EntityRef> students, {int? courseId}) =>
+    students.length == 1
+        ? showEntityMessageSheet(context, students.first, courseId: courseId)
+        : showAppSheet<void>(
+            context,
+            (ctx) => _MessageSheet(students: students.take(entityMessageMax).toList(), courseId: courseId),
+          );
+
+class _MessageSheet extends StatefulWidget {
+  const _MessageSheet({required this.students, this.courseId});
+
+  final List<EntityRef> students;
   final int? courseId;
 
   @override
@@ -86,10 +99,20 @@ class _MessageSheetState extends State<_MessageSheet> {
     if (text.isEmpty || _busy) return;
     setState(() => _busy = true);
     try {
-      await EntitiesApi.instance.message(widget.student.id, text, courseId: widget.courseId);
+      final many = widget.students;
+      if (many.length == 1) {
+        await EntitiesApi.instance.message(many.first.id, text, courseId: widget.courseId);
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        showAppNotice(mdText('md_p7_message_sent', {'name': many.first.name}));
+        return;
+      }
+      final (sent, skipped) =
+          await EntitiesApi.instance.messageMany([for (final r in many) r.id], text, courseId: widget.courseId);
       if (!mounted) return;
       Navigator.of(context).pop();
-      showAppNotice(mdText('md_p7_message_sent', {'name': widget.student.name}));
+      showAppNotice(mdText(skipped > 0 ? 'md_p8_message_sent_skipped' : 'md_p8_message_sent_many',
+          {'n': '$sent', 'skipped': '$skipped'}));
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -99,7 +122,9 @@ class _MessageSheetState extends State<_MessageSheet> {
 
   @override
   Widget build(BuildContext context) => AppSheetContent(
-        title: mdText('md_p7_message_to', {'name': widget.student.name}),
+        title: widget.students.length == 1
+            ? mdText('md_p7_message_to', {'name': widget.students.first.name})
+            : mdText('md_p8_message_to_many', {'n': '${widget.students.length}'}),
         children: [
           TextField(
             key: const ValueKey('md.message.text'),

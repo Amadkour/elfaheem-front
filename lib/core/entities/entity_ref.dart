@@ -93,6 +93,16 @@ class EntityLinkRequest {
   static EntityRef? _pending;
   static EntityRef? _pendingFrom;
   static DateTime _at = DateTime.now();
+  static String? _pendingList;
+  static DateTime _listAt = DateTime.now();
+
+  /// The `list` value of the last link (a list's query, phase 8), once; null when none or too old.
+  static String? takeList() {
+    final l = _pendingList;
+    _pendingList = null;
+    if (l == null || DateTime.now().difference(_listAt) > maxAge) return null;
+    return l;
+  }
 
   /// The value of `open` for [ref], opened from [from].
   static String token(EntityRef ref, {EntityRef? from}) =>
@@ -101,6 +111,11 @@ class EntityLinkRequest {
   /// Reads `open` from [location] (a path with its query, or a full URL); nothing when it names no entity.
   static void offer(String? location) {
     final uri = location == null ? null : Uri.tryParse(location);
+    final list = uri?.queryParameters['list'];
+    if (list != null && list.isNotEmpty) {
+      _pendingList = list;
+      _listAt = DateTime.now();
+    }
     final parts = (uri?.queryParameters['open'] ?? '').split(',');
     final ref = EntityRef.tryParse(parts.last);
     if (ref == null) return;

@@ -9,6 +9,9 @@
 //   EntitiesApi.instance.invalidate(ref)                  after a change (the Manage sheet saved)
 //   EntitiesApi.instance.allowed(['student:12'])          which refs this viewer may open (a chip is a link only then)
 //   EntitiesApi.instance.message(studentId, text)         a staff note to one student (delivered as a notification)
+//   EntitiesApi.instance.messageMany(ids, text)           phase 8: the same note to a list's selected students
+//   EntitiesApi.instance.search(q)                        phase 8: Ctrl+K, what the viewer may open, grouped by kind
+//   EntitiesApi.instance.views(listId) / saveView / deleteView   phase 8: the viewer's saved queries of one list
 //
 // Every call goes through ApiClient (errors are ApiException: 404 `not_found` when the entity is out of the viewer's
 // scope, 403 `entity_forbidden` for a role with no entity views). Each path is written out in full so the API
@@ -19,6 +22,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import 'entity_models.dart';
 import 'entity_ref.dart';
+import 'entity_search.dart';
+
+export 'entity_search.dart';
 
 class EntitiesApi {
   EntitiesApi._();
@@ -147,6 +153,31 @@ class EntitiesApi {
   Future<void> message(int studentId, String text, {int? courseId}) =>
       _api.post('/api/v1/entities/students/$studentId/message',
           body: {'text': text, if (courseId != null) 'course_id': courseId});
+
+  /// The same note to up to 100 selected students: (sent, skipped: out of the viewer's scope).
+  Future<(int, int)> messageMany(List<int> studentIds, String text, {int? courseId}) async {
+    final r = entityMap(await _api.post('/api/v1/entities/students/message',
+        body: {'ids': studentIds, 'text': text, if (courseId != null) 'course_id': courseId}));
+    return (entityIntOrNull(r?['sent']) ?? 0, entityIntOrNull(r?['skipped']) ?? 0);
+  }
+
+  /// Ctrl+K: students, courses, teachers and categories matching [q] that this viewer may open.
+  Future<EntitySearchResult> search(String q, {int limit = 5}) async =>
+      EntitySearchResult.fromJson(await _api.get('/api/v1/entities/search', queryParams: {'q': q, 'limit': limit}));
+
+  /// The viewer's saved views of the list [listId].
+  Future<List<EntitySavedView>> views(String listId) async {
+    final r = entityMap(await _api.get('/api/v1/entities/views', queryParams: {'list': listId}));
+    return [for (final j in entityMaps(r?['items'])) EntitySavedView.fromJson(j)];
+  }
+
+  /// Saves [query] as [name] (the same name replaces its query).
+  Future<EntitySavedView> saveView(String listId, String name, EntityListQuery query) async =>
+      EntitySavedView.fromJson(entityMap(await _api.post('/api/v1/entities/views',
+              body: {'list_id': listId, 'name': name, 'query': EntitySavedView.queryJson(query)})) ??
+          const {});
+
+  Future<void> deleteView(int id) => _api.delete('/api/v1/entities/views/$id');
 
   /// One student's history in one course, newest first.
   Future<EntityPage<EntityTimelineEvent>> timeline(int studentId, int courseId, {int page = 1, int size = 20}) async {

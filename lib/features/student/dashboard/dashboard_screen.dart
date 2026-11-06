@@ -8,6 +8,7 @@ import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/features/teacher/data_lab/data_lab_gate.dart';
 import 'package:flutter_education_app/features/shared/identity/identity_request_gate.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
+import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../shared/guest/guest_state.dart';
@@ -153,7 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: IdentityRequestGate(child: LayoutBuilder(
           builder: (context, constraints) {
             final unread = context.watch<NotificationsProvider>().unreadCount;
-            return AppShell(
+            return EntitySearchScope(child: AppShell(
               width: constraints.maxWidth,
               currentIndex: _currentIndex,
               onTap: (i) {
@@ -161,7 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               },
               items: dashboardItems,
               unreadCount: unread,
-            );
+            ));
           },
         )),
       ),

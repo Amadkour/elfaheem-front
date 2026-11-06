@@ -21,6 +21,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/design/master_detail/entity_list_page.dart';
 import 'package:flutter_education_app/design/master_detail/entity_specs.dart';
+import 'package:flutter_education_app/design/master_detail/entity_exports.dart';
+import 'package:flutter_education_app/design/master_detail/entity_list_tools.dart';
 
 /// The sub-list of [section] of teacher [teacherId], narrowed to the rows of type [T].
 Future<EntityPage<T>> _rows<T extends EntityItem>(int teacherId, String section, EntityListQuery q) async {
@@ -87,6 +89,8 @@ EntityListConfig<PersonRow> teacherStudentsList(int teacherId) => EntityListConf
         ),
       ],
       card: (context, r) => entityRowFor(context, r, link: false),
+      export: entityPersonExport(),
+      bulk: [entityMessageBulk<PersonRow>((r) => r.person)],
     );
 
 // ── Submissions ──────────────────────────────────────────────────────────────
@@ -135,6 +139,8 @@ EntityListConfig<GradeRow> teacherSubmissionsList(int teacherId) => EntityListCo
         AppTableColumn.text(key: 'at', label: 'md_p7_date'.tr, text: (r) => mdDate(r.at)),
       ],
       card: (context, r) => gradeRowFor(context, r, ownerKind: EntityKind.teacher, link: false),
+      export: entityGradeExport(),
+      bulk: [entityMessageBulk<GradeRow>((r) => r.student)],
     );
 
 // ── Reviews ──────────────────────────────────────────────────────────────────
@@ -171,6 +177,7 @@ EntityListConfig<ReviewRow> teacherReviewsList(int teacherId) => EntityListConfi
         AppTableColumn.text(key: 'at', label: 'md_p7_date'.tr, text: (r) => mdDate(r.at)),
       ],
       card: (context, r) => reviewRowFor(context, r, ownerKind: EntityKind.teacher, link: false),
+      export: entityReviewExport(),
     );
 
 // ── The tabs ─────────────────────────────────────────────────────────────────

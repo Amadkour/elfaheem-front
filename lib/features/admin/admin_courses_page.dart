@@ -42,6 +42,9 @@ import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_page.dart';
 import 'admin_table_export.dart' show adminCoursesExport, exportPagedList;
+import 'admin_bulk.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_table_export.dart' show showAppExportSheet;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppDropdown, AppEmpty, AppListSkeleton;
@@ -162,6 +165,36 @@ class _CoursesViewState extends State<_CoursesView> {
 
   /// The row drawn as selected: the panel's, kept here so the table redraws only when it changes.
   int? _selected;
+
+  /// The rows ticked in the table (bulk actions, D-290 phase 8).
+  final Set<Object> _picked = {};
+
+  List<AdminCourse> _pickedRows(List<AdminCourse> rows) => [
+        for (final c in rows)
+          if (_picked.contains(c.id)) c,
+      ];
+
+  Future<void> _bulkPublish(List<AdminCourse> rows, bool published) async {
+    final label = (published ? 'publish_exam' : 'admin_unpublish').tr;
+    if (!await confirmAdminBulk(context, label, rows.length, danger: !published) || !mounted) return;
+    await runAdminBulk([for (final c in rows) c.id],
+        (id) => ApiClient.instance.put('/api/v1/admin/courses/$id', body: {'is_published': published}),
+        refresh: _p.reloadPage);
+    for (final c in rows) {
+      EntitiesApi.instance.invalidate(_refOf(c));
+    }
+    if (mounted) setState(_picked.clear);
+  }
+
+  List<Widget> _bulkActions(List<AdminCourse> rows) {
+    final picked = _pickedRows(rows);
+    return [
+      adminBulkButton('publish_exam'.tr, Icons.visibility_rounded, () => _bulkPublish(picked, true)),
+      adminBulkButton('admin_unpublish'.tr, Icons.visibility_off_rounded, () => _bulkPublish(picked, false)),
+      adminBulkButton('md_p8_export_selected'.tr, Icons.file_download_outlined,
+          () => showAppExportSheet(context, adminCoursesExport([for (final c in picked) c.j]))),
+    ];
+  }
 
   AdminCoursesProvider get _p => context.read<AdminCoursesProvider>();
 
@@ -482,6 +515,12 @@ class _CoursesViewState extends State<_CoursesView> {
       columnResize: true,
       maxInlineActions: 0,
       selectedRowId: _selected,
+      selectable: true,
+      selected: _picked,
+      onSelectionChanged: (s) => setState(() => _picked
+        ..clear()
+        ..addAll(s)),
+      bulkActions: (_) => _bulkActions(courses),
       onRowHover: (c) => EntitiesApi.instance.prefetch(_refOf(c)),
       searchHint: 'admin_search_course_name'.tr,
       searchController: _search,

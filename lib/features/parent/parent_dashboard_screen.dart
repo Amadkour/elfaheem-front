@@ -49,6 +49,7 @@ import 'package:flutter_education_app/features/shared/display/display_settings_p
 import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
+import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';
 
 class ParentTabProvider extends ChangeNotifier {
   int currentTab = 0;
@@ -260,7 +261,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                 if (mounted) tabs.onChangeTab(i);
               }
 
-              return AppShell(width: constraints.maxWidth, currentIndex: current, onTap: onTap, items: items);
+              return EntitySearchScope(child: AppShell(width: constraints.maxWidth, currentIndex: current, onTap: onTap, items: items));
             }),
           ),
         );

@@ -18,6 +18,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/design/master_detail/entity_list_page.dart';
 import 'package:flutter_education_app/design/master_detail/entity_specs.dart';
+import 'package:flutter_education_app/design/master_detail/entity_exports.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/features/student/certificates/my_certificates_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -57,6 +58,7 @@ EntityListConfig<GradeRow> studentGradesList(int studentId) => EntityListConfig<
         AppTableColumn.text(key: 'at', label: 'md_p7_date'.tr, text: (r) => mdDate(r.at)),
       ],
       card: (context, r) => gradeRowFor(context, r, ownerKind: EntityKind.student, link: false),
+      export: entityGradeExport(),
     );
 
 // ── Payments and subscriptions ───────────────────────────────────────────────
@@ -86,6 +88,7 @@ EntityListConfig<PaymentRow> studentPaymentsList(int studentId) => EntityListCon
         AppTableColumn.text(key: 'at', label: 'md_p7_date'.tr, text: (r) => mdDate(r.paidAt ?? r.createdAt)),
       ],
       card: (context, r) => IgnorePointer(child: entityRowFor(context, r)),
+      export: entityPaymentExport(),
     );
 
 EntityListConfig<SubscriptionRow> studentSubscriptionsList(int studentId) => EntityListConfig<SubscriptionRow>(

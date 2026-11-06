@@ -904,6 +904,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
               height: _rowMin,
               child: Checkbox(
                 value: selected,
+                semanticLabel: 'ds_select_row'.tr,
                 visualDensity: _vd,
                 materialTapTargetSize: _tap,
                 onChanged: (_) => _toggle(row),
@@ -1045,7 +1046,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
               child: SizedBox(
                 width: AppTouch.min,
                 height: AppTouch.min,
-                child: Checkbox(value: selected, onChanged: (_) => _toggle(row)),
+                child: Checkbox(value: selected, semanticLabel: 'ds_select_row'.tr, onChanged: (_) => _toggle(row)),
               ),
             ),
           Expanded(child: body),

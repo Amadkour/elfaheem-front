@@ -146,3 +146,23 @@ cards, panel, states and keyboard everywhere (the server pages, searches, filter
   not the viewer's by construction: `EntityAccess` asks `POST /entities/access` once per frame for a whole list.
   Notifications carry their answer in `entities[].can_open`.
 - Logout clears the summary cache and the access answers.
+
+## Search, saved views, bulk, exports (phase 8)
+
+| file | what |
+|---|---|
+| `lib/core/entities/entity_search.dart` | `EntitySearchResult` (GET `/entities/search`), `EntitySavedView`, the list's query on its URL: `entityListToken` / `entityListParams` / `entityQueryFromParams` (`?list=q%3D…%26f.attention%3Dtrue`; unknown sorts / filters ignored) |
+| `lib/design/master_detail/entity_search_palette.dart` | `EntitySearchScope` around the teacher, student and parent shells: Ctrl+K / ⌘+K opens `showEntitySearch` (dialog ≥ 720, else a sheet); 2 letters, 300 ms, stale answers dropped, ↑ / ↓ + Enter; a pick opens the full page. Admin and org keep their own palettes |
+| `lib/design/master_detail/entity_list_tools.dart` | `EntityListExport` (Export Studio, or a CSV with a BOM and formula-looking text neutralised), `EntityBulkAction`, `entityMessageBulk`, `showEntityViewsSheet` (saved views: apply, save, delete; "Copy link" on the web) |
+| `lib/design/master_detail/entity_exports.dart` | one export per row kind: `entityPersonExport`, `entityGradeExport` (a held result stays held), `entityReviewExport`, `entityPaymentExport` |
+| `lib/features/admin/admin_bulk.dart` | `runAdminBulk`: the row's own call for every selected id, 4 at a time, then ONE refresh and ONE notice |
+
+- `EntityListConfig` gains `export:`, `bulk:` and `savedViews` (default on). With an export or a bulk action the
+  table shows its checkboxes and bulk bar; "Export selected" is always in the bar. The export menu offers every row
+  (fetched in pages of 100, up to `maxRows`) or, in the studio, the selected ones.
+- Where: teacher My students (export, Message), Submissions (export, Message), Reviews (export); student Grades and
+  Payments (export); admin Students (Message, Activate, Deactivate, Export selected), Teachers (Activate, Deactivate,
+  Export selected), Courses (Publish, Unpublish, Export selected).
+- Saved views are per person and per list id on the server (`saved_views`, migration 0054, 20 per list); a shared
+  link is only the URL, so whoever opens it still sees only what the server lets them see.
+- The table's row checkboxes are labelled for screen readers (`ds_select_row`).

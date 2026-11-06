@@ -14,6 +14,7 @@ import 'package:flutter_education_app/features/teacher/courses/teacher_courses_p
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
+import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../utils/widget/app_navigator.dart' show AppNavigator;
@@ -163,7 +164,7 @@ class _State extends State<TeacherDashboardScreen> {
                 for (final item in dashboardItems) {
                   item.badge = item.label == 'my_profile' ? pending : 0;
                 }
-                return AppShell(
+                return EntitySearchScope(child: AppShell(
                   width: constraints.maxWidth,
                   currentIndex: provider.currentTab,
                   onTap: (i) {
@@ -171,7 +172,7 @@ class _State extends State<TeacherDashboardScreen> {
                   },
                   items: dashboardItems,
                   unreadCount: unread,
-                );
+                ));
               },
             ),
           ),

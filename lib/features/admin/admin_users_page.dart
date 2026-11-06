@@ -18,6 +18,10 @@ import 'admin_filters.dart';
 import 'admin_list.dart';
 import 'admin_page.dart';
 import 'admin_table_export.dart' show adminUsersExport, exportPagedList;
+import 'admin_bulk.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_table_export.dart' show showAppExportSheet;
+import 'package:flutter_education_app/design/master_detail/entity_viewer_actions.dart' show showEntityMessageManySheet;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'admin_view_as_page.dart' show startViewAs;
@@ -81,6 +85,36 @@ class _UsersViewState extends State<_UsersView> {
   late final EntityPanelController _panel = EntityPanelController(rowKind: _kind);
 
   EntityRef _refOf(AdminUser u) => EntityRef(_kind, u.id, label: u.name, imageUrl: u.imageUrl);
+
+  /// The rows ticked in the table (bulk actions, D-290 phase 8).
+  final Set<Object> _picked = {};
+
+  List<AdminUser> _pickedRows(List<AdminUser> rows) => [
+        for (final u in rows)
+          if (_picked.contains(u.id)) u,
+      ];
+
+  Future<void> _bulkActive(List<AdminUser> rows, bool active) async {
+    final label = (active ? 'admin_activate_account' : 'admin_deactivate_account').tr;
+    if (!await confirmAdminBulk(context, label, rows.length, danger: !active) || !mounted) return;
+    final p = context.read<AdminUsersProvider>();
+    await runAdminBulk([for (final u in rows) u.id], (id) => ApiClient.instance.put('/api/v1/admin/users/$id', body: {'is_active': active}),
+        refresh: p.refresh);
+    if (mounted) setState(_picked.clear);
+  }
+
+  List<Widget> _bulkActions(List<AdminUser> rows) {
+    final picked = _pickedRows(rows);
+    return [
+      if (isStudent)
+        adminBulkButton('md_p7_message'.tr, Icons.chat_bubble_outline_rounded,
+            () => showEntityMessageManySheet(context, [for (final u in picked) _refOf(u)])),
+      adminBulkButton('admin_activate_account'.tr, Icons.check_circle_outline_rounded, () => _bulkActive(picked, true)),
+      adminBulkButton('admin_deactivate_account'.tr, Icons.block_rounded, () => _bulkActive(picked, false)),
+      adminBulkButton('md_p8_export_selected'.tr, Icons.file_download_outlined,
+          () => showAppExportSheet(context, adminUsersExport(widget.role, [for (final u in picked) u.j]))),
+    ];
+  }
 
   /// The row drawn as selected: the panel's, kept here so the table redraws only when it changes.
   int? _selected;
@@ -181,6 +215,12 @@ class _UsersViewState extends State<_UsersView> {
       tableId: isStudent ? 'admin_students' : 'admin_teachers',
       columnMenu: true,
       selectedRowId: _selected,
+      selectable: true,
+      selected: _picked,
+      onSelectionChanged: (s) => setState(() => _picked
+        ..clear()
+        ..addAll(s)),
+      bulkActions: (_) => _bulkActions(users),
       onRowHover: (u) => EntitiesApi.instance.prefetch(_refOf(u)),
       searchHint: 'admin_search_name_email_or_phone'.tr,
       onSearch: p.setSearch,
