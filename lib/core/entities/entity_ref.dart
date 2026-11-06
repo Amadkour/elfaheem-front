@@ -6,6 +6,7 @@
 //   EntityLinkRequest.offer('/admin_dashboard/admin-students?open=student:12')
 //                                                            a list URL opened with `?open=`: the next master-detail
 //                                                            list that mounts takes it ([EntityLinkRequest.take])
+//   ?open=course:5,student:12                                the same, opened from that course (it stays the context)
 //
 // Pure Dart (plus the app language for [EntityRef.name]): main.dart's router reads it, so it stays light.
 library;
@@ -84,21 +85,32 @@ class EntityRef {
 
 /// A list URL opened with `?open=<kind>:<id>` (a refresh, a shared link, the browser's Forward): the router offers it
 /// here and the first master-detail list that mounts within [maxAge] opens that panel. Forgotten after one take.
+/// `?open=<from>,<kind>:<id>` also names what it was opened from.
 class EntityLinkRequest {
   EntityLinkRequest._();
 
   static const Duration maxAge = Duration(seconds: 30);
   static EntityRef? _pending;
+  static EntityRef? _pendingFrom;
   static DateTime _at = DateTime.now();
+
+  /// The value of `open` for [ref], opened from [from].
+  static String token(EntityRef ref, {EntityRef? from}) =>
+      from == null ? ref.toToken() : '${from.toToken()},${ref.toToken()}';
 
   /// Reads `open` from [location] (a path with its query, or a full URL); nothing when it names no entity.
   static void offer(String? location) {
     final uri = location == null ? null : Uri.tryParse(location);
-    final ref = EntityRef.tryParse(uri?.queryParameters['open']);
+    final parts = (uri?.queryParameters['open'] ?? '').split(',');
+    final ref = EntityRef.tryParse(parts.last);
     if (ref == null) return;
     _pending = ref;
+    _pendingFrom = parts.length > 1 ? EntityRef.tryParse(parts.first) : null;
     _at = DateTime.now();
   }
+
+  /// What the pending ref was opened from: read before [take].
+  static EntityRef? get takeFrom => _pendingFrom;
 
   /// The pending ref (once), or null.
   static EntityRef? take() {

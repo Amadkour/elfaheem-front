@@ -57,13 +57,10 @@ Future<StudentManage> loadStudentManage(EntityRef student,
 
 /// One label + value of an [EntityFactGrid].
 class EntityFact {
-  const EntityFact(this.label, this.value, {this.ltr = false});
+  const EntityFact(this.label, this.value);
 
   final String label;
   final String value;
-
-  /// An e-mail, a phone, an id: left to right inside Arabic.
-  final bool ltr;
 }
 
 /// Label + value pairs, two columns where they fit.
@@ -86,12 +83,7 @@ class EntityFactGrid extends StatelessWidget {
               child: MergeSemantics(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                   Text(f.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-                  Text(f.value,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      textDirection: f.ltr ? TextDirection.ltr : null,
-                      textAlign: f.ltr ? TextAlign.start : null,
-                      style: AppType.row(context)),
+                  Text(f.value, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
                 ]),
               ),
             ),
@@ -203,7 +195,7 @@ class _StateCount extends StatelessWidget {
         const SizedBox(width: AppSpace.xxs),
         Text('$count', style: AppType.label(context).copyWith(color: context.colors.textDark)),
         const SizedBox(width: AppSpace.xxs),
-        Text(mdStateLabel(state), style: AppType.meta(context)),
+        Flexible(child: Text(mdStateLabel(state), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
       ]);
 }
 

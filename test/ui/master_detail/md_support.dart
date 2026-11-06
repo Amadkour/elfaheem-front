@@ -81,7 +81,10 @@ Map<String, dynamic> studentSummary(int id) {
     ..['phone'] = user['phone']
     ..['country'] = 'EG'
     ..['created_at'] = _ago(const Duration(days: 220))
-    ..['last_login'] = _ago(const Duration(days: 2, hours: 5));
+    ..['last_login'] = _ago(const Duration(days: 2, hours: 5))
+    ..['organizations'] = [
+      {'id': 3, 'name_ar': 'جامعة النيل', 'name_en': 'Nile University'},
+    ];
   (j['stats'] as Map)
     ..['enrolled'] = 6
     ..['in_progress'] = 2
@@ -90,7 +93,10 @@ Map<String, dynamic> studentSummary(int id) {
     ..['expired'] = 1
     ..['pending'] = 1
     ..['avg_progress'] = 46.0
-    ..['last_activity_at'] = _ago(const Duration(days: 2, hours: 3));
+    ..['last_activity_at'] = _ago(const Duration(days: 2, hours: 3))
+    ..['paid'] = [
+      {'currency': 'EGP', 'amount': 1350.0},
+    ];
   j['badges'] = [
     {'code': 'at_risk', 'level': 'bad', 'value': 1},
   ];
@@ -207,18 +213,26 @@ Map<String, dynamic> categorySummary(int id) {
   return j;
 }
 
+/// A history with one event of every type, in the shape of the real capture: three lessons in one sitting, the rest
+/// spread over months.
 List<Map<String, dynamic>> timeline() {
-  final base = (_p('entity_timeline')['items'] as List).cast<Map>();
-  final titles = ['المحاضرة 7: الدوال', 'Lists and loops', 'المحاضرة 5: الشروط'];
-  var t = 0;
+  Map<String, dynamic> ev(int days, String type, Map<String, dynamic> data, {int minutes = 0}) =>
+      {'at': _ago(Duration(days: days, hours: 3, minutes: minutes)), 'type': type, 'data': data};
+  Map<String, dynamic> lesson(int days, int id, String title, {int minutes = 0}) => ev(days, 'material_completed', {'material_id': id, 'session_id': 3, 'title': title}, minutes: minutes);
   return [
-    for (var i = 0; i < 9; i++)
-      () {
-        final e = Map<String, dynamic>.from(base[i % base.length]);
-        final d = Map<String, dynamic>.from(e['data'] as Map);
-        if (d.containsKey('title')) d['title'] = e['type'] == 'exam_submitted' ? 'Quiz 2: Functions' : titles[t++ % titles.length];
-        return {...e, 'at': _ago(Duration(days: i * 4, hours: 3)), 'data': d};
-      }(),
+    ev(9, 'withdrawn', {'reason_code': 'price', 'reason': 'The monthly fee went up after the first term.'}),
+    ev(9, 'subscription', {'event': 'cancelled', 'actor': 'user', 'actor_id': 100, 'reason': null}, minutes: 1),
+    ev(12, 'rated', {'value': 4, 'review': 'شرح ممتاز لكن الواجبات طويلة'}),
+    ev(16, 'exam_submitted', {'exam_id': 8, 'title': 'Quiz 2: Functions', 'percentage': 71.0, 'passed': true}),
+    lesson(20, 34, 'المحاضرة 7: الدوال'),
+    lesson(20, 33, 'Lists and loops', minutes: 9),
+    lesson(20, 32, 'المحاضرة 5: الشروط', minutes: 18),
+    ev(33, 'live_attended', {'session_id': 3, 'title': 'مراجعة الوحدة الثانية', 'live': true}),
+    ev(47, 'exam_submitted', {'exam_id': 7, 'title': 'Quiz 1', 'percentage': 48.0, 'passed': false}),
+    ev(58, 'favorited', {}),
+    ev(70, 'first_visit', {}),
+    ev(71, 'subscription', {'event': 'payment_succeeded', 'actor': 'webhook', 'actor_id': null, 'reason': null}),
+    ev(72, 'enrolled', {'enrollment_id': 500}),
   ];
 }
 
@@ -256,8 +270,10 @@ Object? entitiesHandler(RequestOptions o) {
   };
   final search = (o.uri.queryParameters['search'] ?? '').toLowerCase();
   final state = o.uri.queryParameters['state'];
+  final courseId = int.tryParse(o.uri.queryParameters['course_id'] ?? '');
   final filtered = items.where((j) {
     if (state != null && j['state'] != state) return false;
+    if (courseId != null && (j['course'] as Map?)?['id'] != courseId) return false;
     if (search.isEmpty) return true;
     final named = (j['course'] ?? j['student'] ?? j['teacher']) as Map?;
     final text = '${named?['name'] ?? ''} ${named?['name_ar'] ?? ''} ${named?['name_en'] ?? ''}'.toLowerCase();

@@ -45,6 +45,15 @@ class _UserCalls extends AdminUsersProvider {
   Future<void> refresh() async {}
 }
 
+/// A super admin on screen (a host without the auth provider above it: no).
+bool _isSuper(BuildContext context) {
+  try {
+    return isSuperNow(context);
+  } on ProviderNotFoundException {
+    return false;
+  }
+}
+
 /// The reasons a manager can record when taking a student out of a course (the server's WITHDRAWAL_CODES without the
 /// ones only the system writes).
 const _reasonCodes = ['admin', 'price', 'time', 'content_mismatch', 'quality', 'technical', 'personal', 'not_passed', 'other'];
@@ -113,7 +122,7 @@ class _AdminStudentManage extends StudentManage {
         onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
             builder: (_) => AdminSendMessagePage(student: {'id': u.id, 'name': u.name}))),
       ),
-      if (isSuperNow(context))
+      if (_isSuper(context))
         EntityPanelAction(
           key: const ValueKey('admin.user_view_as'),
           icon: Icons.visibility_rounded,
@@ -289,8 +298,6 @@ class _AdminStudentManage extends StudentManage {
   }
 
   Widget _controls(BuildContext context, AdminUser u) {
-    final superAdmin = isSuperNow(context);
-    final viewer = context.read<MyAuthProvider>().currentUser?.id;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // account state: verify / unverify, Activate (not a danger action), a lost authenticator
       Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [
@@ -320,7 +327,7 @@ class _AdminStudentManage extends StudentManage {
         ),
         // super admin: a user who lost both the phone and the recovery codes (the server answers mfa_not_enabled when
         // there is nothing to remove)
-        if (superAdmin && viewer != u.id)
+        if (_isSuper(context) && context.read<MyAuthProvider>().currentUser?.id != u.id)
           AppButton.ghost(
             key: const ValueKey('admin.user_mfa_reset'),
             label: mfaResetLabel(),
@@ -468,10 +475,10 @@ Future<AdminCourse?> _pickCourse(BuildContext context, AdminUsersProvider p) asy
 }
 
 /// Why the student leaves the course: the reason it is recorded under and an optional note; null when cancelled.
-Future<(String, String?)?> _removeSheet(BuildContext context, String student, String course) {
+Future<(String, String?)?> _removeSheet(BuildContext context, String student, String course) async {
   var code = _reasonCodes.first;
   final note = TextEditingController();
-  final result = showAppSheet<(String, String?)>(
+  final result = await showAppSheet<(String, String?)>(
     context,
     (ctx) => StatefulBuilder(
       builder: (ctx, set) => AppSheetContent(title: 'md_p4_remove_title'.tr, children: [

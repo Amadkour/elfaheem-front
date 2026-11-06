@@ -91,13 +91,13 @@ void main() {
       // the detail sheet on a phone
       for (final lang in const ['ar', 'en']) {
         AppConfig.lang = lang;
-        final api = FakeApi(peopleRoutes(), latency: const Duration(milliseconds: 20));
+        final api = FakeApi(peopleRoutes(detailRole: 'teacher'), latency: const Duration(milliseconds: 20));
         final auth = await peopleSetUp(api);
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = const Size(390, 844);
         await tester.pumpWidget(const SizedBox());
         await tester.pumpWidget(peopleProviders(auth, _host(Builder(builder: (c) {
-          return Center(child: TextButton(onPressed: () => showAdminUserDetail(c, userId: 100, role: 'student'), child: const Text('open')));
+          return Center(child: TextButton(onPressed: () => showAdminUserDetail(c, userId: 100, role: 'teacher'), child: const Text('open')));
         }))));
         await tester.tap(find.text('open'));
         await pumpFrames(tester, 10);

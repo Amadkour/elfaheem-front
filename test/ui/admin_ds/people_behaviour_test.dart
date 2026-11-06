@@ -103,7 +103,7 @@ void main() {
       await close(tester);
     });
 
-    testWidgets('a row opens the detail panel (D-290), its Manage opens the detail sheet; View as is a row action',
+    testWidgets('a row opens the detail panel (D-290): a student is managed inside it, a teacher through Manage',
         (tester) async {
       await bigView(tester);
       EntitiesApi.instance.invalidate();
@@ -115,9 +115,19 @@ void main() {
       await tester.tap(find.text('سارة أحمد 1').first);
       await pumpFrames(tester);
       expect(api.calls.map((c) => c.path), contains('/api/v1/entities/students/100'));
+      expect(api.calls.map((c) => c.path), contains('/api/v1/admin/users/100')); // the detail's management part
+      expect(find.byKey(const ValueKey('md.manage')), findsNothing);
+      expect(find.byKey(const ValueKey('admin.user_edit')), findsOneWidget);
+      await close(tester);
+
+      EntitiesApi.instance.invalidate();
+      await tester.pumpWidget(peopleProviders(auth, layoutHost(const AdminUsersPage(role: 'teacher', embedded: true), scale: 1)));
+      await pumpFrames(tester);
+      await tester.tap(find.text('سارة أحمد 1').first);
+      await pumpFrames(tester);
       await tester.tap(find.byKey(const ValueKey('md.manage')));
       await pumpFrames(tester);
-      expect(api.calls.map((c) => c.path), contains('/api/v1/admin/users/100'));
+      expect(find.byKey(const ValueKey('admin.user_delete')), findsOneWidget);
       await close(tester);
     });
   });
@@ -137,7 +147,7 @@ void main() {
 
     testWidgets('Activate is not red; only Deactivate and Delete are danger', (tester) async {
       await bigView(tester, const Size(900, 1800));
-      await openDetail(tester, FakeApi(peopleRoutes(detailActive: false), latency: const Duration(milliseconds: 50)), id: 100, role: 'student');
+      await openDetail(tester, FakeApi(peopleRoutes(detailActive: false, detailRole: 'teacher'), latency: const Duration(milliseconds: 50)), id: 100, role: 'teacher');
       expect(find.byKey(const ValueKey('admin.user_activate')), findsOneWidget);
       expect(button(tester, 'admin.user_activate').variant, isNot(AppButtonVariant.danger));
       expect(find.byKey(const ValueKey('admin.user_deactivate')), findsNothing);
@@ -148,7 +158,7 @@ void main() {
 
     testWidgets('an active user shows Deactivate as a danger action', (tester) async {
       await bigView(tester, const Size(900, 1800));
-      await openDetail(tester, FakeApi(peopleRoutes(), latency: const Duration(milliseconds: 50)), id: 100, role: 'student');
+      await openDetail(tester, FakeApi(peopleRoutes(detailRole: 'teacher'), latency: const Duration(milliseconds: 50)), id: 100, role: 'teacher');
       expect(find.byKey(const ValueKey('admin.user_activate')), findsNothing);
       expect(button(tester, 'admin.user_deactivate').variant, AppButtonVariant.danger);
       // View as and Edit sit in the first row, before the danger zone
@@ -159,8 +169,8 @@ void main() {
 
     testWidgets('Delete asks first and names the user', (tester) async {
       await bigView(tester, const Size(900, 1800));
-      final api = FakeApi(peopleRoutes(), latency: const Duration(milliseconds: 50));
-      await openDetail(tester, api, id: 100, role: 'student');
+      final api = FakeApi(peopleRoutes(detailRole: 'teacher'), latency: const Duration(milliseconds: 50));
+      await openDetail(tester, api, id: 100, role: 'teacher');
       await tester.tap(find.byKey(const ValueKey('admin.user_delete')));
       await pumpFrames(tester, 5);
       expect(find.textContaining('سارة أحمد 1'), findsWidgets);

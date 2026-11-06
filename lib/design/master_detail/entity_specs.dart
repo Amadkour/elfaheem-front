@@ -342,13 +342,7 @@ List<EntityStat> statSpecsOf(EntitySummary s) {
   }
 
   switch (s.kind) {
-    case EntityKind.student:
-      count('enrolled', 'md_stat_courses', Icons.library_books_outlined);
-      count('in_progress', 'md_stat_in_progress', Icons.play_circle_outline_rounded);
-      count('completed', 'md_stat_completed', Icons.workspace_premium_outlined, tone: AppTone.success);
-      count('withdrawn', 'md_stat_withdrawn', DirIcons.logout, tone: AppTone.danger, hideZero: true);
-      count('expired', 'md_stat_expired', Icons.timer_off_outlined, tone: AppTone.warning, hideZero: true);
-      count('pending', 'md_stat_pending', Icons.hourglass_empty_rounded, tone: AppTone.neutral, hideZero: true);
+    case EntityKind.student: // the states are the overview's bar (StudentOverviewCard), these its figures
       percent('avg_progress', 'md_stat_avg_progress', Icons.trending_up_rounded);
       if (s.stats.containsKey('last_activity_at')) {
         out.add(EntityStat('last_activity_at', 'md_stat_last_activity'.tr, Icons.schedule_rounded,

@@ -6,7 +6,7 @@
 //   keyboard   ↓ moves to the next row with the panel open, Esc closes, Alt+← walks the trail back
 //   back       the system Back closes the panel first (a local history entry; a shell tab honours it)
 //   route      `/view/student/12` is the full page (registry, URL entry, the navigator's location, the page itself)
-//   admin      the Students list: a row opens the panel, the Manage quick action opens the old sheet, `?open=` opens a
+//   admin      the Students list: a row opens the panel, a teacher's Manage quick action opens the control sheet, `?open=` opens a
 //              panel on arrival
 import 'dart:convert';
 import 'dart:io';
