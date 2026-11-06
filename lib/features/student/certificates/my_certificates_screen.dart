@@ -19,14 +19,19 @@ import 'my_certificates_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 
 class MyCertificatesScreen extends StatelessWidget {
-  const MyCertificatesScreen({super.key});
+  const MyCertificatesScreen({super.key, this.embedded = false});
+
+  /// A tab of a page that has its own app bar (Grades and certificates).
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
         create: (_) => MyCertificatesProvider()..load(),
-        child: const _View(),
+        child: _View(embedded: embedded),
       );
 }
 
@@ -37,7 +42,9 @@ void _toast(BuildContext context, String msg, {bool error = false}) {
 }
 
 class _View extends StatelessWidget {
-  const _View();
+  const _View({this.embedded = false});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -70,14 +77,14 @@ class _View extends StatelessWidget {
       );
     }
 
+    final centred = Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: body),
+    );
+    if (embedded) return centred;
     return Scaffold(
       appBar: ScreenAppBar(title: 'my_certificates'.tr), // the app's back chip + title (L4)
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: body),
-        ),
-      ),
+      body: SafeArea(child: centred),
     );
   }
 }
@@ -176,7 +183,10 @@ class _CertificateCard extends StatelessWidget {
               _StateChip(state: cert.state),
             ]),
             const SizedBox(height: 4),
-            Text(cert.courseName(ar), style: c.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: EntityChip(EntityRef(EntityKind.course, cert.courseId, label: cert.courseNameAr, labelEn: cert.courseNameEn)),
+            ),
             if (cert.teacherName != null)
               Text(cert.teacherName!, style: c.caption.copyWith(color: c.textLight, fontSize: 11)),
             if (!cert.isIssued) ...[

@@ -100,8 +100,11 @@ class _MasterDetailScaffoldState extends State<MasterDetailScaffold> {
     }
     if (widget.deepLinks) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        final from = EntityLinkRequest.takeFrom;
         final r = EntityLinkRequest.take();
-        if (r != null && mounted) _c.open(r);
+        if (r == null || !mounted) return;
+        _c.open(from ?? r);
+        if (from != null) _c.push(r);
       });
     }
     if (_c.isOpen) WidgetsBinding.instance.addPostFrameCallback((_) => _changed());
@@ -138,7 +141,10 @@ class _MasterDetailScaffoldState extends State<MasterDetailScaffold> {
     if (!mounted) return;
     final open = _c.isOpen;
     _syncBack(open);
-    if (widget.deepLinks) WebHistory.instance.setPageQuery(this, 'open', _c.current?.toToken());
+    if (widget.deepLinks) {
+      final cur = _c.current;
+      WebHistory.instance.setPageQuery(this, 'open', cur == null ? null : EntityLinkRequest.token(cur, from: _c.contextRef));
+    }
     _announce();
     if (open && !_wasOpen) _takeFocus();
     _wasOpen = open;

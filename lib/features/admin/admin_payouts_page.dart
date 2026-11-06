@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
@@ -234,12 +235,7 @@ class _RequestsView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        w.teacherName.isEmpty ? '#${w.teacherId}' : w.teacherName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.row(ctx),
-                      ),
+                      adminEntityCell(ctx, EntityKind.teacher, {'id': w.teacherId, 'name': w.teacherName}),
                       if (w.teacherGmail.isNotEmpty)
                         Text(
                           w.teacherGmail,

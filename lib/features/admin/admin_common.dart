@@ -14,6 +14,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 
@@ -728,4 +731,16 @@ class _SearchBoxState extends State<SearchBox> {
   @override
   Widget build(BuildContext context) =>
       AppSearchField(hint: widget.hint ?? 'admin_search'.tr, debounce: kSearchDelay, onChanged: _send);
+}
+
+/// A student / teacher / course named by an admin row, as a link to its detail (`{id, name}` or `{id, name_ar,
+/// name_en}`, D-290); the row keeps its own tap. A dash when the row has none.
+Widget adminEntityCell(BuildContext context, EntityKind kind, Object? json) {
+  final j = asMap(json);
+  final id = asInt(j['id']);
+  if (id <= 0) return Text('—', style: AppType.row(context));
+  return EntityChip(EntityRef(kind, id,
+      label: asStrOrNull(j['name']) ?? asStrOrNull(j['name_ar']),
+      labelEn: asStrOrNull(j['name_en']),
+      imageUrl: asStrOrNull(j['image_url'])));
 }

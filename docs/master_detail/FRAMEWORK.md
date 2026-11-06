@@ -18,6 +18,8 @@ see and lists the `sections` the app may open: the app never decides permissions
 | `lib/design/master_detail/entity_detail_view.dart` | loads the summary (cache → skeleton → hydrate; error + Retry), draws header, badges, stats and the sections the server listed, through the per-kind spec |
 | `lib/design/master_detail/entity_specs.dart` | per kind: header layout, stat tiles, how each section draws (a sub-list with search / filter / sort / paging, or a block), which badges read how |
 | `lib/design/master_detail/entity_chip.dart` | `EntityChip(ref)` / `EntityLink(ref, child)`: THE way to mention a student / course / teacher / category anywhere; opens through `EntityNavigator.open(context, ref)` |
+| `lib/design/master_detail/entity_timeline.dart` | `EntityTimelineList(studentId, courseId, pageSize)`: one student's history in one course, newest first, paged, under month labels; `groupTimeline` folds the lessons of one sitting into one line; `showEntityTimelineSheet` |
+| `lib/design/master_detail/student_detail.dart` | the student's own parts: `StudentOverviewCard`, `StudentCourseRow` (unfolds the enrollment's facts and timeline in place), `StudentInCourseBlock` (a course opened from a student), `EntityFactGrid`, and `StudentManage`, the interface of the management part |
 | `lib/design/master_detail/entity_navigator.dart` | `EntityNavigator.open(context, ref)`: the nearest `MasterDetailScaffold` swaps / opens its panel; with none (a notification, a mention on any page) the full page `/view/<kind>/<id>` is pushed |
 | `lib/design/master_detail/entity_detail_page.dart` | the full page (route `entity.view`, `/view/:kind/:id`, refresh-safe, every role) |
 
@@ -54,8 +56,93 @@ Measured on the scaffold's own width (a page inside the shell is narrower than t
 - `selectedRowId`: the row drawn as selected (the open detail).
 - `onRowHover`: called once per row hover (prefetch).
 - `AppPagination` page-size choices (20 / 50 / 100) when the page passes `onPageSize`.
+- `columnResize`: drag a column's edge in the header (double tap: its default); remembered with the layout. A `primary`
+  column takes the room left; widths shrink to fit when the table narrows.
+- `hideBelow` (column): left out of the wide table under that table width, e.g. while a side panel is open.
+- `maxInlineActions`: 0 = each row has one menu instead of inline buttons.
+- `AppDataTable.compactOf(context)`: a cell's density, so a thumbnail or chip follows the toggle.
+- With a `mobileCard`, a phone drops the Columns and density buttons (the card is not made of columns).
+
+`AdminPagedProvider` gains numbered paging next to `loadMore`: `goToPage`, `setPageSize`, `reloadPage` (after an action
+a numbered table stays where it was; a page a delete emptied falls back); `allLoaded` tells an export whether the rows
+on screen are every row.
+
+## Going back
+
+`EntityPanelController.storage` is a `PageStorageBucket` for the trail (a new trail starts clean). The detail's scroll
+offset and each `EntitySubList`'s query and rows live there, so Back draws the course as it was, without asking the
+server again. `learn(ref)` gives a trail entry the name its summary brought (a deep link's ref has none).
 
 ## First users (phase 3)
 
-The admin Students and Teachers lists (`admin_users_page.dart`): a row opens the panel; the old management sheet
-stays reachable as the panel's "Manage" quick action until phase 4 folds it into the student detail.
+The admin Students and Teachers lists (`admin_users_page.dart`): a row opens the panel; both are managed inside
+the detail (phase 4 for students, phase 6 for teachers).
+
+## The student detail (phase 4)
+
+Header (status, organizations, contact, join date) · badges · `StudentOverviewCard` · Courses and history (the
+`courses` section: `EntitySubList` with `rowBuilder`; the server's `timeline` section has no block of its own, each
+course's history unfolds under its row, fetched on the first open) · payments · subscription history, then for
+`can.manage` the management part.
+
+- **Context.** The trail gives it: a student opened from a course opens that course's row and scrolls to it (`pinned`
+  draws it first when it is not on the first page, through `?course_id=`); a course opened from a student shows
+  `StudentInCourseBlock`. The context survives the other two hosts: the full page is `/view/student/12?from=course:5`
+  (`EntityPanelController.contextRef`) and a list's URL `?open=course:5,student:12`.
+- **Management.** `features/admin/admin_student_manage.dart` implements `StudentManage` and loads as its own deferred
+  part, only for `can.manage`, so the detail is managed in every host and a learner never downloads it. It adds the
+  header's actions (`EntityDetailView`, before the host's own), Enrol, each course's Remove / Allow resubscribe, and
+  the Subscription, Account, Devices and Controls cards. A change calls `EntityPanelController.entityChanged()`: the
+  detail and its sub-lists reload in place (`EntitySubList.revision`) and the list hears of it (`onEntityChanged`).
+  Remove asks for the withdrawal reason and sends it (`reason_code`, `reason`).
+- A deep link names only kinds and ids: `EntityDetailView` tells the controller the names it learns (`learn`), and fetches the summary of any unnamed trail entry, so breadcrumbs and the student context draw names.
+- A hit on a student in the admin's global search opens the full page; `showAdminUserDetail` with role `student` too.
+
+## Admin courses (phase 5)
+
+`admin_courses_page.dart`: the table of section 4 (numbered server pages, both directions of every sortable column,
+`?open=course:<id>`), one card per course on a phone. The panel's quick actions and the row's menu act directly (Edit,
+Publish, Mark completed, Move to trash); Manage is the sheet for what needs a form (payment provider, methods, fee,
+private access code, resubscribe, plans and income in full, recent payments, exams). A course opened from a student
+starts with that student's history, folded with one tap.
+
+## Management inside the detail (phase 6)
+
+What an admin does on a teacher or a category lives in the detail itself, so every host has it (any list's panel, a
+drilled trail, the full page): `EntityDetailView` asks for `deferredAdminEntityManage(summary, onChanged:, onRemoved:)`
+when `can.manage` is true, a deferred library (`lib/features/admin/admin_entity_manage.dart`) that only such viewers
+download, and draws it under the header's quick actions. A teacher's block is Message · View as · Manage, which unfolds
+the old management sheet embedded (`_UserDetailSheet(embedded: true)`); a category's is Edit · Delete. A save calls
+`onChanged` (the detail reloads through `EntityPanelController.reload`); the list behind reads the controller's
+`revision` in its listener and reloads its rows. A delete calls `onRemoved`: the panel steps back or closes, a full page
+goes back.
+
+A category's connected lists are tabs with their counts (`EntityConnectedTabs`): a tab loads on its first visit and
+keeps its search, filter and rows; the open tab is remembered in the route's `PageStorage`, so coming back from a
+student shows the same tab.
+
+`adminEntityCell(context, kind, json)` (`admin_common.dart`) is the link to a student / teacher / course in an admin
+row: it needs the row's `id`, and shows a dash without one.
+
+## Every role (phase 7)
+
+A role never writes a list. `lib/design/master_detail/entity_list_page.dart` is ONE paged list: an `EntityListConfig`
+says what to load, the columns, the phone card, the sorts and the filter, and `EntityListPage` gives the same table,
+cards, panel, states and keyboard everywhere (the server pages, searches, filters and sorts).
+
+| role | configurations | where |
+|---|---|---|
+| teacher | `teacherStudentsList`, `teacherSubmissionsList`, `teacherReviewsList` (`features/teacher/classroom/`) | the strip on My courses: Courses · My students · Submissions · Reviews (`?view=`) |
+| student | `studentGradesList`, `studentPaymentsList`, `studentSubscriptionsList`, `studentLeftCoursesList` (`features/student/record/`) | Profile: Grades and certificates, Payments and subscriptions; My courses: Left |
+| parent | the panel over the children cards (the child's own record); the alerts' child chip | Children, Alerts |
+| org staff | the panel over People (students, teachers) and Courses; a guarded chip on a request's source | `org_people_page`, `org_courses_page`, `gov_item_screen` |
+
+- A course card (teacher, student, org) opens the panel; the page is its primary action (`EntityPanelAction.primary`):
+  Continue learning, Open course. `entityViewerActions` is the default of a panel without actions of its own, and adds
+  Message where `can.message`.
+- `EntityLearnerCard` tops a learner's course (ring + one sentence, the dates, the withdrawal date and reason);
+  `deadlines`, `lessons`, `grades`, `timeline` are ordinary sections.
+- `EntityChip(ref, enabled: false)` is the same name without a link. `EntityGuardedChip(ref)` is for a mention that is
+  not the viewer's by construction: `EntityAccess` asks `POST /entities/access` once per frame for a whole list.
+  Notifications carry their answer in `entities[].can_open`.
+- Logout clears the summary cache and the access answers.

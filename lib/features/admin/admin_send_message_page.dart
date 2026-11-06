@@ -14,7 +14,13 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_username.dart';
 
 class AdminSendMessagePage extends StatefulWidget {
-  const AdminSendMessagePage({super.key});
+  const AdminSendMessagePage({super.key, this.student, this.teacher});
+
+  /// Opens addressed to this one student (`{id, name}`), e.g. from their detail.
+  final Map<String, dynamic>? student;
+
+  /// Opens already addressed to this teacher (`{id, name}`, the Message action of a teacher's detail).
+  final Map<String, dynamic>? teacher;
 
   @override
   State<AdminSendMessagePage> createState() => _AdminSendMessagePageState();
@@ -27,11 +33,11 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
   final _label = TextEditingController();
   final _customModule = TextEditingController();
 
-  String _audience = 'all_students'; // all_students | course | student | all_teachers | teacher
+  late String _audience = widget.student == null ? 'all_students' : 'student'; // all_students | course | student | all_teachers | teacher
   String _display = 'notification'; //  email | notification | dialog | dialog_action
   String _module = 'course'; // profile | course | notifications | my_courses | subscription | __custom__
   Map<String, dynamic>? _course; //      audience = course, or the course a button opens
-  Map<String, dynamic>? _student;
+  late Map<String, dynamic>? _student = widget.student;
   Map<String, dynamic>? _teacher;
   bool _sending = false;
 
@@ -42,6 +48,10 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
   @override
   void initState() {
     super.initState();
+    if (widget.teacher != null) {
+      _audience = 'teacher';
+      _teacher = widget.teacher;
+    }
     _refreshReach();
   }
 

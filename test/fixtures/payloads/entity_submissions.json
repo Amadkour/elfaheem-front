@@ -1,0 +1,169 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/teachers/2/submissions?size=50",
+  "uid": 2
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 1,
+    "source": "assignment",
+    "title": "Handed in",
+    "course": {
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 4,
+     "name": "Alice Ali",
+     "username": "alice",
+     "image_url": null
+    },
+    "at": "2026-11-05T06:32:50.432271",
+    "percentage": null,
+    "score": null,
+    "max_score": 20.0,
+    "passed": null,
+    "held": false,
+    "needs_review": true
+   },
+   {
+    "id": 2,
+    "source": "engine",
+    "title": "Engine midterm",
+    "course": {
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 4,
+     "name": "Alice Ali",
+     "username": "alice",
+     "image_url": null
+    },
+    "at": "2026-11-04T06:32:50.432271",
+    "percentage": 20.0,
+    "score": 2.0,
+    "max_score": 10.0,
+    "passed": false,
+    "held": true,
+    "needs_review": true
+   },
+   {
+    "id": 1,
+    "source": "engine",
+    "title": "Engine midterm",
+    "course": {
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 4,
+     "name": "Alice Ali",
+     "username": "alice",
+     "image_url": null
+    },
+    "at": "2026-11-03T06:32:50.432271",
+    "percentage": 90.0,
+    "score": 9.0,
+    "max_score": 10.0,
+    "passed": true,
+    "held": false,
+    "needs_review": false
+   },
+   {
+    "id": 2,
+    "source": "exam",
+    "title": "Quiz 1",
+    "course": {
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 5,
+     "name": "Bob Badr",
+     "username": "bob",
+     "image_url": null
+    },
+    "at": "2026-11-01T06:32:50.432271",
+    "percentage": 30.0,
+    "score": null,
+    "max_score": 10.0,
+    "passed": false,
+    "held": false,
+    "needs_review": false
+   },
+   {
+    "id": 1,
+    "source": "exam",
+    "title": "Quiz 1",
+    "course": {
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 4,
+     "name": "Alice Ali",
+     "username": "alice",
+     "image_url": null
+    },
+    "at": "2026-10-31T06:32:50.432271",
+    "percentage": 80.0,
+    "score": 8.0,
+    "max_score": 10.0,
+    "passed": true,
+    "held": false,
+    "needs_review": false
+   }
+  ],
+  "total": 5,
+  "page": 1,
+  "size": 50,
+  "pages": 1
+ }
+}

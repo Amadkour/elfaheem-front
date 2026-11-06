@@ -22,7 +22,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 /// Every row of [p]'s list (current search / filters / sort), [pageSize] per request, at most [maxRows].
 /// [progress] shows "rows n / total" and stops between pages when the person cancels (ExportCancelled).
 Future<List<Map<String, dynamic>>> fetchAllRows(AdminPagedProvider p, {int pageSize = 200, int maxRows = 20000, ExportJob? progress}) async {
-  if (!p.hasMore && p.loaded) return List.of(p.rows);
+  if (p.allLoaded) return List.of(p.rows);
   final out = <Map<String, dynamic>>[];
   for (var page = 1;; page++) {
     progress?.throwIfCancelled();
@@ -61,7 +61,7 @@ Future<void> exportPagedList(BuildContext context, AdminPagedProvider p, AppTabl
   _busy = true;
   try {
     // every page behind a progress dialog with Cancel; the export sheet then writes the file (with its own progress)
-    final rows = p.hasMore || !p.loaded
+    final rows = !p.allLoaded
         ? await runExportWithProgress(context, (job) => fetchAllRows(p, progress: job), title: t('جارٍ تجهيز كل الصفوف…', 'Preparing every row…'))
         : List.of(p.rows);
     if (rows == null) {
@@ -211,6 +211,22 @@ AppTableExport adminUsersExport(String role, List<Map<String, dynamic>> rows) =>
       ],
     );
 
+/// Categories.
+AppTableExport adminCategoriesExport(List<Map<String, dynamic>> rows) => AppTableExport(
+      id: 'admin.categories',
+      title: t('التصنيفات', 'Categories'),
+      columns: [
+        AppExportColumn('id', '#', type: AppColType.integer, width: 8, visible: false),
+        AppExportColumn('name_ar', t('الاسم بالعربية', 'Arabic name'), locked: true, total: AppTotal.count),
+        AppExportColumn('name_en', t('الاسم بالإنجليزية', 'English name')),
+        AppExportColumn('description', t('الوصف', 'Description'), visible: false),
+        AppExportColumn('courses_count', t('الكورسات', 'Courses'), type: AppColType.integer, total: AppTotal.sum),
+        AppExportColumn('teachers_count', t('المعلمون', 'Teachers'), type: AppColType.integer),
+        AppExportColumn('students_count', t('الطلاب', 'Students'), type: AppColType.integer),
+      ],
+      rows: rows,
+    );
+
 /// Subscription requests.
 AppTableExport adminSubscriptionsExport(List<Map<String, dynamic>> rows) => AppTableExport(
       id: 'admin.subscriptions',
@@ -244,17 +260,39 @@ AppTableExport adminCoursesExport(List<Map<String, dynamic>> rows) => AppTableEx
       columns: [
         AppExportColumn('name', t('الكورس', 'Course'), locked: true, total: AppTotal.count),
         AppExportColumn('teacher_name', t('المعلم', 'Teacher')),
+        AppExportColumn('category_name', t('التصنيف', 'Category')),
         AppExportColumn('type', t('النوع', 'Type'), visible: false),
         _status('published', t('النشر', 'Published'), {'yes': t('منشور', 'Published'), 'no': t('مسودة', 'Draft')}),
         AppExportColumn('final_price', t('السعر', 'Price'), type: AppColType.money),
         AppExportColumn('currency', t('العملة', 'Currency'), width: 9),
         AppExportColumn('students_count', t('الطلاب', 'Students'), type: AppColType.integer, total: AppTotal.sum),
+        AppExportColumn('completion_rate', t('نسبة الإتمام %', 'Completion %'), type: AppColType.number),
+        AppExportColumn('avg_progress', t('متوسط التقدم %', 'Average progress %'), type: AppColType.number, visible: false),
+        AppExportColumn('withdrawn_count', t('المنسحبون', 'Withdrawn'), type: AppColType.integer, total: AppTotal.sum, visible: false),
+        AppExportColumn('rating_avg', t('التقييم', 'Rating'), type: AppColType.number),
+        AppExportColumn('rating_count', t('عدد التقييمات', 'Ratings'), type: AppColType.integer, visible: false),
         AppExportColumn('paid_count', t('المدفوع', 'Paid'), type: AppColType.integer, total: AppTotal.sum),
         AppExportColumn('income', t('الدخل', 'Income'), type: AppColType.money, total: AppTotal.sum),
         AppExportColumn('pending_payments', t('مدفوعات معلقة', 'Pending payments'), type: AppColType.integer, total: AppTotal.sum, visible: false),
+        AppExportColumn('created_at', t('تاريخ الإنشاء', 'Created'), type: AppColType.date, visible: false),
       ],
-      rows: [for (final r in rows) {...r, 'published': asBool(r['is_published']) ? 'yes' : 'no'}],
+      rows: [
+        for (final r in rows)
+          {
+            ...r,
+            'name': _localName(r, fallback: asStr(r['name'])),
+            'published': asBool(r['is_published']) ? 'yes' : 'no',
+            'category_name': _localName(asMap(r['category'])),
+          },
+      ],
     );
+
+/// A `name_ar` / `name_en` pair in the export's language, falling back to the other one.
+String _localName(Map<String, dynamic> j, {String fallback = ''}) {
+  final ar = asStrOrNull(j['name_ar']) ?? '', en = asStrOrNull(j['name_en']) ?? '';
+  final name = t(ar.isEmpty ? en : ar, en.isEmpty ? ar : en);
+  return name.isEmpty ? fallback : name;
+}
 
 /// Teacher withdrawal (payout) requests.
 AppTableExport adminWithdrawalsExport(List<Map<String, dynamic>> rows) => AppTableExport(

@@ -13,7 +13,7 @@ import '../shared/course/course_scope.dart' show CourseOrg;
 
 export '../shared/course/discount_info.dart';
 
-enum CourseStatus { all, inProgress, completed }
+enum CourseStatus { all, inProgress, completed, withdrawn }
 
 extension CourseStatusX on CourseStatus {
   /// Server-side value ("in_progress" / "completed"). `all` is UI-only
@@ -21,13 +21,14 @@ extension CourseStatusX on CourseStatus {
   String? get apiValue => switch (this) {
     CourseStatus.inProgress => 'in_progress',
     CourseStatus.completed => 'completed',
-    CourseStatus.all => null,
+    CourseStatus.all || CourseStatus.withdrawn => null,
   };
 
   String get labelKey => switch (this) {
     CourseStatus.inProgress => 'course_status_in_progress',
     CourseStatus.completed => 'course_status_completed',
     CourseStatus.all => 'filter_all',
+    CourseStatus.withdrawn => 'md_p7_left',
   };
 
   String get label => labelKey.tr;

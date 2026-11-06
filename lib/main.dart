@@ -824,7 +824,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         if (kind != null && id != null && id > 0) {
           final args = settings.arguments;
           final ref = args is EntityRef && args.kind == kind && args.id == id ? args : EntityRef(kind, id);
-          return _fade(_Guard(child: deferredEntityDetailPage(ref)), settings);
+          return _fade(_Guard(child: deferredEntityDetailPage(ref, from: EntityRef.tryParse(page.query['from']))), settings);
         }
     }
     // a role home on one of its tabs (`/dashboard/my-courses`): the person's own home, switched to that tab

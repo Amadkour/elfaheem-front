@@ -32,10 +32,22 @@ import 'package:flutter_education_app/features/shared/course/course_price_tag.da
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
 import 'package:flutter_education_app/design/home_kit.dart' show homeCardWidth, kHomeWideMax;
+import 'package:flutter_education_app/core/entities/entity_models.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/core/routing/web_history.dart';
+import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/entity_viewer_actions.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
+import 'package:flutter_education_app/features/teacher/classroom/teacher_classroom.dart';
 
-/// The teacher's "My courses": the side (CourseScopeBanner — the app mode), ONE calm toolbar (search · All /
-/// Published / Drafts) and the shared course cards (course_list_card.dart — the same card the student reads:
-/// rows on a phone, a grid of tiles wider; the ⋮ menu holds edit · publish · schedule · delete).
+/// The teacher's "My courses" tab: the strip Courses · My students · Submissions · Reviews (D-290), then the courses:
+/// the side (CourseScopeBanner — the app mode), ONE calm toolbar (search · All / Published / Drafts) and the shared
+/// course cards (course_list_card.dart — the same card the student reads: rows on a phone, a grid of tiles wider; the
+/// ⋮ menu holds edit · publish · schedule · delete). A card opens the course's panel (statistics, enrolled students,
+/// reviews), and Open course its page.
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
 
@@ -45,6 +57,26 @@ class TeacherCoursesScreen extends StatefulWidget {
 
 class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   final _searchCtrl = TextEditingController();
+  final _panel = EntityPanelController(rowKind: EntityKind.course);
+  TeacherSpace _space = TeacherSpace.tryParse(kIsWeb ? Uri.base.queryParameters['view'] : null) ?? TeacherSpace.courses;
+
+  void _setSpace(TeacherSpace s) {
+    if (s == _space) return;
+    _panel.close();
+    setState(() => _space = s);
+    WebHistory.instance.setPageQuery(this, 'view', s == TeacherSpace.courses ? null : s.name);
+  }
+
+  void _openCoursePage(BuildContext context, EntityRef ref) {
+    final course = context.read<TeacherCoursesProvider>().allCourses.where((c) => c.id == ref.id).firstOrNull;
+    if (course != null) openTeacherCoursePage(context, course);
+  }
+
+  List<EntityPanelAction> _actions(BuildContext context, EntityRef ref, EntitySummary? s) => entityViewerActions(
+        context, ref, s,
+        controller: _panel,
+        openCourse: s?.kind == EntityKind.course ? () => _openCoursePage(context, ref) : null,
+      );
 
   @override
   void initState() {
@@ -63,6 +95,8 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
 
   @override
   void dispose() {
+    _panel.dispose();
+    WebHistory.instance.setPageQuery(this, 'view', null);
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -70,6 +104,8 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<TeacherCoursesProvider>();
+    final me = context.select<MyAuthProvider, int?>((a) => a.currentUser?.id);
+    final onCourses = _space == TeacherSpace.courses || me == null;
 
     // a desktop window: the home's wide calm card (the grid gets four columns instead of a narrow strip)
     return LayoutBuilder(
@@ -78,15 +114,39 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
       useWebCard: true,
       maxWith: homeCardWidth(area.maxWidth),
       appBar: ScreenAppBar(title: 'my_courses'.tr, showBack: !kIsWeb),
-      floatingActionButton: context.showSidebar || p.scope.isOrg
-          ? null
-          : ParentComponent(
-              featureKey: 'teacher_courses.add',
-              child: _FloatingAddBtn(),
-            ),
+      // the panel's sheet sits where the button floats: no button while it is open
+      floatingActionButton: ListenableBuilder(
+        listenable: _panel,
+        builder: (context, _) => context.showSidebar || p.scope.isOrg || !onCourses || _panel.isOpen
+            ? const SizedBox.shrink()
+            : ParentComponent(
+                featureKey: 'teacher_courses.add',
+                child: _FloatingAddBtn(),
+              ),
+      ),
       child: SafeArea(
         bottom: false,
-        child: TeacherCoursesBody(controller: _searchCtrl),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (me != null && !courseFeatureOff('teacher_courses.classroom'))
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: kHomeWideMax),
+                child: TeacherSpaceTabs(selected: _space, onSelect: _setSpace),
+              ),
+            ),
+          Expanded(
+            child: onCourses
+                ? MasterDetailScaffold(
+                    controller: _panel,
+                    rootLabel: 'my_courses'.tr,
+                    deepLinks: true,
+                    actions: (ref, s) => _actions(context, ref, s),
+                    list: TeacherCoursesBody(controller: _searchCtrl, panel: _panel),
+                  )
+                : TeacherSpaceList(space: _space, teacherId: me),
+          ),
+        ]),
       ),
     ),
     );
@@ -95,9 +155,12 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
 
 /// The page under the app bar (also what the visual renders pump with a seeded provider).
 class TeacherCoursesBody extends StatelessWidget {
-  const TeacherCoursesBody({super.key, required this.controller});
+  const TeacherCoursesBody({super.key, required this.controller, this.panel});
 
   final TextEditingController controller;
+
+  /// The screen's panel: the list hands it its rows (Previous / Next, the row drawn as open).
+  final EntityPanelController? panel;
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +211,7 @@ class TeacherCoursesBody extends StatelessWidget {
             ],
           ),
         ),
-        Expanded(child: _CourseList(p: p, search: controller)),
+        Expanded(child: _CourseList(p: p, search: controller, panel: panel)),
       ],
     );
   }
@@ -310,10 +373,11 @@ class _NewCourseButton extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _CourseList extends StatefulWidget {
-  const _CourseList({required this.p, required this.search});
+  const _CourseList({required this.p, required this.search, this.panel});
 
   final TeacherCoursesProvider p;
   final TextEditingController search;
+  final EntityPanelController? panel;
 
   @override
   State<_CourseList> createState() => _CourseListState();
@@ -347,6 +411,7 @@ class _CourseListState extends State<_CourseList> {
     }
 
     final courses = p.filteredCourses;
+    widget.panel?.siblings = [for (final c in courses) courseRefOf(c)];
     if (courses.isEmpty) {
       // Still looking through further pages for this filter.
       if (p.hasMore && !p.loadMoreFailed) {
@@ -522,16 +587,6 @@ class _TeacherCourseCard extends StatelessWidget {
     );
   }
 
-  void _open(BuildContext context) => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => ChangeNotifierProvider(
-        create: (_) => TeacherCourseScreenProvider(initialCourse: course),
-        child: deferredTeacherSessionsScreen(),
-      ),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     final c = course;
@@ -558,7 +613,22 @@ class _TeacherCourseCard extends StatelessWidget {
           rating: c.rateSummary?.average,
         ),
       ),
-      onTap: () => _open(context),
+      onTap: () => EntityNavigator.open(context, courseRefOf(c)),
     );
   }
 }
+
+/// The ref of a course card (the card's own title and cover draw at once in the panel).
+EntityRef courseRefOf(TeacherCourse c) =>
+    EntityRef(EntityKind.course, c.id, label: c.titleAr, labelEn: c.titleEn, imageUrl: c.imageUrl);
+
+/// The course's page: sessions, students, tools (what a card opened before the panel).
+void openTeacherCoursePage(BuildContext context, TeacherCourse course) => Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => ChangeNotifierProvider(
+      create: (_) => TeacherCourseScreenProvider(initialCourse: course),
+      child: deferredTeacherSessionsScreen(),
+    ),
+  ),
+);

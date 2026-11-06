@@ -6,7 +6,7 @@
 //   keyboard   ↓ moves to the next row with the panel open, Esc closes, Alt+← walks the trail back
 //   back       the system Back closes the panel first (a local history entry; a shell tab honours it)
 //   route      `/view/student/12` is the full page (registry, URL entry, the navigator's location, the page itself)
-//   admin      the Students list: a row opens the panel, the Manage quick action opens the old sheet, `?open=` opens a
+//   admin      the Students list: a row opens the panel, a teacher's Manage quick action opens the control sheet, `?open=` opens a
 //              panel on arrival
 import 'dart:convert';
 import 'dart:io';
@@ -287,7 +287,7 @@ void main() {
       await tester.pumpWidget(layoutHost(const EntityDetailPage(entity: EntityRef(EntityKind.student, 12)), scale: 1, scaffold: false));
       await frames(tester, 8);
       expect(find.text('سارة أحمد 1'), findsWidgets);
-      expect(find.text('md_sec_courses'.tr), findsWidgets); // a stat tile and the section title
+      expect(find.text('md_p4_sec_courses'.tr), findsWidgets);
       expect(find.text('md_sec_payments'.tr), findsOneWidget);
       expect(find.byKey(const ValueKey('md.close')), findsNothing, reason: 'a page has Back, not Close');
       await tester.pumpWidget(const SizedBox());

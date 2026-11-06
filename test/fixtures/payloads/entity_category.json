@@ -123,7 +123,13 @@
     }
    ]
   },
-  "badges": [],
+  "badges": [
+   {
+    "code": "low_completion",
+    "level": "warn",
+    "value": 0.0
+   }
+  ],
   "sections": [
    "courses",
    "teachers",

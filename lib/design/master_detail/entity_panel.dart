@@ -80,12 +80,15 @@ class EntityPanel extends StatelessWidget {
                   _Breadcrumbs(controller: controller, trail: trail, rootLabel: mode == EntityPanelMode.page ? null : rootLabel),
                 Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
                 Expanded(
-                  child: EntityDetailView(
-                    key: ValueKey('md.detail.${current.toToken()}'),
-                    entity: _withSiblingLabel(current),
-                    controller: controller,
-                    actions: actions,
-                    scrollController: scrollController,
+                  child: PageStorage(
+                    bucket: controller.storage,
+                    child: EntityDetailView(
+                      key: ValueKey('md.detail.${current.toToken()}'),
+                      entity: _withSiblingLabel(current),
+                      controller: controller,
+                      actions: actions,
+                      scrollController: scrollController,
+                    ),
                   ),
                 ),
               ]),
@@ -199,7 +202,7 @@ class _ChromeBar extends StatelessWidget {
             key: const ValueKey('md.full_page'),
             icon: Icons.open_in_full_rounded,
             tooltip: 'md_open_full'.tr,
-            onPressed: () => EntityNavigator.openFullPage(context, current),
+            onPressed: () => EntityNavigator.openFullPage(context, current, from: controller.contextRef),
           ),
         if (!page)
           AppIconButton(

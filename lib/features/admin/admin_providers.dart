@@ -73,6 +73,9 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
   /// Sort key (null = the server default).
   String? sort;
 
+  /// The rows asked for at a time (a numbered table lets the person change it).
+  int pageSize = 20;
+
   Timer? _debounce;
   bool _disposed = false;
   int _gen = 0; // drops answers of requests that were replaced meanwhile
@@ -85,6 +88,9 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
   Map<String, dynamic> get filters;
 
   bool get hasMore => page < pages;
+
+  /// Every row of the query is on screen: an export can use them as they are (a numbered table holds only one page).
+  bool get allLoaded => loaded && !hasMore && rows.length >= total;
 
   @override
   int? get resultCount => loaded ? total : null;
@@ -179,9 +185,28 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
     await _fetch(page + 1);
   }
 
-  Future<void> _fetch(int p) async {
-    final gen = p == 1 ? ++_gen : _gen;
-    if (p > 1) {
+  /// Numbered paging: page [p] replaces the rows ([loadMore] appends instead). The rows on screen stay until it
+  /// arrives.
+  Future<void> goToPage(int p) {
+    _debounce?.cancel();
+    loadingMore = false;
+    error = null;
+    return _fetch(p, jump: true);
+  }
+
+  /// A new page size starts over at page 1.
+  Future<void> setPageSize(int size) {
+    if (size == pageSize) return Future.value();
+    pageSize = size;
+    return refresh();
+  }
+
+  /// Reloads the page on screen (after an action, a numbered table stays where it was).
+  Future<void> reloadPage() => page > 1 ? goToPage(page) : refresh();
+
+  Future<void> _fetch(int p, {bool jump = false}) async {
+    final gen = p == 1 || jump ? ++_gen : _gen;
+    if (p > 1 && !jump) {
       loadingMore = true;
       _notify();
     }
@@ -192,14 +217,16 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
       if (search.isNotEmpty) 'search': search,
       if (sort != null) 'sort': sort,
       'page': p,
-      'size': 20,
+      'size': pageSize,
     };
     final r = await run(() => api.get(path, queryParams: query),
-        makLoading: p == 1);
+        makLoading: p == 1 || jump);
     if (_disposed || gen != _gen) return; // a newer search / filter replaced this request
     if (r is Map) {
       final d = PageData(Map<String, dynamic>.from(r));
-      if (p == 1) rows.clear();
+      // the page held only the row just removed: show the last one that still exists
+      if (jump && d.items.isEmpty && p > 1) return _fetch(d.pages < 1 ? 1 : (d.pages < p ? d.pages : p - 1), jump: true);
+      if (p == 1 || jump) rows.clear();
       rows.addAll(d.items);
       page = d.page;
       pages = d.pages;
@@ -207,7 +234,7 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
       extra = d.extra;
       error = null;
       _stale = false;
-    } else if (p == 1) {
+    } else if (p == 1 || jump) {
       if (_stale) {
         rows.clear();
         page = 0;
@@ -356,8 +383,11 @@ class AdminUsersProvider extends AdminPagedProvider {
     return r != null;
   }
 
-  Future<bool> unenroll(int userId, int courseId) async {
-    final r = await call(() => api.delete('$_base/users/$userId/enrollments/$courseId'),
+  /// [reasonCode] / [reason]: what the withdrawal is recorded under (D-290).
+  Future<bool> unenroll(int userId, int courseId, {String? reasonCode, String? reason}) async {
+    final r = await call(
+        () => api.delete('$_base/users/$userId/enrollments/$courseId',
+            queryParams: {'reason_code': ?reasonCode, 'reason': ?reason}),
         ok: 'admin_removed_from_course'.tr);
     if (r != null) await refresh();
     return r != null;
@@ -434,7 +464,7 @@ class AdminCoursesProvider extends AdminPagedProvider {
   Future<bool> update(int id, Map<String, dynamic> body) async {
     final r = await call(() => api.put('$_base/courses/$id', body: body),
         ok: 'admin_saved'.tr);
-    if (r != null) await refresh();
+    if (r != null) await reloadPage();
     return r != null;
   }
 
@@ -442,7 +472,7 @@ class AdminCoursesProvider extends AdminPagedProvider {
     final r = await call(
             () => api.delete('$_base/courses/$id', queryParams: {'force': force}),
         ok: 'admin_course_deleted'.tr);
-    if (r != null) await refresh();
+    if (r != null) await reloadPage();
     return r != null;
   }
 
@@ -452,7 +482,7 @@ class AdminCoursesProvider extends AdminPagedProvider {
     final r = await call(
             () => api.put('$_base/courses/$id/payment-settings', body: body),
         ok: 'admin_payment_settings_saved'.tr);
-    if (r != null) await refresh();
+    if (r != null) await reloadPage();
     return r != null;
   }
 
@@ -474,90 +504,19 @@ class AdminCoursesProvider extends AdminPagedProvider {
 //  Categories
 // ═════════════════════════════════════════════════════════════════════════════
 
-class AdminCategoriesProvider extends AdminBase implements AdminQueryHost {
-  List<AdminCategory> items = [];
-  String? error;
+class AdminCategoriesProvider extends AdminPagedProvider {
+  /// [reloads] false: a detail's Edit / Delete outside the list; nothing here needs the rows again.
+  AdminCategoriesProvider({this.reloads = true});
 
-  // premium search / filter / sort (same contract as AdminPagedProvider)
-  String search = '';
-  final Map<String, Object?> adv = {};
-  String? sort;
-  Timer? _debounce;
-  bool _disposed = false;
-  int _gen = 0;
+  final bool reloads;
 
   @override
-  bool get hasActiveQuery => search.isNotEmpty || adv.isNotEmpty || sort != null;
+  String get path => '$_base/categories';
 
   @override
-  int? get resultCount => _loadedOnce ? items.length : null;
-  bool _loadedOnce = false;
+  Map<String, dynamic> get filters => const {};
 
-  @override
-  void dispose() {
-    _disposed = true;
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Future<void> setSearch(String v) async {
-    final t = v.trim();
-    if (t == search) return;
-    search = t;
-    _debounce?.cancel();
-    _debounce = Timer(Duration.zero, () {
-      if (!_disposed) load();
-    });
-  }
-
-  Future<void> applyAdv(Map<String, Object?> values, {String? sortKey}) {
-    adv
-      ..clear()
-      ..addAll({
-        for (final e in values.entries)
-          if (e.value != null) e.key: e.value,
-      });
-    sort = sortKey;
-    return load();
-  }
-
-  Future<void> removeAdv(Iterable<String> keys) {
-    keys.forEach(adv.remove);
-    return load();
-  }
-
-  Future<void> setSort(String? v) {
-    sort = v;
-    return load();
-  }
-
-  Future<void> clearAll() {
-    _debounce?.cancel();
-    search = '';
-    adv.clear();
-    sort = null;
-    return load();
-  }
-
-  Future<void> load() async {
-    _debounce?.cancel();
-    final gen = ++_gen;
-    final r = await run(() => api.get('$_base/categories', queryParams: {
-      ...encodeFilters(adv),
-      if (search.isNotEmpty) 'search': search,
-      if (sort != null) 'sort': sort,
-    }));
-    if (_disposed || gen != _gen) return;
-    if (r is Map) {
-      items = asMapList(r['items']).map(AdminCategory.new).toList();
-      error = null;
-      _loadedOnce = true;
-    } else {
-      error = errorMessage ?? 'admin_could_not_load_data'.tr;
-    }
-    notifyListeners();
-  }
+  List<AdminCategory> get items => rows.map(AdminCategory.new).toList();
 
   Future<bool> save({int? id, required Map<String, dynamic> body}) async {
     final r = await call(
@@ -565,14 +524,14 @@ class AdminCategoriesProvider extends AdminBase implements AdminQueryHost {
             ? api.post('$_base/categories', body: body)
             : api.put('$_base/categories/$id', body: body),
         ok: 'admin_saved'.tr);
-    if (r != null) await load();
+    if (r != null && reloads) await refresh();
     return r != null;
   }
 
   Future<bool> remove(int id) async {
     final r = await call(() => api.delete('$_base/categories/$id'),
         ok: 'admin_deleted'.tr);
-    if (r != null) await load();
+    if (r != null && reloads) await refresh();
     return r != null;
   }
 }

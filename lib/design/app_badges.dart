@@ -47,7 +47,8 @@ Color appToneTint(BuildContext context, AppTone tone) {
 Color appToneInk(BuildContext context, AppTone tone) {
   final c = context.colors;
   if (tone == AppTone.neutral) return c.textDark;
-  return Color.lerp(appToneColor(context, tone), c.textDark, 0.4)!;
+  // orange is the lightest hue: it needs more ink to reach 4.5:1 on its own tint
+  return Color.lerp(appToneColor(context, tone), c.textDark, tone == AppTone.warning ? 0.6 : 0.4)!;
 }
 
 /// A small rounded status pill.

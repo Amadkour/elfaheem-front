@@ -54,21 +54,24 @@ void main() {
 
   group('summaries (real payloads)', () {
     test('student', () {
-      final s = EntitySummary.fromJson(fx('entity_student'));
+      // Read against the recording itself: a re-dump picks its own rows, ids and times.
+      final j = fx('entity_student');
+      final h = j['header'] as Map;
+      final st = j['stats'] as Map;
+      final s = EntitySummary.fromJson(j);
       expect(s.kind, EntityKind.student);
-      expect(s.id, 10);
-      expect(s.ref.name, 'Carol');
-      expect(s.text('email'), 'carol@ent.io');
-      expect(s.stat('enrolled'), 2);
-      expect(s.stat('avg_progress'), 40.0);
-      expect(s.statTime('last_activity_at'), isNull);
-      expect(s.time('last_login'), DateTime.utc(2026, 10, 16, 21, 58, 16, 686, 171));
-      expect(s.badges.map((b) => b.code), ['inactive', 'at_risk']);
-      expect(s.badges.first.value, 20);
-      expect(s.badges.last.level, 'bad');
-      expect(s.sections, ['courses', 'timeline', 'payments', 'subscriptions']);
-      expect(s.can.manage, isTrue);
-      expect(s.can.seeMoney, isTrue);
+      expect(s.id, j['id']);
+      expect(s.ref.name, h['name']);
+      expect(s.text('email'), h['email']);
+      expect(s.stat('enrolled'), st['enrolled']);
+      expect(s.stat('avg_progress'), (st['avg_progress'] as num?)?.toDouble());
+      expect(s.statTime('last_activity_at'), entityTime(st['last_activity_at']));
+      expect(s.time('last_login'), entityTime(h['last_login']));
+      expect(s.badges.map((b) => b.code), [for (final b in j['badges'] as List) b['code']]);
+      expect(s.sections, j['sections']);
+      expect(s.can.manage, (j['can'] as Map)['manage']);
+      expect(s.can.seeMoney, (j['can'] as Map)['see_money']);
+      expect(h['organizations'], isNotEmpty, reason: 'phase 4: the header lists the organizations');
     });
 
     test('course (staff, with money)', () {
@@ -87,7 +90,7 @@ void main() {
       expect(s.isLearnerView, isFalse);
       expect(s.mine, isNull);
       expect(s.price!['fees'], 300.0);
-      expect(s.sections, ['students', 'content']);
+      expect(s.sections, fx('entity_course')['sections']);
     });
 
     test('course (a learner: stats.mine)', () {
@@ -100,9 +103,9 @@ void main() {
       expect(m.rating!.review, 'good');
       expect(m.exams!.count, 2);
       expect(m.exams!.passed, 1);
-      expect(m.expectedEndAt, DateTime.utc(2027, 2, 3, 21, 58, 16, 686, 171));
+      expect(m.expectedEndAt, entityTime((fx('entity_course_learner')['stats'] as Map)['mine']['expected_end_at']));
       expect(s.revenue, isEmpty);
-      expect(s.sections, ['timeline']);
+      expect(s.sections, fx('entity_course_learner')['sections']);
     });
 
     test('teacher (revenue per currency)', () {

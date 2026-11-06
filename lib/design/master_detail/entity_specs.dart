@@ -6,8 +6,7 @@
 //   stats          statSpecsOf(summary): the tiles a summary draws (only the figures the server sent)
 //   rows           entityRowFor(item, …): one row of a sub-list, a link to the entity it names
 //
-// Phase 3 draws the timeline as a plain chronological list and a course's trend as one sparkline; the rich timeline
-// and the course statistics come in phases 4 – 5.
+// A course adds a one-line reading of its figures (mdCourseInsight) and of its trend (mdTrendChange).
 library;
 
 import 'package:flutter/material.dart';
@@ -42,6 +41,13 @@ String mdNumber(num? v) => v == null ? '—' : appCompactNumber(v.toDouble());
 /// "250 EGP" (left to right inside Arabic).
 String mdMoney(EntityMoney m) {
   final a = m.amount == m.amount.roundToDouble() ? m.amount.toInt().toString() : m.amount.toStringAsFixed(2);
+  return ltrIsolate(m.currency.isEmpty ? a : '$a ${m.currency}');
+}
+
+/// [mdMoney] for a stat tile: "41.3K EGP" from ten thousand up, so the figure stays on one line.
+String mdMoneyShort(EntityMoney m) {
+  if (m.amount.abs() < 10000) return mdMoney(m);
+  final a = appCompactNumber(m.amount);
   return ltrIsolate(m.currency.isEmpty ? a : '$a ${m.currency}');
 }
 
@@ -113,7 +119,10 @@ String mdReasonLabel(String? code) => _worded('md_reason_', code ?? 'unknown');
 /// A course status filter / chip (published · draft · archived · in_progress · completed).
 String mdCourseStatusLabel(String status) => _worded('md_status_', status);
 
-String mdSortLabel(String sort) => _worded('md_sort_', sort);
+String mdSortLabel(String sort) {
+  final own = 'md_p7_sort_$sort'.tr;
+  return own == 'md_p7_sort_$sort' ? _worded('md_sort_', sort) : own;
+}
 
 String mdPaymentStatus(String? status) => _worded('md_pay_', status ?? 'pending');
 
@@ -147,6 +156,10 @@ IconData mdBadgeIcon(String code) => switch (code) {
       'trending' => Icons.trending_up_rounded,
       'dropping' => Icons.trending_down_rounded,
       'high_withdrawal' => DirIcons.logout,
+      'top_rated' => Icons.star_rounded,
+      'low_engagement' => Icons.bedtime_outlined,
+      'low_completion' => Icons.trending_down_rounded,
+      'no_courses' || 'nothing_published' => Icons.inbox_outlined,
       _ => Icons.info_outline_rounded,
     };
 
@@ -164,6 +177,14 @@ String mdBadgeText(EntityBadge b) {
       return countText(n,
           ar1: 'دورة واحدة متعثرة', ar2: 'دورتان متعثرتان', arFew: '{n} دورات متعثرة', arMany: '{n} دورة متعثرة',
           en1: '1 course at risk', en: '{n} courses at risk');
+    case 'top_rated':
+      return mdText('md_p6_badge_top_rated', {'v': ltrIsolate((b.value ?? 0).toStringAsFixed(1))});
+    case 'low_engagement':
+      return mdText('md_p6_badge_low_engagement', {'v': mdPercent(b.value)});
+    case 'low_completion':
+      return mdText('md_p6_badge_low_completion', {'v': mdPercent(b.value)});
+    case 'no_courses' || 'nothing_published':
+      return 'md_p6_badge_${b.code}'.tr;
     default:
       return _worded('md_badge_', b.code);
   }
@@ -172,15 +193,15 @@ String mdBadgeText(EntityBadge b) {
 /// One history event as a sentence.
 String mdTimelineText(EntityTimelineEvent e) {
   final d = e.data;
-  final title = entityString(d['title']) ?? '';
+  final title = entityString(d['title']);
   switch (e.type) {
     case 'material_completed':
-      return mdText('md_tl_material_completed', {'t': title});
+      return title == null ? 'md_p4_tl_lesson'.tr : mdText('md_tl_material_completed', {'t': title});
     case 'live_attended':
-      return mdText('md_tl_live_attended', {'t': title});
+      return title == null ? 'md_p4_tl_live'.tr : mdText('md_tl_live_attended', {'t': title});
     case 'exam_submitted':
       final p = entityDouble(d['percentage']);
-      final head = mdText('md_tl_exam_submitted', {'t': title});
+      final head = title == null ? 'md_p4_tl_exam'.tr : mdText('md_tl_exam_submitted', {'t': title});
       return p == null ? head : '$head · ${mdPercent(p)}';
     case 'rated':
       return mdText('md_tl_rated', {'v': '${entityInt(d['value'])}'});
@@ -213,8 +234,40 @@ AppTone mdTimelineTone(EntityTimelineEvent e) => switch (e.type) {
       'withdrawn' => AppTone.danger,
       'exam_submitted' => e.data['passed'] == false ? AppTone.warning : AppTone.success,
       'enrolled' || 'first_visit' => AppTone.brand,
+      'subscription' => switch (entityString(e.data['event'])) {
+          'cancelled' || 'refunded' || 'payment_failed' || 'access_denied' => AppTone.danger,
+          'expired' => AppTone.warning,
+          'payment_succeeded' || 'activated' || 'renewed' => AppTone.success,
+          _ => AppTone.info,
+        },
       _ => AppTone.info,
     };
+
+/// The last 4 weeks of [trend] against the 4 before, in whole percent; null without 8 weeks or with nothing to compare
+/// (no enrollment in the 4 before).
+int? mdTrendChange(List<EntityTrendPoint> trend) {
+  if (trend.length < 8) return null;
+  int sum(Iterable<EntityTrendPoint> ps) => ps.fold<int>(0, (a, p) => a + p.count);
+  final recent = sum(trend.skip(trend.length - 4)), before = sum(trend.skip(trend.length - 8).take(4));
+  if (before == 0) return null;
+  return (100 * (recent - before) / before).round();
+}
+
+/// A staff view of a course in one line: how many finished, and the main reason for leaving; null before anyone
+/// counts.
+String? mdCourseInsight(EntitySummary s) {
+  if (s.kind != EntityKind.course || s.isLearnerView) return null;
+  final enrolled = s.stat('enrolled'), done = s.stat('completed');
+  if (enrolled == null || done == null) return null;
+  final counted = (enrolled - (s.stat('pending') ?? 0)).round();
+  if (counted <= 0) return null;
+  final parts = [
+    mdText('md_p5_insight_completed', {'n': mdNumber(done), 'total': mdNumber(counted)}),
+  ];
+  final reasons = s.withdrawalReasons.where((r) => r.$1 != 'unknown').toList()..sort((a, b) => b.$2.compareTo(a.$2));
+  if (reasons.isNotEmpty) parts.add(mdText('md_p5_insight_reason', {'r': mdReasonLabel(reasons.first.$1)}));
+  return parts.join(' · ');
+}
 
 // ── Sections ─────────────────────────────────────────────────────────────────
 
@@ -231,6 +284,9 @@ class EntitySectionSpec {
     this.filterOptions = const [],
     this.searchable = true,
     this.pageSize = 10,
+    this.titleKey,
+    this.emptyKey,
+    this.filterPrefix,
   });
 
   final String section;
@@ -246,13 +302,33 @@ class EntitySectionSpec {
   final bool searchable;
   final int pageSize;
 
-  String get title => mdSectionTitle(section);
+  /// The title's translation key when it is not the section's usual one (default `md_sec_<section>`).
+  final String? titleKey;
 
-  String filterLabel(String value) => filterKey == 'state' ? mdStateLabel(value) : mdCourseStatusLabel(value);
+  /// The empty state's key (default the generic text).
+  final String? emptyKey;
+
+  /// The filter values' translation prefix (default the enrollment states / course statuses).
+  final String? filterPrefix;
+
+  String get title => titleKey?.tr ?? mdSectionTitle(section);
+
+  String filterLabel(String value) => filterPrefix != null ? _worded(filterPrefix!, value) : switch (filterKey) {
+        'state' => mdStateLabel(value),
+        'activity' => 'md_p6_activity_$value'.tr,
+        'account' => 'md_$value'.tr,
+        _ => mdCourseStatusLabel(value),
+      };
 }
 
 const _enrollmentSorts = ['enrolled_desc', 'enrolled_asc', 'progress_desc', 'progress_asc', 'activity_desc', 'name'];
 const _courseStatuses = ['published', 'draft', 'archived', 'in_progress', 'completed'];
+const _gradeSorts = ['newest', 'oldest', 'score_desc', 'score_asc'];
+const _reviewSorts = ['newest', 'lowest', 'highest'];
+const gradeStates = ['needs_review', 'graded', 'held'];
+
+/// The people lists' filters (`activity` of a learner, `account` of a teacher).
+const _activities = ['active', 'inactive'];
 
 /// The spec of [section] of a [kind] entity; null for a section this app version does not know (left out).
 EntitySectionSpec? sectionSpecOf(EntityKind kind, String section) => switch ((kind, section)) {
@@ -260,8 +336,8 @@ EntitySectionSpec? sectionSpecOf(EntityKind kind, String section) => switch ((ki
           icon: Icons.auto_stories_rounded,
           sorts: _enrollmentSorts,
           filterKey: 'state',
-          filterOptions: entityEnrollmentStates),
-      (EntityKind.student, 'timeline') ||
+          filterOptions: entityEnrollmentStates,
+          titleKey: 'md_p4_sec_courses'),
       (EntityKind.course, 'timeline') =>
         const EntitySectionSpec('timeline', icon: Icons.history_rounded, shape: EntitySectionShape.timeline),
       (EntityKind.student, 'payments') => const EntitySectionSpec('payments',
@@ -278,14 +354,47 @@ EntitySectionSpec? sectionSpecOf(EntityKind kind, String section) => switch ((ki
           filterKey: 'status',
           filterOptions: _courseStatuses),
       (EntityKind.teacher, 'students') || (EntityKind.category, 'students') => const EntitySectionSpec('students',
-          icon: Icons.groups_rounded, sorts: ['activity_desc', 'progress_desc', 'name']),
+          icon: Icons.groups_rounded,
+          sorts: ['activity_desc', 'progress_desc', 'name'],
+          filterKey: 'activity',
+          filterOptions: _activities),
       (EntityKind.category, 'courses') => const EntitySectionSpec('courses',
           icon: Icons.auto_stories_rounded,
           sorts: ['students_desc', 'newest', 'rating_desc', 'name'],
           filterKey: 'status',
           filterOptions: _courseStatuses),
-      (EntityKind.category, 'teachers') =>
-        const EntitySectionSpec('teachers', icon: Icons.co_present_rounded, sorts: ['students_desc', 'name']),
+      (EntityKind.category, 'teachers') => const EntitySectionSpec('teachers',
+          icon: Icons.co_present_rounded,
+          sorts: ['students_desc', 'name'],
+          filterKey: 'account',
+          filterOptions: _activities),
+      (EntityKind.student, 'grades') || (EntityKind.course, 'grades') => const EntitySectionSpec('grades',
+          icon: Icons.grading_rounded,
+          sorts: _gradeSorts,
+          titleKey: 'md_p7_sec_grades',
+          emptyKey: 'md_p7_empty_grades'),
+      (EntityKind.teacher, 'submissions') => const EntitySectionSpec('submissions',
+          icon: Icons.assignment_turned_in_outlined,
+          sorts: _gradeSorts,
+          filterKey: 'state',
+          filterOptions: gradeStates,
+          filterPrefix: 'md_p7_grade_',
+          titleKey: 'md_p7_sec_submissions',
+          emptyKey: 'md_p7_empty_submissions'),
+      (EntityKind.course, 'reviews') || (EntityKind.teacher, 'reviews') => const EntitySectionSpec('reviews',
+          icon: Icons.reviews_outlined, sorts: _reviewSorts, titleKey: 'md_p7_sec_reviews', emptyKey: 'md_p7_empty_reviews'),
+      (EntityKind.course, 'lessons') => const EntitySectionSpec('lessons',
+          icon: Icons.format_list_numbered_rounded,
+          searchable: false,
+          pageSize: 20,
+          titleKey: 'md_p7_sec_lessons',
+          emptyKey: 'md_p7_empty_lessons'),
+      (EntityKind.course, 'deadlines') => const EntitySectionSpec('deadlines',
+          icon: Icons.event_available_outlined,
+          searchable: false,
+          pageSize: 20,
+          titleKey: 'md_p7_sec_deadlines',
+          emptyKey: 'md_p7_empty_deadlines'),
       _ => null,
     };
 
@@ -329,39 +438,42 @@ List<EntityStat> statSpecsOf(EntitySummary s) {
     final r = s.revenue;
     if (r.isEmpty) return;
     out.add(EntityStat('revenue', 'md_stat_revenue'.tr, Icons.account_balance_wallet_outlined,
-        r.map(mdMoney).join(' · '), tone: AppTone.success));
+        r.map(mdMoneyShort).join(' · '), tone: AppTone.success));
   }
 
   switch (s.kind) {
-    case EntityKind.student:
-      count('enrolled', 'md_stat_courses', Icons.library_books_outlined);
-      count('in_progress', 'md_stat_in_progress', Icons.play_circle_outline_rounded);
-      count('completed', 'md_stat_completed', Icons.workspace_premium_outlined, tone: AppTone.success);
-      count('withdrawn', 'md_stat_withdrawn', DirIcons.logout, tone: AppTone.danger, hideZero: true);
-      count('expired', 'md_stat_expired', Icons.timer_off_outlined, tone: AppTone.warning, hideZero: true);
-      count('pending', 'md_stat_pending', Icons.hourglass_empty_rounded, tone: AppTone.neutral, hideZero: true);
+    case EntityKind.student: // the states are the overview's bar (StudentOverviewCard), these its figures
       percent('avg_progress', 'md_stat_avg_progress', Icons.trending_up_rounded);
       if (s.stats.containsKey('last_activity_at')) {
         out.add(EntityStat('last_activity_at', 'md_stat_last_activity'.tr, Icons.schedule_rounded,
             s.statTime('last_activity_at') == null ? 'md_no_activity'.tr : mdAgo(s.statTime('last_activity_at')),
             tone: AppTone.info));
       }
+      if (s.paid.isNotEmpty) {
+        out.add(EntityStat('paid', 'md_p4_stat_paid'.tr, Icons.account_balance_wallet_outlined,
+            s.paid.map(mdMoney).join(' · '), tone: AppTone.success));
+      }
     case EntityKind.course:
-      count('enrolled', 'md_stat_students', Icons.groups_rounded);
+      if (s.mine == null) count('enrolled', 'md_stat_students', Icons.groups_rounded); // a learner reads their own progress
       if (!s.isLearnerView) {
+        count('in_progress', 'md_stat_in_progress', Icons.play_circle_outline_rounded);
+        count('completed', 'md_stat_completed', Icons.task_alt_rounded, tone: AppTone.success);
+        count('withdrawn', 'md_stat_withdrawn', DirIcons.logout, tone: AppTone.danger);
         percent('completion_rate', 'md_stat_completion', Icons.workspace_premium_outlined, tone: AppTone.success);
         percent('avg_progress', 'md_stat_avg_progress', Icons.trending_up_rounded);
-        count('in_progress', 'md_stat_in_progress', Icons.play_circle_outline_rounded, hideZero: true);
-        count('withdrawn', 'md_stat_withdrawn', DirIcons.logout, tone: AppTone.danger, hideZero: true);
-        count('expired', 'md_stat_expired', Icons.timer_off_outlined, tone: AppTone.warning, hideZero: true);
-        count('favorites', 'md_stat_favorites', Icons.favorite_border_rounded, tone: AppTone.danger, hideZero: true);
       }
       rating('rating_avg', 'md_stat_rating', countKey: 'rating_count');
       if (s.isLearnerView) {
         count('sessions', 'md_stat_sessions', Icons.event_note_outlined);
         count('materials', 'md_stat_materials', Icons.video_library_outlined);
+      } else {
+        count('favorites', 'md_stat_favorites', Icons.favorite_border_rounded, tone: AppTone.danger);
       }
       money();
+      if (!s.isLearnerView) {
+        count('expired', 'md_stat_expired', Icons.timer_off_outlined, tone: AppTone.warning, hideZero: true);
+        count('pending', 'md_stat_pending', Icons.hourglass_empty_rounded, tone: AppTone.neutral, hideZero: true);
+      }
     case EntityKind.teacher:
       count('courses', 'md_stat_courses', Icons.library_books_outlined);
       count('published_courses', 'md_stat_published', Icons.public_rounded);
@@ -391,7 +503,8 @@ class EntityThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (ref.isPerson) return AppAvatar(name: ref.name, url: ref.imageUrl, size: size);
+    // the initial is decoration: the name is read beside it
+    if (ref.isPerson) return ExcludeSemantics(child: AppAvatar(name: ref.name, url: ref.imageUrl, size: size));
     final c = context.colors;
     final r = BorderRadius.circular(size * 0.28);
     final icon = Container(
@@ -423,16 +536,23 @@ class EntityRowFrame extends StatelessWidget {
     this.body = const [],
     this.action,
     this.highlight = false,
+    this.link = true,
   });
 
   final EntityRef ref;
   final String title;
+
+  /// False: the row opens nothing of its own (a lesson, a deadline, a card whose table handles the tap).
+  final bool link;
   final Widget? leading;
   final String? subtitle;
   final Widget? trailing;
   final List<Widget> body;
   final Widget? action;
   final bool highlight;
+
+  /// The most a trailing chip takes from the title.
+  static const double _trailingWidth = 112;
 
   @override
   Widget build(BuildContext context) {
@@ -451,11 +571,9 @@ class EntityRowFrame extends StatelessWidget {
               if (trailing != null) ...[
                 const SizedBox(width: AppSpace.xs),
                 // a narrow sheet at a large text size: the chip shrinks instead of pushing the title out
-                Flexible(
-                  child: Align(
-                    alignment: AlignmentDirectional.topEnd,
-                    child: FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.topEnd, child: trailing!),
-                  ),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: _trailingWidth),
+                  child: FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.topEnd, child: trailing!),
                 ),
               ],
             ]),
@@ -468,36 +586,41 @@ class EntityRowFrame extends StatelessWidget {
         ),
       ]),
     );
-    final link = EntityLink(ref, child: content);
+    final Widget row = link ? EntityLink(ref, child: content) : content;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: highlight ? c.primaryTint : null,
         borderRadius: AppRadius.cardAll,
       ),
       child: action == null
-          ? link
+          ? row
           : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(child: link),
+              Expanded(child: row),
               Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: action!),
             ]),
     );
   }
 }
 
-/// A progress bar with its percentage.
+/// A progress bar with its percentage, after [label] when given ("Completion").
 class EntityProgress extends StatelessWidget {
-  const EntityProgress(this.value, {super.key, this.tone});
+  const EntityProgress(this.value, {super.key, this.tone, this.label});
 
   final double? value;
   final Color? tone;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
     final v = (value ?? 0).clamp(0, 100).toDouble();
     return Semantics(
-      label: '${'md_progress'.tr} ${mdPercent(v)}',
+      label: '${label ?? 'md_progress'.tr} ${mdPercent(v)}',
       excludeSemantics: true,
       child: Row(children: [
+        if (label != null) ...[
+          Flexible(child: Text(label!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
+          AppSpace.gapXs,
+        ],
         Expanded(child: AppProgressBar(value: v, height: 6, color: tone ?? appScoreColor(context, v))),
         AppSpace.gapXs,
         SizedBox(
@@ -562,9 +685,15 @@ class EntityHistoryButton extends StatelessWidget {
       AppIconButton(icon: Icons.history_rounded, tooltip: 'md_history'.tr, onPressed: onPressed);
 }
 
-/// One row of a sub-list. [onHistory] (enrollment rows) opens the student's timeline in that course.
+/// One row of a sub-list. [onHistory] (enrollment rows) opens the student's timeline in that course. [ownerKind] is
+/// the entity the list belongs to: a teacher's course rows leave the teacher out, a category's the category; [link]
+/// false draws the row without opening anything (a learner's own grades).
 Widget entityRowFor(BuildContext context, EntityItem item,
-    {void Function(int studentId, int courseId, String title)? onHistory, int? ownerId, int? highlightId}) {
+    {void Function(int studentId, int courseId, String title)? onHistory,
+    int? ownerId,
+    int? highlightId,
+    EntityKind? ownerKind,
+    bool link = true}) {
   switch (item) {
     case EnrollmentRow(:final subject, :final course, :final enrollment):
       final isCourse = subject.kind == EntityKind.course;
@@ -589,23 +718,42 @@ Widget entityRowFor(BuildContext context, EntityItem item,
             : EntityHistoryButton(onPressed: () => onHistory(studentId, courseId, subject.name)),
       );
     case CourseRow(:final course):
-      final facts = [
-        mdStudents(item.students),
-        if (item.completionRate != null) '${'md_stat_completion'.tr} ${mdPercent(item.completionRate)}',
-        if (item.ratingAvg != null) ltrIsolate('★ ${item.ratingAvg!.toStringAsFixed(1)}'),
-        if (item.revenue != null) mdMoney(item.revenue!),
+      final belongs = [
+        if (ownerKind != EntityKind.teacher) course.teacher?.name,
+        if (ownerKind != EntityKind.category) course.category?.name,
       ];
       final status = item.archivedAt != null ? 'archived' : (item.isPublished ? 'published' : 'draft');
       return EntityRowFrame(
         ref: course.ref,
         title: course.ref.name.isEmpty ? '#${course.ref.id}' : course.ref.name,
-        subtitle: [course.teacher?.name, course.category?.name].whereType<String>().where((s) => s.isNotEmpty).join(' · '),
+        subtitle: belongs.whereType<String>().where((s) => s.isNotEmpty).join(' · '),
         highlight: highlightId == course.ref.id,
         trailing: AppStatusBadge(
             label: mdCourseStatusLabel(status),
             tone: status == 'published' ? AppTone.success : (status == 'archived' ? AppTone.danger : AppTone.neutral),
             dense: true),
-        body: [Text(facts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context))],
+        body: [
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(text: mdStudents(item.students)),
+              if (item.ratingAvg != null) ...[
+                const TextSpan(text: ' · '),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Icon(Icons.star_rounded, size: AppIconSize.xs, color: appToneInk(context, AppTone.warning)),
+                ),
+                TextSpan(text: ' ${ltrIsolate(item.ratingAvg!.toStringAsFixed(1))}'),
+              ],
+              if (item.revenue != null) TextSpan(text: ' · ${mdMoney(item.revenue!)}'),
+            ]),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.meta(context),
+          ),
+          if (item.completionRate != null && item.students > 0)
+            // a fact about the class, not a grade: the brand colour whatever the figure
+            EntityProgress(item.completionRate, label: 'md_stat_completion'.tr, tone: context.colors.primary),
+        ],
       );
     case PersonRow(:final person):
       final facts = [
@@ -618,6 +766,11 @@ Widget entityRowFor(BuildContext context, EntityItem item,
         title: person.name.isEmpty ? '#${person.id}' : person.name,
         subtitle: item.username == null ? null : '@${item.username}',
         highlight: highlightId == person.id,
+        link: link,
+        trailing: item.attention
+            ? AppStatusBadge(
+                label: 'md_p7_needs_attention'.tr, tone: AppTone.warning, icon: Icons.priority_high_rounded, dense: true)
+            : null,
         body: [
           Text(facts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           if (item.json.containsKey('last_activity_at'))
@@ -639,7 +792,7 @@ Widget entityRowFor(BuildContext context, EntityItem item,
           mdDate(item.paidAt ?? item.createdAt),
           if (item.method != null) mdHumanize(item.method!),
         ].join(' · '),
-        leading: _toneIcon(context, Icons.payments_outlined, mdPaymentTone(item.status)),
+        leading: entityToneIcon(context, Icons.payments_outlined, mdPaymentTone(item.status)),
         trailing: Text(
           item.amount == null ? '—' : mdMoney(EntityMoney(item.amount!, item.currency)),
           style: AppType.bodyStrong(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
@@ -659,7 +812,7 @@ Widget entityRowFor(BuildContext context, EntityItem item,
         ref: ref,
         title: mdSubscriptionText(item.type),
         subtitle: [ref.name, mdDateTime(item.occurredAt)].where((s) => s.isNotEmpty).join(' · '),
-        leading: _toneIcon(context, Icons.receipt_long_outlined, AppTone.info),
+        leading: entityToneIcon(context, Icons.receipt_long_outlined, AppTone.info),
         body: [
           if (mdActorText(item.actorType) != null)
             Text(mdActorText(item.actorType)!, style: AppType.meta(context)),
@@ -667,66 +820,158 @@ Widget entityRowFor(BuildContext context, EntityItem item,
             Text('“${item.reason}”', maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
         ],
       );
+    case GradeRow():
+      return gradeRowFor(context, item, ownerKind: ownerKind, link: link);
+    case LessonRow():
+      return lessonRowFor(context, item);
+    case DeadlineRow():
+      return deadlineRowFor(context, item);
+    case ReviewRow():
+      return reviewRowFor(context, item, ownerKind: ownerKind, link: link);
     case RawRow():
       return const SizedBox.shrink();
   }
 }
 
-Widget _toneIcon(BuildContext context, IconData icon, AppTone tone) => Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(color: appToneTint(context, tone), shape: BoxShape.circle),
-      child: Icon(icon, size: AppIconSize.md, color: appToneInk(context, tone)),
-    );
+/// The figure of a grade: "80%" on its pass / fail tone, or the word for what it is waiting for.
+Widget gradeBadge(GradeRow g) {
+  if (g.percentage == null) {
+    return g.held
+        ? AppStatusBadge(label: 'md_p7_grade_held'.tr, tone: AppTone.neutral, icon: Icons.lock_clock_outlined, dense: true)
+        : AppStatusBadge(label: 'md_p7_grade_needs_review'.tr, tone: AppTone.warning, dense: true);
+  }
+  final tone = g.passed == false ? AppTone.warning : (g.passed == true ? AppTone.success : AppTone.brand);
+  return AppStatusBadge(label: mdPercent(g.percentage), tone: tone, dense: true);
+}
 
-/// One event of a student's history in a course: the icon on its tone, the sentence, the date and time.
-class EntityTimelineTile extends StatelessWidget {
-  const EntityTimelineTile(this.event, {super.key, this.last = false});
+IconData gradeIcon(String source) => source == 'assignment' ? Icons.assignment_outlined : Icons.quiz_outlined;
 
-  final EntityTimelineEvent event;
-  final bool last;
+/// "Quiz 1" · the course (or the student) · the date, its score as marks once it has them.
+Widget gradeRowFor(BuildContext context, GradeRow g, {EntityKind? ownerKind, bool link = true}) {
+  final onStudent = ownerKind == EntityKind.student;
+  final ref = (onStudent ? g.course?.ref : g.student) ?? g.course?.ref ?? const EntityRef(EntityKind.course, 0);
+  final who = onStudent ? g.course?.ref.name : (ownerKind == EntityKind.course ? g.student?.name : g.student?.name);
+  final marks = g.score != null && g.maxScore != null && g.maxScore! > 0
+      ? ltrIsolate('${_mark(g.score!)} / ${_mark(g.maxScore!)}')
+      : null;
+  return EntityRowFrame(
+    ref: ref,
+    link: link && ref.id > 0,
+    title: g.title.isEmpty ? 'md_p7_grade_untitled'.tr : g.title,
+    subtitle: [?who, mdDate(g.at), ?marks].where((s) => s.isNotEmpty).join(' · '),
+    leading: entityToneIcon(context, gradeIcon(g.source), g.passed == false ? AppTone.warning : AppTone.info),
+    trailing: gradeBadge(g),
+  );
+}
+
+String _mark(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
+
+String mdLessonState(String state) => _worded('md_p7_lesson_', state);
+
+AppTone mdLessonTone(String state) => switch (state) {
+      'done' => AppTone.success,
+      'in_progress' => AppTone.brand,
+      'upcoming' => AppTone.info,
+      _ => AppTone.neutral,
+    };
+
+/// A session of a learner's course: its state, when it is, the materials done.
+Widget lessonRowFor(BuildContext context, LessonRow l) {
+  final tone = mdLessonTone(l.state);
+  final icon = switch (l.state) {
+    'done' => Icons.check_circle_rounded,
+    'in_progress' => Icons.timelapse_rounded,
+    'upcoming' => Icons.event_rounded,
+    _ => Icons.radio_button_unchecked_rounded,
+  };
+  return EntityRowFrame(
+    ref: const EntityRef(EntityKind.course, 0),
+    link: false,
+    title: l.name.isEmpty ? 'md_p7_lesson_untitled'.tr : l.name,
+    subtitle: [
+      if (l.scheduledAt != null) mdDateTime(l.scheduledAt),
+      if (l.materials > 0) mdText('md_p7_materials_done', {'n': '${l.completed}', 'total': '${l.materials}'}),
+    ].join(' · '),
+    leading: entityToneIcon(context, icon, tone),
+    trailing: AppStatusBadge(label: mdLessonState(l.state), tone: tone, dense: true),
+    body: [
+      if (l.materials > 0 && l.completed > 0 && l.completed < l.materials)
+        EntityProgress(100 * l.completed / l.materials, tone: appToneColor(context, AppTone.brand)),
+    ],
+  );
+}
+
+/// "In 3 days" / "Tomorrow" / "Today".
+String mdDueIn(DateTime? utc, {DateTime? now}) {
+  if (utc == null) return '';
+  final days = (utc.difference(now ?? DateTime.now().toUtc()).inHours / 24).ceil();
+  if (days <= 0) return 'md_p7_due_today'.tr;
+  if (days == 1) return 'md_p7_due_tomorrow'.tr;
+  return countText(days,
+      ar2: 'بعد يومين', arFew: 'بعد {n} أيام', arMany: 'بعد {n} يوماً', ar1: 'غداً', en1: 'Tomorrow', en: 'In {n} days');
+}
+
+/// What is due next: a sentence and how long is left.
+Widget deadlineRowFor(BuildContext context, DeadlineRow d) {
+  final icon = switch (d.type) {
+    'exam' => Icons.quiz_outlined,
+    'assignment' => Icons.assignment_outlined,
+    'access_end' => Icons.timer_outlined,
+    _ => Icons.event_rounded,
+  };
+  final soon = d.at != null && d.at!.difference(DateTime.now().toUtc()).inDays < 3;
+  return EntityRowFrame(
+    ref: const EntityRef(EntityKind.course, 0),
+    link: false,
+    title: d.type == 'access_end' ? 'md_p7_deadline_access_end'.tr : d.title,
+    subtitle: [mdText('md_p7_deadline_${d.type}'), mdDateTime(d.at)].join(' · '),
+    leading: entityToneIcon(context, icon, soon ? AppTone.warning : AppTone.info),
+    trailing: AppStatusBadge(label: mdDueIn(d.at), tone: soon ? AppTone.warning : AppTone.neutral, dense: true),
+  );
+}
+
+/// Five stars, the filled ones on the warning tone.
+class EntityStars extends StatelessWidget {
+  const EntityStars(this.value, {super.key, this.size = AppIconSize.sm});
+
+  final int value;
+  final double size;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final tone = mdTimelineTone(event);
-    final review = event.type == 'rated' ? entityString(event.data['review']) : null;
-    final reason = event.type == 'withdrawn' ? entityString(event.data['reason']) : null;
-    final passed = event.type == 'exam_submitted' ? event.data['passed'] : null;
-    return IntrinsicHeight(
-      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        SizedBox(
-          width: 40,
-          child: Column(children: [
-            _toneIcon(context, mdTimelineIcon(event.type), tone),
-            if (!last)
-              Expanded(child: Container(width: AppBorder.strong, margin: const EdgeInsets.symmetric(vertical: 2), color: c.divider)),
-          ]),
-        ),
-        AppSpace.gapSm,
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(top: AppSpace.xs, bottom: last ? 0 : AppSpace.md),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(mdTimelineText(event), maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
-              const SizedBox(height: 2),
-              Text(mdDateTime(event.at), style: AppType.meta(context)),
-              if (passed is bool) ...[
-                const SizedBox(height: AppSpace.xxs),
-                AppStatusBadge(
-                    label: passed ? 'md_passed'.tr : 'md_failed'.tr,
-                    tone: passed ? AppTone.success : AppTone.warning,
-                    dense: true),
-              ],
-              if (review != null || reason != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpace.xxs),
-                  child: Text('“${review ?? reason}”', maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-                ),
-            ]),
-          ),
-        ),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => Semantics(
+        label: mdText('md_p7_stars', {'n': '$value'}),
+        excludeSemantics: true,
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          for (var i = 1; i <= 5; i++)
+            Icon(i <= value ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: size, color: i <= value ? appToneColor(context, AppTone.warning) : context.colors.textLight),
+        ]),
+      );
 }
+
+/// A student's rating of a course: who, which course, the stars, the text. The row opens the student.
+Widget reviewRowFor(BuildContext context, ReviewRow r, {EntityKind? ownerKind, bool link = true}) {
+  final student = r.student;
+  final ref = student ?? r.course?.ref ?? const EntityRef(EntityKind.course, 0);
+  return EntityRowFrame(
+    ref: ref,
+    link: link && ref.id > 0,
+    title: student?.name ?? '—',
+    subtitle: [
+      if (ownerKind != EntityKind.course) ?r.course?.ref.name,
+      mdDate(r.at),
+    ].join(' · '),
+    trailing: EntityStars(r.value),
+    body: [
+      if (r.review != null) Text(r.review!, maxLines: 4, overflow: TextOverflow.ellipsis, style: AppType.body(context)),
+    ],
+  );
+}
+
+/// An icon on a circle of its tone (a payment, a line of a timeline).
+Widget entityToneIcon(BuildContext context, IconData icon, AppTone tone, {double size = 40}) => Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: appToneTint(context, tone), shape: BoxShape.circle),
+      child: Icon(icon, size: size < 40 ? AppIconSize.sm : AppIconSize.md, color: appToneInk(context, tone)),
+    );

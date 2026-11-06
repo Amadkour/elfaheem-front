@@ -4,8 +4,11 @@
 //   EntitiesApi.instance.cached(ref)                      the cached summary or null (drawn at once, then refreshed)
 //   EntitiesApi.instance.prefetch(ref)                    warm the cache (a row hovered on the web)
 //   EntitiesApi.instance.page(ref, 'courses', query: …)   one page of a sub-list the summary listed
+//   EntitiesApi.instance.studentCourse(studentId, courseId)  one row of a student's courses
 //   EntitiesApi.instance.timeline(studentId, courseId)    one student's history in one course, newest first
 //   EntitiesApi.instance.invalidate(ref)                  after a change (the Manage sheet saved)
+//   EntitiesApi.instance.allowed(['student:12'])          which refs this viewer may open (a chip is a link only then)
+//   EntitiesApi.instance.message(studentId, text)         a staff note to one student (delivered as a notification)
 //
 // Every call goes through ApiClient (errors are ApiException: 404 `not_found` when the entity is out of the viewer's
 // scope, 403 `entity_forbidden` for a role with no entity views). Each path is written out in full so the API
@@ -112,11 +115,38 @@ class EntitiesApi {
       (EntityKind.category, 'courses') => await _api.get('/api/v1/entities/categories/$id/courses', queryParams: q),
       (EntityKind.category, 'teachers') => await _api.get('/api/v1/entities/categories/$id/teachers', queryParams: q),
       (EntityKind.category, 'students') => await _api.get('/api/v1/entities/categories/$id/students', queryParams: q),
+      (EntityKind.student, 'grades') => await _api.get('/api/v1/entities/students/$id/grades', queryParams: q),
+      (EntityKind.course, 'grades') => await _api.get('/api/v1/entities/courses/$id/grades', queryParams: q),
+      (EntityKind.course, 'lessons') => await _api.get('/api/v1/entities/courses/$id/lessons', queryParams: q),
+      (EntityKind.course, 'deadlines') => await _api.get('/api/v1/entities/courses/$id/deadlines', queryParams: q),
+      (EntityKind.course, 'reviews') => await _api.get('/api/v1/entities/courses/$id/reviews', queryParams: q),
+      (EntityKind.teacher, 'submissions') => await _api.get('/api/v1/entities/teachers/$id/submissions', queryParams: q),
+      (EntityKind.teacher, 'reviews') => await _api.get('/api/v1/entities/teachers/$id/reviews', queryParams: q),
       _ => null,
     };
     if (r == null) return const EntityPage();
     return EntityPage.fromJson<EntityItem>(r, (j) => EntityItem.parse(ref.kind, section, j));
   }
+
+  /// One student's row in one course (the course a detail focuses, whatever page it sorts onto); null when they are
+  /// not in it, or an older server that does not know the filter answered another row.
+  Future<EnrollmentRow?> studentCourse(int studentId, int courseId) async {
+    final p = await page(EntityRef(EntityKind.student, studentId), 'courses',
+        query: EntityListQuery(filter: {'course_id': '$courseId'}, size: 1));
+    return p.items.whereType<EnrollmentRow>().where((r) => r.subject.id == courseId).firstOrNull;
+  }
+
+  /// Of [tokens] (`student:12`, at most 100), the ones this viewer may open.
+  Future<Set<String>> allowed(List<String> tokens) async {
+    final r = entityMap(await _api.post('/api/v1/entities/access', body: {'refs': tokens}));
+    final list = r?['allowed'];
+    return list is List ? {for (final t in list) '$t'} : const {};
+  }
+
+  /// A staff note to one student they may see; [courseId] names the course it is about.
+  Future<void> message(int studentId, String text, {int? courseId}) =>
+      _api.post('/api/v1/entities/students/$studentId/message',
+          body: {'text': text, if (courseId != null) 'course_id': courseId});
 
   /// One student's history in one course, newest first.
   Future<EntityPage<EntityTimelineEvent>> timeline(int studentId, int courseId, {int page = 1, int size = 20}) async {

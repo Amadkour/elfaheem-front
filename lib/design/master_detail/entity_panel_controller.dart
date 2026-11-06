@@ -4,10 +4,11 @@
 // trail grows and drops whatever was ahead); [back] / [forward] walk it and keep what is ahead, like a browser;
 // [jumpTo] is a breadcrumb tap. [siblings] are the list's rows (the page hands them on every build), so [next] /
 // [previous] step through the list without closing the panel. [selectedId] is the row to draw as selected: the open
-// root, else the keyboard's cursor.
+// root, else the keyboard's cursor. [storage] keeps what the views of this trail held (a scroll offset, a sub-list's
+// query and rows), so Back returns to them as they were.
 library;
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 
 class EntityPanelController extends ChangeNotifier {
@@ -23,6 +24,12 @@ class EntityPanelController extends ChangeNotifier {
 
   /// The list's rows, in order (set by the page on every build; no notification).
   List<EntityRef> siblings = const [];
+
+  /// Set by the list: an entity changed in the panel (its rows may be out of date).
+  VoidCallback? onEntityChanged;
+  /// What the views of this trail remember; a new trail starts clean.
+  PageStorageBucket get storage => _storage;
+  PageStorageBucket _storage = PageStorageBucket();
 
   bool get isOpen => _index >= 0;
 
@@ -59,6 +66,10 @@ class EntityPanelController extends ChangeNotifier {
   /// away).
   int? get contextStudentId => _contextOf(EntityKind.course, EntityKind.student);
 
+  /// What the entity shown was opened from when that gives it a context (a student from a course, a course from a
+  /// student); the full page takes it along.
+  EntityRef? get contextRef => focusCourseId != null || contextStudentId != null ? _trail[_index - 1] : null;
+
   int? _contextOf(EntityKind shown, EntityKind from) {
     if (_index < 1 || _trail[_index].kind != shown) return null;
     final prev = _trail[_index - 1];
@@ -72,6 +83,7 @@ class EntityPanelController extends ChangeNotifier {
       ..clear()
       ..add(ref);
     _index = 0;
+    _storage = PageStorageBucket();
     if (rowKind == null || ref.kind == rowKind) _cursor = ref.id;
     notifyListeners();
   }
@@ -102,18 +114,6 @@ class EntityPanelController extends ChangeNotifier {
   }
 
   /// A breadcrumb: shows trail[index] (what is ahead stays for [forward]).
-  /// [named] is the loaded form of a ref already on the trail: an entry without a name takes it (the breadcrumbs).
-  void adopt(EntityRef named) {
-    var changed = false;
-    for (var i = 0; i < _trail.length; i++) {
-      if (_trail[i] == named && (_trail[i].label ?? '').isEmpty && (_trail[i].labelEn ?? '').isEmpty) {
-        _trail[i] = named;
-        changed = true;
-      }
-    }
-    if (changed) notifyListeners();
-  }
-
   void jumpTo(int index) {
     if (!isOpen || index < 0 || index >= _trail.length || index == _index) return;
     _index = index;
@@ -124,13 +124,33 @@ class EntityPanelController extends ChangeNotifier {
     if (!isOpen) return;
     _trail.clear();
     _index = -1;
+    _storage = PageStorageBucket();
     notifyListeners();
+  }
+
+  /// The name a summary brought, for the trail's entries that came without one (a deep link): the breadcrumbs read it.
+  void learn(EntityRef named) {
+    if (named.name.isEmpty) return;
+    var changed = false;
+    for (var i = 0; i < _trail.length; i++) {
+      if (_trail[i] == named && _trail[i].name.isEmpty) {
+        _trail[i] = named;
+        changed = true;
+      }
+    }
+    if (changed) notifyListeners();
   }
 
   /// Loads the entity shown again (after a change made elsewhere, e.g. the Manage sheet).
   void reload() {
     _revision++;
     notifyListeners();
+  }
+
+  /// The entity shown changed on the server: it loads again, and the list hears of it.
+  void entityChanged() {
+    reload();
+    onEntityChanged?.call();
   }
 
   int _siblingIndex(int? id) {
@@ -163,6 +183,7 @@ class EntityPanelController extends ChangeNotifier {
         ..clear()
         ..add(siblings[j]);
       _index = 0;
+      _storage = PageStorageBucket();
     }
     _cursor = siblings[j].id;
     notifyListeners();
