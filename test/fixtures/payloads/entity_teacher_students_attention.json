@@ -1,0 +1,50 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/teachers/2/students",
+  "uid": 2
+ },
+ "payload": {
+  "items": [
+   {
+    "student": {
+     "id": 4,
+     "name": "Alice Ali",
+     "username": "alice",
+     "image_url": null
+    },
+    "courses": 1,
+    "avg_progress": 40.0,
+    "last_activity_at": "2026-11-04T00:42:17.064600",
+    "attention": false
+   },
+   {
+    "student": {
+     "id": 5,
+     "name": "Bob Badr",
+     "username": "bob",
+     "image_url": null
+    },
+    "courses": 1,
+    "avg_progress": 70.0,
+    "last_activity_at": "2026-10-07T00:42:17.064600",
+    "attention": true
+   },
+   {
+    "student": {
+     "id": 7,
+     "name": "Zed Zaki",
+     "username": "zed",
+     "image_url": null
+    },
+    "courses": 1,
+    "avg_progress": 25.0,
+    "last_activity_at": null,
+    "attention": false
+   }
+  ],
+  "total": 3,
+  "page": 1,
+  "size": 20,
+  "pages": 1
+ }
+}

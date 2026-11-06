@@ -13,6 +13,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
@@ -165,6 +167,9 @@ class _Header extends StatelessWidget {
         const Divider(height: 22),
         GovKV(Icons.apartment_rounded, t('لدى', 'With'), it.ownerDept?.name ?? '—'),
         GovKV(Icons.outbox_rounded, it.beneficiary == null ? t('المصدر', 'Source') : t('قدّمه', 'Filed by'), source),
+        // a link only when this person may open that student (service staff, a council member: the name alone, D-290)
+        if (!it.anonymous && it.sourceUser != null)
+          EntityGuardedChip(EntityRef(EntityKind.student, it.sourceUser!.id, label: it.sourceUser!.name)),
         if (it.beneficiary != null) GovBeneficiaryRows(it.beneficiary!),
         if (it.chainStep != null && it.isOpen)
           GovKV(

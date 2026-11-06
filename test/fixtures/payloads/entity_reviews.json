@@ -1,0 +1,764 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/teachers/21/reviews?size=100",
+  "uid": 21
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 36,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.612818",
+    "course": {
+     "id": 38,
+     "name_ar": "Wb29 ar",
+     "name_en": "Wb29",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 35,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.545782",
+    "course": {
+     "id": 37,
+     "name_ar": "Wb28 ar",
+     "name_en": "Wb28",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 34,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.498556",
+    "course": {
+     "id": 36,
+     "name_ar": "Wb27 ar",
+     "name_en": "Wb27",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 33,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.445530",
+    "course": {
+     "id": 35,
+     "name_ar": "Wb26 ar",
+     "name_en": "Wb26",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 32,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.390134",
+    "course": {
+     "id": 34,
+     "name_ar": "Wb25 ar",
+     "name_en": "Wb25",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 31,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.347289",
+    "course": {
+     "id": 33,
+     "name_ar": "Wb24 ar",
+     "name_en": "Wb24",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 30,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.306942",
+    "course": {
+     "id": 32,
+     "name_ar": "Wb23 ar",
+     "name_en": "Wb23",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 29,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.262345",
+    "course": {
+     "id": 31,
+     "name_ar": "Wb22 ar",
+     "name_en": "Wb22",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 28,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.195356",
+    "course": {
+     "id": 30,
+     "name_ar": "Wb21 ar",
+     "name_en": "Wb21",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 27,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.137087",
+    "course": {
+     "id": 29,
+     "name_ar": "Wb20 ar",
+     "name_en": "Wb20",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 26,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.099059",
+    "course": {
+     "id": 28,
+     "name_ar": "Wb19 ar",
+     "name_en": "Wb19",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 25,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.053202",
+    "course": {
+     "id": 27,
+     "name_ar": "Wb18 ar",
+     "name_en": "Wb18",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 24,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:34.009593",
+    "course": {
+     "id": 26,
+     "name_ar": "Wb17 ar",
+     "name_en": "Wb17",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 23,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.949514",
+    "course": {
+     "id": 25,
+     "name_ar": "Wb16 ar",
+     "name_en": "Wb16",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 22,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.893895",
+    "course": {
+     "id": 24,
+     "name_ar": "Wb15 ar",
+     "name_en": "Wb15",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 21,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.842370",
+    "course": {
+     "id": 23,
+     "name_ar": "Wb14 ar",
+     "name_en": "Wb14",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 20,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.789333",
+    "course": {
+     "id": 22,
+     "name_ar": "Wb13 ar",
+     "name_en": "Wb13",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 19,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.734831",
+    "course": {
+     "id": 21,
+     "name_ar": "Wb12 ar",
+     "name_en": "Wb12",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 18,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.697260",
+    "course": {
+     "id": 20,
+     "name_ar": "Wb11 ar",
+     "name_en": "Wb11",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 17,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.651190",
+    "course": {
+     "id": 19,
+     "name_ar": "Wb10 ar",
+     "name_en": "Wb10",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 16,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.597727",
+    "course": {
+     "id": 18,
+     "name_ar": "Wb9 ar",
+     "name_en": "Wb9",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 15,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.546865",
+    "course": {
+     "id": 17,
+     "name_ar": "Wb8 ar",
+     "name_en": "Wb8",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 14,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.484756",
+    "course": {
+     "id": 16,
+     "name_ar": "Wb7 ar",
+     "name_en": "Wb7",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 13,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.431442",
+    "course": {
+     "id": 15,
+     "name_ar": "Wb6 ar",
+     "name_en": "Wb6",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 12,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.382195",
+    "course": {
+     "id": 14,
+     "name_ar": "Wb5 ar",
+     "name_en": "Wb5",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 11,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.334660",
+    "course": {
+     "id": 13,
+     "name_ar": "Wb4 ar",
+     "name_en": "Wb4",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 10,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.290774",
+    "course": {
+     "id": 12,
+     "name_ar": "Wb3 ar",
+     "name_en": "Wb3",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 9,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.238893",
+    "course": {
+     "id": 11,
+     "name_ar": "Wb2 ar",
+     "name_en": "Wb2",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 8,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.183118",
+    "course": {
+     "id": 10,
+     "name_ar": "Wb1 ar",
+     "name_en": "Wb1",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   },
+   {
+    "id": 7,
+    "value": 3,
+    "review": null,
+    "at": "2026-11-06T00:42:33.127484",
+    "course": {
+     "id": 9,
+     "name_ar": "Wb0 ar",
+     "name_en": "Wb0",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 21,
+      "name": "Twb",
+      "username": "twb",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 22,
+     "name": "Swb",
+     "username": "swb",
+     "image_url": null
+    }
+   }
+  ],
+  "total": 30,
+  "page": 1,
+  "size": 100,
+  "pages": 1
+ }
+}

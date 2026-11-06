@@ -3,6 +3,9 @@ import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, appInk, appText;
 import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
@@ -31,6 +34,14 @@ class NotificationsTab extends StatefulWidget {
 }
 
 class _NotificationsTabState extends State<NotificationsTab> {
+  final _panel = EntityPanelController(); // a chip opens the course or teacher beside the list (a sheet on a phone)
+
+  @override
+  void dispose() {
+    _panel.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +54,10 @@ class _NotificationsTabState extends State<NotificationsTab> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<NotificationsProvider>();
-    return NotificationsStateBody(
+    return MasterDetailScaffold(
+      controller: _panel,
+      rootLabel: 'notifications'.tr,
+      list: NotificationsStateBody(
       loading: provider.isLoading,
       empty: provider.allNotifs.isEmpty,
       error: provider.hasError ? (provider.errorMessage ?? '') : null,
@@ -64,6 +78,7 @@ class _NotificationsTabState extends State<NotificationsTab> {
           groupTitle: 'yesterday'.tr,
         )),
       ],
+      ),
     );
   }
 }
@@ -322,6 +337,10 @@ class NotificationTile extends StatelessWidget {
                           style: appText(13, w: FontWeight.w400, c: c.textMedium, h: 1.45),
                         ),
                       ],
+                      if (notif.entities.isNotEmpty)
+                        Wrap(spacing: AppSpace.xxs, children: [
+                          for (final m in notif.entities) EntityChip(m.ref, enabled: m.canOpen, maxWidth: 200),
+                        ]),
                     ],
                   ),
                 ),

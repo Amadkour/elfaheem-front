@@ -1,7 +1,8 @@
 // lib/features/parent/parent_children_page.dart — the linked children of the parent.
 // One card per child, in the same design system as the student / teacher analytics:
 //   photo · name · one warm sentence (strongest / weakest area) · progress / attendance / exams rings ·
-//   unread alerts · courses that need attention.  Tap → the child's full report.
+//   unread alerts · courses that need attention.  Tap → the child's panel (D-290: their courses, grades and history,
+//   as the child sees them); the Reports chip and the panel's action → the child's full report.
 library;
 
 import 'package:flutter/material.dart';
@@ -14,7 +15,12 @@ import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
 import '../shared/inbox/unified_inbox.dart' show InboxEntryCard;
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 
 class ParentChildrenPage extends StatefulWidget {
@@ -27,6 +33,17 @@ class ParentChildrenPage extends StatefulWidget {
 }
 
 class _ParentChildrenPageState extends State<ParentChildrenPage> {
+  final _panel = EntityPanelController(rowKind: EntityKind.student);
+
+  @override
+  void dispose() {
+    _panel.dispose();
+    super.dispose();
+  }
+
+  void _openReport(BuildContext context, int id, String name) => Navigator.of(context)
+      .push(MaterialPageRoute(builder: (_) => ParentChildReportScreen(studentId: id, studentName: name)));
+
   @override
   void initState() {
     super.initState();
@@ -52,9 +69,27 @@ class _ParentChildrenPageState extends State<ParentChildrenPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => MasterDetailScaffold(
+        controller: _panel,
+        rootLabel: 'md_p7_my_children'.tr,
+        actions: (ref, s) => [
+          if (ref.kind == EntityKind.student)
+            EntityPanelAction(
+              icon: Icons.insights_rounded,
+              label: 'pl_view_report'.tr,
+              primary: true,
+              onPressed: () => _openReport(context, ref.id, ref.name),
+            ),
+        ],
+        list: Builder(builder: _list),
+      );
+
+  Widget _list(BuildContext context) {
     final p = context.watch<ParentLinkProvider>();
     final unread = _unread(context);
+    _panel.siblings = [
+      for (final ch in p.children) EntityRef(EntityKind.student, (ch['id'] as num).toInt(), label: '${ch['name']}'),
+    ];
 
     if (p.hasError && p.children.isEmpty) {
       return ErrorRetry(message: p.errorMessage ?? '', onRetry: p.loadAll);
@@ -117,11 +152,11 @@ class _ChildCard extends StatelessWidget {
     final name = '${data['name']}';
     final pr = profile;
     final attention = pr?.courses.where((b) => _needsAttention(b.attendance, b.examAvg)).length ?? 0;
-    void open() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ParentChildReportScreen(studentId: id, studentName: name)));
+    void report() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ParentChildReportScreen(studentId: id, studentName: name)));
     return AnCard(
       padding: EdgeInsets.zero,
       borderColor: attention > 0 ? c.warning.withValues(alpha: 0.45) : null,
-      onTap: open,
+      onTap: () => EntityNavigator.open(context, EntityRef(EntityKind.student, id, label: name)),
       child: Column(children: [
         Container(
           padding: const EdgeInsets.fromLTRB(16, 16, 12, 14),
@@ -172,7 +207,7 @@ class _ChildCard extends StatelessWidget {
           child: Align(
             alignment: AlignmentDirectional.centerStart,
             child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              AnChip(icon: Icons.insights_rounded, label: 'pl_tab_reports'.tr, color: c.primary, onTap: open),
+              AnChip(icon: Icons.insights_rounded, label: 'pl_tab_reports'.tr, color: c.primary, onTap: report),
               if (pr != null) AnTag('${pr.courses.length} ${anTr('an_courses', 'Courses')}', c.accent2, icon: Icons.menu_book_rounded),
               if (attention > 0)
                 AnTag(anFmt('pl_attention_courses', {'n': attention}, '{n} need attention'), c.warning, icon: Icons.volunteer_activism_rounded),

@@ -28,7 +28,7 @@ import '../live/meeting_recording_sheets.dart' show CloudDrivesSettingsEntry;
 import '../../parent/student_link_code_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
-import '../../student/certificates/my_certificates_screen.dart';
+import '../../student/record/student_record_pages.dart';
 import '../../teacher/profile/payout/teacher_payouts_screen.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';
@@ -281,8 +281,17 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               child: AppSettingsTile(
                                 icon: Icons.workspace_premium_rounded,
                                 color: c.primary,
-                                label: 'my_certificates'.tr,
-                                onTap: () => _push(const MyCertificatesScreen()),
+                                label: 'md_p7_grades_certificates'.tr,
+                                onTap: () => _push(const StudentGradesPage()),
+                              ),
+                            ),
+                            ParentComponent(
+                              featureKey: 'profile.my_payments',
+                              child: AppSettingsTile(
+                                icon: Icons.receipt_long_rounded,
+                                color: c.primary,
+                                label: 'md_p7_payments_subscriptions'.tr,
+                                onTap: () => _push(const StudentMoneyPage()),
                               ),
                             ),
                             ParentComponent(

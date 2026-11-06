@@ -2,6 +2,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
+import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
+import 'package:flutter_education_app/design/master_detail/entity_viewer_actions.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
@@ -43,11 +49,43 @@ class OrgCoursesPage extends StatelessWidget {
 
 /// The page anatomy (D-103, org_page_kit.dart): search · More (⋯: import / template / enrollments / exports) ·
 /// ONE primary action "New course" (FAB on phones, button when wide) · the course cards.
-class _CoursesView extends StatelessWidget {
+class _CoursesView extends StatefulWidget {
   const _CoursesView();
 
   @override
-  Widget build(BuildContext context) {
+  State<_CoursesView> createState() => _CoursesViewState();
+}
+
+/// A course opens its connected panel (D-290: statistics and enrolled students, as far as this person's rights go);
+/// Open course is the course page, where its teacher finds Exams, attendance and the tools.
+class _CoursesViewState extends State<_CoursesView> {
+  final _panel = EntityPanelController(rowKind: EntityKind.course);
+
+  @override
+  void dispose() {
+    _panel.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MasterDetailScaffold(
+        controller: _panel,
+        rootLabel: t('المقررات', 'Courses'),
+        actions: (ref, summary) => ref.kind == EntityKind.course
+            ? [
+                EntityPanelAction(
+                  key: const ValueKey('md.open_course'),
+                  icon: Icons.open_in_new_rounded,
+                  label: t('فتح المقرر', 'Open course'),
+                  primary: true,
+                  onPressed: () => openCourseProfile(context, ref.id),
+                ),
+              ]
+            : entityViewerActions(context, ref, summary),
+        list: Builder(builder: _list),
+      );
+
+  Widget _list(BuildContext context) {
     final p = context.watch<OrgCoursesProvider>();
     final s = context.watch<OrgSession>();
     return OrgPageBody(
@@ -121,8 +159,8 @@ class _CourseTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
-        // the course page: its teacher finds Exams, attendance and the course's tools there (course_profile_actions)
-        onTap: () => openCourseProfile(context, asInt(row['id'])),
+        onTap: () => EntityNavigator.open(
+            context, EntityRef(EntityKind.course, asInt(row['id']), label: '${row['name_ar'] ?? ''}', labelEn: '${row['name_en'] ?? ''}')),
         child: Row(children: [
           IconBadge(Icons.menu_book_rounded, c.primary),
           const SizedBox(width: 12),

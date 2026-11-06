@@ -127,6 +127,7 @@ class MyCoursesProvider extends BaseProvider {
       CourseStatus.all => _all,
       CourseStatus.inProgress => _all.where(_ip).toList(),
       CourseStatus.completed => _all.where(_done).toList(),
+      CourseStatus.withdrawn => const [], // not this list's: the shared list of the courses left (My courses)
     };
     if (_query.isEmpty) return List.unmodifiable(list);
     final q = _query.toLowerCase();

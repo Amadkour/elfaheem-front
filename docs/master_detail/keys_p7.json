@@ -1,0 +1,330 @@
+{
+  "md_p7_my_students": {
+    "en": "My students",
+    "ar": "طلابي"
+  },
+  "md_p7_sec_grades": {
+    "en": "Grades",
+    "ar": "الدرجات"
+  },
+  "md_p7_sec_submissions": {
+    "en": "Submissions",
+    "ar": "التسليمات"
+  },
+  "md_p7_sec_reviews": {
+    "en": "Reviews",
+    "ar": "التقييمات"
+  },
+  "md_p7_sec_lessons": {
+    "en": "Lessons",
+    "ar": "الدروس"
+  },
+  "md_p7_sec_deadlines": {
+    "en": "Coming up",
+    "ar": "المواعيد القادمة"
+  },
+  "md_p7_empty_grades": {
+    "en": "No grades yet",
+    "ar": "لا توجد درجات بعد"
+  },
+  "md_p7_empty_submissions": {
+    "en": "No submissions yet",
+    "ar": "لا توجد تسليمات بعد"
+  },
+  "md_p7_empty_reviews": {
+    "en": "No reviews yet",
+    "ar": "لا توجد تقييمات بعد"
+  },
+  "md_p7_empty_lessons": {
+    "en": "No lessons yet",
+    "ar": "لا توجد دروس بعد"
+  },
+  "md_p7_empty_deadlines": {
+    "en": "Nothing is due right now",
+    "ar": "لا يوجد شيء مطلوب الآن"
+  },
+  "md_p7_empty_students": {
+    "en": "No students yet",
+    "ar": "لا يوجد طلاب بعد"
+  },
+  "md_p7_empty_students_hint": {
+    "en": "Students appear here once they enroll in your courses",
+    "ar": "سيظهر الطلاب هنا عند التحاقهم بكورساتك"
+  },
+  "md_p7_search_students": {
+    "en": "Search by name",
+    "ar": "ابحث بالاسم"
+  },
+  "md_p7_search_submissions": {
+    "en": "Search assessment, student or course",
+    "ar": "ابحث عن تقييم أو طالب أو كورس"
+  },
+  "md_p7_search_reviews": {
+    "en": "Search reviews",
+    "ar": "ابحث في التقييمات"
+  },
+  "md_p7_search_grades": {
+    "en": "Search assessment or course",
+    "ar": "ابحث عن تقييم أو كورس"
+  },
+  "md_p7_search_payments": {
+    "en": "Search by course",
+    "ar": "ابحث باسم الكورس"
+  },
+  "md_p7_needs_attention": {
+    "en": "Needs attention",
+    "ar": "يحتاج متابعة"
+  },
+  "md_p7_on_track": {
+    "en": "On track",
+    "ar": "منتظم"
+  },
+  "md_p7_status": {
+    "en": "Status",
+    "ar": "الحالة"
+  },
+  "md_p7_assessment": {
+    "en": "Assessment",
+    "ar": "التقييم"
+  },
+  "md_p7_score": {
+    "en": "Score",
+    "ar": "الدرجة"
+  },
+  "md_p7_date": {
+    "en": "Date",
+    "ar": "التاريخ"
+  },
+  "md_p7_rating": {
+    "en": "Rating",
+    "ar": "التقييم"
+  },
+  "md_p7_review": {
+    "en": "Review",
+    "ar": "المراجعة"
+  },
+  "md_p7_amount": {
+    "en": "Amount",
+    "ar": "المبلغ"
+  },
+  "md_p7_stars": {
+    "en": "{n} out of 5 stars",
+    "ar": "{n} من 5 نجوم"
+  },
+  "md_p7_sort_score_desc": {
+    "en": "Highest score",
+    "ar": "الأعلى درجة"
+  },
+  "md_p7_sort_score_asc": {
+    "en": "Lowest score",
+    "ar": "الأقل درجة"
+  },
+  "md_p7_sort_lowest": {
+    "en": "Lowest rating",
+    "ar": "الأقل تقييماً"
+  },
+  "md_p7_sort_highest": {
+    "en": "Highest rating",
+    "ar": "الأعلى تقييماً"
+  },
+  "md_p7_sort_newest": {
+    "en": "Newest",
+    "ar": "الأحدث"
+  },
+  "md_p7_sort_oldest": {
+    "en": "Oldest",
+    "ar": "الأقدم"
+  },
+  "md_p7_grade_needs_review": {
+    "en": "Needs grading",
+    "ar": "بانتظار التصحيح"
+  },
+  "md_p7_grade_graded": {
+    "en": "Graded",
+    "ar": "مصحَّح"
+  },
+  "md_p7_grade_held": {
+    "en": "Result pending",
+    "ar": "النتيجة قيد المراجعة"
+  },
+  "md_p7_grade_untitled": {
+    "en": "Assessment",
+    "ar": "تقييم"
+  },
+  "md_p7_lesson_done": {
+    "en": "Done",
+    "ar": "مكتمل"
+  },
+  "md_p7_lesson_in_progress": {
+    "en": "In progress",
+    "ar": "قيد الدراسة"
+  },
+  "md_p7_lesson_upcoming": {
+    "en": "Upcoming",
+    "ar": "قادم"
+  },
+  "md_p7_lesson_open": {
+    "en": "Not started",
+    "ar": "لم يبدأ"
+  },
+  "md_p7_lesson_untitled": {
+    "en": "Lesson",
+    "ar": "درس"
+  },
+  "md_p7_materials_done": {
+    "en": "{n} of {total} materials",
+    "ar": "{n} من {total} مواد"
+  },
+  "md_p7_due_today": {
+    "en": "Today",
+    "ar": "اليوم"
+  },
+  "md_p7_due_tomorrow": {
+    "en": "Tomorrow",
+    "ar": "غداً"
+  },
+  "md_p7_deadline_exam": {
+    "en": "Exam",
+    "ar": "اختبار"
+  },
+  "md_p7_deadline_assignment": {
+    "en": "Assignment",
+    "ar": "واجب"
+  },
+  "md_p7_deadline_session": {
+    "en": "Session",
+    "ar": "محاضرة"
+  },
+  "md_p7_deadline_access_end": {
+    "en": "Your access ends",
+    "ar": "ينتهي وصولك للكورس"
+  },
+  "md_p7_continue": {
+    "en": "Continue learning",
+    "ar": "تابع التعلم"
+  },
+  "md_p7_review_course": {
+    "en": "Review the course",
+    "ar": "راجع الكورس"
+  },
+  "md_p7_open_course": {
+    "en": "Open course",
+    "ar": "فتح الكورس"
+  },
+  "md_p7_message": {
+    "en": "Message",
+    "ar": "مراسلة"
+  },
+  "md_p7_message_to": {
+    "en": "Message to {name}",
+    "ar": "رسالة إلى {name}"
+  },
+  "md_p7_message_hint": {
+    "en": "Write a short note",
+    "ar": "اكتب ملاحظة قصيرة"
+  },
+  "md_p7_message_note": {
+    "en": "It reaches the student as a notification",
+    "ar": "تصل إلى الطالب كإشعار"
+  },
+  "md_p7_message_send": {
+    "en": "Send",
+    "ar": "إرسال"
+  },
+  "md_p7_message_sent": {
+    "en": "Sent to {name}",
+    "ar": "أُرسلت إلى {name}"
+  },
+  "md_p7_message_limit": {
+    "en": "You have sent many messages in the last hour. Try again later.",
+    "ar": "أرسلت رسائل كثيرة خلال الساعة الماضية، حاول لاحقاً"
+  },
+  "md_p7_mine_start": {
+    "en": "Your first lesson is waiting",
+    "ar": "درسك الأول في انتظارك"
+  },
+  "md_p7_mine_early": {
+    "en": "Good start, keep the rhythm",
+    "ar": "بداية جيدة، حافظ على وتيرتك"
+  },
+  "md_p7_mine_middle": {
+    "en": "You are well on your way",
+    "ar": "أنت تتقدم بثبات"
+  },
+  "md_p7_mine_close": {
+    "en": "Almost there, finish strong",
+    "ar": "اقتربت من النهاية، واصل"
+  },
+  "md_p7_mine_completed": {
+    "en": "You finished this course. Well done!",
+    "ar": "أنهيت هذا الكورس، أحسنت!"
+  },
+  "md_p7_mine_withdrawn": {
+    "en": "You left this course",
+    "ar": "انسحبت من هذا الكورس"
+  },
+  "md_p7_mine_expired": {
+    "en": "Your access to this course ended",
+    "ar": "انتهى وصولك إلى هذا الكورس"
+  },
+  "md_p7_mine_pending": {
+    "en": "Your enrollment is being confirmed",
+    "ar": "جارٍ تأكيد التحاقك"
+  },
+  "md_p7_child_start": {
+    "en": "Has not started yet",
+    "ar": "لم يبدأ بعد"
+  },
+  "md_p7_child_early": {
+    "en": "Just getting started",
+    "ar": "في البداية"
+  },
+  "md_p7_child_middle": {
+    "en": "Making steady progress",
+    "ar": "يتقدم بثبات"
+  },
+  "md_p7_child_close": {
+    "en": "Almost finished",
+    "ar": "اقترب من النهاية"
+  },
+  "md_p7_child_completed": {
+    "en": "Finished this course",
+    "ar": "أنهى هذا الكورس"
+  },
+  "md_p7_child_withdrawn": {
+    "en": "Left this course",
+    "ar": "انسحب من هذا الكورس"
+  },
+  "md_p7_child_expired": {
+    "en": "Access to this course ended",
+    "ar": "انتهى الوصول إلى هذا الكورس"
+  },
+  "md_p7_child_pending": {
+    "en": "Enrollment is being confirmed",
+    "ar": "جارٍ تأكيد الالتحاق"
+  },
+  "md_p7_left": {
+    "en": "Left",
+    "ar": "انسحبت منها"
+  },
+  "md_p7_empty_left": {
+    "en": "You have not left any course",
+    "ar": "لم تنسحب من أي كورس"
+  },
+  "md_p7_reason": {
+    "en": "Reason",
+    "ar": "السبب"
+  },
+  "md_p7_grades_certificates": {
+    "en": "Grades and certificates",
+    "ar": "الدرجات والشهادات"
+  },
+  "md_p7_payments_subscriptions": {
+    "en": "Payments and subscriptions",
+    "ar": "المدفوعات والاشتراكات"
+  },
+  "md_p7_my_children": {
+    "en": "My children",
+    "ar": "أبنائي"
+  }
+}
