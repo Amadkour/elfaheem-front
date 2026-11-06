@@ -33,18 +33,21 @@ import 'adv_models.dart';
 import 'adv_notes.dart';
 import 'adv_parts.dart';
 import 'adv_students_page.dart' show showAdvStudentSheet;
+import 'adv_warning_parts.dart' show advWarningOn;
+import 'adv_warning_section.dart';
 
 /// The 360's sections, in order.
-const advCaseSections = ['overview', 'academic', 'flags', 'notes', 'timeline'];
+const advCaseSections = ['overview', 'academic', 'flags', 'warning', 'notes', 'timeline'];
 
 /// The sections of the wide layout's second column.
-const advCasePanes = ['flags', 'notes', 'timeline'];
+const advCasePanes = ['flags', 'warning', 'notes', 'timeline'];
 
 String advCaseSectionLabel(String s) => switch (s) {
       'academic' => t('الأكاديمي', 'Academic'),
       'flags' => t('التنبيهات', 'Flags'),
       'notes' => t('الملاحظات', 'Notes'),
       'timeline' => t('السجل الزمني', 'Timeline'),
+      'warning' => t('الإنذار المبكر', 'Early warning'),
       _ => t('نظرة عامة', 'Overview'),
     };
 
@@ -53,6 +56,7 @@ IconData advCaseSectionIcon(String s) => switch (s) {
       'flags' => Icons.flag_outlined,
       'notes' => Icons.sticky_note_2_outlined,
       'timeline' => Icons.timeline_rounded,
+      'warning' => Icons.radar_rounded,
       _ => Icons.dashboard_outlined,
     };
 
@@ -535,6 +539,7 @@ class AdvStudentView extends StatelessWidget {
     this.flags = const SizedBox.shrink(),
     this.notes = const SizedBox.shrink(),
     this.timeline = const SizedBox.shrink(),
+    this.warning,
     this.now,
     this.onRetry,
     this.onSection,
@@ -550,6 +555,9 @@ class AdvStudentView extends StatelessWidget {
 
   /// The panes, built by the caller from AdvFlagsPane · AdvNotesPane · AdvTimelinePane.
   final Widget flags, notes, timeline;
+
+  /// Phase 6: the "Early warning" pane (AdvWarningSection); null leaves the section out (switched off).
+  final Widget? warning;
   final DateTime? now;
   final VoidCallback? onRetry, onChangeAdvisor;
   final ValueChanged<String>? onSection;
@@ -560,8 +568,12 @@ class AdvStudentView extends StatelessWidget {
   Widget _pane(String s) => switch (s) {
         'notes' => notes,
         'timeline' => timeline,
+        'warning' => warning ?? const SizedBox.shrink(),
         _ => flags,
       };
+
+  List<String> get _sections => [for (final s in advCaseSections) if (s != 'warning' || warning != null) s];
+  List<String> get _panes => [for (final s in advCasePanes) if (s != 'warning' || warning != null) s];
 
   @override
   Widget build(BuildContext context) {
@@ -573,7 +585,7 @@ class AdvStudentView extends StatelessWidget {
       final header = AdvStudentHeader(profile: p, onChangeAdvisor: onChangeAdvisor);
       final pad = EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl);
       if (box.maxWidth >= wideFrom) {
-        final pane = advCasePanes.contains(section) ? section : 'flags';
+        final pane = _panes.contains(section) ? section : 'flags';
         return ListView(padding: pad, children: [
           header,
           const SizedBox(height: AppSpace.md),
@@ -591,7 +603,7 @@ class AdvStudentView extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 OrgSegmented<String>(
                   value: pane,
-                  options: [for (final s in advCasePanes) (s, _paneLabel(s, p))],
+                  options: [for (final s in _panes) (s, _paneLabel(s, p))],
                   onChanged: (s) => onSection?.call(s),
                 ),
                 const SizedBox(height: AppSpace.sm),
@@ -601,22 +613,23 @@ class AdvStudentView extends StatelessWidget {
           ]),
         ]);
       }
-      final index = advCaseSections.indexOf(section).clamp(0, advCaseSections.length - 1);
-      final current = advCaseSections[index];
+      final sections = _sections;
+      final index = sections.indexOf(section).clamp(0, sections.length - 1);
+      final current = sections[index];
       return ListView(padding: EdgeInsets.only(bottom: pad.bottom), children: [
         Padding(padding: EdgeInsets.fromLTRB(pad.left, pad.top, pad.right, 0), child: header),
         const SizedBox(height: AppSpace.sm),
         OrgSectionChips(
-          items: [for (final s in advCaseSections) (_paneLabel(s, p), advCaseSectionIcon(s))],
+          items: [for (final s in sections) (_paneLabel(s, p), advCaseSectionIcon(s))],
           index: index,
-          onChanged: (i) => onSection?.call(advCaseSections[i]),
+          onChanged: (i) => onSection?.call(sections[i]),
         ),
         const SizedBox(height: AppSpace.sm),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: pad.left),
           child: switch (current) {
             'academic' => AdvAcademicSection(profile: p),
-            'flags' || 'notes' || 'timeline' => _pane(current),
+            'flags' || 'warning' || 'notes' || 'timeline' => _pane(current),
             _ => AdvOverviewSection(profile: p, now: now),
           },
         ),
@@ -637,11 +650,15 @@ class AdvStudentView extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class AdvStudentPage extends StatelessWidget {
-  const AdvStudentPage({super.key, required this.orgId, required this.memberId, this.name});
+  const AdvStudentPage({super.key, required this.orgId, required this.memberId, this.name, this.section = 'overview', this.logContact = false});
   final int orgId, memberId;
 
   /// Shown as the title until the profile loads.
   final String? name;
+
+  /// Phase 6: the section it opens on, and "Propose a meeting" (the note composer set to log a contact).
+  final String section;
+  final bool logContact;
 
   @override
   Widget build(BuildContext context) => OrgPushedPage(
@@ -649,13 +666,15 @@ class AdvStudentPage extends StatelessWidget {
         subtitle: t('ملف الإرشاد', 'Advising record'),
         helpPageId: 'org.advising',
         maxWidth: 1280,
-        child: _AdvStudentBody(orgId: orgId, memberId: memberId),
+        child: _AdvStudentBody(orgId: orgId, memberId: memberId, section: section, logContact: logContact),
       );
 }
 
 class _AdvStudentBody extends StatefulWidget {
-  const _AdvStudentBody({required this.orgId, required this.memberId});
+  const _AdvStudentBody({required this.orgId, required this.memberId, this.section = 'overview', this.logContact = false});
   final int orgId, memberId;
+  final String section;
+  final bool logContact;
 
   @override
   State<_AdvStudentBody> createState() => _AdvStudentBodyState();
@@ -670,7 +689,8 @@ class _AdvStudentBodyState extends State<_AdvStudentBody> {
   AdvCaseProfile? _profile;
   AdvLoad _load = AdvLoad.loading;
   String? _error;
-  String _section = 'overview';
+  late String _section = widget.section;
+  final _warningKey = GlobalKey<AdvWarningSectionState>();
   List<AdvCategory> _categories = const [];
 
   String _flagView = 'open';
@@ -691,7 +711,7 @@ class _AdvStudentBodyState extends State<_AdvStudentBody> {
   bool _tlLoadingMore = false;
 
   final _body = TextEditingController();
-  AdvNoteDraft _draft = const AdvNoteDraft();
+  late AdvNoteDraft _draft = widget.logContact ? const AdvNoteDraft(contactMode: 'in_person') : const AdvNoteDraft();
   bool _draftSaved = false, _sending = false;
   String? _composeError;
   List<AdvQueuedNote> _queued = const [];
@@ -742,7 +762,7 @@ class _AdvStudentBodyState extends State<_AdvStudentBody> {
   // ── loading ────────────────────────────────────────────────────────────────
 
   Future<void> _reloadAll() async {
-    await Future.wait([_loadProfile(), _loadFlags(), _loadNotes(), _loadTimeline(), _loadCategories()]);
+    await Future.wait([_loadProfile(), _loadFlags(), _loadNotes(), _loadTimeline(), _loadCategories(), ?_warningKey.currentState?.reload()]);
     if (mounted && _profile != null) OrgPageRefresh.reportUpdated(context);
   }
 
@@ -1073,7 +1093,20 @@ class _AdvStudentBodyState extends State<_AdvStudentBody> {
         onStatus: _flagStatus,
         onEdit: _editFlag,
         onHistory: (f) => showAdvFlagHistorySheet(context, _api, f),
+        onAlerts: advWarningOn() ? (f) => showAdvFlagAlertsSheet(context, orgId: _org, flag: f) : null,
       ),
+      warning: advWarningOn()
+          ? AdvWarningSection(
+              key: _warningKey,
+              orgId: _org,
+              memberId: _member,
+              onOpenFlag: (_) => setState(() => _section = 'flags'),
+              onEvaluated: () {
+                _loadFlags();
+                _afterWrite();
+              },
+            )
+          : null,
       notes: AdvNotesPane(
         load: _notesLoad,
         composer: composer,

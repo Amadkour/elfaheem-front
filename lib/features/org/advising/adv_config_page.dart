@@ -23,6 +23,7 @@ import '../org_v3.dart' show orgCall, orgErrorText;
 import 'adv_api.dart';
 import 'adv_models.dart';
 import 'adv_parts.dart';
+import 'adv_warning_parts.dart' show AdvAlertSettingsGroup, advWarningOn;
 
 /// The key of a scope in the page: `org`, or `dept:12` · `program:4` · `level:2` · `cohort:2024`.
 String advScopeKey(String type, String? ref) => type == 'org' ? 'org' : '$type:${ref ?? ''}';
@@ -118,6 +119,8 @@ class AdvConfigView extends StatelessWidget {
           AppBanner(icon: Icons.error_outline_rounded, color: context.colors.danger, text: d.error!),
         ],
         ..._fields(context, b, d),
+        // Phase 6: early warning — digests and nudges
+        if (advWarningOn()) AdvAlertSettingsGroup(bundle: b, draft: d, busy: busy, onField: onField, onReset: onReset),
         if (d.scopeType == 'org') ..._overrides(context, b),
       ]),
     );

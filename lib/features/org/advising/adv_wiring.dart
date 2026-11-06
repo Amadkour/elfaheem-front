@@ -12,6 +12,13 @@ import '../org_providers.dart' show OrgSession;
 import 'adv_models.dart' show AdvMineInfo, advMaybeEligible;
 import 'adv_setup_page.dart';
 import 'adv_student_page.dart' show AdvStudentPage;
+import '../org_v3.dart' show orgCall, orgParseUtc;
+import 'adv_alerts_page.dart' show AdvAlertsPage;
+import 'adv_api.dart' show AdvApi;
+import 'adv_models.dart' show AdvStatus;
+import 'adv_my_advisor_page.dart' show AdvMyAdvisorPage;
+import 'adv_warning_parts.dart' show advWarningOn;
+import 'adv_workspace_page.dart' show AdvWorkspacePage;
 
 /// Kill switch of the whole module (`org.advising`, feature_catalog.py; not org-manageable). Hidden features
 /// disappear.
@@ -40,3 +47,31 @@ List<(String, String, IconData, Widget)> advServiceSubs(OrgSession s) {
 /// `module: advising` with `member_id` / `flag_id`): that student's 360. `AppNavigator` opens the organization first.
 Future<void> advOpenStudentLink(NavigatorState nav, {required int orgId, required int memberId}) =>
     nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentPage(orgId: orgId, memberId: memberId)));
+
+/// Phase 6: the early-warning notices that name a screen (push data `module: advising` with `screen`, or a
+/// `warning_alert` with `action: propose_meeting`). `alerts` → the alerts (since the digest's `since`) · `workspace`
+/// → My students by last contact · `advisor` → the student's advising card · `propose_meeting` + `member_id` → the
+/// 360 ready to log a contact. False when [data] names none of them (the caller opens the 360 or the notifications).
+Future<bool> advOpenScreenLink(NavigatorState nav, {required int orgId, required Map<String, dynamic> data}) async {
+  if (!advWarningOn()) return false;
+  final screen = '${data['screen'] ?? ''}';
+  final member = int.tryParse('${data['member_id'] ?? ''}');
+  if (data['action'] == 'propose_meeting' && member != null) {
+    await nav.push(MaterialPageRoute<void>(builder: (_) => AdvStudentPage(orgId: orgId, memberId: member, section: 'notes', logContact: true)));
+    return true;
+  }
+  if (screen == 'advisor') {
+    await nav.push(MaterialPageRoute<void>(builder: (_) => AdvMyAdvisorPage(orgId: orgId)));
+    return true;
+  }
+  if (screen != 'alerts' && screen != 'workspace') return false;
+  // a director sees the whole organization, an advisor their own students
+  final st = await orgCall(() => AdvApi(orgId).status(), quiet: true);
+  final lead = st.ok && (st.data as AdvStatus).me.leads;
+  await nav.push(MaterialPageRoute<void>(
+    builder: (_) => screen == 'alerts'
+        ? AdvAlertsPage(orgId: orgId, manage: lead, since: orgParseUtc(data['since']))
+        : AdvWorkspacePage(orgId: orgId, manage: lead, sort: '${data['sort'] ?? 'contact'}'),
+  ));
+  return true;
+}

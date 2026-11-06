@@ -15,8 +15,10 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin/admin_common.dart';
 import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
+import 'org_page_kit.dart' show OrgSegmented;
 import 'org_providers.dart';
 import 'org_registrar.dart';
+import 'org_registrar_midterm.dart' show RegMidtermPane, RegMidtermPaneState;
 import 'org_ui.dart' show orgText;
 import 'org_v3.dart';
 
@@ -789,6 +791,7 @@ class _OrgTeachScreenState extends State<OrgTeachScreen> {
                           .push(MaterialPageRoute(builder: (_) => _GradesScreen(
                                 orgId: widget.orgId,
                                 path: '${_pub(widget.orgId)}/teach/terms/${asMap(x['term'])['id']}/courses/${asMap(x['course'])['id']}',
+                                midtermPath: '${_pub(widget.orgId)}/teach/terms/${asMap(x['term'])['id']}/courses/${asMap(x['course'])['id']}/midterm',
                                 canSubmit: true,
                               )))
                           .then((_) => _load()),
@@ -801,11 +804,13 @@ class _OrgTeachScreenState extends State<OrgTeachScreen> {
 }
 
 /// The roster with a score field per student. [path] = the roster route (instructor or staff); staff screens
-/// pass [onApprove] instead of submitting.
+/// pass [onApprove] instead of submitting. [midtermPath] (Phase 6): the midterm roster's route; a "Final · Midterm"
+/// switch then shows RegMidtermPane (org_registrar_midterm.dart) on the same screen.
 class _GradesScreen extends StatefulWidget {
-  const _GradesScreen({required this.orgId, required this.path, this.canSubmit = false, this.onApprove});
+  const _GradesScreen({required this.orgId, required this.path, this.canSubmit = false, this.onApprove, this.midtermPath});
   final int orgId;
   final String path;
+  final String? midtermPath;
   final bool canSubmit;
   final Future<void> Function()? onApprove;
 
@@ -820,6 +825,10 @@ class _GradesScreenState extends State<_GradesScreen> {
 
   /// The header's Refresh reloads the roster, but never over scores typed and not saved yet.
   final _refresh = OrgPageRefresh();
+
+  /// Midterm marks are shown instead of the final grades ([_GradesScreen.midtermPath]).
+  bool _midterm = false;
+  final _midKey = GlobalKey<RegMidtermPaneState>();
 
   @override
   void initState() {
@@ -844,6 +853,16 @@ class _GradesScreenState extends State<_GradesScreen> {
       });
 
   Future<void> _refreshNow() async {
+    if (_midterm) {
+      final m = _midKey.currentState;
+      if (m != null && m.dirty) {
+        toast(t('احفظ درجات منتصف الفصل أولاً — التحديث يعيد ما على الخادم.', 'Save the midterm marks first — Refresh reloads what the server has.'));
+        return;
+      }
+      await m?.reload();
+      _refresh.markUpdated();
+      return;
+    }
     if (_busy || _dirty) {
       toast(t('احفظ الدرجات أولاً — التحديث يعيد ما على الخادم.', 'Save the grades first — Refresh reloads what the server has.'));
       return;
@@ -909,7 +928,7 @@ class _GradesScreenState extends State<_GradesScreen> {
       title: _data == null ? t('الدرجات', 'Grades') : _courseTitle(asMap(_data!['course'])),
       subtitle: _data == null ? null : t('رصد الدرجات', 'Grade entry'),
       refresh: _refresh,
-      child: AppAsync(
+      child: _withMidterm(AppAsync(
         loading: _data == null && !_failed,
         failed: _failed,
         onRetry: _load,
@@ -978,8 +997,35 @@ class _GradesScreenState extends State<_GradesScreen> {
               ),
             ),
         ]),
-      ),
+      )),
     );
+  }
+
+  /// With a midterm route: the "Final · Midterm" switch above [finalGrades] or the midterm roster.
+  Widget _withMidterm(Widget finalGrades) {
+    final path = widget.midtermPath;
+    if (path == null) return finalGrades;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+        child: OrgSegmented<bool>(
+          value: _midterm,
+          options: [(false, t('الدرجة النهائية', 'Final')), (true, t('منتصف الفصل', 'Midterm'))],
+          onChanged: (v) {
+            if (!v && _midKey.currentState?.dirty == true) {
+              toast(t('احفظ درجات منتصف الفصل أولاً.', 'Save the midterm marks first.'));
+              return;
+            }
+            if (v && _dirty) {
+              toast(t('احفظ الدرجات أولاً.', 'Save the grades first.'));
+              return;
+            }
+            setState(() => _midterm = v);
+          },
+        ),
+      ),
+      Expanded(child: _midterm ? RegMidtermPane(key: _midKey, path: path) : finalGrades),
+    ]);
   }
 }
 
@@ -989,6 +1035,7 @@ Widget staffGradesScreen(int orgId, int termId, int courseId) {
   return _GradesScreen(
     orgId: orgId,
     path: base,
+    midtermPath: '$orgBase/orgs/$orgId/registrar/terms/$termId/midterm/$courseId',
     onApprove: () async {
       final r = await orgCall(() => OrgApi.i.api.post('$base/approve'));
       if (r.ok) {
