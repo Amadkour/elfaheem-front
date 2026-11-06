@@ -54,7 +54,7 @@ EntityListConfig<PersonRow> teacherStudentsList(int teacherId) => EntityListConf
       refOf: (r) => r.person,
       searchHint: 'md_p7_search_students'.tr,
       sorts: const ['activity_desc', 'progress_desc', 'name'],
-      filter: EntityListFilter('attention', 'md_p7_needs_attention'.tr, [('true', 'md_p7_needs_attention'.tr)]),
+      filter: EntityListFilter('attention', 'md_p7_status'.tr, [('true', 'md_p7_needs_attention'.tr)]),
       empty: EntityListEmpty(Icons.groups_outlined, 'md_p7_empty_students'.tr, message: 'md_p7_empty_students_hint'.tr),
       columns: [
         AppTableColumn(

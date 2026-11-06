@@ -1,13 +1,13 @@
 {
  "_source": {
-  "route": "GET /api/v1/entities/courses/9/lessons?size=100",
-  "uid": 22
+  "route": "GET /api/v1/entities/courses/1/lessons",
+  "uid": 4
  },
  "payload": {
   "items": [
    {
-    "id": 7,
-    "name": "L0",
+    "id": 1,
+    "name": "Lecture 1",
     "track": "lecture",
     "scheduled_at": null,
     "duration_minutes": null,
@@ -17,328 +17,31 @@
     "state": "done"
    },
    {
-    "id": 8,
-    "name": "L1",
+    "id": 2,
+    "name": "Lecture 2",
     "track": "lecture",
-    "scheduled_at": null,
+    "scheduled_at": "2026-11-08T01:21:55.828926",
     "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
+    "materials": 0,
+    "completed": 0,
     "attended": false,
-    "state": "done"
+    "state": "upcoming"
    },
    {
-    "id": 9,
-    "name": "L2",
+    "id": 3,
+    "name": "Lecture 3",
     "track": "lecture",
     "scheduled_at": null,
     "duration_minutes": null,
-    "materials": 1,
+    "materials": 2,
     "completed": 1,
     "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 10,
-    "name": "L3",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 11,
-    "name": "L4",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 12,
-    "name": "L5",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 13,
-    "name": "L6",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 14,
-    "name": "L7",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 15,
-    "name": "L8",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 16,
-    "name": "L9",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 17,
-    "name": "L10",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 18,
-    "name": "L11",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 19,
-    "name": "L12",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 20,
-    "name": "L13",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 21,
-    "name": "L14",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 22,
-    "name": "L15",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 23,
-    "name": "L16",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 24,
-    "name": "L17",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 25,
-    "name": "L18",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 26,
-    "name": "L19",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 27,
-    "name": "L20",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 28,
-    "name": "L21",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 29,
-    "name": "L22",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 30,
-    "name": "L23",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 31,
-    "name": "L24",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 32,
-    "name": "L25",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 33,
-    "name": "L26",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 34,
-    "name": "L27",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 35,
-    "name": "L28",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
-   },
-   {
-    "id": 36,
-    "name": "L29",
-    "track": "lecture",
-    "scheduled_at": null,
-    "duration_minutes": null,
-    "materials": 1,
-    "completed": 1,
-    "attended": false,
-    "state": "done"
+    "state": "in_progress"
    }
   ],
-  "total": 30,
+  "total": 3,
   "page": 1,
-  "size": 100,
+  "size": 20,
   "pages": 1
  }
 }

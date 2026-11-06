@@ -82,6 +82,7 @@ void main() {
     final keys = jsonDecode(File('docs/master_detail/keys_p7.json').readAsStringSync()) as Map<String, dynamic>;
     translation = {...translation, ...keys};
     SharedPreferences.setMockInitialValues({});
+    mockRequestPlugins();
   });
 
   Future<void> render(WidgetTester tester, String name, Widget Function() build, List<Size> sizes,

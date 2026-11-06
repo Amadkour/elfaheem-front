@@ -236,7 +236,7 @@ class _EntityDetailViewState extends State<EntityDetailView> {
         if (mine != null) {
           out.add(Padding(
             padding: const EdgeInsets.only(top: AppSpace.md),
-            child: EntityLearnerCard(mine: mine, self: s.learnerId == null || s.learnerId == _viewerId(context)),
+            child: EntityLearnerCard(mine: mine, self: s.learnerId == null || (_viewerId(context) ?? s.learnerId) == s.learnerId),
           ));
         }
         final trend = s.trend;

@@ -9,28 +9,28 @@
     "type": "session",
     "id": 2,
     "title": "Lecture 2",
-    "at": "2026-11-08T00:42:17.064600",
+    "at": "2026-11-08T01:21:55.828926",
     "opens_at": null
    },
    {
     "type": "exam",
     "id": 3,
     "title": "Next exam",
-    "at": "2026-11-11T00:42:17.064600",
+    "at": "2026-11-11T01:21:55.828926",
     "opens_at": null
    },
    {
     "type": "assignment",
     "id": 1,
     "title": "Essay",
-    "at": "2026-11-15T00:42:17.064600",
+    "at": "2026-11-15T01:21:55.828926",
     "opens_at": null
    },
    {
     "type": "access_end",
     "id": 1,
     "title": "",
-    "at": "2027-01-05T00:42:17.064600",
+    "at": "2027-01-05T01:21:55.828926",
     "opens_at": null
    }
   ],

@@ -1,944 +1,169 @@
 {
  "_source": {
-  "route": "GET /api/v1/entities/teachers/21/submissions?size=100",
-  "uid": 21
+  "route": "GET /api/v1/entities/teachers/2/submissions?size=50",
+  "uid": 2
  },
  "payload": {
   "items": [
    {
-    "id": 36,
-    "source": "exam",
-    "title": "Q29",
+    "id": 1,
+    "source": "assignment",
+    "title": "Handed in",
     "course": {
-     "id": 38,
-     "name_ar": "Wb29 ar",
-     "name_en": "Wb29",
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
      "image_url": null,
      "category": null,
      "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
       "image_url": null
      }
     },
     "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
+     "id": 4,
+     "name": "Alice Ali",
+     "username": "alice",
      "image_url": null
     },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
+    "at": "2026-11-05T01:21:55.828926",
+    "percentage": null,
     "score": null,
-    "max_score": null,
+    "max_score": 20.0,
+    "passed": null,
+    "held": false,
+    "needs_review": true
+   },
+   {
+    "id": 2,
+    "source": "engine",
+    "title": "Engine midterm",
+    "course": {
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 4,
+     "name": "Alice Ali",
+     "username": "alice",
+     "image_url": null
+    },
+    "at": "2026-11-04T01:21:55.828926",
+    "percentage": 20.0,
+    "score": 2.0,
+    "max_score": 10.0,
+    "passed": false,
+    "held": true,
+    "needs_review": true
+   },
+   {
+    "id": 1,
+    "source": "engine",
+    "title": "Engine midterm",
+    "course": {
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
+     "image_url": null,
+     "category": null,
+     "teacher": {
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
+      "image_url": null
+     }
+    },
+    "student": {
+     "id": 4,
+     "name": "Alice Ali",
+     "username": "alice",
+     "image_url": null
+    },
+    "at": "2026-11-03T01:21:55.828926",
+    "percentage": 90.0,
+    "score": 9.0,
+    "max_score": 10.0,
     "passed": true,
     "held": false,
     "needs_review": false
    },
    {
-    "id": 35,
+    "id": 2,
     "source": "exam",
-    "title": "Q28",
+    "title": "Quiz 1",
     "course": {
-     "id": 37,
-     "name_ar": "Wb28 ar",
-     "name_en": "Wb28",
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
      "image_url": null,
      "category": null,
      "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
       "image_url": null
      }
     },
     "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
+     "id": 5,
+     "name": "Bob Badr",
+     "username": "bob",
      "image_url": null
     },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
+    "at": "2026-11-01T01:21:55.828926",
+    "percentage": 30.0,
     "score": null,
-    "max_score": null,
-    "passed": true,
+    "max_score": 10.0,
+    "passed": false,
     "held": false,
     "needs_review": false
    },
    {
-    "id": 34,
+    "id": 1,
     "source": "exam",
-    "title": "Q27",
+    "title": "Quiz 1",
     "course": {
-     "id": 36,
-     "name_ar": "Wb27 ar",
-     "name_en": "Wb27",
+     "id": 1,
+     "name_ar": "Mechanics ar",
+     "name_en": "Mechanics",
      "image_url": null,
      "category": null,
      "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
+      "id": 2,
+      "name": "Teacher One",
+      "username": "teacher1",
       "image_url": null
      }
     },
     "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
+     "id": 4,
+     "name": "Alice Ali",
+     "username": "alice",
      "image_url": null
     },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 33,
-    "source": "exam",
-    "title": "Q26",
-    "course": {
-     "id": 35,
-     "name_ar": "Wb26 ar",
-     "name_en": "Wb26",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 32,
-    "source": "exam",
-    "title": "Q25",
-    "course": {
-     "id": 34,
-     "name_ar": "Wb25 ar",
-     "name_en": "Wb25",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 31,
-    "source": "exam",
-    "title": "Q24",
-    "course": {
-     "id": 33,
-     "name_ar": "Wb24 ar",
-     "name_en": "Wb24",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 30,
-    "source": "exam",
-    "title": "Q23",
-    "course": {
-     "id": 32,
-     "name_ar": "Wb23 ar",
-     "name_en": "Wb23",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 29,
-    "source": "exam",
-    "title": "Q22",
-    "course": {
-     "id": 31,
-     "name_ar": "Wb22 ar",
-     "name_en": "Wb22",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 28,
-    "source": "exam",
-    "title": "Q21",
-    "course": {
-     "id": 30,
-     "name_ar": "Wb21 ar",
-     "name_en": "Wb21",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 27,
-    "source": "exam",
-    "title": "Q20",
-    "course": {
-     "id": 29,
-     "name_ar": "Wb20 ar",
-     "name_en": "Wb20",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 26,
-    "source": "exam",
-    "title": "Q19",
-    "course": {
-     "id": 28,
-     "name_ar": "Wb19 ar",
-     "name_en": "Wb19",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 25,
-    "source": "exam",
-    "title": "Q18",
-    "course": {
-     "id": 27,
-     "name_ar": "Wb18 ar",
-     "name_en": "Wb18",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 24,
-    "source": "exam",
-    "title": "Q17",
-    "course": {
-     "id": 26,
-     "name_ar": "Wb17 ar",
-     "name_en": "Wb17",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 23,
-    "source": "exam",
-    "title": "Q16",
-    "course": {
-     "id": 25,
-     "name_ar": "Wb16 ar",
-     "name_en": "Wb16",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 22,
-    "source": "exam",
-    "title": "Q15",
-    "course": {
-     "id": 24,
-     "name_ar": "Wb15 ar",
-     "name_en": "Wb15",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 21,
-    "source": "exam",
-    "title": "Q14",
-    "course": {
-     "id": 23,
-     "name_ar": "Wb14 ar",
-     "name_en": "Wb14",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 20,
-    "source": "exam",
-    "title": "Q13",
-    "course": {
-     "id": 22,
-     "name_ar": "Wb13 ar",
-     "name_en": "Wb13",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 19,
-    "source": "exam",
-    "title": "Q12",
-    "course": {
-     "id": 21,
-     "name_ar": "Wb12 ar",
-     "name_en": "Wb12",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 18,
-    "source": "exam",
-    "title": "Q11",
-    "course": {
-     "id": 20,
-     "name_ar": "Wb11 ar",
-     "name_en": "Wb11",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 17,
-    "source": "exam",
-    "title": "Q10",
-    "course": {
-     "id": 19,
-     "name_ar": "Wb10 ar",
-     "name_en": "Wb10",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 16,
-    "source": "exam",
-    "title": "Q9",
-    "course": {
-     "id": 18,
-     "name_ar": "Wb9 ar",
-     "name_en": "Wb9",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 15,
-    "source": "exam",
-    "title": "Q8",
-    "course": {
-     "id": 17,
-     "name_ar": "Wb8 ar",
-     "name_en": "Wb8",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 14,
-    "source": "exam",
-    "title": "Q7",
-    "course": {
-     "id": 16,
-     "name_ar": "Wb7 ar",
-     "name_en": "Wb7",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 13,
-    "source": "exam",
-    "title": "Q6",
-    "course": {
-     "id": 15,
-     "name_ar": "Wb6 ar",
-     "name_en": "Wb6",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 12,
-    "source": "exam",
-    "title": "Q5",
-    "course": {
-     "id": 14,
-     "name_ar": "Wb5 ar",
-     "name_en": "Wb5",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 11,
-    "source": "exam",
-    "title": "Q4",
-    "course": {
-     "id": 13,
-     "name_ar": "Wb4 ar",
-     "name_en": "Wb4",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 10,
-    "source": "exam",
-    "title": "Q3",
-    "course": {
-     "id": 12,
-     "name_ar": "Wb3 ar",
-     "name_en": "Wb3",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 9,
-    "source": "exam",
-    "title": "Q2",
-    "course": {
-     "id": 11,
-     "name_ar": "Wb2 ar",
-     "name_en": "Wb2",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 8,
-    "source": "exam",
-    "title": "Q1",
-    "course": {
-     "id": 10,
-     "name_ar": "Wb1 ar",
-     "name_en": "Wb1",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
-    "passed": true,
-    "held": false,
-    "needs_review": false
-   },
-   {
-    "id": 7,
-    "source": "exam",
-    "title": "Q0",
-    "course": {
-     "id": 9,
-     "name_ar": "Wb0 ar",
-     "name_en": "Wb0",
-     "image_url": null,
-     "category": null,
-     "teacher": {
-      "id": 21,
-      "name": "Twb",
-      "username": "twb",
-      "image_url": null
-     }
-    },
-    "student": {
-     "id": 22,
-     "name": "Swb",
-     "username": "swb",
-     "image_url": null
-    },
-    "at": "2026-11-06T00:42:17.064600",
-    "percentage": 50.0,
-    "score": null,
-    "max_score": null,
+    "at": "2026-10-31T01:21:55.828926",
+    "percentage": 80.0,
+    "score": 8.0,
+    "max_score": 10.0,
     "passed": true,
     "held": false,
     "needs_review": false
    }
   ],
-  "total": 30,
+  "total": 5,
   "page": 1,
-  "size": 100,
+  "size": 50,
   "pages": 1
  }
 }

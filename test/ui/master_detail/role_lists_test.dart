@@ -8,6 +8,7 @@ import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip;
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/design/master_detail/entity_detail_page.dart';
 import 'package:flutter_education_app/design/master_detail/entity_learner.dart';
@@ -28,6 +29,12 @@ import 'md_support.dart';
 const _wide = Size(1400, 900);
 const _phone = Size(390, 844);
 
+Future<void> _settle(WidgetTester t) async {
+  for (var i = 0; i < 12; i++) {
+    await t.pump(const Duration(milliseconds: 100));
+  }
+}
+
 Future<FakeApi> _serve(WidgetTester t, {bool withdrawn = false, Map<String, FakeHandler> extra = const {}}) async {
   final api = FakeApi({...roleRoutes(withdrawn: withdrawn), ...extra}, latency: const Duration(milliseconds: 5))..install();
   EntitiesApi.instance.invalidate();
@@ -46,14 +53,15 @@ Future<void> _pump(WidgetTester t, Widget child, {Size size = _wide}) async {
     t.view.resetPhysicalSize();
     t.view.resetDevicePixelRatio();
   });
-  await t.pumpWidget(MaterialApp(home: Scaffold(body: child)));
-  await t.pumpAndSettle();
+  await t.pumpWidget(layoutHost(child, scaffold: true));
+  await _settle(t);
 }
 
 void main() {
   setUp(() {
     AppConfig.lang = 'en';
     SharedPreferences.setMockInitialValues({});
+    mockRequestPlugins();
   });
 
   group('teacher', () {
@@ -64,7 +72,7 @@ void main() {
       expect(find.text(mdStudents.first), findsWidgets);
       expect(find.text('md_p7_needs_attention'), findsWidgets);
       await t.tap(find.text(mdStudents.first).first);
-      await t.pumpAndSettle();
+      await _settle(t);
       expect(api.calls.any((c) => c.path.endsWith('/entities/students/100')), isTrue);
       expect(find.byKey(const ValueKey('md.message')), findsOneWidget);
       expect(find.byKey(const ValueKey('md.inline')), findsOneWidget);
@@ -73,8 +81,8 @@ void main() {
     testWidgets('the attention filter and the sort go to the server', (t) async {
       final api = await _serve(t);
       await _pump(t, EntityListPage<PersonRow>(config: teacherStudentsList(21)));
-      await t.tap(find.text('md_p7_needs_attention').first);
-      await t.pumpAndSettle();
+      await t.tap(find.widgetWithText(AppChoiceChip, 'md_p7_needs_attention').first);
+      await _settle(t);
       expect(api.calls.last.query['attention'], 'true');
     });
 
@@ -98,10 +106,10 @@ void main() {
       });
       await _pump(t, EntityDetailPage(entity: const EntityRef(EntityKind.student, 100, label: 'Sara')));
       await t.tap(find.byKey(const ValueKey('md.message')));
-      await t.pumpAndSettle();
+      await _settle(t);
       await t.enterText(find.byKey(const ValueKey('md.message.text')), 'Keep going');
       await t.tap(find.byKey(const ValueKey('md.message.send')));
-      await t.pumpAndSettle();
+      await _settle(t);
       expect(posts, [
         {'text': 'Keep going'},
       ]);
@@ -119,14 +127,14 @@ void main() {
       expect(find.text('md_p7_sec_deadlines'), findsOneWidget);
       expect(find.text('اختبار منتصف الفصل'), findsOneWidget);
       await t.scrollUntilVisible(find.text('Lecture 3: Control flow'), 200, scrollable: find.byType(Scrollable).first);
-      expect(find.text('md_p7_lesson_in_progress'), findsWidgets);
+      expect(find.text('In progress'), findsWidgets);
     });
 
     testWidgets('a left course says when and why, offers no Continue, and nothing is due', (t) async {
       await _serve(t, withdrawn: true, extra: {'GET /api/v1/entities/courses/40': (o) => learnerCourse(40, withdrawn: true)});
       await _pump(t, const EntityDetailPage(entity: EntityRef(EntityKind.course, 40)), size: _phone);
       expect(find.text('md_p7_mine_withdrawn'), findsOneWidget);
-      expect(find.textContaining('md_reason_time'), findsOneWidget);
+      expect(find.textContaining('md_withdrawn_on'), findsOneWidget);
       expect(find.byKey(const ValueKey('md.continue')), findsNothing);
       expect(find.text('md_p7_empty_deadlines'), findsOneWidget);
     });
@@ -145,7 +153,7 @@ void main() {
       expect(find.text('Midterm'), findsWidgets);
       expect(find.text('md_p7_grade_held'), findsWidgets);
       await t.tap(find.text('Midterm').first);
-      await t.pump();
+      await _settle(t);
       expect(panel.current?.kind, EntityKind.course);
     });
   });
@@ -201,6 +209,35 @@ void main() {
       expect(n.entities.first.canOpen, isFalse);
       expect(n.entities.last.ref, const EntityRef(EntityKind.teacher, 21));
       expect(n.copyWith(isRead: true).entities.length, 2);
+    });
+  });
+
+  group('real server rows', () {
+    List<Map<String, dynamic>> rows(String name) =>
+        [for (final i in (payload('$name.json') as Map)['items'] as List) Map<String, dynamic>.from(i as Map)];
+
+    test('grades: a held result carries no figures', () {
+      final all = rows('entity_grades').map(GradeRow.fromJson).toList();
+      final held = all.where((g) => g.held).toList();
+      expect(held, isNotEmpty);
+      expect(held.every((g) => g.percentage == null && g.score == null && g.passed == null), isTrue);
+      expect(all.every((g) => g.course != null && g.student != null && g.at != null), isTrue);
+    });
+
+    test('submissions, reviews, lessons, deadlines and the attention flag', () {
+      expect(rows('entity_submissions').map(GradeRow.fromJson).map((g) => g.source).toSet(), containsAll(['exam', 'engine', 'assignment']));
+      final r = rows('entity_reviews').map(ReviewRow.fromJson).first;
+      expect((r.value, r.student != null, r.course != null), (r.value, true, true));
+      expect(rows('entity_lessons').map(LessonRow.fromJson).map((l) => l.state).toSet().length, greaterThan(1));
+      expect(rows('entity_deadlines').map(DeadlineRow.fromJson).every((d) => d.at != null), isTrue);
+      expect(rows('entity_teacher_students_attention').map((j) => PersonRow.fromJson(j, EntityKind.student)).any((p) => p.attention), isTrue);
+    });
+
+    test('a notification from the server, its entities with can_open', () {
+      final j = rows('notifications_entities').firstWhere((n) => (n['entities'] as List).isNotEmpty);
+      final n = NotificationModel.fromJson(j);
+      expect(n.entities, isNotEmpty);
+      expect(n.entities.first.ref.kind, EntityKind.course);
     });
   });
 

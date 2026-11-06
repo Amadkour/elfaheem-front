@@ -18,6 +18,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -1052,6 +1054,8 @@ class _StudentDetailsDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              // their progress and history in my courses (D-290)
+              Center(child: EntityChip(EntityRef(EntityKind.student, student.id, label: student.name))),
               _InfoRow(icon: Icons.email_outlined, label: 'email'.tr, value: student.gmail),
               _InfoRow(
                 icon: Icons.event_available_outlined,

@@ -116,7 +116,7 @@ EntityListConfig<EnrollmentRow> studentLeftCoursesList(int studentId) => EntityL
       idOf: (r) => r.subject.id,
       refOf: (r) => r.subject,
       fixedFilter: const {'state': 'withdrawn'},
-      searchHint: 'md_p7_search_payments'.tr,
+      searchable: false,
       empty: EntityListEmpty(Icons.sentiment_satisfied_alt_rounded, 'md_p7_empty_left'.tr),
       columns: [
         AppTableColumn(key: 'course', label: 'md_kind_course'.tr, primary: true, flex: 3, cell: (context, r) => EntityChip(r.subject)),

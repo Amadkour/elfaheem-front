@@ -65,6 +65,7 @@ class EntityListConfig<T> {
     this.searchHint,
     this.pageSize = 20,
     this.fixedFilter = const {},
+    this.searchable = true,
   });
 
   final String id;
@@ -91,6 +92,9 @@ class EntityListConfig<T> {
 
   /// Sent with every page (a state the list is about).
   final Map<String, String> fixedFilter;
+
+  /// False: the page around the list has its own search, or the list is short by nature.
+  final bool searchable;
 }
 
 /// [config]'s rows in the shared table, with the panel beside them (or as the phone's sheet).
@@ -277,8 +281,8 @@ class _EntityListBodyState<T> extends State<EntityListBody<T>> {
           errorText: _error == null ? null : entityErrorText(_error),
           onRetry: _reload,
           searchHint: _c.searchHint ?? 'md_search'.tr,
-          onSearch: _setSearch,
-          searchController: _search,
+          onSearch: _c.searchable ? _setSearch : null,
+          searchController: _c.searchable ? _search : null,
           filters: f == null
               ? null
               : [AppTableFilter(label: f.label, options: f.options, value: filterValue, onChanged: _setFilter)],
