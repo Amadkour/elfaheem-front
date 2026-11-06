@@ -163,6 +163,6 @@ cards, panel, states and keyboard everywhere (the server pages, searches, filter
 - Where: teacher My students (export, Message), Submissions (export, Message), Reviews (export); student Grades and
   Payments (export); admin Students (Message, Activate, Deactivate, Export selected), Teachers (Activate, Deactivate,
   Export selected), Courses (Publish, Unpublish, Export selected).
-- Saved views are per person and per list id on the server (`saved_views`, migration 0054, 20 per list); a shared
+- Saved views are per person and per list id on the server (`saved_views`, migration 0058, 20 per list); a shared
   link is only the URL, so whoever opens it still sees only what the server lets them see.
 - The table's row checkboxes are labelled for screen readers (`ds_select_row`).
