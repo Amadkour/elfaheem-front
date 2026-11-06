@@ -21,6 +21,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show SchedulerBinding, SchedulerPhase;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
@@ -180,6 +181,10 @@ class _EntityListBodyState<T> extends State<EntityListBody<T>> {
   Object? _error;
   int _ticket = 0;
 
+  /// The row the table draws as selected: the table rebuilds when THIS changes, not on every move of the panel
+  /// (a drill-in, back, a name learnt).
+  int? _highlighted;
+
   EntityListConfig<T> get _c => widget.config;
 
   EntityListQuery get _base => EntityListQuery(sort: _c.sorts.isEmpty ? null : _c.sorts.first, size: _c.pageSize);
@@ -187,6 +192,8 @@ class _EntityListBodyState<T> extends State<EntityListBody<T>> {
   @override
   void initState() {
     super.initState();
+    _highlighted = widget.panel.selectedId;
+    widget.panel.addListener(_panelChanged);
     if (widget.deepLinks) {
       final asked = entityQueryFromParams(entityListParams(EntityLinkRequest.takeList()), _base,
           sorts: _c.sorts, filterKeys: {?_c.filter?.key});
@@ -201,11 +208,34 @@ class _EntityListBodyState<T> extends State<EntityListBody<T>> {
   @override
   void didUpdateWidget(covariant EntityListBody<T> old) {
     super.didUpdateWidget(old);
+    if (!identical(old.panel, widget.panel)) {
+      old.panel.removeListener(_panelChanged);
+      widget.panel.addListener(_panelChanged);
+      _highlighted = widget.panel.selectedId;
+      _syncSiblings();
+    }
     if (old.config.id != _c.id) _reload();
   }
 
+  void _panelChanged() {
+    if (widget.panel.selectedId == _highlighted) return;
+    void apply() {
+      if (mounted) setState(() => _highlighted = widget.panel.selectedId);
+    }
+    // `?open=` opens the panel while the list is being built: redraw after that frame
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    } else {
+      apply();
+    }
+  }
+
+  /// The panel's previous / next walk the rows on screen: handed over when they change, not on every build.
+  void _syncSiblings() => widget.panel.siblings = [for (final r in _rows) ?_c.refOf(r)];
+
   @override
   void dispose() {
+    widget.panel.removeListener(_panelChanged);
     if (widget.deepLinks) WebHistory.instance.setPageQuery(this, 'list', null);
     _search.dispose();
     super.dispose();
@@ -236,8 +266,10 @@ class _EntityListBodyState<T> extends State<EntityListBody<T>> {
         _hasMore = p.hasMore;
         _query = q;
         _loading = false;
-        _selected.removeWhere((id) => !_rows.any((r) => _c.idOf(r) == id));
+        final ids = {for (final r in _rows) _c.idOf(r)};
+        _selected.removeWhere((id) => !ids.contains(id));
       });
+      _syncSiblings();
       _writeUrl();
     } catch (e) {
       if (!mounted || t != _ticket) return;
@@ -262,6 +294,7 @@ class _EntityListBodyState<T> extends State<EntityListBody<T>> {
         _query = next;
         _loadingMore = false;
       });
+      _syncSiblings();
     } catch (e) {
       if (!mounted || t != _ticket) return;
       setState(() {
@@ -448,63 +481,57 @@ class _EntityListBodyState<T> extends State<EntityListBody<T>> {
       if (_c.savedViews) _viewsButton(context),
       if (_c.export != null) _exportButton(context),
     ];
-    return ListenableBuilder(
-      listenable: widget.panel,
-      builder: (context, _) {
-        widget.panel.siblings = [for (final r in _rows) ?_c.refOf(r)];
-        return AppDataTable<T>(
-          tableId: _c.id,
-          columnMenu: true,
-          columns: _c.columns,
-          rows: _rows,
-          rowId: _c.idOf,
-          state: _loading ? AppTableState.loading : (_error != null ? AppTableState.error : AppTableState.ready),
-          errorText: _error == null ? null : entityErrorText(_error),
-          onRetry: _reload,
-          searchHint: _c.searchHint ?? 'md_search'.tr,
-          onSearch: _c.searchable ? _setSearch : null,
-          searchController: _c.searchable ? _search : null,
-          filters: f == null
-              ? null
-              : [AppTableFilter(label: f.label, options: f.options, value: filterValue, onChanged: _setFilter)],
-          onClearFilters: querying ? _clear : null,
-          toolbarTrailing: tools.isEmpty
-              ? null
-              : Wrap(
-                  spacing: AppSpace.xs,
-                  runSpacing: AppSpace.xs,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: tools,
-                ),
-          selectable: selectable,
-          selected: selectable ? _selected : null,
-          onSelectionChanged: (s) => setState(() {
-            _selected
-              ..clear()
-              ..addAll(s);
-          }),
-          bulkActions: selectable ? (_) => _bulkActions(context) : null,
-          empty: querying
-              ? null
-              : AppEmpty(
-                  icon: empty.icon,
-                  title: empty.title,
-                  message: empty.message,
-                  actionLabel: empty.actionLabel,
-                  onAction: empty.onAction,
-                ),
-          onRowTap: _open,
-          onRowHover: (row) {
-            final ref = _c.refOf(row);
-            if (ref != null) EntitiesApi.instance.prefetch(ref);
-          },
-          mobileCard: _c.card,
-          selectedRowId: widget.panel.selectedId,
-          onLoadMore: _more,
-          hasMore: _hasMore,
-          loadingMore: _loadingMore,
-        );
+    return AppDataTable<T>(
+      tableId: _c.id,
+      columnMenu: true,
+      columns: _c.columns,
+      rows: _rows,
+      rowId: _c.idOf,
+      state: _loading ? AppTableState.loading : (_error != null ? AppTableState.error : AppTableState.ready),
+      errorText: _error == null ? null : entityErrorText(_error),
+      onRetry: _reload,
+      searchHint: _c.searchHint ?? 'md_search'.tr,
+      onSearch: _c.searchable ? _setSearch : null,
+      searchController: _c.searchable ? _search : null,
+      filters: f == null
+          ? null
+          : [AppTableFilter(label: f.label, options: f.options, value: filterValue, onChanged: _setFilter)],
+      onClearFilters: querying ? _clear : null,
+      toolbarTrailing: tools.isEmpty
+          ? null
+          : Wrap(
+              spacing: AppSpace.xs,
+              runSpacing: AppSpace.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: tools,
+            ),
+      selectable: selectable,
+      selected: selectable ? _selected : null,
+      onSelectionChanged: (s) => setState(() {
+        _selected
+          ..clear()
+          ..addAll(s);
+      }),
+      bulkActions: selectable ? (_) => _bulkActions(context) : null,
+      empty: querying
+          ? null
+          : AppEmpty(
+              icon: empty.icon,
+              title: empty.title,
+              message: empty.message,
+              actionLabel: empty.actionLabel,
+              onAction: empty.onAction,
+            ),
+      onRowTap: _open,
+      onRowHover: (row) {
+        final ref = _c.refOf(row);
+        if (ref != null) EntitiesApi.instance.prefetch(ref);
       },
+      mobileCard: _c.card,
+      selectedRowId: _highlighted,
+      onLoadMore: _more,
+      hasMore: _hasMore,
+      loadingMore: _loadingMore,
     );
   }
 }

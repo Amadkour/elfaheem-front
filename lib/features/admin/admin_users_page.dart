@@ -157,8 +157,10 @@ class _UsersViewState extends State<_UsersView> {
   List<EntityPanelAction> _panelActions(
       BuildContext context, AdminUsersProvider p, bool canViewAs, EntityRef ref, EntitySummary? s) {
     if (!ref.isPerson) return const [];
+    // a managed student's detail brings its own View as (StudentManage): offering it here too drew it twice
+    final managed = ref.kind == EntityKind.student && (s?.can.manage ?? false);
     return [
-      if (canViewAs)
+      if (canViewAs && !managed)
         EntityPanelAction(
           icon: Icons.visibility_rounded,
           label: 'view_as_user'.tr,

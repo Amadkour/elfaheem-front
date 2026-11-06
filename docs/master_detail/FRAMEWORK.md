@@ -166,3 +166,18 @@ cards, panel, states and keyboard everywhere (the server pages, searches, filter
 - Saved views are per person and per list id on the server (`saved_views`, migration 0058, 20 per list); a shared
   link is only the URL, so whoever opens it still sees only what the server lets them see.
 - The table's row checkboxes are labelled for screen readers (`ds_select_row`).
+
+## Quality pass (phase 9)
+
+- Fonts: an Arabic name in the English UI (and the reverse) draws through the theme's `fontFamilyFallback`, which
+  `AppDisplayScope` sets in the app. A test host without it draws such names blank (no system fonts in tests): the
+  visual hosts (`test/visual/master_detail*_visual_test.dart`, `student_detail_visual_test.dart`) wrap the app in
+  `AppDisplayApply(prefs: const DisplayPrefs())`; `md_arabic_in_en` is the check render.
+- Accessibility: `master_detail_a11y_test.dart` also covers the saved views sheet, the search palette with hits and a
+  table with rows ticked (bulk bar); `expectA11y(…, act:)` runs a step before the guidelines are checked.
+  `AppButton.tonal` keeps its ink readable on its own tint (and on a tinted bar); the bulk bar's "Select all" is
+  `textDark`.
+- Rebuilds: `EntityListBody` redraws its table only when the highlighted row changes (not on every panel move) and
+  hands `siblings` when its rows change, not on every build. `EntitiesApi.invalidate` also drops the requests already
+  running for that entity (a forced reload never receives, or caches, an answer that predates the change);
+  `EntityAccess` keeps at most 1000 answers.

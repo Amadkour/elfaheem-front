@@ -20,6 +20,9 @@ class EntityAccess {
   static const Duration maxAge = Duration(minutes: 5);
   static const int batch = 100;
 
+  /// The most answers kept (a long session reads many reports): the expired go first, then the oldest.
+  static const int maxKnown = 1000;
+
   /// Instead of the API (tests).
   Future<Set<String>> Function(List<String> tokens)? debugAsk;
 
@@ -57,9 +60,17 @@ class EntityAccess {
       final now = DateTime.now();
       asked.forEach((t, c) {
         final v = allowed.contains(t);
-        _known[t] = (now, v);
+        _known
+          ..remove(t) // re-inserted: the newest last
+          ..[t] = (now, v);
         c.complete(v);
       });
+      if (_known.length > maxKnown) {
+        _known.removeWhere((_, v) => now.difference(v.$1) > maxAge);
+        while (_known.length > maxKnown) {
+          _known.remove(_known.keys.first);
+        }
+      }
     } catch (_) {
       asked.forEach((_, c) => c.complete(false));
     }

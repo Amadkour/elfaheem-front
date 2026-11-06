@@ -52,7 +52,7 @@ Future<void> showEntitySearch(BuildContext context) async {
   if (wide) {
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.32),
+      barrierColor: Theme.of(context).colorScheme.scrim.withValues(alpha: context.colors.isDark ? 0.5 : 0.32),
       builder: (ctx) {
         final h = MediaQuery.sizeOf(ctx).height;
         return Align(

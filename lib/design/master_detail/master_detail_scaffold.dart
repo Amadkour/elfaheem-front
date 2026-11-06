@@ -401,7 +401,7 @@ class _Scrim extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         excludeFromSemantics: true,
         onTap: onTap,
-        child: ColoredBox(color: Colors.black.withValues(alpha: context.colors.isDark ? 0.5 : 0.32)),
+        child: ColoredBox(color: Theme.of(context).colorScheme.scrim.withValues(alpha: context.colors.isDark ? 0.5 : 0.32)),
       );
 }
 

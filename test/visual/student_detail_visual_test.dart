@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/display_settings.dart';
+import 'package:flutter_education_app/design/app_display.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
@@ -65,7 +67,10 @@ Widget _host(Widget child, {required bool dark}) {
       darkTheme: theme.materialTheme(dark: true),
       themeMode: dark ? ThemeMode.dark : ThemeMode.light,
       builder: (context, w) => RepaintBoundary(
-          key: _shot, child: Directionality(textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, child: w!)),
+          key: _shot,
+          // the app's display layer: the theme's fontFamilyFallback draws Arabic names in the English UI (and the reverse)
+          child: AppDisplayApply(prefs: const DisplayPrefs(),
+              child: Directionality(textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, child: w!))),
       home: Builder(builder: (context) => Scaffold(backgroundColor: context.colors.background, body: child)),
     ),
   );

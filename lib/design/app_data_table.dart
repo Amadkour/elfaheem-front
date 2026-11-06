@@ -675,7 +675,9 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
             ),
             if (!all)
               TextButton(
-                style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                // the bar's own tint, not the surface: the theme's primary ink is 3.3:1 on it in the dark theme
+                style: TextButton.styleFrom(
+                    minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: c.textDark),
                 onPressed: () => _setSel({for (final r in widget.rows) _id(r)}),
                 child: Text('ds_select_all'.tr),
               ),

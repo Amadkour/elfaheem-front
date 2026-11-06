@@ -104,8 +104,10 @@ Widget a11yHost(Widget child, {required bool dark}) {
 final _labelRe = RegExp(r'(?:label|tooltip): "([^"]*)"');
 
 /// Pumps [build] at every size × language × brightness and checks every guideline; all failures are collected
-/// and reported together. [wrap] goes above the app (providers).
-Future<void> expectA11y(WidgetTester tester, String name, Widget Function() build, {Widget Function(Widget app)? wrap}) async {
+/// and reported together. [wrap] goes above the app (providers); [act] runs after the first frames (open a sheet,
+/// tick rows, type a query) and before the guidelines are checked.
+Future<void> expectA11y(WidgetTester tester, String name, Widget Function() build,
+    {Widget Function(Widget app)? wrap, Future<void> Function(WidgetTester tester)? act}) async {
   final handle = tester.ensureSemantics();
   final prevLang = AppConfig.lang;
   addTearDown(() {
@@ -129,6 +131,7 @@ Future<void> expectA11y(WidgetTester tester, String name, Widget Function() buil
         for (var i = 0; i < 4; i++) {
           await tester.pump(const Duration(milliseconds: 250));
         }
+        if (act != null) await act(tester);
         for (final (gName, g) in _guidelines) {
           final r = await g.evaluate(tester);
           if (r.passed) continue;

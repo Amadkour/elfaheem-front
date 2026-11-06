@@ -39,6 +39,10 @@ class EntitiesApi {
   final _cache = <String, (DateTime, EntitySummary)>{}; // insertion-ordered: the oldest first
   final _inFlight = <String, Future<EntitySummary>>{};
 
+  /// Bumps on every [invalidate]: an answer to a request started before it is returned to its callers but not
+  /// cached (it may predate the change).
+  int _generation = 0;
+
   String _key(EntityRef ref, int? studentId) => studentId == null ? ref.toToken() : '${ref.toToken()}?s=$studentId';
 
   /// The cached summary while it is fresh (and touched: most recent first), else null.
@@ -61,15 +65,19 @@ class EntitiesApi {
     }
     final running = _inFlight[k];
     if (running != null) return running;
-    final f = _fetchSummary(ref, studentId).then((s) {
-      _cache.remove(k);
-      _cache[k] = (DateTime.now(), s);
-      while (_cache.length > cacheSize) {
-        _cache.remove(_cache.keys.first);
+    final gen = _generation;
+    late final Future<EntitySummary> f;
+    f = _fetchSummary(ref, studentId).then((s) {
+      if (gen == _generation) {
+        _cache.remove(k);
+        _cache[k] = (DateTime.now(), s);
+        while (_cache.length > cacheSize) {
+          _cache.remove(_cache.keys.first);
+        }
       }
       return s;
     }).whenComplete(() {
-      _inFlight.remove(k); // a block on purpose: a returned future would be awaited, and this one is f itself
+      if (identical(_inFlight[k], f)) _inFlight.remove(k); // an invalidate may have replaced it already
     });
     _inFlight[k] = f;
     return f;
@@ -83,12 +91,16 @@ class EntitiesApi {
 
   /// Forgets [ref] (every child variant), or everything without one.
   void invalidate([EntityRef? ref]) {
+    _generation++;
     if (ref == null) {
       _cache.clear();
+      _inFlight.clear();
       return;
     }
     final t = ref.toToken();
-    _cache.removeWhere((k, _) => k == t || k.startsWith('$t?'));
+    bool mine(String k) => k == t || k.startsWith('$t?');
+    _cache.removeWhere((k, _) => mine(k));
+    _inFlight.removeWhere((k, _) => mine(k));
   }
 
   Future<EntitySummary> _fetchSummary(EntityRef ref, int? studentId) async {

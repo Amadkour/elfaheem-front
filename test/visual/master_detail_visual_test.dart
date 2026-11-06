@@ -14,6 +14,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/display_settings.dart';
+import 'package:flutter_education_app/design/app_display.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
@@ -66,7 +68,10 @@ Widget _host(Widget child, {required bool dark}) {
       darkTheme: theme.materialTheme(dark: true),
       themeMode: dark ? ThemeMode.dark : ThemeMode.light,
       builder: (context, w) => RepaintBoundary(
-          key: _shot, child: Directionality(textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, child: w!)),
+          key: _shot,
+          // the app's display layer: the theme's fontFamilyFallback draws Arabic names in the English UI (and the reverse)
+          child: AppDisplayApply(prefs: const DisplayPrefs(),
+              child: Directionality(textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, child: w!))),
       home: Builder(builder: (context) => Scaffold(backgroundColor: context.colors.background, body: child)),
     ),
   );
@@ -75,12 +80,13 @@ Widget _host(Widget child, {required bool dark}) {
 void main() {
   setUpAll(_loadFonts);
 
-  Future<void> render(WidgetTester tester, String name, String open, List<Size> sizes, {bool bothThemes = true}) async {
+  Future<void> render(WidgetTester tester, String name, String open, List<Size> sizes,
+      {bool bothThemes = true, List<String> langs = const ['ar', 'en']}) async {
     final prevLang = AppConfig.lang;
     debugDisableShadows = false;
     try {
       for (final size in sizes) {
-        for (final lang in const ['ar', 'en']) {
+        for (final lang in langs) {
           for (final dark in bothThemes ? const [false, true] : const [false]) {
             AppConfig.lang = lang;
             EntitiesApi.instance.invalidate();
@@ -122,5 +128,12 @@ void main() {
   testWidgets('a course and a teacher panel (1440)', (tester) async {
     await render(tester, 'md_course_panel', 'course:40', const [Size(1440, 900)]);
     await render(tester, 'md_teacher_panel', 'teacher:20', const [Size(1440, 900)], bothThemes: false);
+  });
+
+  // Arabic names in the English UI: Inter has no Arabic glyphs; the theme's fontFamilyFallback (AppDisplayScope in
+  // the app, AppDisplayApply in this host) draws them in the Arabic choice.
+  testWidgets('arabic names inside the english ui', (tester) async {
+    await render(tester, 'md_arabic_in_en', 'student:100', const [Size(1440, 900)],
+        bothThemes: false, langs: const ['en']);
   });
 }

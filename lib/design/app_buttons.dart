@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
 import 'app_charts.dart' show appInk;
+import 'app_contrast.dart' show ensureContrast;
 import 'app_gradients.dart';
 import 'app_tokens.dart';
 
@@ -191,9 +192,20 @@ class _AppButtonState extends State<AppButton> {
 
     // text / icon ink of an unfilled button: the primary or danger made readable on the open mode's surface (appInk —
     // the raw indigo is about 1.6:1 on a dark card, the raw red 3.7:1 on white); fills and borders keep the raw tone
+    // a tonal button sits on its own (translucent) primaryTint fill, not the bare surface: its ink must read on that
+    // fill over the card and the page, and over a tinted bar too (a table's bulk bar is primaryTint itself; the dark
+    // theme's tint left the surface ink at about 4.2:1)
     final Color ink = filled
         ? c.onHero
-        : appInk(context, outlineDanger ? c.danger : c.primary);
+        : v == AppButtonVariant.tonal
+            ? ensureContrast(appInk(context, c.primary), [
+                for (final base in [c.cardBg, c.background]) ...[
+                  Color.alphaBlend(c.primaryTint, base),
+                  Color.alphaBlend(c.primaryTint, Color.alphaBlend(c.primaryTint, base)),
+                  Color.alphaBlend(Color.lerp(c.primaryTint, c.primary, 0.12)!, base),
+                ],
+              ])
+            : appInk(context, outlineDanger ? c.danger : c.primary);
     final fs = switch (widget.size) {
       AppButtonSize.sm => 13.0,
       AppButtonSize.md => 14.0,
