@@ -32,8 +32,8 @@
     "currency": "EGP"
    },
    "start_date": null,
-   "end_date": "2027-02-04T01:21:20.957888",
-   "created_at": "2026-11-06T01:21:21.105739",
+   "end_date": "2027-02-04T06:32:04.835804",
+   "created_at": "2026-11-06T06:32:05.139113",
    "archived_at": null
   },
   "stats": {
@@ -114,7 +114,9 @@
   "badges": [],
   "sections": [
    "students",
-   "content"
+   "content",
+   "grades",
+   "reviews"
   ],
   "can": {
    "manage": true,

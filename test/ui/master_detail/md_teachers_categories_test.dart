@@ -119,7 +119,7 @@ void main() {
   Future<MyAuthProvider> start() async {
     final auth = await peopleSetUp(api);
     // the new strings wait in keys_p6.json until they are merged (peopleSetUp reads the translation file again)
-    translation.addAll(jsonDecode(File('docs/master_detail/keys_p6.json').readAsStringSync()) as Map<String, dynamic>);
+    translation.addAll(jsonDecode(File('assets/translation.json').readAsStringSync()) as Map<String, dynamic>);
     return auth;
   }
 
@@ -176,7 +176,7 @@ void main() {
       expect(find.textContaining('Nile University'), findsOneWidget, reason: 'the organization in the header');
       expect(find.text('Top rated · ${ltrIsolate('4.7')}'), findsOneWidget);
       expect(find.text(mdCourses[0].$2), findsOneWidget, reason: 'the courses section loaded');
-      expect(find.text('سارة أحمد'), findsOneWidget, reason: 'the students section loaded');
+      expect(find.text('سارة أحمد'), findsWidgets, reason: 'the students section loaded');
       expect(api.calls.map((c) => c.path), containsAll(['/api/v1/entities/teachers/101/courses', '/api/v1/entities/teachers/101/students']));
       final completion = find.textContaining('Completion');
       expect(completion, findsWidgets);

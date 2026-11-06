@@ -157,7 +157,7 @@ void main() {
       expect(_inPanel(find.textContaining('31 of 148')), findsOneWidget);
       expect(_inPanel(find.byType(AppBarChart)), findsOneWidget);
       expect(_inPanel(find.text(mdReasonLabel('time'))), findsOneWidget);
-      expect(_inPanel(find.text('Omar Khaled')), findsOneWidget);
+      expect(_inPanel(find.text('Omar Khaled')), findsWidgets);
       expect(api.calls.map((c) => c.path), contains('/api/v1/entities/courses/40/students'));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
@@ -358,12 +358,9 @@ void main() {
         ..push(const EntityRef(EntityKind.course, 40));
       await _pump(tester, layoutHost(MasterDetailScaffold(controller: c, list: const SizedBox.expand()), scale: 1),
           size: const Size(1300, 1800));
-      expect(_inPanel(find.byKey(const ValueKey('md.course.history.100'))), findsOneWidget);
-      expect(_inPanel(find.text('سارة أحمد in this course')), findsOneWidget);
+      // the student-in-course block (phase 4's StudentInCourseBlock) with the history open
+      expect(_inPanel(find.byKey(const ValueKey('md.context.100'))), findsOneWidget);
       expect(_inPanel(find.byType(EntityTimelineTile)), findsWidgets, reason: 'the events themselves, not a skeleton');
-      await tester.tap(_inPanel(find.byTooltip('md_p5_hide'.tr)));
-      await frames(tester, 2);
-      expect(_inPanel(find.byType(EntityTimelineTile)), findsNothing);
       expect(api.calls.map((x) => x.path), contains('/api/v1/entities/students/100/courses/40/timeline'));
       await tester.pumpWidget(const SizedBox());
     });

@@ -13,7 +13,7 @@
    "image_url": null,
    "country": null,
    "is_active": true,
-   "created_at": "2026-11-06T01:21:21.150506",
+   "created_at": "2026-11-06T06:32:05.179721",
    "last_login": null,
    "email": "alice@ent.io",
    "phone": null,
@@ -33,7 +33,7 @@
    "withdrawn": 0,
    "expired": 0,
    "avg_progress": 46.7,
-   "last_activity_at": "2026-11-04T01:21:20.957888",
+   "last_activity_at": "2026-11-04T06:32:04.835804",
    "paid": [
     {
      "currency": "EGP",
@@ -44,6 +44,7 @@
   "badges": [],
   "sections": [
    "courses",
+   "grades",
    "timeline",
    "payments",
    "subscriptions"

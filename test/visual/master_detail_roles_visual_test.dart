@@ -79,7 +79,7 @@ void main() {
   setUpAll(() async {
     await _loadFonts();
     translation = jsonDecode(File('assets/translation.json').readAsStringSync()) as Map<String, dynamic>;
-    final keys = jsonDecode(File('docs/master_detail/keys_p7.json').readAsStringSync()) as Map<String, dynamic>;
+    final keys = jsonDecode(File('assets/translation.json').readAsStringSync()) as Map<String, dynamic>;
     translation = {...translation, ...keys};
     SharedPreferences.setMockInitialValues({});
     mockRequestPlugins();

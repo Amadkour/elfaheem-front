@@ -37,7 +37,7 @@ import 'md_support.dart' show mdCourseRef;
 Map<String, dynamic> _studentCourse(int id, String en, int progress) => {
       'id': id, 'name_ar': en, 'name_en': en, 'image_url': '', 'type': 'recorded', 'is_published': true,
       'is_enrolled': true, 'org': null, 'progress': progress, 'sessions_count': 12, 'fees': 300, 'currency': 'EGP',
-      'teacher': {'id': 21, 'name': 'Dr. Omar'},
+      'teacher': {'id': 21, 'name': 'Dr. Omar', 'created_at': '2026-01-10T09:00:00'},
     };
 
 Map<String, dynamic> _teacherCourse(int id, String en) => {

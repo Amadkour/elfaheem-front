@@ -100,7 +100,7 @@ void main() {
             EntitiesApi.instance.invalidate();
             final api = FakeApi(adminRoutes(), latency: const Duration(milliseconds: 20));
             final auth = await peopleSetUp(api);
-            translation.addAll(jsonDecode(File('docs/master_detail/keys_p6.json').readAsStringSync()) as Map<String, dynamic>);
+            translation.addAll(jsonDecode(File('assets/translation.json').readAsStringSync()) as Map<String, dynamic>);
             await _loadFonts();
             tester.view.devicePixelRatio = 1;
             tester.view.physicalSize = size;

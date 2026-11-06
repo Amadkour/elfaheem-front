@@ -12,7 +12,7 @@ import 'md_support.dart';
 
 /// The `md_p5_*` strings live beside the code until the merge: tests read them from there.
 void loadP5Keys() {
-  final keys = jsonDecode(File('docs/master_detail/keys_p5.json').readAsStringSync()) as Map<String, dynamic>;
+  final keys = jsonDecode(File('assets/translation.json').readAsStringSync()) as Map<String, dynamic>;
   translation = {...translation, ...keys};
 }
 

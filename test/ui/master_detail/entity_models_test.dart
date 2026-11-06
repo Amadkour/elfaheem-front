@@ -90,7 +90,7 @@ void main() {
       expect(s.isLearnerView, isFalse);
       expect(s.mine, isNull);
       expect(s.price!['fees'], 300.0);
-      expect(s.sections, ['students', 'content']);
+      expect(s.sections, fx('entity_course')['sections']);
     });
 
     test('course (a learner: stats.mine)', () {
@@ -105,7 +105,7 @@ void main() {
       expect(m.exams!.passed, 1);
       expect(m.expectedEndAt, entityTime((fx('entity_course_learner')['stats'] as Map)['mine']['expected_end_at']));
       expect(s.revenue, isEmpty);
-      expect(s.sections, ['timeline']);
+      expect(s.sections, fx('entity_course_learner')['sections']);
     });
 
     test('teacher (revenue per currency)', () {
