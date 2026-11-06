@@ -181,3 +181,4 @@ cards, panel, states and keyboard everywhere (the server pages, searches, filter
   hands `siblings` when its rows change, not on every build. `EntitiesApi.invalidate` also drops the requests already
   running for that entity (a forced reload never receives, or caches, an answer that predates the change);
   `EntityAccess` keeps at most 1000 answers.
+Phase 9 (the hardening audit, every role's lists classified, what was converted and what remains): `PHASE9_AUDIT.md`.

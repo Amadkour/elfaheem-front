@@ -7,6 +7,10 @@ library;
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -29,6 +33,8 @@ class StudentExamListScreen extends StatefulWidget {
 class _StudentExamListScreenState extends State<StudentExamListScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
+  // An exam's course chip opens that course (progress, what is due, Continue learning) in the shared panel (D-290).
+  final _panel = EntityPanelController(rowKind: EntityKind.course);
 
   @override
   void initState() {
@@ -42,6 +48,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
   @override
   void dispose() {
     _tabCtrl.dispose();
+    _panel.dispose();
     super.dispose();
   }
 
@@ -74,7 +81,10 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
         scored.length;
     final courses = all.map((e) => e.courseId).toSet().length;
 
-    return BasePage( useWebCard: true,maxWith: 1100, child: NestedScrollView(
+    return BasePage( useWebCard: true,maxWith: 1100, child: MasterDetailScaffold(
+      controller: _panel,
+      rootLabel: tx('exam_my_exams'),
+      list: NestedScrollView(
         physics: const BouncingScrollPhysics(),
         headerSliverBuilder: (ctx, _) => [
           SliverToBoxAdapter(
@@ -166,6 +176,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -259,10 +270,9 @@ class _ExamCard extends StatelessWidget {
                   style: examT(14.5, w: FontWeight.w800, c: c.textDark, h: 1.4)),
               if (exam.courseName != null) ...[
                 const SizedBox(height: 3),
-                Text(exam.courseName!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: examT(11.5, c: c.textMedium)),
+                EntityChip(
+                    key: ValueKey('md.exam.course.${exam.id}'),
+                    EntityRef(EntityKind.course, exam.courseId, label: exam.courseName!)),
               ],
             ]),
           ),

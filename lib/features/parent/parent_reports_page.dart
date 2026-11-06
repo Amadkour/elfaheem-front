@@ -25,6 +25,11 @@ import 'parent_report_widgets.dart';
 import 'parent_widgets.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityLink;
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 
 const _periods = ['daily', 'weekly', 'monthly'];
 
@@ -72,6 +77,8 @@ class _ReportsBody extends StatefulWidget {
 
 class _ReportsBodyState extends State<_ReportsBody> {
   late final ParentReportsProvider _p = ParentReportsProvider();
+  // A course of the report opens in the shared panel as the child sees it, under the child's name (D-290).
+  final _panel = EntityPanelController(rowKind: EntityKind.student);
   String _period = 'daily';
   int? _only; // several children: show one (null = all)
 
@@ -84,6 +91,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
   @override
   void dispose() {
     _p.dispose();
+    _panel.dispose();
     super.dispose();
   }
 
@@ -91,7 +99,10 @@ class _ReportsBodyState extends State<_ReportsBody> {
   Widget build(BuildContext context) => ChangeNotifierProvider.value(
     value: _p,
     child: Consumer<ParentReportsProvider>(builder: (context, p, _) {
-      return Column(children: [
+      return MasterDetailScaffold(
+        controller: _panel,
+        rootLabel: 'md_p7_my_children'.tr,
+        list: Column(children: [
         // period + date selector ------------------------------------------------
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -160,6 +171,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
                 for (final ch in p.children)
                   if (ch[_period] is Map && (_only == null || (ch['student'] as Map?)?['id'] == _only))
                     _ChildReportCard(
+                      childId: ((ch['student'] as Map?)?['id'] as num?)?.toInt(),
                       name: '${(ch['student'] as Map)['name']}',
                       report: Map<String, dynamic>.from(ch[_period] as Map),
                       period: _period,
@@ -169,7 +181,8 @@ class _ReportsBodyState extends State<_ReportsBody> {
             ),
           ),
         ),
-      ]);
+      ]),
+      );
     }),
   );
 
@@ -197,8 +210,10 @@ class _ReportsBodyState extends State<_ReportsBody> {
 //  One child, one period — the full report
 // ═════════════════════════════════════════════════════════════════════════════
 class _ChildReportCard extends StatelessWidget {
-  const _ChildReportCard({required this.name, required this.report, required this.period, this.profile});
+  const _ChildReportCard({this.childId, required this.name, required this.report, required this.period, this.profile});
 
+  /// The child (null from an older server): a course row opens that course in the child's context.
+  final int? childId;
   final String name;
   final Map<String, dynamic> report;
   final String period;
@@ -610,6 +625,31 @@ class _ChildReportCard extends StatelessWidget {
   );
 
   Widget _courseRow(BuildContext context, Map<String, dynamic> x) {
+    final row = _courseRowBody(context, x);
+    final courseId = (x['course_id'] as num?)?.toInt();
+    final childId = this.childId;
+    if (courseId == null || childId == null) return row;
+    final course = EntityRef(EntityKind.course, courseId, label: plLabel(x, 'name'));
+    final child = EntityRef(EntityKind.student, childId, label: name);
+    return EntityLink(
+      course,
+      key: ValueKey('md.parent_report.course.$courseId'),
+      onOpen: () {
+        // the child first, then their course: the course reads as the child sees it, the breadcrumb leads back
+        final panel = MasterDetailScope.maybeOf(context)?.controller;
+        if (panel == null) {
+          EntityNavigator.openFullPage(context, course, from: child);
+          return;
+        }
+        panel
+          ..open(child)
+          ..push(course);
+      },
+      child: row,
+    );
+  }
+
+  Widget _courseRowBody(BuildContext context, Map<String, dynamic> x) {
     final c = context.colors;
     final progress = (x['progress'] as num).toDouble();
     return Padding(

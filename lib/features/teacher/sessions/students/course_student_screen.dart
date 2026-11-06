@@ -18,8 +18,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
-import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
+import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/entity_viewer_actions.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -47,6 +52,9 @@ class EnrolledStudentsScreen extends StatefulWidget {
 
 class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
   final _search = TextEditingController();
+  // A student card opens that student's connected detail (their courses with me, history, Message) in the shared panel
+  // (D-290); the certificates of this course stay one action away.
+  final _panel = EntityPanelController(rowKind: EntityKind.student);
 
   @override
   void initState() {
@@ -66,6 +74,7 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
   @override
   void dispose() {
     _search.dispose();
+    _panel.dispose();
     super.dispose();
   }
 
@@ -78,12 +87,31 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
     return false;
   }
 
+  List<EntityPanelAction> _actions(BuildContext context, EntityRef ref, EntitySummary? s) => [
+        ...entityViewerActions(context, ref, s, controller: _panel),
+        if (ref.kind == EntityKind.student && widget.course.certificates.isNotEmpty)
+          EntityPanelAction(
+            key: const ValueKey('md.course_student.certificates'),
+            icon: Icons.workspace_premium_rounded,
+            label: 'certificates'.tr,
+            onPressed: () {
+              final p = context.read<EnrolledStudentsProvider>();
+              final st = p.students.where((x) => x.id == ref.id).firstOrNull;
+              if (st != null) _showStudentDialog(context, st, widget.course, _progressColorOf(context, st));
+            },
+          ),
+      ];
+
   @override
   Widget build(BuildContext context) {
     return BasePage(
       useWebCard: true,
       child: SafeArea(
-        child: AppRefresh(
+        child: MasterDetailScaffold(
+          controller: _panel,
+          rootLabel: 'students'.tr,
+          actions: (ref, s) => _actions(context, ref, s),
+          list: AppRefresh(
           onRefresh: _load,
           child: NotificationListener<ScrollNotification>(
             onNotification: _onScrollNotification,
@@ -127,6 +155,7 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );
@@ -425,7 +454,14 @@ class _StudentsSliver extends StatelessWidget {
       );
     }
 
-    final width = MediaQuery.sizeOf(context).width;
+    // The list's own width: with the detail panel open beside it the list is narrower than the window.
+    MasterDetailScope.maybeOf(context)?.controller.siblings = [
+      for (final s in p.students) EntityRef(EntityKind.student, s.id, label: s.name, imageUrl: s.imageUrl),
+    ];
+    return SliverLayoutBuilder(builder: (context, box) => _grid(context, p, box.crossAxisExtent));
+  }
+
+  Widget _grid(BuildContext context, EnrolledStudentsProvider p, double width) {
     final columns = width >= 1200 ? 3 : (width >= 760 ? 2 : 1);
 
     if (columns == 1) {
@@ -457,7 +493,8 @@ class _StudentsSliver extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: 10,
               crossAxisSpacing: 14,
-              mainAxisExtent: 106,
+              // the card's two text lines grow with the reader's text size
+              mainAxisExtent: MediaQuery.textScalerOf(context).scale(106).clamp(106.0, 150.0),
             ),
             delegate: SliverChildBuilderDelegate(
                   (_, i) => _StaggeredEntrance(
@@ -593,25 +630,30 @@ class _StudentCard extends StatelessWidget {
 
   const _StudentCard({required this.student, required this.course});
 
-  Color _progressColor(BuildContext context) {
-    if (student.progressPercentage >= 80) return context.colors.success;
-    if (student.progressPercentage >= 40) return context.colors.warning;
-    return context.colors.primary;
-  }
+  Color _progressColor(BuildContext context) => _progressColorOf(context, student);
 
   @override
   Widget build(BuildContext context) {
+    final panel = MasterDetailScope.maybeOf(context)?.controller;
+    final ref = EntityRef(EntityKind.student, student.id, label: student.name, imageUrl: student.imageUrl);
+    if (panel == null) return _card(context, ref, false);
+    return ListenableBuilder(listenable: panel, builder: (context, _) => _card(context, ref, panel.selectedId == student.id));
+  }
+
+  Widget _card(BuildContext context, EntityRef ref, bool selected) {
     return Material(
       color: context.colors.cardBg,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
+        key: ValueKey('md.course_student.${student.id}'),
         borderRadius: BorderRadius.circular(18),
-        onTap: () => _showStudentDialog(context, student, course, _progressColor(context)),
+        onTap: () => EntityNavigator.open(context, ref),
         child: Ink(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: context.colors.divider, width: 0.5),
+            border: Border.all(
+                color: selected ? context.colors.primary : context.colors.divider, width: selected ? 1.5 : 0.5),
           ),
           child: Row(
             children: [
@@ -981,6 +1023,12 @@ class _SendToAllButton extends StatelessWidget {
 // The dialog lives on the root navigator, so the provider is re-supplied.
 // ─────────────────────────────────────────────────────────────────────────────
 
+Color _progressColorOf(BuildContext context, EnrolledStudent student) {
+  if (student.progressPercentage >= 80) return context.colors.success;
+  if (student.progressPercentage >= 40) return context.colors.warning;
+  return context.colors.primary;
+}
+
 void _showStudentDialog(
     BuildContext context, EnrolledStudent student, TeacherCourse course, Color color) {
   final provider = context.read<EnrolledStudentsProvider>();
@@ -1054,8 +1102,6 @@ class _StudentDetailsDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // their progress and history in my courses (D-290)
-              Center(child: EntityChip(EntityRef(EntityKind.student, student.id, label: student.name))),
               _InfoRow(icon: Icons.email_outlined, label: 'email'.tr, value: student.gmail),
               _InfoRow(
                 icon: Icons.event_available_outlined,

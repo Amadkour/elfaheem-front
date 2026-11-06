@@ -15,6 +15,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
 import 'package:flutter_education_app/core/plural.dart';
@@ -27,6 +28,7 @@ import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart'; // already used by complaint_attachement_widgets.dart
 
+import 'admin_bulk.dart';
 import 'admin_common.dart' hide StatusChip;
 import 'admin_page.dart';
 import 'admin_premium_widgets.dart' show AdminPalette;
@@ -433,6 +435,16 @@ class _TabBody extends StatelessWidget {
               errorText: l.error,
               onRetry: () => p.load(tab),
               rows: l.items,
+              rowId: (item) => asInt(item['id']),
+              // bulk (D-290 phase 8): export only; a refund asks an amount and a reason per payment, so it stays on the row
+              selectable: records,
+              bulkActions: (sel) => [
+                adminBulkButton('md_p8_export_selected'.tr, Icons.file_download_outlined,
+                    () => showAppExportSheet(context, adminPaymentsExport([
+                          for (final item in l.items)
+                            if (sel.contains(asInt(item['id']))) item,
+                        ]))),
+              ],
               searchHint: records
                   ? t('ابحث بالطالب أو الكورس أو المرجع أو الرقم', 'Search student, course, reference or #')
                   : t('ابحث بالمعلم أو المرجع أو الرقم', 'Search teacher, reference or #'),

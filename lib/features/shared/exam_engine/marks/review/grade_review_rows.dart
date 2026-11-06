@@ -10,6 +10,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../mark_sessions_api.dart';
@@ -207,6 +209,11 @@ class GradeRowDetail extends StatelessWidget {
         );
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text(gradeRowName(row), style: appText(17, w: FontWeight.w800, c: c.textDark)),
+      // the matched student opens their record where the server allows it (D-290)
+      if (row.studentId != null)
+        Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: EntityGuardedChip(EntityRef(EntityKind.student, row.studentId!, label: gradeRowName(row)))),
       if (row.identifierMasked.isNotEmpty)
         Text('${t('الرقم', 'Number')}: ${row.identifierMasked}${row.identifierMethod == null ? '' : ' · ${row.identifierMethod}'}', textDirection: TextDirection.ltr, style: appText(12.5, c: c.textMedium)),
       if (row.decided) ...[

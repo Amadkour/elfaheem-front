@@ -31,6 +31,8 @@ import '../shared/course_profile/course_profile_screen.dart' show openCourseProf
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
 
 const _pub = '$orgBase/public';
 Map<String, String> termKinds() => {'term1': t('الفصل الأول', 'Term 1'), 'term2': t('الفصل الثاني', 'Term 2'), 'summer': t('الصيفي', 'Summer')};
@@ -501,7 +503,10 @@ class _Students extends StatelessWidget {
                         AdminAvatar(name: '${u['name']}', url: u['image_url'] as String?),
                         const SizedBox(width: 12),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('${u['name']}', style: orgText(context, w: FontWeight.w800)),
+                          if (u['id'] != null)
+                            EntityGuardedChip(EntityRef(EntityKind.student, asInt(u['id']), label: '${u['name']}'), maxWidth: 320)
+                          else
+                            Text('${u['name']}', style: orgText(context, w: FontWeight.w800)),
                           Wrap(spacing: 6, runSpacing: 4, children: [
                             OrgPill(stageLabels()['${row['stage']}'] ?? '', color: row['stage'] == 'graduated' ? c.success : c.primary),
                             if (row['program'] != null) OrgPill('${asMap(row['program'])['code']}', icon: Icons.account_tree_rounded),
@@ -574,9 +579,21 @@ class _ArchiveRequests extends StatelessWidget {
                 IconBadge(Icons.inventory_2_rounded, c.warning, size: 42),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${asMap(row['student'])['name']}', style: orgText(context, w: FontWeight.w800)),
-                  Text('${_cname(asMap(row['course']))} · ${termKinds()[asMap(asMap(row['run'])['term'])['kind']] ?? ''} ${asMap(asMap(row['run'])['term'])['year_label'] ?? ''}',
-                      style: orgText(context, size: 12, color: c.textMedium)),
+                  // the student and the course open their detail where the server allows it (D-290)
+                  if (asMap(row['student'])['id'] != null)
+                    EntityGuardedChip(
+                        EntityRef(EntityKind.student, asInt(asMap(row['student'])['id']), label: '${asMap(row['student'])['name']}'),
+                        maxWidth: 320)
+                  else
+                    Text('${asMap(row['student'])['name']}', style: orgText(context, w: FontWeight.w800)),
+                  Wrap(spacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    if (asMap(row['course'])['id'] != null)
+                      EntityGuardedChip(EntityRef(EntityKind.course, asInt(asMap(row['course'])['id']), label: _cname(asMap(row['course']))))
+                    else
+                      Text(_cname(asMap(row['course'])), style: orgText(context, size: 12, color: c.textMedium)),
+                    Text('${termKinds()[asMap(asMap(row['run'])['term'])['kind']] ?? ''} ${asMap(asMap(row['run'])['term'])['year_label'] ?? ''}',
+                        style: orgText(context, size: 12, color: c.textMedium)),
+                  ]),
                   if ('${row['reason'] ?? ''}'.isNotEmpty) Text('"${row['reason']}"', style: orgText(context, size: 12)),
                 ])),
                 IconButton(tooltip: t('موافقة', 'Approve'), icon: Icon(Icons.check_circle_rounded, color: c.success), onPressed: () async {

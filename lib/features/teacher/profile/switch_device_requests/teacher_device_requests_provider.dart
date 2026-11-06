@@ -12,8 +12,13 @@ class DeviceSwitchItem {
   final int id;
   final String studentName;
   final String? studentPhone, courseName, newDeviceName, createdAt;
+
+  /// The student and course of the request (null from an older server): their chips open the connected detail.
+  final int? studentId, courseId;
   DeviceSwitchItem.fromJson(Map<String, dynamic> j)
       : id = j['id'] as int,
+        studentId = (j['student_id'] as num?)?.toInt(),
+        courseId = (j['course_id'] as num?)?.toInt(),
         studentName = (j['student_name'] ?? '') as String,
         studentPhone = j['student_phone'] as String?,
         courseName = j['course_name'] as String?,

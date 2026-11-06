@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -20,9 +21,11 @@ import '../org/org_providers.dart';
 import '../org/org_v3.dart' show orgCall, orgErrorText;
 import '../org/org_ui.dart';
 import '../shared/rag/rag_quota_admin.dart' show showRagQuotaAdminSheet;
+import 'admin_bulk.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'admin_page.dart';
+import 'admin_table_export.dart' show adminOrganizationsExport;
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_username.dart';
@@ -138,7 +141,43 @@ class _AdminOrganizationsPageState extends State<AdminOrganizationsPage> {
 
   void _setFilter(String f) {
     _p.setFilter('status', orgFilterQuery(f)['status']);
-    setState(() {});
+    setState(_picked.clear);
+  }
+
+  /// The rows ticked in the table (bulk actions, D-290 phase 8).
+  final Set<Object> _picked = {};
+
+  List<Map<String, dynamic>> _pickedRows() => [
+        for (final r in _p.rows)
+          if (_picked.contains(asInt(r['id']))) r,
+      ];
+
+  /// Runs the panel's own decision call ([action]: approve / reactivate) for the picked rows in [from] statuses. The
+  /// approval's welcome note is optional, so the bulk sends none; suspend / ask for changes / delete / restore need a
+  /// reason per organization and stay on the panel.
+  Future<void> _bulkDecide(String action, String label, Set<String> from) async {
+    final ids = [
+      for (final r in _pickedRows())
+        if (from.contains('${r['status']}')) asInt(r['id']),
+    ];
+    if (ids.isEmpty || !await confirmAdminBulk(context, label, ids.length) || !mounted) return;
+    await runAdminBulk(ids, (id) => ApiClient.instance.post('$_base/$id/$action', body: const <String, dynamic>{}), refresh: _reload);
+    if (mounted) setState(_picked.clear);
+  }
+
+  List<Widget> _bulkActions() {
+    final picked = _pickedRows();
+    final statuses = {for (final r in picked) '${r['status']}'};
+    return [
+      if (statuses.contains('pending') || statuses.contains('rejected'))
+        adminBulkButton(t('اعتماد', 'Approve'), Icons.verified_rounded,
+            () => _bulkDecide('approve', t('اعتماد', 'Approve'), const {'pending', 'rejected'})),
+      if (statuses.contains('suspended'))
+        adminBulkButton(t('إعادة التفعيل', 'Reactivate'), Icons.play_circle_rounded,
+            () => _bulkDecide('reactivate', t('إعادة التفعيل', 'Reactivate'), const {'suspended'})),
+      adminBulkButton('md_p8_export_selected'.tr, Icons.file_download_outlined,
+          () => showAppExportSheet(context, adminOrganizationsExport(picked, typeLabels: orgTypeLabels()))),
+    ];
   }
 
   Future<void> _openAdmins() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminOrgAdminsPage()));
@@ -196,6 +235,12 @@ class _AdminOrganizationsPageState extends State<AdminOrganizationsPage> {
                   onRetry: _reload,
                   rows: _p.rows,
                   rowId: (r) => asInt(r['id']),
+                  selectable: true,
+                  selected: _picked,
+                  onSelectionChanged: (s) => setState(() => _picked
+                    ..clear()
+                    ..addAll(s)),
+                  bulkActions: (_) => _bulkActions(),
                   searchHint: t('اسم المؤسسة أو رقم الترخيص', 'Name or licence number'),
                   onSearch: _p.setSearch,
                   onRowTap: (r) => _openReview(context, asInt(r['id']), _reload),

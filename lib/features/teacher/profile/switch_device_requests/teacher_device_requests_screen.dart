@@ -14,6 +14,9 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
 import 'teacher_device_requests_provider.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/app_notice.dart';
@@ -166,7 +169,15 @@ class _Card extends StatelessWidget {
                           fontSize: 15,
                         ),
                       ),
-                      if (item.courseName != null) ...[
+                      // the student and the course open their detail where the server allows it (D-290)
+                      if (item.studentId != null || item.courseId != null)
+                        Wrap(spacing: AppSpace.xs, children: [
+                          if (item.studentId != null)
+                            EntityGuardedChip(EntityRef(EntityKind.student, item.studentId!, label: item.studentName)),
+                          if (item.courseId != null)
+                            EntityGuardedChip(EntityRef(EntityKind.course, item.courseId!, label: item.courseName ?? '')),
+                        ])
+                      else if (item.courseName != null) ...[
                         const SizedBox(height: 2),
                         Text(
                           item.courseName!,

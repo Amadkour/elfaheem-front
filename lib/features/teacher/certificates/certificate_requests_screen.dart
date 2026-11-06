@@ -16,6 +16,11 @@ import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
+import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 
 class CertificateRequestsScreen extends StatelessWidget {
   const CertificateRequestsScreen({super.key});
@@ -27,12 +32,30 @@ class CertificateRequestsScreen extends StatelessWidget {
       );
 }
 
-class _View extends StatelessWidget {
+/// A request names a student of my course and that course: both open their connected detail in the shared panel
+/// (D-290), the approve / reject buttons stay on the card.
+class _View extends StatefulWidget {
   const _View();
+
+  @override
+  State<_View> createState() => _ViewState();
+}
+
+class _ViewState extends State<_View> {
+  final _panel = EntityPanelController(rowKind: EntityKind.student);
+
+  @override
+  void dispose() {
+    _panel.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<CertificateRequestsProvider>();
+    _panel.siblings = [
+      for (final i in p.items) EntityRef(EntityKind.student, i.studentId, label: i.studentName, imageUrl: i.studentImageUrl),
+    ];
 
     final body = CertificateRequestsBody(
       loading: p.loading,
@@ -45,9 +68,13 @@ class _View extends StatelessWidget {
     return Scaffold(
       appBar: ScreenAppBar(title: 'certificate_requests'.tr), // the app's back chip + title (L4)
       body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: body),
+        child: MasterDetailScaffold(
+          controller: _panel,
+          rootLabel: 'certificate_requests'.tr,
+          list: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: body),
+          ),
         ),
       ),
     );
@@ -136,8 +163,13 @@ class _RequestCard extends StatelessWidget {
               Text(item.studentName,
                   style: TextStyle(
                       fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w800)),
-              Text('${item.courseName(ar)} · ${item.certificateTitle}',
-                  style: c.caption, maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(item.certificateTitle, style: c.caption, maxLines: 2, overflow: TextOverflow.ellipsis),
+              Wrap(spacing: AppSpace.xs, children: [
+                EntityChip(
+                    key: ValueKey('md.cert_request.student.${item.requestId}'),
+                    EntityRef(EntityKind.student, item.studentId, label: item.studentName, imageUrl: item.studentImageUrl)),
+                EntityChip(EntityRef(EntityKind.course, item.courseId, label: item.courseName(ar))),
+              ]),
             ]),
           ),
         ]),
