@@ -3,8 +3,10 @@
 // the filter and the audience build the server's query / body, and every new server code has text. The sample
 // payloads are shared with test/ui/adv_analytics_layout_test.dart and test/visual/adv_analytics_golden_test.dart.
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/org/advising/adv_analytics_models.dart';
 import 'package:flutter_education_app/features/org/advising/adv_models.dart' show AdvRef;
+import 'package:flutter_education_app/features/org/advising/adv_parts.dart' show advFreshFailedText;
 import 'package:flutter_education_app/features/org/advising/adv_texts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -340,6 +342,27 @@ void main() {
       expect(o.outcomes.pending, isFalse);
       expect(o.health!.critical, 1);
       expect(o.empty, isFalse);
+    });
+
+    test('computed_at: the stored copy says when it was computed; an older server falls back to generated_at', () {
+      final stored = AdvOverview.fromJson({...sampleAdvOverviewJson(), 'computed_at': '2026-11-05T07:52:00'});
+      expect(stored.computedAt, DateTime.utc(2026, 11, 5, 7, 52));
+      expect(stored.updatedAt, stored.computedAt);
+      final old = AdvOverview.fromJson(sampleAdvOverviewJson());
+      expect(old.computedAt, isNull);
+      expect(old.updatedAt, DateTime.utc(2026, 11, 5, 8));
+    });
+
+    test('a refused Refresh: the limit says when it works again, both languages', () {
+      const limited = ApiException(statusCode: 429, message: 'x', code: 'advising_rate_limited', body: {'detail': {'code': 'advising_rate_limited', 'retry_after_minutes': 60}});
+      const bare = ApiException(statusCode: 429, message: 'x', code: 'advising_rate_limited');
+      AppConfig.lang = 'en';
+      expect(advFreshFailedText(limited), 'You refreshed the figures many times within an hour — the ones shown are the last saved copy. Try again in 60 minutes');
+      expect(advFreshFailedText(bare), 'You refreshed the figures many times within an hour — the ones shown are the last saved copy');
+      AppConfig.lang = 'ar';
+      expect(advFreshFailedText(limited), contains('60 دقيقة'));
+      expect(advFreshFailedText(limited), startsWith('حدّثت الأرقام'));
+      AppConfig.lang = 'en';
     });
 
     test('aggregate tier: hidden counts stay null, the sensitive row is folded', () {

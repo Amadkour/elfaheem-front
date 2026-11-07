@@ -1,5 +1,39 @@
 # Academic Advising — changelog
 
+## Speed round 2 — PostgreSQL settings, 60 s list counts, the stored dashboard — 2026-11-07
+Backend (migration 0062 after 0061):
+- PostgreSQL settings in `docker-compose.yml` (what the release pipeline runs): `random_page_cost` 1.1 and
+  `effective_io_concurrency` 200 (SSD), `shm_size` 512mb; `shared_buffers` (RAM / 4, restart), `effective_cache_size`
+  (RAM / 2) and `work_mem` (RAM / 4 / 100) from `PG_*` variables that stay at PostgreSQL's defaults until
+  `.env.production` sets them: no file documents the server's RAM. Formulas in `.env.example`, `docs/CAPACITY.md` §12.
+- `count_cache`: the facets and totals of the director's org-wide workspace, alerts, students, threads (with
+  `unread_total`, per viewer), drill-downs and graduation, and the advisors' loads, kept 60 s in the app's Redis cache
+  (the dashboard's layer), keyed by database, organization, scope, the normalized filters and per-organization version
+  counters (`cases`, `threads`). The counters move after the commit of any write to the tables those counts read (a
+  session listener for ORM writes, `touch` on the bulk statements), so the writer sees its change at once. Advisors'
+  own lists are never cached; rows and pages are always live; Redis down = counted as before.
+- `adv_overview_store` (RLS, `(SELECT nb_tenant_ids())`): the default dashboard per organization and tier, refreshed
+  by the 10-minute advising tick (rows older than 9 minutes, stalest first, 20 per tick, 240 s budget, one worker per
+  row; a row nobody read for 7 days is dropped) and after the daily analytics run. A read serves it while it covers
+  today's period and is under 25 minutes old. `computed_at` in the body; `?fresh=1` recomputes (12 / hour per user,
+  `adv_fresh`, 429 `advising_rate_limited`). Filtered views stay live with the 60 s cache, now keyed by the versions.
+- Tests: `e2e_advising_analytics` section 10 (stored copy, fresh, limit, stale and next-period copies, the tick,
+  60 s counts, an advisor never cached, a write moves them, keys per organization and viewer) on an in-process cache
+  (`tests/org_v2/_mem_redis.py`); the perf script uses the same stand-in (`--cold`: cache off).
+
+App:
+- The director dashboard reports `computed_at` to the header ("Updated …"); the header's Refresh asks for
+  `?fresh=1`, says "The figures are up to date", and a refused one keeps the figures with `advFreshFailedText`
+  (limit and retry time in Arabic and English).
+
+Result on `nb-pg` (100 000 students, shared box, the 16 GB settings applied for the run): 74 of 88 cases under 300 ms
+p95 (46 of 87 in this session's baseline run; 39 in the last round's). The dashboard: 4 655 → 60 ms (stored copy), the
+filtered one 7 692 → 68 ms (60 s copy); a store miss or `?fresh=1` costs 2 638 ms. Still over (re-measured): workspace
+sort cgpa (328) and contact (354), the two searches (356, 488), page 2000 (601); students (assign) 792 and its search
+795; drill-downs advisor_away (334), booked (619), awaiting_reply (328), unowned_flag (328); analytics advisors
+(1 243) and the `adv.advisors` export (891). What is left there is the live page (the sort over the filtered students),
+not the counts.
+
 ## Phase 9 follow-up — list speed, records retention — 2026-11-07
 Backend (migration 0061 after 0060):
 - Integer columns `flags_<priority>[_public]` on `adv_student_stats`, written with the JSON and backfilled, replace the
