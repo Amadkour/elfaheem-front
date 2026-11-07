@@ -90,6 +90,12 @@ accommodations become rows the student sees with dates; support plans have items
 period, filters, refresh as a job, 27 drill-downs (`GET …/analytics/students`), advisor stats, compliance per
 term, the daily data check (badge on the advising page) and Export Studio reports with schedules.
 
+**Retention.** Settings (organization row only) hold two periods after a student's membership ends:
+`retention_months` (sensitive notes, default 24) and `records_retention_months` (every other advising record, default
+84, 12-240, never shorter; 422 `advising_retention_order`, the draft checks it first). The server's daily purge
+(`../back/services/organization/advising/retention.py`) keeps a request, conversation or case link until its governance
+item closes, and never deletes governance items, the audit log, aggregates or anonymous survey answers.
+
 ## Kill switches
 
 | Key | Hides |

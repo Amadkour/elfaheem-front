@@ -1,5 +1,30 @@
 # Academic Advising — changelog
 
+## Phase 9 follow-up — list speed, records retention — 2026-11-07
+Backend (migration 0061 after 0060):
+- Integer columns `flags_<priority>[_public]` on `adv_student_stats`, written with the JSON and backfilled, replace the
+  per-row JSON reads in the workspace, dashboard and daily snapshot. Three PostgreSQL indexes (live students, stats
+  list, CGPA), earlier autovacuum on the stats table.
+- Fewer passes over the students: workspace, alerts, students and graduation take totals from the facet query; searches
+  become an id list; risk and CGPA sorts start from the column's index; the graduation page sorts only its statuses;
+  the dashboard joins the primary advisor once. Pages of the fast paths compared with the plain paths on the 100 000
+  student data: identical.
+- Result: 39 of 87 cases under 300 ms p95 (34 before). Still over: the director's workspace (310-813 ms), most
+  drill-downs (317-768 ms), threads (368-532 ms), students (439-1042 ms), graduation (514 ms), advisors (333-395 ms),
+  analytics advisors (1146 ms) and the dashboard on a cache miss (3454 ms, 5335 ms filtered). `/threads` did not improve.
+  Each org-wide page still needs a full pass over the students for its counts. A dashboard under 300 ms needs
+  pre-aggregation, and the facet counts need a short cache or a pre-aggregate; both trade freshness, so they are the
+  owner's call. Measured on `nb-pg` with stock settings (128 MB `shared_buffers`, `random_page_cost` 4) on a shared box.
+- Retention: `records_retention_months` (default 84, 12-240, never shorter than `retention_months`; 422
+  `advising_retention_order`) purges the other advising records of ended memberships; a request, conversation or case
+  link of an open governance item waits for it to close; `adv_analytics_runs` keep 180 days.
+- The account hard-delete tick logs the user id only, and its error line the exception class only (a database error
+  carries the statement's parameters). Accommodations end on the organization's local day.
+
+App:
+- Settings: "Data retention" (organization row) edits `retention_months` and `records_retention_months`. Neither was
+  on the page before. The draft checks the order, and `advising_retention_order` has both texts.
+
 ## Phase 9 — Hardening — 2026-11-07
 Backend:
 - Isolation e2e (`e2e_advising_isolation.py`): every advising route read from the app's OpenAPI and attacked across

@@ -21,6 +21,7 @@ Map<String, dynamic> _policy({int maxLoad = 40, String strategy = 'balanced', St
       'sla_hours': {'low': 120, 'normal': 72, 'high': 24, 'urgent': 4},
       'nudge_days': [3, 7],
       'retention_months': 24,
+      'records_retention_months': 84,
       'survey': true,
       'workflow_steps': ['director_review'],
     };
@@ -324,6 +325,14 @@ void main() {
       expect(d.set('max_load', 0).error, isNotNull);
       expect(d.set('warn_pct', 101).error, isNotNull);
       expect(d.set('max_load', 30).error, isNull);
+      // retention (the server's 422 advising_retention_order): records never shorter than sensitive notes
+      expect(d.set('retention_months', 0).error, isNotNull);
+      expect(d.set('records_retention_months', 11).error, isNotNull, reason: '12 months at least');
+      expect(d.set('records_retention_months', 12).error, isNotNull, reason: 'below the default 24 of sensitive notes');
+      expect(d.set('retention_months', 36).set('records_retention_months', 24).error, 'Advising records must be kept at least as long as sensitive notes');
+      expect(d.set('retention_months', 36).set('records_retention_months', 36).error, isNull);
+      expect(d.set('retention_months', 120).error, isNull, reason: 'a row that sets only the sensitive period stays valid');
+      expect(d.set('retention_months', 12).set('records_retention_months', 84).toBody()['settings'], {'retention_months': 12, 'records_retention_months': 84});
     });
 
     test('scope keys and value texts', () {
@@ -336,6 +345,12 @@ void main() {
       expect(advPolicyValueText('mode', 'multi', o), 'Advisor and co-advisors');
       expect(advPolicyValueText('strategy', 'continuity', o), 'Previous advisor first');
       expect(advPolicyValueText('warn_pct', 80, o), '80%');
+      expect(advPolicyValueText('records_retention_months', 84, o), '84 months');
+      AppConfig.lang = 'ar';
+      expect(advPolicyValueText('retention_months', 24, o), '24 شهراً');
+      AppConfig.lang = 'en';
+      final b = AdvPolicyBundle.fromJson(sampleAdvPolicyJson());
+      expect(b.effective.value('records_retention_months'), 84, reason: 'the effective settings carry the new field');
     });
   });
 
@@ -564,6 +579,7 @@ void main() {
     const codes = [
       'advising_bad_scope', 'advising_single_mode', 'advising_conflict', 'advising_conflict_exists', 'advising_over_capacity', 'plan_stale',
       'advising_reason_required', 'advising_not_found', 'advising_bad_dates', 'advising_bad_request',
+      'advising_retention_order',
     ];
     final en = advCodeTexts();
     AppConfig.lang = 'ar';

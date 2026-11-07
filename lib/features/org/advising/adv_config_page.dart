@@ -35,6 +35,10 @@ String advScopeKey(String type, String? ref) => type == 'org' ? 'org' : '$type:$
   return i < 0 ? ('org', null) : (key.substring(0, i), key.substring(i + 1));
 }
 
+/// A number of months in words ("24 months").
+String advMonthsText(int n) =>
+    countText(n, ar1: 'شهر واحد', ar2: 'شهران', arFew: '$n أشهر', arMany: '$n شهراً', en1: '1 month', en: '$n months');
+
 /// A field value in words (the inherited hints).
 String advPolicyValueText(String field, dynamic v, AdvPolicyOptions o) {
   String opt(List<AdvOption> list, String key, String Function(String) fb) => list.where((x) => x.key == key).firstOrNull?.label(fb) ?? fb(key);
@@ -48,6 +52,7 @@ String advPolicyValueText(String field, dynamic v, AdvPolicyOptions o) {
     'booking_min_notice_hours' || 'cancel_min_notice_hours' => t('${asInt(v)} ساعة', '${asInt(v)} h'),
     'booking_horizon_days' => t('${asInt(v)} يوم', '${asInt(v)} days'),
     'no_show_after_minutes' => t('${asInt(v)} دقيقة', '${asInt(v)} min'),
+    'retention_months' || 'records_retention_months' => advMonthsText(asInt(v)),
     _ => '${v ?? ''}',
   };
 }
@@ -250,6 +255,50 @@ class AdvConfigView extends StatelessWidget {
       ),
       ..._appointments(context, shown, hint, on),
       if (d.scopeType == 'org') ...advReportsPolicyFields(context, shown: shown, onField: on, hint: hint),
+      if (d.scopeType == 'org') ..._retention(context, shown, hint, on),
+    ];
+  }
+
+  /// How long advising data is kept after a student's membership ends (the organization's row: the daily purge reads
+  /// it there). Records are never kept shorter than sensitive notes (422 `advising_retention_order`).
+  List<Widget> _retention(BuildContext context, AdvPolicy shown, Widget Function(String) hint, void Function(String, dynamic)? on) {
+    int v(String f, int d) => shown.raw.containsKey(f) ? asInt(shown.raw[f], d) : d;
+    Widget row(String field, int def, {required String title, required String subtitle, required String label, required int min}) =>
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _StepperRow(
+            title: title,
+            subtitle: subtitle,
+            stepper: AdvStepper(
+              label: label,
+              value: v(field, def).clamp(min, 240),
+              min: min,
+              max: 240,
+              step: 6,
+              suffix: t(' شهر', ' mo'),
+              onChanged: on == null ? null : (x) => on(field, x),
+            ),
+          ),
+          hint(field),
+        ]);
+    return [
+      AdvSectionTitle(t('مدة حفظ البيانات', 'Data retention'), subtitle: t('بعد انتهاء عضوية الطالب، ثم تُحذف تلقائياً', "After a student's membership ends, then deleted automatically")),
+      AppCard(
+        padding: AppSpace.card,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          row('retention_months', advRetentionDefault,
+              title: t('الملاحظات الحساسة', 'Sensitive notes'),
+              subtitle: t('الصحية والنفسية والمالية وما يخص الإعاقة (بالأشهر)', 'Health, psychological, financial and accessibility notes (months)'),
+              label: t('مدة حفظ الملاحظات الحساسة بالأشهر', 'Months to keep sensitive notes'),
+              min: 1),
+          Divider(height: AppSpace.lg, color: context.colors.divider),
+          row('records_retention_months', advRecordsRetentionDefault,
+              title: t('سجلات الإرشاد', 'Advising records'),
+              subtitle: t('الملاحظات والتنبيهات والمحادثات والطلبات والخطط والتسهيلات؛ لا تقل عن مدة الملاحظات الحساسة (بالأشهر، 84 = 7 سنوات افتراضياً)',
+                  'Notes, alerts, conversations, requests, plans and accommodations; never shorter than sensitive notes (months, 84 = 7 years by default)'),
+              label: t('مدة حفظ سجلات الإرشاد بالأشهر', 'Months to keep advising records'),
+              min: 12),
+        ]),
+      ),
     ];
   }
 
