@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/paint_background.dart';
 
 import '../../features/shared/upload/upload_progress_footer.dart';
@@ -17,10 +18,16 @@ class BasePage extends StatelessWidget {
     this.appBar,
     this.useWebCard = false,
     this.maxWith,
+    this.width,
     this.enableFooterWidget = true,
   });
 
+  /// The card's max width in pixels — older pages; new code names a [width] role instead.
   final double? maxWith;
+
+  /// The page-width role of a [useWebCard] page (D-304): form · reading · content · wide · full. It wins over
+  /// [maxWith]; with neither, the card is [AppWidth.content].
+  final AppWidth? width;
   final Widget child;
   final Color? background;
   final Widget? floatingActionButton;
@@ -98,7 +105,7 @@ class BasePage extends StatelessWidget {
       ),
     );
 
-    if (useWebCard && context.width > 599) {
+    if (useWebCard && context.width >= AppWidth.phoneMax) {
       return Directionality(
         textDirection: Helpers.pageDirection,
         child: Scaffold(
@@ -106,24 +113,27 @@ class BasePage extends StatelessWidget {
           // NOTE: no footer here — `w` below already carries it via its own
           // bottomNavigationBar, and `w` is what actually renders in this
           // branch (nested inside the centered card).
-          body: Stack(
+          // The card is measured against the room the page really has (a shell's sidebar or rail already took its
+          // share), not the window: the role's width, less a gutter each side once the room is narrower (D-304).
+          body: LayoutBuilder(builder: (context, box) {
+            final cardWidth = width != null
+                ? width!.inside(box.maxWidth)
+                : AppWidth.content.inside(box.maxWidth, max: maxWith);
+            return Stack(
             children: [
               Positioned.fill(
                 child: CustomPaint(
                   painter: ElearningPatternPainter(
                     color: context.colors.primaryLight.withValues(alpha: 0.2),
-                    width: Helpers.calculateRemainingWidth(context),
+                    width: cardWidth,
                   ),
                 ),
               ),
               Align(
                 alignment: AlignmentGeometry.center,
                 child: Container(
-                  width: Helpers.calculateRemainingWidth(
-                    context,
-                    maxWith: maxWith,
-                  ),
-                  margin: EdgeInsets.symmetric(vertical: 10),
+                  width: cardWidth,
+                  margin: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                   padding: const EdgeInsets.all(0.0),
                   decoration: BoxDecoration(
                     borderRadius:
@@ -139,7 +149,8 @@ class BasePage extends StatelessWidget {
                 ),
               ),
             ],
-          ),
+          );
+          }),
         ),
       );
     }

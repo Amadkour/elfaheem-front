@@ -24,6 +24,7 @@ import '../../teacher/courses/component/teacher_stats.dart';
 import '../../teacher/home/home_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'instructor_courses_section.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCREEN
@@ -104,7 +105,7 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
       ),
-      child: BasePage( key: const ValueKey('course_instructor'), useWebCard: true, appBar: ScreenAppBar(title: widget.teacher.name),
+      child: BasePage( key: const ValueKey('course_instructor'), useWebCard: true, width: AppWidth.content, appBar: ScreenAppBar(title: widget.teacher.name),
         child: LayoutBuilder(
           builder: (ctx, constraints) => constraints.maxWidth > 800
               ? _WideLayout(

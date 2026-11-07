@@ -120,6 +120,7 @@ class _HubViewState extends State<_HubView>
     return BasePage(
       key: const ValueKey('teacher_exams_hub'),
       useWebCard: true,
+      width: AppWidth.content,
       floatingActionButton: prov.tab == 0
           ? FloatingActionButton.extended(
               heroTag: "teacher_exam_float",

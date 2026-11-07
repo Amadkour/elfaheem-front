@@ -34,6 +34,7 @@ import 'student_analytics_profile_screen.dart';
 import 'student_analytics_provider.dart';
 import 'student_analytics_widgets.dart';
 import 'student_course_analytics_screen.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class StudentAnalyticsScreen extends StatelessWidget {
   const StudentAnalyticsScreen({super.key});
@@ -199,6 +200,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
     return BasePage(
       key: const ValueKey('analytics'),
       useWebCard: true,
+      width: AppWidth.content,
       child: ColoredBox(
         color: c.background,
         child: AppRefresh(

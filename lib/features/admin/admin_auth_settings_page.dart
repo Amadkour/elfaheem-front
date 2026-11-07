@@ -278,6 +278,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
     final failed = !_loading && _error != null;
 
     return AdminPage(
+      width: AppWidth.reading,
       title: 'auth_settings_title'.tr,
       subtitle: 'auth_settings_sub'.tr,
       icon: Icons.verified_user_rounded,

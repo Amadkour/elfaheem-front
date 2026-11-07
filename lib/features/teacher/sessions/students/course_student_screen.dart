@@ -40,6 +40,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class EnrolledStudentsScreen extends StatefulWidget {
   final TeacherCourse course;
@@ -106,6 +107,7 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
   Widget build(BuildContext context) {
     return BasePage(
       useWebCard: true,
+      width: AppWidth.wide,
       child: SafeArea(
         child: MasterDetailScaffold(
           controller: _panel,

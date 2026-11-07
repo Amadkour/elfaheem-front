@@ -15,8 +15,12 @@
 //   AppBorder     hairline 1 · strong 1.5 · focus 2
 //   AppType     the type roles (display · headline · page title · section · body · row · label · meta · overline ·
 //               figure · figureLarge) mapped onto the theme's styles
+//   AppWidth    the page-width roles (D-304): form 600 · reading 860 · content 1120 · wide 1440 · full, plus the
+//               responsive side gutter (AppSpace.gutter: 16 phone · 24 above); `AppWidthBox` / `BasePage(width:)` apply them
 // The whole system (gradient rules, components, examples) is described in lib/design/README.md.
 library;
+
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
@@ -160,4 +164,39 @@ abstract final class AppType {
       context.colors.caption.copyWith(fontWeight: FontWeight.w400, color: context.colors.textMedium);
   static TextStyle figure(BuildContext context) =>
       context.colors.h3.copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark);
+}
+
+/// THE page-width roles (D-304). A page names what its body is and gets the matching max width; no screen writes its
+/// own `maxWidth: 900` any more. Narrower windows give every role the whole width less [gutter] on each side.
+///
+///   form      600   one column of fields: a complaint, a payment, a profile form, a sign-in step
+///   reading   860   text and detail pages: a profile, an exam result, a help article (about 75 characters a line)
+///   content  1120   mixed pages: card lists, a course page, a hub (BasePage's default)
+///   wide     1440   tables, dashboards, analytics, master-detail lists, editors
+///   full      inf   canvases that use every pixel (a board, a designer); gutters only
+enum AppWidth {
+  form(600),
+  reading(860),
+  content(1120),
+  wide(1440),
+  full(double.infinity);
+
+  const AppWidth(this.max);
+
+  /// The widest this role's body ever gets.
+  final double max;
+
+  /// Below this a page is a phone page: no centred card, the body uses the whole width.
+  static const double phoneMax = 600;
+
+  /// The side gutter of a body [available] wide: the page gutter, [AppSpace.gutter] (16 on phones, 24 above).
+  static double gutter(double available) => AppSpace.gutter(available);
+
+  /// The width of this role's body inside [available]: the role's max (or [max] when a page still names its own),
+  /// never wider than the room left between the two gutters.
+  double inside(double available, {double? max}) {
+    final cap = max ?? this.max;
+    final room = math.max(0.0, available - 2 * gutter(available));
+    return math.min(cap, room);
+  }
 }

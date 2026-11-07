@@ -61,6 +61,7 @@ class AdminPage extends StatelessWidget {
     this.dirty = false,
     this.floatingActionButton,
     this.maxWidth = maxContentWidth,
+    this.width,
     this.showBack = true,
     this.helpPageId,
   });
@@ -80,6 +81,9 @@ class AdminPage extends StatelessWidget {
   final bool dirty;
   final Widget? floatingActionButton;
   final double maxWidth;
+
+  /// The body's page-width role (D-304) — a settings form takes [AppWidth.reading]; it wins over [maxWidth].
+  final AppWidth? width;
 
   /// False for a page shown as a shell tab (it has nothing to go back to).
   final bool showBack;
@@ -121,7 +125,7 @@ class AdminPage extends StatelessWidget {
           Expanded(
             child: Align(
               alignment: AlignmentDirectional.topCenter,
-              child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: body),
+              child: ConstrainedBox(constraints: BoxConstraints(maxWidth: width?.max ?? maxWidth), child: body),
             ),
           ),
         ]),

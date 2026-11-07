@@ -2845,3 +2845,20 @@ The core reads the form because it holds the Google token; the Exam Engine impor
 through the Excel import's row checks. What has no engine type (scale, date, time) is reported, never dropped silently.
 A choice question without a correct answer is refused by row, and the preview says so first. Images are not copied,
 because a Forms image URL expires. Forms' responses are not imported.
+
+## D-304 — Page widths are roles, measured against the room the page has · 2026-11-08 · accepted
+
+Pages chose their width by pixel: `BasePage(useWebCard: true, maxWith: 900)` and friends, measured against the WINDOW.
+Between 900 and 1100 px every card was a fixed 650 px whatever it asked for (a 1360 sessions page and a 1440 laptop
+with the sidebar open both got 650), pages without a number got 900 on a 1920 screen (the teacher's and the student's
+analytics, the teacher's student list, the student's record), and admin settings forms stretched to 1200 with the
+value 900 px away from its label. **Decision.** Five page-width roles in `app_tokens.dart`, `AppWidth.form` 600 ·
+`reading` 860 (= `Breakpoints.contentMax`) · `content` 1120 · `wide` 1440 · `full`, with `inside(available)` = the role's
+max, never wider than the room less the existing `AppSpace.gutter` each side. `BasePage` measures the card with a
+LayoutBuilder (the room a shell's sidebar or rail leaves), takes `width:` (a role, wins) or the old `maxWith` (kept, so
+nothing that names its own width changes), and defaults to `content`. `AdminPage(width:)` and `AppWidthBox` apply the
+same roles to other bodies; `Helpers.calculateRemainingWidth` now answers from the roles. Every page that had no width
+got an explicit role; settings forms in the Super Admin's hubs take `reading`. **Trade-offs.** Pages that named a
+pixel width keep it (other tracks own those screens; they move to a role when next touched). Phones (< 600) are
+unchanged: no card, the page pads itself. Dialog widths are not themed: a theme cap would also cut the deliberately
+wide dialogs (designer previews at 980), so a runaway AlertDialog still needs its own constraint.

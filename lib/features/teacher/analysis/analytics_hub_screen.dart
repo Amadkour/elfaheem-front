@@ -37,6 +37,7 @@ import 'flags/teacher_read_flags_screen.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appCompactNumber;
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader;
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 String _courseTitle(TeacherCourse c) => (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? c.titleAr ?? c.titleEn ?? '';
 
@@ -253,6 +254,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
     return BasePage(
       key: const ValueKey('analytics_hub'),
       useWebCard: true,
+      width: AppWidth.content,
       enableFooterWidget: false,
       child: ColoredBox(
         color: context.colors.background,

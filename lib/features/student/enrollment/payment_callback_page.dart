@@ -42,6 +42,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../../utils/widget/base_page.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class PaymentCallbackPage extends StatefulWidget {
   const PaymentCallbackPage({super.key});
@@ -151,6 +152,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
     if (!_ready || _title.isEmpty) {
       return const BasePage(
           useWebCard: true,
+          width: AppWidth.form,
           child:Center(child: AppLoadingIndicator()));
     }
 
@@ -176,6 +178,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
     return BasePage(
       key: const ValueKey('payment_callback'),
       useWebCard: true,
+      width: AppWidth.form,
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(

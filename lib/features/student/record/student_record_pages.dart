@@ -163,6 +163,7 @@ class _TwoListsPageState extends State<_TwoListsPage> {
     return BasePage(
       key: ValueKey(widget.pageKey),
       useWebCard: true,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(title: widget.title),
       child: SafeArea(
         bottom: false,

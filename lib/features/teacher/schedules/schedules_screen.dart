@@ -15,6 +15,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppTime;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 // ══════════════════════════════════════════════════════════════════════════════
 //  TeacherSchedulesScreen
 // ══════════════════════════════════════════════════════════════════════════════
@@ -56,6 +57,7 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
     return BasePage(
       key: const ValueKey('teacher_schedules'),
       useWebCard: true,
+      width: AppWidth.content,
       child:
       SafeArea(child: Column(children: [
         ScreenAppBar(
