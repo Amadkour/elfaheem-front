@@ -11,7 +11,8 @@ Backend (migration 0061 after 0060):
   student data: identical.
 - Result: 39 of 87 cases under 300 ms p95 (34 before). Still over: the director's workspace (310-813 ms), most
   drill-downs (317-768 ms), threads (368-532 ms), students (439-1042 ms), graduation (514 ms), advisors (333-395 ms),
-  analytics advisors (1146 ms) and the dashboard on a cache miss (3454 ms, 5335 ms filtered). `/threads` did not improve.
+  appointments (306 ms), alerts priority=urgent (313 ms), the `adv.advisors` export (919 ms), analytics advisors (1146 ms)
+  and the dashboard on a cache miss (3454 ms, 5335 ms filtered). `/threads` did not improve.
   Each org-wide page still needs a full pass over the students for its counts. A dashboard under 300 ms needs
   pre-aggregation, and the facet counts need a short cache or a pre-aggregate; both trade freshness, so they are the
   owner's call. Measured on `nb-pg` with stock settings (128 MB `shared_buffers`, `random_page_cost` 4) on a shared box.
