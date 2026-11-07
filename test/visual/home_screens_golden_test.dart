@@ -572,6 +572,38 @@ Widget _parentHome() {
         'open_alerts': 2,
         'next_exam': {'id': 12, 'name': tr('اختبار الفيزياء', 'Physics test'), 'starts_at': iso(now.add(const Duration(days: 3))), 'source': 'course'},
         'courses': 7,
+        // D-305: how is my child doing
+        'pulse': {
+          'status': 'needs_you',
+          'week': {'scheduled': 5, 'attended': 3, 'missed': 2, 'rate': 60, 'homework_due': 3, 'homework_missing': 1, 'homework_due_soon': 1, 'active_days': 4, 'last_active_days': 0},
+          'missed_sessions': [
+            {'session': tr('المعادلات التربيعية', 'Quadratic equations'), 'course_id': 2, 'course_ar': 'الرياضيات', 'course_en': 'Mathematics', 'at': iso(now.subtract(const Duration(days: 2)))},
+          ],
+          'attendance_trend': [for (final r in [100, 90, 95, 80, 85, 60]) {'start': iso(now), 'rate': r}],
+          'grades': {'avg': 74.0, 'prev_avg': 79.0, 'class_avg': 68.0, 'mine_vs_class': 74.0, 'count': 4, 'failed': 1, 'trend': [for (final a in [82, 80, 78, null, 76, 71]) {'start': iso(now), 'avg': a}]},
+          'subjects': [
+            {'course_id': 2, 'name_ar': 'الرياضيات', 'name_en': 'Mathematics', 'progress': 45.0, 'avg': 48.0, 'class_avg': 66.0, 'missed': 2, 'weak_open': 7, 'tone': 'focus', 'teacher': {'id': 30, 'name': tr('أ. منى السيد', 'Ms. Mona Elsayed')}},
+            {'course_id': 3, 'name_ar': 'العلوم', 'name_en': 'Science', 'progress': 70.0, 'avg': 92.5, 'class_avg': 71.0, 'missed': 0, 'weak_open': 0, 'tone': 'strength', 'teacher': {'id': 31, 'name': tr('أ. كريم عادل', 'Mr. Karim Adel')}},
+            {'course_id': 4, 'name_ar': 'اللغة العربية', 'name_en': 'Arabic', 'progress': 60.0, 'avg': 78.0, 'class_avg': null, 'missed': 0, 'weak_open': 1, 'tone': 'steady', 'teacher': {'id': 32, 'name': tr('أ. هدى', 'Ms. Hoda')}},
+          ],
+          'upcoming': [
+            {'id': 'u1', 'source': 'course_session', 'title': tr('العلوم: الخلية', 'Science: the cell'), 'subtitle': tr('أونلاين', 'Online'), 'starts_at': iso(now.add(const Duration(hours: 2)))},
+            {'id': 'u2', 'source': 'timetable', 'title': tr('الرياضيات', 'Mathematics'), 'subtitle': tr('أ. منى', 'Ms. Mona'), 'location': tr('فصل 2', 'Class 2'), 'starts_at': iso(now.add(const Duration(days: 1)))},
+            {'id': 'u3', 'source': 'exam', 'title': tr('اختبار اللغة العربية', 'Arabic quiz'), 'starts_at': iso(now.add(const Duration(days: 2)))},
+            {'id': 'u4', 'source': 'exam', 'title': tr('اختبار الفيزياء', 'Physics test'), 'starts_at': iso(now.add(const Duration(days: 3)))},
+          ],
+          'roadmap': {'field': {'name_ar': 'العلوم', 'name_en': 'Science'}, 'done': 2, 'total': 5, 'next': {'id': 9, 'name_ar': 'الكيمياء للمبتدئين', 'name_en': 'Chemistry for beginners', 'progress': 20, 'kind': 'continue'}},
+          'insights': [
+            {'code': 'missed_week', 'level': 'warn', 'params': {'count': 2, 'scheduled': 5}, 'action': {'kind': 'message_teacher', 'course_id': 2, 'teacher_id': 30}},
+            {'code': 'homework_missing', 'level': 'warn', 'params': {'count': 1}, 'action': {'kind': 'open_report'}},
+            {'code': 'focus_subject', 'level': 'info', 'params': {'course_ar': 'الرياضيات', 'course_en': 'Mathematics', 'avg': 48}, 'action': {'kind': 'message_teacher', 'course_id': 2, 'teacher_id': 30}},
+            {'code': 'strength', 'level': 'good', 'params': {'course_ar': 'العلوم', 'course_en': 'Science'}, 'action': null},
+          ],
+          'teachers': [
+            {'id': 30, 'name': tr('أ. منى السيد', 'Ms. Mona Elsayed'), 'course_id': 2, 'course_ar': 'الرياضيات', 'course_en': 'Mathematics'},
+            {'id': 31, 'name': tr('أ. كريم عادل', 'Mr. Karim Adel'), 'course_id': 3, 'course_ar': 'العلوم', 'course_en': 'Science'},
+          ],
+        },
       },
       {
         'child': {'id': 8, 'name': tr('سارة أحمد', 'Sara Ahmed'), 'image_url': null},
@@ -583,6 +615,7 @@ Widget _parentHome() {
         'open_alerts': 0,
         'next_exam': null,
         'courses': 4,
+        'pulse': {'status': 'on_track', 'week': {'scheduled': 3, 'attended': 3, 'rate': 100, 'active_days': 5}, 'insights': [{'code': 'full_attendance', 'level': 'good', 'params': {'count': 3}}]},
       },
     ],
     'alerts_total': 2,

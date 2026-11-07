@@ -485,6 +485,48 @@ void main() {
       expect(d.children.first.nextExam, isNotNull);
       expect(d.children.last.attendancePct30d, isNull);
       expect(d.sessionsToday, kids.fold<int>(0, (n, r) => n + (r['today_sessions'] as List).length));
+      // D-305: the pulse ("how is my child doing")
+      for (var i = 0; i < kids.length; i++) {
+        final r = m(m(kids[i])['pulse']), p = d.children[i].pulse!;
+        hasKeys(r, const ['status', 'week', 'missed_sessions', 'attendance_trend', 'grades', 'subjects', 'upcoming', 'roadmap',
+            'insights', 'teachers'], 'pulse');
+        expect(p.status.wire, r['status']);
+        final w = m(r['week']);
+        hasKeys(w, const ['scheduled', 'attended', 'missed', 'rate', 'homework_due', 'homework_missing', 'homework_due_soon',
+            'active_days', 'last_active_days'], 'pulse.week');
+        expect((p.week.scheduled, p.week.attended, p.week.missed, p.week.rate), (w['scheduled'], w['attended'], w['missed'], w['rate']));
+        expect((p.week.homeworkMissing, p.week.activeDays, p.week.lastActiveDays), (w['homework_missing'], w['active_days'], w['last_active_days']));
+        expect(p.attendanceTrend, [for (final t in ms(r['attendance_trend'])) t['rate']]);
+        for (final x in ms(r['missed_sessions'])) {
+          hasKeys(x, const ['session', 'course_id', 'course_ar', 'course_en', 'at'], 'pulse.missed_sessions');
+        }
+        expect(p.missedSessions.length, (r['missed_sessions'] as List).length);
+        if (r['grades'] != null) {
+          final g = m(r['grades']);
+          hasKeys(g, const ['avg', 'prev_avg', 'class_avg', 'mine_vs_class', 'count', 'failed', 'trend'], 'pulse.grades');
+          expect((p.grades!.avg, p.grades!.count, p.grades!.failed), (asDoubleOrNull(g['avg']), g['count'], g['failed']));
+          expect(p.grades!.trend, [for (final t in ms(g['trend'])) asDoubleOrNull(t['avg'])]);
+        }
+        final subj = ms(r['subjects']);
+        expect(p.subjects.length, subj.length);
+        for (var k = 0; k < subj.length; k++) {
+          hasKeys(subj[k], const ['course_id', 'name_ar', 'name_en', 'progress', 'avg', 'class_avg', 'missed', 'weak_open', 'tone',
+              'teacher'], 'pulse.subjects');
+          expect((p.subjects[k].courseId, p.subjects[k].tone, p.subjects[k].teacher?.id),
+              (subj[k]['course_id'], subj[k]['tone'], (subj[k]['teacher'] as Map?)?['id']));
+        }
+        expect(p.upcoming.length, (r['upcoming'] as List).length);
+        for (final t in ms(r['teachers'])) {
+          hasKeys(t, const ['id', 'name', 'image_url', 'course_id', 'course_ar', 'course_en'], 'pulse.teachers');
+        }
+        expect(p.teachers.length, (r['teachers'] as List).length);
+        for (final x in ms(r['insights'])) {
+          hasKeys(x, const ['code', 'level', 'params', 'action'], 'pulse.insights');
+        }
+        expect(p.insights.length, (r['insights'] as List).length);
+      }
+      expect(d.children.first.pulse!.subjects, isNotEmpty);
+      expect(d.children.first.pulse!.week.scheduled, greaterThan(0));
     });
 
     test('older payload: a child row with only `child` → empty blocks', () {
@@ -497,6 +539,7 @@ void main() {
       expect(d.children.first.nextExam, isNull);
       expect(d.children.first.attendancePct30d, isNull);
       expect(d.linkConfig, isEmpty);
+      expect(d.children.first.pulse, isNull, reason: 'an older server sends no pulse');
     });
   });
 
