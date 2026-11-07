@@ -2831,3 +2831,17 @@ code and the throttled activity stamps (one indexed UPDATE, at most one write pe
 deviations.** "Liked" is the existing Favorite, not a new like model; the timeline is composed on read from the
 existing tables (no new event table); no background statistics job until a benchmark asks for one; organization staff
 scope arrives with the org rollout (phase 7) and gets 403 `entity_forbidden` until then.
+
+## D-291 — Google Forms import picks the form with the Google Picker · 2026-11-07 · accepted
+
+A teacher imports a draft exam's questions from a Google Form. The form is chosen in the Google Picker, opened in the
+system browser from a server page, not from a list inside the app. `forms.get` accepts `drive.file`, the non-sensitive
+scope the drive connection already has, and `drive.file` covers what a user picks; listing someone's forms ourselves
+needs `drive.metadata.readonly`, a restricted scope with Google's verification and a security assessment. So existing
+connections keep working with no new consent. The cost is one more browser step, and a web API key
+(`GOOGLE_PICKER_API_KEY`) with the Forms and Picker APIs enabled on the project.
+
+The core reads the form because it holds the Google token; the Exam Engine imports the rows because it owns the exam,
+through the Excel import's row checks. What has no engine type (scale, date, time) is reported, never dropped silently.
+A choice question without a correct answer is refused by row, and the preview says so first. Images are not copied,
+because a Forms image URL expires. Forms' responses are not imported.

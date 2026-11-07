@@ -16,10 +16,12 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import '../../admin/admin_money_p8.dart' show p8SaveBytes;
 import 'exam_authoring.dart';
+import 'exam_forms_import.dart';
 import 'exam_grading_widgets.dart' show ResultsViewField;
 import 'exam_media.dart';
 import 'exam_paper_sheet.dart' show openExamPaper;
@@ -379,30 +381,7 @@ class ExcelImportBody extends StatelessWidget {
         ]),
       ),
       if (error != null) ...[_gap(10), AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)],
-      if (r != null) ...[
-        _gap(10),
-        AppBanner(
-            key: const ValueKey('exam.import.result'),
-            icon: r.created > 0 ? Icons.task_alt_rounded : Icons.info_outline_rounded,
-            color: r.created > 0 ? c.success : c.warning,
-            text: r.created > 0
-                ? t('أُضيف ${r.created} سؤالاً', '${r.created} questions added')
-                : t('لم يُضف أي سؤال', 'No question was added')),
-        if (r.errors.isNotEmpty) ...[
-          _gap(8),
-          Text(t('صفوف لم تُقبل (${r.errors.length})', 'Rows not accepted (${r.errors.length})'), style: appText(13, w: FontWeight.w700, c: c.danger)),
-          _gap(4),
-          for (final e in r.errors)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                AppBadgePill(t('صف ${e.row}', 'Row ${e.row}'), color: c.danger),
-                const SizedBox(width: 8),
-                Expanded(child: Text(importRowText(e), style: appText(12.5, c: c.textDark))),
-              ]),
-            ),
-        ],
-      ],
+      if (r != null) ...[_gap(10), ImportReportPanel(report: r)],
       _gap(14),
       Row(children: [
         Expanded(child: TextButton(onPressed: busy ? null : onDone, child: Text(t('تم', 'Done')))),
@@ -508,11 +487,15 @@ class ExamSectionsPanel extends StatelessWidget {
     this.onReorderQuestions,
     this.onMoveQuestionToSection,
     this.onImportExcel,
+    this.onImportForms,
   });
   final ExamView view;
 
   /// "Import from Excel" (draft exams); null hides it.
   final VoidCallback? onImportExcel;
+
+  /// Import from Google Forms (draft exams, D-291); null hides it.
+  final VoidCallback? onImportForms;
   final VoidCallback onAddSection;
   final ValueChanged<SectionDraft> onEditSection;
   final ValueChanged<SectionDraft> onDeleteSection;
@@ -543,7 +526,14 @@ class ExamSectionsPanel extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 10),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: AppPill(key: const ValueKey('exam.import.open'), icon: Icons.table_chart_outlined, label: t('استيراد من Excel', 'Import from Excel'), onTap: onImportExcel),
+            child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              AppPill(key: const ValueKey('exam.import.open'), icon: Icons.table_chart_outlined, label: t('استيراد من Excel', 'Import from Excel'), onTap: onImportExcel),
+              if (onImportForms != null)
+                ParentComponent(
+                  featureKey: 'exam.google_forms_import',
+                  child: AppPill(key: const ValueKey('exam.forms.open'), icon: Icons.quiz_outlined, label: t('استيراد من Google Forms', 'Import from Google Forms'), onTap: onImportForms),
+                ),
+            ]),
           ),
         ),
       if (!draft)
@@ -2000,6 +1990,17 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     if (mounted) _load(side: false);
   }
 
+  /// Import from Google Forms (D-291): a picked form's questions land in this draft.
+  Future<void> _importForms() async {
+    final v = _view!;
+    await showAppSheet<bool>(context, (_) => GoogleFormsImportSheet(
+          api: _api,
+          examId: v.exam.id!,
+          sections: [for (final s in v.sections) (s.section.id!, s.section.title.trim().isEmpty ? t('القسم', 'Section') : s.section.title.trim())],
+        ));
+    if (mounted) _load(side: false);
+  }
+
   Future<void> _addQuestions(SectionDraft s) async {
     final v = _view!;
     await showAppSheet<void>(context, (_) => QuestionPickerSheet(
@@ -2186,6 +2187,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                       onReorderQuestions: _reorderQuestions,
                       onMoveQuestionToSection: _moveQuestionToSection,
                       onImportExcel: _importExcel,
+                      onImportForms: _importForms,
                     ),
                   ]),
                 ),

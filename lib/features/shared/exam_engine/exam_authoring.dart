@@ -1398,6 +1398,10 @@ class ExamAuthoringApi {
       fields: {'section_id': ?(sectionId == null ? null : '$sectionId')},
       fileField: 'file', fileName: fileName, fileBytes: bytes, filePath: path));
 
+  // Rows read from a Google Form (D-291), through the Excel import's checks.
+  Future<EngineResult> importRows(int examId, List<Map<String, dynamic>> rows, {int? sectionId}) =>
+      engineCall(() => _api.post('$base/exams/$examId/questions/import-rows', body: {'rows': rows, 'section_id': ?sectionId}));
+
   // the exam as an uploaded file (quick exam, settings.paper_file)
   Future<EngineResult> uploadPaperFile(int examId, {required String fileName, Uint8List? bytes, String? path}) => engineCall(() => _api.postMultipart(
       '$base/exams/$examId/paper-file', fields: const {}, fileField: 'file', fileName: fileName, fileBytes: bytes, filePath: path));
