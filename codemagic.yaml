@@ -67,7 +67,7 @@ definitions:
         if [ "${NB_GATE:-test_first}" != "test_first" ]; then echo "NB_GATE=${NB_GATE}: building without tests"; exit 0; fi
         flutter analyze --no-fatal-infos --fatal-warnings
         org_tests="$(find test/org -name '*_test.dart' ! -name 'live_events_soak_test.dart' | sort)"
-        flutter test $org_tests test/export/ test/ui/ test/auth/ test/contract/
+        flutter test $org_tests test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/contract/
         flutter test test/perf -j 1
 
     # Release notes for the store publishers (Codemagic reads release_notes.json at the project root: [{language,
