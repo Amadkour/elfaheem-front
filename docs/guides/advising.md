@@ -88,7 +88,11 @@ accommodations become rows the student sees with dates; support plans have items
 
 **Analytics.** The director dashboard (`GET …/analytics/overview` and its sections) with KPIs against the previous
 period, filters, refresh as a job, 27 drill-downs (`GET …/analytics/students`), advisor stats, compliance per
-term, the daily data check (badge on the advising page) and Export Studio reports with schedules.
+term, the daily data check (badge on the advising page) and Export Studio reports with schedules. The unfiltered
+dashboard is a copy the server refreshes every 10 minutes: "Updated …" in the header shows its `computed_at`, and the
+header's Refresh asks for `?fresh=1` (12 an hour; a refused one keeps the figures and says why,
+`advFreshFailedText`). Filtered views and the org-wide lists' counts are live within 60 s; the caller's own changes
+show at once.
 
 **Retention.** Settings (organization row only) hold two periods after a student's membership ends:
 `retention_months` (sensitive notes, default 24) and `records_retention_months` (every other advising record, default

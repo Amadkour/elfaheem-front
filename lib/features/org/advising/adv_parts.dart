@@ -490,6 +490,21 @@ String advErrorText(ApiException e) {
   return orgErrorText(e);
 }
 
+/// A refused Refresh of the director dashboard (`?fresh=1`, 12 an hour): the figures on screen stay (the last copy),
+/// and the text says why and, for the limit, when it works again.
+String advFreshFailedText(ApiException e) {
+  if (e.code == 'advising_rate_limited') {
+    final m = asInt(asMap(ApiException.asMap(e.body)?['detail'])['retry_after_minutes']);
+    if (m > 0) {
+      final wait = countText(m, ar1: 'دقيقة', ar2: 'دقيقتين', arFew: '$m دقائق', arMany: '$m دقيقة', en1: '1 minute', en: '$m minutes');
+      return t('حدّثت الأرقام مرات كثيرة خلال ساعة — المعروض آخر نسخة محفوظة. أعد المحاولة بعد $wait', 'You refreshed the figures many times within an hour — the ones shown are the last saved copy. Try again in $wait');
+    }
+    return t('حدّثت الأرقام مرات كثيرة خلال ساعة — المعروض آخر نسخة محفوظة', 'You refreshed the figures many times within an hour — the ones shown are the last saved copy');
+  }
+  final why = advErrorText(e);
+  return t('تعذّر تحديث الأرقام — المعروض آخر نسخة. $why', 'The figures could not be refreshed — the ones shown are the last copy. $why');
+}
+
 /// The state a failed call leaves a block in: a route the server lacks · no connection · anything else.
 AdvLoad advFailLoad(OrgCall r) {
   if (r.endpointMissing) return AdvLoad.missing;

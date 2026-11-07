@@ -424,17 +424,20 @@ class _DirectorBodyState extends State<_DirectorBody> {
   @override
   void initState() {
     super.initState();
-    _refresh = OrgPageRefresh.register(context, _reload);
+    _refresh = OrgPageRefresh.register(context, _refreshFresh);
     _reload();
   }
 
   @override
   void dispose() {
-    _refresh?.unregister(_reload);
+    _refresh?.unregister(_refreshFresh);
     super.dispose();
   }
 
-  Future<void> _reload() async {
+  /// The header's Refresh: figures computed now, not the copy the server keeps for opening the page.
+  Future<void> _refreshFresh() => _reload(fresh: true);
+
+  Future<void> _reload({bool fresh = false}) async {
     final seq = ++_seq;
     if (!AppConnectivity.instance.isOnline && _overview == null) {
       setState(() => _load = AdvLoad.offline);
@@ -442,11 +445,19 @@ class _DirectorBodyState extends State<_DirectorBody> {
     }
     final results = await Future.wait([
       if (_options == null) orgCall(() => _api.options(), quiet: true),
-      orgCall(() => _api.overview(_filter), quiet: true),
+      orgCall(() => _api.overview(_filter, fresh: fresh), quiet: true),
     ]);
     if (!mounted || seq != _seq) return;
     final opt = results.length == 2 ? results.first : null;
     final ov = results.last;
+    if (fresh && !ov.ok && _overview != null) {
+      // the figures on screen stay; a refused refresh says why (and when it works again)
+      if (opt != null && opt.ok) setState(() => _options = opt.data as AdvAnalyticsOptions);
+      showAppNotice(advFreshFailedText(ov.error!), error: true);
+      OrgPageRefresh.reportUpdated(context, _overview!.updatedAt);
+      return;
+    }
+    if (fresh && ov.ok) showAppNotice(t('الأرقام محدّثة الآن', 'The figures are up to date'));
     setState(() {
       if (opt != null && opt.ok) _options = opt.data as AdvAnalyticsOptions;
       if (ov.ok) {
@@ -459,7 +470,7 @@ class _DirectorBodyState extends State<_DirectorBody> {
       }
     });
     if (ov.ok && mounted) {
-      OrgPageRefresh.reportUpdated(context, _overview?.generatedAt);
+      OrgPageRefresh.reportUpdated(context, _overview?.updatedAt);
       if (_manage) unawaited(_loadHealth());
     }
   }

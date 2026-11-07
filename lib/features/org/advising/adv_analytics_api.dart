@@ -45,9 +45,11 @@ class AdvAnalyticsApi {
   /// Manage · aggregate: terms, programs, levels, cohorts, advisors (manage), categories, bands, metrics, the tier.
   Future<AdvAnalyticsOptions> options() async => AdvAnalyticsOptions.fromJson(asMap(await _api.get('$base/analytics/options')));
 
-  /// Manage · aggregate. 422 `advising_bad_range` for a range over 400 days or reversed.
-  Future<AdvOverview> overview(AdvAnalyticsFilter filter) async =>
-      AdvOverview.fromJson(asMap(await _api.get('$base/analytics/overview', queryParams: filter.toQuery())));
+  /// Manage · aggregate. 422 `advising_bad_range` for a range over 400 days or reversed. The default view is the
+  /// copy the server stores every 10 minutes (`computed_at`); [fresh] computes it now (an explicit Refresh only:
+  /// 12 an hour per user, then 429 `advising_rate_limited`).
+  Future<AdvOverview> overview(AdvAnalyticsFilter filter, {bool fresh = false}) async => AdvOverview.fromJson(
+      asMap(await _api.get('$base/analytics/overview', queryParams: {...filter.toQuery(), if (fresh) 'fresh': 1})));
 
   /// Manage · aggregate. [sort] one of [advAdvisorStatSorts]; facets `active` · `inactive` · `over` · `warn`.
   Future<AdvPage<AdvAdvisorStat>> advisors(AdvAnalyticsFilter filter, {String q = '', String sort = 'load', int page = 1, int size = 25}) async => AdvPage.fromJson(

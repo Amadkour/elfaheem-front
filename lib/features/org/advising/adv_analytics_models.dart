@@ -964,6 +964,7 @@ class AdvHealthSummary {
 class AdvOverview {
   const AdvOverview({
     this.generatedAt,
+    this.computedAt,
     this.range = const AdvRange(),
     this.viewer = const AdvViewer(),
     this.stateSeries = true,
@@ -984,6 +985,10 @@ class AdvOverview {
   });
 
   final DateTime? generatedAt;
+
+  /// When the figures were computed: the default view is a copy the server refreshes every 10 minutes, so this can
+  /// be minutes old. null from an older server (then [generatedAt]).
+  final DateTime? computedAt;
   final AdvRange range;
   final AdvViewer viewer;
 
@@ -1010,6 +1015,7 @@ class AdvOverview {
 
   factory AdvOverview.fromJson(Map<String, dynamic> j) => AdvOverview(
         generatedAt: _instant(j['generated_at']),
+        computedAt: _instant(j['computed_at']),
         range: AdvRange.fromJson(asMap(j['range'])),
         viewer: AdvViewer.fromJson(asMap(j['viewer'])),
         stateSeries: j.containsKey('state_series') ? asBool(j['state_series']) : true,
@@ -1030,6 +1036,9 @@ class AdvOverview {
       );
 
   AdvKpi kpi(String key) => kpis[key] ?? const AdvKpi();
+
+  /// What "Updated …" shows.
+  DateTime? get updatedAt => computedAt ?? generatedAt;
 
   /// Nobody to describe yet (no student in the scope).
   bool get empty => students.total == 0 && (kpi('students').value ?? 0) == 0;
