@@ -13,7 +13,7 @@ import 'cfg_support.dart';
 Map<String, FakeHandler> _routes() => {
       'GET /api/v1/admin/parent-link/requests': (_) => {
             'items': [
-              {'id': 1, 'parent_name': 'Parent One', 'student_name': 'Student One', 'status': 'pending', 'mode': 'advanced', 'documents_count': 2, 'created_at': '2026-11-01T10:00:00Z'},
+              {'id': 1, 'parent_name': 'Parent One', 'student_id': 7, 'student_name': 'Student One', 'status': 'pending', 'mode': 'advanced', 'documents_count': 2, 'created_at': '2026-11-01T10:00:00Z'},
             ],
             'page': 1,
             'pages': 1,
@@ -65,7 +65,8 @@ void main() {
 
   testWidgets('both tabs: requests first, then the settings form', (tester) async {
     await open(tester);
-    expect(find.text('Parent One  →  Student One'), findsWidgets);
+    expect(find.text('Parent One'), findsWidgets);
+    expect(find.text('Student One'), findsWidgets);
     expect(find.byKey(const ValueKey('admin_parent_linking.save')), findsNothing);
     await tester.tap(tab('Settings'));
     await cfgPump(tester, 5);
@@ -77,7 +78,8 @@ void main() {
   testWidgets('plain admin: requests only, no tab bar', (tester) async {
     await open(tester, role: 'admin');
     expect(find.byType(AppTabs), findsNothing);
-    expect(find.text('Parent One  →  Student One'), findsWidgets);
+    expect(find.text('Parent One'), findsWidgets);
+    expect(find.text('Student One'), findsWidgets);
     await close(tester);
   });
 

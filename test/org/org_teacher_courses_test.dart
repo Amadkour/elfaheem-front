@@ -13,13 +13,16 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/master_detail/entity_panel.dart';
+import 'package:flutter_education_app/features/admin/admin_list.dart' show RowCard;
+import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/core/providers.dart';
 import 'package:flutter_education_app/features/org/org_courses_page.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_screen.dart';
 import 'package:flutter_education_app/features/org/org_providers.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
-import 'package:flutter_education_app/features/shared/course_profile/course_profile_hub.dart' show CoursePageLoader;
 import 'package:flutter_education_app/features/teacher/courses/courses_screen.dart' show openOrgCoursesOf;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -131,8 +134,9 @@ void main() {
       await settle(tester);
       await tester.tap(find.text('Introduction to Programming'));
       await settle(tester, 3);
-      final page = tester.widget<CoursePageLoader>(find.byType(CoursePageLoader));
-      expect(page.courseId, 1);
+      expect(find.byType(EntityPanel), findsOneWidget);
+      final ref = MasterDetailScope.maybeOf(tester.element(find.byType(RowCard).first))!.controller.current;
+      expect((ref?.kind, ref?.id), (EntityKind.course, 1));
     });
 
     testWidgets('no course right at all: still the lock', (tester) async {

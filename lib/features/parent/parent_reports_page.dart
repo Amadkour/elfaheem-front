@@ -625,16 +625,16 @@ class _ChildReportCard extends StatelessWidget {
   );
 
   Widget _courseRow(BuildContext context, Map<String, dynamic> x) =>
-      _childCourseLink(context, x, 'course', _courseRowBody(context, x), labelKey: 'name');
+      _childCourseLink(context, x, 'course', _courseRowBody(context, x), labelField: 'name');
 
   /// [row] as a link to its course, opened as the child sees it (an exam / session row of an older server, which
   /// sends no `course_id`, stays plain).
   Widget _childCourseLink(BuildContext context, Map<String, dynamic> x, String keyKind, Widget row,
-      {String labelKey = 'course'}) {
+      {String labelField = 'course'}) {
     final courseId = (x['course_id'] as num?)?.toInt();
     final childId = this.childId;
     if (courseId == null || childId == null) return row;
-    final course = EntityRef(EntityKind.course, courseId, label: plLabel(x, labelKey));
+    final course = EntityRef(EntityKind.course, courseId, label: plLabel(x, labelField));
     final child = EntityRef(EntityKind.student, childId, label: name);
     return EntityLink(
       course,
