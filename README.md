@@ -60,7 +60,7 @@ By default the app talks to production (`AppConfig.baseUrl` in `lib/config/app_c
 
 ```bash
 flutter analyze --no-fatal-infos --fatal-warnings   # the CI gate (exit 0); plain `flutter analyze` exits 1 on info lints, which are allowed
-flutter test test/org/ test/export/ test/ui/ test/auth/ test/perf/ test/contract/   # the CI suites
+flutter test test/org/ test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/perf/ test/contract/   # the CI suites
 flutter test test/ui/vod_player_layout_test.dart --plain-name "name"   # one test
 EXPORT_SAMPLES=<dir> flutter test test/org/org_export_test.dart        # writes sample .xlsx/.docx/.pdf to open in Office
 ```
@@ -75,7 +75,8 @@ through `test/ui/layout_harness.dart` (`expectNoLayoutErrors`: 320×640 and 1400
 
 ```bash
 scripts/build_release.sh apk | appbundle | ipa | web      # release builds: obfuscated, symbols in build/debug-info/
-flutter build web && firebase deploy --only hosting       # web, deployed from build/web
+scripts/build_firebase_hosting.sh && firebase deploy --only hosting   # Firebase Hosting copy: landing at /, app at /app/
+scripts/server/build_web.sh                               # on the server: the live web deploy (build next to live, swap, smoke test, rollback)
 dart run flutter_launcher_icons                           # regenerate app icons
 dart run flutter_native_splash:create                     # regenerate splash screens
 ```
