@@ -802,9 +802,24 @@ class AdvSettingsDraft {
     if (max != null && (asInt(max) < 1 || asInt(max) > 1000)) return t('الحد الأقصى بين 1 و1000 طالب', 'The maximum is between 1 and 1000 students');
     final warn = settings['warn_pct'];
     if (warn != null && (asInt(warn) < 1 || asInt(warn) > 100)) return t('نسبة التنبيه بين 1 و100', 'The warning share is between 1 and 100');
+    final sensitive = settings['retention_months'];
+    if (sensitive != null && (asInt(sensitive) < 1 || asInt(sensitive) > 240)) {
+      return t('مدة حفظ الملاحظات الحساسة بين شهر و240 شهراً', 'Sensitive notes are kept between 1 and 240 months');
+    }
+    final records = settings['records_retention_months'];
+    if (records != null) {
+      if (asInt(records) < 12 || asInt(records) > 240) return t('مدة حفظ سجلات الإرشاد بين 12 و240 شهراً', 'Advising records are kept between 12 and 240 months');
+      // the server's rule (policy.validate_patch): checked when this row sets the records' period itself
+      if (asInt(records) < asInt(sensitive, advRetentionDefault)) {
+        return t('مدة حفظ سجلات الإرشاد يجب ألا تقل عن مدة حفظ الملاحظات الحساسة', 'Advising records must be kept at least as long as sensitive notes');
+      }
+    }
     return null;
   }
 }
+
+/// The server's defaults of the two retention periods (months after a student's membership ends).
+const advRetentionDefault = 24, advRecordsRetentionDefault = 84;
 
 Map<String, dynamic> _sorted(Map<String, dynamic> m) => {for (final k in (m.keys.toList()..sort())) k: m[k]};
 

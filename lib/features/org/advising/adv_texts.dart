@@ -19,6 +19,8 @@ Map<String, String> advCodeTexts() => {
       'advising_self_advisor': t('لا يمكن أن يكون الطالب مرشد نفسه', 'A student cannot advise themselves'),
       'advising_primary_exists': t('للطالب مرشد أساسي بالفعل — حدّث الصفحة وأعد المحاولة', 'The student already has a primary advisor — refresh and try again'),
       'advising_bad_policy': t('إعدادات الإرشاد غير صالحة', 'The advising settings are not valid'),
+      'advising_retention_order': t('مدة حفظ سجلات الإرشاد يجب ألا تقل عن مدة حفظ الملاحظات الحساسة',
+          'Advising records must be kept at least as long as sensitive notes'),
       // Phase 3: settings, profiles, conflicts, assignment, distribution, handovers
       'advising_bad_scope': t('نطاق الإعدادات غير صالح لهذه المؤسسة', 'That settings scope is not valid for this organization'),
       'advising_single_mode': t('المؤسسة على وضع المرشد الواحد — لا مرشدين مشاركين أو داعمين', 'The organization uses one advisor per student — no co or support advisors'),
