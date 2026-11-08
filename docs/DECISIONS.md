@@ -2926,3 +2926,29 @@ import goes straight to the editor, one with refused rows shows the report first
 so backing out of the picker leaves nothing behind. The option follows `exam.google_forms_import` (hidden while the
 server lacks `GOOGLE_PICKER_API_KEY`).
 
+## D-303 — The teacher's automatic to-do list · 2026-11-08 · accepted
+
+**What.** `GET /api/v1/me/todo` (core) derives a teacher's to-do from live data — ungraded submissions, transfer
+receipts, open course complaints, lessons of the last 14 days without attendance / material, live runs whose
+recording never arrived, students at risk (inactive 14 days · missed most tracked lessons · failing or falling core
+exam scores), calendar clashes in the next 7 days, quiet courses, low-engagement lessons (one item per course) — and
+`GET /api/v1/exam/me/todo` adds the Exam Engine's queues (answers to decide, appeals, scanned-sheet questions) in the
+same item shape. Every item carries its evidence (`why`), a priority from a 0–100 score, a deep link and a
+fingerprint `fp`. Home: a "Your to-do" card (top 3 from the ONE `/me/home` call, `todo` block) that takes over the
+Needs-you pills it covers; a full page with priority tiles, group filters, Done / Snooze / Dismiss (+ Undo) and the
+hidden list with Restore. Badge: attention tab `teacher.todo` = the high-priority items, on the teacher's Home tab.
+Kill switch `teacher_home.todo`.
+
+**Why this way.** Nothing is stored except the teacher's choices: one `app_settings` row per teacher
+(`teacher_todo:<id>`, no migration); a done / dismissed item returns only when its fingerprint (the evidence) changes,
+a snoozed one after its date. The list is computed over ALL the teacher's courses once and cached 60 s in-process; a
+scope (personal / org, like `/me/home`) is a filter over it, and `/me/home` hands its calendar events to the clash
+check and the badge, so the home costs no new request (budgets unchanged). The busy-teacher run (12 courses × 150
+students × 12 lessons, SQLite, cache off) answers in ~270 ms.
+
+**Trade-offs.** The core cannot read the engine's schema, so the home card and the badge do not include exam review
+items — they appear on the full page (the app merges the engine's list and applies the core's states to it). The
+cache is per worker (another worker may show an item up to 60 s after it was fixed; the teacher's own choices clear
+it). "At risk" uses the core exams only, and treats an enrollment without an activity stamp as unknown, not inactive.
+Org staff whose home is the organization dashboard have no entry yet (the API serves them; the teacher
+home's Organization mode shows the card).

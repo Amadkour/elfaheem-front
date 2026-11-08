@@ -349,6 +349,7 @@
  "teacher_courses.search",
  "teacher_exams_hub",
  "teacher_home",
+ "teacher_home.todo",
  "teacher_home_add_course",
  "teacher_home_courses_header",
  "teacher_home_courses_row",

@@ -57,6 +57,8 @@ import '../../features/teacher/data_lab/data_lab_screen.dart' deferred as data_l
 import '../../features/teacher/sessions/live/join_args.dart' show JoinArgs;
 import '../../features/teacher/sessions/live/prejoin.dart' deferred as prejoin;
 import '../../features/teacher/sessions/sessions_screen.dart' deferred as sessions;
+import '../../features/teacher/todo/teacher_todo_models.dart' show TodoItem;
+import '../../features/teacher/todo/teacher_todo_page.dart' deferred as teacher_todo;
 
 /// What the person sees while a part downloads.
 enum DeferredLook {
@@ -319,6 +321,16 @@ Widget deferredTeacherSessionsScreen({bool? expandDetails, CourseProfileHub? pro
     id: 'sessions',
     load: sessions.loadLibrary,
     builder: (_) => sessions.TeacherSessionsScreen(expandDetails: expandDetails, profileHub: profileHub, initialTab: initialTab));
+
+/// The teacher's whole to-do list (D-303).
+Widget deferredTeacherTodoPage() => DeferredPage(id: 'teacher_todo', load: teacher_todo.loadLibrary, builder: (_) => teacher_todo.TeacherTodoPage());
+
+/// Opens where a to-do item is done (teacher_todo_actions.dart, in the to-do part); false = nothing to open.
+Future<bool> deferredOpenTodoAction(BuildContext context, TodoItem item) async {
+  await loadDeferred('teacher_todo', teacher_todo.loadLibrary);
+  if (!context.mounted) return false;
+  return teacher_todo.openTodoAction(context, item);
+}
 
 /// The full page of a student / course / teacher / category (`/view/:kind/:id`, D-290).
 Widget deferredEntityDetailPage(EntityRef entity, {EntityRef? from}) => DeferredPage(
