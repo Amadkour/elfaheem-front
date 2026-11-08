@@ -3028,3 +3028,31 @@ quality per run, and the rules (answer in the passage, distinct options, de-dup)
 (3 questions, cold): fast 316 s, quality 468 s — CPU decoding stays the floor; the real cure is that nobody has to sit
 through it. "Add the N ready now" stops the job rather than leaving it running, so a model is never busy for questions
 nobody will take.
+
+## D-302 — Own sheets: template-free bubble sheets and written answer tables · 2026-11-08 · accepted
+
+Teachers already own bubble sheets from other publishers and often run quizzes on a ruled table ("question | answer
+number"). Teaching the platform a sheet (D-155) needs corner marks, a blank AND a filled copy, numbers typed in and a
+super admin's approval; that is the right bar for GLOBAL sheets, too heavy for a teacher's own paper. So a second,
+lighter path: one photo / scan / PDF → `POST /omr/auto-templates/detect` finds the layout with no marks at all
+(`mlkit/omr/autolayout.py`: bubble-shaped contours of the dominant size, circles or rectangles, grouped into lattices
+by their own gaps, a 10-tall block = the shaded ID, QR / barcode noted; `mlkit/omr/written_table.py`: the ruling's
+cells, the question column by its printed numbers) → the teacher confirms it once on the picture (block roles,
+numbering left / right first, down / across, start number; numbers or letters, options) → it is saved as the
+teacher's (or the organization's) template, published at once like D-241's answer tables, never global.
+
+Reading follows "never guess": a page is placed by laying the layout's bubbles on the page's own bubbles (iterative
+closest point + RANSAC homography, 0 / 180°, a coarse ink fingerprint picks the way up and refuses another sheet);
+every question whose bubbles do not sit on printed bubbles goes to review; fills are calibrated on the sheet itself
+(its blank and shaded levels); a written cell is accepted only as a digit the CNN and the PP-OCR reader agree on (or
+the CNN alone at its strict threshold) or a confident letter, and only when it is one of the options. Digits and
+letters are the teacher's choice per sheet, never mixed: an Arabic ٢ reads as "C" to a letter reader. Corner marks
+are deliberately NOT used on foreign sheets: four shaded square bubbles near the corners look exactly like them.
+
+Trade-offs: the synthetic bench (`back bench/omr/auto_synth.py`, numbers in `back/bench/omr/AUTO.md`) has no real
+student photos; written tables send more cells to review than bubbles (handwriting), which is the price of no wrong
+grades; the live camera scanner and printing stay NextBrain-sheet features (hidden for own sheets: upload photos /
+PDFs instead); a touching-cells strip (|A|B|C|D| boxes sharing borders) and options printed vertically are not
+detected yet. The Super Admin's `exam.auto_correct` switch (read by the engine through the core's new
+`GET /internal/v1/features/{key}`) turns detection and reading of own sheets off; NextBrain's own sheets keep working
+exactly as before.

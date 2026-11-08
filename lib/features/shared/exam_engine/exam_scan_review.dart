@@ -430,7 +430,7 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           if (_omr) ...[
-            ParentComponent(featureKey: kExamAutoCorrectKey, child: OmrScanSection(examId: widget.examId, examTitle: widget.examTitle, onChanged: _load)),
+            ParentComponent(featureKey: kExamAutoCorrectKey, child: OmrScanSection(examId: widget.examId, examTitle: widget.examTitle, ownSheet: _setup?.template?.ownSheet ?? false, onChanged: _load)),
             const SizedBox(height: 8),
             // the written-answer tools stay reachable (QR answer sheets, mapping, marks import), folded away
             Theme(
