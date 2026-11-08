@@ -15,10 +15,12 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asMapList, t;
 import 'exam_engine_api.dart' show EngineResult;
+import 'exam_features.dart' show examAutoCorrectAllowed, kExamAutoCorrectKey;
 import 'exam_paper_flow.dart';
 import 'exam_review.dart';
 import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi, kExamOmrFeatureKey;
@@ -344,6 +346,7 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
   /// "Upload scans": the source sheet (gallery on a phone, files, a scanner's folder), then the upload page — the
   /// pick's summary, the parts (one batch), the failures with Retry.
   Future<void> _upload() async {
+    if (!examAutoCorrectAllowed()) return;               // D-301: the Super Admin's switch
     final pick = await showScanSourceSheet(context);
     if (pick == null || !mounted) return;
     setState(() => _busy = 'upload');
@@ -427,7 +430,7 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           if (_omr) ...[
-            OmrScanSection(examId: widget.examId, examTitle: widget.examTitle, onChanged: _load),
+            ParentComponent(featureKey: kExamAutoCorrectKey, child: OmrScanSection(examId: widget.examId, examTitle: widget.examTitle, onChanged: _load)),
             const SizedBox(height: 8),
             // the written-answer tools stay reachable (QR answer sheets, mapping, marks import), folded away
             Theme(
@@ -445,7 +448,9 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
             PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks),
             if (_written) ...[
               const SizedBox(height: 8),
-              OmrScanSection(key: const ValueKey('omr.written'), examId: widget.examId, examTitle: widget.examTitle, bubble: false, onChanged: _load),
+              ParentComponent(
+                  featureKey: kExamAutoCorrectKey,
+                  child: OmrScanSection(key: const ValueKey('omr.written'), examId: widget.examId, examTitle: widget.examTitle, bubble: false, onChanged: _load)),
             ],
           ],
           if (_summary != null) ...[const SizedBox(height: 4), PaperResultView(summary: _summary!, problems: _problems), const SizedBox(height: 8)],

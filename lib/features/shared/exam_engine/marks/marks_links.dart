@@ -8,6 +8,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 
+import '../exam_features.dart' show examAutoCorrectAllowed;
+
 import '../../../admin/admin_common.dart' show asInt, asMap, t;
 import '../../../teacher/data_lab/data_lab_api.dart';
 import '../exam_authoring.dart' show ExamAuthoringApi;
@@ -24,6 +26,7 @@ Future<({int id, String name, double totalMax})?> markTemplatePicker(BuildContex
 /// Grade review for the course of exam [examId], with that exam preselected. The gradebook's numeric, writable
 /// columns come from the Data Lab; an exam without a course explains itself instead.
 Future<void> openGradeReviewForExam(BuildContext context, int examId, String examTitle) async {
+  if (!examAutoCorrectAllowed()) return;                 // D-301: the Super Admin's switch
   final r = await ExamAuthoringApi().exam(examId);
   final exam = asMap(r.map['exam']).isNotEmpty ? asMap(r.map['exam']) : r.map;
   final courseId = asInt(exam['course_id']);

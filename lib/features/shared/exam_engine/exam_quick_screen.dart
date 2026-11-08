@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -26,6 +27,7 @@ import 'exam_authoring_screen.dart' show ExamEditorScreen, SessionLockPicker, pi
 import 'exam_gen_api.dart' show genMetaOf;
 import 'exam_generate.dart' show ExamGenReview, GenMark, deleteGenItem, regenerateGenItem, sendGenFeedback;
 import 'exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, QuickGenerateCard, openExamGenerator;
+import 'exam_gen_api.dart' show kExamAutoCreateKey;
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
 import 'exam_results_screen.dart';
@@ -192,14 +194,20 @@ class QuickStartChooser extends StatelessWidget {
         text: t('اكتب الأسئلة بنفسك: اختيار من متعدد، صح / خطأ، أكمل، مطابقة وغيرها', 'Write the questions yourself: multiple choice, true / false, complete, matching and more'),
         onTap: () => onPick(QuickStart.manual),
       ),
-      const SizedBox(height: AppSpace.sm),
-      _ModeCard(
-        icon: Icons.auto_awesome_rounded,
-        title: t('أنشئه لي', 'Generate for me'),
-        text: canGenerate
-            ? t('أسئلة من مستندات المقرر، تراجعها وتعدّلها قبل النشر', 'Questions written from the course documents; you review and edit them before publishing')
-            : t('يحتاج إلى مقرر: افتح الاختبار من داخل مقرر', 'Needs a course: start the exam from inside a course'),
-        onTap: canGenerate ? () => onPick(QuickStart.generate) : null,
+      // D-301: the Super Admin's switch of automatic question generation hides the whole card
+      ParentComponent(
+        featureKey: kExamAutoCreateKey,
+        child: Padding(
+          padding: const EdgeInsets.only(top: AppSpace.sm),
+          child: _ModeCard(
+            icon: Icons.auto_awesome_rounded,
+            title: t('أنشئه لي', 'Generate for me'),
+            text: canGenerate
+                ? t('أسئلة من مستندات المقرر، تراجعها وتعدّلها قبل النشر', 'Questions written from the course documents; you review and edit them before publishing')
+                : t('يحتاج إلى مقرر: افتح الاختبار من داخل مقرر', 'Needs a course: start the exam from inside a course'),
+            onTap: canGenerate ? () => onPick(QuickStart.generate) : null,
+          ),
+        ),
       ),
       const SizedBox(height: AppSpace.sm),
       _ModeCard(
@@ -370,7 +378,8 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
 
   /// Questions written from the course documents, added to the list as an editable draft.
   Future<void> _generate() async {
-    final got = await openExamGenerator(context, courseId: q.courseId!, orgId: q.orgId);
+    // D-301: the questions already in the exam are never written again
+    final got = await openExamGenerator(context, courseId: q.courseId!, orgId: q.orgId, avoidPrompts: [for (final x in q.questions) x.prompt]);
     if (got == null || got.items.isEmpty || !mounted) return;
     _review.track(got);
     setState(() {
@@ -472,7 +481,9 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                     )
                   else ...[
                     if (q.courseId != null)
-                      Padding(padding: const EdgeInsets.only(bottom: 10), child: QuickGenerateCard(onTap: _busy ? null : _generate)),
+                      ParentComponent(
+                          featureKey: kExamAutoCreateKey,
+                          child: Padding(padding: const EdgeInsets.only(bottom: 10), child: QuickGenerateCard(onTap: _busy ? null : _generate))),
                     if (_genNotice.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),

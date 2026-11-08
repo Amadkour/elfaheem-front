@@ -10,6 +10,10 @@
 //          difficulty{easy, medium, hard}, lang, focus?}      → 202 the job
 //   GET    /api/v1/rag/exam-gen/{id}                          → {state, progress{done, total, phase, percent}, questions[Q], warnings[]}
 //   POST   /api/v1/rag/exam-gen/{id}/items/{n}/regenerate {hint?} → 202 · DELETE …/items/{n} → the job
+// D-301: the body also takes speed (fast | quality), avoid_prompts (the exam's own questions) and topic (no sections:
+// topic-only writing); the job has progress.ready / failed / eta_seconds, cancelled, claimed, mode; 409 exam_gen_busy
+// carries job_id. GET /exam-gen?course_id= lists the caller's recent jobs (the resume offer); POST …/cancel stops one,
+// POST …/claim marks its questions taken. Kill switch `exam.auto_create` (403 feature_disabled).
 // A bare 404 / 405 on outline or exam-gen = an older server: the old sheet (exam_generate_sheet.dart) stays in charge.
 library;
 
@@ -21,6 +25,11 @@ import '../rag/rag_chat.dart' show RagApi;
 import 'exam_authoring.dart' show MatchPair, QOption, TextItem;
 import 'exam_engine_api.dart' show EngineResult, engineCall;
 import 'exam_quick.dart';
+
+/// The Super Admin's kill switches (D-301): automatic question generation, and automatic correction (bubble sheets,
+/// scanned sheets, camera marking, offline auto-grade). The services refuse them too (403 feature_disabled).
+const kExamAutoCreateKey = 'exam.auto_create';
+const kExamAutoCorrectKey = 'exam.auto_correct';
 
 // ── what to ask for ─────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -147,8 +156,9 @@ ExcludeParse parseExcludeRanges(String input) {
 }
 
 /// Why the plan cannot be sent yet (a code for [genV2CodeText]), or null.
-String? genV2Problem({required List<int> sectionIds, required List<GenTypeRow> rows, required GenMix mix, Iterable<String> excludeTexts = const []}) {
-  if (sectionIds.isEmpty) return 'no_sections';
+String? genV2Problem(
+    {required List<int> sectionIds, required List<GenTypeRow> rows, required GenMix mix, Iterable<String> excludeTexts = const [], String topic = ''}) {
+  if (sectionIds.isEmpty && topic.trim().length < 3) return 'no_sections';
   final total = genTotalQuestions(rows);
   if (total < 1) return 'no_types';
   if (total > genV2MaxTotal || rows.any((r) => r.effectiveCount > genV2MaxPerType)) return 'too_many_questions';
@@ -167,6 +177,11 @@ String genV2CodeText(String? code, String fallback) => switch (code) {
       'bad_pages' => t('اكتب الصفحات هكذا: 1-3، 7، 10-12', 'Write the pages like this: 1-3, 7, 10-12'),
       'sections_invalid' => t('بعض الفصول المختارة لم تعد موجودة — أعد اختيارها', 'Some chosen chapters no longer exist — pick them again'),
       'no_course_documents' => t('ارفع مستند المقرر أولاً', 'Upload the course document first'),
+      'exam_gen_busy' => t('لديك أسئلة قيد الإنشاء في مقرر آخر — أوقفها أو انتظر حتى تنتهي', 'You have questions being written for another course — stop them or wait until they finish'),
+      'feature_disabled' => t('إنشاء الأسئلة تلقائياً متوقف حالياً', 'Automatic question generation is switched off right now'),
+      'topic_needs_model' => t('الكتابة من موضوع تحتاج نموذج لغة غير متاح الآن — ارفع ملفاً للمقرر', 'Writing from a topic needs a language model, which is not available now — upload a course file'),
+      'bad_topic' => t('اكتب موضوعاً أوضح (3 أحرف على الأقل)', 'Type a clearer topic (at least 3 characters)'),
+      'draft_not_running' => t('انتهى إنشاء هذه الأسئلة بالفعل', 'These questions are already finished'),
       _ => fallback,
     };
 
@@ -183,13 +198,21 @@ Map<String, dynamic> examGenV2Body({
   String focus = '',
   String validate = 'auto',
   int maxFocus = 300,
+  GenSpeed speed = GenSpeed.fast,
+  List<String> avoidPrompts = const [],
+  String topic = '',
 }) {
   final f = focus.trim();
+  final tp = topic.trim();
+  final avoid = genAvoidPrompts(avoidPrompts);
   return {
     'course_id': courseId,
     'org_id': ?orgId,
     if (documentIds.isNotEmpty) 'document_ids': documentIds,
     'section_ids': sectionIds,
+    if (tp.isNotEmpty) 'topic': tp.length > genMaxTopicChars ? tp.substring(0, genMaxTopicChars) : tp,
+    'speed': speed.name,
+    if (avoid.isNotEmpty) 'avoid_prompts': avoid,
     if (excludePages.values.any((v) => v.isNotEmpty))
       'exclude_pages': {for (final e in excludePages.entries) if (e.value.isNotEmpty) '${e.key}': e.value},
     'types': [
@@ -285,17 +308,89 @@ List<GenMaterial> genMaterialsOf(Map<String, dynamic> j) => [for (final m in asM
 // ── the job ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class GenProgress {
-  const GenProgress({this.done = 0, this.total = 0, this.phase = 'planning', this.percent = 0});
+  const GenProgress({this.done = 0, this.total = 0, this.phase = 'planning', this.percent = 0, this.ready, this.failed = 0, this.etaSeconds});
   final int done, total, percent;
   final String phase;
+
+  /// Questions that passed every check (D-301); null on an older server ([readyCount] falls back to [done]).
+  final int? ready;
+  final int failed;
+
+  /// Seconds left from the run's own pace; null = not known yet / finished.
+  final int? etaSeconds;
+
+  int get readyCount => ready ?? done;
 
   factory GenProgress.fromJson(Map<String, dynamic> j) {
     final done = asInt(j['done']), total = asInt(j['total']);
     final p = j['percent'];
     final percent = p is num ? p.round() : (total > 0 ? (done * 100 / total).round() : 0);
-    return GenProgress(done: done, total: total, phase: asStr(j['phase'], 'planning'), percent: percent.clamp(0, 100));
+    return GenProgress(
+        done: done,
+        total: total,
+        phase: asStr(j['phase'], 'planning'),
+        percent: percent.clamp(0, 100),
+        ready: j['ready'] is num ? asInt(j['ready']) : null,
+        failed: asInt(j['failed']),
+        etaSeconds: j['eta_seconds'] is num ? asInt(j['eta_seconds']) : null);
   }
 }
+
+/// How fast the questions are written (D-301): [fast] with the platform's quick model and the rules' checks, [quality]
+/// with the exam model and a second check of every question by the model (about 1.5x the time, measured locally).
+enum GenSpeed { fast, quality }
+
+String genSpeedLabel(GenSpeed s) => switch (s) {
+      GenSpeed.fast => t('سريع', 'Fast'),
+      GenSpeed.quality => t('أعلى جودة', 'Best quality'),
+    };
+
+String genSpeedHint(GenSpeed s) => switch (s) {
+      GenSpeed.fast => t('الأسرع: تُفحص كل إجابة بقواعد صارمة في النص.', 'Quickest: every answer is checked against the text by strict rules.'),
+      GenSpeed.quality => t('أبطأ بنحو النصف: نموذج أكبر يكتب الأسئلة ثم يراجع كل سؤال مرة ثانية.',
+          'About half as fast again: a larger model writes the questions, then checks every one a second time.'),
+    };
+
+/// The longest topic the server takes (topic-only writing).
+const genMaxTopicChars = 200;
+
+/// The exam's own questions to send as `avoid_prompts`: trimmed, 8+ characters, no repeats, at most 200 of 300 chars.
+List<String> genAvoidPrompts(Iterable<String> prompts) {
+  final out = <String>[];
+  final seen = <String>{};
+  for (final p in prompts) {
+    var x = p.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (x.length < 8) continue;
+    if (x.length > 300) x = x.substring(0, 300);
+    if (seen.add(x.toLowerCase())) out.add(x);
+    if (out.length >= 200) break;
+  }
+  return out;
+}
+
+/// "About 4 min left" / "Less than a minute left"; null when unknown.
+String? genEtaText(int? seconds) {
+  if (seconds == null || seconds < 0) return null;
+  if (seconds < 60) return t('أقل من دقيقة متبقية', 'Less than a minute left');
+  final m = (seconds / 60).round();
+  if (m >= 60) {
+    final h = m ~/ 60, r = m % 60;
+    return r == 0 ? t('نحو $h ساعة متبقية', 'About $h h left') : t('نحو $h ساعة و$r دقيقة متبقية', 'About $h h $r min left');
+  }
+  return t('نحو $m دقيقة متبقية', 'About $m min left');
+}
+
+/// What the teacher sees of a job: waiting its turn, being written, finished (some may have failed), stopped, failed.
+enum GenJobStatus { queued, writing, done, partial, cancelled, failed }
+
+String genJobStatusLabel(GenJobStatus s) => switch (s) {
+      GenJobStatus.queued => t('في الانتظار — سيبدأ بعد قليل', 'Waiting its turn — starting shortly'),
+      GenJobStatus.writing => t('نكتب الأسئلة', 'Writing the questions'),
+      GenJobStatus.done => t('اكتملت الأسئلة', 'The questions are ready'),
+      GenJobStatus.partial => t('اكتمل معظم الأسئلة', 'Most of the questions are ready'),
+      GenJobStatus.cancelled => t('أُوقف الإنشاء', 'Generation stopped'),
+      GenJobStatus.failed => t('تعذّر إنشاء الأسئلة', 'The questions could not be generated'),
+    };
 
 String genPhaseLabel(String phase) => switch (phase) {
       'planning' => t('نخطّط توزيع الأسئلة على الفصول…', 'Planning the questions across the chapters…'),
@@ -342,13 +437,28 @@ class GenWarning {
           ? t('أحد الفصول المختارة لا يحتوي نصًا صالحًا للأسئلة.', 'One of the chosen chapters has no text usable for questions.')
           : t('الفصل «$title» لا يحتوي نصًا صالحًا للأسئلة.', 'The chapter “$title” has no text usable for questions.'),
       'section_unavailable' => t('أحد الفصول المختارة لم يعد متاحًا.', 'One of the chosen chapters is no longer available.'),
+      'topic_only' => t('كُتبت الأسئلة من الموضوع دون ملفات المقرر — راجع كل إجابة قبل النشر.',
+          'The questions were written from the topic, without the course files — check every answer before publishing.'),
+      'focus_not_found' => t('لم نجد في الفصول المختارة نصاً عن «التركيز»، فاستخدمنا كل الفصول.',
+          'Nothing in the chosen chapters matched the focus, so every chapter was used.'),
       _ => message,
     };
   }
 }
 
 class GenJob {
-  const GenJob({required this.id, required this.state, this.progress = const GenProgress(), this.questions = const [], this.warnings = const [], this.error, this.params = const {}});
+  const GenJob(
+      {required this.id,
+      required this.state,
+      this.progress = const GenProgress(),
+      this.questions = const [],
+      this.warnings = const [],
+      this.error,
+      this.params = const {},
+      this.courseId,
+      this.cancelled = false,
+      this.claimed = false,
+      this.mode = 'sections'});
   final int id;
   final String state;
   final GenProgress progress;
@@ -356,9 +466,34 @@ class GenJob {
   final List<GenWarning> warnings;
   final String? error;
   final Map<String, dynamic> params;
+  final int? courseId;
+
+  /// Stopped by the person (D-301): state failed, error `cancelled`; the questions written before stay.
+  final bool cancelled;
+
+  /// Its questions were taken into an exam already: no resume offer.
+  final bool claimed;
+
+  /// sections · topic (written from a topic, no course passage).
+  final String mode;
 
   bool get done => state == 'done' || state == 'failed';
   bool get failed => state == 'failed';
+  bool get active => state == 'queued' || state == 'running';
+
+  /// The usable questions written so far (the ones that passed; removed / failed ones left out).
+  List<Map<String, dynamic>> get readyItems => [for (final q in questions) if (asStr(q['state'], 'ok') == 'ok' && q['removed'] != true) q];
+
+  GenJobStatus get status {
+    if (state == 'queued') return GenJobStatus.queued;
+    if (state == 'running') return GenJobStatus.writing;
+    if (cancelled || error == 'cancelled') return GenJobStatus.cancelled;
+    if (state == 'failed') return GenJobStatus.failed;
+    return progress.failed > 0 || questions.any((q) => q['state'] == 'failed') ? GenJobStatus.partial : GenJobStatus.done;
+  }
+
+  /// Offered again when the generator opens: still being written, or finished with questions nobody took yet.
+  bool get resumable => active || (!claimed && !cancelled && state == 'done' && progress.readyCount > 0);
 
   factory GenJob.fromJson(Map<String, dynamic> j) => GenJob(
       id: asInt(j['id']),
@@ -367,7 +502,11 @@ class GenJob {
       questions: asMapList(j['questions']),
       warnings: [for (final w in asMapList(j['warnings'])) GenWarning.fromJson(w)],
       error: j['error']?.toString(),
-      params: asMap(j['params']));
+      params: asMap(j['params']),
+      courseId: j['course_id'] == null ? null : asInt(j['course_id']),
+      cancelled: j['cancelled'] == true,
+      claimed: j['claimed'] == true,
+      mode: asStr(j['mode'], 'sections'));
 
   /// The item the SERVER numbered `n` (from 1; its `n` field, not its position in [questions]); null when there is none.
   Map<String, dynamic>? item(int n) {
@@ -521,6 +660,15 @@ class ExamGenV2Api {
 
   Future<EngineResult> get(int id) => engineCall(() => _api.get('$base/exam-gen/$id'));
 
+  /// The caller's jobs of the last 24 hours for [courseId], newest first (D-301: the resume offer). A bare 404 = older server.
+  Future<EngineResult> list(int courseId) => engineCall(() => _api.get('$base/exam-gen', queryParams: {'course_id': '$courseId'}));
+
+  /// Stops a queued / running job; the questions written so far stay.
+  Future<EngineResult> cancel(int id) => engineCall(() => _api.post('$base/exam-gen/$id/cancel', body: const <String, dynamic>{}));
+
+  /// Marks the job's questions taken (the resume offer forgets it). Fire-and-forget.
+  Future<EngineResult> claim(int id) => engineCall(() => _api.post('$base/exam-gen/$id/claim', body: const <String, dynamic>{}));
+
   Future<EngineResult> regenerate(int id, int n, {String? hint}) {
     final h = hint?.trim() ?? '';
     return engineCall(() => _api.post('$base/exam-gen/$id/items/$n/regenerate', body: {if (h.isNotEmpty) 'hint': h.length > 200 ? h.substring(0, 200) : h}));
@@ -534,7 +682,8 @@ class ExamGenV2Api {
   Future<EngineResult> waitFor(int id,
       {bool Function(GenJob job)? until,
       void Function(GenJob job)? onJob,
-      Duration timeout = const Duration(minutes: 10),
+      bool Function()? cancelled,
+      Duration timeout = const Duration(hours: 3),
       Duration every = const Duration(milliseconds: 1500),
       Duration fallbackEvery = const Duration(seconds: 15)}) async {
     final stop = until ?? (j) => j.done;
@@ -547,6 +696,7 @@ class ExamGenV2Api {
         onJob?.call(job);
         if (stop(job) || job.failed || (until == null && job.done) || !DateTime.now().isBefore(end)) break;
         await watch.next(every, fallbackEvery: fallbackEvery);
+        if (cancelled?.call() ?? false) break;          // the screen stopped caring (D-301): no poll left behind
         r = await get(id);
       }
     } finally {
@@ -587,3 +737,13 @@ Future<bool> removeGenItem(ExamGenV2Api api, int jobId, int n) async {
 /// error — keeps the wizard, which says what went wrong.
 bool genUseWizard(EngineResult outline) => !genV2Unavailable(outline);
 
+
+/// The newest job worth offering again from the list answer (`{items}`), or null (D-301).
+GenJob? genResumableOf(Map<String, dynamic> listAnswer, {int? courseId}) {
+  for (final j in asMapList(listAnswer['items'])) {
+    final job = GenJob.fromJson(j);
+    if (courseId != null && job.courseId != null && job.courseId != courseId) continue;
+    if (job.resumable) return job;
+  }
+  return null;
+}

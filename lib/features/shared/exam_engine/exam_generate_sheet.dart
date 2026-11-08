@@ -24,8 +24,10 @@ import 'exam_quick.dart';
 /// Opens the generator; the draft's questions to add (with their indexes in the draft, for the Track F review), or
 /// null when the teacher left without generating. The five-step wizard (exam_generate_wizard.dart, generation v2);
 /// on an older server [ExamGenEntry] shows the sheet below, unchanged.
-Future<ExamGenResult?> openExamGenerator(BuildContext context, {required int courseId, int? orgId}) =>
-    showAppSheet<ExamGenResult>(context, (_) => ExamGenEntry(courseId: courseId, orgId: orgId));
+/// [avoidPrompts]: the questions already in the exam (D-301: never written again). A job still being written for this
+/// course (the teacher left the sheet) opens on its progress.
+Future<ExamGenResult?> openExamGenerator(BuildContext context, {required int courseId, int? orgId, List<String> avoidPrompts = const []}) =>
+    showAppSheet<ExamGenResult>(context, (_) => ExamGenEntry(courseId: courseId, orgId: orgId, avoidPrompts: avoidPrompts));
 
 class ExamGenSheet extends StatefulWidget {
   const ExamGenSheet({super.key, required this.courseId, this.orgId, this.api, this.library, this.pickFile});

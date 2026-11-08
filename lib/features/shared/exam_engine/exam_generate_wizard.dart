@@ -8,6 +8,12 @@
 //   Questions  per type: on/off, how many, marks each · the difficulty mix (easy / medium / hard, sums to 100)
 //   Language   the questions' language · focus under "Advanced"
 //   Generate   a percentage and the phase (JobWatch on job_updated{kind: exam_draft}); the questions land in the builder
+//
+// D-301: generation is a background job the teacher never waits on blindly. The Generate step shows the status (waiting
+// its turn · writing · done · stopped · failed), the ready count N / M with the time left, and the questions as they
+// arrive; "Add the N ready now" (stops the rest), "Stop", "Keep it running" (leave; opening the generator again for the
+// course resumes the job, `GET /exam-gen?course_id=`), "Try again" on a failure. No timeout turns into "try later".
+// The Language step chooses Fast / Best quality; a course without files can be written from a topic (Sources step).
 library;
 
 import 'dart:async';
@@ -17,9 +23,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
-import '../../admin/admin_common.dart' show asInt, asMap, t;
+import '../../admin/admin_common.dart' show asMap, t;
 import '../rag/rag_library.dart';
 import 'exam_engine_api.dart' show EngineResult;
 import 'exam_gen_api.dart';
@@ -165,8 +172,14 @@ class GenSourcesStep extends StatelessWidget {
     this.busyMaterials = const {},
     this.picked,
     this.warning,
+    this.topic,
+    this.onUseTopic,
   });
   final bool loading;
+
+  /// Topic-only writing (D-301): the topic field and its button; null hides the option.
+  final TextEditingController? topic;
+  final VoidCallback? onUseTopic;
   final List<GenSourceRow> documents;
   final List<GenMaterial> materials;
   final Set<int> busyMaterials;
@@ -235,7 +248,59 @@ class GenSourcesStep extends StatelessWidget {
         child: TextButton.icon(onPressed: onUpload, icon: const Icon(Icons.attach_file_rounded, size: 18), label: Text(t('ارفع ملفاً جديداً', 'Upload a new file'))),
       ),
       Text(ragFormatAdvice(picked), style: appText(12, c: c.textLight)),
+      if (topic != null && onUseTopic != null) ...[
+        const SizedBox(height: AppSpace.md),
+        GenTopicCard(topic: topic!, onUse: onUseTopic!, prominent: documents.isEmpty),
+      ],
     ]);
+  }
+}
+
+/// "No file? Write from a topic": the model writes from the topic alone (no course passage), which the teacher is told.
+class GenTopicCard extends StatelessWidget {
+  const GenTopicCard({super.key, required this.topic, required this.onUse, this.prominent = false});
+  final TextEditingController topic;
+  final VoidCallback onUse;
+
+  /// The course has no document: the card is the main way on, not a footnote.
+  final bool prominent;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(
+        color: prominent ? c.primary.withValues(alpha: 0.06) : c.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: prominent ? c.primary.withValues(alpha: 0.35) : c.divider),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(Icons.lightbulb_outline_rounded, size: 20, color: c.primary),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(t('لا يوجد ملف؟ اكتب من موضوع', 'No file? Write from a topic'), style: appText(14, w: FontWeight.w700, c: c.textDark))),
+        ]),
+        const SizedBox(height: AppSpace.xxs),
+        Text(
+            t('نكتب الأسئلة من الموضوع الذي تكتبه بمعرفة الكتب المعتمدة، دون ملفات المقرر — راجع كل إجابة قبل النشر.',
+                'We write the questions from the topic you type, from standard textbook knowledge and without the course files — check every answer before publishing.'),
+            style: appText(12.5, c: c.textMedium)),
+        const SizedBox(height: AppSpace.xs),
+        AppField(controller: topic, label: t('الموضوع', 'Topic'), hint: t('مثال: الخلية النباتية والتمثيل الضوئي', 'e.g. plant cells and photosynthesis')),
+        const SizedBox(height: AppSpace.xs),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: topic,
+            builder: (_, v, _) => OutlinedButton.icon(
+                onPressed: v.text.trim().length >= 3 ? onUse : null,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                label: Text(t('اكتب من هذا الموضوع', 'Write from this topic'))),
+          ),
+        ),
+      ]),
+    );
   }
 }
 
@@ -467,8 +532,13 @@ class GenMixEditor extends StatelessWidget {
 
 /// Step 4: the questions' language, and under "Advanced" the focus text.
 class GenLanguageStep extends StatelessWidget {
-  const GenLanguageStep({super.key, required this.lang, required this.onLang, required this.focus, required this.advanced, required this.onAdvanced});
+  const GenLanguageStep(
+      {super.key, required this.lang, required this.onLang, required this.focus, required this.advanced, required this.onAdvanced, this.speed, this.onSpeed});
   final GenLang lang;
+
+  /// Fast / Best quality (D-301); null hides the choice (an older server).
+  final GenSpeed? speed;
+  final ValueChanged<GenSpeed>? onSpeed;
   final ValueChanged<GenLang> onLang;
   final TextEditingController focus;
   final bool advanced;
@@ -482,6 +552,18 @@ class GenLanguageStep extends StatelessWidget {
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final l in GenLang.values) AppChoiceChip(label: genLangLabel(l), selected: lang == l, onTap: () => onLang(l)),
       ]),
+      if (speed != null && onSpeed != null) ...[
+        const SizedBox(height: AppSpace.md),
+        Text(t('السرعة', 'Speed'), style: _label(context)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          for (final v in GenSpeed.values)
+            AppChoiceChip(
+                label: genSpeedLabel(v), icon: v == GenSpeed.fast ? Icons.bolt_rounded : Icons.workspace_premium_outlined, selected: speed == v, onTap: () => onSpeed!(v)),
+        ]),
+        const SizedBox(height: AppSpace.xxs),
+        Text(genSpeedHint(speed!), style: appText(12, c: context.colors.textMedium)),
+      ],
       Align(
         alignment: AlignmentDirectional.centerStart,
         child: TextButton.icon(
@@ -495,30 +577,155 @@ class GenLanguageStep extends StatelessWidget {
   }
 }
 
-/// Step 5: the percentage and the phase while the questions are written.
+/// One question that is ready, as the progress view lists it.
+class GenReadyLine {
+  const GenReadyLine(this.type, this.prompt);
+  final String type, prompt;
+}
+
+/// The ready questions of a job (newest last) for [GenProgressView].
+List<GenReadyLine> genReadyLines(GenJob job) =>
+    [for (final q in job.readyItems) if ('${q['prompt'] ?? ''}'.trim().isNotEmpty) GenReadyLine('${q['type'] ?? ''}', '${q['prompt']}'.split('\n').last.trim())];
+
+/// Step 5 (D-301): what the job is doing, N / M ready with the time left, the questions as they arrive, and what the
+/// teacher can do now. Plain values; the actions are null when they do not apply.
 class GenProgressView extends StatelessWidget {
-  const GenProgressView({super.key, required this.progress, this.warnings = const []});
+  const GenProgressView({
+    super.key,
+    required this.progress,
+    this.warnings = const [],
+    this.status,
+    this.ready = const [],
+    this.onUseReady,
+    this.onStop,
+    this.onBackground,
+    this.onRetry,
+    this.onSettings,
+    this.busy = false,
+  });
   final GenProgress progress;
   final List<GenWarning> warnings;
+
+  /// Null = the first answer has not come yet.
+  final GenJobStatus? status;
+  final List<GenReadyLine> ready;
+  final VoidCallback? onUseReady, onStop, onBackground, onRetry, onSettings;
+
+  /// An action is on its way (the buttons wait).
+  final bool busy;
+
+  static const _shown = 4;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final st = status;
+    final running = st == null || st == GenJobStatus.queued || st == GenJobStatus.writing;
+    final bad = st == GenJobStatus.failed || (st == GenJobStatus.cancelled && progress.readyCount == 0);
+    final tone = bad ? c.danger : (st == GenJobStatus.cancelled || st == GenJobStatus.partial ? c.warning : (running ? c.primary : c.success));
+    final readyN = progress.readyCount;
+    final eta = running ? genEtaText(progress.etaSeconds) : null;
+    final label = st == null ? genPhaseLabel(progress.phase) : genJobStatusLabel(st);
+    final icon = switch (st) {
+      GenJobStatus.queued => Icons.schedule_rounded,
+      GenJobStatus.done => Icons.check_circle_rounded,
+      GenJobStatus.partial => Icons.task_alt_rounded,
+      GenJobStatus.cancelled => Icons.pause_circle_outline_rounded,
+      GenJobStatus.failed => Icons.error_outline_rounded,
+      _ => Icons.auto_awesome_rounded,
+    };
+    final shown = ready.length > _shown ? ready.sublist(ready.length - _shown) : ready;
+    // the phase only while it says more than the status line above (planning, concepts)
+    final sub = [
+      if (running && st != null && progress.phase != 'writing') genPhaseLabel(progress.phase),
+      ?eta,
+      if (progress.failed > 0)
+        countText(progress.failed,
+            ar1: 'تعذّر سؤال واحد',
+            ar2: 'تعذّر سؤالان',
+            arFew: 'تعذّرت ${progress.failed} أسئلة',
+            arMany: 'تعذّر ${progress.failed} سؤالاً',
+            en1: '1 could not be written',
+            en: '${progress.failed} could not be written'),
+    ].join(' · ');
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('${progress.percent}%', textAlign: TextAlign.center, style: appText(34, w: FontWeight.w800, c: c.primary)),
-      const SizedBox(height: AppSpace.xs),
-      ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: LinearProgressIndicator(value: progress.total > 0 || progress.percent > 0 ? progress.percent / 100 : null, minHeight: 6),
-      ),
-      const SizedBox(height: AppSpace.sm),
-      Semantics(liveRegion: true, child: Text(genPhaseLabel(progress.phase), textAlign: TextAlign.center, style: appText(13.5, c: c.textMedium))),
-      if (progress.total > 0)
-        Padding(
-          padding: const EdgeInsets.only(top: AppSpace.xxs),
-          child: Text(t('${progress.done} من ${progress.total} سؤالاً', '${progress.done} of ${progress.total} questions'), textAlign: TextAlign.center, style: appText(12, c: c.textLight)),
+      Container(
+        padding: const EdgeInsets.all(AppSpace.md),
+        decoration: BoxDecoration(
+          color: tone.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: tone.withValues(alpha: 0.25)),
         ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Icon(icon, size: 20, color: tone),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(
+              child: Semantics(liveRegion: true, child: Text(label, style: appText(14.5, w: FontWeight.w700, c: c.textDark))),
+            ),
+          ]),
+          const SizedBox(height: AppSpace.sm),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text(progress.total > 0 ? '$readyN / ${progress.total}' : '${progress.percent}%', style: appText(30, w: FontWeight.w800, c: tone)),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(progress.total > 0 ? t('سؤالاً جاهزاً', 'questions ready') : '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium)),
+              ),
+            ),
+          ]),
+          const SizedBox(height: AppSpace.xs),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+                value: running && progress.percent == 0 ? null : progress.percent / 100,
+                minHeight: 6,
+                color: tone,
+                backgroundColor: tone.withValues(alpha: 0.14)),
+          ),
+          if (sub.isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text(sub, style: appText(12.5, c: c.textMedium))],
+        ]),
+      ),
+      if (shown.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.sm),
+        Text(t('جاهز حتى الآن', 'Ready so far'), style: _label(context)),
+        const SizedBox(height: AppSpace.xxs),
+        for (final q in shown)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Padding(padding: const EdgeInsets.only(top: 2), child: Icon(_typeIcon(q.type), size: 16, color: c.success)),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: Text(q.prompt, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textDark))),
+            ]),
+          ),
+        if (ready.length > shown.length)
+          Text(t('و${ready.length - shown.length} غيرها', '+${ready.length - shown.length} more'), style: appText(12, c: c.textLight)),
+      ],
       for (final w in warnings.take(3)) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: w.text)),
+      if (running && onBackground != null)
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpace.sm),
+          child: Text(
+              t('يمكنك مغادرة هذه الصفحة: تستمر الكتابة، وتجد الأسئلة هنا عندما تعود إلى «أنشئ لي».',
+                  'You can leave this page: the writing goes on, and the questions wait here when you come back to Generate for me.'),
+              style: appText(12, c: c.textLight)),
+        ),
+      const SizedBox(height: AppSpace.sm),
+      Wrap(alignment: WrapAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        if (onSettings != null) TextButton(onPressed: busy ? null : onSettings, child: Text(t('عدّل الإعدادات', 'Change the settings'))),
+        if (onBackground != null) TextButton(onPressed: busy ? null : onBackground, child: Text(t('تابع في الخلفية', 'Keep it running'))),
+        if (onStop != null) TextButton(onPressed: busy ? null : onStop, child: Text(t('إيقاف', 'Stop'), style: TextStyle(color: c.danger))),
+        if (onRetry != null) AppPrimaryButton(label: t('حاول مرة أخرى', 'Try again'), icon: Icons.refresh_rounded, onPressed: busy ? null : onRetry),
+        if (onUseReady != null && readyN > 0)
+          AppPrimaryButton(
+              label: running
+                  ? countText(readyN, ar1: 'أضف السؤال الجاهز الآن', ar2: 'أضف السؤالين الجاهزين الآن', arFew: 'أضف $readyN أسئلة جاهزة الآن', arMany: 'أضف $readyN سؤالاً جاهزاً الآن', en1: 'Add the 1 ready now', en: 'Add the $readyN ready now')
+                  : countText(readyN, ar1: 'أضف السؤال', ar2: 'أضف السؤالين', arFew: 'أضف $readyN أسئلة', arMany: 'أضف $readyN سؤالاً', en1: 'Add 1 question', en: 'Add $readyN questions'),
+              icon: Icons.playlist_add_rounded,
+              onPressed: busy ? null : onUseReady),
+      ]),
     ]);
   }
 }
@@ -544,9 +751,12 @@ class GenNavBar extends StatelessWidget {
 
 /// The entry: asks the outline route whether the server has generation v2; an older server gets the old sheet.
 class ExamGenEntry extends StatefulWidget {
-  const ExamGenEntry({super.key, required this.courseId, this.orgId, this.api, this.library, this.pickFile, this.legacyApi});
+  const ExamGenEntry({super.key, required this.courseId, this.orgId, this.api, this.library, this.pickFile, this.legacyApi, this.avoidPrompts = const []});
   final int courseId;
   final int? orgId;
+
+  /// The questions already in the exam (D-301: never written again).
+  final List<String> avoidPrompts;
   final ExamGenV2Api? api;
   final RagLibraryApi? library;
   final ExamGenApi? legacyApi;
@@ -560,11 +770,19 @@ class _ExamGenEntryState extends State<ExamGenEntry> {
   late final ExamGenV2Api _api = widget.api ?? ExamGenV2Api();
   EngineResult? _probe;
 
+  /// A job of this course still being written, or finished and not taken (D-301): the wizard opens on it.
+  GenJob? _resume;
+
   @override
   void initState() {
     super.initState();
-    _api.outline(widget.courseId).then((r) {
-      if (mounted) setState(() => _probe = r);
+    // the outline answers whether the server has v2; the job list (in parallel) whether a job waits for this course
+    Future.wait([_api.outline(widget.courseId), _api.list(widget.courseId)]).then((r) {
+      if (!mounted) return;
+      setState(() {
+        _resume = r[1].ok ? genResumableOf(r[1].map, courseId: widget.courseId) : null;
+        _probe = r[0];
+      });
     });
   }
 
@@ -584,13 +802,25 @@ class _ExamGenEntryState extends State<ExamGenEntry> {
       return ExamGenSheet(courseId: widget.courseId, orgId: widget.orgId, api: widget.legacyApi, library: widget.library, pickFile: widget.pickFile);
     }
     return ExamGenWizard(
-        courseId: widget.courseId, orgId: widget.orgId, api: _api, library: widget.library, pickFile: widget.pickFile, onOlderServer: _legacy);
+        courseId: widget.courseId,
+        orgId: widget.orgId,
+        api: _api,
+        library: widget.library,
+        pickFile: widget.pickFile,
+        onOlderServer: _legacy,
+        resume: _resume,
+        avoidPrompts: widget.avoidPrompts);
   }
 }
 
 class ExamGenWizard extends StatefulWidget {
-  const ExamGenWizard({super.key, required this.courseId, this.orgId, this.api, this.library, this.pickFile, this.onOlderServer, this.pollEvery});
+  const ExamGenWizard(
+      {super.key, required this.courseId, this.orgId, this.api, this.library, this.pickFile, this.onOlderServer, this.pollEvery, this.resume, this.avoidPrompts = const []});
   final int courseId;
+
+  /// A job to open on (D-301): the wizard starts on its progress.
+  final GenJob? resume;
+  final List<String> avoidPrompts;
   final int? orgId;
   final ExamGenV2Api? api;
   final RagLibraryApi? library;
@@ -628,16 +858,37 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
   List<GenWarning> _warnings = const [];
   String? _picked, _err;
   EventOrPoll? _poll;
+  GenSpeed _speed = GenSpeed.fast;
+  final _topic = TextEditingController();
+  bool _topicMode = false;
+
+  /// The job being followed (D-301); [_watchToken] ends a wait the wizard no longer needs.
+  GenJob? _job;
+  int _watchToken = 0;
+  bool _acting = false;
+
+  /// A job of ANOTHER course blocks this one (409 exam_gen_busy): the banner offers to stop it.
+  int? _otherJob;
 
   @override
   void initState() {
     super.initState();
     _load();
+    final r = widget.resume;
+    if (r != null) {
+      _step = GenWizardStep.generate;
+      _job = r;
+      _progress = r.progress;
+      _warnings = r.warnings;
+      unawaited(_watch(r.id));
+    }
   }
 
   @override
   void dispose() {
+    _watchToken++;
     _poll?.dispose();
+    _topic.dispose();
     _focus.dispose();
     for (final c in _excludes.values) {
       c.dispose();
@@ -760,7 +1011,17 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
       };
 
   String? get _problem => genV2Problem(
-      sectionIds: _sections.toList(), rows: _rows, mix: _mix, excludeTexts: [for (final e in _excludes.entries) if (_outline.documents.any((d) => d.id == e.key)) e.value.text]);
+      sectionIds: _topicMode ? const [] : _sections.toList(),
+      rows: _rows,
+      mix: _mix,
+      topic: _topicMode ? _topic.text : '',
+      excludeTexts: _topicMode ? const [] : [for (final e in _excludes.entries) if (_outline.documents.any((d) => d.id == e.key)) e.value.text]);
+
+  void _useTopic() => setState(() {
+        _topicMode = true;
+        _err = null;
+        _step = GenWizardStep.questions;
+      });
 
   void _next() {
     switch (_step) {
@@ -787,6 +1048,12 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
 
   void _back() => setState(() {
         _err = null;
+        // topic-only skips the chapters both ways
+        if (_topicMode && _step == GenWizardStep.questions) {
+          _topicMode = false;
+          _step = GenWizardStep.sources;
+          return;
+        }
         _step = GenWizardStep.values[(_step.index - 1).clamp(0, GenWizardStep.values.length - 1)];
       });
 
@@ -796,23 +1063,39 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
     setState(() {
       _step = GenWizardStep.generate;
       _err = null;
+      _otherJob = null;
+      _job = null;
       _progress = const GenProgress();
       _warnings = const [];
     });
     final body = examGenV2Body(
         courseId: widget.courseId,
         orgId: widget.orgId,
-        documentIds: _outline.documents.map((d) => d.id).toList(),
-        sectionIds: _sections.toList(),
-        excludePages: _excludeRanges,
+        documentIds: _topicMode ? const [] : _outline.documents.map((d) => d.id).toList(),
+        sectionIds: _topicMode ? const [] : _sections.toList(),
+        excludePages: _topicMode ? const {} : _excludeRanges,
         rows: _rows,
         mix: _mix,
         lang: _lang.name,
-        focus: _focus.text);
+        focus: _focus.text,
+        speed: _speed,
+        avoidPrompts: widget.avoidPrompts,
+        topic: _topicMode ? _topic.text : '');
     final r = await _api.create(body);
     if (!mounted) return;
     if (r.unavailable) return widget.onOlderServer?.call();
     if (!r.ok) {
+      final other = r.detail['job_id'];
+      // one run per person: this course's own run is simply followed; another course's can be stopped from here
+      if (r.code == 'exam_gen_busy' && other is num) {
+        final course = r.detail['course_id'];
+        if (course is num && course.toInt() == widget.courseId) return _watch(other.toInt());
+        return setState(() {
+          _step = GenWizardStep.language;
+          _otherJob = other.toInt();
+          _err = genV2CodeText(r.code, examGenCodeText(r.code, r.message));
+        });
+      }
       setState(() {
         _step = GenWizardStep.language;
         _err = genV2CodeText(r.code, examGenCodeText(r.code, r.message));
@@ -820,37 +1103,111 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
       if (r.code == 'no_course_documents') _load();
       return;
     }
-    final id = asInt(r.map['id']);
+    final first = GenJob.fromJson(asMap(r.map));
+    setState(() {
+      _job = first;
+      _progress = first.progress;
+    });
+    return _watch(first.id);
+  }
+
+  /// Follows job [id] until it is done (or the wizard stops caring): live progress, then the questions to the builder.
+  Future<void> _watch(int id) async {
+    final token = ++_watchToken;
     final done = await _api.waitFor(id,
         every: widget.pollEvery ?? const Duration(milliseconds: 1500),
+        cancelled: () => !mounted || token != _watchToken,
         onJob: (j) {
-          if (mounted) {
+          if (mounted && token == _watchToken) {
             setState(() {
+              _job = j;
               _progress = j.progress;
               _warnings = j.warnings;
             });
           }
         });
-    if (!mounted) return;
-    final job = done.ok ? GenJob.fromJson(asMap(done.map)) : null;
-    final items = job == null ? const <(int, QuickQuestion)>[] : genItemsOf(job.questions);
-    if (job == null || !job.done || items.isEmpty) {
-      return setState(() {
-        _step = GenWizardStep.language;
-        _err = job == null
-            ? examGenCodeText(done.code, done.message)
-            : !job.done
-                ? t('ما زالت الأسئلة قيد الكتابة — حاول بعد قليل', 'The questions are still being written — try again shortly')
-                : examGenCodeText(job.error ?? 'no_questions', t('تعذر إنشاء الأسئلة', 'Could not generate the questions'));
-      });
+    if (!mounted || token != _watchToken) return;
+    if (!done.ok) {
+      // the job goes on on the server; only this wait failed (network): say so, and let the person look again
+      return setState(() => _err = examGenCodeText(done.code, done.message));
     }
+    final job = GenJob.fromJson(asMap(done.map));
+    setState(() => _job = job);
+    if (!job.done) return;
+    final items = genItemsOf(job.questions);
+    if (items.isEmpty || job.cancelled) return;            // the failed / stopped state stays on screen with its actions
+    _finish(job, items);
+  }
+
+  void _finish(GenJob job, List<(int, QuickQuestion)> items) {
+    unawaited(_api.claim(job.id));
     final left = job.questions.length - items.length;
     appToast(left > 0
         ? t('${items.length} سؤالاً جاهزاً، وتعذّر كتابة $left', '${items.length} questions ready, $left could not be written')
         : t('${items.length} سؤالاً جاهزاً', '${items.length} questions ready'));
-    final notice = [for (final w in job.warnings) if (w.code == 'rules_writer') w.text];
+    final notice = [for (final w in job.warnings) if (w.code == 'rules_writer' || w.code == 'topic_only') w.text];
     Navigator.pop(context, ExamGenResult(job.id, items, notice: notice.isEmpty ? '' : notice.first));
   }
+
+  /// "Add the N ready now": the rest is stopped, the ready questions go to the builder.
+  Future<void> _useReady() async {
+    final job = _job;
+    if (job == null) return;
+    setState(() => _acting = true);
+    _watchToken++;
+    final r = job.active ? await _api.cancel(job.id) : await _api.get(job.id);
+    if (!mounted) return;
+    final latest = r.ok ? GenJob.fromJson(asMap(r.map)) : job;
+    final items = genItemsOf(latest.questions);
+    setState(() => _acting = false);
+    if (items.isEmpty) return setState(() => _err = t('لا توجد أسئلة جاهزة بعد', 'No question is ready yet'));
+    _finish(latest, items);
+  }
+
+  Future<void> _stop() async {
+    final job = _job;
+    if (job == null) return;
+    setState(() => _acting = true);
+    final r = await _api.cancel(job.id);
+    if (!mounted) return;
+    setState(() {
+      _acting = false;
+      if (r.ok) {
+        _watchToken++;
+        _job = GenJob.fromJson(asMap(r.map));
+        _progress = _job!.progress;
+      } else if (r.code != 'draft_not_running') {
+        _err = genV2CodeText(r.code, examGenCodeText(r.code, r.message));
+      }
+    });
+  }
+
+  /// Another course's run blocks this one: stop it, then try again.
+  Future<void> _stopOther() async {
+    final id = _otherJob;
+    if (id == null) return;
+    setState(() => _acting = true);
+    await _api.cancel(id);
+    if (!mounted) return;
+    setState(() {
+      _acting = false;
+      _otherJob = null;
+    });
+    unawaited(_generate());
+  }
+
+  void _keepRunning() {
+    _watchToken++;
+    appToast(t('نتابع كتابة الأسئلة. افتح «أنشئ لي» في هذا المقرر لاحقاً لتضيفها.', 'We keep writing the questions. Open Generate for me in this course later to add them.'));
+    Navigator.pop(context);
+  }
+
+  void _toSettings() => setState(() {
+        _watchToken++;
+        _job = null;
+        _err = null;
+        _step = GenWizardStep.language;
+      });
 
   bool get _canNext => switch (_step) {
         GenWizardStep.sources => _useDocs.isNotEmpty && !_loading,
@@ -870,6 +1227,8 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
       case GenWizardStep.sources:
         final mine = _mine;
         return GenSourcesStep(
+          topic: _topic,
+          onUseTopic: _useTopic,
           loading: _loading,
           documents: [
             for (final d in mine)
@@ -904,9 +1263,31 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
           onMix: (m) => setState(() => _mix = m),
         );
       case GenWizardStep.language:
-        return GenLanguageStep(lang: _lang, onLang: (v) => setState(() => _lang = v), focus: _focus, advanced: _advanced, onAdvanced: () => setState(() => _advanced = !_advanced));
+        return GenLanguageStep(
+            lang: _lang,
+            onLang: (v) => setState(() => _lang = v),
+            focus: _focus,
+            advanced: _advanced,
+            onAdvanced: () => setState(() => _advanced = !_advanced),
+            speed: _speed,
+            onSpeed: (v) => setState(() => _speed = v));
       case GenWizardStep.generate:
-        return GenProgressView(progress: _progress, warnings: _warnings);
+        final job = _job;
+        final st = job?.status;
+        final running = job == null || job.active;
+        final stopped = st == GenJobStatus.cancelled || st == GenJobStatus.failed;
+        return GenProgressView(
+          progress: _progress,
+          warnings: _warnings,
+          status: st,
+          ready: job == null ? const [] : genReadyLines(job),
+          busy: _acting,
+          onUseReady: job == null ? null : _useReady,
+          onStop: job != null && running ? _stop : null,
+          onBackground: job != null && running ? _keepRunning : null,
+          onRetry: stopped && _progress.readyCount == 0 ? _generate : null,
+          onSettings: stopped ? _toSettings : null,
+        );
     }
   }
 
@@ -925,6 +1306,11 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
             const SizedBox(height: AppSpace.sm),
             _body(),
             if (_err != null) Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err!)),
+            if (_otherJob != null)
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton(onPressed: _acting ? null : _stopOther, child: Text(t('أوقف الأخرى وابدأ هنا', 'Stop the other one and start here'))),
+              ),
             if (!generating) ...[
               const SizedBox(height: AppSpace.md),
               GenNavBar(

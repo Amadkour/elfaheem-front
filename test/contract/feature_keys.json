@@ -139,6 +139,8 @@
  "device_requests.hint",
  "device_requests.limit_note",
  "enrollment",
+ "exam.auto_correct",
+ "exam.auto_create",
  "exam.google_forms_import",
  "exam.grade_review",
  "exam.identifiers",
