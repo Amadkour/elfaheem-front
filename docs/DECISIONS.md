@@ -3338,6 +3338,80 @@ No kill switch, no server change. Tests: `test/org/board_rec_pacing_test.dart`, 
 `test/ui/live_stage_overlay_layout_test.dart`, `test/ui/live_host_handover_layout_test.dart` (descriptions). Not seen
 yet on a device or in a real browser call.
 
+## D-314 — The whiteboard: smooth, realistic ink, and a board that fills the whole stage · 2026-11-08 · accepted
+
+Amends D-083 (the ink's renderer), D-093 (the continuous column) and the share sheet's default page.
+**Context.** The owner: "When I draw with the pen, the ink is discrete. I need the ink smooth, more realistic." and
+"When I start sharing the board, make the board fill all the width and height (not only the height)."
+
+**Why the ink looked discrete (measured, `test/org/board_ink_smooth_test.dart`).**
+(1) The main cause: every pen sample rebuilt the whole board. A point added to the stroke notified the `BoardScene`,
+and the stage, the room's board view and the dock all rebuilt on it (`Listenable.merge([_c, _c.scene])`): ~500 widgets
+per sample, the page's extent / sideways reach re-measured over every stroke, and every item on the page repainted. In
+the widget test that was 22 – 55 ms a sample (debug build, 1400×900, 0 or 150 strokes); a real browser (CanvasKit draws
+on the UI thread) or a phone lost frames, so the stroke under the pen advanced in jumps. Now 0 widgets and ~5 ms.
+(2) A stylus stroke was a circle + a band per node (a node every 0.3 pen widths): thousands of sub-paths per stroke
+that every frame filled under non-zero — heavy on the web, where nothing is raster-cached.
+(3) The centre line was the chain of quadratic Béziers through the samples' MIDPOINTS: it never passes through a
+sample and cuts every corner. Flutter delivers one sample per frame (the Android embedding sends no historical
+samples, iOS no coalesced touches; only the web expands `getCoalescedEvents`), so at 60 Hz a quick loop came out
+flattened — 1.6 px off its samples on a 25 px loop.
+(4) A viewer saw a remote stroke grow one 33 ms network batch at a time (2 – 4 points at once).
+(5) A continuous page's y travelled with 5 decimals of its 20-width length: 1/5000 of a width, 0.4 px on a page as wide
+as a 1920 px screen (see below), 1.5 px zoomed in.
+Pointer input itself was fine: every PointerMove reaches the One Euro filter (D-083, unchanged), nothing is
+throttled before drawing, and the drawer's stroke was already drawn locally, never after the network echo.
+
+**Decision — ink.** (a) `BoardScene.settled` notifies on every change except a stroke's new points and laser dots;
+the stage, `WhiteboardRoomView`, the dock and the options sheet listen to it. The stage paints two layers: what is
+finished (RepaintBoundary, repainted only when it changes) and the open strokes (repainted per sample). A stroke still
+being drawn re-lays the page out only when it reaches past what the last layout measured (a quarter screen below the
+content of a continuous page, or beside the column, D-107). The recording keeps listening to every change (D-313).
+(b) The centre line is a centripetal Catmull–Rom spline through the samples (`annotInkPiece`; α = ½: no cusp or loop
+inside a piece, so it adds no wiggle; prefix-stable — pieces 1 .. n − 2 never move, as before). The loop above: 0 px
+off its samples, under 60 % of the old error against the real curve. D-083 had rejected "Catmull–Rom through every
+sample (it passes through the jitter)": the samples it now passes through are the One Euro filter's output, not raw
+digitiser points. (c) A stylus stroke is ONE filled outline (`annotInkOutline`: left edge, round cap, right edge, round
+cap, clockwise; a round join where the centre line turns tighter than the pen, so the inner edge never opens): pixel
+for pixel the old union (0 differing pixels over 12 random scribbles with hairpins), ~2 sub-paths instead of
+thousands. Pressure, causal radii, tapers, finger / mouse (one stroked path, round caps) and the highlighter are as in
+D-083. (d) A viewer reveals a remote stroke at the drawer's pace: the points of a batch are drawn over the time since
+the previous batch (16 – 120 ms), the tip interpolated between two points, never ahead of what arrived; a finished
+stroke is drawn whole at once (`BoardController.inkShown` / `stepReveal`, driven by the stage's frame clock). The
+drawer's own stroke is never delayed. (e) Board points carry y with 6 decimals (`kBoardYDigits`,
+`boardPointJson`); x and the pressure as before. A fixed page's points are 5-decimal numbers already, so its packets
+are byte for byte the old ones; a continuous stroke is 22.7 bytes a point (≈ +1 byte). The annotation over a shared
+screen draws with the same renderer, so (b) and (c) apply there too; its wire, the reveal and D-083's screen-security
+rules are unchanged.
+**Compatibility.** Same protocol (`v` / `bv` unchanged). An older app draws a new app's strokes with its midpoint chain
+and union (a few px rounder or flatter on a fast loop, nothing else) and reads the 6-decimal y as the 5-decimal number
+it knew; a new app draws an older app's strokes with the spline.
+
+**Decision — the board fills the stage.** (1) A continuous page's column is the stage's WHOLE width
+(`ContinuousView.columnWidth`); it was capped at max(480, 0.8 × height), so a laptop got a reading-width column with
+bare margins beside it. Page coordinates are page-width fractions, so this is a pure view change: every device still
+puts everyone's ink at the same place of the page, and viewers keep following the presenter's top / sideways view
+(D-093 / D-107). New pens, shapes and text boxes keep their old pixel size (`boardContinuousStyleFactor`: the old
+column ÷ the full width, 1 on a phone or a tablet), so a medium pen is not 2.5× thicker on a laptop. (2) The share
+sheet starts on the CONTINUOUS page on every device (it was landscape, portrait on a phone): it fills the width and
+the height for the presenter AND for every viewer, whatever their screen's shape. Landscape and portrait stay one tap
+away, still fitted whole (`contain`): they are the slide and the sheet of paper, and stretching would distort what is
+drawn. (3) The web recording follows the presenter's full-width view (`boardRecordingWindow`: the whole width, widened
+to 16:9 by more page below); a fixed page is recorded whole as before. The D-313 overlay layout is unchanged.
+**Trade-off.** One page width now means a different number of pixels on each screen, as on a phone already: what a
+laptop presenter writes across 1920 px is shown at 390 / 1920 on a phone (it was 390 / 760) — smaller but whole, and
+the viewer can zoom; a phone presenter's page is the width of the phone everywhere. Rejected: a "screen-shaped" fixed
+page with the presenter's aspect (a new format: older apps would need `bv` 4 and see "update the app", and every
+viewer with another shape is letterboxed anyway); stretching a fixed page to the stage (circles become ellipses);
+keeping the landscape default and only widening its column (a 16:9 page cannot fill a 2:1 window without distortion).
+
+No kill switch, no server change. Tests: `test/org/board_ink_smooth_test.dart` (rebuilds per sample, the spline vs the
+midpoint chain, the outline vs the union, the reveal, the 6-decimal y and bytes per point, the full-width view and
+recording window, the pen's pixel size), `board_format_test.dart` / `board_grow_sideways_test.dart` (the full-width
+column), `whiteboard_*_layout_test.dart`. `INK_RENDER=<dir>` writes before / after PNGs. Not verified: a real stylus
+(S Pen, Apple Pencil, a Windows pen), finger on a touch screen, Impeller on a device, a real browser call with remote
+viewers, the browser cost of the outline.
+
 ## D-315 — The Studio on session video materials (drafts, then publish as new or in place); records shared with guests by e-mail · 2026-11-08 · accepted
 
 **The Studio's source is pluggable.** `StudioSource` (`lib/features/shared/records/studio_source.dart`) is all the
@@ -3406,3 +3480,4 @@ Data: ONE revision `0066_studio_materials_guests` (`material_edits`, `record_sha
 `tests/org_v2/e2e_material_studio.py`, `e2e_records_guests.py`, `material_studio_ffmpeg_check.py` (real ffmpeg, dev
 image); app `test/org/records_guests_api_test.dart`, `test/ui/records_guests_layout_test.dart`. Not yet seen in a real
 browser against the local stack.
+

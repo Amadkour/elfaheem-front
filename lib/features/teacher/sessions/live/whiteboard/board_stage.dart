@@ -135,11 +135,12 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     final tags = widget.controller.presence.step();
     final follow = _stepFollow();
     final edge = _stepEdge(dt);
-    if (!lasers && !tags && !follow && !edge) _ticker.stop();
+    final reveal = widget.controller.stepReveal();
+    if (!lasers && !tags && !follow && !edge && !reveal) _ticker.stop();
   });
   Duration _prevTick = Duration.zero;
 
-  /// Runs the frame clock (lasers, tags, the eased follow, edge auto-scroll).
+  /// Runs the frame clock (lasers, tags, the eased follow, edge auto-scroll, remote ink revealed, D-314).
   void _kick() {
     if (_ticker.isActive) return;
     _prevTick = Duration.zero;
@@ -261,13 +262,37 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
     _offerTimer?.cancel();
     _railTimer?.cancel();
     _ticker.dispose();
+    _reach.dispose();
     _text.dispose();
     _focus.dispose();
     super.dispose();
   }
 
   void _onScene() {
-    if (_c.scene.hasLasers || !_c.presence.isEmpty) _kick();
+    if (_c.scene.hasLasers || !_c.presence.isEmpty || _c.revealing) _kick();
+    _checkLiveReach();
+  }
+
+  /// D-314: the stage lays the page out on [BoardScene.settled] only. A stroke still being drawn re-lays it out when
+  /// it reaches past what the last layout measured — down a continuous page by a quarter screen (the page keeps more
+  /// than half a screen of paper below its content), or sideways past the content beside the column (D-107).
+  final ValueNotifier<int> _reach = ValueNotifier(0);
+  double _laidBottom = 0;
+  (double, double)? _laidSpan;
+
+  void _checkLiveReach() {
+    if (!_c.isContinuous || !mounted) return;
+    final page = _c.scene.page;
+    final lo = _laidSpan?.$1 ?? 0.0, hi = _laidSpan?.$2 ?? 1.0;
+    for (final it in _c.scene.items) {
+      if (it is! BoardInk || !it.open || it.page != page || it.points.isEmpty) continue;
+      final tip = it.points.last;
+      final outside = (tip.x < 0 && tip.x < lo - 1e-6) || (tip.x > 1 && tip.x > hi + 1e-6);
+      if (tip.y > _laidBottom + _lastVisible * 0.25 || outside) {
+        _reach.value++;
+        return;
+      }
+    }
   }
 
   void _onPrefs() {
@@ -733,7 +758,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       return;
     }
     if (create != null && !cancelled) {
-      final w = kBoardDefaultTextWidth;
+      final w = _c.defaultTextWidth;
       // On the paper there is: the column, or a continuous page's reach (a box never widens the page by itself).
       final lo = _c.isContinuous ? _lastXMin : 0.0, hi = _c.isContinuous ? _lastXMax : 1.0;
       final x = (widget.fallbackRtl ? create.dx - w : create.dx).clamp(lo, math.max(lo, hi - w)).toDouble();
@@ -889,8 +914,11 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   ContinuousView _continuousView(Size size) {
     final base = ContinuousView(box: size, zoom: _zoom, scroll: _scroll, panX: _cpanX, xMin: _lastXMin, xMax: _lastXMax);
     final pv = _c.isLocalPresenting ? null : _c.presenterViewport.value;
-    final extent = boardContinuousExtent(contentBottom: _contentBottom(), visible: base.visible, presenterBottom: pv?.bottom ?? 0);
-    final (xMin, xMax) = boardContinuousSpanX(content: _contentSpanX(), presenter: pv, grown: (_growL, _growR));
+    final bottom = _contentBottom(), span = _contentSpanX();
+    _laidBottom = bottom;
+    _laidSpan = span;
+    final extent = boardContinuousExtent(contentBottom: bottom, visible: base.visible, presenterBottom: pv?.bottom ?? 0);
+    final (xMin, xMax) = boardContinuousSpanX(content: span, presenter: pv, grown: (_growL, _growR));
     var start = base.copyWith(extent: extent, xMin: xMin, xMax: xMax);
     if (pv != null && _follow && !_followedOnce) {
       // A viewer who arrives (or a new page) starts where the presenter is.
@@ -914,8 +942,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   Widget build(BuildContext context) {
     LivePalette.sync(context);
     final laser = widget.laserColor ?? context.colors.danger;
+    // D-314: [BoardScene.settled], not the scene: a pen sample repaints the live ink layer alone.
     return ListenableBuilder(
-      listenable: Listenable.merge([_c, _c.scene]),
+      listenable: Listenable.merge([_c, _c.scene.settled, _reach]),
       builder: (context, _) => LayoutBuilder(builder: (context, box) {
         final size = Size(box.maxWidth.isFinite ? box.maxWidth : 0, box.maxHeight.isFinite ? box.maxHeight : 0);
         final scene = _c.scene;
@@ -925,6 +954,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         final Rect page; // the page's coordinate rect on screen (continuous: its whole length)
         final Rect shown; // the part that is drawn (continuous: down to the extent)
         if (cont) {
+          _c.viewStyleFactor = boardContinuousStyleFactor(size);
           cv = _continuousView(size);
           page = cv.pageRect;
           shown = cv.shownRect;
@@ -991,17 +1021,37 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
         final content = Stack(clipBehavior: Clip.hardEdge, children: [
           Positioned.fill(
               child: CustomPaint(painter: BoardBackgroundPainter(scene.background, unit: cont ? pw : null, originX: ox))),
+          // D-314: what is finished (repainted when it changes, its layer kept as is while someone draws) and, over
+          // it, the strokes still being drawn (repainted on every sample; remote ones revealed at the drawer's pace).
           Positioned.fill(
-            child: CustomPaint(
-              isComplex: true,
-              painter: BoardItemsPainter(
-                items: () => scene.visibleItems,
-                lasers: () => const [],
-                laserColor: laser,
-                laserOpacity: _c.laserOpacity,
-                coordSize: cont ? page.size : null,
-                coordOrigin: Offset(ox, 0),
-                repaint: scene,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                isComplex: true,
+                painter: BoardItemsPainter(
+                  items: () => scene.visibleItems.where((i) => i is! BoardInk || !i.open),
+                  lasers: () => const [],
+                  laserColor: laser,
+                  laserOpacity: _c.laserOpacity,
+                  coordSize: cont ? page.size : null,
+                  coordOrigin: Offset(ox, 0),
+                  repaint: scene.settled,
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: BoardItemsPainter(
+                  items: () => scene.visibleItems.where((i) => i is BoardInk && i.open),
+                  lasers: () => const [],
+                  laserColor: laser,
+                  laserOpacity: _c.laserOpacity,
+                  coordSize: cont ? page.size : null,
+                  coordOrigin: Offset(ox, 0),
+                  shownPoints: _c.inkShown,
+                  repaint: Listenable.merge([scene, _c.revealTick]),
+                ),
               ),
             ),
           ),

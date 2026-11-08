@@ -182,7 +182,10 @@ void main() {
     await t.pump(const Duration(milliseconds: 50));
     await t.pump(const Duration(milliseconds: 50));
     expect(viewer.scene.items.whereType<BoardInk>().single.points.last.x, -0.35);
-    expect(t.getRect(text), at, reason: 'the line stayed where it was');
+    final now = t.getRect(text);
+    for (final (a, b) in [(now.left, at.left), (now.top, at.top), (now.right, at.right), (now.bottom, at.bottom)]) {
+      expect(a, closeTo(b, 0.01), reason: 'the line stayed where it was');
+    }
     await t.pumpWidget(const SizedBox());
   });
 

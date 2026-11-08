@@ -162,7 +162,7 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
   Widget build(BuildContext context) {
     LivePalette.sync(context);
     return ListenableBuilder(
-      listenable: Listenable.merge([_c, _c.scene]),
+      listenable: Listenable.merge([_c, _c.scene.settled]),
       builder: (context, _) {
         final presenting = _c.isLocalPresenting;
         final full = widget.fullView;
@@ -281,7 +281,7 @@ class _WhiteboardDockState extends State<WhiteboardDock> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: Listenable.merge([_c, _c.scene]),
+        listenable: Listenable.merge([_c, _c.scene.settled]),
         builder: (context, _) {
           final colors = boardInkColors(_c.background);
           return WhiteboardToolbar(
@@ -328,7 +328,7 @@ Future<void> showWhiteboardOptionsSheet(
     showAppSheet<void>(
       context,
       (ctx) => ListenableBuilder(
-        listenable: Listenable.merge([controller, controller.scene, DrawInputPrefs.stylusOnly, ?listenable]),
+        listenable: Listenable.merge([controller, controller.scene.settled, DrawInputPrefs.stylusOnly, ?listenable]),
         builder: (ctx, _) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AppSheetHeader(t('السبورة', 'Board')),
           Flexible(
