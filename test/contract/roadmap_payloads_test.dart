@@ -135,13 +135,15 @@ void main() {
     }
   });
 
-  test('the home carries the card without steps; an older server has none', () {
+  test('the home carries the card with its steps (D-309); an older server has none', () {
     final h = fixture('me_home_student_journey');
     hasKeys(h, const ['journey'], 'me/home');
     final home = MeHome.fromJson(h);
     final card = Journey.fromJson(home.journey)!;
     expect(card.next.id, m(m(h['journey'])['next'])['id']);
-    expect(card.steps, isEmpty, reason: 'the home sends no steps');
+    expect(card.steps, isNotEmpty, reason: 'the home sends the whole path, so the page needs no call (D-309)');
+    expect(card.steps.where((s) => s.current).single.id, card.next.id);
+    expect(h.containsKey('journey_hint'), isTrue);
     final older = MeHome.fromJson({...h}..remove('journey'));
     expect(older.journey, isNull);
     expect(Journey.fromJson(older.journey), isNull, reason: 'no block → no card');

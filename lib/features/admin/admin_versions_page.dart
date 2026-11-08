@@ -1,5 +1,6 @@
-// lib/features/admin/admin_versions_page.dart — the update prompt (app_versions: forced / recommended update); building
-// and publishing a version is App versions (app_releases/, D-144), which fills this list when a version goes live.
+// lib/features/admin/admin_versions_page.dart — the update prompt history (every app_versions row: toggle, edit,
+// delete). The everyday screen is App versions (admin_app_versions_page.dart, D-309: one policy per platform with a
+// live preview), which opens this list; building a version (app_releases/, D-144) fills it when a version goes live.
 library;
 
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
@@ -49,7 +50,7 @@ class _View extends StatelessWidget {
     final p = context.watch<AdminVersionsProvider>();
     return AdminPage(
       key: const ValueKey('admin_versions'),
-      title: t('رسالة التحديث', 'Update prompt'),
+      title: t('سجل رسائل التحديث', 'Update prompt history'),
       subtitle: t('الإصدار الذي يطلب التطبيق من المستخدمين التحديث إليه، إجباريًا أو موصى به',
           'The version the app asks users to update to, forced or recommended'),
       icon: Icons.system_update_rounded,

@@ -2871,3 +2871,33 @@ either whole document from About & terms → Privacy & terms; the edit is stored
 - **Open points for the owner.** Governing law is written as "the law applicable where DoubleY operates" until the
   owner names a country; the retention periods (14-day deletion, 3-day export copy) follow the code, the 12-month
   security log and 90-day backup windows are commitments to keep.
+
+## D-309 — One app-update screen per platform; the learning path on the personal home · 2026-11-08 · accepted
+
+**App versions.** The super admin had two places for one question ("what are users told to update to?"): the build
+page (D-143/D-144) and the "Update prompt" list of raw `app_versions` rows with three switches (force, recommend,
+active). The rows' flags were also a trap: `force_update` blocked even the newest version and `recommend_update`
+prompted it, and a manual prompt opened nothing in the D-143 app, which only shows the server's prompt when it names
+a link. Now App versions is ONE screen: a card per platform (Android, iOS, Windows, macOS, Linux, web) with the
+latest and minimum version and "who sees what"; an editor with the message (ar / en), the store / download link, and a
+live preview that draws the real `UpdateDialog` for the blocking and the dismissible case plus a "Try a version"
+field. The policy is two numbers (below the minimum → blocking; below the latest → dismissible): "Require the latest"
+sets the minimum to the latest. Smart default: a newer live release is offered ("Use 2.2.0") with its notes and
+effective minimum. Validation: valid versions, minimum ≤ latest, https link required on native platforms unless the
+live release has its own link; raising the minimum asks to confirm.
+
+It is a view over what existed, so nothing is lost and old apps are untouched: android / ios / web still read the
+newest active `app_versions` row (a changed version adds a row, the old rows stay and the former list is one tap away
+as "Update prompt history"); desktop platforms and every store link go in the AppSetting `app_update_policy` (no
+migration). Saving clears the legacy flags; until then the check still honours them and the card says so. The
+version check only gains additive fields (the store link when no live release names one). Build a version stays
+the screen's primary action for the super admin. Trade-off: two stores for the same policy (rows vs setting),
+hidden behind one service (`services/app_update_policy.py`).
+
+**Learning path.** D-120's journey card showed only with a clear field and the page made its own call. The home card
+now shows the path as segments, the next course with where the student is in it, and a "Continue" / "Start" button
+straight into that course; `/me/home`'s `journey` carries its `steps` so the full page draws with no call (refresh,
+a changed interest or an older server without steps still use `GET /me/journey`). A student with no path gets
+`journey_hint: pick_interests` and a "Plan your learning path" invite that opens the interests sheet. Trade-off: the
+home payload grows by the path's course briefs (a handful), and the cached journey is the full one; the home's
+request budget is unchanged.

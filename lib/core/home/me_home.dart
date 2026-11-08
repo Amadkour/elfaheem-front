@@ -297,6 +297,10 @@ class MeHome {
   /// D-120); null = no card (no clear field, an organization account, an older server).
   final Map<String, dynamic>? journey;
 
+  /// Students without a journey: "pick_interests" when choosing interests would give them one (D-309: the home then
+  /// invites them to); null otherwise or from an older server.
+  String? get journeyHint => journey == null && raw['journey_hint'] is String ? raw['journey_hint'] as String : null;
+
   /// Composed from today's separate calls (older server).
   final bool legacy;
   final Map<String, dynamic> raw;
@@ -710,7 +714,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   static MeHome _withoutSide(Map<String, dynamic> raw) =>
-      MeHome.fromJson({...raw, 'courses_progress': const [], 'journey': null});
+      MeHome.fromJson({...raw, 'courses_progress': const [], 'journey': null, 'journey_hint': null});
 
   /// The app mode / organization changed: the side's blocks of a home cached for the other side (its courses,
   /// the journey card) are dropped at once — never the other side's courses on screen — and the new side's home is

@@ -740,6 +740,7 @@
   "GET /api/v1/theme/{platform:android|ios|web}",
   "GET /app/",
   "GET /app/active",
+  "GET /app/policy",
   "GET /app/version-check",
   "GET /checkout",
   "GET /health",
@@ -1486,7 +1487,8 @@
   "PUT /api/v1/sessions/{session_id:int}/reorder-materials",
   "PUT /api/v1/teacher/ads/{ad_id:int}",
   "PUT /api/v1/teacher/payout/accounts/{account_id:int}",
-  "PUT /api/v1/theme/{platform:android|ios|web}"
+  "PUT /api/v1/theme/{platform:android|ios|web}",
+  "PUT /app/policy/{platform}"
  ],
  "exam": [
   "DELETE /api/v1/exam/accommodations/{aid:int}",
