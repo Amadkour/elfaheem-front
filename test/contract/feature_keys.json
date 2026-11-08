@@ -140,6 +140,8 @@
  "device_requests.limit_note",
  "enrollment",
  "exam.all_exams",
+ "exam.auto_correct",
+ "exam.auto_create",
  "exam.google_forms_import",
  "exam.grade_review",
  "exam.identifiers",

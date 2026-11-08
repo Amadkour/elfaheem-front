@@ -380,7 +380,8 @@ class OrgPageHeader extends StatelessWidget {
       // a narrow wide row (a pushed page around 800 px with a primary action): Search keeps only its icon, the
       // switcher pill gets less room (it degrades by itself, ContextPill) and "Updated …" moves under the title as
       // on phones, so nothing overflows or is cut
-      final tight = box.maxWidth < 980;
+      // with a primary action (e.g. the Home's Meeting links, D-307) the full row needs about 1160 px
+      final tight = box.maxWidth < (primaryAction != null ? 1160 : 980);
       final veryTight = box.maxWidth < 860; // + Refresh keeps only its icon (its label stays in the tooltip)
       // the pages under the header (section chips, lists, settings) all start 16 px in: the header lines up with them
       const gutter = AppSpace.md;

@@ -604,13 +604,17 @@ class AuthTermsRow extends StatelessWidget {
                   WidgetSpan(
                     alignment: PlaceholderAlignment.baseline,
                     baseline: TextBaseline.alphabetic,
-                    child: GestureDetector(
-                      onTap: onReadTap,
-                      child: Text(
-                        'terms_link'.tr,
-                        style: authText(13.5, w: FontWeight.w700, c: link, h: 1.5).copyWith(
-                          decoration: TextDecoration.underline,
-                          decorationColor: link,
+                    // a link (D-308, like the privacy link): an inline link is exempt from the 48 dp target rule
+                    child: Semantics(
+                      link: true,
+                      child: GestureDetector(
+                        onTap: onReadTap,
+                        child: Text(
+                          'terms_link'.tr,
+                          style: authText(13.5, w: FontWeight.w700, c: link, h: 1.5).copyWith(
+                            decoration: TextDecoration.underline,
+                            decorationColor: link,
+                          ),
                         ),
                       ),
                     ),

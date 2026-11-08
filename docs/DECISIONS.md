@@ -2846,62 +2846,6 @@ through the Excel import's row checks. What has no engine type (scale, date, tim
 A choice question without a correct answer is refused by row, and the preview says so first. Images are not copied,
 because a Forms image URL expires. Forms' responses are not imported.
 
-## D-308 — Privacy policy and terms of service as versioned legal documents · 2026-11-08 · accepted
-
-The app had one "Privacy & terms" page that showed the terms sections under two names, and the website had no
-/privacy at all (Google's OAuth verification rejected it for "insufficient content"). Now there are two documents,
-`privacy` and `terms`, written once in Arabic and English and shipped as versioned files in the backend
-(`data/legal/<doc>.json`: version, effective date, intro, "At a glance" points, sections). The super admin may replace
-either whole document from About & terms → Privacy & terms; the edit is stored in the AppSetting key `legal.<doc>`
-(no table, no migration) and "Restore default" removes it, so a newer shipped version shows again. Public read:
-`GET /api/v1/app-content/legal/{doc}` (`?lang=ar|en|both`).
-
-- **Consolidated, not replaced.** The older terms_meta / terms_sections rows stay (installed app versions and the
-  assistant's sync read `GET /app-content/terms`); saving or restoring the terms rewrites them from the document, and
-  their editor stays as "Terms (older apps)". The app's TermsScreen, the sign-up sheet and the assistant all read the
-  new documents; the privacy policy is also indexed for the app assistant.
-- **Everyone can read them, before signing in.** Routes `/privacy` and `/terms` (no guard), a "Privacy & terms"
-  group on every role's settings page, links under every auth card (kill switch `terms.links`) and a privacy link in
-  the sign-up agreement row.
-- **The website serves real HTML.** The landing builds `/privacy/`, `/terms/` (English, the URLs given to Google and
-  the stores) and `/ar|en/privacy|terms/` from a bundled copy (`landing/src/content/legal/`, refreshed by
-  `back/scripts/contract/export_legal.py`), or from the live document when the build has `LANDING_API_ORIGIN`.
-  `build_landing.sh` refuses to swap in a build whose legal pages are missing or lack the Limited Use sentence.
-  Trade-off: a super admin's edit reaches the website only at its next build.
-- **Open points for the owner.** Governing law is written as "the law applicable where DoubleY operates" until the
-  owner names a country; the retention periods (14-day deletion, 3-day export copy) follow the code, the 12-month
-  security log and 90-day backup windows are commitments to keep.
-
-## D-309 — One app-update screen per platform; the learning path on the personal home · 2026-11-08 · accepted
-
-**App versions.** The super admin had two places for one question ("what are users told to update to?"): the build
-page (D-143/D-144) and the "Update prompt" list of raw `app_versions` rows with three switches (force, recommend,
-active). The rows' flags were also a trap: `force_update` blocked even the newest version and `recommend_update`
-prompted it, and a manual prompt opened nothing in the D-143 app, which only shows the server's prompt when it names
-a link. Now App versions is ONE screen: a card per platform (Android, iOS, Windows, macOS, Linux, web) with the
-latest and minimum version and "who sees what"; an editor with the message (ar / en), the store / download link, and a
-live preview that draws the real `UpdateDialog` for the blocking and the dismissible case plus a "Try a version"
-field. The policy is two numbers (below the minimum → blocking; below the latest → dismissible): "Require the latest"
-sets the minimum to the latest. Smart default: a newer live release is offered ("Use 2.2.0") with its notes and
-effective minimum. Validation: valid versions, minimum ≤ latest, https link required on native platforms unless the
-live release has its own link; raising the minimum asks to confirm.
-
-It is a view over what existed, so nothing is lost and old apps are untouched: android / ios / web still read the
-newest active `app_versions` row (a changed version adds a row, the old rows stay and the former list is one tap away
-as "Update prompt history"); desktop platforms and every store link go in the AppSetting `app_update_policy` (no
-migration). Saving clears the legacy flags; until then the check still honours them and the card says so. The
-version check only gains additive fields (the store link when no live release names one). Build a version stays
-the screen's primary action for the super admin. Trade-off: two stores for the same policy (rows vs setting),
-hidden behind one service (`services/app_update_policy.py`).
-
-**Learning path.** D-120's journey card showed only with a clear field and the page made its own call. The home card
-now shows the path as segments, the next course with where the student is in it, and a "Continue" / "Start" button
-straight into that course; `/me/home`'s `journey` carries its `steps` so the full page draws with no call (refresh,
-a changed interest or an older server without steps still use `GET /me/journey`). A student with no path gets
-`journey_hint: pick_interests` and a "Plan your learning path" invite that opens the interests sheet. Trade-off: the
-home payload grows by the path's course briefs (a handful), and the cached journey is the full one; the home's
-request budget is unchanged.
-
 ## D-300 — All exams page + "Import from Google Forms" as a way to start a new exam · 2026-11-08 · accepted
 
 A teacher (or an organization's staff) saw exams only course by course (the course exam hub), so there was no answer to
@@ -2925,82 +2869,6 @@ start in the quick builder's chooser: pick the form first, see the preview, then
 import goes straight to the editor, one with refused rows shows the report first. The draft is made only after the pick,
 so backing out of the picker leaves nothing behind. The option follows `exam.google_forms_import` (hidden while the
 server lacks `GOOGLE_PICKER_API_KEY`).
-
-## D-303 — The teacher's automatic to-do list · 2026-11-08 · accepted
-
-**What.** `GET /api/v1/me/todo` (core) derives a teacher's to-do from live data — ungraded submissions, transfer
-receipts, open course complaints, lessons of the last 14 days without attendance / material, live runs whose
-recording never arrived, students at risk (inactive 14 days · missed most tracked lessons · failing or falling core
-exam scores), calendar clashes in the next 7 days, quiet courses, low-engagement lessons (one item per course) — and
-`GET /api/v1/exam/me/todo` adds the Exam Engine's queues (answers to decide, appeals, scanned-sheet questions) in the
-same item shape. Every item carries its evidence (`why`), a priority from a 0–100 score, a deep link and a
-fingerprint `fp`. Home: a "Your to-do" card (top 3 from the ONE `/me/home` call, `todo` block) that takes over the
-Needs-you pills it covers; a full page with priority tiles, group filters, Done / Snooze / Dismiss (+ Undo) and the
-hidden list with Restore. Badge: attention tab `teacher.todo` = the high-priority items, on the teacher's Home tab.
-Kill switch `teacher_home.todo`.
-
-**Why this way.** Nothing is stored except the teacher's choices: one `app_settings` row per teacher
-(`teacher_todo:<id>`, no migration); a done / dismissed item returns only when its fingerprint (the evidence) changes,
-a snoozed one after its date. The list is computed over ALL the teacher's courses once and cached 60 s in-process; a
-scope (personal / org, like `/me/home`) is a filter over it, and `/me/home` hands its calendar events to the clash
-check and the badge, so the home costs no new request (budgets unchanged). The busy-teacher run (12 courses × 150
-students × 12 lessons, SQLite, cache off) answers in ~270 ms.
-
-**Trade-offs.** The core cannot read the engine's schema, so the home card and the badge do not include exam review
-items — they appear on the full page (the app merges the engine's list and applies the core's states to it). The
-cache is per worker (another worker may show an item up to 60 s after it was fixed; the teacher's own choices clear
-it). "At risk" uses the core exams only, and treats an enrollment without an activity stamp as unknown, not inactive.
-Org staff whose home is the organization dashboard have no entry yet (the API serves them; the teacher
-home's Organization mode shows the card).
-
-## D-305 — Parent home: "How is my child doing?" + Message the teacher · 2026-11-08 · accepted
-
-The parent's Today tab listed every child as one dense card of raw figures; it said little about whether a child was fine and offered nothing to do about it. The ONE `GET /parent/overview` call now carries a `pulse` per child (server `services/parent_pulse_service.py`): a status word (on track · keep an eye · needs you · quiet), the last 7 days (attendance, missed sessions and homework), 6-week attendance and grade lines, the average against the class average and the 4 weeks before, subjects marked strength / needs focus, the next 7 days, the roadmap, and at most 4 plain-language findings each with ONE action (message the teacher · open the report · alerts). The home draws a child switcher and that child's picture (`parent_pulse_widgets.dart`, `HomeDashboard`: main = hero, findings, this week; side = subjects, learning path, latest marks). New: `POST /parent/children/{id}/message-teacher` — a short note delivered as the teacher's notification + push; the parent's phone only when they turn it on; 3 per teacher a day.
-
-Why / trade-offs: no extra request on open (the home budget stays 4; the server reads the child's calendar once for today + 7 days instead of today only). Class averages are aggregates of exams with at least 5 results, never a person, and follow D-244 grade visibility. Windows are rolling (last 7 / 28 days), not calendar weeks, so Saturday morning is never "empty". The message is one-way (no thread model exists; the teacher answers by phone or through the school) — a real parent ↔ teacher conversation is future work. No migration (Notification rows, rate limit counted from them). Kill switches `parent.insights` (pulse off → the old per-child cards, kept) and `parent.message_teacher`. Teacher notes / feedback to parents are not shown: there is no such data yet.
-
-## D-307 — One share-link scheme for everything + the Meeting links page · 2026-11-08 · accepted
-
-**Context.** The owner asked for deep links to share anything (page, user, material, course, meeting, teacher,
-roadmap) and for one screen with every meeting link. The app had three unrelated link forms (`/c/<id>?ref=`,
-`/@name`, `/live/<token>`), two share UIs (a web dialog and the bare system sheet) and no way to send a lesson, a
-session, a meeting or a path.
-
-**Decision.**
-- **One scheme** (`lib/core/share/app_links.dart`, pure): the existing short forms stay (`/c/<id>?ref=` keeps the
-  referral counter, `/@name` the public profile, `/live/<token>` the no-account guest link) and everything else is
-  `https://nextbrain.site/s/<kind>/<id>` (kind = course · teacher · material · session · meeting · roadmap) plus
-  `/s/page/<pageId>?<params>` for any page of the route registry (D-170: page ids never change, so a page link never
-  breaks). Root form like the others: nginx forwards unknown root paths to `/app/` (D-270), the phone apps claim
-  `/s/` (AndroidManifest `autoVerify` + `web/.well-known/apple-app-site-association`), crawlers get an Open-Graph card.
-  ONE path prefix keeps it to one intent filter, one AASA entry and one nginx location for every new kind.
-- **Landing (`ShareLinkPage`, main.dart route `/s/…`):** signed in → the target opens in its place and applies its
-  own permissions (a lesson / session → the course page on Sessions, a path → its Path tab, a meeting → the Schedule
-  page with its detail, a teacher → the public profile, a page → by name; never another role's home or a sign-in
-  page). Signed out or guest → a public preview from `GET /api/v1/public/share/{kind}/{id}` + Sign in / Create
-  account, and `SignInReturn` brings the person to the target after the sign-in. A signed-out `/c/<id>` now shows the
-  same preview instead of jumping straight to the login.
-- **What a preview may say:** only what the catalogue already shows a visitor. A public course (and its lessons /
-  sessions / path) shows names, picture, teacher; a private or organization course and EVERY meeting show only their
-  kind; a teacher only with a public profile (D-074 rules). One 404 `share_not_found` for every "no"; the route is
-  throttled per address (`share_preview`, 120 / 10 min) so ids cannot be walked fast. No `/s/user/<id>`: students,
-  parents and staff have no public page, so a user is shared only as `/@username` (teachers).
-- **One Share sheet** (`lib/design/app_share_sheet.dart`): what is shared, the link (LTR), Copy, the system share
-  sheet (apps; the web shows the link instead), a QR code; the course and profile shares now use it too (their old
-  dialog stays for anything else). New Share actions: meeting detail (member link), the teacher's session menu, a
-  lesson row (teacher), the course path. Kill switch `share.links`.
-- **Meeting links page** (`/meeting-links`, `GET /api/v1/me/meeting-links`, kill switch `live.meeting_links`): every
-  online room of the person from 7 days back to 60 ahead (meetings owned / invited, live sessions of the courses taught
-  or studied), live first, then by day, ended last; Join / Open, Copy, Share + QR, and for the host the guest link,
-  marked expired once the room ended. "Recurring" = a session made from the course's weekly slots (there is no
-  recurring calendar meeting). Entries: the Schedule page (toolbar + ⋮), the teacher home header, the org Home's
-  primary action. One call, never on a home's open (home budgets unchanged).
-
-**Trade-offs.** A member link (`/s/meeting/<id>`) only helps people who can already open the meeting; outsiders
-need the guest link, which the page and the sheets say. A material link opens the course page on Sessions, not the
-file itself (opening a file needs the enrolment checks of the course page anyway). The `/s/` nginx location (preview
-cards) and a web deploy with the new AASA are owner actions; until then people still reach the app through the
-catch-all redirect, and the phone apps open `/s/` links only after the store builds with the new manifest.
 
 ## D-301 — Exam generation is a background job the teacher never waits on blindly; the Super Admin switches the automatic exam tools · 2026-11-08 · accepted
 
@@ -3057,6 +2925,56 @@ detected yet. The Super Admin's `exam.auto_correct` switch (read by the engine t
 `GET /internal/v1/features/{key}`) turns detection and reading of own sheets off; NextBrain's own sheets keep working
 exactly as before.
 
+## D-303 — The teacher's automatic to-do list · 2026-11-08 · accepted
+
+**What.** `GET /api/v1/me/todo` (core) derives a teacher's to-do from live data — ungraded submissions, transfer
+receipts, open course complaints, lessons of the last 14 days without attendance / material, live runs whose
+recording never arrived, students at risk (inactive 14 days · missed most tracked lessons · failing or falling core
+exam scores), calendar clashes in the next 7 days, quiet courses, low-engagement lessons (one item per course) — and
+`GET /api/v1/exam/me/todo` adds the Exam Engine's queues (answers to decide, appeals, scanned-sheet questions) in the
+same item shape. Every item carries its evidence (`why`), a priority from a 0–100 score, a deep link and a
+fingerprint `fp`. Home: a "Your to-do" card (top 3 from the ONE `/me/home` call, `todo` block) that takes over the
+Needs-you pills it covers; a full page with priority tiles, group filters, Done / Snooze / Dismiss (+ Undo) and the
+hidden list with Restore. Badge: attention tab `teacher.todo` = the high-priority items, on the teacher's Home tab.
+Kill switch `teacher_home.todo`.
+
+**Why this way.** Nothing is stored except the teacher's choices: one `app_settings` row per teacher
+(`teacher_todo:<id>`, no migration); a done / dismissed item returns only when its fingerprint (the evidence) changes,
+a snoozed one after its date. The list is computed over ALL the teacher's courses once and cached 60 s in-process; a
+scope (personal / org, like `/me/home`) is a filter over it, and `/me/home` hands its calendar events to the clash
+check and the badge, so the home costs no new request (budgets unchanged). The busy-teacher run (12 courses × 150
+students × 12 lessons, SQLite, cache off) answers in ~270 ms.
+
+**Trade-offs.** The core cannot read the engine's schema, so the home card and the badge do not include exam review
+items — they appear on the full page (the app merges the engine's list and applies the core's states to it). The
+cache is per worker (another worker may show an item up to 60 s after it was fixed; the teacher's own choices clear
+it). "At risk" uses the core exams only, and treats an enrollment without an activity stamp as unknown, not inactive.
+Org staff whose home is the organization dashboard have no entry yet (the API serves them; the teacher
+home's Organization mode shows the card).
+
+## D-304 — Page widths are roles, measured against the room the page has · 2026-11-08 · accepted
+
+Pages chose their width by pixel: `BasePage(useWebCard: true, maxWith: 900)` and friends, measured against the WINDOW.
+Between 900 and 1100 px every card was a fixed 650 px whatever it asked for (a 1360 sessions page and a 1440 laptop
+with the sidebar open both got 650), pages without a number got 900 on a 1920 screen (the teacher's and the student's
+analytics, the teacher's student list, the student's record), and admin settings forms stretched to 1200 with the
+value 900 px away from its label. **Decision.** Five page-width roles in `app_tokens.dart`, `AppWidth.form` 600 ·
+`reading` 860 (= `Breakpoints.contentMax`) · `content` 1120 · `wide` 1440 · `full`, with `inside(available)` = the role's
+max, never wider than the room less the existing `AppSpace.gutter` each side. `BasePage` measures the card with a
+LayoutBuilder (the room a shell's sidebar or rail leaves), takes `width:` (a role, wins) or the old `maxWith` (kept, so
+nothing that names its own width changes), and defaults to `content`. `AdminPage(width:)` and `AppWidthBox` apply the
+same roles to other bodies; `Helpers.calculateRemainingWidth` now answers from the roles. Every page that had no width
+got an explicit role; settings forms in the Super Admin's hubs take `reading`. **Trade-offs.** Pages that named a
+pixel width keep it (other tracks own those screens; they move to a role when next touched). Phones (< 600) are
+unchanged: no card, the page pads itself. Dialog widths are not themed: a theme cap would also cut the deliberately
+wide dialogs (designer previews at 980), so a runaway AlertDialog still needs its own constraint.
+
+## D-305 — Parent home: "How is my child doing?" + Message the teacher · 2026-11-08 · accepted
+
+The parent's Today tab listed every child as one dense card of raw figures; it said little about whether a child was fine and offered nothing to do about it. The ONE `GET /parent/overview` call now carries a `pulse` per child (server `services/parent_pulse_service.py`): a status word (on track · keep an eye · needs you · quiet), the last 7 days (attendance, missed sessions and homework), 6-week attendance and grade lines, the average against the class average and the 4 weeks before, subjects marked strength / needs focus, the next 7 days, the roadmap, and at most 4 plain-language findings each with ONE action (message the teacher · open the report · alerts). The home draws a child switcher and that child's picture (`parent_pulse_widgets.dart`, `HomeDashboard`: main = hero, findings, this week; side = subjects, learning path, latest marks). New: `POST /parent/children/{id}/message-teacher` — a short note delivered as the teacher's notification + push; the parent's phone only when they turn it on; 3 per teacher a day.
+
+Why / trade-offs: no extra request on open (the home budget stays 4; the server reads the child's calendar once for today + 7 days instead of today only). Class averages are aggregates of exams with at least 5 results, never a person, and follow D-244 grade visibility. Windows are rolling (last 7 / 28 days), not calendar weeks, so Saturday morning is never "empty". The message is one-way (no thread model exists; the teacher answers by phone or through the school) — a real parent ↔ teacher conversation is future work. No migration (Notification rows, rate limit counted from them). Kill switches `parent.insights` (pulse off → the old per-child cards, kept) and `parent.message_teacher`. Teacher notes / feedback to parents are not shown: there is no such data yet.
+
 ## D-306 — Free meetings: recording stopped at start, the whole room in the recording, full-screen board · 2026-11-08 · accepted
 
 **Recording stopped at start.** A meeting (Meet now or a calendar meeting, never tied to a course session) opens with
@@ -3095,19 +3013,101 @@ fights the screen's shape a "Turn your device…" pill shows for 5 s; a continuo
 screen the scrollbar thumb is big (12 px, 24 px held, ≥ 56 px long, 56 px hit target, a grip); a long press grabs it
 and the finger drags the page up / down (D-109 behaviour, now finger-sized).
 
-## D-304 — Page widths are roles, measured against the room the page has · 2026-11-08 · accepted
+## D-307 — One share-link scheme for everything + the Meeting links page · 2026-11-08 · accepted
 
-Pages chose their width by pixel: `BasePage(useWebCard: true, maxWith: 900)` and friends, measured against the WINDOW.
-Between 900 and 1100 px every card was a fixed 650 px whatever it asked for (a 1360 sessions page and a 1440 laptop
-with the sidebar open both got 650), pages without a number got 900 on a 1920 screen (the teacher's and the student's
-analytics, the teacher's student list, the student's record), and admin settings forms stretched to 1200 with the
-value 900 px away from its label. **Decision.** Five page-width roles in `app_tokens.dart`, `AppWidth.form` 600 ·
-`reading` 860 (= `Breakpoints.contentMax`) · `content` 1120 · `wide` 1440 · `full`, with `inside(available)` = the role's
-max, never wider than the room less the existing `AppSpace.gutter` each side. `BasePage` measures the card with a
-LayoutBuilder (the room a shell's sidebar or rail leaves), takes `width:` (a role, wins) or the old `maxWith` (kept, so
-nothing that names its own width changes), and defaults to `content`. `AdminPage(width:)` and `AppWidthBox` apply the
-same roles to other bodies; `Helpers.calculateRemainingWidth` now answers from the roles. Every page that had no width
-got an explicit role; settings forms in the Super Admin's hubs take `reading`. **Trade-offs.** Pages that named a
-pixel width keep it (other tracks own those screens; they move to a role when next touched). Phones (< 600) are
-unchanged: no card, the page pads itself. Dialog widths are not themed: a theme cap would also cut the deliberately
-wide dialogs (designer previews at 980), so a runaway AlertDialog still needs its own constraint.
+**Context.** The owner asked for deep links to share anything (page, user, material, course, meeting, teacher,
+roadmap) and for one screen with every meeting link. The app had three unrelated link forms (`/c/<id>?ref=`,
+`/@name`, `/live/<token>`), two share UIs (a web dialog and the bare system sheet) and no way to send a lesson, a
+session, a meeting or a path.
+
+**Decision.**
+- **One scheme** (`lib/core/share/app_links.dart`, pure): the existing short forms stay (`/c/<id>?ref=` keeps the
+  referral counter, `/@name` the public profile, `/live/<token>` the no-account guest link) and everything else is
+  `https://nextbrain.site/s/<kind>/<id>` (kind = course · teacher · material · session · meeting · roadmap) plus
+  `/s/page/<pageId>?<params>` for any page of the route registry (D-170: page ids never change, so a page link never
+  breaks). Root form like the others: nginx forwards unknown root paths to `/app/` (D-270), the phone apps claim
+  `/s/` (AndroidManifest `autoVerify` + `web/.well-known/apple-app-site-association`), crawlers get an Open-Graph card.
+  ONE path prefix keeps it to one intent filter, one AASA entry and one nginx location for every new kind.
+- **Landing (`ShareLinkPage`, main.dart route `/s/…`):** signed in → the target opens in its place and applies its
+  own permissions (a lesson / session → the course page on Sessions, a path → its Path tab, a meeting → the Schedule
+  page with its detail, a teacher → the public profile, a page → by name; never another role's home or a sign-in
+  page). Signed out or guest → a public preview from `GET /api/v1/public/share/{kind}/{id}` + Sign in / Create
+  account, and `SignInReturn` brings the person to the target after the sign-in. A signed-out `/c/<id>` now shows the
+  same preview instead of jumping straight to the login.
+- **What a preview may say:** only what the catalogue already shows a visitor. A public course (and its lessons /
+  sessions / path) shows names, picture, teacher; a private or organization course and EVERY meeting show only their
+  kind; a teacher only with a public profile (D-074 rules). One 404 `share_not_found` for every "no"; the route is
+  throttled per address (`share_preview`, 120 / 10 min) so ids cannot be walked fast. No `/s/user/<id>`: students,
+  parents and staff have no public page, so a user is shared only as `/@username` (teachers).
+- **One Share sheet** (`lib/design/app_share_sheet.dart`): what is shared, the link (LTR), Copy, the system share
+  sheet (apps; the web shows the link instead), a QR code; the course and profile shares now use it too (their old
+  dialog stays for anything else). New Share actions: meeting detail (member link), the teacher's session menu, a
+  lesson row (teacher), the course path. Kill switch `share.links`.
+- **Meeting links page** (`/meeting-links`, `GET /api/v1/me/meeting-links`, kill switch `live.meeting_links`): every
+  online room of the person from 7 days back to 60 ahead (meetings owned / invited, live sessions of the courses taught
+  or studied), live first, then by day, ended last; Join / Open, Copy, Share + QR, and for the host the guest link,
+  marked expired once the room ended. "Recurring" = a session made from the course's weekly slots (there is no
+  recurring calendar meeting). Entries: the Schedule page (toolbar + ⋮), the teacher home header, the org Home's
+  primary action. One call, never on a home's open (home budgets unchanged).
+
+**Trade-offs.** A member link (`/s/meeting/<id>`) only helps people who can already open the meeting; outsiders
+need the guest link, which the page and the sheets say. A material link opens the course page on Sessions, not the
+file itself (opening a file needs the enrolment checks of the course page anyway). The `/s/` nginx location (preview
+cards) and a web deploy with the new AASA are owner actions; until then people still reach the app through the
+catch-all redirect, and the phone apps open `/s/` links only after the store builds with the new manifest.
+
+## D-308 — Privacy policy and terms of service as versioned legal documents · 2026-11-08 · accepted
+
+The app had one "Privacy & terms" page that showed the terms sections under two names, and the website had no
+/privacy at all (Google's OAuth verification rejected it for "insufficient content"). Now there are two documents,
+`privacy` and `terms`, written once in Arabic and English and shipped as versioned files in the backend
+(`data/legal/<doc>.json`: version, effective date, intro, "At a glance" points, sections). The super admin may replace
+either whole document from About & terms → Privacy & terms; the edit is stored in the AppSetting key `legal.<doc>`
+(no table, no migration) and "Restore default" removes it, so a newer shipped version shows again. Public read:
+`GET /api/v1/app-content/legal/{doc}` (`?lang=ar|en|both`).
+
+- **Consolidated, not replaced.** The older terms_meta / terms_sections rows stay (installed app versions and the
+  assistant's sync read `GET /app-content/terms`); saving or restoring the terms rewrites them from the document, and
+  their editor stays as "Terms (older apps)". The app's TermsScreen, the sign-up sheet and the assistant all read the
+  new documents; the privacy policy is also indexed for the app assistant.
+- **Everyone can read them, before signing in.** Routes `/privacy` and `/terms` (no guard), a "Privacy & terms"
+  group on every role's settings page, links under every auth card (kill switch `terms.links`) and a privacy link in
+  the sign-up agreement row.
+- **The website serves real HTML.** The landing builds `/privacy/`, `/terms/` (English, the URLs given to Google and
+  the stores) and `/ar|en/privacy|terms/` from a bundled copy (`landing/src/content/legal/`, refreshed by
+  `back/scripts/contract/export_legal.py`), or from the live document when the build has `LANDING_API_ORIGIN`.
+  `build_landing.sh` refuses to swap in a build whose legal pages are missing or lack the Limited Use sentence.
+  Trade-off: a super admin's edit reaches the website only at its next build.
+- **Open points for the owner.** Governing law is written as "the law applicable where DoubleY operates" until the
+  owner names a country; the retention periods (14-day deletion, 3-day export copy) follow the code, the 12-month
+  security log and 90-day backup windows are commitments to keep.
+
+## D-309 — One app-update screen per platform; the learning path on the personal home · 2026-11-08 · accepted
+
+**App versions.** The super admin had two places for one question ("what are users told to update to?"): the build
+page (D-143/D-144) and the "Update prompt" list of raw `app_versions` rows with three switches (force, recommend,
+active). The rows' flags were also a trap: `force_update` blocked even the newest version and `recommend_update`
+prompted it, and a manual prompt opened nothing in the D-143 app, which only shows the server's prompt when it names
+a link. Now App versions is ONE screen: a card per platform (Android, iOS, Windows, macOS, Linux, web) with the
+latest and minimum version and "who sees what"; an editor with the message (ar / en), the store / download link, and a
+live preview that draws the real `UpdateDialog` for the blocking and the dismissible case plus a "Try a version"
+field. The policy is two numbers (below the minimum → blocking; below the latest → dismissible): "Require the latest"
+sets the minimum to the latest. Smart default: a newer live release is offered ("Use 2.2.0") with its notes and
+effective minimum. Validation: valid versions, minimum ≤ latest, https link required on native platforms unless the
+live release has its own link; raising the minimum asks to confirm.
+
+It is a view over what existed, so nothing is lost and old apps are untouched: android / ios / web still read the
+newest active `app_versions` row (a changed version adds a row, the old rows stay and the former list is one tap away
+as "Update prompt history"); desktop platforms and every store link go in the AppSetting `app_update_policy` (no
+migration). Saving clears the legacy flags; until then the check still honours them and the card says so. The
+version check only gains additive fields (the store link when no live release names one). Build a version stays
+the screen's primary action for the super admin. Trade-off: two stores for the same policy (rows vs setting),
+hidden behind one service (`services/app_update_policy.py`).
+
+**Learning path.** D-120's journey card showed only with a clear field and the page made its own call. The home card
+now shows the path as segments, the next course with where the student is in it, and a "Continue" / "Start" button
+straight into that course; `/me/home`'s `journey` carries its `steps` so the full page draws with no call (refresh,
+a changed interest or an older server without steps still use `GET /me/journey`). A student with no path gets
+`journey_hint: pick_interests` and a "Plan your learning path" invite that opens the interests sheet. Trade-off: the
+home payload grows by the path's course briefs (a handful), and the cached journey is the full one; the home's
+request budget is unchanged.
