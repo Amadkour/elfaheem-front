@@ -37,9 +37,9 @@ Widget _studio(StudioTool tool, {bool job = false, double duration = 5400}) {
     tool: tool,
     onTool: (_) {},
     preview: const SizedBox.expand(),
-    transport: StudioTransport(position: 1200, duration: duration, playing: true, previewSpeed: 1.25, onPlayPause: () {}, onSkip: (_) {}, onPreviewSpeed: () {}),
+    transport: StudioTransport(position: 1200, duration: duration, playing: true, previewSpeed: 1.25, zoom: 4, onPlayPause: () {}, onSkip: (_) {}, onPreviewSpeed: () {}, onZoom: (_) {}),
     timeline: StudioTimeline(
-        duration: duration, position: 1200, tool: tool, start: 600, end: 3000, at: 2700, zoom: 4, onSeek: (_) {}, onRange: (_, _) {}, onAt: (_) {}, onZoom: (_) {}),
+        duration: duration, position: 1200, tool: tool, start: 600, end: 3000, at: 2700, zoom: 4, onSeek: (_) {}, onRange: (_, _) {}, onAt: (_) {}),
     panel: StudioToolPanel(
       tool: tool,
       item: item,
@@ -158,6 +158,32 @@ void main() {
       await t.tapAt(Offset(box.left + box.width * 0.1, box.center.dy));
       expect(sought, isNotNull);
       expect(sought!, lessThan(200));
+    });
+
+    test('the stage says when the playhead stands in a part that goes', () {
+      String? note(StudioTool tool, double pos, {double start = 10, double end = 20}) =>
+          studioStageNote(tool, position: pos, start: start, end: end, duration: 100);
+      expect(note(StudioTool.trim, 5), isNotNull); // before what stays
+      expect(note(StudioTool.trim, 15), isNull);
+      expect(note(StudioTool.cut, 15), isNotNull); // inside what goes
+      expect(note(StudioTool.cut, 5), isNull);
+      expect(note(StudioTool.cut, 50, start: 0, end: 100), isNull); // Cut just opened: nothing is chosen yet
+      expect(note(StudioTool.speed, 5), isNull);
+    });
+
+    testWidgets('a handle at the very start and end of the track is on screen and can be dragged', (t) async {
+      t.view.physicalSize = const Size(1000, 400);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      (double, double)? range;
+      await t.pumpWidget(layoutHost(
+          StudioTimeline(duration: 1000, position: 500, tool: StudioTool.trim, start: 0, end: 1000, onRange: (a, b) => range = (a, b)),
+          scale: 1));
+      final box = t.getRect(find.byKey(const ValueKey('studio.timeline')));
+      await t.dragFrom(Offset(box.left + 8, box.center.dy), const Offset(120, 0));
+      expect(range, isNotNull);
+      expect(range!.$1, greaterThan(50));
+      expect(range!.$2, 1000);
     });
 
     test('ruler steps keep labels apart', () {
