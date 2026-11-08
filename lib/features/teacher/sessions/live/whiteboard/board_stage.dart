@@ -568,7 +568,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
       case BoardTool.pen:
       case BoardTool.highlighter:
         _endTextEdit();
-        final ink = AnnotInkFilter(pressure: stylus);
+        final ink = boardInkFilter(pressure: stylus);
         final s = ink.start(local.dx, local.dy, _seconds(e), _pressure(e));
         final hold = e.kind == PointerDeviceKind.touch; // a second finger soon after makes it a pinch
         if (_c.beginInk(n.dx, n.dy, p: s.p, stylus: stylus, highlighter: tool == BoardTool.highlighter, hold: hold)) {
@@ -1034,7 +1034,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
                   laserOpacity: _c.laserOpacity,
                   coordSize: cont ? page.size : null,
                   coordOrigin: Offset(ox, 0),
-                  repaint: scene.settled,
+                  repaint: scene.finished,
                 ),
               ),
             ),
@@ -2222,3 +2222,9 @@ Future<void> boardOnce(Future<void> Function() run) async {
 
 bool _busy = false;
 
+
+/// The board's ink filter (D-317). The annotation defaults (1, 0.025, 1) estimate the pen's speed with a 1 Hz filter:
+/// a stroke starts as if the pen stood still and its ink trailed up to 16 px for the first 200 ms. Measured here: at
+/// most about 3 px behind up to 1000 px/s, from the first sample, with over 40 % of a digitiser's jitter still removed
+/// (test/org/board_ink_latency_test.dart).
+AnnotInkFilter boardInkFilter({required bool pressure}) => AnnotInkFilter(pressure: pressure, minCutoff: 1.5, beta: 0.08, dCutoff: 12);

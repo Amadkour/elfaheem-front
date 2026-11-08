@@ -3496,3 +3496,19 @@ Back closed the Studio AND the course page under it, the second pop carrying a L
 now owns the only PopScope and pops `popResult()`. The player's Open in Studio no longer pops then pushes from the tile's
 context: the navigator and the reload are read when the tile is tapped, and `pushReplacement` swaps the player for the
 Studio in one step. Tests: `test/ui/material_studio_nav_test.dart`, `test/ui/material_tile_layout_test.dart`.
+
+## D-317 — The ink keeps up with the pen · 2026-11-08 · accepted
+
+Amends D-314. The owner: "when open the board why there are a delay in ink? I need to make it a realistic".
+Measured in `test/org/board_ink_latency_test.dart`. Two causes on the drawer's device, neither of them the network:
+(1) The filter (D-083's 1 Hz speed estimate) treated each stroke's start as a still pen: at 1000 px/s the ink was 16.5 px
+behind, and took about 200 ms to catch up. The board now uses its own `boardInkFilter` (min cut-off 1.5, beta 0.08, speed
+cut-off 12 Hz): about 3 px at most, from the first sample, with over 40 % of a digitiser's jitter still removed. The
+annotation over a shared screen and its Kotlin twin keep the D-083 values.
+(2) A pen-down and a pen-up each rebuilt the board (541 widgets) and repainted every finished stroke: 98 and 83 ms on a page
+of 120 strokes in the debug test, for every letter written. Now 20 ms each with no rebuild: a pen-down changes nothing
+finished (`_changedLive`), and a pen-up repaints only the finished layer (`BoardScene.finished`), while the layout and the
+toolbar wait for [kBoardInkSettleDelay] (250 ms) after the last pen-up and never land inside a stroke.
+Viewers: the reveal's upper bound is 50 ms (was 120), so a late batch catches up quickly.
+Not changed: the web recording's capture (D-313), which shares the UI thread while recording; the 70 ms finger hold (it only
+delays what goes out, and it is what tells a pinch from a stroke). Not measured on a real device or browser.

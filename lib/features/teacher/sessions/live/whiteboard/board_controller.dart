@@ -49,7 +49,12 @@ const kBoardTouchHold = Duration(milliseconds: 70);
 /// D-314: a viewer draws a remote stroke's new points over about the time they took to arrive (the gap since the
 /// previous batch, within these bounds), so the ink glides at the drawer's pace instead of jumping a batch at a time.
 const kBoardRevealMin = Duration(milliseconds: 16);
-const kBoardRevealMax = Duration(milliseconds: 120);
+// D-317: 50, it was 120 ms: a batch that arrives late catches up quickly instead of adding its whole gap to the delay.
+const kBoardRevealMax = Duration(milliseconds: 50);
+
+/// D-317: how long after a pen-up the page is laid out and the toolbar updated, so that writing (pen-up, pen-down, ...)
+/// rebuilds nothing between strokes. The finished ink itself is painted at once.
+const kBoardInkSettleDelay = Duration(milliseconds: 250);
 
 /// How far a remote stroke is drawn: from [from] points at [start] to [to] points [dur] later (linear).
 class BoardInkRevealStep {
@@ -122,20 +127,36 @@ class BoardScene extends ChangeNotifier {
   bool get pageEmpty => !visibleItems.any((_) => true);
 
   final _SceneSignal _settled = _SceneSignal();
+  final _SceneSignal _finished = _SceneSignal();
   int _settledRevision = 0;
 
   /// Notifies on every change but a stroke's new points and laser dots (D-314).
   Listenable get settled => _settled;
+
+  /// D-317: repaints the finished items: [settled], and also a pen-up (whose layout waits for [kBoardInkSettleDelay]).
+  Listenable get finished => _finished;
   int get settledRevision => _settledRevision;
 
   void _changed() {
     _revision++;
     _settledRevision++;
     _settled.ping();
+    _finished.ping();
     notifyListeners();
   }
 
   /// Only what the live layer draws changed: points of an open stroke, a laser dot.
+  /// D-317: a stroke was finished: it moves to the finished layer now, the layout follows ([_settle]).
+  void _inkFinished() {
+    notifyListeners();
+    _finished.ping();
+  }
+
+  void _settle() {
+    _settledRevision++;
+    _settled.ping();
+  }
+
   void _changedLive() {
     _revision++;
     notifyListeners();
@@ -144,6 +165,7 @@ class BoardScene extends ChangeNotifier {
   @override
   void dispose() {
     _settled.dispose();
+    _finished.dispose();
     super.dispose();
   }
 }
@@ -182,10 +204,12 @@ class BoardController extends ChangeNotifier {
     this.autoFlush = true,
     this.batchInterval = kAnnotBatchInterval,
     this.putInterval = const Duration(milliseconds: 90),
+    bool? deferInkSettle,
     this.laserTtl = kAnnotLaserTtl,
     String? idPrefix,
     int? color,
-  })  : isHost = isHost ?? ((_) => false),
+  })  : _deferInkSettle = deferInkSettle ?? autoFlush,
+        isHost = isHost ?? ((_) => false),
         mayPresent = mayPresent ?? ((_) => true),
         studentMayDraw = studentMayDraw ?? ((_) => false),
         nameOf = nameOf ?? ((id) => id),
@@ -235,6 +259,9 @@ class BoardController extends ChangeNotifier {
 
   /// Off in tests: packets then wait for [flush] (or the end of a gesture).
   final bool autoFlush;
+
+  /// D-317: a pen-up lays out after [kBoardInkSettleDelay] (default: with [autoFlush]; tests without timers do it at once).
+  final bool _deferInkSettle;
   final Duration batchInterval;
 
   /// How often a shape being dragged or a text being typed goes out.
@@ -678,7 +705,7 @@ class BoardController extends ChangeNotifier {
     _noteX(s.points.first.x);
     _current = s;
     scene._items[s.id] = s;
-    scene._changed();
+    scene._changedLive(); // D-317: nothing finished changed: a pen-down rebuilds and repaints none of it
     if (hold) {
       _held = true;
       _heldSince = now();
@@ -723,6 +750,23 @@ class BoardController extends ChangeNotifier {
     } else {
       _scheduleFlush();
     }
+  }
+
+  Timer? _settleTimer;
+
+  /// D-317: the layout and the toolbar follow a finished stroke once the pen pauses; never in the middle of a stroke.
+  void _settleInk() {
+    if (!_deferInkSettle) return _settleInkNow();
+    _settleTimer?.cancel();
+    _settleTimer = Timer(kBoardInkSettleDelay, () {
+      _settleTimer = null;
+      if (_current == null) _settleInkNow(); // else its own pen-up comes back here
+    });
+  }
+
+  void _settleInkNow() {
+    scene._settle();
+    _notify();
   }
 
   // ── Remote ink revealed at the drawer's pace (D-314) ───────────────────────
@@ -777,9 +821,9 @@ class BoardController extends ChangeNotifier {
     _emit(BoardInkEnd(s.id));
     s.open = false;
     s.version++;
-    scene._changed();
+    scene._inkFinished();
     _push(_Added([s]));
-    _notify();
+    _settleInk();
   }
 
   /// Palm rejection: the stroke a touch started was a palm. Removed everywhere, no undo step.
@@ -1410,7 +1454,7 @@ class BoardController extends ChangeNotifier {
         scene._items[m.id] = BoardInk(
             id: m.id, author: author, page: m.page, ink: m.ink, color: m.color, width: m.width, pressured: m.pressured);
         _openBy[m.id] = sender;
-        scene._changed();
+        scene._changedLive();
         return true;
       case BoardInkPoints():
         final s = scene._items[m.id];
@@ -1437,7 +1481,8 @@ class BoardController extends ChangeNotifier {
         _reveals.remove(m.id);
         s.open = false;
         s.version++;
-        scene._changed();
+        scene._inkFinished();
+        _settleInk();
         presence.end(sender);
         return true;
       case BoardPut():
@@ -1637,6 +1682,7 @@ class BoardController extends ChangeNotifier {
     _flushTimer?.cancel();
     _putTimer?.cancel();
     _vpTimer?.cancel();
+    _settleTimer?.cancel();
     _revealTick.dispose();
     scene.dispose();
     presence.dispose();

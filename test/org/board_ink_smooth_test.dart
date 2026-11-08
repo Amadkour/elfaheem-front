@@ -423,16 +423,16 @@ void main() {
     c.scene.addListener(() => all++);
     c.scene.settled.addListener(() => settled++);
     c.beginInk(0.1, 0.1);
-    expect(settled, 1, reason: 'a new stroke is laid out');
+    expect(settled, 0, reason: 'nothing finished changed (D-317)');
     for (var i = 0; i < 50; i++) {
       c.moveInk(0.1 + i * 0.005, 0.2);
     }
-    expect(settled, 1, reason: 'its points are not');
+    expect(settled, 0, reason: 'its points are not');
     expect(all, 51);
     c.pointLaser(0.5, 0.5);
-    expect(settled, 1);
+    expect(settled, 0);
     c.endInk();
-    expect(settled, 2);
+    expect(settled, 1);
     c.dispose();
   });
 
