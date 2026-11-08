@@ -90,6 +90,9 @@ import 'features/student/courses/details/course_detail_screen.dart';
 import 'features/org/orgs_unavailable_gate.dart';
 import 'features/student/courses/details/course_link_loader.dart';
 import 'features/shared/public_profile/public_profile_page.dart' show PublicProfileScreen;
+import 'core/share/app_links.dart';
+import 'features/shared/share/share_link_page.dart';
+import 'features/shared/live/meeting_links_page.dart';
 import 'core/routing/deferred_screens.dart';
 import 'features/shared/profile/profile_provider.dart';
 import 'firebase_options.dart';
@@ -532,7 +535,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
 
   bool _isLink(String r) =>
       guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || exportLinkTokenFromRoute(r) != null ||
-      DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null ||
+      DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null || AppLink.parse(r) != null ||
       const {'link.org_join', 'link.org_invitation'}.contains(AppRoutes.match(r)?.id) ||
       ExploreRequest.matches(r) || isInstitutionRoute(r) ||
       // /register?role=teacher (the landing's teacher card) is a sign-in page: signed out only, like /register
@@ -781,9 +784,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     final link = DeepLinkService.parse(settings.name); // /c/12?ref=5
     if (link != null) {
       if (!context.read<MyAuthProvider>().isAuthenticated) {
-        // open it right after login
-        DeepLinkService.instance.setPending(link);
-        return _fade(const LoginScreen(), const RouteSettings(name: '/login'));
+        // the course's public preview + Sign in (D-307); the link opens right after the sign-in (SignInReturn)
+        return _fade(ShareLinkPage(link: AppLink.course(link.courseId, ref: link.ref)), settings);
       }
       return _fade(
         _Guard(
@@ -792,6 +794,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         settings,
       );
     }
+    // /s/<kind>/<id> · /s/page/<pageId>?… — a share link of the one scheme (D-307, core/share/app_links.dart): no
+    // guard — signed in, the page opens the target in its place; signed out, a public preview + Sign in
+    final shared = AppLink.parse(settings.name);
+    if (shared != null) return _fade(ShareLinkPage(link: shared), settings);
     // /@ahmed — a profile link (D-074): the same flow as a course link (signed out → login, then the profile)
     final profile = DeepLinkService.parseProfile(settings.name);
     if (profile != null) {
@@ -813,6 +819,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         return _fade(OrgsGate(child: deferredOrgInvitation(token: page!.params['token']!)), settings);
       case 'org.memberships':
         return _fade(_Guard(child: OrgsGate(child: deferredOrgMemberships())), settings);
+      case 'meetings.links': // every meeting / live session link (D-307)
+        return _fade(const _Guard(child: MeetingLinksPage()), settings);
       case 'course':
         final id = page!.intParam('courseId');
         if (id != null) return _fade(_Guard(child: CoursePageLoader(courseId: id)), settings); // the one course page (D-111)

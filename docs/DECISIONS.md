@@ -2958,3 +2958,46 @@ home's Organization mode shows the card).
 The parent's Today tab listed every child as one dense card of raw figures; it said little about whether a child was fine and offered nothing to do about it. The ONE `GET /parent/overview` call now carries a `pulse` per child (server `services/parent_pulse_service.py`): a status word (on track · keep an eye · needs you · quiet), the last 7 days (attendance, missed sessions and homework), 6-week attendance and grade lines, the average against the class average and the 4 weeks before, subjects marked strength / needs focus, the next 7 days, the roadmap, and at most 4 plain-language findings each with ONE action (message the teacher · open the report · alerts). The home draws a child switcher and that child's picture (`parent_pulse_widgets.dart`, `HomeDashboard`: main = hero, findings, this week; side = subjects, learning path, latest marks). New: `POST /parent/children/{id}/message-teacher` — a short note delivered as the teacher's notification + push; the parent's phone only when they turn it on; 3 per teacher a day.
 
 Why / trade-offs: no extra request on open (the home budget stays 4; the server reads the child's calendar once for today + 7 days instead of today only). Class averages are aggregates of exams with at least 5 results, never a person, and follow D-244 grade visibility. Windows are rolling (last 7 / 28 days), not calendar weeks, so Saturday morning is never "empty". The message is one-way (no thread model exists; the teacher answers by phone or through the school) — a real parent ↔ teacher conversation is future work. No migration (Notification rows, rate limit counted from them). Kill switches `parent.insights` (pulse off → the old per-child cards, kept) and `parent.message_teacher`. Teacher notes / feedback to parents are not shown: there is no such data yet.
+
+## D-307 — One share-link scheme for everything + the Meeting links page · 2026-11-08 · accepted
+
+**Context.** The owner asked for deep links to share anything (page, user, material, course, meeting, teacher,
+roadmap) and for one screen with every meeting link. The app had three unrelated link forms (`/c/<id>?ref=`,
+`/@name`, `/live/<token>`), two share UIs (a web dialog and the bare system sheet) and no way to send a lesson, a
+session, a meeting or a path.
+
+**Decision.**
+- **One scheme** (`lib/core/share/app_links.dart`, pure): the existing short forms stay (`/c/<id>?ref=` keeps the
+  referral counter, `/@name` the public profile, `/live/<token>` the no-account guest link) and everything else is
+  `https://nextbrain.site/s/<kind>/<id>` (kind = course · teacher · material · session · meeting · roadmap) plus
+  `/s/page/<pageId>?<params>` for any page of the route registry (D-170: page ids never change, so a page link never
+  breaks). Root form like the others: nginx forwards unknown root paths to `/app/` (D-270), the phone apps claim
+  `/s/` (AndroidManifest `autoVerify` + `web/.well-known/apple-app-site-association`), crawlers get an Open-Graph card.
+  ONE path prefix keeps it to one intent filter, one AASA entry and one nginx location for every new kind.
+- **Landing (`ShareLinkPage`, main.dart route `/s/…`):** signed in → the target opens in its place and applies its
+  own permissions (a lesson / session → the course page on Sessions, a path → its Path tab, a meeting → the Schedule
+  page with its detail, a teacher → the public profile, a page → by name; never another role's home or a sign-in
+  page). Signed out or guest → a public preview from `GET /api/v1/public/share/{kind}/{id}` + Sign in / Create
+  account, and `SignInReturn` brings the person to the target after the sign-in. A signed-out `/c/<id>` now shows the
+  same preview instead of jumping straight to the login.
+- **What a preview may say:** only what the catalogue already shows a visitor. A public course (and its lessons /
+  sessions / path) shows names, picture, teacher; a private or organization course and EVERY meeting show only their
+  kind; a teacher only with a public profile (D-074 rules). One 404 `share_not_found` for every "no"; the route is
+  throttled per address (`share_preview`, 120 / 10 min) so ids cannot be walked fast. No `/s/user/<id>`: students,
+  parents and staff have no public page, so a user is shared only as `/@username` (teachers).
+- **One Share sheet** (`lib/design/app_share_sheet.dart`): what is shared, the link (LTR), Copy, the system share
+  sheet (apps; the web shows the link instead), a QR code; the course and profile shares now use it too (their old
+  dialog stays for anything else). New Share actions: meeting detail (member link), the teacher's session menu, a
+  lesson row (teacher), the course path. Kill switch `share.links`.
+- **Meeting links page** (`/meeting-links`, `GET /api/v1/me/meeting-links`, kill switch `live.meeting_links`): every
+  online room of the person from 7 days back to 60 ahead (meetings owned / invited, live sessions of the courses taught
+  or studied), live first, then by day, ended last; Join / Open, Copy, Share + QR, and for the host the guest link,
+  marked expired once the room ended. "Recurring" = a session made from the course's weekly slots (there is no
+  recurring calendar meeting). Entries: the Schedule page (toolbar + ⋮), the teacher home header, the org Home's
+  primary action. One call, never on a home's open (home budgets unchanged).
+
+**Trade-offs.** A member link (`/s/meeting/<id>`) only helps people who can already open the meeting; outsiders
+need the guest link, which the page and the sheets say. A material link opens the course page on Sessions, not the
+file itself (opening a file needs the enrolment checks of the course page anyway). The `/s/` nginx location (preview
+cards) and a web deploy with the new AASA are owner actions; until then people still reach the app through the
+catch-all redirect, and the phone apps open `/s/` links only after the store builds with the new manifest.

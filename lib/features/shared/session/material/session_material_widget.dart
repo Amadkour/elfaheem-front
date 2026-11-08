@@ -14,6 +14,7 @@
 //   • components/add_material_sheet.dart       (upload / link sheet)
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/design/app_share_sheet.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -514,6 +515,8 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             if (prov.startSessionId == -1) _toggleLive();
           case 'guest':
             showGuestLinkSheet(context, sessionId: _session.id, sessionName: _session.name);
+          case 'share': // the session's member link (D-307): the course's students open it after signing in
+            shareAppLink(context, AppLink.session(_session.id), title: _session.name);
           case 'attendance':
             _openAttendance();
           case 'exams':
@@ -536,6 +539,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           tone: live ? c.danger : c.success,
         ),
         if (guest) item('guest', Icons.link_rounded, 'guest_link_title'.tr),
+        if (!AppConfig.disableList.contains(kShareLinksKey)) item('share', Icons.ios_share_rounded, _tt('مشاركة رابط الحصة', 'Share session link')),
         item('attendance', Icons.how_to_reg_rounded, 'attendance'.tr),
         item('exams', Icons.quiz_outlined, 'exams'.tr),
         item('new_exam', Icons.add_task_rounded, 'new_exam'.tr),

@@ -95,6 +95,8 @@ class AppRoutes {
   static const exportLog = AppRouteDef('exports.log', '/exports/log', description: 'Export log');
   static const exportSchedules = AppRouteDef('exports.schedules', '/exports/schedules', description: 'Scheduled exports');
   static const exportLinks = AppRouteDef('exports.links', '/exports/links', description: 'Export share links');
+  static const meetingLinks = AppRouteDef('meetings.links', '/meeting-links',
+      description: 'Meeting links: every live session and meeting link to join, copy or share (D-307)');
   static const entityView = AppRouteDef('entity.view', '/view/:kind/:id',
       description: 'A student, course, teacher or category on a page of its own (D-290), every role');
 
@@ -107,6 +109,8 @@ class AppRoutes {
   static const exportLink = AppRouteDef('link.export', '/e/:token', description: 'An Export Studio share link (D-134)');
   static const orgJoinLink = AppRouteDef('link.org_join', '/j/:code',
       signIn: false, description: "An organization's join link: the join page with the code filled in (D-283)");
+  static const shareLink = AppRouteDef('link.share', '/s/:kind/:id',
+      signIn: false, description: 'A share link (D-307): a lesson, session, meeting, path, teacher, course or page');
   static const orgInvitationLink = AppRouteDef('link.org_invitation', '/i/:token',
       signIn: false, description: 'An organization invitation: accept or decline, after signing in (D-283)');
 
@@ -115,8 +119,8 @@ class AppRoutes {
     login, register, forgotPassword,
     studentHome, teacherHome, adminHome, parentHome, orgHome,
     course, orgMember, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
-    downloads, exports, exportLog, exportSchedules, exportLinks, entityView,
-    courseLink, profileLink, liveLink, verifyLink, exportLink, orgJoinLink, orgInvitationLink,
+    downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks,
+    courseLink, profileLink, liveLink, verifyLink, exportLink, orgJoinLink, orgInvitationLink, shareLink,
     privacy, terms,
   ];
 

@@ -4,6 +4,7 @@
 // panel. Handles tap → video player / image viewer / external URL, plus
 // teacher edit / delete dialogs.
 // ─────────────────────────────────────────────────────────────────────────────
+import 'package:flutter_education_app/design/app_share_sheet.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'dart:async';
 import 'dart:typed_data';
@@ -459,6 +460,13 @@ class SessionMaterialGrid extends StatelessWidget {
                                   onManage: (generate) =>
                                       _showCaptionsDialog(context, m, onGenerate: generate),
                                 ),
+                              if (!AppConfig.disableList.contains(kShareLinksKey))
+                                _iconBtn(
+                                  icon: Icons.ios_share_rounded,
+                                  color: context.colors.textMedium,
+                                  tooltip: _shareTip,
+                                  onTap: () => shareAppLink(context, AppLink.material(m.id), title: m.name, subtitle: session.name),
+                                ),
                               _iconBtn(
                                 icon: CupertinoIcons.settings_solid,
                                 color: context.colors.textMedium,
@@ -605,13 +613,20 @@ class SessionMaterialGrid extends StatelessWidget {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
-  }) => GestureDetector(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Icon(icon, size: 23, color: color),
-    ),
-  );
+    String? tooltip,
+  }) {
+    final btn = GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Icon(icon, size: 23, color: color),
+      ),
+    );
+    return tooltip == null ? btn : Tooltip(message: tooltip, child: Semantics(button: true, label: tooltip, child: btn));
+  }
+
+  /// The lesson's member link (D-307, `/s/material/<id>`): the course's students open it after signing in.
+  static String get _shareTip => AppConfig.lang == 'ar' ? 'مشاركة رابط الدرس' : 'Share lesson link';
 
   // ── Teacher dialogs ────────────────────────────────────────────────────────
 

@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
+import '../../../design/app_share_sheet.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../auth/auth_provider.dart' show MyAuthProvider;
@@ -132,6 +133,8 @@ class _CourseRoadmapBodyState extends State<CourseRoadmapBody> {
         // the owner opening the public page (a share link) still gets the owner's path: their words, drafts, Edit
         staff: widget.staff || r.canEdit,
         onEdit: r.canEdit ? _edit : null,
+        onShare: () => shareAppLink(context, AppLink.roadmap(widget.courseId),
+            title: r.course.name, subtitle: t('مسار تعلم', 'Learning path')),
         onOpenCourse: widget.onOpenCourse,
         onEnrollAll: widget.onEnrollAll,
         teacherPicks: widget.teacherPicks,
@@ -154,6 +157,7 @@ class RoadmapTabContent extends StatelessWidget {
     required this.staff,
     required this.onOpenCourse,
     this.onEdit,
+    this.onShare,
     this.onEnrollAll,
     this.teacherPicks = const [],
     this.onOpenPick,
@@ -162,6 +166,9 @@ class RoadmapTabContent extends StatelessWidget {
   final Roadmap roadmap;
   final bool staff;
   final VoidCallback? onEdit;
+
+  /// Share the path's link (D-307, `/s/roadmap/<courseId>`); null hides the button.
+  final VoidCallback? onShare;
   final ValueChanged<RmCourse> onOpenCourse;
   final VoidCallback? onEnrollAll;
   final List<CourseSummary> teacherPicks;
@@ -186,6 +193,13 @@ class RoadmapTabContent extends StatelessWidget {
                 style: appText(16, w: FontWeight.w600, c: c.textDark),
               ),
             ),
+            if (onShare != null && !roadmapOff(kShareLinksKey))
+              IconButton(
+                key: const ValueKey('roadmap.share'),
+                tooltip: t('مشاركة المسار', 'Share the path'),
+                onPressed: onShare,
+                icon: Icon(Icons.ios_share_rounded, color: c.textMedium),
+              ),
             if (onEdit != null)
               OutlinedButton.icon(
                 onPressed: onEdit,

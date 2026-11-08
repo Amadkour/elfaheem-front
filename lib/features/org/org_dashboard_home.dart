@@ -32,7 +32,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppCard, AppListSkeleton, AppPill, AppRefresh, AppTime, AppTrendTile, appChartPalette, appCompactNumber;
+    show AppButton, AppButtonSize, AppCard, AppListSkeleton, AppPill, AppRefresh, AppTime, AppTrendTile, appChartPalette, appCompactNumber;
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/shared/live/meeting_links_page.dart' show kMeetingLinksFeatureKey, openMeetingLinks;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/home_kit.dart' show HomeEntrance, HomeSection, homeIsWide;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
@@ -394,7 +396,21 @@ class _OrgHomePageState extends State<OrgHomePage> {
       };
 
   /// "Home" (the organization's name is already on the switcher pill beside it) · my role there.
-  Widget _header(OrgSession s, OrgHomeData? d) => OrgPageHeader(title: t('الرئيسية', 'Home'), subtitle: _roleLabel(s, d), searchBar: true, helpPageId: 'home.org');
+  Widget _header(OrgSession s, OrgHomeData? d) => OrgPageHeader(
+      title: t('الرئيسية', 'Home'),
+      subtitle: _roleLabel(s, d),
+      searchBar: true,
+      helpPageId: 'home.org',
+      // every session / meeting link of the person, to join, copy or share (D-307)
+      primaryAction: AppConfig.disableList.contains(kMeetingLinksFeatureKey)
+          ? null
+          : AppButton.tonal(
+              key: const ValueKey('org.home.meeting_links'),
+              label: t('روابط الاجتماعات', 'Meeting links'),
+              icon: Icons.link_rounded,
+              size: AppButtonSize.sm,
+              onPressed: () => openMeetingLinks(context),
+            ));
 
   List<OrgAttentionSpec> _alerts(BuildContext context, OrgHomeData d) => [
         for (final a in d.alerts)
