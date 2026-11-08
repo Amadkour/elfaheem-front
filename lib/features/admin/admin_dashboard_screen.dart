@@ -22,6 +22,7 @@ import 'help/admin_help_page.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../shared/legal/legal_links.dart' show legalSettingsGroup;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
 import 'package:flutter_education_app/core/attention/decision_refresh.dart';
@@ -573,6 +574,9 @@ class _MorePageState extends State<_MorePage> {
             ),
           ],
         ),
+
+        // ── Privacy & terms (D-308) ──────────────────────────────────────
+        legalSettingsGroup(context),
 
         // ── Logout ───────────────────────────────────────────────────────
         AppSettingsGroup(

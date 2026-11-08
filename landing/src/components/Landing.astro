@@ -322,6 +322,8 @@ const icons = [
         <a href="#features">{t.nav.features}</a>
         <a href="#faq">{t.nav.faq}</a>
         <a href={`${APP}/login`}>{t.login}</a>
+        <a href={`/${lang}/privacy/`}>{lang === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</a>
+        <a href={`/${lang}/terms/`}>{lang === 'ar' ? 'شروط الاستخدام' : 'Terms of Service'}</a>
         <a href={`/${other}/`} hreflang={other} lang={other} data-setlang={other}>{t.switchTo.label}</a>
       </nav>
     </div>

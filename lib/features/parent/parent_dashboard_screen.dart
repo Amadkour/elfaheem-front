@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../shared/legal/legal_links.dart' show legalSettingsGroup;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -398,6 +399,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
             ),
           ],
         ),
+        legalSettingsGroup(context), // privacy policy · terms of service (D-308)
         AppSettingsGroup(
           title: 'exit'.tr,
           icon: DirIcons.exitToApp,

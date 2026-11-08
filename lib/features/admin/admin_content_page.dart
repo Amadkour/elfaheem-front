@@ -4,7 +4,9 @@
 //
 //   About us   identity (name · tagline · mission/motivation · logo)
 //              stats banner · team (with photos) · contact channels
-//   Terms      version / last-updated + the accordion sections
+//   Privacy & terms   the Privacy policy and the Terms of service users read (D-308, admin_legal_page.dart)
+//   Terms (older apps) version / last-updated + the accordion sections that installed app versions still read;
+//              saving the Terms of service in "Privacy & terms" replaces them
 //
 // Every list can be added to, edited (AR + EN), shown/hidden with one tap,
 // deleted and re-ordered by dragging.  Same look as admin_required_documents_page.
@@ -28,12 +30,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'admin_common.dart';
+import 'admin_legal_page.dart' show AdminLegalPanel;
 import 'admin_page.dart';
 import 'cfg_common.dart';
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppListSkeleton, AppRefresh, AppKpiGrid, AppKpiCard, AppTabs, AppTabItem, AppSpace, appErrorMessage;
+    show AppListSkeleton, AppRefresh, AppKpiGrid, AppKpiCard, AppTabs, AppTabItem, AppSpace, appErrorMessage, AppBanner;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -149,7 +152,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
 
   final _api = ApiClient();
 
-  int _tab = 0; // 0 = about · 1 = terms
+  int _tab = 0; // 0 = about · 1 = privacy & terms (D-308) · 2 = the older terms sections
   bool _loading = true;
   Object? _error;
   String? _uploading; // path of the running upload
@@ -316,6 +319,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _hero() {
+    if (_tab == 1) return const SizedBox.shrink(); // the legal panel draws its own cards
     if (_tab == 0) {
       return AppKpiGrid(maxColumns: 3, children: [
         AppKpiCard(icon: Icons.bar_chart_rounded, value: '${_stats.length}', label: t('إحصاءات', 'Stats')),
@@ -340,7 +344,8 @@ class _AdminContentPageState extends State<AdminContentPage> {
           onChanged: (i) => setState(() => _tab = i),
           items: [
             AppTabItem('content_tab_about'.tr, icon: Icons.info_outline_rounded),
-            AppTabItem('content_tab_terms'.tr, icon: Icons.gavel_rounded),
+            AppTabItem(t('الخصوصية والشروط', 'Privacy & terms'), icon: Icons.policy_rounded),
+            AppTabItem(t('الشروط (الإصدارات القديمة)', 'Terms (older apps)'), icon: Icons.gavel_rounded),
           ],
         ),
       );
@@ -926,6 +931,16 @@ class _AdminContentPageState extends State<AdminContentPage> {
     final date = _ar ? (dateAr.isEmpty ? dateEn : dateAr) : (dateEn.isEmpty ? dateAr : dateEn);
 
     return [
+      Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.md),
+        child: AppBanner(
+          icon: Icons.history_rounded,
+          color: c.warning,
+          text: t('هذه الأقسام تقرؤها إصدارات التطبيق القديمة فقط. الشروط التي يراها المستخدمون الآن في تبويب «الخصوصية والشروط»، وحفظها هناك يستبدل هذه الأقسام.',
+              'Only older app versions read these sections. The terms users see now are in the Privacy & terms tab, and saving them there replaces these sections.'),
+          action: TextButton(onPressed: () => setState(() => _tab = 1), child: Text(t('فتح', 'Open'))),
+        ),
+      ),
       Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -1016,7 +1031,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             _hero(),
             AppSpace.gapMd,
             _tabs(),
-            ..._tab == 0 ? _aboutTab() : _termsTab(),
+            if (_tab == 0) ..._aboutTab() else if (_tab == 1) const AdminLegalPanel() else ..._termsTab(),
           ],
         ),
       );

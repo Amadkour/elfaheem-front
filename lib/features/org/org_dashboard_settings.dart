@@ -14,6 +14,7 @@ library;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
+import '../shared/legal/legal_links.dart' show legalSettingsGroup;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
@@ -188,6 +189,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
               label: 'dark_mode'.tr,
               trailing: AppSwitch(value: p.darkMode, onChanged: (b) async => p.changeMode(b))),
         ]),
+        legalSettingsGroup(context), // privacy policy · terms of service (D-308)
       ],
       footer: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // two-step verification of the signed-in org admin / staff member (shown when the server allows it)

@@ -12,4 +12,28 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/"/>
   </url>
+  <url>
+    <loc>https://nextbrain.site/ar/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/privacy/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/en/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/privacy/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/ar/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/terms/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/terms/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/terms/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/en/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/terms/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/terms/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/terms/"/>
+  </url>
 </urlset>

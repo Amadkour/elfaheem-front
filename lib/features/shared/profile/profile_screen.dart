@@ -422,13 +422,25 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               onTap: () => _push(const RagChatScreen(app: true)),
                             ),
                           ),
+                          // the privacy policy and the terms of service, each its own page (D-308)
                           ParentComponent(
                             featureKey: 'profile.privacy',
                             child: AppSettingsTile(
-                              icon: Icons.verified_user_rounded,
+                              icon: Icons.privacy_tip_rounded,
                               color: c.success,
-                              label: 'privacy'.tr,
+                              label: 'privacy_policy'.tr,
+                              keywords: 'privacy data google drive cookies الخصوصية البيانات',
                               onTap: () => _push(const TermsScreen(privacy: true)),
+                            ),
+                          ),
+                          ParentComponent(
+                            featureKey: 'profile.terms',
+                            child: AppSettingsTile(
+                              icon: Icons.gavel_rounded,
+                              color: c.primary,
+                              label: 'terms_of_service'.tr,
+                              keywords: 'terms conditions rules refund الشروط الأحكام الاسترداد',
+                              onTap: () => _push(const TermsScreen()),
                             ),
                           ),
                           ParentComponent(

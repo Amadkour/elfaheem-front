@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
+import 'package:flutter_education_app/features/shared/profile/about/about_and_terms_screen.dart' show TermsScreen;
 import 'package:flutter_education_app/core/offline/downloads_availability.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
@@ -943,6 +944,13 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                     deptId: m['dept_id'] as int?,
                     openMeetingId: a is int ? a : m['meeting_id'] as int?)),
             settings);
+      // the privacy policy and the terms of service (D-308): public, no guard — guests read them before signing in
+      case '/privacy':
+      case '/privacy/':
+        return _fade(const TermsScreen(privacy: true), const RouteSettings(name: '/privacy'));
+      case '/terms':
+      case '/terms/':
+        return _fade(const TermsScreen(), const RouteSettings(name: '/terms'));
       default:
         debugPrint(
           'Unknown route: ${settings.name} args=${settings.arguments}',

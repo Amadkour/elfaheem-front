@@ -23285,5 +23285,20 @@
   "md_p8_view_saved": {"en": "View saved: {name}", "ar": "تم حفظ العرض: {name}"},
   "md_p8_views": {"en": "Saved views", "ar": "العروض المحفوظة"},
   "md_p8_views_empty": {"en": "No saved views yet.", "ar": "لا توجد عروض محفوظة بعد."},
-  "ds_select_row": {"en": "Select this row", "ar": "تحديد هذا الصف"}
+  "ds_select_row": {"en": "Select this row", "ar": "تحديد هذا الصف"},
+  "privacy_policy": {"en": "Privacy policy", "ar": "سياسة الخصوصية"},
+  "terms_of_service": {"en": "Terms of service", "ar": "شروط الاستخدام"},
+  "legal_effective": {"en": "Effective", "ar": "سارية منذ"},
+  "legal_at_a_glance": {"en": "At a glance", "ar": "باختصار"},
+  "privacy_footer": {"en": "We only collect what we need to teach, and we never sell your data. You can download a copy of it or delete your account from Settings at any time.", "ar": "نجمع فقط ما نحتاجه للتعليم، ولا نبيع بياناتك أبدًا. يمكنك تنزيل نسخة منها أو حذف حسابك من الإعدادات في أي وقت."},
+  "legal_read_terms": {"en": "Terms of service", "ar": "شروط الاستخدام"},
+  "legal_read_privacy": {"en": "Privacy policy", "ar": "سياسة الخصوصية"},
+  "legal_email_us": {"en": "Email us", "ar": "راسلنا"},
+  "legal_copy_link": {"en": "Copy link", "ar": "نسخ الرابط"},
+  "legal_link_copied": {"en": "Link copied", "ar": "تم نسخ الرابط"},
+  "legal_email_copied": {"en": "Email address copied", "ar": "تم نسخ البريد الإلكتروني"},
+  "legal_questions_title": {"en": "Questions about your data?", "ar": "عندك سؤال عن بياناتك؟"},
+  "legal_questions_body": {"en": "We answer every request within 30 days. Write to", "ar": "نرد على كل طلب خلال 30 يومًا. راسلنا على"},
+  "legal_group_title": {"en": "Privacy & terms", "ar": "الخصوصية والشروط"},
+  "terms_agree_and": {"en": " and the ", "ar": " و"}
 }

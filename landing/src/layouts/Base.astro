@@ -11,8 +11,11 @@ interface Props {
   ogAlt: string;
   jsonLd?: unknown[];
   preload?: string[];
+  /** hreflang targets of this page (default: the two home pages) — the legal pages pass their own (D-308). */
+  alternates?: { ar: string; en: string; xdefault: string };
 }
 const { lang = 'ar', title, description, path, ogAlt, jsonLd = [], preload = [] } = Astro.props;
+const alt = Astro.props.alternates ?? { ar: '/ar/', en: '/en/', xdefault: '/' };
 const url = SITE + path;
 const og = SITE + '/og.png';
 const dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -27,9 +30,9 @@ const ogLocale = lang === 'ar' ? 'ar_AR' : 'en_US';
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={url} />
-    <link rel="alternate" hreflang="ar" href={SITE + '/ar/'} />
-    <link rel="alternate" hreflang="en" href={SITE + '/en/'} />
-    <link rel="alternate" hreflang="x-default" href={SITE + '/'} />
+    <link rel="alternate" hreflang="ar" href={SITE + alt.ar} />
+    <link rel="alternate" hreflang="en" href={SITE + alt.en} />
+    <link rel="alternate" hreflang="x-default" href={SITE + alt.xdefault} />
     <meta name="theme-color" content="#0f7b5f" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0c1511" media="(prefers-color-scheme: dark)" />
     <meta property="og:type" content="website" />

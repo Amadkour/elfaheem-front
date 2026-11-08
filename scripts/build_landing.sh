@@ -33,6 +33,14 @@ fi
 
 [ -f dist-new/ar/index.html ] && [ -f dist-new/en/index.html ] && [ -f dist-new/index.html ] \
   || { echo "build output incomplete" >&2; exit 1; }
+# The legal pages (D-308): https://nextbrain.site/privacy and /terms are read by Google's OAuth verification and the
+# app stores, so a build without them (or with a near-empty one) never replaces the live site.
+for page in privacy terms ar/privacy ar/terms en/privacy en/terms; do
+  f="dist-new/$page/index.html"
+  [ -f "$f" ] && [ "$(wc -c < "$f")" -gt 20000 ] || { echo "legal page missing or too short: $f" >&2; exit 1; }
+done
+grep -q "Limited Use requirements" dist-new/privacy/index.html \
+  || { echo "privacy policy lacks the Google API Limited Use statement" >&2; exit 1; }
 
 # Atomic-ish swap: dist -> dist-prev, dist-new -> dist.
 rm -rf dist-prev

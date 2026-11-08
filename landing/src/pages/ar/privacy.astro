@@ -1,0 +1,8 @@
+---
+import LegalPage from '../../components/LegalPage.astro';
+import '../../styles/fonts-ar.css';
+import arabic400 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-400-normal.woff2?url';
+import arabic700 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2?url';
+---
+
+<LegalPage lang="ar" doc="privacy" preload={[arabic400, arabic700]} />

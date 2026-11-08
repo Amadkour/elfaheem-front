@@ -65,6 +65,8 @@ class AppRoutes {
   static const register = AppRouteDef('auth.register', '/register', signIn: false, description: 'Create an account');
   static const forgotPassword =
       AppRouteDef('auth.forgot_password', '/forgot-password', signIn: false, description: 'Reset the password');
+  static const privacy = AppRouteDef('legal.privacy', '/privacy', signIn: false, description: 'Privacy policy (D-308)');
+  static const terms = AppRouteDef('legal.terms', '/terms', signIn: false, description: 'Terms of service (D-308)');
 
   // ── Role homes (each tab: `<home>/<tab>`, see [tabLocation]) ──────────────
   static const studentHome = AppRouteDef('home.student', '/dashboard', signIn: false, description: 'Student home');
@@ -115,6 +117,7 @@ class AppRoutes {
     course, orgMember, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
     downloads, exports, exportLog, exportSchedules, exportLinks, entityView,
     courseLink, profileLink, liveLink, verifyLink, exportLink, orgJoinLink, orgInvitationLink,
+    privacy, terms,
   ];
 
   /// The role homes, by path (their tabs are `<home>/<tab>`).

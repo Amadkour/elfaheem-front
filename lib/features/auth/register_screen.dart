@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
+import '../shared/legal/legal_links.dart' show openLegalPage;
 import '../shared/profile/about/about_terms_model.dart';
 import '../shared/profile/about/about_terms_provider.dart';
 import 'auth_provider.dart';
@@ -464,6 +465,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             AuthTermsRow(
               accepted: _termsAccepted,
               onReadTap: _openTerms,
+              onPrivacyTap: () => openLegalPage(context, privacy: true),
               onCheckChanged: (v) {
                 // Only allow manual un-tick; tick only via reading the sheet
                 if (!v) setState(() => _termsAccepted = false);
@@ -546,11 +548,15 @@ class AuthTermsRow extends StatelessWidget {
     required this.accepted,
     required this.onReadTap,
     required this.onCheckChanged,
+    this.onPrivacyTap,
   });
 
   final bool accepted;
   final VoidCallback onReadTap;
   final ValueChanged<bool> onCheckChanged;
+
+  /// "… and the Privacy policy" (D-308): the privacy link after the terms link.
+  final VoidCallback? onPrivacyTap;
 
   @override
   Widget build(BuildContext context) {
@@ -609,7 +615,28 @@ class AuthTermsRow extends StatelessWidget {
                       ),
                     ),
                   ),
-                  TextSpan(text: 'terms_agree_suffix'.tr),
+                  if (onPrivacyTap == null)
+                    TextSpan(text: 'terms_agree_suffix'.tr)
+                  else ...[
+                    TextSpan(text: 'terms_agree_and'.tr),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: Semantics(
+                        link: true,
+                        child: GestureDetector(
+                          onTap: onPrivacyTap,
+                          child: Text(
+                            'privacy_policy'.tr,
+                            style: authText(13.5, w: FontWeight.w700, c: link, h: 1.5).copyWith(
+                              decoration: TextDecoration.underline,
+                              decorationColor: link,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
