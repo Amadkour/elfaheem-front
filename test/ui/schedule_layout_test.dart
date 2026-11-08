@@ -7,7 +7,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_views.dart' show CalTimeGrid;
+import 'package:flutter_education_app/features/shared/calendar/calendar_views.dart' show CalEventBlock, CalTimeGrid;
 import 'package:flutter_education_app/features/shared/calendar/schedule_logic.dart';
 import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
 import 'package:flutter_education_app/features/shared/calendar/schedule_parts.dart';
@@ -63,8 +63,9 @@ List<Map<String, dynamic>> _items() => [
     ];
 
 class _Api extends RemoteCalendarApi {
-  _Api({this.fail = false});
+  _Api({this.fail = false, this.extra = const []});
   final bool fail;
+  final List<Map<String, dynamic>> extra;
   final feeds = <(String, String, bool)>[];
   final answers = <(int, Map<String, dynamic>)>[];
 
@@ -73,7 +74,7 @@ class _Api extends RemoteCalendarApi {
     feeds.add((start, end, detail));
     if (fail) throw Exception('offline');
     return {
-      'items': _items(),
+      'items': [..._items(), ...extra],
       'pending_invites': 1,
       'pauses': [
         {'exam_schedule_id': 1, 'name': _longEn, 'start_date': '2026-11-02', 'end_date': '2026-11-05', 'org_id': 4},
@@ -101,6 +102,13 @@ Future<void> _pumpPage(WidgetTester tester, Widget page, {Size size = const Size
   for (var i = 0; i < 8; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
+}
+
+/// The tab strip scrolls in the tests' wide font: bring the tab in first.
+Future<void> _openCalendarTab(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('Calendar'));
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.tap(find.text('Calendar'));
 }
 
 void main() {
@@ -180,6 +188,33 @@ void main() {
       );
     });
 
+    testWidgets('the list head: the two tabs, today, live now, the bar; an ended row and block', (tester) async {
+      final ended = CalEvent.listFrom({
+        'items': [
+          {..._ev('meeting:8', 'meeting', _wall(0, 9), _wall(0, 18), meeting: 8, status: 'accepted', mode: 'online'), 'status': 'ended'},
+        ],
+      }).single;
+      await expectNoLayoutErrors(
+        tester,
+        () => SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(children: [
+              CalPageTabs(index: 0, invites: 3, expand: true, onChanged: (_) {}),
+              CalTodayHero(nowUtc: _now, left: 3, week: 12, invites: 2, next: _events[4], nextJoinable: true, onTapNext: () {}, onJoinNext: () {}),
+              CalTodayHero(nowUtc: _now, left: 0),
+              CalLiveNowCard(event: _events[1], nowUtc: _now, onTap: () {}, onJoin: () {}),
+              CalListBar(title: _longEn, actionLabel: _longEn, actionIcon: Icons.history_rounded, onAction: () {}),
+              CalAgendaTile(event: ended, nowUtc: _now, past: true, history: true),
+              const CalFreeDay(today: true, done: true),
+              const CalScheduleSkeleton(view: CalView.agenda, bare: true),
+              SizedBox(width: 120, height: 70, child: CalEventBlock(event: ended, height: 70)),
+            ]),
+          ),
+        ),
+      );
+    });
+
     testWidgets('a free today and nothing ahead', (tester) async {
       await expectNoLayoutErrors(
         tester,
@@ -236,19 +271,50 @@ void main() {
   });
 
   group('behaviour', () {
-    testWidgets('one detailed feed call per range; switching to week and day reuses it, month fetches its own', (tester) async {
+    testWidgets('one detailed feed call per range; the Calendar tab opens its month (its own), week and day reuse the list', (tester) async {
       final api = _Api();
       await _pumpPage(tester, SchedulePage(api: api, store: CalendarStore(), now: _now, initialView: CalView.agenda, liveKeys: const {}));
       expect(api.feeds.length, 1);
       expect(api.feeds.single.$3, isTrue, reason: 'detail=true: changes, cancelled dates, pauses');
+      await _openCalendarTab(tester);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(api.feeds.length, 2, reason: 'a phone opens the Calendar tab on the month');
       await tester.tap(find.byKey(const ValueKey('cal.view.week')));
       await tester.pump(const Duration(milliseconds: 400));
       await tester.tap(find.byKey(const ValueKey('cal.view.day')));
       await tester.pump(const Duration(milliseconds: 400));
-      expect(api.feeds.length, 1, reason: 'the agenda already fetched this week');
-      await tester.tap(find.byKey(const ValueKey('cal.view.month')));
+      expect(api.feeds.length, 2, reason: 'the list already fetched this week');
+    });
+
+    testWidgets('the tab and the grid are remembered on the device; a list opened with nothing stored stays the default', (tester) async {
+      await _pumpPage(tester, SchedulePage(api: _Api(), store: CalendarStore(), now: _now, liveKeys: const {}));
+      expect(find.byType(CalAgendaList), findsOneWidget, reason: 'a phone opens on Scheduled meetings');
+      await _openCalendarTab(tester);
       await tester.pump(const Duration(milliseconds: 400));
-      expect(api.feeds.length, 2);
+      await tester.tap(find.byKey(const ValueKey('cal.view.week')));
+      await tester.pump(const Duration(milliseconds: 400));
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(calViewPrefKey), 'week|week');
+      await tester.pumpWidget(const SizedBox());
+      await _pumpPage(tester, SchedulePage(api: _Api(), store: CalendarStore(), now: _now, liveKeys: const {}));
+      expect(find.byType(CalAgendaList), findsNothing);
+      expect(find.byType(CalTimeGrid), findsOneWidget);
+    });
+
+    testWidgets('a closed meeting leaves "coming up" for Past and ended, calm and without Join', (tester) async {
+      final api = _Api(extra: [
+        {..._ev('meeting:77', 'meeting', _wall(0, 9), _wall(0, 18), meeting: 77, status: 'accepted', mode: 'online'), 'title': 'Closed one', 'status': 'ended'},
+      ]);
+      await _pumpPage(tester, SchedulePage(api: api, store: CalendarStore(), now: _now, initialView: CalView.agenda, liveKeys: const {'meeting:77'}));
+      expect(find.text('Closed one'), findsNothing, reason: 'its scheduled end is still ahead, but it was closed');
+      expect(find.byKey(const ValueKey('cal.join.meeting:77')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('cal.past.toggle')));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(api.feeds.length, 2, reason: 'the days before today are fetched when the list is first opened');
+      expect(find.text('Closed one'), findsOneWidget);
+      expect(find.text('Ended'), findsOneWidget);
+      expect(find.byKey(const ValueKey('cal.join.meeting:77')), findsNothing);
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('a failing weekly-appointments load never fails the page', (tester) async {

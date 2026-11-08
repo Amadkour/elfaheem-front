@@ -3541,3 +3541,19 @@ height, `-maxrate`). The ceiling is what lets the panel say "up to about X" (the
 `records_api.dart`); a quiet video such as a whiteboard comes out well under it. Raising the resolution is allowed, and the
 panel says it cannot add detail the original lacks. The original is kept unless Replace is chosen; on a session video the
 result is a draft, as for every Studio edit (D-315). It is its own save: a trim and a change of quality are two jobs.
+
+## D-321 — The schedule page has two tabs; a closed meeting is finished on the calendar · 2026-11-08 · accepted
+
+Amends D-085. The owner: "in my calender, please inhance the calender UI to be more attractive and premium and have tow tabs (one for schedule meetings and second for the calender grid", and "when close the meeting make this meeting is closed in the calender."
+
+**Two tabs on the ONE page.** Scheduled meetings is the former Agenda, Calendar holds Day · Week · Month. `CalView.agenda` stays the list's value, so `initialView`, the deep links and the data flow did not change, and the view switch simply no longer offers it. A phone opens on the list, a desktop on the week, a phone's Calendar tab on the month. The last tab and grid are remembered per device (`calendar.view.v1`, beside the filters).
+
+**The list always starts today** and no longer follows a picked date; the grid keeps its own date when the tabs flip. A day picked on the sidebar's mini month from the list opens that day on the Calendar tab, and the agenda's old week-by-week arrows are replaced by "Show the next two weeks" and the grid, so nothing became unreachable.
+
+**What is finished moves away from what is coming.** "Coming up" holds only what is not over; "Past and ended" lists it newest first, and is fetched only when first opened (14 days at a time, up to 84) so the normal open costs the same one request. A cancelled date is left out of the past list (it never happened); the grid still draws it. Live rooms lead the list, on their own cards, and are not repeated under their day.
+
+**Ended meetings.** `status: "ended"` on a meeting (older servers send none) beats the clock and a stale live key: never live, never joinable, over even before its scheduled end, a calm "Ended" chip and a muted block, no strike-through because it did happen, not draggable, no clash. A room still open past its scheduled end is not over.
+
+**Visuals.** A gradient hero with today's date, what is left and the next event (Join when open), one card per event with the kind's colour on its edge, date tiles for the days, the page tabs from `AppTabs`, a tinted today in the month grid. On a phone the two tabs drop their icons and count: `AppTabs(expand:)` overflows when one tab is wider than an equal share. The invitation count still shows in the list and the banner.
+
+Rendered at 390×844 and 1440×900, ar / en, light / dark. Not exercised against the real backend's `status` field or in the real web app.

@@ -164,6 +164,7 @@ class CalEvent {
     this.cancelled = false,
     this.change,
     this.slotId,
+    this.status,
   });
 
   final String id, source, title;
@@ -179,6 +180,9 @@ class CalEvent {
   /// The one-date change of a timetable session (null when the date runs as the timetable says).
   final CalChange? change;
   final int? slotId;
+
+  /// A meeting's state on the server: `ended` once its room was closed (an older server sends nothing).
+  final String? status;
 
   static CalEvent? fromJson(Map<String, dynamic> j) {
     final s = _utc(j['starts_at']), e = _utc(j['ends_at']);
@@ -213,6 +217,7 @@ class CalEvent {
       cancelled: j['cancelled'] == true,
       change: CalChange.fromJson(j['change'], changeId: _int(j['change_id']), mode: j['mode']?.toString()),
       slotId: _int(j['slot_id']),
+      status: j['status']?.toString(),
     );
   }
 
@@ -228,7 +233,7 @@ class CalEvent {
         id: id, source: source, title: title, start: start ?? this.start, end: end ?? this.end, subtitle: subtitle,
         orgId: orgId, deptId: deptId, courseId: courseId, meetingId: meetingId, location: location, mode: mode,
         myStatus: myStatus ?? this.myStatus, kind: kind, color: color, orgName: orgName, isOwner: isOwner,
-        editable: editable, counts: counts, cancelled: cancelled, change: change ?? this.change, slotId: slotId);
+        editable: editable, counts: counts, cancelled: cancelled, change: change ?? this.change, slotId: slotId, status: status);
 
   /// The course session's id (`session:<id>`), null for every other source.
   int? get sessionId => source == 'course_session' && id.startsWith('session:') ? int.tryParse(id.substring(8)) : null;
@@ -238,6 +243,9 @@ class CalEvent {
   Duration get duration => end.difference(start);
   bool get declined => myStatus == 'declined';
   bool get isMeeting => source == 'meeting';
+
+  /// The meeting was closed: never joined again, listed with the past ones even before its scheduled end (D-321).
+  bool get ended => isMeeting && status == 'ended';
   bool get online => mode == 'online' || (change?.online ?? false);
 }
 
@@ -330,11 +338,11 @@ class CalPlaced {
 /// The minute of the day the time grid scrolls to (D-101): the first appointment still running or still to come in
 /// the shown [days] (a class in progress counts as next); else now, when today is shown (never before 7:00: an empty
 /// early morning would open on 2 AM, L14); else the earliest appointment shown (a past week); else 8:00. Cancelled
-/// and declined ones are skipped.
+/// and declined ones, and meetings already closed, are skipped.
 int calFocusMinute(Iterable<CalEvent> events, List<DateTime> days, DateTime nowWall) {
   int? earliest;
   for (final d in days) {
-    final placed = calLayoutDay(events, d).where((p) => !p.event.cancelled && !p.event.declined).toList()
+    final placed = calLayoutDay(events, d).where((p) => !p.event.cancelled && !p.event.declined && !p.event.ended).toList()
       ..sort((x, y) => x.top.compareTo(y.top));
     for (final p in placed) {
       if (p.event.wallEnd.isAfter(nowWall)) return p.top;
@@ -390,10 +398,11 @@ List<CalPlaced> calLayoutDay(Iterable<CalEvent> events, DateTime day) {
   return out;
 }
 
-/// Other events of mine that [s, e) (UTC) would overlap — the instant check while dragging. Declined ones don't count.
+/// Other events of mine that [s, e) (UTC) would overlap — the instant check while dragging. Declined and ended ones
+/// don't count.
 List<CalEvent> calConflicts(Iterable<CalEvent> events, CalEvent moving, DateTime s, DateTime e) => [
       for (final x in events)
-        if (x.id != moving.id && !x.declined && x.start.isBefore(e) && s.isBefore(x.end)) x,
+        if (x.id != moving.id && !x.declined && !x.ended && x.start.isBefore(e) && s.isBefore(x.end)) x,
     ];
 
 /// Pixel offset in a day column → minutes after midnight, snapped to [step].

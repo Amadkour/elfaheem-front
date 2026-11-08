@@ -36,7 +36,7 @@ class _Clip extends StatelessWidget {
 }
 
 Widget _draggable(CalEvent e, Size size, Widget child) {
-  if (!e.editable || e.meetingId == null) return child;
+  if (!e.editable || e.meetingId == null || e.ended) return child; // a closed meeting stays where it happened
   final feedback = Material(
     color: Colors.transparent,
     child: Opacity(opacity: 0.85, child: SizedBox(width: size.width, height: size.height, child: child)),
@@ -61,18 +61,21 @@ class CalEventBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final e = event;
-    final muted = e.declined || e.cancelled;
+    final struck = e.declined || e.cancelled;
+    final muted = struck || e.ended;
     final color = muted ? c.textLight : calEventColor(c, e);
     final pending = e.myStatus == 'pending' || e.myStatus == 'proposed';
     final title = Text(
       e.title,
       maxLines: compact ? 1 : (height > 60 ? 2 : 1),
       overflow: TextOverflow.ellipsis,
-      style: appText(compact ? 10 : 11.5, w: FontWeight.w800, c: muted ? c.textLight : c.textDark).copyWith(
-          decoration: muted ? TextDecoration.lineThrough : null, decorationColor: c.textLight, height: 1.2),
+      style: appText(compact ? 10 : 11.5, w: FontWeight.w800, c: muted ? c.textMedium : c.textDark).copyWith(
+          decoration: struck ? TextDecoration.lineThrough : null, decorationColor: c.textLight, height: 1.2),
     );
     final ch = e.change;
-    final markerIcon = e.cancelled
+    final markerIcon = e.ended
+        ? Icons.task_alt_rounded
+        : e.cancelled
         ? Icons.event_busy_rounded
         : (ch != null && ch.online)
             ? Icons.videocam_rounded
@@ -83,13 +86,13 @@ class CalEventBlock extends StatelessWidget {
         ? Container(width: 7, height: 7, decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle))
         : markerIcon != null
             ? Icon(markerIcon, size: 12, color: e.cancelled ? c.danger : appInk(context, color))
-            : e.isMeeting && !e.isOwner && e.myStatus != null
+            : e.isMeeting && !e.isOwner && e.myStatus != null && !e.ended
                 ? Icon(calStatusIcon(e.myStatus), size: 12, color: calStatusColor(c, e.myStatus))
                 : null;
     return Container(
       decoration: BoxDecoration(
         color: calTint(c, color, muted ? 0.05 : (pending ? 0.09 : 0.14)),
-        borderRadius: BorderRadius.circular(compact ? 6 : 9),
+        borderRadius: BorderRadius.circular(compact ? 6 : AppRadius.chip),
         border: BorderDirectional(start: BorderSide(color: color, width: compact ? 2.5 : 3.5)),
       ),
       padding: EdgeInsetsDirectional.fromSTEB(compact ? 4 : 7, compact ? 1 : 4, 4, 1),
@@ -624,8 +627,9 @@ class CalMonthGrid extends StatelessWidget {
           ),
       ]);
       return Column(children: [
-        SizedBox(
+        Container(
           height: 28,
+          decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider))),
           child: Row(children: [
             for (var k = 0; k < 7; k++)
               SizedBox(
@@ -686,8 +690,10 @@ class _MonthCell extends StatelessWidget {
                 ? c.primary.withValues(alpha: 0.10)
                 : paused != null
                     ? Color.alphaBlend(calTint(c, c.warning, 0.07), inMonth ? c.cardBg : c.background)
-                    : (inMonth ? c.cardBg : c.background),
-            border: Border.all(color: c.divider, width: 0.5),
+                    : today
+                        ? Color.alphaBlend(calTint(c, c.primary, 0.05), c.cardBg)
+                        : (inMonth ? c.cardBg : c.background),
+            border: Border.all(color: today ? c.primary.withValues(alpha: 0.35) : c.divider.withValues(alpha: 0.6), width: today ? 1 : 0.5),
           ),
           padding: const EdgeInsets.all(3),
           child: _Clip(
@@ -720,7 +726,7 @@ class _MonthCell extends StatelessWidget {
               if (dense)
                 Wrap(spacing: 3, runSpacing: 3, children: [
                   for (final e in events.take(8))
-                    Container(width: 7, height: 7, decoration: BoxDecoration(color: calEventColor(c, e), shape: BoxShape.circle)),
+                    Container(width: 7, height: 7, decoration: BoxDecoration(color: e.ended || e.cancelled || e.declined ? c.textLight : calEventColor(c, e), shape: BoxShape.circle)),
                 ])
               else ...[
                 for (final e in shown)

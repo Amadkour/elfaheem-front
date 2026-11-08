@@ -344,4 +344,47 @@ void main() {
       expect(LiveEvents.fromNotificationType('meeting'), LiveEvents.calendarUpdated);
     });
   });
+
+  group('a closed meeting (D-321)', () {
+    final now = _u(0, 10);
+    CalEvent ended(int id, DateTime s, DateTime e) => CalEvent(id: 'meeting:$id', source: 'meeting', title: 't', start: s, end: e, meetingId: id, mode: 'online', myStatus: 'accepted', status: 'ended');
+
+    test('never live, never joinable, even with a stale live key and its scheduled end still ahead', () {
+      final e = ended(7, _u(0, 9), _u(0, 18));
+      expect(e.ended, isTrue);
+      expect(calIsLive(e, now, liveKeys: {calLiveKeyMeeting(7)}), isFalse);
+      expect(calJoinable(e, now, liveKeys: {calLiveKeyMeeting(7)}), isFalse);
+      expect(calRunning(e, now), isFalse);
+      expect(calWhen(e, now), isNotNull);
+    });
+
+    test('an older server (no status) keeps working as before', () {
+      final m = CalEvent.fromJson({'id': 'meeting:1', 'source': 'meeting', 'title': 't', 'starts_at': '2026-10-29T09:00:00', 'ends_at': '2026-10-29T18:00:00', 'meeting_id': 1, 'mode': 'online'})!;
+      expect(m.ended, isFalse);
+      expect(calJoinable(m, now), isTrue);
+      final closed = CalEvent.fromJson({'id': 'meeting:1', 'source': 'meeting', 'title': 't', 'starts_at': '2026-10-29T09:00:00', 'ends_at': '2026-10-29T18:00:00', 'meeting_id': 1, 'mode': 'online', 'status': 'ended'})!;
+      expect(closed.ended, isTrue);
+      expect(closed.copyWith(myStatus: 'accepted').ended, isTrue);
+    });
+
+    test('goes to the past, not to what is coming; a room still open past its end is not over', () {
+      final closed = ended(7, _u(0, 9), _u(0, 18));
+      final coming = _e('meeting:8', 'meeting', _u(0, 11), _u(0, 12), meeting: 8, status: 'accepted');
+      final done = _e('slot:1', 'timetable', _u(0, 8), _u(0, 9));
+      final overrun = _e('meeting:9', 'meeting', _u(0, 8), _u(0, 9), meeting: 9, status: 'accepted');
+      final cancelled = _e('slot:2', 'timetable', _u(0, 7), _u(0, 8), cancelled: true);
+      final keys = {calLiveKeyMeeting(9)};
+      expect(calComing([closed, coming, done, overrun], now, liveKeys: keys).map((e) => e.id), ['meeting:8', 'meeting:9']);
+      final past = calPast([closed, coming, done, overrun, cancelled], nowUtc: now, nowWall: now, liveKeys: keys);
+      expect(past.single.today, isTrue);
+      expect(past.single.events.map((e) => e.id), ['meeting:7', 'slot:1'], reason: 'latest first, a cancelled date left out');
+    });
+
+    test('calViewDecode reads what calViewEncode wrote and drops anything else', () {
+      expect(calViewDecode(calViewEncode(CalView.agenda, CalView.month)), (CalView.agenda, CalView.month));
+      expect(calViewDecode(calViewEncode(CalView.week, CalView.week)), (CalView.week, CalView.week));
+      expect(calViewDecode('nonsense'), (null, null));
+      expect(calViewDecode(null), (null, null));
+    });
+  });
 }

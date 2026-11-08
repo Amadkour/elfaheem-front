@@ -8,13 +8,18 @@
 //   SchedulePage(deptId: d)              a department's calendar (its meetings; new ones belong to the department)
 //   SchedulePage(asTab: true)            inside a role shell (no back arrow; on desktop the shell's top bar has the title)
 //
-//   Views: Agenda (phone default: today pinned, then the days that hold something, a "now" line) · Day (week strip +
-//   time grid) · Week (desktop default) · Month (desktop: the big grid; phone: a month of dots + that day's list).
-//   A mini month picks the day (desktop sidebar, the phone header's month title), "Today" jumps back, a horizontal
-//   swipe moves the range on phones. Filters: the four kinds + the organizations, as chips (sidebar list on desktop),
-//   remembered on the device. "New meeting" / "Meet now" are the primary actions.
+//   Two tabs (D-321), the last one remembered on the device with the grid it was on:
+//     Scheduled meetings (phone default): today's hero, Live now · Join on top, then what is coming by day ("Show the
+//       next two weeks" reaches further); "Past and ended" flips the list to what has finished (its time passed or
+//       the meeting was closed), newest first, fetched only when opened.
+//     Calendar (desktop default): Day (week strip + time grid) · Week · Month (desktop: the big grid; phone, its
+//       default: a month of dots + that day's list). The phone header's month title opens a mini month, "Today" jumps
+//       back, a horizontal swipe moves the range on phones.
+//   The desktop sidebar (both tabs): mini month (a day picked from the list opens it on the Calendar tab), up next,
+//   invitations, filters. Filters: the four kinds + the organizations, as chips on phones, remembered on the device.
+//   "New meeting" / "Meet now" are the primary actions.
 //
-//   Data: ONE GET /me/calendar?detail=true per visible range through CalendarStore (cached; the agenda and the day
+//   Data: ONE GET /me/calendar?detail=true per visible range through CalendarStore (cached; the list and the day
 //   view fetch whole weeks so switching views reuses it), plus — student / teacher only — the weekly appointments of
 //   personal courses (GET /student|teacher/schedules, cached, never failing the page). Live: the store reloads on
 //   `calendar_updated` / `meeting_live` / `session_live` / timetable `attention_changed`; the home's live rooms
@@ -104,6 +109,15 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   CalendarStore get _store => widget.store ?? CalendarStore.instance;
 
   CalView? _view;
+
+  /// The view the Calendar tab goes back to (null: its default for the width).
+  CalView? _gridView;
+
+  /// The list tab is on "Past and ended"; how many days back it has fetched (0 until it is first opened).
+  bool _showPast = false;
+  int _pastDays = 0;
+
+  /// The first day of the grids; the list always starts today.
   late DateTime _anchor = calDay(_nowWall);
 
   /// The rolling week's first day (D-101): the focused day is its second column; kept while the focus stays inside.
@@ -154,6 +168,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   void initState() {
     super.initState();
     _view = widget.initialView;
+    if (widget.initialView != CalView.agenda) _gridView = widget.initialView;
     WidgetsBinding.instance.addObserver(this);
     _store.bind();
     _store.changes.addListener(_onStoreChanged);
@@ -166,6 +181,8 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     }
     _restoreFilters();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (widget.initialView == null) await _restoreView();
       if (!mounted) return;
       _view ??= MediaQuery.sizeOf(context).width >= calWideBreakpoint ? CalView.week : CalView.agenda;
       await _load();
@@ -226,9 +243,60 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     }();
   }
 
+  // ── the tab (device) ─────────────────────────────────────────────────────
+  Future<void> _restoreView() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final (view, grid) = calViewDecode(p.getString(calViewPrefKey));
+      if (mounted && view != null) {
+        setState(() {
+          _view = view;
+          _gridView = grid ?? (view == CalView.agenda ? null : view);
+        });
+      }
+    } catch (_) {/* no storage: the default for the width */}
+  }
+
+  void _saveView() {
+    final v = _view;
+    if (v == null) return;
+    () async {
+      try {
+        final p = await SharedPreferences.getInstance();
+        await p.setString(calViewPrefKey, calViewEncode(v, _gridView));
+      } catch (_) {}
+    }();
+  }
+
+  /// Flips between the two tabs; the grid keeps the date and the view it was on.
+  void _setTab(int index, {required bool wide}) {
+    if (index == 0 && _view != CalView.agenda) {
+      _pickerOpen = false;
+      _go(CalView.agenda, _anchor);
+    } else if (index == 1 && _view == CalView.agenda) {
+      _go(_gridView ?? (wide ? CalView.week : CalView.month), _anchor);
+    }
+  }
+
+  /// "Past and ended": fetches the days before today the first time it opens.
+  void _togglePast() {
+    final open = !_showPast;
+    setState(() {
+      _showPast = open;
+      if (open && _pastDays == 0) _pastDays = calPastStep;
+    });
+    if (open) _load();
+  }
+
   // ── loading ──────────────────────────────────────────────────────────────
-  (DateTime, DateTime) get _range =>
-      calFetchRange(_view ?? CalView.week, _anchor, agendaDays: _agendaDays, weekFrom: _weekFrom);
+  /// The list starts today (and reaches back once "Past and ended" was opened); the grids follow their date.
+  (DateTime, DateTime) get _range {
+    final v = _view ?? CalView.week;
+    if (v != CalView.agenda) return calFetchRange(v, _anchor, agendaDays: _agendaDays, weekFrom: _weekFrom);
+    final today = calDay(_nowWall);
+    final (s, e) = calFetchRange(CalView.agenda, today, agendaDays: _agendaDays);
+    return (_pastDays == 0 ? s : AppTime.fromZone(DateTime(today.year, today.month, today.day - _pastDays)), e);
+  }
 
   /// The days [v] shows now (the week is the rolling one).
   List<DateTime> _daysOf(CalView v) => calVisibleDays(v, _anchor, weekFrom: _weekFrom);
@@ -279,8 +347,10 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   /// Shows [anchor] in [v]. [page]: the week's arrows — the columns move by exactly 7 days; [reset]: Today — the
   /// focused day goes back to the second column even when it is already on screen.
   void _go(CalView v, DateTime anchor, {int dir = 0, bool page = false, bool reset = false}) {
+    final changed = v != _view;
     setState(() {
-      if (v != _view) _agendaDays = calAgendaDays;
+      if (changed) _agendaDays = calAgendaDays;
+      if (v != CalView.agenda) _gridView = v;
       _view = v;
       _anchor = calDay(anchor);
       _weekFrom = page
@@ -289,6 +359,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       _pickerMonth = DateTime(_anchor.year, _anchor.month);
       _slide = dir;
     });
+    if (changed) _saveView();
     _load();
   }
 
@@ -643,9 +714,10 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final c = context.colors;
     final now = _nowUtc;
     final keys = _liveKeys;
-    final next = shown.where((e) => !e.cancelled && !e.declined && e.end.isAfter(now)).toList()..sort((a, b) => a.start.compareTo(b.start));
-    final invites = [for (final e in all) if (e.isMeeting && e.myStatus == 'pending' && e.end.isAfter(now)) e];
+    final next = shown.where((e) => !e.cancelled && !e.declined && !calIsOver(e, now, liveKeys: keys)).toList()..sort((a, b) => a.start.compareTo(b.start));
+    final invites = [for (final e in all) if (e.isMeeting && e.myStatus == 'pending' && !calIsOver(e, now)) e];
     final days = _daysOf(view);
+    final list = view == CalView.agenda;
     return ColoredBox(
       color: c.cardBg,
       child: ListView(
@@ -706,13 +778,13 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           ],
           CalMonthPicker(
             month: _pickerMonth,
-            selected: _anchor,
+            selected: list ? calDay(_nowWall) : _anchor,
             today: calDay(_nowWall),
-            rangeStart: view == CalView.week || view == CalView.agenda ? days.first : null,
-            rangeEnd: view == CalView.week ? days.last : (view == CalView.agenda ? days.first.add(const Duration(days: 6)) : null),
+            rangeStart: view == CalView.week ? days.first : null,
+            rangeEnd: view == CalView.week ? days.last : null,
             dotsOf: (d) => _dotsOf(shown, d),
             pausedOf: (d) => _pauses.any((p) => p.covers(d)),
-            onPick: (d) => _go(view == CalView.month ? CalView.day : view, d),
+            onPick: (d) => _go(list || view == CalView.month ? CalView.day : view, d),
             onMonth: (dir) => setState(() => _pickerMonth = DateTime(_pickerMonth.year, _pickerMonth.month + dir)),
           ),
           const SizedBox(height: 18),
@@ -726,7 +798,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           ],
           if (!_dept)
             CalFilterPanel(
-              counts: calCountsByCat(calSlice(all, _range.$1.toUtc(), _range.$2.toUtc())),
+              counts: _countsOf(view, all),
               filters: _filters,
               onCat: (k) => _setFilters(_filters.toggleCat(k)),
               orgs: calOrgsOf(all),
@@ -737,13 +809,28 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     );
   }
 
+  /// The filters' counts: what the list shows on the Scheduled meetings tab, the visible range on the Calendar tab.
+  Map<CalCat, int> _countsOf(CalView view, List<CalEvent> all) {
+    if (view != CalView.agenda) return calCountsByCat(calSlice(all, _range.$1.toUtc(), _range.$2.toUtc()));
+    final now = _nowUtc, keys = _liveKeys;
+    return calCountsByCat(all.where((e) => calIsOver(e, now, liveKeys: keys) == _showPast));
+  }
+
+  Widget _tabs(BuildContext context, CalView view, {required bool wide, bool expand = false}) => CalPageTabs(
+        index: view == CalView.agenda ? 0 : 1,
+        invites: _chunk?.pending ?? 0,
+        expand: expand,
+        onChanged: (i) => _setTab(i, wide: wide),
+      );
+
   // ── header (phone / tablet) ──────────────────────────────────────────────
   Widget _header(BuildContext context, CalView view) {
     final c = context.colors;
     final canPop = !widget.asTab && Navigator.of(context).canPop();
     final monthTitle = calTitleFor(view == CalView.day || view == CalView.week ? CalView.month : view, _anchor, weekFrom: _weekFrom);
+    final grid = view != CalView.agenda;
     return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(canPop ? 4 : 18, 10, 8, 2),
+      padding: EdgeInsetsDirectional.fromSTEB(canPop ? 4 : 18, 8, 8, 4),
       child: Row(children: [
         if (canPop)
           IconButton(
@@ -752,38 +839,41 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             icon: const Icon(Icons.arrow_back_rounded),
           ),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(24, w: FontWeight.w800, c: c.textDark)),
-            Semantics(
-              button: true,
-              label: t('اختر يوماً', 'Pick a day'),
-              child: InkWell(
-                key: const ValueKey('cal.month_toggle'),
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => setState(() {
-                  _pickerOpen = !_pickerOpen;
-                  _pickerMonth = DateTime(_anchor.year, _anchor.month);
-                }),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Flexible(
-                      child: Text(monthTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: appInk(context, c.primary))),
+          // the list's hero carries the date; on the grid the month is the title, and opens the mini month
+          child: !grid
+              ? Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(22, w: FontWeight.w800, c: c.textDark))
+              : Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Semantics(
+                    button: true,
+                    label: t('اختر يوماً', 'Pick a day'),
+                    child: InkWell(
+                      key: const ValueKey('cal.month_toggle'),
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                      onTap: () => setState(() {
+                        _pickerOpen = !_pickerOpen;
+                        _pickerMonth = DateTime(_anchor.year, _anchor.month);
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Flexible(
+                            child: Text(monthTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(21, w: FontWeight.w800, c: c.textDark)),
+                          ),
+                          AnimatedRotation(
+                            turns: _pickerOpen ? 0.5 : 0,
+                            duration: AppMotion.of(context).base,
+                            child: Icon(Icons.expand_more_rounded, size: 22, color: appInk(context, c.primary)),
+                          ),
+                        ]),
+                      ),
                     ),
-                    AnimatedRotation(
-                      turns: _pickerOpen ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(Icons.expand_more_rounded, size: 20, color: appInk(context, c.primary)),
-                    ),
-                  ]),
+                  ),
                 ),
-              ),
-            ),
-          ]),
         ),
         if (!_dept) QuickMeetingButton(icon: true, orgId: widget.orgId, api: widget.api, onDone: _refresh),
         const HelpInfoButton(pageId: 'calendar'),
-        _TodayButton(onTap: _today, isToday: _atToday),
+        if (grid) _TodayButton(onTap: _today, isToday: _atToday),
         _MoreMenu(onRefresh: _refresh, onExport: _export),
       ]),
     );
@@ -794,29 +884,43 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final title = calTitleFor(view, _anchor, weekFrom: _weekFrom);
     final canPop = !widget.asTab && Navigator.of(context).canPop();
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.sm, AppSpace.sm),
       decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider))),
-      child: Row(children: [
-        if (canPop && !wide) ...[
-          IconButton(tooltip: t('رجوع', 'Back'), onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded)),
-          const SizedBox(width: 4),
-        ],
-        _TodayButton(onTap: _today, isToday: _atToday, outlined: true),
-        const SizedBox(width: 6),
-        IconButton(tooltip: t('السابق', 'Previous'), onPressed: () => _shift(-1), icon: const Icon(Icons.chevron_left_rounded)),
-        IconButton(tooltip: t('التالي', 'Next'), onPressed: () => _shift(1), icon: const Icon(Icons.chevron_right_rounded)),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(19, w: FontWeight.w800, c: c.textDark)),
-        ),
-        if (_loading && _chunk != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: SizedBox(width: 60, child: LinearProgressIndicator(minHeight: 3, borderRadius: BorderRadius.circular(3), color: c.primary, backgroundColor: c.inputBg)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          if (canPop && !wide) ...[
+            IconButton(tooltip: t('رجوع', 'Back'), onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded)),
+            const SizedBox(width: AppSpace.xxs),
+          ],
+          // the track hugs its two tabs instead of stretching across the toolbar
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 440), child: _tabs(context, view, wide: wide, expand: true)),
+            ),
           ),
-        CalViewSwitch(view: view, onView: (v) => _go(v, _anchor)),
-        const MeetingLinksIcon(),
-        _MoreMenu(onRefresh: _refresh, onExport: _export),
+          if (_loading && _chunk != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: SizedBox(width: 60, child: LinearProgressIndicator(minHeight: 3, borderRadius: BorderRadius.circular(3), color: c.primary, backgroundColor: c.inputBg)),
+            ),
+          const MeetingLinksIcon(),
+          _MoreMenu(onRefresh: _refresh, onExport: _export),
+        ]),
+        if (view != CalView.agenda) ...[
+          const SizedBox(height: AppSpace.sm),
+          Row(children: [
+            _TodayButton(onTap: _today, isToday: _atToday, outlined: true),
+            const SizedBox(width: 6),
+            IconButton(tooltip: t('السابق', 'Previous'), onPressed: () => _shift(-1), icon: const Icon(Icons.chevron_left_rounded)),
+            IconButton(tooltip: t('التالي', 'Next'), onPressed: () => _shift(1), icon: const Icon(Icons.chevron_right_rounded)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(19, w: FontWeight.w800, c: c.textDark)),
+            ),
+            CalViewSwitch(view: view, views: calGridViews, onView: (v) => _go(v, _anchor)),
+          ]),
+        ],
       ]),
     );
   }
@@ -826,15 +930,20 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final c = context.colors;
     final tablet = !wide && width >= 700;
     final pending = _chunk?.pending ?? 0;
-    final firstPending = all.where((e) => e.isMeeting && e.myStatus == 'pending' && e.end.isAfter(_nowUtc)).firstOrNull;
+    final firstPending = all.where((e) => e.isMeeting && e.myStatus == 'pending' && !calIsOver(e, _nowUtc)).firstOrNull;
+    final grid = view != CalView.agenda;
     final children = <Widget>[
       if (wide || tablet) _toolbar(context, view, wide: wide) else ...[
         _header(context, view),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+          child: _tabs(context, view, wide: false, expand: true),
+        ),
         AnimatedSize(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           alignment: Alignment.topCenter,
-          child: !_pickerOpen
+          child: !_pickerOpen || !grid
               ? const SizedBox(width: double.infinity)
               : Padding(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
@@ -856,16 +965,18 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
                   ),
                 ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-          child: CalViewSwitch(view: view, onView: (v) => _go(v, _anchor), expand: true),
-        ),
+        if (grid)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xxs),
+            child: CalViewSwitch(view: view, views: calGridViews, onView: (v) => _go(v, _anchor), expand: true),
+          ),
       ],
-      if (!wide && !_dept)
+      // on the list the chips ride with the rows ([_agenda]), so the first event stays high on a phone
+      if (!wide && !_dept && grid)
         Padding(
           padding: EdgeInsets.only(top: tablet ? 8 : 2, bottom: 4),
           child: CalFilterChips(
-            counts: calCountsByCat(calSlice(all, _range.$1.toUtc(), _range.$2.toUtc())),
+            counts: _countsOf(view, all),
             filters: _filters,
             onCat: (k) => _setFilters(_filters.toggleCat(k)),
             orgs: calOrgsOf(all),
@@ -896,12 +1007,12 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             action: IconButton(tooltip: t('عرض', 'Open'), onPressed: () => _openMeeting(firstPending.meetingId!), icon: const Icon(Icons.open_in_new_rounded)),
           ),
         ),
-      Expanded(child: _content(context, view, shown, wide: wide)),
+      Expanded(child: _content(context, view, all, shown, wide: wide)),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
   }
 
-  Widget _content(BuildContext context, CalView view, List<CalEvent> shown, {required bool wide}) {
+  Widget _content(BuildContext context, CalView view, List<CalEvent> all, List<CalEvent> shown, {required bool wide}) {
     if (_chunk == null) {
       if (_error != null) {
         return Center(
@@ -920,12 +1031,12 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       return CalScheduleSkeleton(view: view);
     }
     final child = switch (view) {
-      CalView.agenda => _agenda(context, shown, wide: wide),
+      CalView.agenda => _agenda(context, all, shown, wide: wide),
       CalView.day => _day(context, shown, wide: wide),
       CalView.week => _week(context, shown, wide: wide),
       CalView.month => _month(context, shown, wide: wide),
     };
-    final keyed = KeyedSubtree(key: ValueKey('${view.name}|$_anchor|$_agendaDays'), child: child);
+    final keyed = KeyedSubtree(key: ValueKey(view == CalView.agenda ? 'list|$_showPast' : '${view.name}|$_anchor'), child: child);
     final animated = AnimatedSwitcher(
       duration: const Duration(milliseconds: 240),
       switchInCurve: Curves.easeOutCubic,
@@ -955,37 +1066,113 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     );
   }
 
-  Widget _agenda(BuildContext context, List<CalEvent> shown, {required bool wide}) {
-    final days = calAgenda(shown, from: _anchor, days: _agendaDays, nowWall: _nowWall, pauses: _pauses);
-    final orgs = calOrgsOf(shown);
-    final list = CalAgendaList(
-      days: days,
-      nowUtc: _nowUtc,
-      liveKeys: _liveKeys,
-      actions: _actions,
-      showOrg: orgs.where((o) => o.id != 0).length > 1,
-      padding: EdgeInsets.fromLTRB(16, 10, 16, wide ? 32 : _fabRoomOf(context)),
-      emptyRange: _NothingAhead(filtered: _filters.any, onClear: () => _setFilters(const CalFilters())),
-      footer: _agendaDays < 56
-          ? Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Center(
-                child: TextButton.icon(
-                  key: const ValueKey('cal.agenda.more'),
-                  onPressed: () {
-                    setState(() => _agendaDays += calAgendaDays);
-                    _load();
-                  },
-                  icon: const Icon(Icons.expand_more_rounded),
-                  label: Text(t('عرض أسبوعين آخرين', 'Show the next two weeks')),
-                ),
-              ),
-            )
-          : null,
-    );
+  /// The Scheduled meetings tab: what is coming, or (the toggle) what has finished.
+  Widget _agenda(BuildContext context, List<CalEvent> all, List<CalEvent> shown, {required bool wide}) {
+    final now = _nowUtc, wall = _nowWall, keys = _liveKeys;
+    final today = calDay(wall);
+    final showOrg = calOrgsOf(shown).where((o) => o.id != 0).length > 1;
+    final coming = calComing(shown, now, liveKeys: keys)..sort((a, b) => a.start.compareTo(b.start));
+    final live = [for (final e in coming) if (calIsLive(e, now, liveKeys: keys)) e];
+    final ahead = [for (final e in coming) if (!live.contains(e)) e];
+    final past = calPast(shown, nowUtc: now, nowWall: wall, liveKeys: keys);
+    final chips = wide || _dept
+        ? null
+        : CalBleed(
+            gutter: AppSpace.md,
+            child: CalFilterChips(
+              counts: _countsOf(CalView.agenda, all),
+              filters: _filters,
+              onCat: (k) => _setFilters(_filters.toggleCat(k)),
+              orgs: calOrgsOf(all),
+              onOrg: (id) => _setFilters(_filters.toggleOrg(id)),
+            ),
+          );
+    Widget more(String key, IconData icon, String label, VoidCallback onTap) => Padding(
+          padding: const EdgeInsets.only(top: AppSpace.xxs),
+          child: Center(
+            child: TextButton.icon(key: ValueKey(key), onPressed: onTap, icon: Icon(icon), label: Text(label)),
+          ),
+        );
+
+    final Widget list;
+    if (_showPast) {
+      list = CalAgendaList(
+        days: past,
+        nowUtc: now,
+        liveKeys: keys,
+        actions: _actions,
+        showOrg: showOrg,
+        history: true,
+        padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, wide ? AppSpace.xl : _fabRoomOf(context)),
+        header: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          ?chips,
+          CalListBar(
+            title: t('السابقة والمنتهية', 'Past and ended'),
+            actionKey: 'cal.past.toggle',
+            actionIcon: Icons.upcoming_rounded,
+            actionLabel: t('القادمة', 'Coming up'),
+            onAction: _togglePast,
+          ),
+        ]),
+        emptyRange: _loading ? const CalScheduleSkeleton(view: CalView.agenda, bare: true) : _NothingAhead(past: true, filtered: _filters.any, onClear: () => _setFilters(const CalFilters())),
+        footer: _pastDays < calPastMax
+            ? more('cal.past.more', Icons.history_rounded, t('عرض أسبوعين سابقين', 'Show two earlier weeks'), () {
+                setState(() => _pastDays += calPastStep);
+                _load();
+              })
+            : null,
+      );
+    } else {
+      final nothing = coming.isEmpty;
+      final todayLeft = coming.where((e) => calDay(e.wallStart) == today && !e.cancelled).length;
+      final todayAll = calEventsOnDay(shown, today).where((e) => !e.cancelled).length;
+      final inWeek = wall.add(const Duration(days: 7));
+      final next = ahead.where((e) => !e.cancelled && !e.declined).firstOrNull;
+      list = CalAgendaList(
+        days: nothing ? const [] : calAgenda(ahead, from: today, days: _agendaDays, nowWall: wall, pauses: _pauses),
+        nowUtc: now,
+        liveKeys: keys,
+        actions: _actions,
+        showOrg: showOrg,
+        todayDone: todayLeft == 0 && todayAll > 0,
+        padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, wide ? AppSpace.xl : _fabRoomOf(context)),
+        header: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          CalTodayHero(
+            nowUtc: now,
+            left: todayLeft,
+            week: ahead.where((e) => !e.cancelled && e.wallStart.isBefore(inWeek)).length + live.length,
+            invites: _chunk?.pending ?? 0,
+            next: next,
+            nextJoinable: next != null && calJoinable(next, now, liveKeys: keys),
+            onTapNext: next == null ? null : () => _tap(next),
+            onJoinNext: next == null ? null : () => _join(next),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          ?chips,
+          CalListBar(
+            title: t('القادمة', 'Coming up'),
+            actionKey: 'cal.past.toggle',
+            actionIcon: Icons.history_rounded,
+            actionLabel: t('السابقة والمنتهية', 'Past and ended'),
+            onAction: _togglePast,
+          ),
+          for (final e in live) ...[
+            CalLiveNowCard(event: e, nowUtc: now, onTap: () => _tap(e), onJoin: () => _join(e)),
+            const SizedBox(height: AppSpace.sm),
+          ],
+        ]),
+        emptyRange: live.isNotEmpty ? null : _NothingAhead(filtered: _filters.any, onClear: () => _setFilters(const CalFilters()), onNew: _dept ? null : () => _add()),
+        footer: _agendaDays < 56
+            ? more('cal.agenda.more', Icons.expand_more_rounded, t('عرض أسبوعين آخرين', 'Show the next two weeks'), () {
+                setState(() => _agendaDays += calAgendaDays);
+                _load();
+              })
+            : null,
+      );
+    }
     final body = AppRefresh(onRefresh: _refresh, child: list);
     if (!wide) return body;
-    return Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 860), child: body));
+    return Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.reading.max), child: body));
   }
 
   Widget _day(BuildContext context, List<CalEvent> shown, {required bool wide}) {
@@ -1200,35 +1387,50 @@ class _MoreMenu extends StatelessWidget {
 }
 
 class _NothingAhead extends StatelessWidget {
-  const _NothingAhead({required this.filtered, required this.onClear});
-  final bool filtered;
+  const _NothingAhead({required this.filtered, required this.onClear, this.past = false, this.onNew});
+  final bool filtered, past;
   final VoidCallback onClear;
+  final VoidCallback? onNew;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xl),
       child: Column(children: [
         Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(color: calTint(c, c.primary, 0.08), shape: BoxShape.circle),
-          child: Icon(Icons.event_available_rounded, size: 30, color: c.primary),
+          width: 88,
+          height: 88,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(colors: [calTint(c, c.primary, 0.16), calTint(c, c.primary, 0.03)]),
+            border: Border.all(color: c.primary.withValues(alpha: 0.16)),
+          ),
+          child: Icon(past ? Icons.history_rounded : Icons.event_available_rounded, size: AppIconSize.hero, color: appInk(context, c.primary)),
         ),
-        const SizedBox(height: 12),
-        Text(t('لا شيء قادم', 'Nothing coming up'), style: appText(16, w: FontWeight.w800, c: c.textDark)),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.md),
+        Text(past ? t('لا شيء هنا بعد', 'Nothing here yet') : t('لا شيء قادم', 'Nothing coming up'), textAlign: TextAlign.center, style: appText(17, w: FontWeight.w800, c: c.textDark)),
+        const SizedBox(height: AppSpace.xxs),
         Text(
           filtered
               ? t('بعض الأنواع مخفية بالمرشّحات', 'Some kinds are hidden by the filters')
-              : t('ستظهر هنا محاضراتك وامتحاناتك واجتماعاتك', 'Your classes, exams and meetings show up here'),
+              : past
+                  ? t('ستجد هنا مواعيدك المنتهية والاجتماعات المغلقة', 'What has finished and meetings that were closed show up here')
+                  : t('ستظهر هنا محاضراتك وامتحاناتك واجتماعاتك', 'Your classes, exams and meetings show up here'),
           textAlign: TextAlign.center,
           style: appText(13, c: c.textMedium),
         ),
         if (filtered) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           TextButton(onPressed: onClear, child: Text(t('إظهار الكل', 'Show everything'))),
+        ] else if (onNew != null) ...[
+          const SizedBox(height: AppSpace.md),
+          FilledButton.icon(
+            onPressed: onNew,
+            style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onHero, minimumSize: const Size(48, AppTouch.min), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card))),
+            icon: const Icon(Icons.add_rounded),
+            label: Text(t('اجتماع جديد', 'New meeting'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
+          ),
         ],
       ]),
     );
