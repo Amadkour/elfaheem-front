@@ -60,6 +60,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -963,7 +964,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
           vRail = BoardRailBox(
             rect: r,
             vertical: true,
-            metrics: BoardRailMetrics(track: r.height, lo: 0, hi: cv!.extent, start: cv.scroll, length: math.min(cv.visible, cv.extent)),
+            metrics: BoardRailMetrics(
+                track: r.height, lo: 0, hi: cv!.extent, start: cv.scroll, length: math.min(cv.visible, cv.extent),
+                minThumb: _railLook.minThumb, hit: _railLook.hit),
           );
           if (!vRail.metrics.scrollable) vRail = null;
         }
@@ -974,7 +977,9 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
           hRail = BoardRailBox(
             rect: r,
             vertical: false,
-            metrics: BoardRailMetrics(track: r.width, lo: cv.xMin, hi: cv.xMax, start: cv.viewLeft, length: cv.visibleW),
+            metrics: BoardRailMetrics(
+                track: r.width, lo: cv.xMin, hi: cv.xMax, start: cv.viewLeft, length: cv.visibleW,
+                minThumb: _railLook.minThumb, hit: _railLook.hit),
           );
           if (!hRail.metrics.scrollable) hRail = null;
         }
@@ -1225,11 +1230,26 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   // ── The rails as scrollbars (D-109) ────────────────────────────────────────
 
   bool _railOwns(int pointer) => _rail?.pointer == pointer;
+
+  /// D-306: the last pointer's kind (null: none yet) — a finger or a pen gets the big thumb; before any pointer,
+  /// a phone / tablet does.
+  PointerDeviceKind? _railKind;
+
+  bool get _railTouch {
+    final k = _railKind;
+    if (k == null) {
+      final p = defaultTargetPlatform;
+      return p == TargetPlatform.android || p == TargetPlatform.iOS;
+    }
+    return k != PointerDeviceKind.mouse && k != PointerDeviceKind.trackpad;
+  }
+
+  BoardRailLook get _railLook => BoardRailLook.of(touch: _railTouch);
   bool get _railGrabbed => _rail?.grabbed ?? false;
 
   /// The drawn rail and, over its thumb, the grab cursor (translucent: it takes nothing from the board).
   Widget _railView(BoardRailBox r, {required Key key, GlobalKey? outer, (double, double)? presenter, bool grabbed = false}) {
-    const box = BoardScrollRail.thickness;
+    final box = _railLook.box;
     final c = r.rect.center;
     final at = r.vertical
         ? Rect.fromLTWH(c.dx - box / 2, r.rect.top, box, r.rect.height)
@@ -1249,6 +1269,7 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
               length: r.metrics.length,
               presenter: presenter,
               grabbed: grabbed,
+              look: _railLook,
             ),
           ),
         ),
@@ -1269,6 +1290,11 @@ class _WhiteboardStageState extends State<WhiteboardStage> with SingleTickerProv
   /// first jumps under the finger: the thumb shrinks as the page grows, so a press just off it still takes it),
   /// moves a page with a tap on the track, and is handed back to the board when it moves first.
   void _railDown(PointerDownEvent e) {
+    if (_railKind != e.kind) {
+      final was = _railTouch;
+      _railKind = e.kind;
+      if (was != _railTouch && mounted) setState(() {}); // the rail's look follows the hand (D-306)
+    }
     if (_rail != null || _pointer != null || _viewPan != null || _pinch != null || !mounted) return;
     final mouse = e.kind == PointerDeviceKind.mouse;
     if (mouse && (e.buttons & kPrimaryMouseButton) == 0) return;
@@ -1816,15 +1842,19 @@ class BoardScrollRail extends StatelessWidget {
     required this.length,
     this.presenter,
     this.grabbed = false,
+    this.look = BoardRailLook.mouse,
   });
 
-  /// The box the rail is drawn in, across (px): the grabbed rail at its widest.
+  /// The box a mouse rail is drawn in, across (px): the grabbed rail at its widest ([BoardRailLook.box]).
   static const thickness = 16.0;
 
   final bool vertical;
   final double lo, hi, start, length;
   final (double, double)? presenter;
   final bool grabbed;
+
+  /// Slim (mouse) or the big touch thumb with its grip (D-306).
+  final BoardRailLook look;
 
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(
@@ -1834,9 +1864,11 @@ class BoardScrollRail extends StatelessWidget {
         builder: (context, g, _) => LayoutBuilder(builder: (context, c) {
           final len = vertical ? c.maxHeight : c.maxWidth;
           final across = vertical ? c.maxWidth : c.maxHeight;
-          final m = BoardRailMetrics(track: len.isFinite ? len : 0, lo: lo, hi: hi, start: start, length: length);
+          final m = BoardRailMetrics(
+              track: len.isFinite ? len : 0, lo: lo, hi: hi, start: start, length: length, minThumb: look.minThumb, hit: look.hit);
           if (!m.scrollable || !across.isFinite) return const SizedBox.shrink();
-          final track = ui.lerpDouble(6, 12, g)!;
+          final track = ui.lerpDouble(look.track, look.trackGrabbed, g)!;
+          final thumbW = math.min(across, ui.lerpDouble(look.thumb, look.thumbGrabbed, g)!);
           final markW = math.min(across, track + 4);
           double at(double v) => ((v - lo) / m.span).clamp(0.0, 1.0) * len;
           Widget bar(Key? key, double a, double l, double w, BoxDecoration d) {
@@ -1864,16 +1896,45 @@ class BoardScrollRail extends StatelessWidget {
               ValueKey(vertical ? 'board.rail.thumb' : 'board.side_rail.thumb'),
               m.thumbStart,
               m.thumbLength,
-              track,
+              thumbW,
               BoxDecoration(
                 color: thumbColor,
-                borderRadius: BorderRadius.circular(track / 2),
+                borderRadius: BorderRadius.circular(thumbW / 2),
                 border: Border.all(color: Color.lerp(const Color(0x66FFFFFF), const Color(0xE6FFFFFF), g)!, width: 0.8 + 0.7 * g),
                 boxShadow: g <= 0
                     ? null
                     : [BoxShadow(color: accent.withValues(alpha: 0.45 * g), blurRadius: 10 * g, spreadRadius: 1 * g)],
               ),
             ),
+            // D-306: the touch thumb's grip — three short lines across it, so it reads as something to hold.
+            if (look.grip && m.thumbLength >= 32 && thumbW >= 10)
+              Positioned(
+                key: ValueKey(vertical ? 'board.rail.grip' : 'board.side_rail.grip'),
+                left: vertical ? (across - thumbW) / 2 : m.thumbStart,
+                top: vertical ? m.thumbStart : (across - thumbW) / 2,
+                width: vertical ? thumbW : m.thumbLength,
+                height: vertical ? m.thumbLength : thumbW,
+                child: IgnorePointer(
+                  child: Center(
+                    child: Flex(
+                      direction: vertical ? Axis.vertical : Axis.horizontal,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (var i = 0; i < 3; i++)
+                          Container(
+                            margin: EdgeInsets.symmetric(vertical: vertical ? 1.5 : 0, horizontal: vertical ? 0 : 1.5),
+                            width: vertical ? thumbW * 0.5 : 1.6,
+                            height: vertical ? 1.6 : thumbW * 0.5,
+                            decoration: BoxDecoration(
+                              color: const Color(0xE6FFFFFF),
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ]);
         }),
       );

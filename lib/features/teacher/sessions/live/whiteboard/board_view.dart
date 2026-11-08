@@ -4,7 +4,11 @@
 // page (WhiteboardStage) and, for whoever may draw, the tool dock (WhiteboardToolbar) — bound to a BoardController.
 // In the live room the bar is off (`showTopBar: false`): the room's top row carries it on the recording's line
 // (D-108). In full view (`fullView`) the page is alone and fills the room; whoever may draw keeps drawing on it, and
-// the room slides the tool dock ([WhiteboardDock]) in with its own bars (D-108, round 7).
+// the room slides the tool dock ([WhiteboardDock]) in with its own bars (D-108, round 7). Since D-306 full view gives
+// the page every pixel — no side gutter, the room drops its rounded frame and, on a phone / tablet, the system bars
+// (immersive) and the orientation lock, so the page turns with the device; a fixed page whose shape fights the
+// screen's (a landscape page on an upright phone) shows "Turn your device for a bigger page" for a few seconds
+// ([boardFullViewTurnHint], [BoardTurnHint]); a continuous page fills both ways already.
 // RoomPage puts it where the shared screen would go while a board is presented, for the presenter and every viewer;
 // the room's recorder captures the room UI, so the board is in the recording as everyone sees it.
 //
@@ -86,6 +90,10 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
   BoardBackground? _bg;
   bool _keys = false;
 
+  /// D-306: the turn hint's few seconds (armed each time full view opens).
+  bool _turnHint = false;
+  Timer? _turnTimer;
+
   BoardController get _c => widget.controller;
 
   bool get _keyboardOn =>
@@ -105,6 +113,7 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
     }
     _bg = _c.background;
     _fitColor();
+    if (widget.fullView) _armTurnHint(); // opened straight into full view
   }
 
   @override
@@ -114,10 +123,21 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
       old.controller.removeListener(_onBoard);
       widget.controller.addListener(_onBoard);
     }
+    if (widget.fullView != old.fullView) _armTurnHint();
+  }
+
+  void _armTurnHint() {
+    _turnTimer?.cancel();
+    _turnHint = widget.fullView;
+    if (!_turnHint) return;
+    _turnTimer = Timer(kBoardTurnHintFor, () {
+      if (mounted) setState(() => _turnHint = false);
+    });
   }
 
   @override
   void dispose() {
+    _turnTimer?.cancel();
     _c.removeListener(_onBoard);
     if (_keys) HardwareKeyboard.instance.removeHandler(_onKey);
     super.dispose();
@@ -154,7 +174,8 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
           final wideDock = box.maxWidth - 16 >= kBoardDockWideWidth;
           final dockH = canDraw ? (wideDock ? 70.0 : 121.0) : (full ? 0.0 : 10.0);
           final topH = bar ? 64.0 : (full ? 0.0 : 6.0);
-          final side = box.maxWidth < 600 ? 4.0 : 12.0; // a phone gives the page every pixel of its width
+          // A phone gives the page every pixel of its width; full view every pixel of the screen (D-306).
+          final side = full ? 0.0 : (box.maxWidth < 600 ? 4.0 : 12.0);
           // A continuous page takes all the height there is (it scrolls); a fixed one what its shape needs.
           final idealStage = _c.isContinuous ? double.infinity : (box.maxWidth - side * 2) / _c.aspect + 4;
           final stageH = math.max(0.0, math.min(idealStage, box.maxHeight - topH - dockH));
@@ -197,10 +218,23 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
               ),
             ),
           ]);
+          // D-306: a fixed page that fights the screen's shape in full view says how to make it bigger.
+          final turn = _turnHint &&
+              boardFullViewTurnHint(
+                  fullView: full, continuous: _c.isContinuous, aspect: _c.aspect, box: box.biggest, mobile: boardTurnableDevice());
+          final hint = turn
+              ? Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 16,
+                  child: Center(child: BoardTurnHint(portraitPage: _c.aspect < 1)),
+                )
+              : null;
           // Always a Stack: the page keeps its state (zoom, scroll) when the dock comes and goes (full view, D-108).
-          if (!canDraw) return Stack(children: [Positioned.fill(child: column)]);
+          if (!canDraw) return Stack(children: [Positioned.fill(child: column), ?hint]);
           return Stack(children: [
             Positioned.fill(child: column),
+            ?hint,
             PositionedDirectional(
               start: 0,
               end: 0,
@@ -409,3 +443,73 @@ Future<void> saveWhiteboardPng(GlobalKey pageKey, {int pageNumber = 1, String fi
         showAppNotice(t('تعذّر حفظ الصورة', "Couldn't save the image"), error: true);
       }
     });
+
+// ── D-306: full view's turn hint ──────────────────────────────────────────────────────────────────────────────
+
+/// How long the turn hint stays once full view opens.
+const Duration kBoardTurnHintFor = Duration(seconds: 5);
+
+/// A phone or a tablet (the device turns; a desktop window does not).
+bool boardTurnableDevice() =>
+    !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+
+/// Full view of a fixed page ([aspect] = width / height) in [box] wastes so much of the screen that turning the
+/// device is worth saying: the page and the screen are of opposite shapes and the fitted page covers less than 55 %
+/// of it. Never for a continuous page (it fills the width and scrolls) or off a phone / tablet.
+bool boardFullViewTurnHint({
+  required bool fullView,
+  required bool continuous,
+  required double aspect,
+  required Size box,
+  required bool mobile,
+}) {
+  if (!fullView || continuous || !mobile || aspect <= 0 || box.isEmpty || !box.isFinite) return false;
+  final screen = box.width / box.height;
+  if ((aspect >= 1) == (screen >= 1)) return false;
+  final pageArea = math.min(box.width, box.height * aspect) * math.min(box.height, box.width / aspect);
+  return pageArea / (box.width * box.height) < 0.55;
+}
+
+/// "Turn your device for a bigger page" — a glass pill over the page (plain values,
+/// test/ui/whiteboard_full_view_layout_test.dart).
+class BoardTurnHint extends StatelessWidget {
+  const BoardTurnHint({super.key, this.portraitPage = false});
+
+  /// The page is upright (turn back to portrait); else it is wide (turn sideways).
+  final bool portraitPage;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = portraitPage
+        ? t('أدِر جهازك رأسيًا لصفحة أكبر', 'Turn your device upright for a bigger page')
+        : t('أدِر جهازك أفقيًا لصفحة أكبر', 'Turn your device sideways for a bigger page');
+    return Semantics(
+      liveRegion: true,
+      label: text,
+      child: ExcludeSemantics(
+        child: Container(
+          key: const ValueKey('board.turn_hint'),
+          constraints: const BoxConstraints(maxWidth: 420),
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 18, 10),
+          decoration: BoxDecoration(
+            color: LivePalette.shade(0.72),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0x33FFFFFF)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.screen_rotation_rounded, size: 20, color: LivePalette.accent),
+            const SizedBox(width: AppSpace.sm),
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: appText(13.5, w: FontWeight.w600, c: const Color(0xFFF8FAFC), h: 1.3),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}

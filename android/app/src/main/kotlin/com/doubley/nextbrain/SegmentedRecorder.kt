@@ -142,6 +142,7 @@ class SegmentedRecorder(
             videoCodec?.start()
             ac.start()
             ar.startRecording()
+            RemoteAudioMix.attach() // D-306: false = the microphone only, as before
             capturing = true
             threads += Thread({ audioLoop(ar, ac) }, "SegRecAudioIn")
             threads += Thread({ drainLoop(ac, video = false) }, "SegRecAudioOut")
@@ -178,6 +179,7 @@ class SegmentedRecorder(
 
     private fun releaseAll() {
         capturing = false
+        RemoteAudioMix.detach()
         try { audioRecord?.stop() } catch (_: Exception) {}
         try { audioRecord?.release() } catch (_: Exception) {}
         audioRecord = null
@@ -234,6 +236,7 @@ class SegmentedRecorder(
                         System.nanoTime() - (n / 2) * 1_000_000_000L / SAMPLE_RATE
                     }
                 }
+                RemoteAudioMix.mixInto(buf, n) // D-306: the other people's voices (a no-op when the hook is missing)
                 codec.queueInputBuffer(idx, 0, n, ptsFor(anchorNs, samples), 0)
                 samples += n / 2
             }

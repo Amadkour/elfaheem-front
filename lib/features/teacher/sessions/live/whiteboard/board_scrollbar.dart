@@ -24,6 +24,49 @@ const kBoardTrackHit = 24.0;
 /// A tap on the track moves the view this much of what it shows.
 const kBoardTrackPage = 0.9;
 
+/// D-306: on a touch screen the thumb is drawn at least this long (px) — a finger can find it and hold it.
+const kBoardTouchThumbMin = 56.0;
+
+/// D-306: a touch screen's thumb hit target, both ways (px).
+const kBoardTouchThumbHit = 56.0;
+
+/// How a rail is drawn and held (D-306): slim for a mouse, a big thumb with a grip for a finger. Pure values, so the
+/// stage, the painting and the tests read the same numbers.
+class BoardRailLook {
+  const BoardRailLook._({
+    required this.track,
+    required this.trackGrabbed,
+    required this.thumb,
+    required this.thumbGrabbed,
+    required this.minThumb,
+    required this.hit,
+    required this.box,
+    required this.grip,
+  });
+
+  /// A mouse / trackpad: the slim rail of D-109.
+  static const mouse = BoardRailLook._(
+      track: 6, trackGrabbed: 12, thumb: 6, thumbGrabbed: 12, minThumb: kBoardThumbMin, hit: kBoardThumbHit, box: 16, grip: false);
+
+  /// A finger or a pen: a 12 px thumb (24 px once held) at least [kBoardTouchThumbMin] long, with a grip.
+  static const touch = BoardRailLook._(
+      track: 6, trackGrabbed: 10, thumb: 12, thumbGrabbed: 24, minThumb: kBoardTouchThumbMin, hit: kBoardTouchThumbHit, box: 28, grip: true);
+
+  static BoardRailLook of({required bool touch}) => touch ? BoardRailLook.touch : BoardRailLook.mouse;
+
+  /// The track's and the thumb's thickness across (px), idle and held.
+  final double track, trackGrabbed, thumb, thumbGrabbed;
+
+  /// The thumb's least length (px) and its hit target (px, both ways).
+  final double minThumb, hit;
+
+  /// The box the rail is drawn in, across (px): the held thumb at its widest.
+  final double box;
+
+  /// Three grip lines across the thumb.
+  final bool grip;
+}
+
 /// One rail's geometry.
 class BoardRailMetrics {
   const BoardRailMetrics({
@@ -33,6 +76,7 @@ class BoardRailMetrics {
     required this.start,
     required this.length,
     this.minThumb = kBoardThumbMin,
+    this.hit = kBoardThumbHit,
   });
 
   /// The track's length (px).
@@ -44,6 +88,9 @@ class BoardRailMetrics {
   /// The view's start and length (units).
   final double start, length;
   final double minThumb;
+
+  /// The thumb's hit target, along and across (px; D-306: bigger on a touch screen).
+  final double hit;
 
   double get span => hi - lo;
 
@@ -81,12 +128,12 @@ class BoardRailMetrics {
   /// The view's start (units) once the thumb, grabbed with the view at [from], was dragged [delta] px.
   double dragged(double from, double delta) => startForThumb(thumbAt(from) + (delta.isFinite ? delta : 0));
 
-  /// The thumb's hit target along the track (px): the thumb, widened about its middle to [kBoardThumbHit].
+  /// The thumb's hit target along the track (px): the thumb, widened about its middle to [hit].
   (double, double) thumbHit() {
     final len = thumbLength, s = thumbStart;
-    if (len >= kBoardThumbHit) return (s, s + len);
+    if (len >= hit) return (s, s + len);
     final mid = s + len / 2;
-    return (mid - kBoardThumbHit / 2, mid + kBoardThumbHit / 2);
+    return (mid - hit / 2, mid + hit / 2);
   }
 
   /// [px] along the track is on the thumb's hit target.
@@ -119,10 +166,10 @@ class BoardRailBox {
   /// [p]'s distance from the track's centre line.
   double across(Offset p) => vertical ? (p.dx - rect.center.dx).abs() : (p.dy - rect.center.dy).abs();
 
-  /// The thumb's hit target on the stage (≥ [kBoardThumbHit] both ways).
+  /// The thumb's hit target on the stage (≥ the metrics' hit both ways).
   Rect get thumbHitRect {
     final (a, b) = metrics.thumbHit();
-    const h = kBoardThumbHit / 2;
+    final h = metrics.hit / 2;
     return vertical
         ? Rect.fromLTRB(rect.center.dx - h, rect.top + a, rect.center.dx + h, rect.top + b)
         : Rect.fromLTRB(rect.left + a, rect.center.dy - h, rect.left + b, rect.center.dy + h);
@@ -160,8 +207,8 @@ enum BoardRailPart { thumb, track }
 /// The vertical rail drawn in [drawn] (any frame): the strip across it that takes the pointer — the thumb's
 /// [kBoardThumbHit], the widest of its hit targets — down the rail's length. The room's floating cameras rest beside
 /// it (D-109), so the thumb is never half hidden and a press on it never moves a camera box.
-Rect boardRailHitStrip(Rect drawn) {
+Rect boardRailHitStrip(Rect drawn, {double hit = kBoardThumbHit}) {
   final c = drawn.center.dx;
-  const h = kBoardThumbHit / 2;
+  final h = hit / 2;
   return Rect.fromLTRB(c - h, drawn.top, c + h, drawn.bottom);
 }

@@ -928,6 +928,33 @@ class ClientRecorder extends ChangeNotifier {
     _webRecorder?.removeStream('remote_$participantSid');
   }
 
+  // ── D-306: the web recording draws the room (live_recording_layout.dart) ────────────────────────────────
+  // room.dart sends the layout and the sources it names; the compositor draws them every frame. No-ops on
+  // mobile / desktop (they record the room UI itself) and in an audio-only recording.
+
+  /// The tiles (RecLayout.toJson).
+  void setRecordingLayout(String json) {
+    if (!kIsWeb || audioOnly) return;
+    _webRecorder?.setLayout(json);
+  }
+
+  /// A LiveKit video track (its mediaStreamTrack) as source [label]; never stopped by the recorder.
+  void addRecordingTrack(String label, Object? mediaStreamTrack) {
+    if (!kIsWeb || audioOnly || mediaStreamTrack == null) return;
+    _webRecorder?.addTrack(mediaStreamTrack, label);
+  }
+
+  void removeRecordingSource(String label) {
+    if (!kIsWeb) return;
+    _webRecorder?.removeStream(label);
+  }
+
+  /// An image source's next frame (the whiteboard page, RGBA).
+  void pushRecordingFrame(String label, Uint8List rgba, int width, int height) {
+    if (!kIsWeb || audioOnly) return;
+    _webRecorder?.pushImageFrame(label, rgba, width, height);
+  }
+
   /// Phase 2 confirmation: called from room.dart AFTER startScreenCaptureService
   /// has returned (meaning RPScreenRecorder / MediaProjection is running).
   /// No-op on web.

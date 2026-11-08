@@ -23,7 +23,7 @@ import 'annotation/annotation_controller.dart';
 // The whiteboard (D-087): the "Whiteboard" region below
 import 'whiteboard/board_controller.dart';
 import 'whiteboard/board_protocol.dart' show BoardBackground, BoardFormat, kBoardMaxPages;
-import 'whiteboard/board_scrollbar.dart' show boardRailHitStrip;
+import 'whiteboard/board_scrollbar.dart' show boardRailHitStrip, kBoardThumbHit, kBoardTouchThumbHit;
 import 'whiteboard/board_toolbar.dart' show boardShortcutTool;
 import 'whiteboard/board_view.dart';
 import 'annotation/annotation_layer.dart';
@@ -86,6 +86,8 @@ import 'package:flutter_education_app/features/shared/live/live_media_controller
 import 'package:flutter_education_app/features/shared/live/live_net_pill.dart';
 import 'package:flutter_education_app/features/shared/live/live_quality_governor.dart' show LiveVideoTier;
 import 'whiteboard/board_video_track.dart';
+import 'whiteboard/board_export.dart' show boardRecordingRgba;
+import 'package:flutter_education_app/features/shared/live/live_recording_layout.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_info_sheet.dart';
 import 'package:flutter_education_app/features/shared/points/live_plan_sheet.dart' show showLivePlanSheet;
 import 'package:permission_handler/permission_handler.dart';
@@ -403,7 +405,13 @@ class _RoomPageState extends State<RoomPage>
 
   /// The course session's device recorder runs (client mode, or a server that does not say; never in server mode,
   /// where LiveKit Egress records).
-  bool get _deviceRecords => widget.isTeacher && widget.recordingEnabled && widget.liveConfig.deviceRecorder;
+  /// D-306: never in a meeting (its creator presses Record), whoever opens it.
+  bool get _deviceRecords => liveRecordsAtStart(
+        isMeeting: widget.ref.isMeeting,
+        isTeacher: widget.isTeacher,
+        recordingEnabled: widget.recordingEnabled,
+        deviceRecorder: widget.liveConfig.deviceRecorder,
+      );
 
   /// Minimized with pause_hidden_video: the page draws no video at all (adaptive stream then pauses every track the
   /// box does not show; the box keeps its own renderer).
@@ -442,7 +450,10 @@ class _RoomPageState extends State<RoomPage>
     unawaited(_boardVideo.sync(want: want));
   }
 
-  void _onBoardScene() => _boardVideo.markDirty();
+  void _onBoardScene() {
+    _boardVideo.markDirty();
+    _recBoardDirty = true; // D-306: the web recording's copy of the page
+  }
 
   bool _depsReady = false;
   // D-093 hook (whiteboard page format): the share sheet's choice reaches _startBoard.
@@ -883,6 +894,7 @@ class _RoomPageState extends State<RoomPage>
       _recorderStarted = false; // a new recording may start later in the same room
     });
     _stopLiveKitAudioTap();
+    _stopRecordingScene();
     unawaited(_stopAndDrain(rec));
   }
 
@@ -1484,6 +1496,14 @@ class _RoomPageState extends State<RoomPage>
       if (_deviceRecords && widget.room.connectionState == ConnectionState.connected) {
         await _startRecorderOnce();
       }
+
+      // D-306: a meeting opens with the recording stopped; its creator is told once where Record is.
+      if (mounted && _canRecordMeeting && _recorder == null) {
+        showAppNotice(
+            t('التسجيل متوقف. اضغط «تسجيل» في الأعلى عندما تريد البدء.',
+                'Recording is off. Press Record at the top when you want to start.'),
+            icon: Icons.fiber_manual_record_outlined);
+      }
     });
   }
   @override
@@ -1577,6 +1597,8 @@ class _RoomPageState extends State<RoomPage>
     PresenterCamStore.instance.removeListener(_onSelfViewPrefs);
     _clockTick.dispose();
     unawaited(_boardVideo.stop());
+    _stopRecordingScene();
+    _syncFocusSystemUi(force: false); // D-306: the system bars come back with the room gone
     _lobby?.dispose();
     _controls?.dispose();
     // Annotation: the Android overlay is hidden by disposeLiveNativeEvents() below (it owns onClosed).
@@ -2037,7 +2059,7 @@ class _RoomPageState extends State<RoomPage>
   static const _recorderChannel = MethodChannel('com.doubley.nextbrain/native_recorder');
 
   void _startLiveScreenCapture() {
-    if (!widget.isTeacher || !Platform.isAndroid) return;
+    if (!_recordsHere || !Platform.isAndroid) return; // D-306: a meeting creator's recording too
     _liveScreenCaptureTimer?.cancel();
     final gen = ++_liveCaptureGen;
     void next(Duration wait) {
@@ -2119,7 +2141,7 @@ class _RoomPageState extends State<RoomPage>
   /// (which publish/unpublish a track, firing that event) pause/resume
   /// this without a direct cross-file call into room_screen_share.dart.
   void _maybeSyncLiveScreenCapture() {
-    if (!widget.isTeacher || !Platform.isAndroid) return;
+    if (!_recordsHere || !Platform.isAndroid) return; // D-306: a meeting creator's recording too
     // D-092: only while the device recorder records frames. Every participant event used to (re)start this for a
     // teacher — in server mode (Egress) and with no recording at all too — so the phone screenshotted the whole room
     // (a GPU read-back of the camera texture + a PNG encode + a channel call) twice a second for nothing.
@@ -2302,7 +2324,7 @@ class _RoomPageState extends State<RoomPage>
       // as a new LocalAudioTrack instance, this is what catches it and
       // rebinds, instead of the recording silently losing mic audio for
       // the rest of the session with no error anywhere.
-      if (widget.isTeacher) _startLiveKitAudioTap();
+      if (_recordsHere) _startLiveKitAudioTap(); // D-306: a meeting creator's recording too
     })
     ..on<LocalTrackUnpublishedEvent>((e) {
       _scheduleSort();
@@ -2325,13 +2347,14 @@ class _RoomPageState extends State<RoomPage>
         final nativeStream = web_rec.nativeAudioStreamFromTrack(
           (event.track as RemoteAudioTrack).mediaStreamTrack,
         );
-        _recorder?.addRemoteAudioStream(event.participant.sid, nativeStream);
+        // D-306: one source per audio TRACK (a voice and a shared screen's sound are two tracks).
+        _recorder?.addRemoteAudioStream(event.publication.sid, nativeStream);
       }
     })
     ..on<TrackUnsubscribedEvent>((event) {
       _scheduleSort();
       if (kIsWeb && _recordsHere && event.track is RemoteAudioTrack) { // [meeting-recording]
-        _recorder?.removeRemoteAudioStream(event.participant.sid);
+        _recorder?.removeRemoteAudioStream(event.publication.sid);
       }
     })
     ..on<TrackMutedEvent>((_) => _scheduleSort())
@@ -2530,6 +2553,10 @@ class _RoomPageState extends State<RoomPage>
       // compositor, so the placeholder matches Android/iOS exactly instead
       // of the compositor's own separately hand-drawn one.
       unawaited(_sendLiveScreenPlaceholderWeb());
+      // D-306: a recording started mid-room (a meeting's Record) hears everyone who already spoke up — the
+      // subscribe events above only cover tracks that arrive later — and draws the room as it is now.
+      _attachRemoteAudioToRecorder();
+      _syncRecordingScene();
       return;
     }
 
@@ -2591,6 +2618,138 @@ class _RoomPageState extends State<RoomPage>
     } catch (e) {
       log('[REC] startScreenCaptureService error: $e');
     }
+  }
+
+  // ── D-306: the web recording draws the room (lib/features/shared/live/live_recording_layout.dart) ──────────
+  // The compositor used to draw this browser's own camera and share only. Now every re-sort describes the room —
+  // the stage (the whiteboard, this device's share or the share on the stage) and the cameras that are on, in the
+  // stage order (the speaker first) — and sends the layout plus the sources it names: remote cameras / screens are
+  // the LiveKit tracks the room already receives (wrapped, never stopped), the whiteboard page is re-rendered
+  // into a canvas at 2 fps while it changes. Android and iOS need none of this: they record the room UI itself.
+  final Map<String, Object> _recVideo = {}; // compositor label → the mediaStreamTrack it wraps
+  String? _recLayoutSent;
+  Timer? _recBoardTimer;
+  bool _recBoardDirty = true;
+  bool _recBoardBusy = false;
+  DateTime _recBoardPushed = DateTime.fromMillisecondsSinceEpoch(0);
+
+  bool get _webRecordsVideo {
+    final r = _recorder;
+    return kIsWeb && _recordsHere && r != null && !r.audioOnly && _recorderStarted;
+  }
+
+  void _attachRemoteAudioToRecorder() {
+    if (!kIsWeb || _recorder == null) return;
+    for (final p in widget.room.remoteParticipants.values) {
+      for (final pub in p.audioTrackPublications) {
+        final t = pub.track;
+        if (t is! RemoteAudioTrack) continue;
+        _recorder?.addRemoteAudioStream(pub.sid, web_rec.nativeAudioStreamFromTrack(t.mediaStreamTrack));
+      }
+    }
+  }
+
+  /// The camera publication of [p] that is on and has a track (null: camera off).
+  TrackPublication? _recCameraOf(Participant p) {
+    for (final pub in p.videoTrackPublications) {
+      if (pub.isScreenShare || isBoardVideoName(pub.name) || pub.muted) continue;
+      if (pub.track is VideoTrack) return pub;
+    }
+    return null;
+  }
+
+  void _syncRecordingScene() {
+    if (!kIsWeb) return;
+    final rec = _recorder;
+    if (rec == null || !_webRecordsVideo) {
+      _stopRecordingScene();
+      return;
+    }
+    final wanted = <String, Object>{};
+    RecSource? stage;
+    if (_isBoardMain) {
+      stage = RecSource(label: 'board', kind: RecSourceKind.board, name: _nameOf(_board.presenter ?? ''));
+    } else if (_isScreenShareMain) {
+      final p = _stageTracks.first.participant;
+      if (p is LocalParticipant) {
+        stage = const RecSource(label: 'screen', kind: RecSourceKind.screen); // attached by the share itself
+      } else {
+        final pub = p.videoTrackPublications.where((t) => t.isScreenShare && !isBoardVideoName(t.name)).firstOrNull;
+        final track = pub?.track;
+        if (pub != null && track is VideoTrack) {
+          stage = RecSource(label: 'rscreen_${pub.sid}', kind: RecSourceKind.screen, name: _nameOf(p.identity));
+          wanted[stage.label] = track.mediaStreamTrack;
+        }
+      }
+    }
+    final cams = <RecSource>[];
+    final seen = <String>{};
+    for (final t in participantTracks) {
+      if (t.type == ParticipantTrackType.kScreenShare) continue;
+      final p = t.participant;
+      if (!seen.add(p.identity)) continue;
+      final pub = _recCameraOf(p);
+      final track = pub?.track;
+      if (pub == null || track is! VideoTrack) continue;
+      final label = p is LocalParticipant ? 'lcam' : 'rcam_${pub.sid}';
+      cams.add(RecSource(label: label, kind: RecSourceKind.camera, name: _nameOf(p.identity), speaking: p.isSpeaking));
+      wanted[label] = track.mediaStreamTrack;
+    }
+    final layout = recordingLayout(stage: stage, cameras: cams, rtl: AppConfig.lang == 'ar');
+    // Only what is drawn is attached: a camera past the thumbnails costs nothing.
+    final drawn = layout.labels;
+    wanted.removeWhere((label, _) => !drawn.contains(label));
+    for (final label in _recVideo.keys.toList()) {
+      if (!identical(_recVideo[label], wanted[label])) {
+        rec.removeRecordingSource(label);
+        _recVideo.remove(label);
+      }
+    }
+    wanted.forEach((label, track) {
+      if (_recVideo.containsKey(label)) return;
+      rec.addRecordingTrack(label, track);
+      _recVideo[label] = track;
+    });
+    final json = layout.toJson();
+    if (json != _recLayoutSent) {
+      _recLayoutSent = json;
+      rec.setRecordingLayout(json);
+    }
+    // The whiteboard page, while it is on the stage.
+    if (stage?.kind == RecSourceKind.board) {
+      _recBoardTimer ??= Timer.periodic(const Duration(milliseconds: 500), (_) => unawaited(_pushRecordingBoard()));
+    } else {
+      _recBoardTimer?.cancel();
+      _recBoardTimer = null;
+    }
+  }
+
+  Future<void> _pushRecordingBoard() async {
+    final rec = _recorder;
+    if (_recBoardBusy || rec == null || !_isBoardMain || LiveRoomHost.isMinimized) return;
+    final now = DateTime.now();
+    // A still page is sent again every 2 s (the canvas keeps the last one; this only covers a re-created one).
+    if (!_recBoardDirty && now.difference(_recBoardPushed) < const Duration(seconds: 2)) return;
+    _recBoardBusy = true;
+    try {
+      final rgba = _board.isContinuous ? await boardRecordingRgba(_board) : await boardPageRgba(_boardPageKey);
+      if (rgba == null || !identical(rec, _recorder)) return;
+      _recBoardDirty = false;
+      _recBoardPushed = now;
+      rec.pushRecordingFrame('board', rgba, kBoardVideoWidth, kBoardVideoHeight);
+    } catch (e) {
+      log('[REC] board frame: $e');
+    } finally {
+      _recBoardBusy = false;
+    }
+  }
+
+  void _stopRecordingScene() {
+    _recBoardTimer?.cancel();
+    _recBoardTimer = null;
+    _recVideo.clear(); // the compositor drops its sources when it stops
+    _recLayoutSent = null;
+    _recBoardDirty = true;
   }
 
   bool _hasVideoTrack(TrackPublication pub) => pub.track is VideoTrack;
@@ -2701,6 +2860,7 @@ class _RoomPageState extends State<RoomPage>
     widget.room.remoteParticipants.length + 1,
     );
     }
+    _syncRecordingScene(); // D-306
   }
 
   VideoTrack? _resolveScreenTrack(Participant p) {
@@ -2773,6 +2933,9 @@ class _RoomPageState extends State<RoomPage>
   }
 
   Widget _buildRoomPage() {
+    if ((_focusOn && !LiveRoomHost.isMinimized) != _focusUiOn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncFocusSystemUi()); // D-306
+    }
     // Full view (D-095): the back button brings the bars back first (LiveRoomHost.handleBack asks the room's
     // navigator, whose maybePop lands here), then minimizes as before.
     return PopScope(
@@ -2840,9 +3003,8 @@ class _RoomPageState extends State<RoomPage>
                                 behavior: HitTestBehavior.opaque,
                                 onTapUp: (d) => _onStageTap(d.localPosition, constraints.biggest),
                                 child: ClipRRect(
-                                  borderRadius: const BorderRadius.all(
-                                    Radius.circular(20),
-                                  ),
+                                  // D-306: full view is edge to edge (no rounded frame around the content).
+                                  borderRadius: BorderRadius.all(Radius.circular(_focusOn ? 0 : 20)),
                                   child: _buildMainVideo(),
                                 ),
                               ),
@@ -3484,7 +3646,8 @@ class _RoomPageState extends State<RoomPage>
     final rail = _boardRailKey.currentContext?.findRenderObject();
     final frame = _stageKey.currentContext?.findRenderObject();
     if (rail is! RenderBox || frame is! RenderBox || !rail.attached || !frame.attached || !rail.hasSize) return null;
-    return boardRailHitStrip(MatrixUtils.transformRect(rail.getTransformTo(frame), Offset.zero & rail.size));
+    return boardRailHitStrip(MatrixUtils.transformRect(rail.getTransformTo(frame), Offset.zero & rail.size),
+        hit: !kIsWeb && (Platform.isAndroid || Platform.isIOS) ? kBoardTouchThumbHit : kBoardThumbHit); // D-306
   }
 
   /// The rail strip the floating boxes were last placed beside.
@@ -3933,6 +4096,19 @@ class _RoomPageState extends State<RoomPage>
   /// Full view is on — and drops by itself when the stage goes back to the waiting card.
   bool get _focusOn => _focus && _canFocus;
 
+  /// D-306: the system bars / orientation follow full view on a phone (live_focus_chrome.dart).
+  bool _focusUiOn = false;
+
+  void _syncFocusSystemUi({bool? force}) {
+    final on = force ?? (mounted && _focusOn && !LiveRoomHost.isMinimized);
+    if (on == _focusUiOn) return;
+    _focusUiOn = on;
+    final ui = liveFullViewSystemUi(on: on, mobile: !kIsWeb && (Platform.isAndroid || Platform.isIOS));
+    if (ui == null) return;
+    unawaited(SystemChrome.setEnabledSystemUIMode(ui.mode).catchError((_) {}));
+    unawaited(SystemChrome.setPreferredOrientations(ui.orientations).catchError((_) {}));
+  }
+
   void _setFocus(bool on) {
     if (on == _focus || !mounted) return;
     _focusBarsTimer?.cancel();
@@ -4328,6 +4504,7 @@ class _RoomPageState extends State<RoomPage>
   void _onBoardChanged() {
     if (!mounted) return;
     _boardVideo.markDirty();
+    _recBoardDirty = true;
     _syncBoardVideo();
     final presenter = _board.presenter;
     if (presenter != _boardPresenterSeen) {

@@ -350,6 +350,116 @@
 
   const _sources = {};
 
+  // ── D-306: the room's layout (lib/features/shared/live/live_recording_layout.dart) ──────────────
+  // setLayout(json) hands the canvas a list of tiles {l: source label, k: camera|screen|board, x, y, w, h (px on
+  // the 1920×1080 canvas), f: contain|auto, n: name, m: main, s: speaking} and `more` (cameras that did not fit).
+  // While a layout has tiles, _drawFrame draws them instead of the legacy "screen, else my camera" pair: the
+  // stage letterboxed in its own shape, each camera cropped when its shape is close to its cell (letterboxed when
+  // not: a phone held upright), an initials card while a source has no frame yet, a name pill and a ring on the
+  // one speaking. An empty layout (nothing on) falls back to the legacy drawing / the branded placeholder.
+  let _layout = null;
+
+  function _tileReady(src) {
+    if (!src) return null;
+    if (src.canvasEl) return src.canvasEl;
+    if (src.videoEl && src.videoEl.readyState >= 2 && src.videoEl.videoWidth > 0) return src.videoEl;
+    return null;
+  }
+
+  function _drawFitted(el, x, y, w, h, fit) {
+    const sw = el.videoWidth || el.width, sh = el.videoHeight || el.height;
+    if (!sw || !sh || w <= 0 || h <= 0) return;
+    const ratio = (sw / sh) / (w / h);
+    const cover = fit === 'cover' || (fit === 'auto' && ratio > 0.72 && ratio < 1.39);
+    if (cover) {
+      // Crop the source to the cell's shape, about its centre.
+      let cw = sw, ch = sh;
+      if (sw / sh > w / h) cw = sh * (w / h); else ch = sw / (w / h);
+      _ctx.drawImage(el, (sw - cw) / 2, (sh - ch) / 2, cw, ch, x, y, w, h);
+    } else {
+      const s = Math.min(w / sw, h / sh);
+      const dw = sw * s, dh = sh * s;
+      _ctx.drawImage(el, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    }
+  }
+
+  function _drawLayout() {
+    const L = _layout;
+    _ctx.fillStyle = '#0B1220';
+    _ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    const fullBleed = (t) => t.x <= 0 && t.y <= 0 && t.w >= CANVAS_W && t.h >= CANVAS_H;
+    for (const t of L.tiles) {
+      const el = _tileReady(_sources[t.l]);
+      const bleed = fullBleed(t);
+      const r = bleed ? 0 : (t.m ? 18 : 14);
+      _ctx.save();
+      _roundRectPath(t.x, t.y, t.w, t.h, r);
+      _ctx.clip();
+      _ctx.fillStyle = t.k === 'board' && el ? '#FFFFFF' : '#111A2E'; // a page letterboxes on paper
+      _ctx.fillRect(t.x, t.y, t.w, t.h);
+      if (el) {
+        try { _drawFitted(el, t.x, t.y, t.w, t.h, t.f || 'contain'); } catch (_) { /* a frame not decodable yet */ }
+      } else {
+        // No frame yet (or a camera that just turned on): the person's initials.
+        const cx = t.x + t.w / 2, cy = t.y + t.h / 2;
+        const rad = Math.max(18, Math.min(t.w, t.h) * 0.2);
+        _ctx.fillStyle = '#1E2B47';
+        _ctx.beginPath();
+        _ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+        _ctx.fill();
+        _ctx.fillStyle = '#E2E8F0';
+        _ctx.font = `600 ${Math.round(rad * 0.8)}px sans-serif`;
+        _ctx.textAlign = 'center';
+        _ctx.textBaseline = 'middle';
+        _ctx.fillText(_initialsOf(t.n || ''), cx, cy + 1);
+      }
+      _ctx.restore();
+      // The one speaking: a ring (cameras only, never around the stage).
+      if (t.s && t.k === 'camera' && !bleed) {
+        _ctx.save();
+        _ctx.strokeStyle = '#22D3EE';
+        _ctx.lineWidth = 4;
+        _roundRectPath(t.x + 2, t.y + 2, t.w - 4, t.h - 4, Math.max(0, r - 2));
+        _ctx.stroke();
+        _ctx.restore();
+      }
+      // A name pill on every camera (bottom start corner).
+      if (t.k === 'camera' && t.n) {
+        const fs = t.w >= 900 ? 26 : 18;
+        _ctx.save();
+        _ctx.font = `600 ${fs}px sans-serif`;
+        const name = t.n.length > 28 ? t.n.slice(0, 27) + '…' : t.n;
+        const tw = Math.min(t.w - 24, _ctx.measureText(name).width + 24);
+        const ph = fs + 14, px = L.rtl ? t.x + t.w - tw - 12 : t.x + 12, py = t.y + t.h - ph - 12;
+        _ctx.fillStyle = 'rgba(2, 6, 23, 0.62)';
+        _roundRectPath(px, py, tw, ph, ph / 2);
+        _ctx.fill();
+        _ctx.fillStyle = '#F8FAFC';
+        _ctx.textAlign = 'center';
+        _ctx.textBaseline = 'middle';
+        _ctx.fillText(name, px + tw / 2, py + ph / 2 + 1, tw - 16);
+        _ctx.restore();
+      }
+    }
+    if (L.more > 0) {
+      const last = L.tiles[L.tiles.length - 1];
+      const label = '+' + L.more;
+      _ctx.save();
+      _ctx.font = '700 24px sans-serif';
+      const w = _ctx.measureText(label).width + 36, h = 44;
+      const x = last ? last.x + (last.w - w) / 2 : CANVAS_W - w - 24;
+      const y = last ? Math.min(CANVAS_H - h - 8, last.y + last.h + 12) : CANVAS_H - h - 24;
+      _ctx.fillStyle = 'rgba(30, 41, 59, 0.9)';
+      _roundRectPath(x, y, w, h, h / 2);
+      _ctx.fill();
+      _ctx.fillStyle = '#F8FAFC';
+      _ctx.textAlign = 'center';
+      _ctx.textBaseline = 'middle';
+      _ctx.fillText(label, x + w / 2, y + h / 2 + 1);
+      _ctx.restore();
+    }
+  }
+
   // ── Visible 1px container (prevents browser from suspending video decoding) ──
   function _ensureVisibleContainer() {
     if (!_visibleContainer) {
@@ -434,6 +544,7 @@
   let _diagCounter = 0;
   function _drawFrame() {
     if (!_ctx) return;
+    if (_layout && _layout.tiles && _layout.tiles.length) { _drawLayout(); return; }
 
     const screen = _sources['screen'];
     const camera = _sources['camera'];
@@ -1116,6 +1227,24 @@
       console.log(`[Compositor] addStream: ${label} | video=${stream.getVideoTracks().length} audio=${stream.getAudioTracks().length}`);
     },
 
+    // D-306: the room's tiles (see _drawLayout); invalid JSON keeps the last layout.
+    setLayout(json) {
+      try {
+        const L = typeof json === 'string' ? JSON.parse(json) : json;
+        _layout = L && Array.isArray(L.tiles) ? L : null;
+      } catch (e) {
+        console.warn('[Compositor] setLayout: bad layout', e);
+      }
+    },
+
+    // D-306: a <canvas> the app paints (the whiteboard page) as source [label]: drawn as it is, never stopped.
+    addCanvas(label, canvas) {
+      if (!label || !canvas) return;
+      if (_sources[label]) compositor.removeStream(label);
+      _sources[label] = { canvasEl: canvas };
+      console.log(`[Compositor] addCanvas: ${label} ${canvas.width}x${canvas.height}`);
+    },
+
     removeStream(label) {
       const src = _sources[label];
       if (!src) return;
@@ -1250,6 +1379,7 @@
         );
       }
 
+      _layout = null;
       _stopping = false;
     },
 
@@ -1330,9 +1460,11 @@
       case 'updateParticipants':return compositor.updateParticipants(a1);
       case 'pause':             return compositor.pause();
       case 'resume':            return compositor.resume();
+      case 'setLayout':         return compositor.setLayout(a1);
+      case 'addCanvas':         return compositor.addCanvas(a1, a2);
       default: console.warn('[Compositor] unknown cmd:', cmd);
     }
   };
 
-  console.log('[Compositor] loaded — version 10 (premium branded placeholder w/ teacher+session+participant info, VP9/VP8-first mime selection, setInterval draw loop, periodic safety-flush, real-data/upload tracking)');
+  console.log('[Compositor] loaded — version 11 (D-306 room layout: cameras grid / stage + thumbnails, board canvas; premium branded placeholder w/ teacher+session+participant info, VP9/VP8-first mime selection, setInterval draw loop, periodic safety-flush, real-data/upload tracking)');
 })();
