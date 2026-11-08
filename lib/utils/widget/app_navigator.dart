@@ -38,6 +38,8 @@ import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyF
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
 import '../../features/shared/points/points_api.dart' show kPointsFeatureKey, pointsModuleFor;
 import '../../features/shared/points/points_wallet_page.dart' show PointsWalletPage;
+import '../../features/shared/records/records_api.dart' show kRecordsFeatureKey;
+import '../../features/shared/records/records_page.dart' show RecordsPage;
 import '../../features/shared/rag/rag_admin_links.dart' deferred as rag_admin_links;
 import '../../features/shared/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
 import '../../features/shared/exam_engine/paper/exam_setup_wizard.dart' deferred as exam_setup_wizard;
@@ -271,6 +273,14 @@ class AppNavigator {
         return;
       case 'org_assignments':
         await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenAssignmentsLink(nav));
+        return;
+      case 'records': // a meeting recording / a Records edit is ready or failed → Records on that item (D-311)
+        if (AppConfig.disableList.contains(kRecordsFeatureKey)) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        await nav.push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/records'), builder: (_) => RecordsPage(highlightId: targetId)));
         return;
       case 'live_lobby': // someone waits at the door of a room I host → the meeting / session with its lobby sheet
         await openLiveLobby(LiveRoomRef.parse(kind, targetId));

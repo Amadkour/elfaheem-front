@@ -31,6 +31,7 @@
 // import 'package:flutter/foundation.dart' show kIsWeb, ChangeNotifier;
 // import 'package:flutter/services.dart';
 // import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/shared/records/records_notice.dart' show showRecordsSavingNotice;
 // import 'recorder_web_stub.dart'
 // if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 //
@@ -1058,10 +1059,12 @@ class ClientRecorder extends ChangeNotifier {
       if (kIsWeb) await _webRecorder?.waitForBackgroundUploads(timeout: const Duration(minutes: 3));
       await apiClient.post(path);
       log('[REC] stop posted → $path');
+      showRecordsSavingNotice();          // D-311: "Saving your recording to Records" · Open
     } catch (e) {
       final ex = ApiException.from(e);
       if (recordingChunkVerdict(ex.statusCode, ex.code) == RecordingChunkVerdict.assembled) {
         log('[REC] stop: the recording is already assembled — done');
+        showRecordsSavingNotice();
         return;
       }
       log('[REC] stop post failed ($path): $e');

@@ -3111,3 +3111,44 @@ a changed interest or an older server without steps still use `GET /me/journey`)
 `journey_hint: pick_interests` and a "Plan your learning path" invite that opens the interests sheet. Trade-off: the
 home payload grows by the path's course briefs (a handful), and the cached journey is the full one; the home's
 request budget is unchanged.
+
+## D-311 — Records: my meeting recordings as a library, edited without touching the original · 2026-11-08 · accepted
+
+**What.** My profile › Records (kill switch `profile.records`) lists every meeting recording the person OWNS (D-058:
+recorded on the host's device, assembled on the server, stored on their Google Drive / OneDrive), one item each,
+newest first, grouped by meeting (title + date), with cover, title, length, size and a status chip (recording ·
+editing · saving to the drive · ready · failed + Retry). Tap a ready item → the editor; ⋯ → play & edit · rename ·
+cover · open in the drive · retry · delete; long-press → multi-select with a bar (Merge 2+ ready items in a chosen
+order, Delete). Files: `lib/features/shared/records/` (`records_api.dart` pure, `records_parts.dart` plain values,
+`records_page.dart`, `records_notice.dart`); backend `routers/records_router.py`, `services/records_service.py`,
+`services/records_edit.py`, migration 0064; contract `../back/FLUTTER_API_CHANGES.md` "Records".
+
+**Edits are non-destructive.** Trim (keep [a, b]), split (two items), cut a period ([a, b] removed, the rest joined),
+speed (0.5 · 0.75 · 1.25 · 1.5 · 2, audio pitch kept with `atempo`) and merge each make a NEW row (kind `edit`,
+`operation`, `op_params`, `source_ids`); the source is deleted (row + drive file) only when the person switches
+"Delete the original" on, and only after every output of the job is done. Why: an edit renders for minutes on the
+server and lands on the person's drive; a failed or wrong edit must never cost the original. Trade-off: the drive
+holds both until the person deletes one.
+
+**Jobs.** A background job per request (a split's two halves share one download): download the source(s) from the
+drive (`cloud_drive_service.download_file`: Google `alt=media`, OneDrive `/content`), ffmpeg with local_recorder's
+helpers (frame-accurate re-encode at the source's quality; a merge normalises sizes / fps / audio first — an audio-only
+part gets a black frame, a silent video a silent track; all audio → `.m4a`), upload with the recording pipeline's
+`_upload` (so a failed upload keeps the file and gets the same automatic retries), temp files removed. States
+assembling (stage downloading → processing) → uploading → done | failed with `progress`, each step a
+`job_updated{kind: recording}`; the library watches with `EventOrPoll` (no timer polling while the stream is up).
+At most 3 running edits per person, 2 jobs per worker. A cover (cropped wide with `showAppImageCropper`, public
+images bucket `record-covers/<owner>/`) is inherited by edits and embedded as the file's attached picture (a stream
+copy). A failed download is not retried automatically (Retry re-runs the job); a failed upload is.
+
+**Preview.** `POST …/play` returns a 2 h signed URL `/api/v1/me/records/stream/<token>` (bound to the owner, the row
+and its drive file id) that proxies the drive with HTTP Range — a web `<video>` / `video_player` cannot send a bearer
+token, so the token is the credential, as in routers/stream.py, without device binding (the person's own files, not
+paid content). Trade-off: playback bytes flow through the API server.
+
+**Ownership.** Someone else's record is 404 `record_not_found` on every route (the library never says what exists).
+Edit rows stay out of the meeting's own recordings list, so attendees only ever see the room recording.
+
+**After a meeting.** When the meeting recorder's stop reaches the server (End for everyone, or a plain Stop) the app
+shows "Saving your recording to Records" with Open; the ready / failed notification now opens Records on the item
+(`related_type: live_recording`, push module `records`, AppNavigator case `records`) instead of the calendar.
