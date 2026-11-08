@@ -41,6 +41,9 @@ class WebRecorder {
   void addStream(Object? stream, String label) {}
   void removeStream(String label) {}
   void setPlaceholderImage(Uint8List png) {}
+  void setLayout(String json) {}
+  void addTrack(Object? lkTrack, String label) {}
+  void pushImageFrame(String label, Uint8List rgba, int width, int height) {}
   void requestData() {}
   bool get hadRealData => false;
   int get chunksUploaded => 0;

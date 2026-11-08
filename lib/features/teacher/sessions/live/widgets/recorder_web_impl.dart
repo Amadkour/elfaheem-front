@@ -508,6 +508,53 @@ class WebRecorder {
     }
   }
 
+  // ── D-306: the room on the canvas (lib/features/shared/live/live_recording_layout.dart) ──────────────────
+
+  /// The tiles to draw (RecLayout.toJson); an empty layout brings back the compositor's own drawing.
+  void setLayout(String json) {
+    if (!_started) return;
+    try {
+      _dispatch('setLayout', json.toJS);
+    } catch (e) {
+      _log('setLayout error: $e');
+    }
+  }
+
+  /// A LiveKit video track (a remote camera / screen, this device's camera) as source [label]. The track is only
+  /// wrapped: removing the source never stops it (the room still shows it).
+  void addTrack(Object? lkTrack, String label) {
+    final stream = nativeAudioStreamFromTrack(lkTrack);
+    if (stream == null) {
+      _log('addTrack($label): no browser track behind it');
+      return;
+    }
+    addStream(stream, label);
+  }
+
+  final Map<String, (web.HTMLCanvasElement, web.CanvasRenderingContext2D)> _frames = {};
+
+  /// One RGBA frame ([width] × [height], rows top-down) for the image source [label] (the whiteboard page). The
+  /// first frame makes the canvas the compositor draws from.
+  void pushImageFrame(String label, Uint8List rgba, int width, int height) {
+    if (!_started || rgba.length < width * height * 4) return;
+    try {
+      var entry = _frames[label];
+      if (entry == null || entry.$1.width != width || entry.$1.height != height) {
+        final canvas = web.HTMLCanvasElement()
+          ..width = width
+          ..height = height;
+        final ctx = canvas.getContext('2d') as web.CanvasRenderingContext2D?;
+        if (ctx == null) return;
+        entry = (canvas, ctx);
+        _frames[label] = entry;
+        _dispatch('addCanvas', label.toJS, canvas);
+      }
+      entry.$2.putImageData(web.ImageData(Uint8ClampedList.sublistView(rgba, 0, width * height * 4).toJS, width, height.toJS), 0, 0);
+    } catch (e) {
+      _log('pushImageFrame($label) error: $e');
+    }
+  }
+
   Future<void> attachScreenStream(Object? stream) async {
     if (!_started || stream == null) return;
     try { _compositorRemoveStream('screen'); } catch (_) {}

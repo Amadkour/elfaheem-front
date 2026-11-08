@@ -3056,3 +3056,41 @@ PDFs instead); a touching-cells strip (|A|B|C|D| boxes sharing borders) and opti
 detected yet. The Super Admin's `exam.auto_correct` switch (read by the engine through the core's new
 `GET /internal/v1/features/{key}`) turns detection and reading of own sheets off; NextBrain's own sheets keep working
 exactly as before.
+
+## D-306 — Free meetings: recording stopped at start, the whole room in the recording, full-screen board · 2026-11-08 · accepted
+
+**Recording stopped at start.** A meeting (Meet now or a calendar meeting, never tied to a course session) opens with
+the recording stopped, whoever opens it; its creator presses Record (top row) and is told so once when the room
+opens. This was already true in practice (meetings join with `isTeacher: false` and the server sends
+`recording_enabled: false`), now it is one pure rule, `liveRecordsAtStart` (live_recording_layout.dart), that the
+room's `_deviceRecords` reads. Course sessions keep recording on the teacher's device at the start (D-098): a
+different code path, unchanged. The Record sheet now says what the recording holds.
+
+**The whole room in one video.** The device that records composes it; how depends on the platform:
+* Web: the compositor (web/recorder_compositor.js) used to draw this browser's camera and its own share only. Now the
+  room sends a layout (`recordingLayout`: the stage — whiteboard or shared screen — letterboxed with up to 4 camera
+  thumbnails on the end side, else the cameras that are on in a 1 / 2 / 2×2 / 3×2 / 3×3 grid with "+N", names and a
+  ring on the speaker) and the sources it names: remote cameras and screens are the LiveKit tracks the room already
+  receives (wrapped, never stopped), the whiteboard is re-rendered into a canvas at 2 fps while it changes. Every
+  remote voice is mixed by audio TRACK (a shared screen's sound no longer replaces its sharer's voice), including
+  the ones already in the room when Record is pressed mid-meeting (they were missed).
+* Android: the recording is the room UI itself (D-110 native copy of the Flutter surface; whole-screen
+  MediaProjection while this phone shares), so cameras, board and shares are in it as seen. Fixed: that copy was
+  gated on `isTeacher`, so a meeting creator's Android recording showed the native placeholder card. Audio: the
+  microphone plus, new, the other people's voices — `RemoteAudioMix.kt` taps WebRTC's played-out audio (the fork's
+  PlaybackSamplesReadyCallback, reached by reflection) and mixes it into the recorder's PCM; without the hook the
+  recording stays microphone-only.
+* iOS: RPScreenRecorder records the app's screen (everything visible) with the LiveKit microphone tap; the other
+  people's voices are NOT mixed (no playout tap on iOS yet; it needs native work on a Mac).
+* Desktop (Windows / macOS / Linux): no device recorder at all (unchanged).
+
+Trade-offs: on a loudspeaker the Android microphone also hears the voices from the room, a few tens of ms after the
+mixed copy (a slight doubling); earphones avoid it. The web recorder's own camera / microphone capture is unchanged
+(its microphone is what records the host's voice). Not yet seen on a device or a real browser call.
+
+**Full-screen board.** Full view gives the content every pixel: no rounded frame, no side gutter, and on a phone /
+tablet immersive system bars plus every orientation (restored on leaving, minimizing or closing the room), with the
+safe area still respected. A fixed page keeps its shape (stretching would distort what was drawn), so where it
+fights the screen's shape a "Turn your device…" pill shows for 5 s; a continuous page fills both ways. On a touch
+screen the scrollbar thumb is big (12 px, 24 px held, ≥ 56 px long, 56 px hit target, a grip); a long press grabs it
+and the finger drags the page up / down (D-109 behaviour, now finger-sized).

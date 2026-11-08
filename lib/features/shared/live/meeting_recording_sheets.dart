@@ -202,7 +202,11 @@ class RecordSetupLayout extends StatelessWidget {
     final none = list != null && !list.any((a) => a.configured);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      // D-306: the choices scroll when the sheet is short (a phone held sideways); Start stays in view under them.
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Flexible(
+          child: SingleChildScrollView(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader(t('تسجيل الاجتماع', 'Record the meeting')),
         Text(t('يُحفظ التسجيل في سحابتك أنت، لا على خوادم المنصة.', 'The recording is saved to your own drive, not on the platform.'),
             style: appText(12.5, c: c.textMedium, h: 1.5)),
@@ -243,10 +247,15 @@ class RecordSetupLayout extends StatelessWidget {
           items: [for (final q in RecordingQuality.values) DropdownMenuItem(value: q, child: Text(q.label))],
           onChanged: onQuality == null ? null : (q) => onQuality!(q ?? RecordingQuality.p720),
         ),
+        const SizedBox(height: 12),
+        RecordingIncludes(audioOnly: quality.audioOnly),
         if (error != null) ...[
           const SizedBox(height: 10),
           AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!),
         ],
+            ]),
+          ),
+        ),
         const SizedBox(height: 16),
         AppPrimaryButton(
           key: const ValueKey('record_setup.start'),
@@ -254,6 +263,59 @@ class RecordSetupLayout extends StatelessWidget {
           icon: Icons.fiber_manual_record_rounded,
           busy: busy,
           onPressed: canStart ? onStart : null,
+        ),
+      ]),
+    );
+  }
+}
+
+/// D-306: what the recording will hold, under the quality — the cameras that are on, every voice, the whiteboard and
+/// shared screens composed into one video (live_recording_layout.dart); an audio-only recording holds the voices
+/// alone. Plain values (test/ui/meeting_recording_layout_test.dart).
+class RecordingIncludes extends StatelessWidget {
+  const RecordingIncludes({super.key, this.audioOnly = false});
+
+  final bool audioOnly;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final items = <(IconData, String)>[
+      if (!audioOnly) (Icons.videocam_rounded, t('الكاميرات المفتوحة', 'Cameras that are on')),
+      (Icons.graphic_eq_rounded, t('كل الأصوات', 'Every voice')),
+      if (!audioOnly) (Icons.draw_rounded, t('السبورة', 'The whiteboard')),
+      if (!audioOnly) (Icons.screen_share_rounded, t('الشاشات المشاركة', 'Shared screens')),
+    ];
+    return Container(
+      key: const ValueKey('record_setup.includes'),
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: c.primary.withValues(alpha: 0.06),
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.primary.withValues(alpha: 0.16)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('ما يتضمّنه التسجيل', 'What the recording holds'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
+          for (final (icon, label) in items)
+            Container(
+              padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 12, 6),
+              decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(999), border: Border.all(color: c.divider)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 16, color: c.primary),
+                const SizedBox(width: 6),
+                Flexible(child: Text(label, style: appText(12.5, w: FontWeight.w600, c: c.textDark))),
+              ]),
+            ),
+        ]),
+        const SizedBox(height: AppSpace.sm),
+        Text(
+          audioOnly
+              ? t('صوت فقط: ملف أصغر، بلا صورة.', 'Audio only: a smaller file, no picture.')
+              : t('في فيديو واحد: ما يُعرض يملأ الإطار والكاميرات بجانبه، والكاميرات وحدها في شبكة.',
+                  'One video: what is shown fills the frame with the cameras beside it; cameras alone sit in a grid.'),
+          style: appText(12, c: c.textMedium, h: 1.45),
         ),
       ]),
     );

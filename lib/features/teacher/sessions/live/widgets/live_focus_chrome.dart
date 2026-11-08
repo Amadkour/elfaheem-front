@@ -18,6 +18,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show DeviceOrientation, SystemUiMode;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
@@ -31,6 +32,16 @@ const Duration kLiveFocusChromeIdle = Duration(seconds: 4);
 
 /// What a tap on the content does to the bars in full view: shows them when hidden, hides them when shown.
 bool liveFocusBarsAfterTap(bool shown) => !shown;
+
+/// D-306: what full view asks of a phone / tablet — the system bars away (immersive: a swipe from the edge brings
+/// them back for a moment) and every orientation, so the shared page or screen takes the whole display and turns
+/// with the device; leaving it gives both back (edge-to-edge, every orientation: the app's own default). Null off a
+/// phone / tablet (the web and desktop have no system bars to hide). The room applies it in room.dart
+/// (`_syncFocusSystemUi`); the safe area (a camera cut-out, rounded corners) still pads the content.
+({SystemUiMode mode, List<DeviceOrientation> orientations})? liveFullViewSystemUi({required bool on, required bool mobile}) {
+  if (!mobile) return null;
+  return (mode: on ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge, orientations: DeviceOrientation.values);
+}
 
 class LiveFocusChrome extends StatelessWidget {
   const LiveFocusChrome({
