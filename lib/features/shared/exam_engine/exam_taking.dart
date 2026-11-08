@@ -248,6 +248,8 @@ String examCodeText(String code) => switch (code) {
       'orgs_disabled' => t('خدمة المؤسسات غير متاحة حالياً على المنصة', 'Organizations are currently unavailable on this platform'),
       'org_not_approved' => t('المؤسسة غير مفعّلة حالياً (موقوفة أو قيد المراجعة)', 'The organization is not active right now (suspended or under review)'),
       'org_inactive' => t('المؤسسة غير مفعّلة حالياً', 'This organization is deactivated'),
+      // D-301: the Super Admin switched the automatic tool off (exam.auto_correct / exam.auto_create)
+      'feature_disabled' => t('هذه الميزة متوقفة حالياً من إدارة المنصة', 'This feature is switched off by the platform right now'),
       _ => code,
     };
 

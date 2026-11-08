@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import '../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../../attendance/relay_host_provider.dart';
+import '../exam_features.dart' show examAutoCorrectAllowed;
 import '../exam_review_screen.dart';
 import 'offline_exam_core.dart';
 import 'offline_exam_relay.dart';
@@ -267,6 +268,7 @@ class _OfflineExamPanelState extends State<OfflineExamPanel> {
   }
 
   Future<void> _grade() async {
+    if (!examAutoCorrectAllowed()) return;               // D-301: the Super Admin's switch
     setState(() => _busy = 'grade');
     final r = await _api.grade(widget.examId);
     if (!mounted) return;

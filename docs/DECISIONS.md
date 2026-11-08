@@ -3001,3 +3001,30 @@ need the guest link, which the page and the sheets say. A material link opens th
 file itself (opening a file needs the enrolment checks of the course page anyway). The `/s/` nginx location (preview
 cards) and a web deploy with the new AASA are owner actions; until then people still reach the app through the
 catch-all redirect, and the phone apps open `/s/` links only after the store builds with the new manifest.
+
+## D-301 — Exam generation is a background job the teacher never waits on blindly; the Super Admin switches the automatic exam tools · 2026-11-08 · accepted
+
+**Why.** "Create automatic exam takes a long time, then shows try later" had four causes: (1) the wizard waited a fixed
+10 minutes and then dropped the job id with "still being written — try again shortly", while the run went on and a new
+attempt answered 409 `exam_gen_busy` until it ended; the questions already written were thrown away; (2) production
+writes every question with the exam model (qwen3:8b on CPU, ~235 s a question measured in D-198) plus a second model
+call that checks it, and retries up to three times; (3) a slot's retries could outlive the 600 s job lease (lease
+renewed only between slots), so a slow slot could restart the job; (4) a timed-out wait looked like a server error.
+
+**Decision.** The job (`/rag/exam-gen`, already a resumable worker job) is followed, not awaited: the Generate step shows
+waiting / writing / done / stopped / failed, N / M ready with the time left (the run's own pace), the questions as they
+arrive, and "Add the N ready now" (stops the rest), Stop, "Keep it running" (leave; opening the generator again for the
+course resumes it via `GET /exam-gen?course_id=`), Try again. `speed` fast (default: the hub's chat model, rules-only
+checks, two attempts) | quality (the exam model + the support check). The exam's own questions are sent as
+`avoid_prompts` and never written again; the focus text retrieves the matching passages (cached); a course with nothing
+indexed can be written from a topic (`topic_only` warning, never without a model). `RAG_EXAMGEN_PARALLEL` writes the next
+slots' first attempts at once for a model server that decodes several sequences (default 1: the CPU Ollama does not
+gain). Kill switches `exam.auto_create` and `exam.auto_correct`: hidden in the app and refused by the services (403
+`feature_disabled`) through the core's `GET /internal/v1/features/{key}`, off only when off on every platform, failing
+open when the core cannot answer (a switch, not an access rule).
+
+**Trade-offs.** Fast is the default although the owner chose qwen3:8b for exams (D-198): the teacher can still pick Best
+quality per run, and the rules (answer in the passage, distinct options, de-dup) apply to both. Measured locally on CPU
+(3 questions, cold): fast 316 s, quality 468 s — CPU decoding stays the floor; the real cure is that nobody has to sit
+through it. "Add the N ready now" stops the job rather than leaving it running, so a model is never busy for questions
+nobody will take.

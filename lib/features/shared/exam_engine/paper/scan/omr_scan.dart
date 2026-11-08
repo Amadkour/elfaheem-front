@@ -1093,6 +1093,7 @@ String photoNameOf(Uint8List b) {
 
 /// The codes of these routes in plain words (the server's own text wins when it has one in the current language).
 String omrCodeText(String? code, [Map<String, dynamic> detail = const {}]) => switch (code) {
+      'feature_disabled' => t('التصحيح التلقائي متوقف حالياً من إدارة المنصة', 'Automatic correction is switched off by the platform right now'),   // D-301
       'exam_not_bubble' => t('هذا الاختبار ليس بورقة تظليل — اختر ورقة التظليل وقالبًا منشورًا في إعداد الاختبار',
           'This exam does not use a bubble sheet — choose the bubble sheet and a published template in the exam setup'),
       'template_not_found' => t('قالب ورقة التظليل غير موجود — اختر قالبًا في إعداد الاختبار', 'The exam\'s sheet template is missing — choose one in the exam setup'),
