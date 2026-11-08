@@ -23,6 +23,7 @@ import '../../admin/admin_common.dart' show asInt, t;
 import '../rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
 import 'exam_authoring.dart';
 import 'exam_authoring_screen.dart' show ExamEditorScreen, SessionLockPicker, pickEngineDateTime;
+import 'exam_forms_import.dart' show GoogleFormsImportSheet, createExamForForm, kGoogleFormsImportFeatureKey;
 import 'exam_gen_api.dart' show genMetaOf;
 import 'exam_generate.dart' show ExamGenReview, GenMark, deleteGenItem, regenerateGenItem, sendGenFeedback;
 import 'exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, QuickGenerateCard, openExamGenerator;
@@ -161,8 +162,11 @@ class SlotExamSheet extends StatelessWidget {
 
 // ═══════════════════════════════════════ Online or Offline ═══════════════════════════════════════════════════════
 
-/// How the creator starts: write the questions, have them generated, or upload a ready file.
-enum QuickStart { manual, generate, file }
+/// How the creator starts: write the questions, have them generated, upload a ready file, or bring a Google Form.
+enum QuickStart { manual, generate, file, forms }
+
+/// "Import from Google Forms" is offered: the kill switch is off (the server turns it on while the Picker key is unset).
+bool get quickFormsAvailable => !AppConfig.disableList.contains(kGoogleFormsImportFeatureKey);
 
 IconData quickTypeIcon(String type) => switch (type) {
       'true_false' => Icons.rule_rounded,
@@ -175,9 +179,12 @@ IconData quickTypeIcon(String type) => switch (type) {
 
 /// The first question of a new exam (plain values; under the layout harness).
 class QuickStartChooser extends StatelessWidget {
-  const QuickStartChooser({super.key, required this.onPick, required this.canGenerate, this.onClassic});
+  const QuickStartChooser({super.key, required this.onPick, required this.canGenerate, this.onClassic, this.canImportForms = false});
   final ValueChanged<QuickStart> onPick;
   final bool canGenerate;
+
+  /// Shows "Import from Google Forms" ([quickFormsAvailable] in the app).
+  final bool canImportForms;
 
   /// The quiet "Classic exam (live quiz in the room)" link; null hides it (shown only where the legacy sheet exists).
   final VoidCallback? onClassic;
@@ -208,6 +215,17 @@ class QuickStartChooser extends StatelessWidget {
         text: t('PDF أو Word أو صورة', 'A PDF, Word file or photo'),
         onTap: () => onPick(QuickStart.file),
       ),
+      if (canImportForms) ...[
+        const SizedBox(height: AppSpace.sm),
+        _ModeCard(
+          key: const ValueKey('exam.quick.forms'),
+          icon: Icons.dynamic_form_outlined,
+          title: t('استيراد من Google Forms', 'Import from Google Forms'),
+          text: t('اختر نموذجاً من حسابك: يصبح اختباراً باسمه وأسئلته ودرجاته وإجاباته الصحيحة',
+              'Pick a form from your account: it becomes an exam with its name, questions, points and correct answers'),
+          onTap: () => onPick(QuickStart.forms),
+        ),
+      ],
       if (onClassic != null)
         Padding(
           padding: const EdgeInsets.only(top: AppSpace.sm),
@@ -251,7 +269,7 @@ class QuickDeliveryChooser extends StatelessWidget {
 }
 
 class _ModeCard extends StatelessWidget {
-  const _ModeCard({required this.icon, required this.title, required this.text, required this.onTap});
+  const _ModeCard({super.key, required this.icon, required this.title, required this.text, required this.onTap});
   final IconData icon;
   final String title, text;
   final VoidCallback? onTap;
@@ -380,7 +398,30 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     appToast(t('أُضيف ${got.items.length} سؤالاً — راجعها وعدّلها قبل النشر', '${got.items.length} questions added — review and edit them before publishing'));
   }
 
+  /// "Import from Google Forms": pick a form → preview → the draft is created with the form's name and its questions,
+  /// then the full editor opens in this screen's place (the creator checks and publishes there).
+  Future<void> _importForms() async {
+    int? created;
+    await showAppSheet<bool>(
+        context,
+        (_) => GoogleFormsImportSheet(
+              api: _api,
+              createExam: (form) async {
+                final r = await createExamForForm(_api, q, form);
+                created = r.examId;
+                return r;
+              },
+            ));
+    final id = created;
+    if (id == null || !mounted) return;
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => ExamEditorScreen(examId: id, courseId: q.courseId, orgId: q.orgId)), result: id);
+  }
+
   void _start(QuickStart s) {
+    if (s == QuickStart.forms) {
+      _importForms();
+      return;
+    }
     setState(() {
       _started = true;
       if (s == QuickStart.file) q.source = QuickSource.file;
@@ -449,7 +490,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
       child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: quickScreenMaxWidth), child: !_started
           ? SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              child: QuickStartChooser(onPick: _start, canGenerate: q.courseId != null, onClassic: widget.onClassic))
+              child: QuickStartChooser(onPick: _start, canGenerate: q.courseId != null, onClassic: widget.onClassic, canImportForms: quickFormsAvailable))
           : Column(children: [
               Expanded(
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), children: [

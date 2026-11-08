@@ -7,6 +7,10 @@
 //   POST /api/v1/exam/exams/{id}/questions/import-rows
 //
 // GoogleFormsImportBody is plain values, under the layout harness; the sheet below it holds the flow.
+//
+// Two ways in: the editor's button (the draft exists: [GoogleFormsImportSheet.examId]) and "New exam › Import from
+// Google Forms" (D-300: [GoogleFormsImportSheet.createExam] makes the draft, named after the form, once the form is
+// picked; pick form → preview → create).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -17,6 +21,29 @@ import '../../admin/admin_common.dart' show asMap, asMapList, t;
 import '../live/meeting_recording.dart';
 import '../live/meeting_recording_sheets.dart' show cloudConnectPoll, cloudConnectPollLive, cloudConnectTimeout, openExternalUrl;
 import 'exam_authoring.dart';
+import 'exam_quick.dart' show QuickExam, QuickMode, QuickResult, QuickSource, createQuickExam;
+
+/// The kill switch (the server also adds it to the disable list while GOOGLE_PICKER_API_KEY is unset).
+const kGoogleFormsImportFeatureKey = 'exam.google_forms_import';
+
+/// The exam's name once a form is picked: the form's title, else what the creator had, else a plain default.
+String formExamTitle(FormPreview p, String current) {
+  final f = p.title.trim();
+  if (f.isNotEmpty) return f;
+  final c = current.trim();
+  return c.isNotEmpty ? c : t('اختبار من Google Forms', 'Google Forms exam');
+}
+
+/// "New exam › Import from Google Forms": the draft [q] describes (course, organization, timetable slot) is created
+/// empty with the form's title, online; the rows are imported into its first section next.
+Future<QuickResult> createExamForForm(ExamAuthoringApi api, QuickExam q, FormPreview p) {
+  q
+    ..title = formExamTitle(p, q.title)
+    ..mode = q.mode ?? QuickMode.online
+    ..source = QuickSource.questions;
+  q.questions.clear();
+  return createQuickExam(api, q, publish: false);
+}
 
 /// A form as `GET /me/cloud/google_drive/forms/{id}` returns it. [rows] go back to the server as they came.
 class FormPreview {
@@ -125,7 +152,11 @@ class GoogleFormsImportBody extends StatelessWidget {
     required this.onPick,
     required this.onImport,
     required this.onDone,
+    this.creating = false,
   });
+
+  /// "New exam": the import makes the draft first (the intro and the button say so).
+  final bool creating;
   final bool loading;
   final bool connected;
 
@@ -149,8 +180,12 @@ class GoogleFormsImportBody extends StatelessWidget {
     final p = preview;
     const gap = SizedBox(height: AppSpace.md);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      Text(t('اختر نموذجاً من حسابك على Google: تصبح أسئلته ودرجاته وإجاباته الصحيحة أسئلة في هذه المسودة، ويبقى النموذج نفسه كما هو.',
-          'Pick a form from your Google account: its questions, points and correct answers become questions in this draft, and the form itself stays as it is.'),
+      Text(
+          creating
+              ? t('اختر نموذجاً من حسابك على Google: يصبح اختباراً جديداً باسمه، بأسئلته ودرجاته وإجاباته الصحيحة، ويبقى النموذج نفسه كما هو.',
+                  'Pick a form from your Google account: it becomes a new draft exam with its name, questions, points and correct answers, and the form itself stays as it is.')
+              : t('اختر نموذجاً من حسابك على Google: تصبح أسئلته ودرجاته وإجاباته الصحيحة أسئلة في هذه المسودة، ويبقى النموذج نفسه كما هو.',
+                  'Pick a form from your Google account: its questions, points and correct answers become questions in this draft, and the form itself stays as it is.'),
           style: appText(13, c: c.textMedium, h: 1.4)),
       gap,
       if (loading)
@@ -218,14 +253,14 @@ class GoogleFormsImportBody extends StatelessWidget {
       if (report != null) ...[gap, ImportReportPanel(report: report!)],
       gap,
       Row(children: [
-        Expanded(child: TextButton(onPressed: busy ? null : onDone, child: Text(t('تم', 'Done')))),
+        Expanded(child: TextButton(onPressed: busy ? null : onDone, child: Text(creating ? t('إلغاء', 'Cancel') : t('تم', 'Done')))),
         const SizedBox(width: AppSpace.sm),
         Expanded(
           flex: 2,
           child: AppPrimaryButton(
               key: const ValueKey('exam.forms.import'),
-              label: t('استيراد', 'Import'),
-              icon: Icons.download_rounded,
+              label: creating ? t('إنشاء الاختبار', 'Create the exam') : t('استيراد', 'Import'),
+              icon: creating ? Icons.add_task_rounded : Icons.download_rounded,
               busy: busy,
               onPressed: p != null && p.ready > 0 && report == null ? onImport : null),
         ),
@@ -235,10 +270,17 @@ class GoogleFormsImportBody extends StatelessWidget {
 }
 
 class GoogleFormsImportSheet extends StatefulWidget {
-  const GoogleFormsImportSheet({super.key, required this.api, required this.examId, required this.sections});
+  const GoogleFormsImportSheet({super.key, required this.api, this.examId, this.sections = const [], this.createExam})
+      : assert(examId != null || createExam != null);
   final ExamAuthoringApi api;
-  final int examId;
+
+  /// The draft the questions go into; null = [createExam] makes it when "Create the exam" is pressed.
+  final int? examId;
   final List<(int, String)> sections;
+
+  /// "New exam": makes the draft for the picked form (its id, or the error to show). Called once: a retry of the
+  /// import after a failure goes into the draft already made. The sheet closes by itself after a clean import.
+  final Future<QuickResult> Function(FormPreview form)? createExam;
 
   @override
   State<GoogleFormsImportSheet> createState() => _GoogleFormsImportSheetState();
@@ -254,6 +296,7 @@ class _GoogleFormsImportSheetState extends State<GoogleFormsImportSheet> {
   ImportReport? _report;
   int? _section;
   String? _error;
+  late int? _examId = widget.examId;
 
   @override
   void initState() {
@@ -350,12 +393,30 @@ class _GoogleFormsImportSheetState extends State<GoogleFormsImportSheet> {
       _busy = true;
       _error = null;
     });
-    final r = await widget.api.importRows(widget.examId, p.rows, sectionId: widget.sections.length > 1 ? (_section ?? widget.sections.first.$1) : null);
+    var id = _examId;
+    if (id == null) {
+      final made = await widget.createExam!(p);
+      if (!mounted) return;
+      id = _examId = made.examId;
+      if (id == null) {
+        return setState(() {
+          _busy = false;
+          _error = made.error;
+        });
+      }
+    }
+    final r = await widget.api.importRows(id, p.rows, sectionId: widget.sections.length > 1 ? (_section ?? widget.sections.first.$1) : null);
     if (!mounted) return;
+    final report = r.ok ? ImportReport.fromJson(r.map) : null;
+    // a new exam that came in whole: straight on to it (the editor opens behind the sheet)
+    if (widget.examId == null && report != null && report.created > 0 && report.errors.isEmpty) {
+      Navigator.pop(context, true);
+      return;
+    }
     setState(() {
       _busy = false;
       if (r.ok) {
-        _report = ImportReport.fromJson(r.map);
+        _report = report;
       } else {
         _error = authoringError(r);
       }
@@ -378,7 +439,8 @@ class _GoogleFormsImportSheetState extends State<GoogleFormsImportSheet> {
           onConnect: _connect,
           onPick: _pick,
           onImport: _import,
-          onDone: () => Navigator.pop(context, (_report?.created ?? 0) > 0),
+          onDone: () => Navigator.pop(context, (_report?.created ?? 0) > 0 || (widget.examId == null && _examId != null)),
+          creating: widget.examId == null && _examId == null,
         ),
       ]);
 }

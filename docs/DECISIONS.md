@@ -2901,3 +2901,28 @@ a changed interest or an older server without steps still use `GET /me/journey`)
 `journey_hint: pick_interests` and a "Plan your learning path" invite that opens the interests sheet. Trade-off: the
 home payload grows by the path's course briefs (a handful), and the cached journey is the full one; the home's
 request budget is unchanged.
+
+## D-300 — All exams page + "Import from Google Forms" as a way to start a new exam · 2026-11-08 · accepted
+
+A teacher (or an organization's staff) saw exams only course by course (the course exam hub), so there was no answer to
+"what are all my exams, and which drafts are waiting?". `AllExamsScreen` (`exam_all_screen.dart`, pure part
+`exam_all.dart`) lists every Exam Engine exam the person manages: personal ones, the organizations where they hold exam
+rights, and the courses they teach. It is ONE engine call, `GET /api/v1/exam/exams/mine?org_ids=&course_ids=`, because
+per-space lists cost one call per organization plus one per course taught in an organization without org-wide rights.
+The engine does not know a person's organizations or courses, so the app sends them (from `/org/public/me/overview`,
+already loaded, and `/my-courses`); the engine re-checks every space with the core and leaves out what it refuses,
+never failing the page. Course names come from `/my-courses`, plus one page of `/org/orgs/{id}/courses` only for
+organizations with exams in courses the person does not teach. An older engine (422 / bare 404 on `/exams/mine`) gets
+the per-space lists, with a banner saying what may be missing. Trade-off: the list is capped at 300 exams (newest
+first) and filtered in the app; a person with more needs server paging later. Search, status tabs (All without the
+archive, Draft, Published, Closed, Archived), course and type (online / paper / exam file) filters; cards on a phone,
+a dense table from 900 px. Quick actions: publish a draft, results, printable paper, edit. Kill switch `exam.all_exams`.
+Opened from the teacher analytics header and pass-rate tile, and from the course exam hub's hero.
+
+"Import from Google Forms" (D-291) was only a button inside an existing draft's editor. It is now also the fourth way to
+start in the quick builder's chooser: pick the form first, see the preview, then "Create the exam" makes the draft
+(named after the form, online, in the builder's course / organization / timetable slot) and imports the rows; a clean
+import goes straight to the editor, one with refused rows shows the report first. The draft is made only after the pick,
+so backing out of the picker leaves nothing behind. The option follows `exam.google_forms_import` (hidden while the
+server lacks `GOOGLE_PICKER_API_KEY`).
+

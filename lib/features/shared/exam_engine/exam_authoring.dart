@@ -1296,6 +1296,15 @@ class ExamAuthoringApi {
         'status': ?status,
       }));
 
+  /// Every exam the caller manages across spaces (D-300, the All exams page): the personal ones, the organizations of
+  /// [orgIds] where they hold exam rights, and the courses of [courseIds] they teach. A bare 404 = an older engine.
+  Future<EngineResult> myExams({List<int> orgIds = const [], List<int> courseIds = const [], String? status}) =>
+      engineCall(() => _api.get('$base/exams/mine', queryParams: {
+            if (orgIds.isNotEmpty) 'org_ids': orgIds.join(','),
+            if (courseIds.isNotEmpty) 'course_ids': courseIds.join(','),
+            'status': ?status,
+          }));
+
   /// The space each course's exams were found in this session (course id → organization id, null = personal).
   static final Map<int, int?> _knownScope = {};
 
