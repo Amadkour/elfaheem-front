@@ -230,6 +230,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
 
     final reach = _reach;
     return AdminPage(
+      width: AppWidth.reading,
       title: 'send_message'.tr,
       subtitle: 'svc_send_message_d'.tr,
       icon: Icons.mark_email_unread_rounded,

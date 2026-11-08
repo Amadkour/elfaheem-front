@@ -30,6 +30,7 @@ import '../../../core/home/me_home.dart';
 import '../../shared/analytics/analytics_summary.dart' show anCoursesCount, anSessionsWord;
 import 'student_analytics_api.dart';
 import 'student_course_analytics_screen.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class StudentAnalyticsProfileScreen extends StatefulWidget {
   const StudentAnalyticsProfileScreen._({this.studentId, this.studentName, this.courseId, required this.teacherMode});
@@ -192,6 +193,7 @@ class _State extends State<StudentAnalyticsProfileScreen> {
     return BasePage(
       key: const ValueKey('dl_profile'),
       useWebCard: true,
+      width: AppWidth.content,
       appBar: ScreenAppBar(title: 'dl_profile_title'.tr),
       child: body,
     );

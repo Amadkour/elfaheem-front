@@ -23,6 +23,7 @@ import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/paged_progress.dart';
 import '../../../../utils/widget/search_text_field.dart';
 import '../../models.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class CoursesListScreen extends StatefulWidget {
   const CoursesListScreen({
@@ -126,6 +127,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     return BasePage(
       key: const ValueKey('courses_list'),
       useWebCard: true,
+      width: AppWidth.content,
       enableFooterWidget: false,
       appBar: ScreenAppBar(
         title: mine ? 'my_courses'.tr : (widget.openSearch ? 'search'.tr : 'explorer_courses'.tr),

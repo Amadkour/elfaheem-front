@@ -25,6 +25,7 @@ import '../../shared/analytics/analytics_summary.dart' show anExamsWord, anSessi
 import 'flags/student_flags_screen.dart';
 import 'exam/student_exam_list_screen.dart';
 import 'exam/student_exam_provider.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 TextStyle _t(double size, {FontWeight w = FontWeight.w500, Color? c, double? h}) => anText(size, w: w, c: c, h: h);
 
@@ -102,7 +103,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
     return Directionality(
       textDirection: pageDirection, // follows the app language (it was forced to RTL)
       child: BasePage(
-        maxWith: 1100,
+        width: AppWidth.content,
         useWebCard: true,
         child: NestedScrollView(
           headerSliverBuilder: (ctx, _) => [

@@ -10,6 +10,7 @@ import '../features/teacher/sessions/components/session_form_sheet.dart';
 import '../features/teacher/sessions/sessions_provider.dart';
 import '../main.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -241,19 +242,14 @@ class Helpers {
     ),
   );
 
+  /// The width of a centred page card in this window — the page-width roles of D-304 ([AppWidth]); BasePage
+  /// measures the room it really has instead. (Was a fixed 650 between 900 and 1100 px, whatever the page asked.)
   static double calculateRemainingWidth(
     BuildContext context, {
     double? maxWith,
   }) {
-    return context.width >= 1100
-        ? (maxWith ?? 900)
-        : context.width >= 900
-        ? 650
-        : context.width >= 900
-        ? 500
-        : context.width >= 600
-        ? context.width - 70
-        : context.width;
+    if (context.width < AppWidth.phoneMax) return context.width;
+    return AppWidth.content.inside(context.width, max: maxWith);
   }
 
   static void showAddSessionSheet(

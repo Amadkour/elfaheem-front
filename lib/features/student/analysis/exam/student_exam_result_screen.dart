@@ -16,6 +16,7 @@ import 'student_exam_provider.dart';
 import 'student_exam_quiz_screen.dart';
 import 'exam_tr.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class StudentExamResultScreen extends StatefulWidget {
   final QuizSession session;
@@ -113,6 +114,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
 
     return BasePage(
       useWebCard: true,
+      width: AppWidth.reading,
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [

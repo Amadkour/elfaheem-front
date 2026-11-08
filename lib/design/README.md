@@ -22,6 +22,7 @@ Never write a raw number for these in a screen.
 | `AppIconSize` | xs 14 · sm 16 · md 20 · lg 24 · xl 32 · hero 40 | icons |
 | `AppBorder` | hairline 1 · strong 1.5 · focus 2 | borders, focus rings |
 | `AppType` | see below | text |
+| `AppWidth` (D-304) | form 600 · reading 860 · content 1120 · wide 1440 · full; `inside(available)` | page-body width: `BasePage(useWebCard: true, width: AppWidth.wide)`, `AppWidthBox`, `AdminPage(width:)` |
 
 **Type scale** (`AppType.x(context)`; weights w400–w600, D-102; Arabic and English share sizes, the theme gives Arabic
 body text its taller line):

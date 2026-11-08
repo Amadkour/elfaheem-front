@@ -8,6 +8,7 @@ import 'package:flutter_education_app/features/student/analysis/exam/student_exa
 import 'package:flutter_education_app/features/student/analysis/exam/exam_tr.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class StudentExamFrozenScreen extends StatefulWidget {
   final StudentExamListItem exam;
@@ -72,6 +73,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
     return BasePage(
       key: const ValueKey('exam_frozen'),
       useWebCard: true,
+      width: AppWidth.reading,
       appBar: AppBar(
         backgroundColor: _accent,
         foregroundColor: context.colors.onHero,

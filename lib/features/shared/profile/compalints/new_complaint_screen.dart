@@ -34,6 +34,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/design/app_mentions.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class NewComplaintScreen extends StatefulWidget {
   const NewComplaintScreen({super.key, this.courseId, this.courseTitle, this.formOnly = false});
@@ -150,6 +151,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
     return BasePage(
       key: const ValueKey('new_complaint'),
       useWebCard: true,
+      width: AppWidth.reading,
       child: SafeArea(
         child: Column(
           children: [

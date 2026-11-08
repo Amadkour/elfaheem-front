@@ -22,6 +22,7 @@ import 'exam_ui.dart';
 import 'student_exam_api.dart';
 import 'student_exam_detail_screen.dart';
 import 'student_exam_provider.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class StudentExamListScreen extends StatefulWidget {
   const StudentExamListScreen({super.key});
@@ -81,7 +82,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
         scored.length;
     final courses = all.map((e) => e.courseId).toSet().length;
 
-    return BasePage( useWebCard: true,maxWith: 1100, child: MasterDetailScaffold(
+    return BasePage( useWebCard: true,width: AppWidth.wide, child: MasterDetailScaffold(
       controller: _panel,
       rootLabel: tx('exam_my_exams'),
       list: NestedScrollView(

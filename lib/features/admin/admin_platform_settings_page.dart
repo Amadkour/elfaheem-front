@@ -157,6 +157,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return AdminPage(
+      width: AppWidth.reading,
       title: t('إعدادات المنصة', 'Platform settings'),
       subtitle: t('المؤسسات، الوقت والمنطقة، والميزات — في مكان واحد.', 'Organizations, time & region, and features — in one place.'),
       icon: Icons.settings_suggest_rounded,

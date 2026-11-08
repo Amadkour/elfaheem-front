@@ -162,6 +162,7 @@ class _ViewState extends State<_View> {
     }
 
     return AdminPage(
+      width: AppWidth.reading,
       title: 'admin_devices'.tr,
       subtitle: 'svc_devices_d'.tr,
       icon: Icons.devices_other_rounded,

@@ -37,6 +37,7 @@ import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -484,6 +485,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     return BasePage(
       key: const ValueKey('course_form'),
       useWebCard: true,
+      width: AppWidth.reading,
       child: FadeTransition(
         opacity: _fadeAnim,
         child: Column(

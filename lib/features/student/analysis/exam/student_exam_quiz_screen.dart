@@ -16,6 +16,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'exam_tr.dart';
 import 'exam_ui.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class StudentExamQuizScreen extends StatefulWidget {
   const StudentExamQuizScreen({super.key});
@@ -163,7 +164,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
 
     // Session might be null briefly on hot-reload — guard
     if (s == null) {
-      return const BasePage( useWebCard: true,maxWith: 1100, child: AppListSkeleton(items: 4, withAvatar: false));
+      return const BasePage( useWebCard: true,width: AppWidth.reading, child: AppListSkeleton(items: 4, withAvatar: false));
     }
 
     // Navigate to the result screen once, right after submitting.
@@ -206,6 +207,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
       },
       child: BasePage(
         useWebCard: true,
+        width: AppWidth.reading,
         child: Column(
           children: [
             // ── Header card ─────────────────────────────────────────────

@@ -16,6 +16,7 @@ import '../../admin/admin_common.dart';
 import '../../teacher/data_lab/data_lab_api.dart';
 import '../../teacher/data_lab/data_lab_models.dart';
 import '../../teacher/data_lab/data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class AdminDataLabPage extends StatefulWidget {
   const AdminDataLabPage({super.key});
@@ -207,6 +208,7 @@ class _AdminDataLabPageState extends State<AdminDataLabPage> {
     }
     return BasePage(
       useWebCard: true,
+      width: AppWidth.content,
       appBar: ScreenAppBar(title: 'dl_admin_title'.tr),
       child: body,
     );

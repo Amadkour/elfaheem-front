@@ -447,6 +447,7 @@ class _FormState extends State<ParentLinkSettingsForm> {
             ]);
     if (h != null) return body;
     return AdminPage(
+      width: AppWidth.reading,
       title: 'pl_settings_title'.tr,
       subtitle: 'svc_pl_settings_d'.tr,
       icon: Icons.family_restroom_rounded,

@@ -11,6 +11,7 @@ import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/search_text_field.dart';
 import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/models.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class FavouriteCoursesScreen extends StatefulWidget {
   const FavouriteCoursesScreen({super.key});
@@ -42,6 +43,7 @@ class _FavouriteCoursesScreenState extends State<FavouriteCoursesScreen> {
     return BasePage(
       key: const ValueKey('favorites'),
       useWebCard: true,
+      width: AppWidth.content,
       appBar: ScreenAppBar(title: 'my_favorite'.tr),
       child: Column(children: [
         ParentComponent(

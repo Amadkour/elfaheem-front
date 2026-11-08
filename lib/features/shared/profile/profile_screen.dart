@@ -55,6 +55,7 @@ import '../../admin/admin_common.dart' show t;
 import '../points/points_api.dart' show kPointsFeatureKey;
 import '../points/points_wallet_page.dart' show PointsWalletPage;
 import '../public_profile/public_profile_page.dart' show ShareMyProfileTile;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -91,6 +92,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     return BasePage(
       key: const ValueKey('profile'),
       useWebCard: true,
+      width: AppWidth.reading,
       enableFooterWidget: false,
       child: SafeArea(
         child: SingleChildScrollView(

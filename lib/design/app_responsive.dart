@@ -8,9 +8,16 @@
 // Every role shell (student · teacher · parent · admin · organization) picks its shell with [Breakpoints.shellFor];
 // content widgets use the [BreakpointCtx] getters. `responsive_framework` in main.dart only scales text / margins
 // and is not a layout decision.
+//
+// How WIDE a page body gets is its page-width role (D-304, [AppWidth] in app_tokens.dart): `BasePage(useWebCard:
+// true, width: AppWidth.wide)` for a page card, [AppWidthBox] for any other body, [ContentBox] for a reading column.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
+import 'app_tokens.dart';
 
 /// Which navigation shell a width gets.
 enum AppShellKind { mobile, rail, wide }
@@ -22,7 +29,7 @@ class Breakpoints {
   /// From here: the wide shell (sidebar + top bar).
   static const double desktop = 1000;
 
-  /// content max-width — content never stretches beyond this
+  /// content max-width of a reading column — the same 860 as [AppWidth.reading]
   static const double contentMax = 860;
 
   /// sidebar width on web
@@ -44,22 +51,51 @@ extension BreakpointCtx on BuildContext {
   bool get showSidebar => screenW >= Breakpoints.mobile;
 }
 
-/// Constrains [child] to [Breakpoints.contentMax] and centres it.
+/// Constrains [child] to [Breakpoints.contentMax] (or [width]'s role) and centres it.
 class ContentBox extends StatelessWidget {
   final Widget child;
   final EdgeInsets? padding;
 
-  const ContentBox({super.key, required this.child, this.padding});
+  /// The page-width role; null keeps the reading column ([Breakpoints.contentMax]).
+  final AppWidth? width;
+
+  const ContentBox({super.key, required this.child, this.padding, this.width});
 
   @override
   Widget build(BuildContext context) => Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints:
-              const BoxConstraints(maxWidth: Breakpoints.contentMax),
+          constraints: BoxConstraints(maxWidth: width?.max ?? Breakpoints.contentMax),
           child: padding != null
               ? Padding(padding: padding!, child: child)
               : child,
         ),
       );
+}
+
+/// Centres a page body at its page-width role (D-304) with the responsive side gutter (16 · 24): the wrapper
+/// for a body that is not a BasePage web card — a shell tab, a scrolling list, a detail column. With
+/// [gutters] off the body keeps the role's max only (it pads itself).
+///
+///   AppWidthBox(width: AppWidth.wide, child: list)
+class AppWidthBox extends StatelessWidget {
+  const AppWidthBox({
+    super.key,
+    required this.width,
+    required this.child,
+    this.gutters = true,
+    this.alignment = Alignment.topCenter,
+  });
+
+  final AppWidth width;
+  final Widget child;
+  final bool gutters;
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        if (!box.hasBoundedWidth) return child;
+        final w = gutters ? width.inside(box.maxWidth) : math.min(width.max, box.maxWidth);
+        return Align(alignment: alignment, child: SizedBox(width: w, child: child));
+      });
 }

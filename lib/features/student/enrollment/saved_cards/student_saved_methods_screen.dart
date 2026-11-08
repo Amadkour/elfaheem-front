@@ -13,6 +13,7 @@ import 'saved_methods_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class StudentSavedMethodsScreen extends StatelessWidget {
   const StudentSavedMethodsScreen({super.key});
@@ -54,6 +55,7 @@ class _StudentMethodsViewState extends State<_StudentMethodsView>
     final c = context.colors;
     return BasePage(
       useWebCard: true,
+      width: AppWidth.reading,
       child: SafeArea(
         child: Column(
           children: [

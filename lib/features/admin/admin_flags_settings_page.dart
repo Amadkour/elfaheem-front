@@ -147,6 +147,7 @@ class _AdminFlagsSettingsPageState extends State<AdminFlagsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return AdminPage(
+      width: AppWidth.reading,
       title: t('علامات المراجعة والقراءة للطلاب', 'Student review & read flags'),
       subtitle: t('العلامات التي يضعها الطالب على أسئلة الاختبار وفقرات الدروس ليعود إليها — وليست مفاتيح ميزات التطبيق.',
           'The bookmarks students put on exam questions and lesson passages to come back to — not the app’s feature switches.'),

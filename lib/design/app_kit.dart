@@ -77,6 +77,7 @@ export 'app_keyboard.dart' show EnterSubmits;
 export 'attention_badge.dart';
 export '../core/attention/attention_service.dart' show AttentionService, AttentionTabs, AttentionItem;
 export 'app_hscroll.dart';
+export 'app_responsive.dart' show AppWidthBox;
 export 'app_table_export.dart' show showAppExportSheet, exportAppTable, AppTableExport, AppExportColumn, AppColType, AppColAlign, AppTotal, AppExportFormat, AppStatusTone, bilingualExport;
 export '../core/app_time.dart';
 export '../features/org/org_ui.dart'
