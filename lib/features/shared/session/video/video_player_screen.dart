@@ -67,9 +67,13 @@ class VideoPlayerScreen extends StatefulWidget {
     this.playlist,
     this.resume,
     this.actions = const [],
+    this.actionsFor,
   });
 
   final SessionMaterialModel material;
+
+  /// Like [actions], for the material playing NOW (lectures switch in place): the teacher's Open in Studio (D-315).
+  final List<VodAction> Function(SessionMaterialModel current)? actionsFor;
 
   /// The caller's buttons on the top bar (Records, D-312: Open in Studio · Share); icons only on narrow screens.
   final List<VodAction> actions;
@@ -176,6 +180,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   /// The lecture on screen; changes in place when the student picks another one from the playlist.
   late SessionMaterialModel _current = widget.material;
+
+  List<VodAction> get _actions => [...widget.actions, ...?widget.actionsFor?.call(_current)];
 
   // ── Controllers ───────────────────────────────────────────────────────────
   VideoPlayerController? _vc;
@@ -2022,11 +2028,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           const SizedBox(width: 6),
         ],
         // the caller's buttons (Records: Open in Studio · Share); the help button gives them its room on phones
-        for (final a in widget.actions) ...[
+        for (final a in _actions) ...[
           VodActionButton(action: a, showLabel: MediaQuery.sizeOf(context).width >= 720),
           const SizedBox(width: 6),
         ],
-        if (!_isFullScreen && (widget.actions.isEmpty || MediaQuery.sizeOf(context).width >= 480))
+        if (!_isFullScreen && (_actions.isEmpty || MediaQuery.sizeOf(context).width >= 480))
           const HelpInfoButton(pageId: 'video.player'),
         if (_canDownload) ...[
           _buildDownloadBtn(),
@@ -2042,7 +2048,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         ],
         if (_canListen) ...[
           VodListenButton(
-            label: MediaQuery.sizeOf(context).width >= (widget.actions.isEmpty ? 360 : 720) ? 'vod_listen_short'.tr : null,
+            label: MediaQuery.sizeOf(context).width >= (_actions.isEmpty ? 360 : 720) ? 'vod_listen_short'.tr : null,
             tooltip: 'vod_listen_only_hint'.tr,
             onTap: _startListenOnly,
           ),

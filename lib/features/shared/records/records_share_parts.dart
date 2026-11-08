@@ -125,7 +125,11 @@ class RecordShareLayout extends StatelessWidget {
     this.onSystemShare,
     this.onSave,
     this.onStop,
+    this.guestRows = const [],
   });
+
+  /// The guests by e-mail (D-315), listed after the people with a Guest badge (RecordGuestRow).
+  final List<Widget> guestRows;
 
   /// The chosen audience (never off: the sheet starts on "people").
   final RecordShareMode mode;
@@ -190,7 +194,7 @@ class RecordShareLayout extends StatelessWidget {
         ),
       ]),
       const SizedBox(height: AppSpace.xxs),
-      if (people.isEmpty)
+      if (people.isEmpty && guestRows.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
           child: Text(
@@ -216,6 +220,7 @@ class RecordShareLayout extends StatelessWidget {
               onPressed: busy ? null : () => onRemove?.call(p),
             ),
           ),
+      ...guestRows,
       if (link != null) ...[
         const SizedBox(height: AppSpace.md),
         Text(t('الرابط', 'Link'), style: AppType.section(context)),

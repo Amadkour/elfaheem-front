@@ -3337,3 +3337,72 @@ in the meeting as its host"; closing the sheet did the same before, without sayi
 No kill switch, no server change. Tests: `test/org/board_rec_pacing_test.dart`, `test/org/live_stage_overlay_test.dart`,
 `test/ui/live_stage_overlay_layout_test.dart`, `test/ui/live_host_handover_layout_test.dart` (descriptions). Not seen
 yet on a device or in a real browser call.
+
+## D-315 — The Studio on session video materials (drafts, then publish as new or in place); records shared with guests by e-mail · 2026-11-08 · accepted
+
+**The Studio's source is pluggable.** `StudioSource` (`lib/features/shared/records/studio_source.dart`) is all the
+Studio page talks to: `RecordStudioSource` (a drive recording, D-311 / D-312, unchanged behaviour) or
+`MaterialStudioSource` (`material_studio_api.dart`: a course session's VIDEO / RECORDED material in MinIO). A source
+names its tools (a material has no Cover — the course page draws none), whether its jobs make drafts, and its
+`job_updated` kinds (`material_edit`, `material_frames`). The ffmpeg side is the same `records_edit.render` (trim · cut
+· split · speed · merge); the server job (`services/material_studio.py`) downloads the material from MinIO (an HLS
+playlist is read over a presigned URL), renders, and uploads into the videos bucket (`session_<sid>/studio_<uuid>.mp4`,
+faststart, length from ffprobe, quality from the source's height) — what an uploaded video material is after
+`/materials/from-upload`, which has no other post-upload step (captions stay the teacher's own action). Shares the
+Records worker slots and the 3-running-edits cap.
+
+**A draft, never a material, until it is published** (`material_edits`, migration 0066). Why: a draft row in
+`session_materials` would reach every enumeration of a session's materials (student lists, progress and completion
+counts, offline downloads, exports, search) and each would need a "hidden" filter; keeping the output outside the table
+means a student cannot see it by construction. Publish has two modes, picked in a sheet that says what each means:
+- **A new material** (the default): a VIDEO material right after the original; nothing a student already has changes.
+- **Replace the original**: the new file goes into the original's ROW, so its id — and with it completions, progress,
+  view counts, ratings, the place in the list — is kept. The old file's fields and its captions (whose times no longer
+  match) are kept in the draft (`replaced`) and the old objects stay in MinIO until the staff press **Delete the old
+  file**; **Restore the original** puts them back. A second replace of the same material waits until the first is
+  confirmed or restored (409 `material_replace_pending`). Deleting the material deletes a pending replace's old file.
+  A student's offline copy is an encrypted file on their device: it keeps playing (the old version) until they
+  download again — nothing breaks. Trade-off: no "updated, download again" hint for them yet.
+
+**Who.** Exactly who may edit the material today: the material routes' roles plus `can_manage_session` on the course
+and the session's track (teacher, platform admins, org staff with `courses.update`, an assistant on section sessions or
+with `lecture_edit`); others 403, as every material route. Archived org course: writes 409 `course_archived`. A merge
+stays inside one course and only takes sessions the person may edit. An org course's publish / restore is audited.
+The Studio's preview plays through the platform's own stream link issued without a device (staff only), so the
+Studio's player needs no headers. Kill switch `materials.studio` (the button, the player action, the drafts strip;
+the server refuses edit / merge / publish when it is off everywhere).
+
+**Entries.** The teacher's session materials list: a Studio button on a video material (next to captions), and
+**Studio drafts** above the list (only the course staff see it; Play · Publish · Discard · Retry; after a replace
+Restore the original · Delete the old file; follows running jobs with EventOrPoll, draws nothing when empty). The
+teacher's player: **Open in Studio** on the lecture playing NOW (`VideoPlayerScreen.actionsFor`, lectures switch in
+place). In the Studio the save button is **Save as draft** with a note that students don't see it, and the inline job
+card puts **Publish** next to Play. Files: `material_studio_api.dart` (pure), `material_studio_parts.dart` (plain
+values), `material_studio_page.dart`; backend `routers/material_studio_router.py`, `services/material_studio.py`.
+
+**Guests by e-mail** (the Share sheet of D-312, under `records.share`): the owner types addresses (the app's e-mail
+rule, `kEmailRegex`; up to 20 at a time, 100 per record), an optional message and how long the link works (7 days ·
+30 days · never). Each guest gets ONE personal link `https://nextbrain.site/s/record/g_<secret>` — the D-312 scheme
+and nginx location, a `g_` token — e-mailed through the platform's SMTP (`services/email_service.py`). When SMTP is not
+configured (production today) the guests are still created, the answer says `mail.code: email_unavailable` and the
+sheet says so and offers Copy link per guest; a send failure is per guest (Resend). Guests show in the people list
+with a **Guest** badge, opened / views / e-mail state / expiry, Copy link and ⋯ (Resend · Revoke). Stopping the share
+deletes them (every link dies).
+
+**The guest's page** (`record_guest_page.dart`): main.dart sends a `/s/record/g_…` link to `GuestRecordPage` before the
+share-link page, signed in or not, outside the guards; it calls ONLY `/api/v1/public/records/guest/…` with
+`auth: false` (nothing can redirect to the login). The card (title, who shared it, length, message, expiry) and Play →
+a 2 h signed stream token bound to the guest row; EVERY stream request re-checks the row, its expiry, the share and the
+record, so a revoke / stop / expiry stops a running playback. A plain player (play / pause, ±10 s, scrub; LTR like
+every media control), not the course player: that one reads providers and authenticated APIs. Views and first / last
+opened are counted. Anything invalid is the same 404; the card / play calls are rate-limited per IP (`record_guest`,
+120 / 10 min); a guest's stream token never works on the owner's stream route and the other way round. A link-preview
+bot gets the generic "Recording" card for a guest link. Why a personal token per guest rather than the share's link
+token: it can be revoked alone and counted alone, and an e-mail that is forwarded leaks one guest, not the share.
+Trade-off: playback bytes flow through the API server (as D-311).
+
+Data: ONE revision `0066_studio_materials_guests` (`material_edits`, `record_share_guests`). Contract
+`../back/FLUTTER_API_CHANGES.md` "Studio on session materials + record guests by e-mail". Tests: backend
+`tests/org_v2/e2e_material_studio.py`, `e2e_records_guests.py`, `material_studio_ffmpeg_check.py` (real ffmpeg, dev
+image); app `test/org/records_guests_api_test.dart`, `test/ui/records_guests_layout_test.dart`. Not yet seen in a real
+browser against the local stack.

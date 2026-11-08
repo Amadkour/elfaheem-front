@@ -27,6 +27,9 @@ import '../../../../student/courses/details/course_detail_provider.dart';
 import '../../../../student/models.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
 import '../../video/video_player_screen.dart';
+import '../../video/vod_player_parts.dart' show VodAction;
+import '../../../records/material_studio_page.dart'
+    show MaterialStudioDraftsPanel, materialStudioLabel, materialStudioOn, openMaterialStudio;
 import '../session_material_model.dart';
 import 'material_file_style.dart';
 import 'material_title.dart';
@@ -166,7 +169,7 @@ class SessionMaterialGrid extends StatelessWidget {
 
     // Teachers: one drag-and-drop list (long-press-free: grab the handle).
     if (isTeacher) {
-      return ReorderableListView.builder(
+      final list = ReorderableListView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         buildDefaultDragHandles: false,
@@ -179,6 +182,15 @@ class SessionMaterialGrid extends StatelessWidget {
           child: _buildTile(ctx, materials[i], i + 1, dragIndex: i),
         ),
       );
+      if (!materialStudioOn) return list;
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        MaterialStudioDraftsPanel(
+          key: ValueKey('material.drafts.${session.id}'),
+          sessionId: session.id,
+          onChanged: () => _reloadMaterials(context),
+        ),
+        list,
+      ]);
     }
 
     if (columns == 1) {
@@ -460,6 +472,15 @@ class SessionMaterialGrid extends StatelessWidget {
                                   onManage: (generate) =>
                                       _showCaptionsDialog(context, m, onGenerate: generate),
                                 ),
+                              if ((m.type == SessionMaterialType.video ||
+                                      m.type == SessionMaterialType.recorded) &&
+                                  materialStudioOn)
+                                _iconBtn(
+                                  icon: Icons.movie_edit,
+                                  color: context.colors.textMedium,
+                                  tooltip: materialStudioLabel,
+                                  onTap: () => _openStudio(context, m),
+                                ),
                               if (!AppConfig.disableList.contains(kShareLinksKey))
                                 _iconBtn(
                                   icon: Icons.ios_share_rounded,
@@ -579,6 +600,7 @@ class SessionMaterialGrid extends StatelessWidget {
             startFullScreen: false,
             material: m,
             playlist: materials,
+            actionsFor: isTeacher && materialStudioOn ? (cur) => _studioActions(context, cur) : null,
           ),
         ),
       );
@@ -605,6 +627,35 @@ class SessionMaterialGrid extends StatelessWidget {
         }
       }
     }
+  }
+
+  // ── Studio (D-315) ─────────────────────────────────────────────────────────
+
+  Future<void> _openStudio(BuildContext context, SessionMaterialModel m) async {
+    final changed = await openMaterialStudio(context, sessionId: m.sessionId == 0 ? session.id : m.sessionId, materialId: m.id);
+    if (changed && context.mounted) _reloadMaterials(context);
+  }
+
+  void _reloadMaterials(BuildContext context) {
+    try {
+      context.read<TeacherCourseScreenProvider>().reloadMaterials(session);
+    } catch (_) {/* opened outside the teacher's course page: nothing to reload */}
+  }
+
+  /// The player's Open in Studio for a video / recorded lecture (pops the player first).
+  List<VodAction> _studioActions(BuildContext context, SessionMaterialModel cur) {
+    if (cur.id <= 0 || !(cur.type == SessionMaterialType.video || cur.type == SessionMaterialType.recorded)) return const [];
+    return [
+      VodAction(
+        id: 'studio',
+        icon: Icons.movie_edit,
+        label: materialStudioLabel,
+        onTap: () {
+          Navigator.of(context).pop();
+          _openStudio(context, cur);
+        },
+      ),
+    ];
   }
 
   // ── Icon button helper ─────────────────────────────────────────────────────

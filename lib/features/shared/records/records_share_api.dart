@@ -17,6 +17,7 @@ import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
 import '../live/meeting_recording.dart' show RecordingQuality, parseRecordingTime;
 import 'records_api.dart' show RecordPlay;
+import 'records_guests_api.dart' show RecordGuest;
 
 /// The kill switch of sharing (the Share button, the sheet, the Shared-with-me tab).
 const kRecordsShareFeatureKey = 'records.share';
@@ -102,6 +103,7 @@ class RecordShare {
     this.token,
     this.link,
     this.people = const [],
+    this.guests = const [],
     this.views = 0,
     this.updatedAt,
   });
@@ -111,6 +113,9 @@ class RecordShare {
   final String? token;
   final String? link;
   final List<RecordSharePerson> people;
+
+  /// People without an account invited by e-mail (D-315), each with a personal link.
+  final List<RecordGuest> guests;
 
   /// Plays by other people.
   final int views;
@@ -126,6 +131,7 @@ class RecordShare {
       token: mode == RecordShareMode.off ? null : _s(j['token']),
       link: mode == RecordShareMode.off ? null : _s(j['link']),
       people: [for (final p in asMapList(j['people'])) ?RecordSharePerson.fromJson(p)],
+      guests: [for (final g in asMapList(j['guests'])) ?RecordGuest.fromJson(g)],
       views: asInt(j['views']),
       updatedAt: parseRecordingTime(j['updated_at']),
     );
@@ -134,9 +140,10 @@ class RecordShare {
   /// "Shared with 3 people · 12 views", for the sheet's header and the library tile.
   String summary() {
     if (!active) return RecordShareMode.off.label;
+    final n = people.length + guests.length;
     final who = mode == RecordShareMode.link
         ? RecordShareMode.link.label
-        : t('مع ${people.length} ${people.length == 1 ? 'شخص' : 'أشخاص'}', 'With ${people.length} ${people.length == 1 ? 'person' : 'people'}');
+        : t('مع $n ${n == 1 ? 'شخص' : 'أشخاص'}', 'With $n ${n == 1 ? 'person' : 'people'}');
     return views > 0 ? '$who · ${t('$views مشاهدة', '$views views')}' : who;
   }
 }

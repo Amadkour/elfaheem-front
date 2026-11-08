@@ -1,6 +1,9 @@
 // lib/features/shared/records/records_studio.dart — the Studio (D-312): the editor of one of my records. Plain-values
 // widgets: records_studio_parts.dart; pure parts: records_api.dart, records_share_api.dart (the filmstrip).
 //
+//   The source is pluggable (studio_source.dart, D-315): a drive recording of Records (default) or a course session's
+//   video material (MaterialStudioSource: no Cover, the job makes a DRAFT, `jobActions` puts Publish on the card).
+//
 //   RecordStudioPage(item:, others:)   the player (a signed, Range-proxied stream) on a large stage with its own
 //                                      transport, the filmstrip timeline (POST …/frames: a sprite made once by the
 //                                      server; `pending` waits on job_updated{kind: record_frames} with JobWatch), the
@@ -30,14 +33,34 @@ import '../../admin/admin_common.dart' show t;
 import 'records_api.dart';
 import 'records_share_api.dart';
 import 'records_studio_parts.dart';
+import 'studio_source.dart';
 
 /// One pending selection (what Undo brings back).
 typedef _Sel = ({double start, double end, double at, double speed, List<int> merge});
 
 class RecordStudioPage extends StatefulWidget {
-  const RecordStudioPage({super.key, required this.item, this.others = const [], this.api, this.shareApi, this.onPlay});
+  const RecordStudioPage({
+    super.key,
+    required this.item,
+    this.others = const [],
+    this.api,
+    this.shareApi,
+    this.onPlay,
+    this.source,
+    this.jobActions,
+    this.libraryLabel,
+  });
 
   final RecordItem item;
+
+  /// What is edited (null: the Records drive recording through [api] / [shareApi]).
+  final StudioSource? source;
+
+  /// A finished job item's own buttons on the inline job card (a material draft: Publish · Discard).
+  final Widget? Function(BuildContext context, RecordItem r)? jobActions;
+
+  /// The job card's back-to-the-list words (null: "To Records").
+  final String? libraryLabel;
 
   /// The rest of the library (the Merge tool's candidates).
   final List<RecordItem> others;
@@ -52,8 +75,7 @@ class RecordStudioPage extends StatefulWidget {
 }
 
 class _RecordStudioPageState extends State<RecordStudioPage> {
-  late final RecordsApi _api = widget.api ?? RemoteRecordsApi();
-  late final RecordShareApi _shareApi = widget.shareApi ?? RemoteRecordShareApi();
+  late final StudioSource _src = widget.source ?? RecordStudioSource(api: widget.api, shareApi: widget.shareApi);
   late RecordItem _item = widget.item;
   final _made = <RecordItem>[];
 
@@ -65,7 +87,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
   late double _dur = widget.item.durationSeconds;
   double _previewSpeed = 1;
 
-  StudioTool _tool = StudioTool.trim;
+  late StudioTool _tool = _src.tools.first;
   late double _start = 0;
   late double _end = _dur;
   late double _at = _dur / 2;
@@ -106,7 +128,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
 
   Future<void> _open() async {
     try {
-      final play = await _api.play(_item.id);
+      final play = await _src.play(_item.id);
       if (!mounted) return;
       final p = VideoPlayerController.networkUrl(Uri.parse(play.url));
       _player = p;
@@ -164,11 +186,11 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
     JobWatch? watch;
     try {
       for (var i = 0; i < 8 && mounted; i++) {
-        final f = await _shareApi.frames(_item.id);
+        final f = await _src.frames(_item.id);
         if (!mounted) return;
         setState(() => _frames = f);
         if (!f.pending) return;
-        watch ??= JobWatch(kind: 'record_frames', id: '${_item.id}');
+        watch ??= JobWatch(kind: _src.framesEventKind, id: '${_item.id}');
         await watch.next(const Duration(seconds: 5), fallbackEvery: const Duration(seconds: 20));
       }
     } catch (_) {
@@ -291,6 +313,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
   Future<void> _save() async {
     if (_problem != null || _busy) return;
     if (_replace &&
+        !_src.drafts &&
         !await appConfirm(context,
             message: _tool == StudioTool.merge
                 ? t('ستُحذف الأصول من القائمة ومن السحابة بعد نجاح الدمج. متابعة؟',
@@ -307,11 +330,11 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
     try {
       final List<RecordItem> made;
       if (_tool == StudioTool.merge) {
-        made = await _api.merge([_item.id, ..._mergeIds], title: _title.text, deleteSources: _replace);
+        made = await _src.merge([_item.id, ..._mergeIds], title: _title.text, deleteSources: _replace && !_src.drafts);
       } else {
         final e = _edit!;
-        made = await _api.edit(_item.id,
-            RecordEdit(op: e.op, start: e.start, end: e.end, at: e.at, speed: e.speed, title: _title.text, deleteSource: _replace));
+        made = await _src.edit(_item.id,
+            RecordEdit(op: e.op, start: e.start, end: e.end, at: e.at, speed: e.speed, title: _title.text, deleteSource: _replace && !_src.drafts));
       }
       if (!mounted) return;
       setState(() {
@@ -341,7 +364,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
       return;
     }
     _jobWatch ??= EventOrPoll(
-      kind: 'recording',
+      kind: _src.jobEventKind,
       every: const Duration(seconds: 6),
       fallbackEvery: const Duration(seconds: 30),
       poll: _refreshJob,
@@ -353,7 +376,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
     final job = _job;
     if (job == null) return;
     try {
-      final fresh = [for (final r in job) (await _api.get(r.id)) ?? r];
+      final fresh = [for (final r in job) (await _src.get(r.id)) ?? r];
       if (!mounted) return;
       setState(() => _job = fresh);
       _keep(fresh);
@@ -363,7 +386,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
 
   Future<void> _retryJob(RecordItem r) async {
     try {
-      final n = await _api.retry(r.id);
+      final n = await _src.retry(r.id);
       if (n == null || !mounted) return;
       setState(() => _job = [for (final x in _job ?? const <RecordItem>[]) x.id == n.id ? n : x]);
       _keep([n]);
@@ -400,7 +423,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
     if (!mounted) return;
     final cropped = await showAppImageCropper(context, raw, shape: CropShape.wide, allowShapeChange: false);
     if (cropped == null || !mounted) return;
-    await _coverCall(() => _api.setCover(_item.id, cropped, fileName: 'cover.png'), t('تم حفظ الغلاف', 'Cover saved'));
+    await _coverCall(() => _src.setCover(_item.id, cropped, fileName: 'cover.png'), t('تم حفظ الغلاف', 'Cover saved'));
   }
 
   Future<void> _coverCall(Future<RecordItem?> Function() call, String done) async {
@@ -486,6 +509,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
     final picks = studioMergePicks(_item, widget.others, _mergeIds);
     final layout = RecordStudioLayout(
       busy: !editing,
+      tools: _src.tools,
       tool: _tool,
       onTool: _setTool,
       preview: _preview(c),
@@ -531,7 +555,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
         onAt: _setAt,
         onSpeed: _setSpeed,
         onPickCover: _pickCover,
-        onRemoveCover: () => _coverCall(() => _api.clearCover(_item.id), t('أُزيل الغلاف', 'Cover removed')),
+        onRemoveCover: () => _coverCall(() => _src.clearCover(_item.id), t('أُزيل الغلاف', 'Cover removed')),
         onToggleMerge: _toggleMerge,
       ),
       summary: StudioSummary(original: _dur, result: _result, problem: _tool == StudioTool.cover ? null : _problem),
@@ -539,6 +563,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
           ? null
           : StudioSaveArea(
               merge: _tool == StudioTool.merge,
+              draft: _src.drafts,
               replace: _replace,
               canSave: _problem == null && _ready,
               canUndo: _changed,
@@ -554,8 +579,10 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
                 onChanged: (_) => _titleTouched = true,
                 decoration: InputDecoration(
                   labelText: _tool == StudioTool.split
-                      ? t('اسم التسجيلين (يُضاف 1 و2)', 'Name of the two (1 and 2 are added)')
-                      : t('اسم التسجيل الجديد', 'Name of the new recording'),
+                      ? t('اسم الجزأين (يُضاف 1 و2)', 'Name of the two (1 and 2 are added)')
+                      : _src.drafts
+                          ? t('اسم الفيديو الجديد', 'Name of the new video')
+                          : t('اسم التسجيل الجديد', 'Name of the new recording'),
                 ),
               ),
             ),
@@ -567,6 +594,9 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
               onPlay: widget.onPlay == null ? null : (r) => widget.onPlay!(context, r),
               onAgain: _again,
               onLibrary: () => Navigator.of(context).pop(List<RecordItem>.of(_made)),
+              actionsFor: widget.jobActions == null ? null : (r) => widget.jobActions!(context, r),
+              drafts: _src.drafts,
+              libraryLabel: widget.libraryLabel,
             ),
       footer: kIsWeb || MediaQuery.sizeOf(context).width >= studioWideMin ? const StudioKeysHint() : null,
     );

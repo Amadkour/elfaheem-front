@@ -345,6 +345,12 @@ class TeacherCourseScreenProvider extends BaseProvider {
   double? uploadProgressForSession(int sessionId) =>
       UploadQueueManager.instance.progressForSession(sessionId);
 
+  /// Loads [session]'s materials again even when the cache looks complete (a Studio draft was published, D-315).
+  Future<void> reloadMaterials(TeacherSessionItem session) {
+    _materialLoaded[session.id] = false;
+    return fetchMaterials(session);
+  }
+
   Future<void> fetchMaterials(TeacherSessionItem session) async {
     if ((_materialLoaded[session.id] ?? false) &&
         (_materials[session.id]?.length ?? 0) == session.totalMaterial) {

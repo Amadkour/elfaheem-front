@@ -4,7 +4,9 @@
 //   RecordPlayerPage           the course video player (VideoPlayerScreen, the one player of the app) on a record's
 //                              signed stream, with the caller's top-bar buttons (Open in Studio · Share)
 //   showRecordShareSheet       who may watch (Only people I choose · Anyone with the link), the chosen people (+ the
-//                              picker), the link with Copy / Share via, Save, Stop sharing — kill switch records.share
+//                              picker), the link with Copy / Share via, Save, Stop sharing — kill switch records.share;
+//                              Guests by e-mail (D-315): people without an account, a personal link each (Guest badge,
+//                              Copy link, Resend, Revoke), records_guests_api.dart / records_guests_parts.dart
 //   SharedRecordPage(token)    where /s/record/<token> and the `records_shared` notification land: the player, or
 //                              "not available" (the server answers 404 to anyone not allowed)
 library;
@@ -24,6 +26,8 @@ import '../../admin/admin_common.dart' show t;
 import '../session/video/video_player_screen.dart';
 import '../session/video/vod_player_parts.dart' show VodAction, VodPlayerSkeleton;
 import 'records_api.dart';
+import 'records_guests_api.dart';
+import 'records_guests_parts.dart';
 import 'records_share_api.dart';
 import 'records_share_parts.dart';
 
@@ -110,15 +114,17 @@ class _RecordPlayerPageState extends State<RecordPlayerPage> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// The Share sheet of one of my records. Returns the share as saved (null when nothing was saved).
-Future<RecordShare?> showRecordShareSheet(BuildContext context, RecordItem r, {RecordShareApi? api}) {
+Future<RecordShare?> showRecordShareSheet(BuildContext context, RecordItem r, {RecordShareApi? api, RecordGuestsApi? guestsApi}) {
   if (AppConfig.disableList.contains(kRecordsShareFeatureKey)) return Future.value();
-  return showAppSheet<RecordShare>(context, (_) => _RecordShareSheet(item: r, api: api ?? RemoteRecordShareApi()));
+  return showAppSheet<RecordShare>(context,
+      (_) => _RecordShareSheet(item: r, api: api ?? RemoteRecordShareApi(), guestsApi: guestsApi ?? RemoteRecordGuestsApi()));
 }
 
 class _RecordShareSheet extends StatefulWidget {
-  const _RecordShareSheet({required this.item, required this.api});
+  const _RecordShareSheet({required this.item, required this.api, required this.guestsApi});
   final RecordItem item;
   final RecordShareApi api;
+  final RecordGuestsApi guestsApi;
 
   @override
   State<_RecordShareSheet> createState() => _RecordShareSheetState();
@@ -132,10 +138,25 @@ class _RecordShareSheetState extends State<_RecordShareSheet> {
   bool _busy = false;
   String? _error;
 
+  // guests by e-mail (D-315)
+  List<RecordGuest> _guests = const [];
+  final _guestEmails = TextEditingController();
+  final _guestMessage = TextEditingController();
+  int? _guestExpiry = 30;
+  bool _guestBusy = false;
+  bool _mailUnavailable = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _guestEmails.dispose();
+    _guestMessage.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -159,7 +180,58 @@ class _RecordShareSheetState extends State<_RecordShareSheet> {
     _saved = s;
     _mode = s.active ? s.mode : RecordShareMode.people;
     _people = s.people;
+    _guests = s.guests;
     _error = null;
+  }
+
+  // ── guests by e-mail (D-315) ──
+
+  Future<void> _guestCall(Future<GuestInviteResult> Function() call, {bool clear = false}) async {
+    setState(() => _guestBusy = true);
+    try {
+      final r = await call();
+      if (!mounted) return;
+      setState(() {
+        _guestBusy = false;
+        _guests = r.guests;
+        _saved = r.share;
+        _mailUnavailable = r.mail.unavailable;
+        if (clear) {
+          _guestEmails.clear();
+          _guestMessage.clear();
+        }
+      });
+      showAppNotice(r.mail.notice(), error: r.mail.status == 'failed');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _guestBusy = false);
+      showAppNotice(recordGuestsErrorText(e), error: true);
+    }
+  }
+
+  void _invite() {
+    if (guestEmailsProblem(_guestEmails.text) != null) return;
+    final emails = parseGuestEmails(_guestEmails.text).valid;
+    _guestCall(() => widget.guestsApi.invite(widget.item.id, emails, message: _guestMessage.text, expiresDays: _guestExpiry),
+        clear: true);
+  }
+
+  Future<void> _revokeGuest(RecordGuest g) async {
+    if (!await appConfirm(context,
+        message: t('سيتوقف رابط ${g.email} فوراً. متابعة؟', 'The link of ${g.email} stops working at once. Continue?'),
+        danger: true,
+        confirmLabel: t('إلغاء الرابط', 'Revoke'))) {
+      return;
+    }
+    if (!mounted) return;
+    await _guestCall(() => widget.guestsApi.revoke(widget.item.id, g.id));
+  }
+
+  Future<void> _copyGuest(RecordGuest g) async {
+    final link = g.link;
+    if (link == null) return;
+    await Clipboard.setData(ClipboardData(text: link));
+    showAppNotice(t('تم نسخ رابط ${g.email}', 'Link of ${g.email} copied'));
   }
 
   bool get _dirty {
@@ -268,7 +340,58 @@ class _RecordShareSheetState extends State<_RecordShareSheet> {
             onSystemShare: kIsWeb ? null : _systemShare,
             onSave: _save,
             onStop: _stop,
+            guestRows: [
+              for (final g in _guests)
+                RecordGuestRow(
+                  guest: g,
+                  busy: _guestBusy,
+                  onCopy: () => _copyGuest(g),
+                  onResend: () => _guestCall(() => widget.guestsApi.resend(widget.item.id, g.id)),
+                  onRevoke: () => _revokeGuest(g),
+                ),
+            ],
           ),
+        if (!_loading) ...[
+          const SizedBox(height: AppSpace.md),
+          const Divider(height: 1),
+          const SizedBox(height: AppSpace.md),
+          ListenableBuilder(
+            listenable: _guestEmails,
+            builder: (context, _) {
+              final typed = _guestEmails.text.trim().isNotEmpty;
+              return RecordGuestsInvite(
+                emails: TextField(
+                  key: const ValueKey('records.share.guests.emails'),
+                  controller: _guestEmails,
+                  keyboardType: TextInputType.emailAddress,
+                  textDirection: TextDirection.ltr,
+                  autocorrect: false,
+                  minLines: 1,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: t('عناوين البريد', 'E-mail addresses'),
+                    hintText: 'name@example.com, …',
+                    helperText: t('افصل بين العناوين بفاصلة', 'Separate addresses with a comma'),
+                  ),
+                ),
+                message: TextField(
+                  key: const ValueKey('records.share.guests.message'),
+                  controller: _guestMessage,
+                  maxLength: recordGuestMessageMax,
+                  minLines: 1,
+                  maxLines: 3,
+                  decoration: InputDecoration(labelText: t('رسالة (اختياري)', 'Message (optional)')),
+                ),
+                expiresDays: _guestExpiry,
+                problem: typed ? guestEmailsProblem(_guestEmails.text) : null,
+                busy: _guestBusy,
+                mailUnavailable: _mailUnavailable,
+                onExpiry: (d) => setState(() => _guestExpiry = d),
+                onInvite: typed ? _invite : null,
+              );
+            },
+          ),
+        ],
       ],
     );
   }

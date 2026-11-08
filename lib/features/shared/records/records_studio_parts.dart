@@ -609,18 +609,21 @@ class _StudioPainter extends CustomPainter {
 
 /// The tools on wide screens: icon, name, description.
 class StudioToolList extends StatelessWidget {
-  const StudioToolList({super.key, required this.tool, this.onTool, this.enabled = true});
+  const StudioToolList({super.key, required this.tool, this.onTool, this.enabled = true, this.tools = StudioTool.values});
 
   final StudioTool tool;
   final ValueChanged<StudioTool>? onTool;
   final bool enabled;
+
+  /// The source's tools (a session material has no Cover, D-315).
+  final List<StudioTool> tools;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final motion = AppMotion.of(context);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      for (final x in StudioTool.values)
+      for (final x in tools)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xxs),
           child: Semantics(
@@ -660,11 +663,14 @@ class StudioToolList extends StatelessWidget {
 
 /// The tools on phones: a bottom segmented bar (icon + one word).
 class StudioToolBar extends StatelessWidget {
-  const StudioToolBar({super.key, required this.tool, this.onTool, this.enabled = true});
+  const StudioToolBar({super.key, required this.tool, this.onTool, this.enabled = true, this.tools = StudioTool.values});
 
   final StudioTool tool;
   final ValueChanged<StudioTool>? onTool;
   final bool enabled;
+
+  /// The source's tools (a session material has no Cover, D-315).
+  final List<StudioTool> tools;
 
   @override
   Widget build(BuildContext context) {
@@ -678,7 +684,7 @@ class StudioToolBar extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xxs),
           child: Row(children: [
-            for (final x in StudioTool.values)
+            for (final x in tools)
               Expanded(
                 child: Semantics(
                   selected: x == tool,
@@ -970,11 +976,16 @@ class StudioSaveArea extends StatelessWidget {
     this.canUndo = false,
     this.busy = false,
     this.merge = false,
+    this.draft = false,
     this.onReplace,
     this.onUndo,
     this.onReset,
     this.onSave,
   });
+
+  /// A session material (D-315): the result is a DRAFT students don't see until it is published — no keep /
+  /// replace choice here (that is the publish step), "Save as draft".
+  final bool draft;
 
   /// The name field (the page owns its controller).
   final Widget title;
@@ -996,6 +1007,20 @@ class StudioSaveArea extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       title,
       const SizedBox(height: AppSpace.xxs),
+      if (draft)
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.visibility_off_outlined, size: AppIconSize.sm, color: c.textMedium),
+          const SizedBox(width: AppSpace.xxs),
+          Expanded(
+            child: Text(
+              t('يُحفظ مسودة لا يراها الطلاب. بعد أن تجهز اختر نشرها مادة جديدة أو استبدال الأصل.',
+                  "Saved as a draft students don't see. Once it is ready, publish it as a new material or in place of the original."),
+              key: const ValueKey('studio.draft.note'),
+              style: appText(12, c: c.textMedium, h: 1.4),
+            ),
+          ),
+        ])
+      else
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppChoiceChip(
           key: const ValueKey('studio.keep'),
@@ -1012,7 +1037,7 @@ class StudioSaveArea extends StatelessWidget {
           onTap: () => busy ? null : onReplace?.call(true),
         ),
       ]),
-      if (replace) ...[
+      if (replace && !draft) ...[
         const SizedBox(height: AppSpace.xxs),
         Text(
           t('يُحذف الأصل من القائمة ومن السحابة بعد نجاح التعديل فقط.', 'The original is deleted from the list and the drive only once the edit is done.'),
@@ -1039,7 +1064,11 @@ class StudioSaveArea extends StatelessWidget {
         Expanded(
           child: AppButton.primary(
             key: const ValueKey('studio.save'),
-            label: replace ? t('حفظ واستبدال', 'Save and replace') : t('حفظ كتسجيل جديد', 'Save as new'),
+            label: draft
+                ? t('حفظ كمسودة', 'Save as draft')
+                : replace
+                    ? t('حفظ واستبدال', 'Save and replace')
+                    : t('حفظ كتسجيل جديد', 'Save as new'),
             icon: Icons.save_alt_rounded,
             busy: busy,
             expand: true,
@@ -1053,11 +1082,30 @@ class StudioSaveArea extends StatelessWidget {
 
 /// A saved edit, inline: what it is doing, its progress, then Play (ready) or Retry (failed).
 class StudioJobCard extends StatelessWidget {
-  const StudioJobCard({super.key, required this.items, this.onPlay, this.onRetry, this.onAgain, this.onLibrary});
+  const StudioJobCard({
+    super.key,
+    required this.items,
+    this.onPlay,
+    this.onRetry,
+    this.onAgain,
+    this.onLibrary,
+    this.actionsFor,
+    this.drafts = false,
+    this.libraryLabel,
+  });
 
   final List<RecordItem> items;
   final ValueChanged<RecordItem>? onPlay;
   final ValueChanged<RecordItem>? onRetry;
+
+  /// A finished item's own buttons next to Play (a material draft: Publish, Discard — D-315).
+  final Widget? Function(RecordItem r)? actionsFor;
+
+  /// The items are drafts (a session material): "Draft ready — publish it" instead of "Ready in Records".
+  final bool drafts;
+
+  /// The back-to-the-list button's words (null: "To Records").
+  final String? libraryLabel;
 
   /// Edit the original again.
   final VoidCallback? onAgain;
@@ -1082,8 +1130,12 @@ class StudioJobCard extends StatelessWidget {
           Expanded(
             child: Text(
               done
-                  ? t('جاهز في «التسجيلات»', 'Ready in Records')
-                  : t('يجري الحفظ — يمكنك المتابعة، سيصلك إشعار', 'Saving — carry on, you will be notified'),
+                  ? (drafts
+                      ? t('المسودة جاهزة — شغّلها ثم انشرها', 'The draft is ready — play it, then publish it')
+                      : t('جاهز في «التسجيلات»', 'Ready in Records'))
+                  : (drafts
+                      ? t('يجري الحفظ — يمكنك المتابعة، تظهر المسودة في مواد الحصة', 'Saving — carry on, the draft shows in the session materials')
+                      : t('يجري الحفظ — يمكنك المتابعة، سيصلك إشعار', 'Saving — carry on, you will be notified')),
               style: appText(13.5, w: FontWeight.w700, c: c.textDark),
             ),
           ),
@@ -1118,12 +1170,13 @@ class StudioJobCard extends StatelessWidget {
                 AppPill(key: ValueKey('studio.job.retry.${r.id}'), icon: Icons.refresh_rounded, label: t('إعادة المحاولة', 'Retry'),
                     color: c.warning, onTap: () => onRetry!(r)),
             ])
-          else if (r.isDone && onPlay != null)
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: AppPill(key: ValueKey('studio.job.play.${r.id}'), icon: Icons.play_arrow_rounded, label: t('تشغيل', 'Play'),
-                  color: c.success, onTap: () => onPlay!(r)),
-            ),
+          else if (r.isDone && (onPlay != null || actionsFor != null))
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              if (onPlay != null)
+                AppPill(key: ValueKey('studio.job.play.${r.id}'), icon: Icons.play_arrow_rounded, label: t('تشغيل', 'Play'),
+                    color: c.success, onTap: () => onPlay!(r)),
+              ?actionsFor?.call(r),
+            ]),
         ],
         const SizedBox(height: AppSpace.sm),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -1139,7 +1192,7 @@ class StudioJobCard extends StatelessWidget {
           if (onLibrary != null)
             AppButton(
               key: const ValueKey('studio.job.library'),
-              label: t('إلى التسجيلات', 'To Records'),
+              label: libraryLabel ?? t('إلى التسجيلات', 'To Records'),
               icon: Icons.video_library_rounded,
               variant: AppButtonVariant.ghost,
               size: AppButtonSize.sm,
@@ -1172,7 +1225,11 @@ class RecordStudioLayout extends StatelessWidget {
     this.onTool,
     this.busy = false,
     this.footer,
+    this.tools = StudioTool.values,
   });
+
+  /// The source's tools (StudioSource.tools).
+  final List<StudioTool> tools;
 
   /// The player (or a still / a placeholder in tests), drawn 16:9 on the stage.
   final Widget preview;
@@ -1241,7 +1298,7 @@ class RecordStudioLayout extends StatelessWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
                   Text(t('الأدوات', 'Tools'), style: AppType.overline(context)),
                   const SizedBox(height: AppSpace.xs),
-                  StudioToolList(tool: tool, onTool: onTool, enabled: !busy),
+                  StudioToolList(tool: tool, onTool: onTool, enabled: !busy, tools: tools),
                   const Divider(height: AppSpace.lg),
                   panel,
                   const SizedBox(height: AppSpace.md),
@@ -1267,7 +1324,7 @@ class RecordStudioLayout extends StatelessWidget {
             ]),
           ),
         ),
-        StudioToolBar(tool: tool, onTool: onTool, enabled: !busy),
+        StudioToolBar(tool: tool, onTool: onTool, enabled: !busy, tools: tools),
       ]);
     });
   }
