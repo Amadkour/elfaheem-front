@@ -3,9 +3,15 @@
 //
 // BOARD_REC_BENCH=1 flutter test test/org/board_rec_pacing_test.dart prints what a frame costs on this machine
 // (host Skia; in Chrome with CanvasKit: flutter test --platform chrome --dart-define=BOARD_REC_BENCH=1 …).
+import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart' show Canvas, Offset, Paint, PaintingStyle, Path, StrokeCap, StrokeJoin;
+import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_ink.dart' show AnnotFlutterPath;
 import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_export.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
@@ -35,6 +41,12 @@ void _strokes(BoardController c, int n) {
     }
     c.endInk();
   }
+}
+
+Future<ui.Image> _image(Uint8List rgba, int w, int h) {
+  final done = Completer<ui.Image>();
+  ui.decodeImageFromPixels(rgba, w, h, ui.PixelFormat.rgba8888, done.complete);
+  return done.future;
 }
 
 void main() {
@@ -126,32 +138,93 @@ void main() {
   });
 
   group('BoardRecordingFrames', () {
-    testWidgets('a frame is the requested size; finished strokes are cached while one is drawn', (t) async {
+    testWidgets('writing never needs a raster: ink goes as vectors, the base only for real page changes', (t) async {
       await t.runAsync(() async {
         final c = _board();
         _strokes(c, 20);
         final f = BoardRecordingFrames();
-        var rgba = await f.render(c, width: 640, height: 360);
-        expect(rgba, isNotNull);
-        expect(rgba!.length, 640 * 360 * 4);
-        expect(f.rebuilt, isTrue);
-        // Drawing: the cache stays, only the open stroke is painted on top.
+        final first = (await f.next(c, width: 640, height: 360))!;
+        expect(first.raster!.length, 640 * 360 * 4);
+        expect(await f.next(c, width: 640, height: 360), isNull, reason: 'nothing changed: no work at all');
+
         c.beginInk(0.2, 0.9);
         for (var k = 0; k < 5; k++) {
           c.moveInk(0.2 + k * 0.05, 0.9);
-          rgba = await f.render(c, width: 640, height: 360);
-          expect(f.rebuilt, isFalse);
+          final frame = (await f.next(c, width: 640, height: 360))!;
+          expect(frame.raster, isNull);
+          expect(frame.open, hasLength(1));
+          expect(frame.commit, isEmpty);
         }
-        // The stroke ends: one rebuild, then the cache again.
         c.endInk();
-        await f.render(c, width: 640, height: 360);
-        expect(f.rebuilt, isTrue);
-        await f.render(c, width: 640, height: 360);
-        expect(f.rebuilt, isFalse);
-        // A new size rebuilds.
-        await f.render(c, width: 1280, height: 720);
-        expect(f.rebuilt, isTrue);
+        final done = (await f.next(c, width: 640, height: 360))!;
+        expect(done.raster, isNull, reason: 'a finished stroke is drawn into the base, not re-rasterized');
+        expect(done.commit, hasLength(1));
+        expect(done.open, isEmpty);
+        expect(await f.next(c, width: 640, height: 360), isNull);
+
+        // A smaller raster size does not disturb the ink; crisp redoes a small base, and only that.
+        expect(await f.next(c, width: 320, height: 180), isNull);
+        final crisp = (await f.next(c, width: 1280, height: 720, crisp: true))!;
+        expect((crisp.raster != null, crisp.width), (true, 1280));
         f.dispose();
+      });
+    });
+
+    testWidgets('a change ink cannot express needs a raster (undo)', (t) async {
+      await t.runAsync(() async {
+        final c = _board();
+        _strokes(c, 3);
+        final f = BoardRecordingFrames();
+        await f.next(c, width: 640, height: 360);
+        c.undo();
+        expect((await f.next(c, width: 640, height: 360))!.raster, isNotNull);
+        f.dispose();
+      });
+    });
+
+    testWidgets('the vectors land on the same pixels as the raster', (t) async {
+      await t.runAsync(() async {
+        const w = 640, h = 360;
+        final drawn = _board();
+        final whole = BoardRecordingFrames();
+        final f = BoardRecordingFrames();
+        final blank = (await f.next(drawn, width: w, height: h))!;
+        for (final highlighter in [false, true]) {
+          drawn.beginInk(0.15, highlighter ? 0.6 : 0.3, p: 0.7, stylus: !highlighter, highlighter: highlighter);
+          for (var k = 1; k <= 30; k++) {
+            drawn.moveInk(0.15 + k * 0.02, (highlighter ? 0.6 : 0.3) + 0.1 * math.sin(k / 3), p: 0.4 + k / 80);
+          }
+          drawn.endInk();
+        }
+        final strokes = (await f.next(drawn, width: w, height: h))!;
+        expect(strokes.commit, hasLength(2));
+        final rec = ui.PictureRecorder();
+        final canvas = Canvas(rec);
+        canvas.drawImage(await _image(blank.raster!, w, h), Offset.zero, Paint());
+        for (final s in strokes.commit) {
+          final path = Path();
+          s.replay(AnnotFlutterPath(path));
+          final paint = Paint()
+            ..color = s.look.color
+            ..isAntiAlias = true;
+          if (!s.look.fill) {
+            paint
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = s.look.width
+              ..strokeCap = s.look.butt ? StrokeCap.butt : StrokeCap.round
+              ..strokeJoin = StrokeJoin.round;
+          }
+          canvas.drawPath(path, paint);
+        }
+        final vector = (await (await rec.endRecording().toImage(w, h)).toByteData(format: ui.ImageByteFormat.rawRgba))!;
+        final raster = (await whole.next(drawn, width: w, height: h))!.raster!;
+        var far = 0;
+        for (var i = 0; i < raster.length; i += 4) {
+          if ((raster[i] - vector.getUint8(i)).abs() > 40) far++;
+        }
+        expect(far / (w * h), lessThan(0.002), reason: '$far pixels differ');
+        f.dispose();
+        whole.dispose();
       });
     });
 
@@ -165,19 +238,19 @@ void main() {
           for (final tier in [kBoardRecTiers[0], kBoardRecTiers[2], kBoardRecTiers[4]]) {
             final (w, h) = BoardRecPacer.sizeFor(tier);
             final f = BoardRecordingFrames();
-            await f.render(c, width: w, height: h); // warm-up + the cache
+            await f.next(c, width: w, height: h); // warm-up + the base
             c.beginInk(0.1, 0.95);
             final sw = Stopwatch()..start();
             const frames = 30;
             for (var k = 0; k < frames; k++) {
               c.moveInk(0.1 + k * 0.02, 0.95);
-              await f.render(c, width: w, height: h);
+              await f.next(c, width: w, height: h);
             }
             sw.stop();
             c.endInk();
             final uncached = Stopwatch()..start();
             final full = BoardRecordingFrames();
-            await full.render(c, width: w, height: h);
+            await full.next(c, width: w, height: h);
             uncached.stop();
             full.dispose();
             f.dispose();

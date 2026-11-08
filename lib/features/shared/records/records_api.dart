@@ -7,7 +7,7 @@
 //   PATCH  /api/v1/me/records/{rid}           {title} → RecordItem + drive_renamed
 //   DELETE /api/v1/me/records/{rid}?drive=1   {deleted, drive_deleted} 409 record_busy · 502 cloud_delete_failed
 //   POST   /api/v1/me/records/{rid}/cover     multipart `file`          DELETE …/cover
-//   POST   /api/v1/me/records/{rid}/edit      {op, start?, end?, at?, speed?, title?, delete_source?} → 202 {items}
+//   POST   /api/v1/me/records/{rid}/edit      {op, start?, end?, at?, speed?, height?, level?, title?, delete_source?} → 202 {items}
 //   POST   /api/v1/me/records/merge           {ids, title?, delete_sources?} → 202 {items}
 //   POST   /api/v1/me/records/{rid}/retry     failed → again
 //   POST   /api/v1/me/records/{rid}/play      {url: /api/v1/me/records/stream/<token>, mime, expires_in}
@@ -15,6 +15,8 @@
 // Every edit is a NEW item (the source is kept unless the person asks to delete it); a job's progress arrives as
 // `job_updated{kind: recording, id, status, stage, progress}` (EventOrPoll in the page). Contract:
 // ../back/FLUTTER_API_CHANGES.md "Records". Strings use t(ar, en). Tests: test/org/records_api_test.dart.
+import 'dart:math' as math;
+
 import 'dart:typed_data';
 
 import '../../../core/api_client.dart';
@@ -38,6 +40,7 @@ enum RecordOp {
   split('split'),
   cut('cut'),
   speed('speed'),
+  quality('quality'),
   merge('merge');
 
   const RecordOp(this.wire);
@@ -56,6 +59,7 @@ enum RecordOp {
         RecordOp.split => t('تقسيم', 'Split'),
         RecordOp.cut => t('حذف فترة', 'Cut a period'),
         RecordOp.speed => t('السرعة', 'Speed'),
+        RecordOp.quality => t('الجودة والحجم', 'Quality and size'),
         RecordOp.merge => t('دمج', 'Merge'),
       };
 
@@ -65,6 +69,7 @@ enum RecordOp {
         RecordOp.split => t('جزء من تقسيم', 'Split part'),
         RecordOp.cut => t('بعد حذف فترة', 'Period cut'),
         RecordOp.speed => t('سرعة معدّلة', 'Speed changed'),
+        RecordOp.quality => t('جودة معدّلة', 'Quality changed'),
         RecordOp.merge => t('مدمج', 'Merged'),
       };
 }
@@ -298,8 +303,9 @@ String recordStatusLabel(RecordItem r) => switch (r.status) {
     };
 
 /// What a job's new item will be called by default (the person can change it in the sheet).
-String defaultEditTitle(String source, RecordOp op, {double? speed}) => switch (op) {
+String defaultEditTitle(String source, RecordOp op, {double? speed, int? height}) => switch (op) {
       RecordOp.speed => '$source · ${speedLabel(speed ?? 1)}',
+      RecordOp.quality when height != null => '$source · ${height}p',
       RecordOp.split => source,
       _ => '$source · ${op.madeBy}',
     };
@@ -312,6 +318,7 @@ const recordsCodes = <String, (String, String)>{
   'record_source_missing': ('التسجيل الأصلي لم يعد موجوداً', 'The original recording is gone'),
   'bad_range': ('الفترة المختارة غير صالحة', 'The chosen period is not valid'),
   'bad_speed': ('سرعة غير مدعومة', 'That speed is not supported'),
+  'bad_quality': ('اختيار الجودة غير صالح', 'That quality is not supported'),
   'bad_merge': ('اختر تسجيلين مختلفين على الأقل', 'Pick at least two different recordings'),
   'bad_title': ('اكتب اسماً للتسجيل', 'Type a name for the recording'),
   'cloud_not_connected': ('اربط حساب السحابة أولاً من الإعدادات → السحابات المتصلة',
@@ -330,18 +337,56 @@ String recordsErrorText(Object e) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Quality and size (the server's records_edit.py: the same heights, levels and bitrate ceilings)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const studioQualityHeights = <int>[1080, 720, 480];
+
+enum StudioQualityLevel {
+  small('small'),
+  balanced('balanced'),
+  best('best');
+
+  const StudioQualityLevel(this.wire);
+  final String wire;
+
+  String get label => switch (this) {
+        StudioQualityLevel.small => t('ملف أصغر', 'Smaller file'),
+        StudioQualityLevel.balanced => t('متوازن', 'Balanced'),
+        StudioQualityLevel.best => t('أعلى جودة', 'Best quality'),
+      };
+}
+
+const _qualityCeilingKbps = <int, Map<StudioQualityLevel, int>>{
+  1080: {StudioQualityLevel.small: 1800, StudioQualityLevel.balanced: 3000, StudioQualityLevel.best: 5500},
+  720: {StudioQualityLevel.small: 900, StudioQualityLevel.balanced: 1500, StudioQualityLevel.best: 2800},
+  480: {StudioQualityLevel.small: 500, StudioQualityLevel.balanced: 800, StudioQualityLevel.best: 1400},
+};
+
+/// The most a file of [seconds] can weigh at this size and level (bytes): the server caps the bitrate, so this is a
+/// ceiling; a quiet video such as a whiteboard comes out well under it. [sourceHeight] stands in when [height] is null.
+int studioQualityCeilingBytes(double seconds, {int? height, required StudioQualityLevel level, required int sourceHeight}) {
+  final h = height ?? (sourceHeight >= 1000 ? 1080 : (sourceHeight >= 700 ? 720 : 480));
+  return ((_qualityCeilingKbps[h]![level]! + 128) * 1000 / 8 * math.max(0, seconds)).round();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Edits
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// One edit request on one item (merge has its own call).
 class RecordEdit {
-  const RecordEdit({required this.op, this.start, this.end, this.at, this.speed, this.title, this.deleteSource = false});
+  const RecordEdit({required this.op, this.start, this.end, this.at, this.speed, this.height, this.level, this.title, this.deleteSource = false});
 
   final RecordOp op;
   final double? start;
   final double? end;
   final double? at;
   final double? speed;
+
+  /// Quality and size: the short side in pixels (null: as it is) and how much of the file goes on detail.
+  final int? height;
+  final StudioQualityLevel? level;
   final String? title;
   final bool deleteSource;
 
@@ -353,6 +398,8 @@ class RecordEdit {
       if ((op == RecordOp.trim || op == RecordOp.cut) && end != null) 'end': r3(end!),
       if (op == RecordOp.split && at != null) 'at': r3(at!),
       if (op == RecordOp.speed && speed != null) 'speed': speed,
+      if (op == RecordOp.quality && height != null) 'height': height,
+      if (op == RecordOp.quality && level != null) 'level': level!.wire,
       if ((title ?? '').trim().isNotEmpty) 'title': title!.trim(),
       if (deleteSource) 'delete_source': true,
     };
@@ -381,6 +428,8 @@ String? editProblem(RecordEdit e, double duration) {
       return null;
     case RecordOp.speed:
       return recordSpeeds.contains(e.speed) ? null : t('اختر سرعة', 'Pick a speed');
+    case RecordOp.quality:
+      return null;
     case RecordOp.merge:
       return null;
   }
@@ -399,6 +448,8 @@ List<double> editResultDurations(RecordEdit e, double duration) {
       return [at, duration - at];
     case RecordOp.speed:
       return [duration / (e.speed ?? 1)];
+    case RecordOp.quality:
+      return [duration];
     case RecordOp.merge:
       return [duration];
   }

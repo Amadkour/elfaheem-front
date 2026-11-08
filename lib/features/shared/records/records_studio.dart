@@ -36,7 +36,7 @@ import 'records_studio_parts.dart';
 import 'studio_source.dart';
 
 /// One pending selection (what Undo brings back).
-typedef _Sel = ({double start, double end, double at, double speed, List<int> merge});
+typedef _Sel = ({double start, double end, double at, double speed, int? height, StudioQualityLevel level, List<int> merge});
 
 class RecordStudioPage extends StatefulWidget {
   const RecordStudioPage({
@@ -92,11 +92,13 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
   late double _dur = widget.item.durationSeconds;
   double _previewSpeed = 1;
 
-  late StudioTool _tool = _src.tools.first;
+  late StudioTool _tool = _tools.first;
   late double _start = 0;
   late double _end = _dur;
   late double _at = _dur / 2;
   double _speed = 1.5;
+  int? _height;
+  StudioQualityLevel _level = StudioQualityLevel.balanced;
   List<int> _mergeIds = const [];
   double _zoom = 1;
   bool _replace = false;
@@ -111,6 +113,9 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
   bool _titleTouched = false;
   late final TextEditingController _title = TextEditingController(text: _defaultTitle());
   final _focus = FocusNode(debugLabel: 'records-studio');
+
+  /// An audio file has no picture to change.
+  List<StudioTool> get _tools => [for (final x in _src.tools) if (x != StudioTool.quality || !_item.isAudio) x];
 
   Object? _popValue() => widget.popResult != null ? widget.popResult!() : List<RecordItem>.of(_made);
 
@@ -209,7 +214,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
 
   // ── selection + undo ──
 
-  _Sel get _sel => (start: _start, end: _end, at: _at, speed: _speed, merge: _mergeIds);
+  _Sel get _sel => (start: _start, end: _end, at: _at, speed: _speed, height: _height, level: _level, merge: _mergeIds);
 
   /// Remembers the selection before a change (a drag counts once: pushes are 700 ms apart at least).
   void _remember() {
@@ -226,6 +231,8 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
         _end = s.end;
         _at = s.at;
         _speed = s.speed;
+        _height = s.height;
+        _level = s.level;
         _mergeIds = s.merge;
         _syncTitle();
       });
@@ -239,13 +246,13 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
 
   void _reset() {
     _remember();
-    _restore((start: 0, end: _dur, at: _dur / 2, speed: 1.5, merge: const []));
+    _restore((start: 0, end: _dur, at: _dur / 2, speed: 1.5, height: null, level: StudioQualityLevel.balanced, merge: const []));
     _applySpeed();
   }
 
   bool get _changed {
     if (_history.isNotEmpty) return true;
-    return _start != 0 || (_end - _dur).abs() > 0.01 || _mergeIds.isNotEmpty;
+    return _start != 0 || (_end - _dur).abs() > 0.01 || _mergeIds.isNotEmpty || _height != null || _level != StudioQualityLevel.balanced;
   }
 
   void _setRange(double a, double b) {
@@ -270,6 +277,15 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
     _applySpeed();
   }
 
+  void _setQuality(int? height, StudioQualityLevel level) {
+    _remember();
+    setState(() {
+      _height = height;
+      _level = level;
+      _syncTitle();
+    });
+  }
+
   void _toggleMerge(RecordItem r) {
     _remember();
     setState(() {
@@ -285,7 +301,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
     _applySpeed();
   }
 
-  String _defaultTitle() => defaultEditTitle(_item.title, _tool.op ?? RecordOp.trim, speed: _speed);
+  String _defaultTitle() => defaultEditTitle(_item.title, _tool.op ?? RecordOp.trim, speed: _speed, height: _height);
 
   void _syncTitle() {
     if (!_titleTouched) _title.text = _defaultTitle();
@@ -293,7 +309,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
 
   // ── what comes out ──
 
-  RecordEdit? get _edit => studioEdit(_tool, start: _start, end: _end, at: _at, speed: _speed);
+  RecordEdit? get _edit => studioEdit(_tool, start: _start, end: _end, at: _at, speed: _speed, height: _height, level: _level);
 
   List<RecordItem> get _mergeParts => [
         _item,
@@ -341,7 +357,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
       } else {
         final e = _edit!;
         made = await _src.edit(_item.id,
-            RecordEdit(op: e.op, start: e.start, end: e.end, at: e.at, speed: e.speed, title: _title.text, deleteSource: _replace && !_src.drafts));
+            RecordEdit(op: e.op, start: e.start, end: e.end, at: e.at, speed: e.speed, height: e.height, level: e.level, title: _title.text, deleteSource: _replace && !_src.drafts));
       }
       if (!mounted) return;
       setState(() {
@@ -516,7 +532,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
     final picks = studioMergePicks(_item, widget.others, _mergeIds);
     final layout = RecordStudioLayout(
       busy: !editing,
-      tools: _src.tools,
+      tools: _tools,
       tool: _tool,
       onTool: _setTool,
       preview: _preview(c),
@@ -555,12 +571,15 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
         end: _end,
         at: _at,
         speed: _speed,
+        height: _height,
+        level: _level,
         merge: picks,
         enabled: editing,
         showDescription: MediaQuery.sizeOf(context).width < studioWideMin,
         onRange: _setRange,
         onAt: _setAt,
         onSpeed: _setSpeed,
+        onQuality: _setQuality,
         onPickCover: _pickCover,
         onRemoveCover: () => _coverCall(() => _src.clearCover(_item.id), t('أُزيل الغلاف', 'Cover removed')),
         onToggleMerge: _toggleMerge,

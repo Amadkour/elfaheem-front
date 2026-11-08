@@ -4,7 +4,7 @@
 //   GET    /api/v1/sessions/{sid}/materials/{mid}/studio          → MaterialStudioOpen {source, others, drafts}
 //   POST   /api/v1/sessions/{sid}/materials/{mid}/studio/play     → RecordPlay (the staff stream, no device header)
 //   POST   /api/v1/sessions/{sid}/materials/{mid}/studio/frames   {n} → RecordFrames
-//   POST   /api/v1/sessions/{sid}/materials/{mid}/studio/edit     {op, start?, end?, at?, speed?, title?} → [draft]
+//   POST   /api/v1/sessions/{sid}/materials/{mid}/studio/edit     {op, start?, end?, at?, speed?, height?, level?, title?} → [draft]
 //   POST   /api/v1/sessions/{sid}/materials/{mid}/studio/merge    {ids: [mid, …], title?} → [draft]
 //   GET    /api/v1/sessions/{sid}/studio/drafts                   → [MaterialDraft] (drafts + replaces to confirm)
 //   GET    /api/v1/studio/drafts/{did}  · POST …/retry · …/play · …/publish {mode: new|replace} · …/restore ·
@@ -253,7 +253,7 @@ class MaterialStudioSource implements StudioSource {
   RecordItem? _one(MaterialDraft? d) => d == null ? null : _keep([d]).first;
 
   @override
-  List<StudioTool> get tools => const [StudioTool.trim, StudioTool.cut, StudioTool.split, StudioTool.speed, StudioTool.merge];
+  List<StudioTool> get tools => const [StudioTool.trim, StudioTool.cut, StudioTool.split, StudioTool.speed, StudioTool.quality, StudioTool.merge];
   @override
   bool get drafts => true;
   @override

@@ -189,6 +189,48 @@ class AnnotInkFilter {
 
 // ── Output: geometry ──────────────────────────────────────────────────────────
 
+/// Where the outline and spline below are written: a Flutter [Path] ([AnnotFlutterPath]) or another canvas (the web
+/// recording draws the same shapes on a 2D canvas, D-318).
+abstract class AnnotPathSink {
+  void moveTo(double x, double y);
+  void lineTo(double x, double y);
+  void cubicTo(double x1, double y1, double x2, double y2, double x, double y);
+
+  /// An arc of the circle ([cx], [cy], [r]) joined to the current point by a line. Radians; a positive [sweep] is
+  /// clockwise on screen.
+  void arc(double cx, double cy, double r, double start, double sweep);
+
+  /// A whole circle as its own clockwise contour.
+  void circle(double cx, double cy, double r);
+  void close();
+}
+
+/// [AnnotPathSink] onto a Flutter [Path].
+class AnnotFlutterPath implements AnnotPathSink {
+  AnnotFlutterPath(this.path);
+
+  final Path path;
+
+  @override
+  void moveTo(double x, double y) => path.moveTo(x, y);
+
+  @override
+  void lineTo(double x, double y) => path.lineTo(x, y);
+
+  @override
+  void cubicTo(double x1, double y1, double x2, double y2, double x, double y) => path.cubicTo(x1, y1, x2, y2, x, y);
+
+  @override
+  void arc(double cx, double cy, double r, double start, double sweep) =>
+      path.arcTo(Rect.fromCircle(center: Offset(cx, cy), radius: r), start, sweep, false);
+
+  @override
+  void circle(double cx, double cy, double r) => path.addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
+
+  @override
+  void close() => path.close();
+}
+
 /// Width multiplier of a pen sample's pressure: 0.5 (no pressure data) → 1; 0 → 0.55, 1 → 1.45.
 double annotPressureFactor(double p) => 0.55 + 0.9 * _clamp01(p);
 
@@ -361,12 +403,15 @@ void annotInkAppend(Path path, List<AnnotInkNode> nodes) {
 /// pieces appended one after another (the cached part, the tail) and a stroke crossing itself stay filled under
 /// non-zero. Where the centre line turns tighter than the pen is wide, the inner edge folds back on itself; a round
 /// join (a clockwise circle) there keeps that corner filled.
-void annotInkOutline(Path path, List<AnnotInkNode> nodes) {
+void annotInkOutline(Path path, List<AnnotInkNode> nodes) => annotInkOutlineTo(AnnotFlutterPath(path), nodes);
+
+/// [annotInkOutline] into any [AnnotPathSink].
+void annotInkOutlineTo(AnnotPathSink path, List<AnnotInkNode> nodes) {
   final m = nodes.length;
   if (m == 0) return;
   if (m == 1) {
     final b = nodes[0];
-    if (b.r > 0) path.addOval(Rect.fromCircle(center: b.offset, radius: b.r));
+    if (b.r > 0) path.circle(b.x, b.y, b.r);
     return;
   }
   final left = List<Offset>.filled(m, Offset.zero), right = List<Offset>.filled(m, Offset.zero);
@@ -393,11 +438,11 @@ void annotInkOutline(Path path, List<AnnotInkNode> nodes) {
   final de = dirs[m - 1], ds = dirs[0];
   final ae = math.atan2(de.dy, de.dx), as = math.atan2(ds.dy, ds.dx);
   final last = nodes[m - 1], first = nodes[0];
-  if (last.r > 0) path.arcTo(Rect.fromCircle(center: last.offset, radius: last.r), ae - math.pi / 2, math.pi, false);
+  if (last.r > 0) path.arc(last.x, last.y, last.r, ae - math.pi / 2, math.pi);
   for (var i = m - 1; i >= 0; i--) {
     path.lineTo(right[i].dx, right[i].dy);
   }
-  if (first.r > 0) path.arcTo(Rect.fromCircle(center: first.offset, radius: first.r), as + math.pi / 2, math.pi, false);
+  if (first.r > 0) path.arc(first.x, first.y, first.r, as + math.pi / 2, math.pi);
   path.close();
   // Round joins where the edge folds (the turn over one node spacing is wider than the pen allows).
   for (var i = 1; i < m - 1; i++) {
@@ -410,7 +455,7 @@ void annotInkOutline(Path path, List<AnnotInkNode> nodes) {
     final cross = (u.dx * v.dy - u.dy * v.dx) / (lu * lv), dot = (u.dx * v.dx + u.dy * v.dy) / (lu * lv);
     final turn = math.atan2(cross, dot).abs();
     // The inner edge runs backwards once the radius of curvature (spacing / turn) is under the pen's radius.
-    if (turn > 1e-6 && math.min(lu, lv) / turn < r * 1.05) path.addOval(Rect.fromCircle(center: b, radius: r));
+    if (turn > 1e-6 && math.min(lu, lv) / turn < r * 1.05) path.circle(b.dx, b.dy, r);
   }
 }
 
@@ -431,17 +476,22 @@ double annotSignedArea(List<Offset> pts) {
 /// [annotInkCenterline], one cubic per piece.
 Path annotSmoothPath(List<Offset> o) {
   final path = Path();
-  if (o.isEmpty) return path;
+  annotSmoothPathTo(AnnotFlutterPath(path), o);
+  return path;
+}
+
+/// [annotSmoothPath] into any [AnnotPathSink].
+void annotSmoothPathTo(AnnotPathSink path, List<Offset> o) {
+  if (o.isEmpty) return;
   path.moveTo(o[0].dx, o[0].dy);
   if (o.length == 2) {
     path.lineTo(o[1].dx, o[1].dy);
-    return path;
+    return;
   }
   for (var i = 1; i < o.length; i++) {
     final (_, c1, c2, b) = annotInkPiece(o, i);
     path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, b.dx, b.dy);
   }
-  return path;
 }
 
 double _clamp01(double v) => v.isNaN ? 0.5 : v.clamp(0.0, 1.0).toDouble();

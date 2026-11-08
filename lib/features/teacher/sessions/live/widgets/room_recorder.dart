@@ -637,6 +637,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_recording.dart'
     show RecordingQuality, RecorderSettings;
 
+import '../whiteboard/board_rec_ink.dart';
 import 'record/recorder_native_android.dart';
 import 'record/recorder_native_shared.dart';
 import 'record/recorder_types.dart';
@@ -950,10 +951,10 @@ class ClientRecorder extends ChangeNotifier {
     _webRecorder?.removeStream(label);
   }
 
-  /// An image source's next frame (the whiteboard page, RGBA).
-  void pushRecordingFrame(String label, Uint8List rgba, int width, int height) {
-    if (!kIsWeb || audioOnly) return;
-    _webRecorder?.pushImageFrame(label, rgba, width, height);
+  /// An image source's next update (the whiteboard page, D-318). False: it needs a raster first.
+  bool pushBoardFrame(String label, BoardRecFrame frame) {
+    if (!kIsWeb || audioOnly) return true;
+    return _webRecorder?.pushBoardFrame(label, frame) ?? true;
   }
 
   /// Phase 2 confirmation: called from room.dart AFTER startScreenCaptureService

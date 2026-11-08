@@ -48,6 +48,18 @@ class AnnotFit {
 /// Highlighter alpha, whatever colour was picked.
 const kAnnotHighlighterAlpha = 0.38;
 
+/// How a traced stroke is painted ([AnnotationPainter.traceStroke]).
+class AnnotStrokeLook {
+  const AnnotStrokeLook({required this.color, required this.fill, this.width = 0, this.butt = false});
+
+  final Color color;
+
+  /// A filled shape; false: stroked with [width] and round joins, butt caps when [butt] else round.
+  final bool fill;
+  final double width;
+  final bool butt;
+}
+
 class AnnotationPainter extends CustomPainter {
   AnnotationPainter({
     required this.board,
@@ -84,6 +96,40 @@ class AnnotationPainter extends CustomPainter {
   /// stroke): how many of its points to draw — the last one reached part of the way (D-314); null: all.
   static void paintStroke(Canvas canvas, AnnotStroke s, Rect rect, {double? shown}) =>
       _paintStroke(canvas, s, rect, shown: shown);
+
+  /// The whole of stroke [s] in [rect], written into [sink] instead of a Flutter canvas (the web recording, D-318):
+  /// the same shape as [paintStroke] without the piece cache. Null when the stroke has no points.
+  static AnnotStrokeLook? traceStroke(AnnotStroke s, Rect rect, AnnotPathSink sink) {
+    final pts = s.points;
+    if (pts.isEmpty) return null;
+    final highlighter = s.ink == AnnotInk.highlighter;
+    final color = Color(s.color).withValues(alpha: highlighter ? kAnnotHighlighterAlpha : 1);
+    final base = math.max(1.0, s.width * rect.width);
+    final o = [for (final p in pts) AnnotFit.toLocal(p.x, p.y, rect)];
+    if (pts.length == 1) {
+      final c = o[0];
+      if (highlighter) {
+        final r = Rect.fromCenter(center: c, width: base * 0.5, height: base);
+        sink
+          ..moveTo(r.left, r.top)
+          ..lineTo(r.right, r.top)
+          ..lineTo(r.right, r.bottom)
+          ..lineTo(r.left, r.bottom)
+          ..close();
+      } else {
+        sink.circle(c.dx, c.dy, (s.isPressured ? base * annotPressureFactor(pts[0].p) : base) / 2);
+      }
+      return AnnotStrokeLook(color: color, fill: true);
+    }
+    if (highlighter || !s.isPressured) {
+      annotSmoothPathTo(sink, o);
+      return AnnotStrokeLook(color: color, fill: false, width: base, butt: highlighter);
+    }
+    final radii = annotInkRadii([for (final p in pts) p.p], base);
+    final spacing = (base * 0.3).clamp(0.5, 3.0).toDouble();
+    annotInkOutlineTo(sink, annotInkTapered(annotInkCenterline(o, radii, spacing: spacing), base, taperEnd: !s.open));
+    return AnnotStrokeLook(color: color, fill: true);
+  }
 
   static void _paintStroke(Canvas canvas, AnnotStroke s, Rect rect, {double? shown}) {
     final all = s.points;

@@ -145,4 +145,33 @@ void main() {
   test('coded refusals have their own words', () {
     expect(recordsCodes.containsKey('records_busy') && recordsCodes.containsKey('cloud_delete_failed'), isTrue);
   });
+
+  group('quality and size (D-318)', () {
+    test('the body carries only what was chosen', () {
+      expect(const RecordEdit(op: RecordOp.quality, height: 480, level: StudioQualityLevel.small).toJson(),
+          {'op': 'quality', 'height': 480, 'level': 'small'});
+      expect(const RecordEdit(op: RecordOp.quality, level: StudioQualityLevel.best).toJson(), {'op': 'quality', 'level': 'best'});
+      expect(RecordOp.fromWire('quality'), RecordOp.quality);
+    });
+
+    test('nothing to refuse; the length stays', () {
+      const e = RecordEdit(op: RecordOp.quality, level: StudioQualityLevel.balanced);
+      expect(editProblem(e, 100), isNull);
+      expect(editResultDurations(e, 100), [100.0]);
+    });
+
+    test('the ceiling follows height and level (kbps + 128 of sound), the source height when the size stays', () {
+      int at(int? h, StudioQualityLevel l, {int source = 720}) =>
+          studioQualityCeilingBytes(100, height: h, level: l, sourceHeight: source);
+      expect(at(480, StudioQualityLevel.small), (500 + 128) * 1000 / 8 * 100);
+      expect(at(1080, StudioQualityLevel.best), (5500 + 128) * 1000 / 8 * 100);
+      expect(at(null, StudioQualityLevel.balanced), at(720, StudioQualityLevel.balanced));
+      expect(at(null, StudioQualityLevel.balanced, source: 1080), at(1080, StudioQualityLevel.balanced));
+      expect(at(720, StudioQualityLevel.small), lessThan(at(720, StudioQualityLevel.best)));
+    });
+
+    test('the default name says the new height', () {
+      expect(defaultEditTitle('Math', RecordOp.quality, height: 480), 'Math · 480p');
+    });
+  });
 }

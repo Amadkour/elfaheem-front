@@ -2537,6 +2537,7 @@ class _RoomPageState extends State<RoomPage>
   /// recorder_web_impl.dart.
   Future<void> _sendLiveScreenPlaceholderWeb() async {
     if (!kIsWeb || !_recordsHere) return; // [meeting-recording]
+    if (_isBoardMain) return; // D-318: the recording draws the board; a full-room PNG here would only stall the pen
     final local = widget.room.localParticipant;
     if (local?.isScreenShareEnabled() == true) return;
     if (local?.isCameraEnabled() == true) return;
@@ -2692,17 +2693,16 @@ class _RoomPageState extends State<RoomPage>
   final Map<String, Object> _recVideo = {}; // compositor label → the mediaStreamTrack it wraps
   String? _recLayoutSent;
   // D-313: the board in the web recording follows the drawing (whiteboard/board_rec_pacing.dart): a frame on every
-  // change — stroke points included — at most at the compositor's 30 fps, one at a time, smaller / fewer when a
-  // capture costs too much of the UI thread, and one full-size frame once the page is still again. Drawn from the
-  // items with the finished strokes cached (board_export.dart BoardRecordingFrames). The watch timer only notices a
-  // scroll of a continuous page (it fires no change) and re-sends a still page every 2 s.
+  // change — stroke points included — at most at the compositor's 30 fps, one at a time, and one full-size frame once
+  // the page is still again. D-318: ink goes as vectors, so writing costs no GPU read-back on the thread that draws
+  // the pen; a raster is only made when the page itself changes (board_export.dart BoardRecordingFrames). The watch
+  // timer only notices a scroll of a continuous page (it fires no change).
   Timer? _recBoardWatch;
   Timer? _recBoardNext;
   bool _recBoardDirty = true;
   bool _recBoardBusy = false;
   bool _recBoardCrisp = false; // the last frame sent was full size
   BoardViewportPos? _recBoardView;
-  DateTime _recBoardPushed = DateTime.fromMillisecondsSinceEpoch(0);
   final BoardRecPacer _recBoardPacer = BoardRecPacer();
   final BoardRecStats _recBoardStats = BoardRecStats();
   final BoardRecordingFrames _recBoardFrames = BoardRecordingFrames();
@@ -2815,12 +2815,7 @@ class _RoomPageState extends State<RoomPage>
 
   void _watchRecordingBoard() {
     if (!_isBoardMain || _recBoardBusy) return;
-    if (_board.localViewport != _recBoardView) {
-      _kickRecordingBoard(); // a continuous page scrolled
-    } else if (DateTime.now().difference(_recBoardPushed) >= const Duration(seconds: 2) &&
-        !(_recBoardNext?.isActive ?? false)) {
-      _kickRecordingBoard(); // a still page, again (the canvas keeps the last one; this covers a re-created one)
-    }
+    if (_board.localViewport != _recBoardView) _kickRecordingBoard(); // a continuous page scrolled
   }
 
   Future<void> _pushRecordingBoard({bool settle = false}) async {
@@ -2838,12 +2833,15 @@ class _RoomPageState extends State<RoomPage>
     if (!settle) _recBoardPacer.started(now);
     final sw = Stopwatch()..start();
     try {
-      final rgba = await _recBoardFrames.render(_board, width: w, height: h);
+      final frame = await _recBoardFrames.next(_board, width: w, height: h, crisp: settle);
       sw.stop();
-      if (rgba == null || !identical(rec, _recorder)) return;
-      rec.pushRecordingFrame('board', rgba, w, h);
-      _recBoardPushed = now;
-      _recBoardCrisp = tier.scale >= 1;
+      _recBoardCrisp = _recBoardFrames.baseWidth >= kBoardVideoWidth;
+      if (frame == null || !identical(rec, _recorder)) return;
+      if (!rec.pushBoardFrame('board', frame)) {
+        _recBoardFrames.dispose(); // the recorder has no base (a new one, a lost canvas): the next frame is a raster
+        _recBoardDirty = true;
+        return;
+      }
       if (!settle && _recBoardPacer.finished(sw.elapsed)) {
         log('[REC] board frames now ${_recBoardPacer.tier} (capture avg ${_recBoardPacer.averageMs?.toStringAsFixed(1)} ms)');
       }

@@ -1,6 +1,8 @@
 // recorder_web_stub.dart — mobile/desktop no-ops
 import 'dart:typed_data';
 
+import '../whiteboard/board_rec_ink.dart';
+
 bool isTypeSupported(String mime) => false;
 Future<Object?> getUserMedia({bool video = true}) async => null;
 Future<Object?> getAudioOnly() async => null;
@@ -43,7 +45,7 @@ class WebRecorder {
   void setPlaceholderImage(Uint8List png) {}
   void setLayout(String json) {}
   void addTrack(Object? lkTrack, String label) {}
-  void pushImageFrame(String label, Uint8List rgba, int width, int height) {}
+  bool pushBoardFrame(String label, BoardRecFrame frame) => true;
   void requestData() {}
   bool get hadRealData => false;
   int get chunksUploaded => 0;

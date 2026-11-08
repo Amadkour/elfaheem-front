@@ -3512,3 +3512,32 @@ toolbar wait for [kBoardInkSettleDelay] (250 ms) after the last pen-up and never
 Viewers: the reveal's upper bound is 50 ms (was 120), so a late batch catches up quickly.
 Not changed: the web recording's capture (D-313), which shares the UI thread while recording; the 70 ms finger hold (it only
 delays what goes out, and it is what tells a pinch from a stroke). Not measured on a real device or browser.
+
+## D-318 — The ink while recording, and Quality and size in the Studio · 2026-11-08 · accepted
+
+Amends D-313. The owner: "the drawing work fine but when recording there are a delay in ink why?".
+
+**The cause.** For every change of the board the web recording made a Flutter raster of the page (`toImage`) and read it
+back as RGBA (`toByteData`), on the UI thread that also draws the pen. D-313 noted that this cost had never been measured
+in a browser. Measured now (a throwaway page, `flutter build web --profile`, Chrome on the Windows dev box, 1280 × 720):
+a drawing frame took 33 – 36 ms on average (p95 45 – 54 ms), which is the whole of a 30 fps frame, and Chrome logged "GPU
+stall due to ReadPixels". The pacer could only make the stall rarer. A second cost: `_sendLiveScreenPlaceholderWeb`
+took a PNG of the whole room 1.2 s after each board change, for a still the compositor does not draw while the board is
+on the stage; it now returns at once when the board is on the stage.
+
+**The fix.** Ink no longer needs a raster (`whiteboard/board_rec_ink.dart`, `BoardRecordingFrames.next`). The recorder keeps
+a base picture on its own 2D canvas; an open stroke goes as path commands on top of it, frame by frame, and a finished
+stroke is drawn into the base once. The geometry is the painter's (`AnnotationPainter.traceStroke`, through
+`AnnotPathSink`). A raster remains for what ink cannot express: the first frame, a page turn, a scroll, an undo, a shape
+or a text. The same bench: 0.6 ms a frame on average, p95 1 – 1.4 ms, on a page of 10 or of 150 strokes, through the real
+`WebRecorder.pushBoardFrame`. The 2-second re-send of a still page is gone: nothing is rendered when nothing changed.
+`test/org/board_rec_pacing_test.dart` checks no raster while writing and compares the vector strokes with the raster
+pixel by pixel. Not exercised in a real meeting. Android (D-110, PixelCopy off the UI thread) is unchanged and not measured.
+
+**Quality and size.** A new Studio tool on recordings and session videos (never audio), a new operation `quality`
+{height?, level} on the existing edit routes, no migration. Resolution: Original · 1080p · 720p · 480p (the short side, so
+an upright video is handled); level: Smaller file · Balanced · Best quality (CRF 30 / 26 / 20 with a bitrate ceiling per
+height, `-maxrate`). The ceiling is what lets the panel say "up to about X" (the same table in `records_edit.py` and
+`records_api.dart`); a quiet video such as a whiteboard comes out well under it. Raising the resolution is allowed, and the
+panel says it cannot add detail the original lacks. The original is kept unless Replace is chosen; on a session video the
+result is a draft, as for every Studio edit (D-315). It is its own save: a trim and a change of quality are two jobs.

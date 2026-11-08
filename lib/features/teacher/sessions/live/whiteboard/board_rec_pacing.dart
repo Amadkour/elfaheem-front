@@ -12,6 +12,7 @@
 //     than [BoardRecPacer.maxDuty] of the frame period the pacer steps DOWN a tier (fewer frames, then smaller ones):
 //     a weak laptop records fewer board frames instead of a stuttering room;
 //   * after [BoardRecPacer.upAfter] cheap frames in a row (under [BoardRecPacer.upDuty]) it climbs one tier again;
+//   * D-318: ink no longer needs a raster (board_rec_ink.dart); the size factor applies to the rasters that remain;
 //   * while the board is still nothing is rendered at all (the canvas keeps the last picture; the compositor redraws
 //     it 30 times a second). When the last frame was a reduced one, one full-size "settle" frame follows
 //     [BoardRecPacer.settle] after the drawing stops, so a still page is always crisp in the recording.

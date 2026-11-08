@@ -3,7 +3,7 @@
 // harness on every size, language and a 1.3 text scale. The page (records_studio.dart) owns the player, the job and
 // the keyboard.
 //
-//   StudioTool            Trim · Cut a part · Split · Speed · Cover · Merge (label, icon, one-line description)
+//   StudioTool            Trim · Cut a part · Split · Speed · Quality · Cover · Merge (label, icon, one-line description)
 //   StudioTransport       play / pause, −5 s / +5 s, current / total (mm:ss), the preview speed
 //   StudioTimeline        the filmstrip (the server's frame sprite, or a tinted track while it is not there), a
 //                         ruler, the playhead, draggable in / out handles (trim: the kept part, cut: the removed
@@ -11,7 +11,8 @@
 //                         left → right in every language, like every media timeline (and the player's chrome).
 //   StudioToolList        the tools on wide screens (with their descriptions)
 //   StudioToolBar         the tools on phones: a bottom segmented bar
-//   StudioToolPanel       the chosen tool's controls (set in / out at the playhead, split here, speed, cover, merge)
+//   StudioToolPanel       the chosen tool's controls (set in / out at the playhead, split here, speed, quality and
+//                         size, cover, merge)
 //   StudioSummary         what comes out ("New length 12:40", the two parts of a split, the merge's total) or why not
 //   StudioSaveArea        the name, Keep / Replace the original, Undo, the one primary button
 //   StudioJobCard         a saved edit's job, inline: stage · progress · ready (Play) · failed (Retry)
@@ -26,6 +27,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
+import '../live/meeting_recording.dart' show recordingSizeLabel;
 import 'records_api.dart';
 import 'records_parts.dart' show RecordCover, recordsCountText;
 
@@ -38,6 +40,7 @@ enum StudioTool {
   cut,
   split,
   speed,
+  quality,
   cover,
   merge;
 
@@ -47,6 +50,7 @@ enum StudioTool {
         StudioTool.cut => RecordOp.cut,
         StudioTool.split => RecordOp.split,
         StudioTool.speed => RecordOp.speed,
+        StudioTool.quality => RecordOp.quality,
         StudioTool.merge => RecordOp.merge,
         StudioTool.cover => null,
       };
@@ -56,6 +60,7 @@ enum StudioTool {
         StudioTool.cut => t('حذف جزء', 'Cut a part'),
         StudioTool.split => t('تقسيم', 'Split'),
         StudioTool.speed => t('السرعة', 'Speed'),
+        StudioTool.quality => t('الجودة والحجم', 'Quality and size'),
         StudioTool.cover => t('الغلاف', 'Cover'),
         StudioTool.merge => t('دمج', 'Merge'),
       };
@@ -63,6 +68,7 @@ enum StudioTool {
   /// The bottom bar's word (phones): one short word each.
   String get short => switch (this) {
         StudioTool.cut => t('حذف', 'Cut'),
+        StudioTool.quality => t('الجودة', 'Quality'),
         _ => label,
       };
 
@@ -71,6 +77,7 @@ enum StudioTool {
         StudioTool.cut => t('احذف الجزء المحدد من المنتصف ويُوصل ما قبله بما بعده.', 'Remove the selected part; what is before and after it is joined.'),
         StudioTool.split => t('قسّم التسجيل عند العلامة إلى تسجيلين منفصلين.', 'Split the recording at the marker into two recordings.'),
         StudioTool.speed => t('سرّع التسجيل أو أبطئه؛ تبقى الأصوات بطبقتها الطبيعية.', 'Speed it up or slow it down; voices keep their natural pitch.'),
+        StudioTool.quality => t('غيّر دقة الفيديو وجودته لتكبير الملف أو تصغيره؛ يبقى الأصل كما هو.', 'Change the resolution and quality to make the file larger or smaller; the original stays as it is.'),
         StudioTool.cover => t('الصورة التي تظهر في المكتبة وعند المشاركة، وتنتقل إلى التعديلات.', 'The picture shown in the library and when shared; edits keep it.'),
         StudioTool.merge => t('أضف تسجيلات أخرى بعد هذا التسجيل لتصبح ملفاً واحداً.', 'Add other recordings after this one to make a single file.'),
       };
@@ -80,6 +87,7 @@ enum StudioTool {
         StudioTool.cut => Icons.remove_circle_outline_rounded,
         StudioTool.split => Icons.call_split_rounded,
         StudioTool.speed => Icons.speed_rounded,
+        StudioTool.quality => Icons.high_quality_rounded,
         StudioTool.cover => Icons.image_outlined,
         StudioTool.merge => Icons.merge_rounded,
       };
@@ -94,10 +102,11 @@ const studioPreviewSpeeds = <double>[1, 1.25, 1.5, 2, 0.75];
 const studioZooms = <double>[1, 2, 4, 8, 16];
 
 /// The edit the Studio would send for [tool] with these values (null for cover / merge).
-RecordEdit? studioEdit(StudioTool tool, {required double start, required double end, required double at, required double speed}) {
+RecordEdit? studioEdit(StudioTool tool,
+    {required double start, required double end, required double at, required double speed, int? height, StudioQualityLevel? level}) {
   final op = tool.op;
   if (op == null || op == RecordOp.merge) return null;
-  return RecordEdit(op: op, start: start, end: end, at: at, speed: speed);
+  return RecordEdit(op: op, start: start, end: end, at: at, speed: speed, height: height, level: level);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -577,6 +586,7 @@ class _StudioPainter extends CustomPainter {
         canvas.drawCircle(Offset(x, bottom + 2), 7, Paint()..color = split);
         canvas.drawCircle(Offset(x, top - 2), 7, Paint()..color = split);
       case StudioTool.speed:
+      case StudioTool.quality:
       case StudioTool.cover:
       case StudioTool.merge:
         canvas.drawRect(band, Paint()..color = keep.withValues(alpha: 0.0));
@@ -747,6 +757,8 @@ class StudioToolPanel extends StatelessWidget {
     this.end = 0,
     this.at = 0,
     this.speed = 1.5,
+    this.height,
+    this.level = StudioQualityLevel.balanced,
     this.merge = const [],
     this.enabled = true,
     this.showImages = true,
@@ -754,6 +766,7 @@ class StudioToolPanel extends StatelessWidget {
     this.onRange,
     this.onAt,
     this.onSpeed,
+    this.onQuality,
     this.onPickCover,
     this.onRemoveCover,
     this.onToggleMerge,
@@ -767,6 +780,10 @@ class StudioToolPanel extends StatelessWidget {
   final double end;
   final double at;
   final double speed;
+
+  /// Quality and size: the output's short side (null: as it is) and its level.
+  final int? height;
+  final StudioQualityLevel level;
   final List<StudioMergePick> merge;
   final bool enabled;
   final bool showImages;
@@ -776,6 +793,7 @@ class StudioToolPanel extends StatelessWidget {
   final void Function(double start, double end)? onRange;
   final ValueChanged<double>? onAt;
   final ValueChanged<double>? onSpeed;
+  final void Function(int? height, StudioQualityLevel level)? onQuality;
   final VoidCallback? onPickCover;
   final VoidCallback? onRemoveCover;
   final ValueChanged<RecordItem>? onToggleMerge;
@@ -843,6 +861,59 @@ class StudioToolPanel extends StatelessWidget {
           const SizedBox(height: AppSpace.xs),
           Text(t('المعاينة تعمل الآن بهذه السرعة.', 'The preview plays at this speed now.'),
               style: appText(12, c: c.textMedium, h: 1.4)),
+        ];
+      case StudioTool.quality:
+        final sourceHeight = item.quality.maxHeight;
+        final ceiling = studioQualityCeilingBytes(duration, height: height, level: level, sourceHeight: sourceHeight);
+        Widget caption(String text) => Text(text, style: appText(12.5, w: FontWeight.w700, c: c.textDark));
+        // "700.0 MB" stays in that order inside an Arabic sentence.
+        String weight(int bytes) => '${String.fromCharCode(0x2066)}${recordingSizeLabel(bytes)}${String.fromCharCode(0x2069)}';
+        body = [
+          caption(t('الدقة', 'Resolution')),
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            AppChoiceChip(
+              key: const ValueKey('studio.height.original'),
+              label: t('الأصلية', 'Original'),
+              selected: height == null,
+              onTap: () => enabled ? onQuality?.call(null, level) : null,
+            ),
+            for (final h in studioQualityHeights)
+              AppChoiceChip(
+                key: ValueKey('studio.height.$h'),
+                label: '${h}p',
+                selected: height == h,
+                onTap: () => enabled ? onQuality?.call(h, level) : null,
+              ),
+          ]),
+          const SizedBox(height: AppSpace.sm),
+          caption(t('الجودة', 'Quality')),
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            for (final l in StudioQualityLevel.values)
+              AppChoiceChip(
+                key: ValueKey('studio.level.${l.wire}'),
+                label: l.label,
+                selected: level == l,
+                onTap: () => enabled ? onQuality?.call(height, l) : null,
+              ),
+          ]),
+          const SizedBox(height: AppSpace.sm),
+          Text(
+            key: const ValueKey('studio.quality.size'),
+            [
+              if (item.size > 0) t('الحجم الحالي ${weight(item.size)}', 'Now ${weight(item.size)}'),
+              if (duration > 0) t('الجديد حتى نحو ${weight(ceiling)}', 'New: up to about ${weight(ceiling)}'),
+            ].join(' · '),
+            style: appText(13, w: FontWeight.w700, c: c.textDark, h: 1.4),
+          ),
+          if (height != null && height! > sourceHeight && sourceHeight > 0) ...[
+            const SizedBox(height: AppSpace.xxs),
+            Text(t('رفع الدقة يكبّر الصورة والملف، ولا يضيف تفاصيل غير موجودة في الأصل.',
+                    'A higher resolution makes the picture and the file larger; it cannot add detail the original lacks.'),
+                key: const ValueKey('studio.quality.upscale'),
+                style: appText(12, c: c.textMedium, h: 1.4)),
+          ],
         ];
       case StudioTool.cover:
         body = [

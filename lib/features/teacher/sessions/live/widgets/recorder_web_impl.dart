@@ -5,10 +5,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
+import '../annotation/annotation_ink.dart' show AnnotPathSink;
+import '../whiteboard/board_rec_ink.dart';
 import 'share_presets.dart' show webDisplayAudioSupported;
 
 // ── Single top-level dispatcher ───────────────────────────────────────────────
@@ -343,6 +346,34 @@ void _log(String msg) {
   print('[web_rec] $msg');
 }
 
+/// The ink's path commands on a 2D canvas (D-318).
+class _ContextPath implements AnnotPathSink {
+  _ContextPath(this.g);
+
+  final web.CanvasRenderingContext2D g;
+
+  @override
+  void moveTo(double x, double y) => g.moveTo(x, y);
+
+  @override
+  void lineTo(double x, double y) => g.lineTo(x, y);
+
+  @override
+  void cubicTo(double x1, double y1, double x2, double y2, double x, double y) => g.bezierCurveTo(x1, y1, x2, y2, x, y);
+
+  @override
+  void arc(double cx, double cy, double r, double start, double sweep) => g.arc(cx, cy, r, start, start + sweep);
+
+  @override
+  void circle(double cx, double cy, double r) {
+    g.moveTo(cx + r, cy);
+    g.arc(cx, cy, r, 0, 2 * math.pi);
+  }
+
+  @override
+  void close() => g.closePath();
+}
+
 // ── WebRecorder ───────────────────────────────────────────────────────────────
 
 class WebRecorder {
@@ -532,27 +563,73 @@ class WebRecorder {
   }
 
   final Map<String, (web.HTMLCanvasElement, web.CanvasRenderingContext2D)> _frames = {};
+  final Map<String, (web.HTMLCanvasElement, web.CanvasRenderingContext2D)> _frameBases = {};
 
-  /// One RGBA frame ([width] × [height], rows top-down) for the image source [label] (the whiteboard page). The
-  /// first frame makes the canvas the compositor draws from.
-  void pushImageFrame(String label, Uint8List rgba, int width, int height) {
-    if (!_started || rgba.length < width * height * 4) return;
+  (web.HTMLCanvasElement, web.CanvasRenderingContext2D)? _sized(
+      Map<String, (web.HTMLCanvasElement, web.CanvasRenderingContext2D)> into, String label, int width, int height) {
+    final have = into[label];
+    if (have != null && have.$1.width == width && have.$1.height == height) return have;
+    final canvas = web.HTMLCanvasElement()
+      ..width = width
+      ..height = height;
+    final ctx = canvas.getContext('2d') as web.CanvasRenderingContext2D?;
+    if (ctx == null) return null;
+    return into[label] = (canvas, ctx);
+  }
+
+  /// One update of the image source [label] (the whiteboard, D-318): a new base and / or strokes for it, then the base
+  /// with the open strokes on top goes on the canvas the compositor draws. False: there is no base to draw on, send a
+  /// raster.
+  bool pushBoardFrame(String label, BoardRecFrame f) {
+    if (!_started) return false;
     try {
-      var entry = _frames[label];
-      if (entry == null || entry.$1.width != width || entry.$1.height != height) {
-        final canvas = web.HTMLCanvasElement()
-          ..width = width
-          ..height = height;
-        final ctx = canvas.getContext('2d') as web.CanvasRenderingContext2D?;
-        if (ctx == null) return;
-        entry = (canvas, ctx);
-        _frames[label] = entry;
-        _dispatch('addCanvas', label.toJS, canvas);
+      final raster = f.raster;
+      final bytes = f.width * f.height * 4;
+      if (raster != null && raster.length < bytes) return false;
+      final base = raster != null ? _sized(_frameBases, label, f.width, f.height) : _frameBases[label];
+      if (base == null || base.$1.width != f.width || base.$1.height != f.height) return false;
+      if (raster != null) {
+        base.$2.putImageData(web.ImageData(Uint8ClampedList.sublistView(raster, 0, bytes).toJS, f.width, f.height.toJS), 0, 0);
       }
-      entry.$2.putImageData(web.ImageData(Uint8ClampedList.sublistView(rgba, 0, width * height * 4).toJS, width, height.toJS), 0, 0);
+      _drawStrokes(base.$2, f, f.commit);
+      final before = _frames[label];
+      final shown = _sized(_frames, label, f.width, f.height);
+      if (shown == null) return false;
+      if (!identical(before?.$1, shown.$1)) _dispatch('addCanvas', label.toJS, shown.$1);
+      shown.$2.drawImage(base.$1, 0, 0);
+      _drawStrokes(shown.$2, f, f.open);
+      return true;
     } catch (e) {
-      _log('pushImageFrame($label) error: $e');
+      _log('pushBoardFrame($label) error: $e');
+      return false;
     }
+  }
+
+  static void _drawStrokes(web.CanvasRenderingContext2D g, BoardRecFrame f, List<BoardRecStroke> strokes) {
+    if (strokes.isEmpty) return;
+    g.save();
+    g.beginPath();
+    g.rect(f.clip.left, f.clip.top, f.clip.width, f.clip.height);
+    g.clip();
+    final sink = _ContextPath(g);
+    for (final s in strokes) {
+      final look = s.look;
+      final c = look.color;
+      final css = 'rgba(${(c.r * 255).round()},${(c.g * 255).round()},${(c.b * 255).round()},${c.a})'.toJS;
+      g.beginPath();
+      s.replay(sink);
+      if (look.fill) {
+        g.fillStyle = css;
+        g.fill();
+      } else {
+        g.strokeStyle = css;
+        g.lineWidth = look.width;
+        g.lineCap = look.butt ? 'butt' : 'round';
+        g.lineJoin = 'round';
+        g.stroke();
+      }
+    }
+    g.restore();
   }
 
   Future<void> attachScreenStream(Object? stream) async {

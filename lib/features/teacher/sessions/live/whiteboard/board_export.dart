@@ -23,6 +23,7 @@ import 'board_controller.dart';
 import 'board_format.dart';
 import 'board_painter.dart';
 import 'board_protocol.dart';
+import 'board_rec_ink.dart';
 import 'board_stage.dart' show boardTextStyle;
 
 /// The tallest image a continuous board is saved as (a 1600 px wide board of 7 widths: 11 200 px → scaled).
@@ -199,77 +200,105 @@ Future<Uint8List?> boardRecordingRgba(BoardController c, {int width = 1280, int 
   return (win, Size(winW * s, winH * s));
 }
 
-/// D-313: the web recording's board frames, drawn from the items (never a screenshot of the stage: the same picture
-/// on every screen size, no selection or zoom, and it works while the page is scrolled or covered).
+/// D-313 / D-318: the web recording's board frames, drawn from the items (never a screenshot of the stage: the same
+/// picture on every screen size, no selection or zoom, and it works while the page is scrolled or covered).
 ///
-/// Cheap while someone draws: everything except the strokes still being drawn (BoardInk.open) is rasterized ONCE into
-/// a cached image, keyed by the frame, the window, the paper and those items (by identity + version), and each frame
-/// is that image + the open strokes on top — so a frame costs one small picture and the read-back, however full the
-/// page is. A finished stroke, a new item, a page turn, a scroll or a new size rebuilds the cache once. [dispose]
-/// frees it.
+/// The base picture lives in the recorder's canvas. A raster, the expensive part (a GPU read-back on the UI thread),
+/// is made only when the page changes in a way ink cannot express: the first frame, a page turn, a scroll, an undo, a
+/// shape or a text. Ink never needs one: an open stroke is sent as vectors on top of the base, and a finished stroke
+/// is drawn into the base as vectors, once. So a frame costs the same however full the page is, and writing costs no
+/// read-back at all. [dispose] forgets the base (the next frame is a raster).
 class BoardRecordingFrames {
-  ui.Image? _base;
-  List<int>? _baseKey;
+  List<int>? _head;
+  List<int> _items = const [];
+  int _width = 0;
+  int _height = 0;
+  bool _hadOpen = false;
 
-  /// The cached image was rebuilt for the last frame (for the debug log).
-  bool rebuilt = false;
+  /// The base picture's width (0: none yet).
+  int get baseWidth => _width;
 
-  /// The frame as RGBA, [width] × [height] (white around the page); null when there is no board.
-  Future<Uint8List?> render(BoardController c, {required int width, required int height}) async {
+  /// The next update of the recording, or null when nothing changed since the last one. [width] × [height] is the
+  /// size of a raster, if one is needed; ink keeps the base's own size. [crisp]: a base smaller than that is redone.
+  Future<BoardRecFrame?> next(BoardController c, {required int width, required int height, bool crisp = false}) async {
     final g = _recordingGeometry(c, width, height);
     if (g == null) return null;
-    final (win, out) = g;
+    final win = g.$1;
     final closed = <BoardItem>[];
-    final open = <BoardItem>[];
+    final open = <BoardInk>[];
     for (final i in c.scene.visibleItems) {
-      (i is BoardInk && i.open ? open : closed).add(i);
+      if (i is BoardInk && i.open) {
+        open.add(i);
+      } else {
+        closed.add(i);
+      }
     }
-    final key = <int>[
-      width,
-      height,
+    final head = <int>[
       Object.hash(win.left, win.top, win.width, win.height),
       identityHashCode(c.background),
       c.scene.page.hashCode,
-      for (final i in closed) Object.hash(identityHashCode(i), i is BoardInk ? i.version : 0),
     ];
-    final offset = Offset((width - out.width) / 2, (height - out.height) / 2);
-    rebuilt = _base == null || !_sameKey(key, _baseKey);
-    if (rebuilt) {
-      final rec = ui.PictureRecorder();
-      final canvas = Canvas(rec);
-      canvas.drawRect(Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()), Paint()..color = const Color(0xFFFFFFFF));
-      canvas.translate(offset.dx, offset.dy);
-      _paintRegion(canvas, c, win, out, only: closed);
-      final picture = rec.endRecording();
-      try {
-        final image = await picture.toImage(width, height);
-        _base?.dispose();
-        _base = image;
-        _baseKey = key;
-      } finally {
-        picture.dispose();
-      }
+    final keys = <int>[for (final i in closed) Object.hash(identityHashCode(i), i is BoardInk ? i.version : 0)];
+    final added = _head != null && _sameKey(head, _head) && !(crisp && _width < width) ? _appendedInk(closed, keys) : null;
+
+    Uint8List? raster;
+    if (added == null) {
+      raster = await _raster(c, g, closed, width, height);
+      if (raster == null) return null;
+      _width = width;
+      _height = height;
+    } else if (added.isEmpty && open.isEmpty && !_hadOpen) {
+      return null;
     }
-    final base = _base!;
-    if (open.isEmpty) return _rgba(base);
-    final rec = ui.PictureRecorder();
-    final canvas = Canvas(rec);
-    canvas.drawImage(base, Offset.zero, Paint());
-    canvas.translate(offset.dx, offset.dy);
-    _paintRegion(canvas, c, win, out, only: open, paper: false);
-    final picture = rec.endRecording();
-    final frame = await picture.toImage(width, height);
-    try {
-      return await _rgba(frame);
-    } finally {
-      frame.dispose();
-      picture.dispose();
-    }
+    _head = head;
+    _items = keys;
+    _hadOpen = open.isNotEmpty;
+
+    final (w2, out) = _recordingGeometry(c, _width, _height) ?? g;
+    final offset = Offset((_width - out.width) / 2, (_height - out.height) / 2);
+    final unit = out.width / w2.width, pageH = unit / c.aspect;
+    final page = Rect.fromLTWH(offset.dx - w2.left * unit, offset.dy - w2.top * pageH, unit, pageH);
+    List<BoardRecStroke> traced(Iterable<BoardInk> inks) => [for (final i in inks) ?BoardRecStroke.of(i, page)];
+    return BoardRecFrame(
+      width: _width,
+      height: _height,
+      clip: offset & out,
+      raster: raster,
+      commit: traced(added ?? const []),
+      open: traced(open),
+    );
   }
 
-  static Future<Uint8List?> _rgba(ui.Image image) async {
-    final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-    return data?.buffer.asUint8List();
+  /// What was added after the items of the base, when it is only ink. Null: the base no longer matches [closed].
+  List<BoardInk>? _appendedInk(List<BoardItem> closed, List<int> keys) {
+    if (keys.length < _items.length) return null;
+    for (var i = 0; i < _items.length; i++) {
+      if (keys[i] != _items[i]) return null;
+    }
+    final out = <BoardInk>[];
+    for (final i in closed.skip(_items.length)) {
+      if (i is! BoardInk) return null;
+      out.add(i);
+    }
+    return out;
+  }
+
+  Future<Uint8List?> _raster(BoardController c, (Rect, Size) g, List<BoardItem> closed, int width, int height) async {
+    final (win, out) = g;
+    final rec = ui.PictureRecorder();
+    final canvas = Canvas(rec);
+    canvas.drawRect(Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()), Paint()..color = const Color(0xFFFFFFFF));
+    canvas.translate((width - out.width) / 2, (height - out.height) / 2);
+    _paintRegion(canvas, c, win, out, only: closed);
+    final picture = rec.endRecording();
+    final image = await picture.toImage(width, height);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      return data?.buffer.asUint8List();
+    } finally {
+      image.dispose();
+      picture.dispose();
+    }
   }
 
   static bool _sameKey(List<int> a, List<int>? b) {
@@ -281,8 +310,10 @@ class BoardRecordingFrames {
   }
 
   void dispose() {
-    _base?.dispose();
-    _base = null;
-    _baseKey = null;
+    _head = null;
+    _items = const [];
+    _width = 0;
+    _height = 0;
+    _hadOpen = false;
   }
 }
