@@ -3564,3 +3564,41 @@ Amends D-085. The owner: "in my calender, please inhance the calender UI to be m
 **Visuals.** A gradient hero with today's date, what is left and the next event (Join when open), one card per event with the kind's colour on its edge, date tiles for the days, the page tabs from `AppTabs`, a tinted today in the month grid. On a phone the two tabs drop their icons and count: `AppTabs(expand:)` overflows when one tab is wider than an equal share. The invitation count still shows in the list and the banner.
 
 Rendered at 390×844 and 1440×900, ar / en, light / dark. Not exercised against the real backend's `status` field or in the real web app.
+## D-320 — The Studio becomes an edit bay · 2026-11-08 · accepted
+
+The owner asked for a premium, attractive Studio after D-312. The page keeps every tool, key and job flow; its layout and
+drawing are new (`records_studio_parts.dart`, the page only wires the new values).
+
+**A dark bay in both themes.** The top bar, tool rail, stage, transport and timeline are dark in light mode too, as in every
+video editor: a picture is judged against a dark surround. `StudioBay` derives all of it from the server theme (`heroShade`,
+the on-hero ink, `accent2` as the bay's one bright colour, raised until it reads on the deck), so a re-themed platform keeps a
+matching bay. The inspector follows the theme, which is what makes light mode look intended rather than inverted.
+
+**Layout.** Wide (`studioIsWide`: ≥ 960 px, or a phone held sideways): an 80 px icon rail, the stage over the transport and
+timeline, an inspector of 300 – 380 px. Phones: stage, transport and timeline pinned; the inspector a rounded sheet that scrolls
+under them; the tool strip at the foot (it scrolls sideways below 50 px a tool). Keeping the timeline in view while the panel
+scrolls is the point of the pinning. The on-screen keyboard folds the bay and strip with `Visibility(maintainState)` rather than
+switching layout: a different tree would drop the focus of the name field and close the keyboard again.
+
+**The inspector.** Which tool and what it does, its controls, the summary, the name and Keep / Replace; Undo and the ONE primary
+button are pinned under it (`StudioSaveArea` hands out `form` and `actions`). A job takes the whole inspector, because the tools
+are off until Another edit and on a phone the job would otherwise sit below the fold. A job with nothing running and a failure
+now says so instead of "Saving". Choices are equal-width cells, not chips.
+
+**Timeline.** The track now leaves the handle's width at both ends. Before, a handle at 0:00 or at the end was drawn outside the
+scroll area, so a freshly opened Trim showed no handles at all. One clip frame with chevrons (trim: what stays, cut: what goes,
+striped), the length on the clip, a time bubble while dragging, and the playhead can be dragged when zoomed. Zoom moved to the
+transport so the timeline needs no header row: − ×N + on wide windows, one chip that cycles ×1 → ×16 → ×1 on phones (the cost: no
+direct zoom out there).
+
+**Time stays left → right in Arabic** (D-312): the in / out readouts and their buttons, the two split parts and the speeds are
+laid out LTR, so Start sits on the same side as its handle. The rest of the inspector follows the language.
+
+**Smaller additions.** The stage dims and says "This part will be removed" while the playhead is in what goes
+(`studioStageNote`; not on a Cut just opened, when nothing is chosen yet). A play mark over a paused picture. A meter beside the
+"Now X · New: up to about Y" line. Merge shows the open record as row 1 with covers on the rows. Key letters moved from button
+labels to tooltips (the hint list stays on web and desktop, now at the end of the inspector).
+
+Tests: `test/ui/records_studio_layout_test.dart` (adds the stage note and a handle dragged from the very start of the track).
+Looked at by throwaway renders at 390×844 and 1440×900, Arabic and English, light and dark, with a stand-in picture and no
+filmstrip sprite; not seen with a real sprite or a real player, or on a device with the keyboard open.

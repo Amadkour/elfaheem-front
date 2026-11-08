@@ -24,7 +24,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
@@ -517,10 +516,22 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
       );
     }
     if (!_ready || p == null) return AppShimmer(child: ColoredBox(color: c.heroShade, child: const SizedBox.expand()));
-    if (_item.isAudio) return Center(child: Icon(Icons.graphic_eq_rounded, color: c.onHeroMuted, size: 72));
+    final playing = p.value.isPlaying;
+    if (_item.isAudio) {
+      return GestureDetector(
+        onTap: _playPause,
+        child: Stack(fit: StackFit.expand, children: [
+          Center(child: Icon(Icons.graphic_eq_rounded, color: c.onHeroFaint, size: 88)),
+          StudioPlayMark(playing: playing),
+        ]),
+      );
+    }
     return GestureDetector(
       onTap: _playPause,
-      child: Center(child: AspectRatio(aspectRatio: p.value.aspectRatio, child: VideoPlayer(p))),
+      child: Stack(fit: StackFit.expand, children: [
+        Center(child: AspectRatio(aspectRatio: p.value.aspectRatio, child: VideoPlayer(p))),
+        StudioPlayMark(playing: playing),
+      ]),
     );
   }
 
@@ -545,6 +556,8 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
         onPlayPause: _playPause,
         onSkip: (by) => _seek(_pos + by),
         onPreviewSpeed: _tool == StudioTool.speed ? null : _nextPreviewSpeed,
+        zoom: _zoom,
+        onZoom: (z) => setState(() => _zoom = z),
       ),
       timeline: StudioTimeline(
         duration: _dur,
@@ -560,7 +573,6 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
         onSeek: _seek,
         onRange: _setRange,
         onAt: _setAt,
-        onZoom: (z) => setState(() => _zoom = z),
       ),
       panel: StudioToolPanel(
         tool: _tool,
@@ -575,7 +587,6 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
         level: _level,
         merge: picks,
         enabled: editing,
-        showDescription: MediaQuery.sizeOf(context).width < studioWideMin,
         onRange: _setRange,
         onAt: _setAt,
         onSpeed: _setSpeed,
@@ -624,7 +635,8 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
               drafts: _src.drafts,
               libraryLabel: widget.libraryLabel,
             ),
-      footer: kIsWeb || MediaQuery.sizeOf(context).width >= studioWideMin ? const StudioKeysHint() : null,
+      footer: kIsWeb || studioIsWide(MediaQuery.sizeOf(context)) ? const StudioKeysHint() : null,
+      stageNote: editing ? studioStageNote(_tool, position: _pos, start: _start, end: _end, duration: _dur) : null,
     );
     return PopScope(
       canPop: false,
@@ -633,7 +645,8 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
       },
       child: BasePage(
         key: const ValueKey('records.studio'),
-        appBar: ScreenAppBar(title: t('الاستوديو · ${_item.title}', 'Studio · ${_item.title}')),
+        background: StudioBay.of(context).deck,
+        appBar: StudioTopBar(title: _item.title, facts: _item.facts()),
         child: Focus(focusNode: _focus, autofocus: true, onKeyEvent: _key, child: layout),
       ),
     );
