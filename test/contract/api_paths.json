@@ -1271,6 +1271,7 @@
   "POST /api/v1/org/public/{org_id:int}/units/{unit_type:dept|program}/{unit_id:int}/join",
   "POST /api/v1/parent/alerts/read-all",
   "POST /api/v1/parent/alerts/state",
+  "POST /api/v1/parent/children/{student_id:int}/message-teacher",
   "POST /api/v1/parent/link/redeem",
   "POST /api/v1/parent/link/redeem-docs",
   "POST /api/v1/parent/link/requests/{request_id:int}/cancel",

@@ -3,9 +3,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/parent/parent_overview.dart';
+import 'package:flutter_education_app/features/parent/parent_message_teacher.dart';
 import 'package:flutter_education_app/features/parent/parent_overview_page.dart';
+import 'package:flutter_education_app/features/parent/parent_pulse.dart';
+import 'package:flutter_education_app/features/parent/parent_pulse_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../org/parent_pulse_test.dart' show pulseJson;
 import 'layout_harness.dart';
 
 const longAr = 'إدارة شؤون الطلاب والدراسات العليا والبحث العلمي بكلية الهندسة والتكنولوجيا';
@@ -77,6 +81,47 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.byType(ParentChildOverviewCard), findsNWidgets(2));
     await tester.pumpWidget(const SizedBox());
+  });
+
+  // D-305: the pulse layout — two children (switcher), long names, every block, and a child without marks
+  ParentOverviewData withPulse() {
+    final j = Map<String, dynamic>.from(full().children.first.child);
+    final p = pulseJson();
+    (p['subjects'] as List).add({'course_id': 3, 'name_ar': longAr, 'name_en': longEn, 'progress': 100.0, 'avg': null, 'class_avg': null, 'missed': 12, 'weak_open': 30, 'tone': 'focus', 'teacher': {'id': 4, 'name': longEn}});
+    (p['insights'] as List).insert(0, {'code': 'exam_soon', 'level': 'info', 'params': {'title': '$longAr $longEn', 'at': '2026-11-10T09:00:00'}, 'action': null});
+    (p['upcoming'] as List).add({'id': 'x', 'source': 'timetable', 'title': '$longAr $longEn', 'subtitle': longEn, 'location': longAr, 'starts_at': DateTime.now().toUtc().toIso8601String()});
+    return ParentOverviewData.fromJson({
+      'children': [
+        {'child': j, 'pulse': p, 'latest_marks': [{'exam': longEn, 'course_en': longEn, 'percentage': 41.0, 'passed': false}], 'next_exam': {'name': longEn, 'starts_at': '2026-11-20T09:00:00'}},
+        {'child': {'id': 8, 'name': 'Sara'}, 'pulse': {'status': 'quiet'}},
+      ],
+      'alerts_total': 3,
+      'requests': [],
+    });
+  }
+
+  testWidgets('pulse: switcher · hero · needs your attention · this week · subjects · roadmap · marks', (tester) async {
+    await expectNoLayoutErrors(tester, () => body(data: withPulse()));
+    await tester.pumpWidget(layoutHost(body(data: withPulse())));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(ParentChildSwitcher), findsOneWidget);
+    expect(find.byType(ParentPulseHero), findsOneWidget);
+    expect(find.byType(ParentSubjectsCard), findsOneWidget);
+    expect(find.byType(ParentChildOverviewCard), findsNothing);
+    await tester.tap(find.text('Sara'));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(ParentSubjectsCard), findsNothing, reason: 'Sara has no subjects');
+    expect(find.byType(ParentInsightsCard), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('message the teacher sheet', (tester) async {
+    final teachers = [
+      for (final t in [(1, 'Mr T', 'Maths'), (2, longEn, longEn)]) PulseTeacher(id: t.$1, name: t.$2, courseId: t.$1, courseEn: t.$3, courseAr: t.$3),
+    ];
+    await expectNoLayoutErrors(tester, () => SingleChildScrollView(
+          child: ParentMessageTeacherSheet(childId: 7, childName: '$longAr $longEn', teachers: teachers, courseId: 2),
+        ));
   });
 
   testWidgets('empty: no children yet (with and without pending requests)', (tester) async {

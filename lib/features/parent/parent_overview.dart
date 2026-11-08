@@ -5,6 +5,7 @@
 //   children[]   per linked child: the /parent/children row, today's dated events (calendar rows), attendance of
 //                the last 30 days (0–100 | null), the 3 newest marks, the unread alerts, the nearest exam, the
 //                number of active courses
+//                + `pulse`, "how is my child doing" (parent_pulse.dart, D-305; null on an older server / switched off)
 //   alerts_total the unread alerts over every child · requests / link_config (= the Link tab's two calls)
 // [ParentOverviewData.fromJson] is pure (test/org/parent_overview_test.dart); [ParentOverviewProvider] loads it.
 // An older server answers a bare 404: [parentOverviewUnsupported] → `unsupported`, the dashboard hides the tab.
@@ -13,6 +14,7 @@ library;
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
+import 'parent_pulse.dart';
 
 /// ISO string → UTC instant. A naive timestamp (no zone) is the server's UTC.
 DateTime? parentUtc(dynamic v) {
@@ -141,6 +143,7 @@ class ParentChildOverview {
     this.openAlerts = 0,
     this.nextExam,
     this.courses = 0,
+    this.pulse,
   });
 
   final int id;
@@ -159,6 +162,9 @@ class ParentChildOverview {
   final ParentNextExam? nextExam;
   final int courses;
 
+  /// "How is my child doing" (D-305); null on an older server or with `parent.insights` off.
+  final ParentPulse? pulse;
+
   factory ParentChildOverview.fromJson(Map<String, dynamic> j) {
     final child = j['child'] is Map ? Map<String, dynamic>.from(j['child'] as Map) : <String, dynamic>{};
     return ParentChildOverview(
@@ -175,6 +181,7 @@ class ParentChildOverview {
       openAlerts: _int(j['open_alerts']) ?? 0,
       nextExam: j['next_exam'] is Map ? ParentNextExam.fromJson(Map<String, dynamic>.from(j['next_exam'] as Map)) : null,
       courses: _int(j['courses']) ?? 0,
+      pulse: ParentPulse.tryParse(j['pulse']),
     );
   }
 }

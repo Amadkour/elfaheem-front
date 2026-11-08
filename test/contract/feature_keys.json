@@ -223,6 +223,8 @@
  "org.invitations",
  "org.search",
  "org.setup_checklist",
+ "parent.insights",
+ "parent.message_teacher",
  "parent.org_view",
  "payment_callback",
  "payment_callback.try_again",

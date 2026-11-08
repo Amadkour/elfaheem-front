@@ -1,7 +1,12 @@
-// lib/features/parent/parent_overview_page.dart — the parent's "Today" tab (Track B.5).
+// lib/features/parent/parent_overview_page.dart — the parent's "Today" tab (Track B.5, D-305).
 //
 //   header     greeting · name · calendar · notifications
 //   needs you     HomeStatStrip: alerts (→ Alerts tab) · pending link requests (→ Link tab), only counts above zero
+//   my child   (D-305, with the server's pulse) the child switcher, then "How is <name> doing" (status · one
+//              sentence · attendance / average vs class / missed work with their 6-week lines), "Needs your
+//              attention" (findings with one action each: message the teacher · report · alerts), "This week",
+//              Subjects (strength / focus, class-average marker), the learning path, Latest marks
+//              (parent_pulse_widgets.dart); without a pulse (older server, `parent.insights` off) the cards below
 //   today for my children   one AppCard per child: avatar · name · courses, then today's sessions as agenda rows,
 //              attendance of the last 30 days as a pill, the 3 newest marks, the next exam, the open alerts (→ the
 //              Alerts tab filtered on that child); the card opens the child's report
@@ -23,7 +28,10 @@ import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../auth/auth_provider.dart';
 import '../shared/notification/notifications_provider.dart';
+import 'parent_message_teacher.dart';
 import 'parent_overview.dart';
+import 'parent_pulse.dart';
+import 'parent_pulse_widgets.dart';
 import 'parent_reports_page.dart';
 
 class ParentOverviewPage extends StatefulWidget {
@@ -117,7 +125,12 @@ class _ParentOverviewPageState extends State<ParentOverviewPage> with AutomaticK
 }
 
 /// The Today tab below the header, over plain values.
-class ParentOverviewBody extends StatelessWidget {
+///
+/// With the server's pulse (D-305): the child switcher (two children or more), then the selected child's "How is
+/// `name` doing" hero, "Needs your attention" and "This week" — beside Subjects, the learning path and Latest marks
+/// on a wide screen (HomeDashboard), one column on a phone. Without it (an older server, `parent.insights` off) the
+/// per-child cards of every child, as before.
+class ParentOverviewBody extends StatefulWidget {
   const ParentOverviewBody({
     super.key,
     required this.data,
@@ -128,6 +141,7 @@ class ParentOverviewBody extends StatelessWidget {
     required this.onOpenLink,
     required this.onOpenChildren,
     required this.onOpenChild,
+    this.onMessageTeacher,
   });
 
   final ParentOverviewData? data;
@@ -139,11 +153,47 @@ class ParentOverviewBody extends StatelessWidget {
   final VoidCallback onOpenChildren;
   final ValueChanged<ParentChildOverview> onOpenChild;
 
+  /// "Message the teacher" for a child (a course preselected or null); null → the message sheet itself.
+  final void Function(ParentChildOverview child, int? courseId)? onMessageTeacher;
+
+  @override
+  State<ParentOverviewBody> createState() => _ParentOverviewBodyState();
+}
+
+class _ParentOverviewBodyState extends State<ParentOverviewBody> {
+  int? _selected;
+
+  static bool get _pulseOn => !AppConfig.disableList.contains('parent.insights');
+
+  ParentChildOverview? _current(ParentOverviewData d) {
+    if (d.children.isEmpty) return null;
+    return d.children.firstWhere((c) => c.id == _selected, orElse: () => d.children.first);
+  }
+
+  void _message(ParentChildOverview ch, int? courseId) {
+    final cb = widget.onMessageTeacher;
+    if (cb != null) return cb(ch, courseId);
+    showParentMessageTeacher(context, childId: ch.id, childName: ch.name, teachers: ch.pulse?.teachers ?? const [], courseId: courseId);
+  }
+
+  void _act(ParentChildOverview ch, PulseInsight i) {
+    final a = i.action;
+    if (a == null) return;
+    switch (a.kind) {
+      case PulseActionKind.messageTeacher:
+        _message(ch, a.courseId);
+      case PulseActionKind.openReport:
+        widget.onOpenChild(ch);
+      case PulseActionKind.openAlerts:
+        widget.onOpenAlerts(ch.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final d = data;
-    if (d == null && loading) {
+    final d = widget.data;
+    if (d == null && widget.loading) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(20, 8, 20, 36),
         child: AppListSkeleton(items: 4, padding: EdgeInsets.zero),
@@ -152,12 +202,14 @@ class ParentOverviewBody extends StatelessWidget {
     if (d == null) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
-        child: ErrorRetry(message: error ?? 'generic_error'.tr, onRetry: onRetry ?? () {}),
+        child: ErrorRetry(message: widget.error ?? 'generic_error'.tr, onRetry: widget.onRetry ?? () {}),
       );
     }
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
     final pending = d.pendingRequests;
+    final ch = _current(d);
+    final pulse = _pulseOn ? ch?.pulse : null;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── what waits for me: one slim row of the counts above zero (the children are listed below) — the same calm
@@ -173,52 +225,131 @@ class ParentOverviewBody extends StatelessWidget {
               label: 'pl_tab_alerts'.tr,
               count: d.alertsTotal,
               tone: c.danger,
-              onTap: () => onOpenAlerts(null),
+              onTap: () => widget.onOpenAlerts(null),
             ),
-            HomeStat(icon: Icons.link_rounded, label: 'pl_ov_requests'.tr, count: pending, tone: c.warning, onTap: onOpenLink),
+            HomeStat(icon: Icons.link_rounded, label: 'pl_ov_requests'.tr, count: pending, tone: c.warning, onTap: widget.onOpenLink),
           ]),
         )),
         const SizedBox(height: 24),
       ],
 
-      // ── today for my children
-      enter(HomeSectionTitle('pl_ov_today'.tr,
-          count: d.children.isEmpty ? null : d.sessionsToday,
-          actionLabel: d.children.isEmpty ? null : 'pl_tab_children'.tr,
-          onAction: d.children.isEmpty ? null : onOpenChildren)),
-      if (d.children.isEmpty)
+      if (d.children.isEmpty) ...[
+        enter(HomeSectionTitle('pl_ov_today'.tr)),
         enter(Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: AppEmpty(
             icon: Icons.family_restroom_rounded,
             title: 'pl_no_children_title'.tr,
-            message: pending > 0
-                ? 'pl_ov_requests_pending'.tr.replaceAll('{n}', '$pending')
-                : 'pl_no_children_hint'.tr,
+            message: pending > 0 ? 'pl_ov_requests_pending'.tr.replaceAll('{n}', '$pending') : 'pl_no_children_hint'.tr,
             actionLabel: pending > 0 ? 'pl_tab_link'.tr : 'pl_link_child'.tr,
-            onAction: onOpenLink,
+            onAction: widget.onOpenLink,
           ),
-        ))
-      else ...[
-        for (final ch in d.children)
+        )),
+      ] else if (pulse != null && ch != null) ...[
+        // ── my children: one chip each (status dot), the selected child's picture below
+        if (d.children.length > 1) ...[
+          enter(ParentChildSwitcher(children: d.children, selectedId: ch.id, onSelect: (id) => setState(() => _selected = id))),
+          const SizedBox(height: AppSpace.md),
+        ],
+        enter(Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: KeyedSubtree(key: ValueKey('pulse-${ch.id}'), child: _pulseLayout(ch, pulse)),
+        )),
+      ] else ...[
+        // ── an older server / `parent.insights` off: today for my children, one card each (as before)
+        enter(HomeSectionTitle('pl_ov_today'.tr,
+            count: d.sessionsToday, actionLabel: 'pl_tab_children'.tr, onAction: widget.onOpenChildren)),
+        for (final x in d.children)
           enter(Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: ParentChildOverviewCard(
-              child: ch,
-              onOpen: () => onOpenChild(ch),
-              onOpenAlerts: () => onOpenAlerts(ch.id),
+              child: x,
+              onOpen: () => widget.onOpenChild(x),
+              onOpenAlerts: () => widget.onOpenAlerts(x.id),
             ),
           )),
-        Center(
-          child: TextButton.icon(
-            onPressed: onOpenLink,
-            icon: const Icon(Icons.add_link_rounded, size: 18),
-            label: Text('pl_link_another'.tr),
-          ),
-        ),
       ],
+      if (d.children.isNotEmpty)
+        Center(
+          child: Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, children: [
+            TextButton.icon(
+              onPressed: widget.onOpenChildren,
+              icon: const Icon(Icons.family_restroom_rounded, size: 18),
+              label: Text('pl_tab_children'.tr),
+            ),
+            TextButton.icon(
+              onPressed: widget.onOpenLink,
+              icon: const Icon(Icons.add_link_rounded, size: 18),
+              label: Text('pl_link_another'.tr),
+            ),
+          ]),
+        ),
       const SizedBox(height: 36),
     ]);
+  }
+
+  Widget _pulseLayout(ParentChildOverview ch, ParentPulse p) {
+    final canMessage = parentMessageTeacherOn && p.teachers.isNotEmpty;
+    final hero = ParentPulseHero(child: ch, pulse: p, onOpenReport: () => widget.onOpenChild(ch));
+    final insights = ParentInsightsCard(
+      childName: ch.name,
+      insights: p.insights,
+      canMessage: canMessage,
+      onAction: (i) => _act(ch, i),
+    );
+    final week = ParentWeekCard(events: p.upcoming);
+    final subjects = p.subjects.isEmpty
+        ? null
+        : ParentSubjectsCard(subjects: p.subjects, onMessage: canMessage ? (s) => _message(ch, s.courseId) : null);
+    final road = p.roadmap == null ? null : ParentRoadmapCard(roadmap: p.roadmap!, childName: ch.name);
+    final marks = ch.latestMarks.isEmpty && ch.nextExam == null ? null : _MarksCard(child: ch);
+    return HomeDashboard(
+      gap: AppSpace.md,
+      main: [hero, insights, week],
+      // the side column's cards keep a gutter from the main column (HomeDashboard draws none of its own)
+      side: [
+        for (final w in [?subjects, ?road, ?marks])
+          Padding(padding: const EdgeInsetsDirectional.only(start: AppSpace.md), child: w),
+      ],
+      narrow: [hero, insights, week, ?subjects, ?road, ?marks],
+    );
+  }
+}
+
+/// The newest marks and the next exam of one child (the pulse layout's side card).
+class _MarksCard extends StatelessWidget {
+  const _MarksCard({required this.child});
+  final ParentChildOverview child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final exam = child.nextExam;
+    return ParentPulseSection(
+      title: 'pl_ov_latest_marks'.tr,
+      icon: Icons.grading_rounded,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (child.latestMarks.isEmpty)
+          Text('pl_ov_no_marks'.tr, style: appText(12.5, c: c.textLight))
+        else
+          Wrap(spacing: 8, runSpacing: 8, children: [for (final m in child.latestMarks) _MarkChip(mark: m)]),
+        if (exam != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          Row(children: [
+            Icon(Icons.event_note_rounded, size: 18, color: c.accent2),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${'pl_ov_next_exam'.tr} · ${exam.name}${exam.startsAt == null ? '' : ' · ${AppTime.dateTime(exam.startsAt!)}'}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: appText(12.5, w: FontWeight.w500, c: c.textDark, h: 1.35),
+              ),
+            ),
+          ]),
+        ],
+      ]),
+    );
   }
 }
 
