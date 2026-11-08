@@ -38,7 +38,10 @@ void main() {
         expect(find.byKey(const ValueKey('live_end.leave')), findsNWidgets(2));
         expect(find.byKey(const ValueKey('live_end.cancel')), findsNWidgets(2));
         expect(find.text(ar ? 'إنهاء الاجتماع للجميع' : 'End meeting for everyone'), findsOneWidget);
-        expect(find.textContaining(ar ? 'يُحفظ التسجيل' : 'The recording is saved'), findsOneWidget);
+        expect(find.textContaining(ar ? 'يُحفظ التسجيل في «التسجيلات»' : 'the recording is saved to Records'), findsOneWidget);
+        // D-313: a description under every choice, Cancel too.
+        expect(find.textContaining(ar ? 'يستمر الاجتماع من دونك' : 'The meeting continues without you'), findsOneWidget);
+        expect(find.text(ar ? 'تبقى في الاجتماع ولا يتغيّر شيء.' : 'You stay in the meeting; nothing changes.'), findsNWidgets(2));
         await t.tap(find.byKey(const ValueKey('live_end.end_all')));
         await t.tap(find.byKey(const ValueKey('live_end.leave')).first);
       },
@@ -51,7 +54,7 @@ void main() {
       t,
       () => SingleChildScrollView(
         child: Column(children: [
-          LiveHandoverBody(people: _people, onSelect: (_) {}, onConfirm: () {}, onJustLeave: () {}),
+          LiveHandoverBody(people: _people, onSelect: (_) {}, onConfirm: () {}, onJustLeave: () {}, onStay: () {}),
           LiveHandoverBody(people: _people, selectedId: 9, onSelect: (_) {}, onConfirm: () {}, onJustLeave: () {}),
           LiveHandoverBody(
             people: _people.take(1).toList(),
@@ -68,6 +71,10 @@ void main() {
         final ar = AppConfig.lang == 'ar';
         expect(find.text(ar ? 'اجعله المضيف وغادر' : 'Make host and leave'), findsNWidgets(3));
         expect(find.text(ar ? 'لا، غادر فقط' : 'No, just leave'), findsNWidgets(3));
+        // D-313: what each option does, under it; Cancel (stay) where the sheet offers it.
+        expect(find.byKey(const ValueKey('live_handover.confirm_detail')), findsNWidgets(3));
+        expect(find.textContaining(ar ? 'تغادر ويستمر الاجتماع' : 'You leave and the meeting goes on'), findsNWidgets(3));
+        expect(find.byKey(const ValueKey('live_handover.stay')), findsOneWidget);
         final buttons = t.widgetList<FilledButton>(find.byType(FilledButton)).toList();
         expect(buttons[0].onPressed, isNull, reason: 'nobody picked yet');
         expect(buttons[1].onPressed, isNotNull);
