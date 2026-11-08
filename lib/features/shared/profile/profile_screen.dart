@@ -54,6 +54,7 @@ import 'package:flutter_education_app/design/app_icons.dart';
 import '../../admin/admin_common.dart' show t;
 import '../points/points_api.dart' show kPointsFeatureKey;
 import '../points/points_wallet_page.dart' show PointsWalletPage;
+import '../records/records_page.dart' show RecordsPage, RecordsSettingsTile;
 import '../public_profile/public_profile_page.dart' show ShareMyProfileTile;
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
@@ -181,6 +182,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               onTap: () => _push(const PointsWalletPage()),
                             ),
                           ),
+                          // Records: my meeting recordings + their edits (D-311, kill switch profile.records)
+                          RecordsSettingsTile(onOpen: () => _push(const RecordsPage())),
                           // Downloaded (encrypted) videos — native apps only.
                           if (!kIsWeb && !context.read<MyAuthProvider>().isTeacher)
                             ParentComponent(
