@@ -51,6 +51,9 @@ import 'package:flutter_education_app/features/teacher/home/queue_work_items.dar
 import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/payout/teacher_payouts_screen.dart';
+import 'package:flutter_education_app/features/teacher/todo/teacher_todo_api.dart' show sendTodoChoice;
+import 'package:flutter_education_app/features/teacher/todo/teacher_todo_models.dart';
+import 'package:flutter_education_app/features/teacher/todo/teacher_todo_widgets.dart' show TeacherTodoCard;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
@@ -143,6 +146,50 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
   void _newCourse() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCourseForm()));
 
   void _openEarnings() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TeacherPayoutsScreen()));
+
+  // ── the automatic to-do list (D-303): the card's items closed here leave at once, the reload confirms
+  final Set<String> _todoGone = {};
+
+  Future<void> _openTodo(TodoItem x) async {
+    final opened = await deferredOpenTodoAction(context, x);
+    if (!mounted) return;
+    if (!opened) {
+      await _openTodoList();
+      return;
+    }
+    context.read<TeacherHomeProvider>().refreshSilently();
+  }
+
+  Future<void> _openTodoList() async {
+    await Navigator.of(context).push(MaterialPageRoute(settings: const RouteSettings(name: '/teacher-todo'), builder: (_) => deferredTeacherTodoPage()));
+    if (!mounted) return;
+    setState(_todoGone.clear);
+    context.read<TeacherHomeProvider>().refreshSilently();
+  }
+
+  Future<void> _todoMenu(TodoItem x, TodoMenu m) async {
+    setState(() => _todoGone.add(x.key));
+    final provider = context.read<TeacherHomeProvider>();
+    void reload() {
+      if (!mounted) return;
+      setState(() => _todoGone.remove(x.key));
+      provider.refreshSilently();
+    }
+
+    final ok = await sendTodoChoice(x, m, onUndone: reload);
+    if (!mounted) return;
+    if (!ok) {
+      setState(() => _todoGone.remove(x.key));
+      return;
+    }
+    await provider.refreshSilently();
+    if (mounted) setState(() => _todoGone.remove(x.key));
+  }
+
+  TodoList? _todo(TeacherHomeProvider p) {
+    final t = p.extra?.todo;
+    return t == null || _todoGone.isEmpty ? t : t.without(_todoGone);
+  }
 
   Future<void> _openInbox() async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InboxScreen()));
@@ -241,8 +288,24 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                if (AppModeController.instance.isOrg)
-                  SliverToBoxAdapter(child: _Width(child: deferredOrgMemberHome(showPickerInHero: false)))
+                if (AppModeController.instance.isOrg) ...[
+                  // the organization's side of my to-do list (the /me/home block follows the mode's scope)
+                  if ((_todo(provider)?.items ?? const []).isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: _Width(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: TeacherTodoSection(
+                            list: _todo(provider)!,
+                            onOpenItem: _openTodo,
+                            onMenu: _todoMenu,
+                            onSeeAll: _openTodoList,
+                          ),
+                        ),
+                      ),
+                    ),
+                  SliverToBoxAdapter(child: _Width(child: deferredOrgMemberHome(showPickerInHero: false))),
+                ]
                 else
                   SliverToBoxAdapter(
                     child: _Width(
@@ -256,6 +319,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         pending: provider.pending,
                         courses: _sideCourses(provider),
                         extra: provider.extra,
+                        todo: _todo(provider),
+                        onOpenTodo: _openTodo,
+                        onTodoMenu: _todoMenu,
+                        onSeeAllTodo: _openTodoList,
                         liveNow: provider.liveNow,
                         onTab: _tab,
                         onOpenCourse: _openCourse,
@@ -336,7 +403,18 @@ class TeacherHomeBody extends StatelessWidget {
     this.liveNow = const [],
     this.now,
     this.onEnterRoom,
+    this.todo,
+    this.onOpenTodo,
+    this.onTodoMenu,
+    this.onSeeAllTodo,
   });
+
+  /// The automatic to-do list (D-303, the /me/home `todo` block, [extra]'s unless given); null on an older server
+  /// or switched off → the "Needs you" pills carry every count as before.
+  final TodoList? todo;
+  final void Function(TodoItem)? onOpenTodo;
+  final void Function(TodoItem, TodoMenu)? onTodoMenu;
+  final VoidCallback? onSeeAllTodo;
 
   /// Meetings I'm invited to that are live right now (the "Live now" banner).
   final List<MeLiveRoom> liveNow;
@@ -416,7 +494,10 @@ class TeacherHomeBody extends StatelessWidget {
           onActionLongPress: s.isOngoing || s.isLive ? () => openTeacherGuestLink(context, s) : null,
         ),
     ];
-    int p(String k) => pending[k] ?? 0;
+    // the automatic to-do list carries attendance · grading · material · requests with their evidence (D-303): those
+    // pills leave "Needs you" while it is on, so every count is drawn once
+    final todoList = todo ?? extra?.todo;
+    int p(String k) => todoList != null ? 0 : pending[k] ?? 0;
     final payout = extra?.pendingPayout;
     final hasPayout = payout != null && payout > 0;
     final needs = p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests') + (hasPayout ? 1 : 0);
@@ -450,6 +531,16 @@ class TeacherHomeBody extends StatelessWidget {
                 onTap: onOpenEarnings,
               ),
             ]),
+          ));
+
+    // ── your to-do: the top items of the automatic list, each with its reason and one tap to where it is done
+    final todoSection = todoList == null || todoList.items.isEmpty
+        ? null
+        : enter(TeacherTodoSection(
+            list: todoList,
+            onOpenItem: onOpenTodo ?? (_) {},
+            onMenu: onTodoMenu ?? (_, _) {},
+            onSeeAll: onSeeAllTodo ?? () {},
           ));
 
     // ── today: one line per session, live first (with "Enter room"), 3 + "Show all"
@@ -542,9 +633,9 @@ class TeacherHomeBody extends StatelessWidget {
       // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my teaching) beside
       // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
       HomeDashboard(
-        narrow: [?needsYou, todaySection, coursesSection, ?inbox],
-        main: [todaySection, if (needsYou != null || inbox != null) coursesSection],
-        side: needsYou == null && inbox == null ? [coursesSection] : [?needsYou, ?inbox],
+        narrow: [?todoSection, ?needsYou, todaySection, coursesSection, ?inbox],
+        main: [todaySection, if (todoSection != null || needsYou != null || inbox != null) coursesSection],
+        side: todoSection == null && needsYou == null && inbox == null ? [coursesSection] : [?todoSection, ?needsYou, ?inbox],
       ),
       if (extra == null && showFeeds) const InboxEntryCard(padding: EdgeInsets.fromLTRB(20, 0, 20, 16)),
 
@@ -627,6 +718,34 @@ class TeacherCourseSummary extends StatelessWidget {
       ],
       moreLabel: courses.length > top.length ? 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}') : null,
       onMore: onShowAll,
+    );
+  }
+}
+
+/// "Your to-do" on the instructor home (D-303): a HomeSection over [TeacherTodoCard] — the count of open items in its
+/// title, how many are urgent under it, "See all" to the whole list. Kill switch `teacher_home.todo`.
+class TeacherTodoSection extends StatelessWidget {
+  const TeacherTodoSection({super.key, required this.list, required this.onOpenItem, required this.onMenu, required this.onSeeAll});
+  final TodoList list;
+  final void Function(TodoItem) onOpenItem;
+  final void Function(TodoItem, TodoMenu) onMenu;
+  final VoidCallback onSeeAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final high = list.highCount;
+    return ParentComponent(
+      featureKey: 'teacher_home.todo',
+      child: HomeSection(
+        id: 'teacher.todo',
+        title: 'todo_title'.tr,
+        count: list.totalCount,
+        subtitle: high > 0 ? 'todo_urgent_n'.tr.replaceAll('{n}', '$high') : null,
+        foldedSummary: 'todo_folded'.tr.replaceAll('{n}', '${list.totalCount}'),
+        actionLabel: 'todo_see_all'.tr,
+        onAction: onSeeAll,
+        child: TeacherTodoCard(list: list, onOpenItem: onOpenItem, onMenu: onMenu, onSeeAll: onSeeAll),
+      ),
     );
   }
 }

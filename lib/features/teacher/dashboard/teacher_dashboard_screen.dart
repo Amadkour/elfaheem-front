@@ -98,7 +98,7 @@ class _State extends State<TeacherDashboardScreen> {
         'home',
         provider.init,
         const TeacherHomeScreen(),
-        attentionKeys: const [AttentionTabs.home],   // my to-dos (GET /me/attention)
+        attentionKeys: const [AttentionTabs.home, AttentionTabs.teacherTodo],   // my to-dos + the urgent automatic ones (D-303)
       ),
       DashboardItem(
         CupertinoIcons.book,

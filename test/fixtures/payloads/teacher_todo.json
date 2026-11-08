@@ -1,0 +1,289 @@
+{
+ "enabled": true,
+ "items": [
+  {
+   "key": "recording:4",
+   "kind": "recording_missing",
+   "priority": "high",
+   "score": 76,
+   "title_ar": "ارفع تسجيل «L2»",
+   "title_en": "Upload the recording of “L2”",
+   "why_ar": "فشل حفظ تسجيل البث (منذ يومين) — الطلاب الغائبون لا يجدون الدرس",
+   "why_en": "The live recording failed (2 days ago) — absent students can't watch the lesson",
+   "count": 1,
+   "course_id": 1,
+   "course_name": "رياضيات",
+   "org_id": null,
+   "at": "2026-11-06T01:14:00.238925",
+   "when": null,
+   "fp": "c2376402bda2",
+   "students": [],
+   "action": {
+    "type": "course",
+    "course_id": 1,
+    "tab": "sessions"
+   },
+   "state": "open",
+   "returned": false
+  },
+  {
+   "key": "grading:1",
+   "kind": "grading",
+   "priority": "high",
+   "score": 73,
+   "title_ar": "صحّح 3 تسليمات",
+   "title_en": "Grade 3 submissions",
+   "why_ar": "أقدمها سُلّم منذ 4 أيام ولم يُصحَّح بعد",
+   "why_en": "The oldest was handed in 4 days ago and is not graded yet",
+   "count": 3,
+   "course_id": 1,
+   "course_name": "رياضيات",
+   "org_id": null,
+   "at": "2026-11-04T00:19:00.238925",
+   "when": null,
+   "fp": "c38fb6d38226",
+   "students": [],
+   "action": {
+    "type": "course",
+    "course_id": 1,
+    "tab": "assignments"
+   },
+   "state": "open",
+   "returned": true
+  },
+  {
+   "key": "at_risk:1",
+   "kind": "at_risk",
+   "priority": "high",
+   "score": 71,
+   "title_ar": "تابع 4 طلاب معرّضين للتعثر",
+   "title_en": "Check on 4 students at risk",
+   "why_ar": "4 غابوا عن أغلب الدروس",
+   "why_en": "4 missed most lessons",
+   "count": 4,
+   "course_id": 1,
+   "course_name": "رياضيات",
+   "org_id": null,
+   "at": null,
+   "when": null,
+   "fp": "08b5334fe27a",
+   "students": [
+    {
+     "id": 3,
+     "name": "s1",
+     "reasons": [
+      "absent"
+     ]
+    },
+    {
+     "id": 4,
+     "name": "s2",
+     "reasons": [
+      "absent"
+     ]
+    },
+    {
+     "id": 5,
+     "name": "s3",
+     "reasons": [
+      "absent"
+     ]
+    },
+    {
+     "id": 6,
+     "name": "s4",
+     "reasons": [
+      "absent"
+     ]
+    }
+   ],
+   "action": {
+    "type": "course",
+    "course_id": 1,
+    "tab": "students"
+   },
+   "state": "open",
+   "returned": false
+  },
+  {
+   "key": "engagement:1",
+   "kind": "low_engagement",
+   "priority": "medium",
+   "score": 66,
+   "title_ar": "3 دروس لم تصل لأغلب الطلاب",
+   "title_en": "3 lessons haven't reached most students",
+   "why_ar": "أضعفها «L3»: أنهى مواده 0 من 5 فقط (0٪) (+2 دروس أخرى) — ذكّرهم أو بسّط المحتوى",
+   "why_en": "Weakest “L3”: only 0 of 5 students (0%) finished it (+2 more) — nudge them or simplify it",
+   "count": 3,
+   "course_id": 1,
+   "course_name": "رياضيات",
+   "org_id": null,
+   "at": "2026-11-05T00:19:00.238925",
+   "when": null,
+   "fp": "103a12a84125",
+   "students": [],
+   "action": {
+    "type": "course",
+    "course_id": 1,
+    "tab": "sessions"
+   },
+   "state": "open",
+   "returned": false
+  },
+  {
+   "key": "complaints:1",
+   "kind": "complaints",
+   "priority": "medium",
+   "score": 55,
+   "title_ar": "ردّ على شكوى من الطلاب",
+   "title_en": "Answer 1 student complaint",
+   "why_ar": "مفتوحة عن محتوى الكورس، أقدمها اليوم",
+   "why_en": "Open about the course content, the oldest today",
+   "count": 1,
+   "course_id": 1,
+   "course_name": "رياضيات",
+   "org_id": null,
+   "at": "2026-11-08T00:19:01.109370",
+   "when": null,
+   "fp": "3f22d6d875f4",
+   "students": [],
+   "action": {
+    "type": "complaints"
+   },
+   "state": "open",
+   "returned": false
+  },
+  {
+   "key": "attendance_missing:1",
+   "kind": "attendance_missing",
+   "priority": "medium",
+   "score": 54,
+   "title_ar": "سجّل الحضور في درس واحد",
+   "title_en": "Take attendance for 1 lesson",
+   "why_ar": "لم يُسجَّل حضور: L2",
+   "why_en": "No attendance recorded: L2",
+   "count": 1,
+   "course_id": 1,
+   "course_name": "رياضيات",
+   "org_id": null,
+   "at": "2026-11-06T00:19:00.238925",
+   "when": null,
+   "fp": "4b227777d4dd",
+   "students": [],
+   "action": {
+    "type": "course",
+    "course_id": 1,
+    "tab": "sessions"
+   },
+   "state": "open",
+   "returned": false
+  },
+  {
+   "key": "quiet:2",
+   "kind": "quiet_course",
+   "priority": "medium",
+   "score": 45,
+   "title_ar": "خطّط للدرس القادم",
+   "title_en": "Plan the next lesson",
+   "why_ar": "لا جديد منذ 30 يومًا ولا درس مجدول — طالب واحد بانتظارك",
+   "why_en": "Nothing new for 30 days and no lesson scheduled — 1 student are waiting",
+   "count": 1,
+   "course_id": 2,
+   "course_name": "فيزياء",
+   "org_id": null,
+   "at": "2026-10-09T00:19:00.238925",
+   "when": null,
+   "fp": "14928dc48d5c",
+   "students": [],
+   "action": {
+    "type": "course",
+    "course_id": 2,
+    "tab": "sessions"
+   },
+   "state": "open",
+   "returned": false
+  },
+  {
+   "key": "materials_missing:1",
+   "kind": "materials_missing",
+   "priority": "medium",
+   "score": 42,
+   "title_ar": "أضف المواد إلى درس واحد",
+   "title_en": "Add materials to 1 lesson",
+   "why_ar": "دروس بلا ملفات أو تسجيل: L2",
+   "why_en": "Lessons with no files or recording: L2",
+   "count": 1,
+   "course_id": 1,
+   "course_name": "رياضيات",
+   "org_id": null,
+   "at": "2026-11-06T00:19:00.238925",
+   "when": null,
+   "fp": "4b227777d4dd",
+   "students": [],
+   "action": {
+    "type": "course",
+    "course_id": 1,
+    "tab": "sessions"
+   },
+   "state": "open",
+   "returned": false
+  }
+ ],
+ "hidden": [
+  {
+   "key": "conflict:session:5:session:6",
+   "kind": "conflict",
+   "priority": "high",
+   "score": 95,
+   "title_ar": "تعارض في جدولك",
+   "title_en": "A clash in your schedule",
+   "why_ar": "«Clash A» و«Clash B» في الوقت نفسه",
+   "why_en": "“Clash A” and “Clash B” at the same time",
+   "count": 1,
+   "course_id": null,
+   "course_name": null,
+   "org_id": null,
+   "at": null,
+   "when": "2026-11-09T00:49:00.238925",
+   "fp": "2dcf8bfb1911",
+   "students": [],
+   "action": {
+    "type": "calendar",
+    "meeting_id": null,
+    "course_id": 1,
+    "at": "2026-11-09T00:49:00.238925"
+   },
+   "state": "done",
+   "until": null
+  }
+ ],
+ "states": {
+  "grading:1": {
+   "state": "dismiss",
+   "fp": "48e0d1fa9385",
+   "at": "2026-11-08T00:19:01.537136"
+  },
+  "conflict:session:5:session:6": {
+   "state": "done",
+   "fp": "2dcf8bfb1911",
+   "at": "2026-11-08T00:19:01.681896"
+  }
+ },
+ "counts": {
+  "total": 8,
+  "high": 3,
+  "medium": 5,
+  "low": 0,
+  "by_kind": {
+   "recording_missing": 1,
+   "grading": 1,
+   "at_risk": 1,
+   "low_engagement": 1,
+   "complaints": 1,
+   "attendance_missing": 1,
+   "quiet_course": 1,
+   "materials_missing": 1
+  }
+ },
+ "generated_at": "2026-11-08T00:19:02.329337"
+}

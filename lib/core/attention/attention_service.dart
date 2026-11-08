@@ -54,6 +54,8 @@ class AttentionTabs {
   static const orgTimetable = 'org.timetable';
   static const orgServices = 'org.services';
   static const orgSettings = 'org.settings';
+  /// The high-priority items of the teacher's automatic to-do list (D-303, services/teacher_todo_service.py).
+  static const teacherTodo = 'teacher.todo';
 
   /// Org dashboard section key ('people', 'academics', …) → tab key.
   static const orgSection = <String, String>{
@@ -69,7 +71,7 @@ class AttentionTabs {
   static const orgInvitationsItem = 'org_invitations';
 
   static const all = [home, profile, parentLink, parentAlerts, adminSupport, adminFinance, orgPeople, orgAcademics,
-    orgTimetable, orgServices, orgSettings];
+    orgTimetable, orgServices, orgSettings, teacherTodo];
 }
 
 class AttentionItem {

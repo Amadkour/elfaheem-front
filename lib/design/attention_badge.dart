@@ -156,6 +156,8 @@ Future<void> openAttentionItem(BuildContext context, AttentionItem x, {VoidCallb
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TeacherTransfersScreen()));
     case 'parent_alerts':
       _requestShellTab('parent_alerts');
+    case 'teacher_todo': // D-303: the teacher's automatic to-do list
+      await AppNavigator.openModule('teacher_todo');
     case '':
       onOpen?.call();
     default:

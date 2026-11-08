@@ -9,6 +9,7 @@ library;
 
 import '../../../core/api_client.dart';
 import '../../../core/home/me_home.dart' show MeLiveRoom;
+import '../todo/teacher_todo_models.dart' show TodoList;
 
 class TeacherHomeExtra {
   const TeacherHomeExtra({
@@ -22,7 +23,12 @@ class TeacherHomeExtra {
     this.enrollmentSeries = const [],
     this.liveNow = const [],
     this.liveNowKnown = false,
+    this.todo,
   });
+
+  /// `todo` (D-303): the automatic to-do list's top items + counts + states; null on an older server or when the
+  /// super admin switched it off (teacher_home.todo) → the home draws the "Needs you" pills as before.
+  final TodoList? todo;
 
   /// attendance_missing · materials_missing · grading · enrollment_requests.
   final Map<String, int> pending;
@@ -62,6 +68,7 @@ class TeacherHomeExtra {
         enrollmentSeries: enrollmentSeries,
         liveNow: rooms,
         liveNowKnown: liveNowKnown,
+        todo: todo,
       );
 
   factory TeacherHomeExtra.fromJson(Map<String, dynamic> j) {
@@ -95,6 +102,7 @@ class TeacherHomeExtra {
           .whereType<MeLiveRoom>()
           .toList(),
       liveNowKnown: j['live_now'] is List,
+      todo: j['todo'] is Map ? TodoList.fromJson(j['todo']) : null,
     );
   }
 }
