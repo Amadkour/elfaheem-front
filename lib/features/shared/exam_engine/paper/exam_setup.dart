@@ -86,11 +86,18 @@ class IdentifierChoice {
 }
 
 class SetupTemplateRef {
-  const SetupTemplateRef({required this.id, required this.version, required this.name, required this.status, this.idZone});
+  const SetupTemplateRef({required this.id, required this.version, required this.name, required this.status, this.idZone, this.kind = 'bubble'});
   final int id;
   final int version;
   final String name;
   final String status;
+
+  /// bubble · answer_table · auto_bubble / written_table (the teacher's own sheet, D-302).
+  final String kind;
+
+  /// A sheet NextBrain does not print (an answer table or the teacher's own detected sheet): no printing, no live
+  /// camera; papers come in as photos / scans.
+  bool get ownSheet => kind != 'bubble';
 
   /// The sheet's student-ID zone (null from an older server).
   final IdZone? idZone;
@@ -154,7 +161,8 @@ class ExamSetup {
               version: asInt(tpl['version'], 1),
               name: '${tpl['name'] ?? ''}',
               status: '${tpl['status'] ?? ''}',
-              idZone: tpl['id_zone'] is Map ? IdZone.fromJson(asMap(tpl['id_zone'])) : null)
+              idZone: tpl['id_zone'] is Map ? IdZone.fromJson(asMap(tpl['id_zone'])) : null,
+              kind: '${tpl['kind'] ?? 'bubble'}')
           : null,
       policy: OmrPolicy.fromJson(j['omr_policy']),
       markers: [for (final m in (j['form_markers'] as List?) ?? const []) '$m'],
@@ -368,10 +376,12 @@ class OmrTemplateItem {
   /// The student-ID zone (`id_kind` + `id_digits` of the library row; null when the server does not send it).
   final IdZone? idZone;
 
-  /// `bubble` (a global bubble sheet) or `answer_table` (an organization's / the person's own mark-sheet template).
+  /// `bubble` (a global bubble sheet), `answer_table` (an organization's / the person's own mark-sheet template) or
+  /// the teacher's own detected sheet (`auto_bubble`, `written_table`, D-302).
   final String kind;
 
   bool get isAnswerTable => kind == 'answer_table';
+  bool get isOwnSheet => kind == 'auto_bubble' || kind == 'written_table';
 
   static OmrTemplateItem fromJson(Map<String, dynamic> j) => OmrTemplateItem(
         id: asInt(j['id']),
@@ -379,7 +389,7 @@ class OmrTemplateItem {
         name: '${j['name'] ?? ''}',
         description: j['description'] == null || '${j['description']}'.trim().isEmpty ? null : '${j['description']}',
         status: '${j['status'] ?? ''}',
-        kind: j['kind'] == 'answer_table' ? 'answer_table' : 'bubble',
+        kind: const {'answer_table', 'auto_bubble', 'written_table'}.contains(j['kind']) ? '${j['kind']}' : 'bubble',
         questions: asInt(j['questions']),
         options: j['options'] is num ? (j['options'] as num).toInt() : null,
         idZone: j['id_kind'] == null ? null : IdZone('${j['id_kind']}', j['id_digits'] is num ? (j['id_digits'] as num).toInt() : 0),

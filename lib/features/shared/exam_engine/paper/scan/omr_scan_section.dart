@@ -3,6 +3,9 @@
 // progress screen); "Show all batches" lists every batch, older ones a page at a time (`?limit=&before=`). Shown for an exam whose paper_format is bubble / both, behind the kill switch `exam.omr`.
 // With [OmrScanSection.bubble] false (an "Exam paper only" exam: handwritten answers on the engine's printed sheets)
 // it keeps only Review and Results: the written answers are reviewed on the same page, each next to its crop (D-160).
+// With [OmrScanSection.ownSheet] (an answer table or the teacher's own detected sheet, D-302) there is nothing to
+// print and no live camera (it looks for NextBrain's marks): papers come in through Upload (photos, scans, PDFs; a
+// phone's gallery offers its camera too).
 library;
 
 import 'package:flutter/material.dart';
@@ -17,12 +20,15 @@ import 'omr_sheets_sheet.dart';
 import 'omr_upload_screen.dart';
 
 class OmrScanSection extends StatefulWidget {
-  const OmrScanSection({super.key, required this.examId, this.examTitle = '', this.bubble = true, this.api, this.onChanged});
+  const OmrScanSection({super.key, required this.examId, this.examTitle = '', this.bubble = true, this.ownSheet = false, this.api, this.onChanged});
   final int examId;
   final String examTitle;
 
   /// A bubble-sheet exam (bubble / both): print, camera, upload and the batches; false = Review and Results only.
   final bool bubble;
+
+  /// The exam's sheet is not printed by NextBrain (D-241 answer table, D-302 own sheet): no Print, no live camera.
+  final bool ownSheet;
   final OmrScanApi? api;
 
   /// Called after a scan / upload screen closes (the caller reloads its page list).
@@ -103,7 +109,7 @@ class _OmrScanSectionState extends State<OmrScanSection> {
   Widget build(BuildContext context) {
     final soon = t('تتوفر قريبًا', 'Available soon');
     final entries = [
-      if (widget.bubble) ...[
+      if (widget.bubble && !widget.ownSheet) ...[
         OmrToolEntry(
           id: 'print',
           icon: Icons.print_outlined,
@@ -119,13 +125,18 @@ class _OmrScanSectionState extends State<OmrScanSection> {
           onTap: () => _after(Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (_) => OmrScannerScreen(examId: widget.examId, examTitle: widget.examTitle, api: widget.api)))),
         ),
+      ],
+      if (widget.bubble) ...[
         OmrToolEntry(
           id: 'upload',
           icon: Icons.upload_file_rounded,
           title: t('رفع الأوراق', 'Upload papers'),
-          subtitle: t('من معرض الصور أو الملفات أو مجلد الماسح الضوئي — صور وPDF معًا',
-              "From the photo gallery, files or a scanner's folder — images and PDFs together"),
-          onTap: () => _after(startOmrUpload(context, examId: widget.examId, examTitle: widget.examTitle, api: widget.api)),
+          subtitle: widget.ownSheet
+              ? t('صوّر الأوراق أو ارفع صورًا وملفات PDF — نجد كل صفحة ونعدّلها ونطابقها بنفسنا',
+                  'Photograph the papers or upload photos and PDFs — we find, straighten and match every page ourselves')
+              : t('من معرض الصور أو الملفات أو مجلد الماسح الضوئي — صور وPDF معًا',
+                  "From the photo gallery, files or a scanner's folder — images and PDFs together"),
+          onTap: () => _after(startOmrUpload(context, examId: widget.examId, examTitle: widget.examTitle, api: widget.api, camera: !widget.ownSheet)),
         ),
       ],
       OmrToolEntry(

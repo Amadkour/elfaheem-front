@@ -37,6 +37,7 @@ import '../exam_authoring_screen.dart' show pickEngineDateTime;
 import '../exam_versions_sheet.dart' show openExamVersions;
 import 'exam_setup.dart';
 import 'omr_counts.dart';
+import 'templates/own_sheet.dart' show kOwnSheetFeatureKey, openOwnSheet;
 
 /// Opens the wizard; true when it was finished (or the choice of Online was saved).
 Future<bool?> openExamSetupWizard(BuildContext context,
@@ -601,6 +602,12 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
                     await widget.onLearnTemplate!();
                     if (mounted) _loadTemplates();
                   },
+            onOwnSheet: () async {
+              final made = await openOwnSheet(context, orgId: _orgId);
+              if (!mounted || made == null) return;
+              setState(() => _templateId = made.id);
+              await _loadTemplates();
+            },
             onPaperOnly: () => setState(() {
               _format = 'paper';
               _step = SetupStep.format;
@@ -1273,6 +1280,7 @@ class TemplateStepBody extends StatelessWidget {
     this.error,
     this.onRetry,
     this.onLearn,
+    this.onOwnSheet,
     this.fits = const {},
     this.identifierLabel = '',
   });
@@ -1290,6 +1298,10 @@ class TemplateStepBody extends StatelessWidget {
 
   /// "Upload a custom layout" (shown only when given).
   final VoidCallback? onLearn;
+
+  /// "Use your own sheet" (D-302: any bubble sheet or a written answer table, detected from a photo; shown only when
+  /// given, behind `exam.auto_correct`).
+  final VoidCallback? onOwnSheet;
   final VoidCallback onPaperOnly;
 
   @override
@@ -1311,6 +1323,23 @@ class TemplateStepBody extends StatelessWidget {
           action: onRetry == null ? null : TextButton(onPressed: onRetry, child: Text(t('إعادة', 'Retry'))));
     }
     if (list == null) return const AppListSkeleton(items: 3, padding: EdgeInsets.zero);
+    final own = onOwnSheet == null
+        ? null
+        : ParentComponent(
+            featureKey: kOwnSheetFeatureKey,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
+              child: SetupChoiceTile(
+                key: const ValueKey('setup.template.own'),
+                icon: Icons.document_scanner_outlined,
+                title: t('استخدم ورقتك الخاصة', 'Use your own sheet'),
+                subtitle: t('أي ورقة تظليل، أو جدول يكتب فيه الطالب رقم إجابته — صوّرها ونتعرف عليها',
+                    'Any bubble sheet, or a table where students write their answer — photograph it and we work it out'),
+                selected: false,
+                onTap: onOwnSheet!,
+              ),
+            ),
+          );
     if (list.isEmpty) {
       return AppCard(
         child: Column(children: [
@@ -1320,12 +1349,14 @@ class TemplateStepBody extends StatelessWidget {
             message: t('عندما يعتمد مشرف المنصة نوعًا سيظهر هنا. يمكنك الآن الاكتفاء بورقة الأسئلة.',
                 'Once the platform admin approves one it shows here. For now you can use the exam paper only.'),
           ),
+          ?own,
           ?learn,
           TextButton(onPressed: onPaperOnly, child: Text(t('استخدم ورقة الأسئلة فقط', 'Use the exam paper only'))),
         ]),
       );
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      ?own,
       for (final x in list) ...[
         SetupChoiceTile(
           key: ValueKey('setup.template.${x.id}'),
@@ -1333,6 +1364,8 @@ class TemplateStepBody extends StatelessWidget {
           title: x.title,
           subtitle: [
             if (x.isAnswerTable) t('جدول إجابات', 'Answer table'),
+            if (x.kind == 'auto_bubble') t('ورقتك الخاصة', 'Your own sheet'),
+            if (x.kind == 'written_table') t('جدول إجابات مكتوبة', 'Written answer table'),
             ?x.subtitle,
             if (x.idZone != null) idZoneLabel(x.idZone!),
             if (fits[x.id]?.blocks == true) t('لا يتسع لـ$identifierLabel', 'too short for $identifierLabel'),
