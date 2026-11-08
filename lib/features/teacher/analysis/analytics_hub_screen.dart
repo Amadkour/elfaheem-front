@@ -137,6 +137,9 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
 
   void _push(Widget screen) => Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 
+  /// Every exam across the courses (D-300).
+  void _openAllExams() => _push(deferredAllExams());
+
   TeacherCourse? _course(int? id) {
     for (final c in context.read<TeacherCoursesProvider>().allCourses) {
       if (c.id == id) return c;
@@ -271,6 +274,15 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
         title: anTr('an2_title', 'Analytics'),
         subtitle: anTr('an2_sub_teacher', 'How your classes are doing'),
         actions: [
+          ParentComponent(
+            featureKey: 'exam.all_exams',
+            child: AnHeaderIcon(
+              key: const ValueKey('analytics_hub.all_exams'),
+              icon: Icons.fact_check_rounded,
+              tooltip: anTr('an_all_exams', 'All exams'),
+              onTap: _openAllExams,
+            ),
+          ),
           AnHeaderIcon(
             icon: Icons.refresh_rounded,
             tooltip: anTr('an_refresh', 'Refresh'),
@@ -323,6 +335,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
         label: anTr('an2_tile_pass_rate', 'Exam pass rate'),
         value: anPct(passRate),
         color: anMetricColor(context, AnMetric.exams),
+        onTap: AppConfig.disableList.contains('exam.all_exams') ? null : _openAllExams,
       ),
     ]);
 

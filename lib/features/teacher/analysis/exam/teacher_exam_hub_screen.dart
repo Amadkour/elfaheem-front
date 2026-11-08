@@ -3,6 +3,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredAllExams;
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart';
 import 'package:provider/provider.dart';
@@ -171,7 +173,18 @@ class _HubViewState extends State<_HubView>
     return ExamHero(
       child: Column(
         children: [
-          ExamHeroBar(title: 'exam_hub_title'.tr, subtitle: widget.courseTitle),
+          ExamHeroBar(title: 'exam_hub_title'.tr, subtitle: widget.courseTitle, actions: [
+            // every exam across the courses (D-300)
+            ParentComponent(
+              featureKey: 'exam.all_exams',
+              child: GlassIcon(
+                key: const ValueKey('exam_hub.all_exams'),
+                icon: Icons.fact_check_rounded,
+                tooltip: AppConfig.lang == 'ar' ? 'كل الاختبارات' : 'All exams',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => deferredAllExams())),
+              ),
+            ),
+          ]),
           const SizedBox(height: 18),
           Row(
             children: [

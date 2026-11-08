@@ -139,6 +139,7 @@
  "device_requests.hint",
  "device_requests.limit_note",
  "enrollment",
+ "exam.all_exams",
  "exam.google_forms_import",
  "exam.grade_review",
  "exam.identifiers",

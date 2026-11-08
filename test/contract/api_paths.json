@@ -1505,6 +1505,7 @@
   "GET /api/v1/exam/attempts/{aid:int}/review",
   "GET /api/v1/exam/consents",
   "GET /api/v1/exam/exams",
+  "GET /api/v1/exam/exams/mine",
   "GET /api/v1/exam/exams/{exam_id:int}",
   "GET /api/v1/exam/exams/{exam_id:int}/accommodations",
   "GET /api/v1/exam/exams/{exam_id:int}/analytics",

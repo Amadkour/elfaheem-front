@@ -48,6 +48,7 @@ import '../../features/org/org_reports/report_page.dart' deferred as org_report_
 import '../../features/parent/parent_dashboard_screen.dart' deferred as parent_dashboard;
 import '../../features/parent/parent_org_view.dart' deferred as parent_org_view;
 import '../../features/teacher/analysis/exam/teacher_exam_hub_screen.dart' deferred as exam_hub;
+import '../../features/shared/exam_engine/exam_all_screen.dart' deferred as exam_all;
 import '../../features/teacher/certificates/certificate_requests_screen.dart' deferred as cert_requests;
 import '../../features/teacher/certificates/designer/certificate_designs_screen.dart' deferred as cert_designs;
 import '../../features/teacher/courses/course_form_screen.dart' deferred as course_form;
@@ -344,6 +345,9 @@ Widget deferredTeacherExamHub({
         load: exam_hub.loadLibrary,
         builder: (_) => exam_hub.TeacherExamHubScreen(
             courseId: courseId, courseTitle: courseTitle, initialSessionId: initialSessionId, openCreateOnStart: openCreateOnStart, orgId: orgId));
+
+/// "All exams" (D-300): every exam the person manages, across courses and organizations.
+Widget deferredAllExams() => DeferredPage(id: 'exam_all', load: exam_all.loadLibrary, builder: (_) => exam_all.AllExamsScreen());
 
 Widget deferredDataLab({required int courseId, required String courseTitle}) =>
     DeferredPage(id: 'data_lab', load: data_lab.loadLibrary, builder: (_) => data_lab.DataLabScreen(courseId: courseId, courseTitle: courseTitle));

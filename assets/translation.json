@@ -23285,5 +23285,6 @@
   "md_p8_view_saved": {"en": "View saved: {name}", "ar": "تم حفظ العرض: {name}"},
   "md_p8_views": {"en": "Saved views", "ar": "العروض المحفوظة"},
   "md_p8_views_empty": {"en": "No saved views yet.", "ar": "لا توجد عروض محفوظة بعد."},
-  "ds_select_row": {"en": "Select this row", "ar": "تحديد هذا الصف"}
+  "ds_select_row": {"en": "Select this row", "ar": "تحديد هذا الصف"},
+  "an_all_exams": {"en": "All exams", "ar": "كل الاختبارات"}
 }
