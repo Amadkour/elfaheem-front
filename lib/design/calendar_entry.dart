@@ -10,6 +10,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
+import '../core/attention/attention_service.dart';
 import '../config/theme/theme_config_provider.dart';
 import '../utils/widget/parent_component.dart';
 import 'chrome_button.dart';
@@ -17,8 +18,30 @@ import 'app_settings.dart';
 import 'app_shell_nav.dart' show AppShellNav;
 
 const calendarEntryFeatureKey = 'calendar.entry';
+const chatEntryFeatureKey = 'chat';
 
 void openMyCalendar(BuildContext context) => AppShellNav.navigatorFor(context).pushNamed('/calendar');
+
+/// NextBrain Messages (D-330): the same small button in every role's shell and home header, with its unread count.
+class ChatEntryIcon extends StatelessWidget {
+  const ChatEntryIcon({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ParentComponent(
+      featureKey: chatEntryFeatureKey,
+      child: ListenableBuilder(
+        listenable: AttentionService.instance,
+        builder: (context, _) => ChromeIconButton(
+          icon: Icons.forum_rounded,
+          label: 'chat_title'.tr,
+          badge: AttentionService.instance.count(AttentionTabs.chat),
+          onTap: () => AppShellNav.navigatorFor(context).pushNamed('/chat'),
+        ),
+      ),
+    );
+  }
+}
 
 class CalendarEntryIcon extends StatelessWidget {
   const CalendarEntryIcon({super.key});

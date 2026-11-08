@@ -156,6 +156,10 @@ Future<void> openAttentionItem(BuildContext context, AttentionItem x, {VoidCallb
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TeacherTransfersScreen()));
     case 'parent_alerts':
       _requestShellTab('parent_alerts');
+    case 'chat': // D-330: unread messages
+      await AppNavigator.openModule('chat');
+    case 'chat_reports': // an admin: chat reports to review
+      await AppNavigator.openModule('chat_reports');
     case 'teacher_todo': // D-303: the teacher's automatic to-do list
       await AppNavigator.openModule('teacher_todo');
     case '':

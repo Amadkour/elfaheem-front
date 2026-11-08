@@ -135,6 +135,13 @@ class LiveEvents {
   static const examNotice = 'exam_notice';
 
   /// Local (not from the server): fired by TopRouteObserver when the app goes online/offline.
+  // NextBrain Messages (D-330, server: services/chat/realtime.py)
+  static const chatMessage = 'chat_message';
+  static const chatReceipt = 'chat_receipt';
+  static const chatTyping = 'chat_typing';
+  static const chatPresence = 'chat_presence';
+  static const chatConversation = 'chat_conversation';
+
   static const connectivity = 'connectivity_changed';
 
   /// The legacy silent pushes, sent with `type` (older server) as well as `event`.

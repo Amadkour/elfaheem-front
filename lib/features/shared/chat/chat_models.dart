@@ -1,0 +1,342 @@
+// lib/features/shared/chat/chat_models.dart — NextBrain Messages (D-330): the wire shapes, pure.
+//
+// Times arrive as naive UTC ISO strings (`chatUtc`). Nothing here holds a phone number or an e-mail: the server only
+// ever sends {id, name, image_url, role} for a person.
+library;
+
+import 'dart:typed_data';
+
+import 'package:flutter_education_app/config/app_config.dart';
+
+DateTime chatUtc(Object? iso) {
+  final raw = '${iso ?? ''}';
+  if (raw.isEmpty) return DateTime.now().toUtc();
+  return DateTime.tryParse(raw.endsWith('Z') || raw.contains('+') ? raw : '${raw}Z')?.toUtc() ?? DateTime.now().toUtc();
+}
+
+int? _intOf(Object? v) => v == null ? null : int.tryParse('$v');
+
+class ChatPerson {
+  const ChatPerson({required this.id, required this.name, this.imageUrl, this.role = ''});
+  final int id;
+  final String name;
+  final String? imageUrl;
+  final String role;
+
+  static ChatPerson? fromJson(Object? j) {
+    if (j is! Map) return null;
+    return ChatPerson(
+      id: _intOf(j['id']) ?? 0,
+      name: '${j['name'] ?? ''}',
+      imageUrl: (j['image_url'] as String?)?.isNotEmpty == true ? j['image_url'] as String : null,
+      role: '${j['role'] ?? ''}',
+    );
+  }
+}
+
+class ChatCourse {
+  const ChatCourse({required this.id, required this.name, this.nameEn = '', this.imageUrl, this.teacherId});
+  final int id;
+  final String name, nameEn;
+  final String? imageUrl;
+  final int? teacherId;
+
+  String get label => AppConfig.lang == 'ar' ? (name.isNotEmpty ? name : nameEn) : (nameEn.isNotEmpty ? nameEn : name);
+
+  static ChatCourse? fromJson(Object? j) {
+    if (j is! Map) return null;
+    return ChatCourse(
+      id: _intOf(j['id']) ?? 0,
+      name: '${j['name'] ?? ''}',
+      nameEn: '${j['name_en'] ?? ''}',
+      imageUrl: (j['image_url'] as String?)?.isNotEmpty == true ? j['image_url'] as String : null,
+      teacherId: _intOf(j['teacher_id']),
+    );
+  }
+}
+
+class ChatLastMessage {
+  const ChatLastMessage({required this.id, required this.kind, this.body = '', this.senderId, this.senderName, required this.createdAt});
+  final int id;
+  final String kind, body;
+  final int? senderId;
+  final String? senderName;
+  final DateTime createdAt;
+
+  static ChatLastMessage? fromJson(Object? j) {
+    if (j is! Map) return null;
+    return ChatLastMessage(
+      id: _intOf(j['id']) ?? 0,
+      kind: '${j['kind'] ?? 'text'}',
+      body: '${j['body'] ?? ''}',
+      senderId: _intOf(j['sender_id']),
+      senderName: j['sender_name'] as String?,
+      createdAt: chatUtc(j['created_at']),
+    );
+  }
+}
+
+/// What the composer may do (the server decides; `services/chat/rules.py`).
+enum ChatComposerState { open, blocked, youBlocked, closed, ended, disabled }
+
+ChatComposerState chatComposerState(Object? raw) => switch ('$raw') {
+      'open' => ChatComposerState.open,
+      'blocked' => ChatComposerState.blocked,
+      'you_blocked' => ChatComposerState.youBlocked,
+      'closed' => ChatComposerState.closed,
+      'disabled' => ChatComposerState.disabled,
+      _ => ChatComposerState.ended,
+    };
+
+class ChatConversation {
+  ChatConversation({
+    required this.id,
+    required this.kind,
+    this.peer,
+    this.online = false,
+    this.course,
+    this.child,
+    this.orgName,
+    this.orgId,
+    this.last,
+    required this.lastAt,
+    this.unread = 0,
+    this.pinned = false,
+    this.muted = false,
+    this.lastReadId,
+    this.peerReadId,
+    this.peerDeliveredId,
+    this.composer,
+    this.groupOpen = true,
+    this.canManage = false,
+    this.memberCount,
+    this.canBlock = true,
+    this.attachmentsOn = true,
+    this.reportOn = true,
+  });
+
+  final int id;
+  final String kind;
+  final ChatPerson? peer;
+  bool online;
+  final ChatCourse? course;
+  final ChatPerson? child;
+  final String? orgName;
+  final int? orgId;
+  ChatLastMessage? last;
+  DateTime lastAt;
+  int unread;
+  bool pinned, muted;
+  int? lastReadId, peerReadId, peerDeliveredId;
+  ChatComposerState? composer;
+  bool groupOpen, canManage, canBlock, attachmentsOn, reportOn;
+  int? memberCount;
+
+  bool get isGroup => kind == 'course_group';
+
+  /// What the row and the header call this chat.
+  String get title => isGroup ? (course?.label ?? '') : (peer?.name ?? '');
+
+  /// The short line under the name: the course, the child, or the organization.
+  String get contextLine => course?.label ?? orgName ?? '';
+
+  static ChatConversation fromJson(Map<String, dynamic> j) {
+    final composer = j['composer'];
+    return ChatConversation(
+      id: _intOf(j['id']) ?? 0,
+      kind: '${j['kind'] ?? 'direct'}',
+      peer: ChatPerson.fromJson(j['peer']),
+      online: j['online'] == true,
+      course: ChatCourse.fromJson(j['course']),
+      child: ChatPerson.fromJson(j['child']),
+      orgName: (j['org'] is Map) ? '${(j['org'] as Map)['name'] ?? ''}' : null,
+      orgId: (j['org'] is Map) ? _intOf((j['org'] as Map)['id']) : null,
+      last: ChatLastMessage.fromJson(j['last_message']),
+      lastAt: chatUtc(j['last_message_at']),
+      unread: _intOf(j['unread']) ?? 0,
+      pinned: j['pinned'] == true,
+      muted: j['muted'] == true,
+      lastReadId: _intOf(j['last_read_id']),
+      peerReadId: _intOf(j['peer_read_id']),
+      peerDeliveredId: _intOf(j['peer_delivered_id']),
+      composer: composer is Map ? chatComposerState(composer['state']) : null,
+      groupOpen: j['group_open'] != false,
+      canManage: j['can_manage'] == true,
+      canBlock: j['can_block'] != false,
+      memberCount: _intOf(j['member_count']),
+      attachmentsOn: j['attachments_on'] != false,
+      reportOn: j['report_on'] != false,
+    );
+  }
+}
+
+class ChatAttachment {
+  const ChatAttachment({required this.id, required this.name, required this.mime, required this.ext, this.size = 0, this.width, this.height, this.image = false});
+  final int id;
+  final String name, mime, ext;
+  final int size;
+  final int? width, height;
+  final bool image;
+
+  static ChatAttachment fromJson(Map j) => ChatAttachment(
+        id: _intOf(j['id']) ?? 0,
+        name: '${j['name'] ?? ''}',
+        mime: '${j['mime'] ?? ''}',
+        ext: '${j['ext'] ?? ''}',
+        size: _intOf(j['size']) ?? 0,
+        width: _intOf(j['width']),
+        height: _intOf(j['height']),
+        image: j['image'] == true,
+      );
+}
+
+/// A file picked in the composer that is not uploaded yet (bytes on the web, a path on phones).
+class ChatLocalFile {
+  ChatLocalFile({required this.name, this.bytes, this.path, this.size = 0});
+  final String name;
+  final Uint8List? bytes;
+  final String? path;
+  final int size;
+
+  Map<String, dynamic> toJson() => {'name': name, 'path': path, 'size': size};
+
+  static ChatLocalFile fromJson(Map j) => ChatLocalFile(name: '${j['name'] ?? 'file'}', path: j['path'] as String?, size: _intOf(j['size']) ?? 0);
+}
+
+enum ChatSendState { sent, sending, failed }
+
+class ChatMessage {
+  ChatMessage({
+    this.id,
+    required this.clientId,
+    required this.conversationId,
+    this.kind = 'text',
+    this.body,
+    this.senderId,
+    this.senderName,
+    this.senderImage,
+    this.senderIsTeacher = false,
+    this.attachments = const [],
+    this.local = const [],
+    required this.createdAt,
+    this.deleted = false,
+    this.sendState = ChatSendState.sent,
+    this.error,
+  });
+
+  int? id;
+  final String clientId;
+  final int conversationId;
+  String kind;
+  String? body;
+  final int? senderId;
+  final String? senderName, senderImage;
+  final bool senderIsTeacher;
+  List<ChatAttachment> attachments;
+  List<ChatLocalFile> local;
+  DateTime createdAt;
+  final bool deleted;
+  ChatSendState sendState;
+  String? error;
+
+  bool get hasImages => attachments.any((a) => a.image);
+
+  static ChatMessage fromJson(Map<String, dynamic> j) {
+    final sender = j['sender'];
+    return ChatMessage(
+      id: _intOf(j['id']),
+      clientId: '${j['client_id'] ?? 's${j['id']}'}',
+      conversationId: _intOf(j['conversation_id']) ?? 0,
+      kind: '${j['kind'] ?? 'text'}',
+      body: j['body'] as String?,
+      senderId: _intOf(j['sender_id']),
+      senderName: sender is Map ? sender['name'] as String? : null,
+      senderImage: sender is Map ? sender['image_url'] as String? : null,
+      senderIsTeacher: j['sender_is_teacher'] == true,
+      attachments: [for (final a in (j['attachments'] as List? ?? const [])) if (a is Map) ChatAttachment.fromJson(a)],
+      createdAt: chatUtc(j['created_at']),
+      deleted: j['deleted'] == true,
+    );
+  }
+}
+
+class ChatContact {
+  const ChatContact({required this.user, this.course, this.child, this.orgName, this.orgId, this.conversationId});
+  final ChatPerson user;
+  final ChatCourse? course;
+  final ChatPerson? child;
+  final String? orgName;
+  final int? orgId;
+  final int? conversationId;
+
+  String get linkLine => course?.label ?? orgName ?? '';
+
+  static ChatContact fromJson(Map<String, dynamic> j) => ChatContact(
+        user: ChatPerson.fromJson(j['user']) ?? const ChatPerson(id: 0, name: ''),
+        course: ChatCourse.fromJson(j['course']),
+        child: ChatPerson.fromJson(j['child']),
+        orgName: (j['org'] is Map) ? '${(j['org'] as Map)['name'] ?? ''}' : null,
+        orgId: (j['org'] is Map) ? _intOf((j['org'] as Map)['id']) : null,
+        conversationId: _intOf(j['conversation_id']),
+      );
+}
+
+class ChatBlock {
+  const ChatBlock({required this.id, required this.user, required this.level, this.course, this.reason, required this.createdAt});
+  final int id;
+  final ChatPerson user;
+  final String level;
+  final ChatCourse? course;
+  final String? reason;
+  final DateTime createdAt;
+
+  static ChatBlock fromJson(Map<String, dynamic> j) => ChatBlock(
+        id: _intOf(j['id']) ?? 0,
+        user: ChatPerson.fromJson(j['user']) ?? const ChatPerson(id: 0, name: ''),
+        level: '${j['level'] ?? 'person'}',
+        course: ChatCourse.fromJson(j['course']),
+        reason: j['reason'] as String?,
+        createdAt: chatUtc(j['created_at']),
+      );
+}
+
+class ChatReport {
+  const ChatReport({
+    required this.id,
+    this.reporter,
+    this.target,
+    required this.reason,
+    this.note,
+    this.snapshot = const [],
+    required this.status,
+    this.messageId,
+    required this.createdAt,
+  });
+  final int id;
+  final ChatPerson? reporter, target;
+  final String reason, status;
+  final String? note;
+  final List<Map<String, dynamic>> snapshot;
+  final int? messageId;
+  final DateTime createdAt;
+
+  static ChatReport fromJson(Map<String, dynamic> j) => ChatReport(
+        id: _intOf(j['id']) ?? 0,
+        reporter: ChatPerson.fromJson(j['reporter']),
+        target: ChatPerson.fromJson(j['target']),
+        reason: '${j['reason'] ?? ''}',
+        note: j['note'] as String?,
+        snapshot: [for (final s in (j['snapshot'] as List? ?? const [])) if (s is Map) Map<String, dynamic>.from(s)],
+        status: '${j['status'] ?? 'open'}',
+        messageId: _intOf(j['message_id']),
+        createdAt: chatUtc(j['created_at']),
+      );
+}
+
+/// A contract note, used by both directions of a new message: a client id unique per send on this device.
+String chatNewClientId() {
+  final now = DateTime.now().microsecondsSinceEpoch;
+  return 'c${now.toRadixString(36)}${(now ^ _seq++).toRadixString(36)}';
+}
+
+int _seq = 0;

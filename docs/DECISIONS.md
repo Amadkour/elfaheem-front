@@ -3602,3 +3602,23 @@ labels to tooltips (the hint list stays on web and desktop, now at the end of th
 Tests: `test/ui/records_studio_layout_test.dart` (adds the stage note and a handle dragged from the very start of the track).
 Looked at by throwaway renders at 390×844 and 1440×900, Arabic and English, light and dark, with a stand-in picture and no
 filmstrip sprite; not seen with a real sprite or a real player, or on a device with the keyboard open.
+
+## D-330 — NextBrain Messages: one conversation model, two kinds · 2026-11-08 · accepted
+
+**Direct chats are per pair and per context** (`d:<low>:<high>:c<course>` or `:o<org>`), not one thread per pair. A teacher and a student with two shared courses get two chats. That is what makes the course filter and the course-level block exact, and a parent's chat says which child it is about. A course group is one row per course (`g:c<course>`); its members are computed from the live roster when anyone lists, opens or sends to it, so no enrolment path needs a hook. `chat_conversations.kind` and `settings` are free, `chat_messages` has `reply_to_id`, `edited_at`, `deleted_at` and `meta`: reactions, edit/delete, voice notes, office hours and announcement mode (phases 3–4) add rows or fields, not tables.
+
+**Link rule, computed on every send** (`services/chat/rules.py`): a chat needs a course, a child or an organization; a lost link ends the chat at once (`composer.state = ended`). A parent's chat is decided by the old `parent.message_teacher` switch, so that kill switch keeps working. Student-to-student needs the teacher's or the organization's `student_dm`.
+
+**Only unread counts are not stored.** Unread = messages after `last_read_id`, one GROUP BY, so it cannot drift; read and delivered are monotonic compare-and-set marks.
+
+## D-331 — The three block levels · 2026-11-08 · accepted
+
+`person` (anyone) is every direct chat between the two in any context; groups stay. `course` (teacher only) is that course's direct chat, its group, and a direct chat in the course's organization, because that was the way around it. `all_courses` (teacher only) is every direct chat and the groups of every course the teacher has now or later. Both directions of a direct chat stop; the blocker sees "you blocked this person", the blocked person only "messaging is off for this conversation" (never the level or reason, reason stays with the blocker). A block is only a row in `chat_blocks`, it never touches an enrolment, and no new chat can be created while one applies. Block and unblock go through `audit()` with `org_id` NULL.
+
+## D-332 — Delivery: events carry the message, ticks are direct-only · 2026-11-08 · accepted
+
+`chat_message` carries the whole message on the stream (no fetch, no timers; the thread keeps a slow `EventOrPoll` for when the stream is down). `attention_changed` is sent only for direct chats and the app counts a group message locally (`AttentionService.bumpLocal`), because a badge re-read per group message per member would be hundreds of `/me/attention` calls. Delivered / read ticks exist only in direct chats. A push is not written to the notifications table: a chat is its own list and a busy group would bury everything else. Presence is online or nothing, no "last seen", because many users are minors.
+
+## D-333 — The chat look and the parent's note · 2026-11-08 · accepted
+
+One design for every role: `ChatHomePage` (list and open chat side by side from 860 px), bubbles from `chat_widgets.dart` on tokens, entered through `ChatEntryIcon` next to the calendar in every role's shell, home header and the org header (a bottom-bar tab would overflow at 320 px with five tabs already there). The parent's "Message the teacher" (D-305) now opens the chat, and the phone number option is gone because in a chat a person shares it by typing it. Hidden while the kill switch is on; the old route stays for older apps and files its note into the chat too, without a second push.

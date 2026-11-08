@@ -57,6 +57,9 @@ class AttentionTabs {
   /// The high-priority items of the teacher's automatic to-do list (D-303, services/teacher_todo_service.py).
   static const teacherTodo = 'teacher.todo';
 
+  /// Unread messages of NextBrain Messages (D-330, services/chat).
+  static const chat = 'chat';
+
   /// Org dashboard section key ('people', 'academics', …) → tab key.
   static const orgSection = <String, String>{
     'people': orgPeople,
@@ -71,7 +74,7 @@ class AttentionTabs {
   static const orgInvitationsItem = 'org_invitations';
 
   static const all = [home, profile, parentLink, parentAlerts, adminSupport, adminFinance, orgPeople, orgAcademics,
-    orgTimetable, orgServices, orgSettings, teacherTodo];
+    orgTimetable, orgServices, orgSettings, teacherTodo, chat];
 }
 
 class AttentionItem {
@@ -247,8 +250,18 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     for (final x in _pool(orgId)) {
       if (x.tab == tabKey && (orgId == null || x.orgId == orgId)) n += x.count;
     }
+    if (orgId == null) n += _localBump[tabKey] ?? 0;
     return n;
   }
+
+  /// Count [delta] onto a tab until the next answer from the server replaces it: what the app knows before asking,
+  /// so a message in a busy group does not make every member re-read their badges (D-330).
+  void bumpLocal(String tabKey, int delta) {
+    _localBump[tabKey] = (_localBump[tabKey] ?? 0) + delta;
+    notifyListeners();
+  }
+
+  final Map<String, int> _localBump = {};
 
   /// Items of a tab, most urgent first (server order).
   List<AttentionItem> items(String tabKey, {int? orgId}) =>
@@ -287,6 +300,7 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
         if (focus != null) api.get('/api/v1/me/attention', queryParams: {'org_id': focus}),
       ]);
       _items = _parse(res[0]);
+      _localBump.clear();
       if (focus != null && focus == _focusOrg) _focusItems = _parse(res[1]);
       notifyListeners();
     } catch (e) {

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
+import 'package:flutter_education_app/features/shared/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
@@ -52,6 +53,7 @@ class TopRouteObserver extends NavigatorObserver {
     }
     _refreshShortcut();
     AttentionService.instance.onRouteChanged();   // badges: a new screen / back from one
+    if (route.settings.name != '/login') ChatHub.instance.start();   // chat events, delivered acks (idempotent, D-330)
     // a role home is on screen: ask once about an auto-filled @username (D-071 v2)
     UsernameConfirmPrompt.instance.onRoute(route, () => currentRouteName);
   }

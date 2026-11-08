@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntryIcon;
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -57,6 +58,7 @@ class TopBar extends StatelessWidget {
 
           // A guest has no inbox.
           if (!GuestState.active) const CalendarIcon(),
+          if (!GuestState.active) const ChatEntryIcon(),
           if (!GuestState.active) NotificationIcon(unreadCount: unread),
 
         ],

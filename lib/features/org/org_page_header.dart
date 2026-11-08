@@ -51,7 +51,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 import 'package:flutter_education_app/design/app_shell.dart' show NotificationIcon;
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon;
+import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon, ChatEntryIcon;
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIconButton;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextPill;
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
@@ -389,6 +389,7 @@ class OrgPageHeader extends StatelessWidget {
       final tools = <Widget>[
         if (refresh != null && !wide) _RefreshIcon(refresh: refresh),
         const CalendarEntryIcon(),
+        const ChatEntryIcon(),
         if (helpPageId != null) HelpInfoButton(pageId: helpPageId!),
         NotificationIcon(unreadCount: unread),
       ];

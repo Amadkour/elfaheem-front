@@ -23422,5 +23422,417 @@
   "pp_msg_sent": {"en": "Sent to {name}.", "ar": "أُرسلت إلى {name}."},
   "pp_msg_note": {"en": "The teacher gets it as a notification about {child}. Up to 3 messages per teacher a day.", "ar": "تصل المدرّس إشعارًا عن {child}. الحد 3 رسائل لكل مدرّس يوميًا."},
   "pp_msg_empty": {"en": "Write your message first.", "ar": "اكتب رسالتك أولًا."},
-  "pp_msg_no_teacher": {"en": "No teacher to message yet.", "ar": "لا يوجد مدرّس لمراسلته بعد."}
+  "pp_msg_no_teacher": {"en": "No teacher to message yet.", "ar": "لا يوجد مدرّس لمراسلته بعد."},
+  "chat_title": {
+    "en": "Messages",
+    "ar": "الرسائل"
+  },
+  "chat_back": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "chat_new_chat": {
+    "en": "New chat",
+    "ar": "محادثة جديدة"
+  },
+  "chat_blocked_people": {
+    "en": "Blocked people",
+    "ar": "المحظورون"
+  },
+  "chat_search_hint": {
+    "en": "Search chats",
+    "ar": "ابحث في المحادثات"
+  },
+  "chat_search_people": {
+    "en": "Search people",
+    "ar": "ابحث عن شخص"
+  },
+  "chat_filter_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "chat_filter_unread": {
+    "en": "Unread",
+    "ar": "غير مقروءة"
+  },
+  "chat_filter_groups": {
+    "en": "Groups",
+    "ar": "المجموعات"
+  },
+  "chat_filter_pinned": {
+    "en": "Pinned",
+    "ar": "المثبتة"
+  },
+  "chat_role_teacher": {
+    "en": "Teachers",
+    "ar": "المعلمون"
+  },
+  "chat_role_parent": {
+    "en": "Parents",
+    "ar": "أولياء الأمور"
+  },
+  "chat_role_student": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "chat_retry": {
+    "en": "Try again",
+    "ar": "حاول مجددًا"
+  },
+  "chat_none_title": {
+    "en": "No conversations yet",
+    "ar": "لا توجد محادثات بعد"
+  },
+  "chat_none_body": {
+    "en": "Start a chat with your teacher, or open your course's group.",
+    "ar": "ابدأ محادثة مع معلمك، أو افتح مجموعة مقررك."
+  },
+  "chat_none_filtered": {
+    "en": "Nothing matches this filter",
+    "ar": "لا نتائج لهذا الفلتر"
+  },
+  "chat_empty_detail_title": {
+    "en": "Your messages",
+    "ar": "رسائلك"
+  },
+  "chat_empty_detail_body": {
+    "en": "Pick a chat from the list to read it here.",
+    "ar": "اختر محادثة من القائمة لقراءتها هنا."
+  },
+  "chat_no_messages": {
+    "en": "No messages yet",
+    "ar": "لا توجد رسائل بعد"
+  },
+  "chat_start_hint": {
+    "en": "Say hello to start the conversation.",
+    "ar": "ألقِ التحية لتبدأ المحادثة."
+  },
+  "chat_parent_of": {
+    "en": "Parent of",
+    "ar": "ولي أمر"
+  },
+  "chat_typing": {
+    "en": "typing…",
+    "ar": "يكتب الآن…"
+  },
+  "chat_is_typing": {
+    "en": "is typing…",
+    "ar": "يكتب الآن…"
+  },
+  "chat_draft": {
+    "en": "Draft",
+    "ar": "مسودة"
+  },
+  "chat_photo": {
+    "en": "Photo",
+    "ar": "صورة"
+  },
+  "chat_file": {
+    "en": "File",
+    "ar": "ملف"
+  },
+  "chat_new": {
+    "en": "new",
+    "ar": "جديدة"
+  },
+  "chat_yesterday": {
+    "en": "Yesterday",
+    "ar": "أمس"
+  },
+  "chat_today": {
+    "en": "Today",
+    "ar": "اليوم"
+  },
+  "chat_online": {
+    "en": "Online",
+    "ar": "متصل الآن"
+  },
+  "chat_more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
+  "chat_attach": {
+    "en": "Attach a file",
+    "ar": "إرفاق ملف"
+  },
+  "chat_remove": {
+    "en": "Remove",
+    "ar": "إزالة"
+  },
+  "chat_send": {
+    "en": "Send",
+    "ar": "إرسال"
+  },
+  "chat_message_hint": {
+    "en": "Write a message…",
+    "ar": "اكتب رسالة…"
+  },
+  "chat_message": {
+    "en": "Message",
+    "ar": "رسالة"
+  },
+  "chat_teacher": {
+    "en": "Teacher",
+    "ar": "معلم"
+  },
+  "chat_tap_retry": {
+    "en": "Not sent. Tap to retry",
+    "ar": "لم تُرسل. اضغط للمحاولة مجددًا"
+  },
+  "chat_tick_sending": {
+    "en": "Sending",
+    "ar": "جارٍ الإرسال"
+  },
+  "chat_tick_failed": {
+    "en": "Not sent",
+    "ar": "لم تُرسل"
+  },
+  "chat_tick_sent": {
+    "en": "Sent",
+    "ar": "أُرسلت"
+  },
+  "chat_tick_delivered": {
+    "en": "Delivered",
+    "ar": "وصلت"
+  },
+  "chat_tick_read": {
+    "en": "Read",
+    "ar": "قُرئت"
+  },
+  "chat_state_blocked": {
+    "en": "Messaging is off for this conversation",
+    "ar": "الرسائل متوقفة في هذه المحادثة"
+  },
+  "chat_state_you_blocked": {
+    "en": "You blocked this person",
+    "ar": "لقد حظرت هذا الشخص"
+  },
+  "chat_state_closed": {
+    "en": "The teacher has closed this group for now",
+    "ar": "أغلق المعلم هذه المجموعة مؤقتًا"
+  },
+  "chat_state_disabled": {
+    "en": "Messaging is unavailable right now",
+    "ar": "الرسائل غير متاحة حاليًا"
+  },
+  "chat_state_ended": {
+    "en": "You can no longer send messages here",
+    "ar": "لم يعد بإمكانك إرسال رسائل هنا"
+  },
+  "chat_unblock": {
+    "en": "Unblock",
+    "ar": "إلغاء الحظر"
+  },
+  "chat_unblocked_done": {
+    "en": "Unblocked",
+    "ar": "تم إلغاء الحظر"
+  },
+  "chat_pin": {
+    "en": "Pin chat",
+    "ar": "تثبيت المحادثة"
+  },
+  "chat_unpin": {
+    "en": "Unpin chat",
+    "ar": "إلغاء التثبيت"
+  },
+  "chat_mute": {
+    "en": "Mute notifications",
+    "ar": "كتم الإشعارات"
+  },
+  "chat_unmute": {
+    "en": "Unmute notifications",
+    "ar": "إلغاء الكتم"
+  },
+  "chat_mute_8h": {
+    "en": "For 8 hours",
+    "ar": "لمدة 8 ساعات"
+  },
+  "chat_mute_1w": {
+    "en": "For a week",
+    "ar": "لمدة أسبوع"
+  },
+  "chat_mute_always": {
+    "en": "Always",
+    "ar": "دائمًا"
+  },
+  "chat_group_info": {
+    "en": "Group info",
+    "ar": "معلومات المجموعة"
+  },
+  "chat_block": {
+    "en": "Block",
+    "ar": "حظر"
+  },
+  "chat_report": {
+    "en": "Report",
+    "ar": "إبلاغ"
+  },
+  "chat_report_message": {
+    "en": "Report this message",
+    "ar": "الإبلاغ عن هذه الرسالة"
+  },
+  "chat_level_person": {
+    "en": "This person",
+    "ar": "هذا الشخص"
+  },
+  "chat_level_course": {
+    "en": "From one course",
+    "ar": "من مقرر واحد"
+  },
+  "chat_level_all": {
+    "en": "From all my courses",
+    "ar": "من كل مقرراتي"
+  },
+  "chat_level_person_body": {
+    "en": "Stops all private chats with you. Course groups stay as they are.",
+    "ar": "يوقف كل المحادثات الخاصة معك، وتبقى مجموعات المقررات كما هي."
+  },
+  "chat_level_course_body": {
+    "en": "Stops private chat about this course and writing in its group.",
+    "ar": "يوقف المحادثة الخاصة عن هذا المقرر والكتابة في مجموعته."
+  },
+  "chat_level_all_courses_body": {
+    "en": "Stops private chats and writing in the groups of all your courses, now and later.",
+    "ar": "يوقف المحادثات الخاصة والكتابة في مجموعات كل مقرراتك، الحالية والقادمة."
+  },
+  "chat_block_note": {
+    "en": "Blocking stops messages only. It never affects access to the course.",
+    "ar": "الحظر يوقف الرسائل فقط، ولا يؤثر أبدًا في الوصول إلى المقرر."
+  },
+  "chat_block_reason": {
+    "en": "Reason (only you see this)",
+    "ar": "السبب (يظهر لك فقط)"
+  },
+  "chat_block_reason_hint": {
+    "en": "Optional",
+    "ar": "اختياري"
+  },
+  "chat_block_pick_course": {
+    "en": "Choose a course first",
+    "ar": "اختر مقررًا أولًا"
+  },
+  "chat_block_confirm": {
+    "en": "Block",
+    "ar": "تأكيد الحظر"
+  },
+  "chat_blocked_done": {
+    "en": "Blocked",
+    "ar": "تم الحظر"
+  },
+  "chat_report_body": {
+    "en": "Tell us what happened. The admins will review it.",
+    "ar": "أخبرنا بما حدث، وستراجعه الإدارة."
+  },
+  "chat_report_note": {
+    "en": "Details (optional)",
+    "ar": "تفاصيل (اختياري)"
+  },
+  "chat_report_send": {
+    "en": "Send report",
+    "ar": "إرسال البلاغ"
+  },
+  "chat_report_done": {
+    "en": "Thank you. Your report was sent.",
+    "ar": "شكرًا لك، تم إرسال بلاغك."
+  },
+  "chat_reason_harassment": {
+    "en": "Harassment",
+    "ar": "مضايقة"
+  },
+  "chat_reason_inappropriate": {
+    "en": "Inappropriate content",
+    "ar": "محتوى غير لائق"
+  },
+  "chat_reason_spam": {
+    "en": "Spam",
+    "ar": "رسائل مزعجة"
+  },
+  "chat_reason_safety": {
+    "en": "Safety concern",
+    "ar": "مخاوف تتعلق بالسلامة"
+  },
+  "chat_reason_other": {
+    "en": "Something else",
+    "ar": "سبب آخر"
+  },
+  "chat_group_open": {
+    "en": "Group is open",
+    "ar": "المجموعة مفتوحة"
+  },
+  "chat_group_open_body": {
+    "en": "Turn off to stop messages in this group for now.",
+    "ar": "أوقفها لإيقاف الرسائل في هذه المجموعة مؤقتًا."
+  },
+  "chat_group_opened": {
+    "en": "The group is open",
+    "ar": "تم فتح المجموعة"
+  },
+  "chat_group_closed": {
+    "en": "The group is closed for now",
+    "ar": "تم إغلاق المجموعة مؤقتًا"
+  },
+  "chat_members": {
+    "en": "Members",
+    "ar": "الأعضاء"
+  },
+  "chat_no_contacts": {
+    "en": "No one to chat with yet",
+    "ar": "لا يوجد من تراسله بعد"
+  },
+  "chat_no_contacts_body": {
+    "en": "You can message people you share a course, a child or an organization with.",
+    "ar": "يمكنك مراسلة من تشاركه مقررًا أو ابنًا أو مؤسسة."
+  },
+  "chat_student_dm": {
+    "en": "Let my students message each other",
+    "ar": "السماح لطلابي بمراسلة بعضهم"
+  },
+  "chat_student_dm_body": {
+    "en": "Off by default. When on, students in your courses can chat privately.",
+    "ar": "متوقف افتراضيًا. عند تفعيله يمكن لطلاب مقرراتك المراسلة الخاصة بينهم."
+  },
+  "chat_blocks_none": {
+    "en": "You have not blocked anyone",
+    "ar": "لم تحظر أحدًا"
+  },
+  "chat_blocks_none_body": {
+    "en": "Anyone you block appears here with a one-tap unblock.",
+    "ar": "يظهر هنا كل من تحظره مع إلغاء الحظر بضغطة واحدة."
+  },
+  "chat_reports_title": {
+    "en": "Chat reports",
+    "ar": "بلاغات المحادثات"
+  },
+  "chat_reports_none": {
+    "en": "No reports here",
+    "ar": "لا توجد بلاغات هنا"
+  },
+  "chat_status_open": {
+    "en": "Open",
+    "ar": "مفتوحة"
+  },
+  "chat_status_actioned": {
+    "en": "Actioned",
+    "ar": "اتُّخذ إجراء"
+  },
+  "chat_status_dismissed": {
+    "en": "Dismissed",
+    "ar": "مرفوضة"
+  },
+  "chat_report_dismiss": {
+    "en": "Dismiss",
+    "ar": "رفض البلاغ"
+  },
+  "chat_report_action": {
+    "en": "Mark as actioned",
+    "ar": "تم اتخاذ إجراء"
+  },
+  "chat_report_reviewed": {
+    "en": "Report reviewed",
+    "ar": "تمت مراجعة البلاغ"
+  },
+  "chat_course_group": {
+    "en": "Course group",
+    "ar": "مجموعة المقرر"
+  }
 }

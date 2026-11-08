@@ -261,6 +261,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                           // inbox entry is on the page it carries the count (to-dos + unread), so the bell stays plain
                           shellActions: [
                             const CalendarEntryIcon(),
+                            const ChatEntryIcon(),
                             if (provider.extra != null && !AppModeController.instance.isOrg && !AppConfig.disableList.contains(kInboxFeatureKey))
                               const NotificationIcon(unreadCount: 0, withTodos: false)
                             else

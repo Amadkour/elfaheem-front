@@ -774,6 +774,7 @@ class _TopBar extends StatelessWidget {
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     if (onRefresh != null && !pushed) ...[RefreshButton(onTap: onRefresh!), const SizedBox(width: 6)],
                     if (!GuestState.active) const CalendarIcon(),
+                    if (!GuestState.active) const ChatEntryIcon(),
                     if (!GuestState.active && !AppConfig.disableList.contains(appAssistantFeatureKey))
                       ChromeIconButton(
                         icon: Icons.auto_awesome_rounded,

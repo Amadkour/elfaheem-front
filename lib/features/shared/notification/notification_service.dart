@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/shared/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_education_app/core/app_time.dart' show AppTime;
@@ -278,6 +279,8 @@ class NotificationService {
 
     final notification = message.notification;
     if (notification == null) return;
+    // the chat this new message belongs to is on screen: nothing to announce (D-330)
+    if (data['type'] == 'chat_message' && ChatHub.instance.selectedOrOpen(int.tryParse('${data['conversation_id'] ?? ''}'))) return;
 
     if (kIsWeb) {
       // BUG 3 FIX (web): flutter_local_notifications doesn't support web,

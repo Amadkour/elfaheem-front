@@ -948,6 +948,12 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         return _fade(const _Guard(child: ExportSchedulesPage()), settings);
       case '/exports/links':
         return _fade(const _Guard(child: ExportLinksPage()), settings);
+      case '/chat': // NextBrain Messages (D-330); arguments: a conversation id (int), or {peer_id, course_id?, org_id?}
+        return _fade(_Guard(child: deferredChatHome(settings.arguments)), settings);
+      case '/chat/blocks':
+        return _fade(_Guard(child: deferredChatBlocks()), settings);
+      case '/chat/reports':
+        return _fade(_Guard(child: deferredChatReports()), settings);
       case '/calendar': // arguments: a meeting id (int, notification tap) or {org_id?, dept_id?, meeting_id?}
         final a = settings.arguments;
         final m = a is Map ? a : const {};

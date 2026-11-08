@@ -303,7 +303,7 @@ class _ParentTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BasePage(
-        appBar: ScreenAppBar(title: titleKey.tr, showBack: false, actions: const [QuickMeetingIcon(), CalendarEntryIcon()]),
+        appBar: ScreenAppBar(title: titleKey.tr, showBack: false, actions: const [QuickMeetingIcon(), CalendarEntryIcon(), ChatEntryIcon()]),
         child: epoch == null
             ? child
             : ValueListenableBuilder<int>(
