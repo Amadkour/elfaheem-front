@@ -13,7 +13,8 @@
 //   end     the recording control · (board) Board options · Stop presenting · Full view · Minimize · ⋮
 //
 // The recording control replaces the bottom bar's Pause / Resume, its REC chip and the meeting creator's pinned
-// Record / Stop: a red "Record" button while this device may start one (a meeting's creator), a red dot + the
+// Record / Stop: "⏸ Not recording · ● Record" while this device may start one (a meeting's creator, D-313: the paused
+// state from the first second, one tap starts it), a red dot + the
 // recording time while recording (amber + pause glyph while paused); a tap opens Pause / Resume / Stop recording —
 // exactly the actions the device had on the bar (a course's teacher: Pause / Resume; a meeting's creator: also
 // Stop). Everyone sees "● REC" while the server records (no controls: the device does not record, D-090).
@@ -62,7 +63,7 @@ enum LiveRecPhase {
   /// The server records (LiveKit egress): "● REC" for everyone, no controls.
   server,
 
-  /// This device may start a recording (a meeting's creator): the red "Record" button.
+  /// This device may start a recording (a meeting's creator): "⏸ Not recording · ● Record" (D-313).
   offer,
   starting,
   recording,
@@ -1445,7 +1446,7 @@ class _RecordControl extends StatelessWidget {
         LiveRecPhase.saved => t('حُفظ التسجيل', 'Recording saved'),
         LiveRecPhase.error => t('تعذّر التسجيل', 'Recording failed'),
         LiveRecPhase.server => t('هذه الجلسة تُسجَّل', 'This session is being recorded'),
-        LiveRecPhase.offer => t('تسجيل هذا الاجتماع', 'Record this meeting'),
+        LiveRecPhase.offer => t('لا يُسجَّل بعد · اضغط لبدء التسجيل', 'Not recording yet · tap to start recording'),
         LiveRecPhase.none => '',
       };
 
@@ -1535,13 +1536,24 @@ class _RecordControl extends StatelessWidget {
       case LiveRecPhase.none:
         return const SizedBox.shrink();
       case LiveRecPhase.offer:
+        // D-313: from the first second the recording shows its state — paused / not recording yet (the amber pause
+        // glyph) — with the one tap that starts it (● Record). Nothing records before that tap.
         return _TopChip(
           key: const ValueKey('live_room.record'),
-          lead: r.busy ? _spinner(danger) : Icon(Icons.fiber_manual_record_rounded, size: 18, color: danger),
-          label: t('تسجيل', 'Record'),
+          lead: r.busy ? _spinner(amber) : Icon(Icons.pause_rounded, size: 18, color: amber),
+          parts: [
+            if (!compact) ...[
+              Text(t('لا يُسجَّل', 'Not recording'), maxLines: 1, style: _label(amber, spacing: 0.2)),
+              const SizedBox(width: 8),
+            ],
+            _Dot(color: danger, size: 9),
+            const SizedBox(width: 6),
+            Text(t('تسجيل', 'Record'), maxLines: 1, style: _label(LivePalette.textHigh)),
+          ],
           dense: compact,
           tooltip: _stateText,
-          border: danger.withValues(alpha: 0.6),
+          fill: Color.alphaBlend(amber.withValues(alpha: 0.14), _chipFill),
+          border: amber.withValues(alpha: 0.55),
           onTap: r.busy ? null : r.onRecord,
         );
       case LiveRecPhase.server:

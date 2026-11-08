@@ -66,11 +66,11 @@ class LiveEndChoiceBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final endLine = recording
-        ? t('يخرج الجميع الآن، ويُحفظ التسجيل.', 'Everyone leaves now. The recording is saved.')
+        ? t('يخرج الجميع الآن، ويُحفظ التسجيل في «التسجيلات».', 'Everyone leaves now; the recording is saved to Records.')
         : t('يخرج الجميع الآن ويُغلق الاجتماع.', 'Everyone leaves now and the meeting closes.');
     final leaveLine = others > 0
-        ? t('يستمر الاجتماع للآخرين، ويمكنك تسليم إدارته لأحدهم.',
-            'The meeting goes on for the others. You can hand the host controls to someone.')
+        ? t('يستمر الاجتماع من دونك، ويمكنك تسليم إدارته لأحد الحاضرين.',
+            'The meeting continues without you; you can hand the host role to someone.')
         : t('يبقى الاجتماع مفتوحًا، ويمكنك العودة إليه.', 'The meeting stays open. You can come back to it.');
     return AppSheetContent(
       title: t('إنهاء الاجتماع أم مغادرته؟', 'End or leave the meeting?'),
@@ -97,15 +97,49 @@ class LiveEndChoiceBody extends StatelessWidget {
           onTap: () => onChoose(LiveEndChoice.leave),
         ),
         const SizedBox(height: AppSpace.sm),
-        SizedBox(
-          height: AppTouch.min,
-          child: TextButton(
-            key: const ValueKey('live_end.cancel'),
-            onPressed: onCancel,
-            child: Text(t('إلغاء', 'Cancel'), style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
-          ),
+        // D-313: every choice says what it does, Cancel too.
+        _QuietChoice(
+          key: const ValueKey('live_end.cancel'),
+          label: t('إلغاء', 'Cancel'),
+          detail: t('تبقى في الاجتماع ولا يتغيّر شيء.', 'You stay in the meeting; nothing changes.'),
+          onTap: onCancel,
         ),
       ],
+    );
+  }
+}
+
+/// D-313: a quiet choice (Cancel, No just leave) — the label with its one-line description under it, a 48 px target.
+class _QuietChoice extends StatelessWidget {
+  const _QuietChoice({super.key, required this.label, required this.detail, required this.onTap});
+
+  final String label;
+  final String detail;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: '$label. $detail',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.cardAll,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: double.infinity),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(label, textAlign: TextAlign.center, style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(detail, textAlign: TextAlign.center, style: AppType.meta(context)),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -247,6 +281,7 @@ class LiveHandoverBody extends StatelessWidget {
     this.selectedId,
     this.busy = false,
     this.error,
+    this.onStay,
   });
 
   final List<LiveHandoverCandidate> people;
@@ -256,6 +291,9 @@ class LiveHandoverBody extends StatelessWidget {
   /// Make the selected person host, then leave (disabled until someone is picked).
   final VoidCallback onConfirm;
   final VoidCallback onJustLeave;
+
+  /// Close the sheet and stay in the room as host (null: no Cancel row).
+  final VoidCallback? onStay;
 
   /// The handover is being sent.
   final bool busy;
@@ -303,15 +341,32 @@ class LiveHandoverBody extends StatelessWidget {
             label: Text(t('اجعله المضيف وغادر', 'Make host and leave'), maxLines: 2, textAlign: TextAlign.center),
           ),
         ),
-        const SizedBox(height: AppSpace.xs),
-        SizedBox(
-          height: AppTouch.min,
-          child: TextButton(
-            key: const ValueKey('live_handover.just_leave'),
-            onPressed: busy ? null : onJustLeave,
-            child: Text(t('لا، غادر فقط', 'No, just leave'), style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
+        // D-313: what each option does, under it.
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpace.xxs),
+          child: Text(
+            t('يحصل على إدارة هذا الاجتماع، ثم تغادر أنت ويستمر الاجتماع.',
+                'They get the host controls for this meeting, then you leave and the meeting goes on.'),
+            key: const ValueKey('live_handover.confirm_detail'),
+            textAlign: TextAlign.center,
+            style: AppType.meta(context),
           ),
         ),
+        const SizedBox(height: AppSpace.sm),
+        _QuietChoice(
+          key: const ValueKey('live_handover.just_leave'),
+          label: t('لا، غادر فقط', 'No, just leave'),
+          detail: t('تغادر ويستمر الاجتماع للآخرين من دون مضيف؛ يمكنك العودة لاحقًا.',
+              'You leave and the meeting goes on for the others without a host; you can come back later.'),
+          onTap: busy ? null : onJustLeave,
+        ),
+        if (onStay != null)
+          _QuietChoice(
+            key: const ValueKey('live_handover.stay'),
+            label: t('إلغاء', 'Cancel'),
+            detail: t('تبقى في الاجتماع مضيفًا له.', 'You stay in the meeting as its host.'),
+            onTap: busy ? null : onStay,
+          ),
       ],
     );
   }
@@ -428,6 +483,7 @@ class _HandoverSheetState extends State<_HandoverSheet> {
         }),
         onConfirm: _confirm,
         onJustLeave: () => Navigator.pop(context, const LiveHandoverOutcome.justLeave()),
+        onStay: () => Navigator.pop(context), // null outcome = stay in the room
       );
 }
 

@@ -31,6 +31,7 @@ import 'annotation/annotation_toolbar.dart'
     show AnnotationControllerToolbar, annotPresetColors, annotShortcutThickness, annotShortcutTool;
 import 'widgets/live_call_service.dart';
 import 'widgets/live_focus_chrome.dart';
+import 'widgets/live_stage_overlay.dart';
 import 'widgets/live_top_row.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../admin/admin_common.dart';
@@ -77,7 +78,7 @@ import 'package:provider/provider.dart';
 import 'widgets/room_recorder.dart';
 // [meeting-recording] meeting rooms record to the creator's cloud drive (docs/backend/live-rooms-spec.md §5)
 import 'package:flutter_education_app/features/shared/live/meeting_recording.dart'
-    show RecordingQuality, RecordingStart;
+    show CloudProvider, RecordingQuality, RecordingStart, RemoteMeetingRecordingApi;
 import 'package:flutter_education_app/features/shared/live/meeting_recording_sheets.dart'
     show showRecordSetupSheet;
 // Part 2 (live-rooms-spec §8, §11): the free-time countdown, the (i) sheet and the live plan
@@ -89,7 +90,9 @@ import 'package:flutter_education_app/features/shared/live/live_media_controller
 import 'package:flutter_education_app/features/shared/live/live_net_pill.dart';
 import 'package:flutter_education_app/features/shared/live/live_quality_governor.dart' show LiveVideoTier;
 import 'whiteboard/board_video_track.dart';
-import 'whiteboard/board_export.dart' show boardRecordingRgba;
+import 'whiteboard/board_export.dart' show BoardRecordingFrames;
+import 'whiteboard/board_rec_pacing.dart';
+import 'whiteboard/board_format.dart' show BoardViewportPos;
 import 'package:flutter_education_app/features/shared/live/live_recording_layout.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_info_sheet.dart';
 import 'package:flutter_education_app/features/shared/points/live_plan_sheet.dart' show showLivePlanSheet;
@@ -460,7 +463,7 @@ class _RoomPageState extends State<RoomPage>
 
   void _onBoardScene() {
     _boardVideo.markDirty();
-    _recBoardDirty = true; // D-306: the web recording's copy of the page
+    if (_recBoardWatch != null) _kickRecordingBoard(); // D-306 / D-313: the web recording's copy of the page
   }
 
   bool _depsReady = false;
@@ -882,10 +885,32 @@ class _RoomPageState extends State<RoomPage>
   RecordingStart? _meetingRecording;
   bool _meetingRecordBusy = false;
 
+  /// D-313: the destination + quality of a meeting's first recording in this app session, by room: the next Record
+  /// of the same meeting starts straight on with them (the setup sheet only the first time, or when that fails).
+  static final Map<String, ({RecordingQuality quality, CloudProvider destination})> _recChoice = {};
+
   Future<void> _recordMeeting() async {
     if (!_canRecordMeeting || _recorder != null || _meetingRecordBusy || _endingSession) return;
-    final start = await showRecordSetupSheet(context, kind: widget.ref.kindName, id: widget.ref.id);
+    final key = '${widget.ref.kindName}:${widget.ref.id}';
+    final last = _recChoice[key];
+    RecordingStart? start;
+    if (last != null) {
+      setState(() => _meetingRecordBusy = true);
+      try {
+        start = (await RemoteMeetingRecordingApi()
+                .start(widget.ref.kindName, widget.ref.id, quality: last.quality, destination: last.destination))
+            .copyWith(quality: last.quality, destination: last.destination);
+      } catch (e) {
+        log('[REC] straight-on start failed, the setup sheet instead: $e'); // a drive disconnected meanwhile, …
+      } finally {
+        if (mounted) setState(() => _meetingRecordBusy = false);
+      }
+      if (!mounted) return;
+    }
+    start ??= await showRecordSetupSheet(context, kind: widget.ref.kindName, id: widget.ref.id);
     if (start == null || !mounted) return;
+    final dest = start.destination;
+    if (dest != null) _recChoice[key] = (quality: start.quality, destination: dest);
     setState(() {
       _meetingRecording = start;
       _meetingRecordBusy = true;
@@ -1234,6 +1259,11 @@ class _RoomPageState extends State<RoomPage>
             k == LogicalKeyboardKey.escape)) {
       return KeyEventResult.ignored;
     }
+    // D-313: in a meeting's overlay F hides / shows the controls and Esc brings them back.
+    if (_stageOverlay && (k == LogicalKeyboardKey.keyF || (k == LogicalKeyboardKey.escape && !_overlayShown))) {
+      _setOverlayShown(k == LogicalKeyboardKey.escape || !_overlayShown);
+      return KeyEventResult.handled;
+    }
     // Full view (D-095): Esc leaves it, F toggles it.
     if (k == LogicalKeyboardKey.escape && _focusOn) {
       _setFocus(false);
@@ -1520,9 +1550,9 @@ class _RoomPageState extends State<RoomPage>
       // D-306: a meeting opens with the recording stopped; its creator is told once where Record is.
       if (mounted && _canRecordMeeting && _recorder == null) {
         showAppNotice(
-            t('التسجيل متوقف. اضغط «تسجيل» في الأعلى عندما تريد البدء.',
-                'Recording is off. Press Record at the top when you want to start.'),
-            icon: Icons.fiber_manual_record_outlined);
+            t('لا يُسجَّل الاجتماع بعد. اضغط «تسجيل» في الأعلى عندما تريد البدء.',
+                'Not recording yet. Press Record at the top when you want to start.'),
+            icon: Icons.pause_circle_outline_rounded);
       }
     });
   }
@@ -2658,13 +2688,24 @@ class _RoomPageState extends State<RoomPage>
   // the stage (the whiteboard, this device's share or the share on the stage) and the cameras that are on, in the
   // stage order (the speaker first) — and sends the layout plus the sources it names: remote cameras / screens are
   // the LiveKit tracks the room already receives (wrapped, never stopped), the whiteboard page is re-rendered
-  // into a canvas at 2 fps while it changes. Android and iOS need none of this: they record the room UI itself.
+  // into a canvas on every change (D-313, below). Android and iOS need none of this: they record the room UI itself.
   final Map<String, Object> _recVideo = {}; // compositor label → the mediaStreamTrack it wraps
   String? _recLayoutSent;
-  Timer? _recBoardTimer;
+  // D-313: the board in the web recording follows the drawing (whiteboard/board_rec_pacing.dart): a frame on every
+  // change — stroke points included — at most at the compositor's 30 fps, one at a time, smaller / fewer when a
+  // capture costs too much of the UI thread, and one full-size frame once the page is still again. Drawn from the
+  // items with the finished strokes cached (board_export.dart BoardRecordingFrames). The watch timer only notices a
+  // scroll of a continuous page (it fires no change) and re-sends a still page every 2 s.
+  Timer? _recBoardWatch;
+  Timer? _recBoardNext;
   bool _recBoardDirty = true;
   bool _recBoardBusy = false;
+  bool _recBoardCrisp = false; // the last frame sent was full size
+  BoardViewportPos? _recBoardView;
   DateTime _recBoardPushed = DateTime.fromMillisecondsSinceEpoch(0);
+  final BoardRecPacer _recBoardPacer = BoardRecPacer();
+  final BoardRecStats _recBoardStats = BoardRecStats();
+  final BoardRecordingFrames _recBoardFrames = BoardRecordingFrames();
 
   bool get _webRecordsVideo {
     final r = _recorder;
@@ -2748,41 +2789,99 @@ class _RoomPageState extends State<RoomPage>
       _recLayoutSent = json;
       rec.setRecordingLayout(json);
     }
-    // The whiteboard page, while it is on the stage.
+    // The whiteboard page, while it is on the stage (D-313: a frame on every change, see the fields above).
     if (stage?.kind == RecSourceKind.board) {
-      _recBoardTimer ??= Timer.periodic(const Duration(milliseconds: 500), (_) => unawaited(_pushRecordingBoard()));
+      if (_recBoardWatch == null) {
+        _recBoardWatch = Timer.periodic(const Duration(milliseconds: 100), (_) => _watchRecordingBoard());
+        _kickRecordingBoard();
+      }
     } else {
-      _recBoardTimer?.cancel();
-      _recBoardTimer = null;
+      _stopRecordingBoard();
     }
   }
 
-  Future<void> _pushRecordingBoard() async {
+  /// The board changed (or must be sent again): a frame as soon as the pacer allows.
+  void _kickRecordingBoard() {
+    _recBoardDirty = true;
+    if (_recBoardWatch == null || _recBoardBusy) return; // the frame in flight looks at the flag when it is done
+    final next = _recBoardNext;
+    if (next != null && next.isActive && !_recBoardSettling) return; // already scheduled
+    next?.cancel();
+    _recBoardSettling = false;
+    _recBoardNext = Timer(_recBoardPacer.waitFrom(DateTime.now()), () => unawaited(_pushRecordingBoard()));
+  }
+
+  bool _recBoardSettling = false;
+
+  void _watchRecordingBoard() {
+    if (!_isBoardMain || _recBoardBusy) return;
+    if (_board.localViewport != _recBoardView) {
+      _kickRecordingBoard(); // a continuous page scrolled
+    } else if (DateTime.now().difference(_recBoardPushed) >= const Duration(seconds: 2) &&
+        !(_recBoardNext?.isActive ?? false)) {
+      _kickRecordingBoard(); // a still page, again (the canvas keeps the last one; this covers a re-created one)
+    }
+  }
+
+  Future<void> _pushRecordingBoard({bool settle = false}) async {
+    _recBoardNext = null;
+    _recBoardSettling = false;
     final rec = _recorder;
-    if (_recBoardBusy || rec == null || !_isBoardMain || LiveRoomHost.isMinimized) return;
-    final now = DateTime.now();
-    // A still page is sent again every 2 s (the canvas keeps the last one; this only covers a re-created one).
-    if (!_recBoardDirty && now.difference(_recBoardPushed) < const Duration(seconds: 2)) return;
+    if (_recBoardBusy || rec == null || _recBoardWatch == null || !_isBoardMain || LiveRoomHost.isMinimized) return;
+    if (settle && (_recBoardDirty || _recBoardCrisp)) return; // drawing again / already crisp
+    final tier = settle ? kBoardRecTiers.first : _recBoardPacer.tier;
+    final (w, h) = BoardRecPacer.sizeFor(tier, baseWidth: kBoardVideoWidth, baseHeight: kBoardVideoHeight);
     _recBoardBusy = true;
+    _recBoardDirty = false;
+    _recBoardView = _board.localViewport;
+    final now = DateTime.now();
+    if (!settle) _recBoardPacer.started(now);
+    final sw = Stopwatch()..start();
     try {
-      final rgba = _board.isContinuous ? await boardRecordingRgba(_board) : await boardPageRgba(_boardPageKey);
+      final rgba = await _recBoardFrames.render(_board, width: w, height: h);
+      sw.stop();
       if (rgba == null || !identical(rec, _recorder)) return;
-      _recBoardDirty = false;
+      rec.pushRecordingFrame('board', rgba, w, h);
       _recBoardPushed = now;
-      rec.pushRecordingFrame('board', rgba, kBoardVideoWidth, kBoardVideoHeight);
+      _recBoardCrisp = tier.scale >= 1;
+      if (!settle && _recBoardPacer.finished(sw.elapsed)) {
+        log('[REC] board frames now ${_recBoardPacer.tier} (capture avg ${_recBoardPacer.averageMs?.toStringAsFixed(1)} ms)');
+      }
+      if (kDebugMode) {
+        // One line a second: frames, average / worst capture time, the tier (the D-313 measurement).
+        final line = _recBoardStats.add(sw.elapsed, DateTime.now(), tier);
+        if (line != null) debugPrint(line);
+      }
     } catch (e) {
       log('[REC] board frame: $e');
     } finally {
       _recBoardBusy = false;
     }
+    if (!mounted || _recBoardWatch == null) return;
+    if (_recBoardDirty) {
+      _kickRecordingBoard();
+    } else if (!_recBoardCrisp) {
+      // The drawing stopped on a reduced frame: one full-size frame of the still page.
+      _recBoardSettling = true;
+      _recBoardNext = Timer(_recBoardPacer.settle, () => unawaited(_pushRecordingBoard(settle: true)));
+    }
+  }
+
+  void _stopRecordingBoard() {
+    _recBoardWatch?.cancel();
+    _recBoardWatch = null;
+    _recBoardNext?.cancel();
+    _recBoardNext = null;
+    _recBoardSettling = false;
+    _recBoardDirty = true;
+    _recBoardCrisp = false;
+    _recBoardFrames.dispose();
   }
 
   void _stopRecordingScene() {
-    _recBoardTimer?.cancel();
-    _recBoardTimer = null;
+    _stopRecordingBoard();
     _recVideo.clear(); // the compositor drops its sources when it stops
     _recLayoutSent = null;
-    _recBoardDirty = true;
   }
 
   bool _hasVideoTrack(TrackPublication pub) => pub.track is VideoTrack;
@@ -2966,15 +3065,19 @@ class _RoomPageState extends State<RoomPage>
   }
 
   Widget _buildRoomPage() {
-    if ((_focusOn && !LiveRoomHost.isMinimized) != _focusUiOn) {
+    if ((_contentOnly && !LiveRoomHost.isMinimized) != _focusUiOn) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _syncFocusSystemUi()); // D-306
     }
     // Full view (D-095): the back button brings the bars back first (LiveRoomHost.handleBack asks the room's
     // navigator, whose maybePop lands here), then minimizes as before.
     return PopScope(
-      canPop: !_focusOn,
+      canPop: !_focusOn && !(_stageOverlay && !_overlayShown),
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _focusOn) _setFocus(false);
+        if (!didPop && _focusOn) {
+          _setFocus(false);
+        } else if (!didPop && _stageOverlay) {
+          _setOverlayShown(true); // D-313: back brings the hidden controls first
+        }
       },
       child: Theme(
       data: ThemeData.dark(),
@@ -3021,7 +3124,7 @@ class _RoomPageState extends State<RoomPage>
                         duration: const Duration(milliseconds: 220),
                         curve: Curves.easeOutCubic,
                         alignment: Alignment.topCenter,
-                        child: _focusOn ? const SizedBox(width: double.infinity, height: 0) : _buildTopRow(),
+                        child: _contentOnly ? const SizedBox(width: double.infinity, height: 0) : _buildTopRow(),
                       ),
                       Expanded(
                         child: LayoutBuilder(
@@ -3037,7 +3140,7 @@ class _RoomPageState extends State<RoomPage>
                                 onTapUp: (d) => _onStageTap(d.localPosition, constraints.biggest),
                                 child: ClipRRect(
                                   // D-306: full view is edge to edge (no rounded frame around the content).
-                                  borderRadius: BorderRadius.all(Radius.circular(_focusOn ? 0 : 20)),
+                                  borderRadius: BorderRadius.all(Radius.circular(_contentOnly ? 0 : 20)),
                                   child: _buildMainVideo(),
                                 ),
                               ),
@@ -3102,8 +3205,9 @@ class _RoomPageState extends State<RoomPage>
                               // Annotation toolbar (while drawing on the shared screen)
                               if (_annotOpen && _isScreenShareMain) _buildAnnotToolbar(),
 
-                              // Participant count badge (not in full view: only the content there, D-108)
-                              if (!_focusOn)
+                              // Participant count badge (not in full view: only the content there, D-108; nor in a
+                              // meeting's overlay, D-313: the bar has the people button)
+                              if (!_contentOnly)
                               Positioned(
                                 bottom: 14 + _boardDockClearance,
                                 right: 14, // the self-view keeps clear of the bottom row (D-092)
@@ -3125,7 +3229,7 @@ class _RoomPageState extends State<RoomPage>
                               // My own camera (D-092): a box / circle over everything on the stage — the board, a
                               // shared screen, the annotation layer — that takes only its own touches. Not in full
                               // view: only the shared content there (D-108).
-                              if (!_focusOn) _buildSelfView(),
+                              if (!_contentAlone) _buildSelfView(),
 
                               // Live reactions (bubbles + picker)
                               LiveReactionsOverlay(
@@ -3134,7 +3238,7 @@ class _RoomPageState extends State<RoomPage>
                               ),
 
                               // A new chat message while the chat is closed (tap → the chat); not in full view
-                              if (!_focusOn)
+                              if (!_contentAlone)
                               PositionedDirectional(
                                 start: 12,
                                 end: 12,
@@ -3171,7 +3275,7 @@ class _RoomPageState extends State<RoomPage>
                             duration: const Duration(milliseconds: 260),
                             curve: Curves.easeOutCubic,
                             alignment: Alignment.topCenter,
-                            child: _controlsVisible && !_focusOn
+                            child: _controlsVisible && !_contentOnly
                                 ? _buildControlsBar()
                                 : const SizedBox(width: double.infinity, height: 0),
                           ),
@@ -3220,6 +3324,39 @@ class _RoomPageState extends State<RoomPage>
                         onActivity: _armFocusBars,
                         handle: draws,
                         onHandle: _showFocusBars,
+                      );
+                    },
+                  ),
+                ),
+
+              // D-313: a meeting's board / shared screen fills the room and its controls float over it, with the one
+              // toggle that hides / shows them (the side column, when open, keeps its place).
+              if (_stageOverlay)
+                PositionedDirectional(
+                  start: 0,
+                  top: 0,
+                  bottom: 0,
+                  end: _side != null && _wideForSidePanel ? _sidePanelWidth : 0,
+                  child: ListenableBuilder(
+                    listenable: _board,
+                    builder: (_, _) {
+                      final draws = _isBoardMain && _board.canDrawLocal;
+                      final bar = widget.room.localParticipant != null ? _buildControlsBar() : null;
+                      return LiveStageOverlay(
+                        key: const ValueKey('live_room.stage_overlay'),
+                        shown: _overlayShown,
+                        onToggle: () => _setOverlayShown(!_overlayShown),
+                        rec: _overlayRec,
+                        top: _buildTopRow(),
+                        bottom: draws
+                            ? Column(mainAxisSize: MainAxisSize.min, children: [
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                  child: WhiteboardDock(key: const ValueKey('live_room.overlay_dock'), controller: _board),
+                                ),
+                                ?bar,
+                              ])
+                            : bar,
                       );
                     },
                   ),
@@ -3424,6 +3561,12 @@ class _RoomPageState extends State<RoomPage>
     // The board's own bar is gone (its title and page are on the top row, D-108).
     var bottom = 58.0 + _boardDockClearance;
     if (_isScreenShareMain) bottom = math.max(bottom, 84);
+    // D-313: the overlay's bars float over the stage — the boxes keep clear of the top row + toggle and the bar + dock.
+    if (_stageOverlay && _overlayShown) {
+      top = math.max(top, 108);
+      final dock = _isBoardMain && _board.canDrawLocal ? (MediaQuery.sizeOf(context).width >= 980 ? 78.0 : 128.0) : 0.0;
+      bottom = math.max(bottom, 96 + dock);
+    }
     return SelfViewKeepOut(base: EdgeInsets.fromLTRB(12, top, 12, bottom));
   }
 
@@ -3431,6 +3574,11 @@ class _RoomPageState extends State<RoomPage>
     // Full view (D-108): a tap on the content shows the bars over it, the next one hides them.
     if (_focusOn) {
       _toggleFocusBars();
+      return;
+    }
+    // D-313: the meeting's overlay — the same toggle as its button (a page someone draws on takes the tap as ink).
+    if (_stageOverlay) {
+      if (!(_isBoardMain && _board.canDrawLocal)) _setOverlayShown(!_overlayShown);
       return;
     }
     _toggleControlsVisibility();
@@ -3777,12 +3925,14 @@ class _RoomPageState extends State<RoomPage>
         selfSide: selfPrefs.side,
         main: plan.main == null ? null : item(plan.main!),
         // Full view: the presenter's camera only (it is part of what is presented), no other cameras (D-108).
-        bubbles: _focusOn ? const [] : [for (final id in plan.bubbles) ?item(id)],
-        more: _focusOn ? 0 : plan.more,
-        avoid: _focusOn ? null : avoid, // my own box is not drawn in full view
+        bubbles: _contentAlone ? const [] : [for (final id in plan.bubbles) ?item(id)],
+        more: _contentAlone ? 0 : plan.more,
+        avoid: _contentAlone ? null : avoid, // my own box is not drawn in full view (nor with the overlay hidden)
         collapsed: _camCollapsed,
-        showChrome: _focusOn ? _focusBars : _controlsVisible,
-        onTap: _focusOn ? _toggleFocusBars : _toggleControlsVisibility,
+        showChrome: _focusOn ? _focusBars : (_stageOverlay ? _overlayShown : _controlsVisible),
+        onTap: _focusOn
+            ? _toggleFocusBars
+            : (_stageOverlay ? () => _setOverlayShown(!_overlayShown) : _toggleControlsVisibility),
         onMenu: () => unawaited(_openPresenterCamOptions()),
         onCollapse: () => setState(() => _camCollapsed = true),
         onExpand: () {
@@ -4039,7 +4189,10 @@ class _RoomPageState extends State<RoomPage>
         onStop: meetingRec && !_endingSession && !_meetingRecordBusy ? () => unawaited(_stopMeetingRecording()) : null,
       ),
       board: _isBoardMain ? _topBoard() : null,
-      onFocus: _endingSession ? null : (_focusOn ? () => _setFocus(false) : (_canFocus ? () => _setFocus(true) : null)),
+      // D-313: no Full view in a meeting's overlay (it already is; its toggle hides the controls).
+      onFocus: _endingSession || _stageOverlay
+          ? null
+          : (_focusOn ? () => _setFocus(false) : (_canFocus ? () => _setFocus(true) : null)),
       focused: _focusOn,
       onMinimize: scope == null || _endingSession ? null : scope.minimize,
       pulse: _recDotOpacity,
@@ -4132,11 +4285,47 @@ class _RoomPageState extends State<RoomPage>
   /// Full view is on — and drops by itself when the stage goes back to the waiting card.
   bool get _focusOn => _focus && _canFocus;
 
+  // ── D-313: a meeting's shared content fills the room; its controls float over it (live_stage_overlay.dart) ──
+  // A meeting whose stage shows the board or a shared screen draws it edge to edge (immersive on a phone, like full
+  // view) and puts the top row, the bar and the board's dock OVER it; one toggle (always on screen) hides / shows
+  // them with the camera boxes, remembered for the meeting. No auto-hide. Course sessions keep their layout.
+  bool get _stageOverlay =>
+      !_focusOn &&
+      liveStageOverlayOn(
+          isMeeting: widget.ref.isMeeting, board: _isBoardMain, screen: _isScreenShareMain, parked: _videoParked);
+
+  /// The content takes the whole stage (full view or the overlay): the top row, the bar and the dock leave the layout.
+  bool get _contentOnly => _focusOn || _stageOverlay;
+
+  /// Only the content is drawn (full view, or the overlay's controls hidden): no camera boxes, no chat toast.
+  bool get _contentAlone => _focusOn || (_stageOverlay && !_overlayShown);
+
+  String get _overlayRoomKey => '${widget.ref.kindName}:${widget.ref.id}';
+  late bool _overlayShown = LiveOverlayMemory.shownFor(_overlayRoomKey);
+
+  void _setOverlayShown(bool on) {
+    if (!mounted || on == _overlayShown) return;
+    LiveOverlayMemory.remember(_overlayRoomKey, on);
+    setState(() => _overlayShown = on);
+  }
+
+  /// What the toggle says about the recording while the controls are hidden.
+  LiveOverlayRec get _overlayRec {
+    final st = _recordsHere ? _recorder?.state : null;
+    final remote = _remoteRec != null && !_remoteRec!.staleAt(DateTime.now()) ? _remoteRec!.state : null;
+    if (st == RecState.recording || remote == LiveRemoteRecState.recording || _serverRecording) {
+      return LiveOverlayRec.recording;
+    }
+    if (st == RecState.paused || remote == LiveRemoteRecState.paused) return LiveOverlayRec.paused;
+    if (_canRecordMeeting && _meetingRecording == null) return LiveOverlayRec.notYet; // D-313 (5): not recording yet
+    return LiveOverlayRec.none;
+  }
+
   /// D-306: the system bars / orientation follow full view on a phone (live_focus_chrome.dart).
   bool _focusUiOn = false;
 
   void _syncFocusSystemUi({bool? force}) {
-    final on = force ?? (mounted && _focusOn && !LiveRoomHost.isMinimized);
+    final on = force ?? (mounted && _contentOnly && !LiveRoomHost.isMinimized); // D-313: the overlay too
     if (on == _focusUiOn) return;
     _focusUiOn = on;
     final ui = liveFullViewSystemUi(on: on, mobile: !kIsWeb && (Platform.isAndroid || Platform.isIOS));
@@ -4429,7 +4618,7 @@ class _RoomPageState extends State<RoomPage>
       _annot.allowStudents || _annot.allowedIdentities.contains(identity);
 
   Widget _buildAnnotToolbar() => PositionedDirectional(
-        top: 12,
+        top: _stageOverlay ? (_overlayShown ? 112 : 56) : 12, // D-313: under the overlay's top row / toggle
         start: 12,
         end: 12,
         child: Center(
@@ -4485,7 +4674,7 @@ class _RoomPageState extends State<RoomPage>
 
   /// Room for the tool dock under the page (the PiP and the participant badge sit above it).
   double get _boardDockClearance {
-    if (!_isBoardMain || !_board.canDrawLocal || _focusOn) return 0;
+    if (!_isBoardMain || !_board.canDrawLocal || _contentOnly) return 0;
     return MediaQuery.sizeOf(context).width >= 980 ? 70 : 118;
   }
 
@@ -4583,7 +4772,7 @@ class _RoomPageState extends State<RoomPage>
       // The title, the page and Stop are on the room's top row, on the recording's line (D-108); full view shows
       // the page alone, still drawable — its dock comes with the room's bars there.
       showTopBar: false,
-      fullView: _focusOn,
+      fullView: _contentOnly, // D-313: the overlay too (its dock comes with the overlay's bar)
       railKey: _boardRailKey,
     );
   }

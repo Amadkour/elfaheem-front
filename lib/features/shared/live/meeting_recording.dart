@@ -223,6 +223,7 @@ class RecordingStart {
     required this.chunkPath,
     this.status = 'recording',
     this.quality = RecordingQuality.p720,
+    this.destination,
   });
 
   final int recordingId;
@@ -234,11 +235,19 @@ class RecordingStart {
   /// What the person picked (the setup sheet fills it in; the server's answer does not carry it).
   final RecordingQuality quality;
 
+  /// Where it goes (the setup sheet fills it in): D-313, the room's next Record in the same meeting starts straight
+  /// on with the same destination + quality.
+  final CloudProvider? destination;
+
   /// The matching stop route (is_final without a chunk).
   String get stopPath => recordingStopPath(recordingId);
 
-  RecordingStart copyWith({RecordingQuality? quality}) =>
-      RecordingStart(recordingId: recordingId, chunkPath: chunkPath, status: status, quality: quality ?? this.quality);
+  RecordingStart copyWith({RecordingQuality? quality, CloudProvider? destination}) => RecordingStart(
+      recordingId: recordingId,
+      chunkPath: chunkPath,
+      status: status,
+      quality: quality ?? this.quality,
+      destination: destination ?? this.destination);
 
   factory RecordingStart.fromJson(Map<String, dynamic> j) {
     final id = asInt(j['recording_id'], asInt(j['id']));

@@ -65,7 +65,10 @@ Size boardExportSize(double aspect, (double, double) span,
 
 /// Paints [region] of [c]'s visible page — x in page widths, y in page fractions — into [out] (px, from its corner):
 /// the paper, the ink and shapes, the text boxes.
-void _paintRegion(Canvas canvas, BoardController c, Rect region, Size out) {
+///
+/// [only] paints those items instead of the page's (D-313: the recording's cached frame + the strokes being drawn);
+/// [paper] false skips the background.
+void _paintRegion(Canvas canvas, BoardController c, Rect region, Size out, {List<BoardItem>? only, bool paper = true}) {
   if (region.width <= 0 || region.height <= 0) return;
   final unit = out.width / region.width; // one page width, px
   final pageH = unit / c.aspect; // the whole page's height, px
@@ -74,8 +77,8 @@ void _paintRegion(Canvas canvas, BoardController c, Rect region, Size out) {
   canvas.clipRect(Offset.zero & out);
   canvas.translate(0, -region.top * pageH);
   final drawn = Size(out.width, region.bottom * pageH);
-  BoardBackgroundPainter(c.background, unit: unit, originX: ox).paint(canvas, drawn);
-  final items = c.scene.visibleItems.toList();
+  if (paper) BoardBackgroundPainter(c.background, unit: unit, originX: ox).paint(canvas, drawn);
+  final items = only ?? c.scene.visibleItems.toList();
   BoardItemsPainter(
     items: () => items,
     lasers: () => const [],
@@ -158,15 +161,9 @@ Rect boardRecordingWindow({
 /// no continuous board.
 Future<Uint8List?> boardRecordingRgba(BoardController c, {int width = 1280, int height = 720}) async {
   if (!c.active || !c.isContinuous) return null;
-  final view = c.localViewport ?? BoardViewportPos(0, 1.2 / kBoardContinuousLength);
-  final items = c.scene.visibleItems;
-  final spanX = boardContinuousSpanX(content: boardContentSpanX(items), presenter: view);
-  final bottom = math.max(view.bottom, boardContentBottom(items, aspect: c.aspect, textHeight: c.textHeight));
-  final win = boardRecordingWindow(view: view, spanX: spanX, aspect: c.aspect, extent: bottom, frameAspect: width / height);
-  final winW = win.width, winH = win.height / c.aspect; // page widths
-  if (winW <= 0 || winH <= 0) return null;
-  final s = math.min(width / winW, height / winH); // px per page width
-  final out = Size(winW * s, winH * s);
+  final g = _recordingGeometry(c, width, height);
+  if (g == null) return null;
+  final (win, out) = g;
   final rec = ui.PictureRecorder();
   final canvas = Canvas(rec);
   canvas.drawRect(Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()), Paint()..color = const Color(0xFFFFFFFF));
@@ -180,5 +177,112 @@ Future<Uint8List?> boardRecordingRgba(BoardController c, {int width = 1280, int 
   } finally {
     image.dispose();
     picture.dispose();
+  }
+}
+
+/// The part of the page a recording frame shows (x in page widths, y in page fractions) and its size in the frame:
+/// a continuous page around the presenter's view ([boardRecordingWindow]), a fixed page whole. Null: nothing to draw.
+(Rect, Size)? _recordingGeometry(BoardController c, int width, int height) {
+  if (!c.active || c.aspect <= 0) return null;
+  if (!c.isContinuous) {
+    final unit = math.min(width.toDouble(), height * c.aspect); // px per page width, the page fitted whole
+    return (const Rect.fromLTWH(0, 0, 1, 1), Size(unit, unit / c.aspect));
+  }
+  final view = c.localViewport ?? BoardViewportPos(0, 1.2 / kBoardContinuousLength);
+  final items = c.scene.visibleItems;
+  final spanX = boardContinuousSpanX(content: boardContentSpanX(items), presenter: view);
+  final bottom = math.max(view.bottom, boardContentBottom(items, aspect: c.aspect, textHeight: c.textHeight));
+  final win = boardRecordingWindow(view: view, spanX: spanX, aspect: c.aspect, extent: bottom, frameAspect: width / height);
+  final winW = win.width, winH = win.height / c.aspect; // page widths
+  if (winW <= 0 || winH <= 0) return null;
+  final s = math.min(width / winW, height / winH); // px per page width
+  return (win, Size(winW * s, winH * s));
+}
+
+/// D-313: the web recording's board frames, drawn from the items (never a screenshot of the stage: the same picture
+/// on every screen size, no selection or zoom, and it works while the page is scrolled or covered).
+///
+/// Cheap while someone draws: everything except the strokes still being drawn (BoardInk.open) is rasterized ONCE into
+/// a cached image, keyed by the frame, the window, the paper and those items (by identity + version), and each frame
+/// is that image + the open strokes on top — so a frame costs one small picture and the read-back, however full the
+/// page is. A finished stroke, a new item, a page turn, a scroll or a new size rebuilds the cache once. [dispose]
+/// frees it.
+class BoardRecordingFrames {
+  ui.Image? _base;
+  List<int>? _baseKey;
+
+  /// The cached image was rebuilt for the last frame (for the debug log).
+  bool rebuilt = false;
+
+  /// The frame as RGBA, [width] × [height] (white around the page); null when there is no board.
+  Future<Uint8List?> render(BoardController c, {required int width, required int height}) async {
+    final g = _recordingGeometry(c, width, height);
+    if (g == null) return null;
+    final (win, out) = g;
+    final closed = <BoardItem>[];
+    final open = <BoardItem>[];
+    for (final i in c.scene.visibleItems) {
+      (i is BoardInk && i.open ? open : closed).add(i);
+    }
+    final key = <int>[
+      width,
+      height,
+      Object.hash(win.left, win.top, win.width, win.height),
+      identityHashCode(c.background),
+      c.scene.page.hashCode,
+      for (final i in closed) Object.hash(identityHashCode(i), i is BoardInk ? i.version : 0),
+    ];
+    final offset = Offset((width - out.width) / 2, (height - out.height) / 2);
+    rebuilt = _base == null || !_sameKey(key, _baseKey);
+    if (rebuilt) {
+      final rec = ui.PictureRecorder();
+      final canvas = Canvas(rec);
+      canvas.drawRect(Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()), Paint()..color = const Color(0xFFFFFFFF));
+      canvas.translate(offset.dx, offset.dy);
+      _paintRegion(canvas, c, win, out, only: closed);
+      final picture = rec.endRecording();
+      try {
+        final image = await picture.toImage(width, height);
+        _base?.dispose();
+        _base = image;
+        _baseKey = key;
+      } finally {
+        picture.dispose();
+      }
+    }
+    final base = _base!;
+    if (open.isEmpty) return _rgba(base);
+    final rec = ui.PictureRecorder();
+    final canvas = Canvas(rec);
+    canvas.drawImage(base, Offset.zero, Paint());
+    canvas.translate(offset.dx, offset.dy);
+    _paintRegion(canvas, c, win, out, only: open, paper: false);
+    final picture = rec.endRecording();
+    final frame = await picture.toImage(width, height);
+    try {
+      return await _rgba(frame);
+    } finally {
+      frame.dispose();
+      picture.dispose();
+    }
+  }
+
+  static Future<Uint8List?> _rgba(ui.Image image) async {
+    final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    return data?.buffer.asUint8List();
+  }
+
+  static bool _sameKey(List<int> a, List<int>? b) {
+    if (b == null || a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  void dispose() {
+    _base?.dispose();
+    _base = null;
+    _baseKey = null;
   }
 }

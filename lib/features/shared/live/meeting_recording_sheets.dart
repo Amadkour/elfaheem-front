@@ -462,7 +462,7 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
     });
     try {
       final r = await _api.start(widget.kind, widget.id, quality: _quality, destination: dest);
-      if (mounted) Navigator.pop(context, r.copyWith(quality: _quality));
+      if (mounted) Navigator.pop(context, r.copyWith(quality: _quality, destination: dest));
     } catch (e) {
       if (!mounted) return;
       setState(() {

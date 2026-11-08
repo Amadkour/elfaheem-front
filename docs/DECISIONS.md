@@ -3270,3 +3270,70 @@ Tests: `test/org/records_share_api_test.dart`, `test/ui/records_studio_layout_te
 tool, the job card, the share sheet / picker / list, the LTR timeline in Arabic), `test/ui/records_layout_test.dart`;
 backend `tests/org_v2/e2e_records_share.py`, `records_frames_check.py` (real ffmpeg, dev image). Contract
 `../back/FLUTTER_API_CHANGES.md` "Records: share + studio frames".
+
+## D-313 — Meeting room round 2: a smooth board in the recording, the paused Record from the start, content edge to edge with floating controls, every End choice explained · 2026-11-08 · accepted
+
+Four owner requests for MEETINGS (course sessions keep their behaviour; the board capture is shared because only
+meetings record on the web this way).
+
+**(4) The board in the web recording (owner: "slow, with stops").** D-306 re-rendered the page into the compositor's
+canvas from a 500 ms timer: 2 frames a second, so a stroke appeared in jumps. Now the room renders a frame on EVERY
+board change — stroke points included (`BoardScene` notifies per point) — scheduled by `BoardRecPacer`
+(`whiteboard/board_rec_pacing.dart`): at most the compositor's 30 fps, one capture in flight, nothing at all while
+the page is still (the canvas keeps the last picture and the compositor redraws it every 33 ms), a re-send every 2 s
+and a 100 ms check that notices a scroll of a continuous page (a scroll fires no change). On the web the capture runs
+on the UI thread, so the pacer keeps an average of the capture time and steps down a ladder — 30 fps → 24 → 24 at
+¾ size → 15 → 12 at ½ → 8 → 5 — when a capture costs more than 35 % of the frame period, and climbs back one step after
+45 cheap frames (< 15 %); a weak laptop records fewer / smaller board frames rather than a stuttering room. When the
+drawing stops on a reduced frame, one full-size frame follows 350 ms later, so a still page is always crisp. The frame
+is drawn from the items (`BoardRecordingFrames`, board_export.dart; fixed pages too, no longer a RepaintBoundary
+screenshot): everything except the strokes still being drawn is rasterized ONCE into a cached image (keyed by size,
+window, paper, page and the items by identity + version) and each frame is that image + the open strokes, so its cost
+no longer grows with how full the page is. Debug builds log one line a second (`[REC] board frames: n/s, capture avg /
+max ms, tier`) and every tier change.
+*Measured* (`BOARD_REC_BENCH=1 flutter test test/org/board_rec_pacing_test.dart`, this Windows dev box, host Skia —
+not a browser): a drawing frame (cache + one open stroke + RGBA read-back) 12.3 / 11.9 / 10.3 ms at 1280×720 for a
+page of 10 / 100 / 400 strokes, 6.5–8 ms at 960×540, 2.6–4.4 ms at 640×360; the old way (the whole page every frame)
+20.8 / 55.3 / 160.8 ms at 1280×720. So a full page that used to cost 160 ms a frame (it could not have run at more
+than ~6 fps) now draws at 30 fps on this box, and a weaker machine settles on a lower tier by itself.
+The same bench in Chrome (CanvasKit, `flutter test --platform chrome --dart-define=BOARD_REC_BENCH=1`) did not start on this box (the browser test runner hung at loading), so the browser cost — where the RGBA read-back is a GPU stall on the UI thread — is NOT measured; the pacer is what keeps it in check there, and the debug log line is how to read it in a real call.
+**Android** needed no change: since D-110 its recording is the native 30 fps PixelCopy of the Flutter surface
+(RoomFrameGrabber.kt), and the board is drawn on that surface as it is drawn on screen — no Dart capture of the board
+at all (the 12 fps Dart frames of live_frame_pacing.dart are only the fallback when PixelCopy fails). Not measured on
+a phone in this round.
+
+**(5) The paused Record from the first second (owner: "show the pause button by default").** Interpretation: a
+meeting still opens NOT recording (D-306 `liveRecordsAtStart`; nothing is ever captured without the tap), but the
+person who may record sees the recording control at once in a clear paused / not-yet state: the amber pause glyph +
+"Not recording" (phones: the glyph) + "● Record", one tap = start (the setup sheet's destination + quality the first
+time; the next Record in the same meeting during this app session starts straight on with the same choice —
+`RecordingStart.destination`, room.dart `_recChoice` — and falls back to the sheet if that start fails, e.g. a drive
+disconnected). The opening notice says "Not recording yet". Everyone else sees nothing until the recording really runs
+(then D-310's REC / Paused).
+
+**(6) The board / a shared screen edge to edge, the controls over it, a hide / show button.** In a meeting whose stage
+shows the whiteboard or a shared screen (`liveStageOverlayOn`), the room uses the overlay layout
+(`widgets/live_stage_overlay.dart`): the content takes the whole stage (no rounded frame; on a phone / tablet the
+system bars go immersive and the device may turn, as in full view — the safe area still pads the content), and the top
+row, the control bar and — for whoever draws — the board's tool dock float over it on a translucent scrim; the
+camera boxes (presenter + others, my own) stay over the page and keep clear of the bars. One small toggle, always on
+screen at the top centre under the top row (eye + chevron, 34 px drawn, 48 px target, a label from 600 px), hides /
+shows all of it with an AppMotion slide (at once under Reduce motion); hidden, it still shows the recording (red dot,
+or the pause glyph while paused / not recording yet). F toggles it, Esc and the back button bring the controls back,
+a tap on content nobody draws on toggles too. The choice is remembered per meeting for the app session
+(`LiveOverlayMemory`; shown by default). **No auto-hide** (decided): the owner asked for a button, and controls that
+leave by themselves fight it and would hide the REC state while recording. Full view stays for course sessions; in the
+overlay its button is gone (the overlay already is full, its toggle is the hide). An open side panel (chat / hands on
+a wide screen) keeps its column. Course sessions keep their layout. Trade-off: on the Android device recording (the
+room UI as seen) the floating bars are in the recording while shown — hiding them gives a clean recording.
+
+**(7) A description under every End choice.** The host's End sheet (D-310) now says what each option does under it:
+End for everyone — "Everyone leaves now; the recording is saved to Records" while this device records (else "…and the
+meeting closes"); Leave — "The meeting continues without you; you can hand the host role to someone"; Cancel — "You
+stay in the meeting; nothing changes". The handover sheet too: under Make host and leave, under No, just leave ("You
+leave and the meeting goes on for the others without a host; you can come back later"), and a new Cancel ("You stay
+in the meeting as its host"; closing the sheet did the same before, without saying so). Bilingual (t(ar, en)).
+
+No kill switch, no server change. Tests: `test/org/board_rec_pacing_test.dart`, `test/org/live_stage_overlay_test.dart`,
+`test/ui/live_stage_overlay_layout_test.dart`, `test/ui/live_host_handover_layout_test.dart` (descriptions). Not seen
+yet on a device or in a real browser call.
