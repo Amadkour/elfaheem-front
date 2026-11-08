@@ -5,7 +5,8 @@
 //   signed in   the target opens in this page's place: a course (its loader, which records the share click), a
 //               roadmap (the course page on its Path tab), a lesson / session (the course page on Sessions), a
 //               meeting (the Schedule page with its detail), a teacher (the public profile), a page of the route
-//               registry (by name). Every target applies its own permission rules (the server's answer).
+//               registry (by name), a shared recording (`/s/record/<token>`, D-312: the Records player, or "not
+//               available" when the person may not watch it). Every target applies its own permission rules.
 //   signed out  a public preview (`GET /api/v1/public/share/{kind}/{id}`, auth: false): what a visitor of the catalogue
 //   / guest     could see already — a public course's name, picture and teacher; a meeting or a private course shows
 //               only its kind — with Sign in / Create account. The link is kept (SignInReturn), so the person lands
@@ -30,6 +31,7 @@ import '../../student/courses/details/course_link_loader.dart';
 import '../course_profile/course_profile_hub.dart' show CoursePageLoader;
 import '../guest/guest_state.dart';
 import '../public_profile/public_profile_page.dart' show PublicProfileScreen;
+import '../records/records_share.dart' show SharedRecordPage;
 
 /// The public card of a link (`GET /api/v1/public/share/{kind}/{id}`).
 class ShareLinkPreview {
@@ -58,7 +60,8 @@ class ShareLinkPreview {
   }
 
   static Future<ShareLinkPreview> load(AppLink link, {ApiClient? api}) async => ShareLinkPreview.fromJson(
-      await (api ?? ApiClient()).get('/api/v1/public/share/${link.kind.segment}/${link.id}', auth: false));
+      await (api ?? ApiClient()).get('/api/v1/public/share/${link.kind.segment}/${link.kind == AppLinkKind.record ? link.token : link.id}',
+          auth: false));
 }
 
 /// The pages a `/s/page/<id>` link may open: every registry page but the sign-in pages and the role homes (a link
@@ -135,6 +138,8 @@ class _ShareLinkPageState extends State<ShareLinkPage> {
       case AppLinkKind.meeting:
         nav.pushReplacementNamed('/calendar', arguments: {'meeting_id': id});
         return;
+      case AppLinkKind.record:
+        return _replace(SharedRecordPage(token: _link.token ?? ''), name: '/records/shared');
       case AppLinkKind.page:
         final pid = _link.pageId ?? '';
         String? to;

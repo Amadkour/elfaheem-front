@@ -3,13 +3,11 @@
 //
 //   RecordTile            one item: cover (or a tinted media mark) with its length, title, facts, what made it,
 //                         the status chip, a job's progress, the selection check or the ⋯ button
-//   RecordsLayout         the library: skeleton · error · empty · groups by meeting (title, date, count)
+//   RecordsLayout         the library: skeleton · error · empty · a summary line (count · total length) · groups
+//                         by meeting (title, date, count)
 //   RecordsSelectionBar   the multi-select bar: count · Merge · Delete · Cancel
-//   RecordTimeline        the editor's bar: the playhead, a [start, end] range (kept for trim, removed for cut)
-//                         or a split marker, dragged with handles; follows the reading direction like a Slider
-//   RecordEditorLayout    the editor: preview slot · play / times · mode chips · timeline + "set here" buttons ·
-//                         speed chips · what comes out · title · delete-the-original switch · Save as new
 //   MergeOrderLayout      the merge sheet: the picked items in order (up / down), the total, title, Merge
+// The editor is the Studio (D-312): records_studio_parts.dart.
 library;
 
 import 'package:flutter/material.dart';
@@ -42,10 +40,13 @@ IconData recordStatusIcon(RecordItem r) => r.isDone
 
 /// The item's picture: its cover, else a tinted mark (video / audio). [duration] sits on it.
 class RecordCover extends StatelessWidget {
-  const RecordCover({super.key, required this.item, this.width = 96, this.showImage = true});
+  const RecordCover({super.key, required this.item, this.width = 96, this.showImage = true, this.playMark = false});
 
   final RecordItem item;
   final double width;
+
+  /// A round play mark in the middle (the library: a tap plays it).
+  final bool playMark;
 
   /// False in layout tests (no network).
   final bool showImage;
@@ -76,15 +77,24 @@ class RecordCover extends StatelessWidget {
             Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => mark)
           else
             mark,
+          if (playMark && item.canPlay)
+            Center(
+              child: Container(
+                width: h * 0.42,
+                height: h * 0.42,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: c.heroShade.withValues(alpha: 0.55)),
+                child: Icon(Icons.play_arrow_rounded, color: c.onHero, size: h * 0.3),
+              ),
+            ),
           if (item.durationSeconds > 0)
             PositionedDirectional(
               end: 4,
               bottom: 4,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.62), borderRadius: BorderRadius.circular(6)),
+                decoration: BoxDecoration(color: c.heroShade.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(6)),
                 child: Text(mmss(item.durationSeconds),
-                    style: appText(10.5, w: FontWeight.w700, c: Colors.white), textDirection: TextDirection.ltr),
+                    style: appText(10.5, w: FontWeight.w700, c: c.onHero), textDirection: TextDirection.ltr),
               ),
             ),
         ]),
@@ -146,7 +156,7 @@ class RecordTile extends StatelessWidget {
       onLongPress: onLongPress,
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          RecordCover(item: r, showImage: showImage),
+          RecordCover(item: r, showImage: showImage, playMark: !selecting, width: MediaQuery.sizeOf(context).width >= 600 ? 128 : 104),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -299,18 +309,35 @@ class RecordsLayout extends StatelessWidget {
       return AppEmpty(
         icon: Icons.video_library_outlined,
         title: t('لا توجد تسجيلات بعد', 'No recordings yet'),
-        message: t('سجّل اجتماعاً إلى Google Drive أو OneDrive، وسيظهر هنا بعد انتهائه لتشغيله وتعديله.',
-            'Record a meeting to Google Drive or OneDrive — it shows up here once it ends, ready to play and edit.'),
+        message: t('سجّل اجتماعاً إلى Google Drive أو OneDrive، وسيظهر هنا بعد انتهائه لتشغيله وتعديله في الاستوديو ومشاركته.',
+            'Record a meeting to Google Drive or OneDrive — it shows up here once it ends, ready to play, edit in the Studio and share.'),
       );
     }
     final selecting = selected.isNotEmpty;
     final groups = groupRecords(items);
+    final c = context.colors;
+    final total = items.fold<double>(0, (s, r) => s + r.durationSeconds);
+    final running = items.where((r) => r.inProgress).length;
     return ListView.builder(
       key: const ValueKey('records.list'),
       padding: padding,
-      itemCount: groups.length,
+      itemCount: groups.length + 1,
       itemBuilder: (context, i) {
-        final g = groups[i];
+        if (i == 0) {
+          return Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.xs, AppSpace.xxs, 0),
+            child: Text(
+              [
+                recordsCountText(items.length),
+                if (total > 0) t('${mmss(total)} إجمالاً', '${mmss(total)} in total'),
+                if (running > 0) t('$running قيد العمل', '$running in progress'),
+              ].join(' · '),
+              key: const ValueKey('records.summary'),
+              style: appText(12.5, w: FontWeight.w600, c: c.textMedium),
+            ),
+          );
+        }
+        final g = groups[i - 1];
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           RecordsGroupHeader(group: g),
           for (final r in g.items) ...[
@@ -388,390 +415,6 @@ class RecordsSelectionBar extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Timeline
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Which handle a drag moves.
-enum _Grip { start, end, at, head }
-
-class RecordTimeline extends StatefulWidget {
-  const RecordTimeline({
-    super.key,
-    required this.duration,
-    required this.position,
-    required this.op,
-    this.start = 0,
-    this.end = 0,
-    this.at = 0,
-    this.onRange,
-    this.onAt,
-    this.onSeek,
-  });
-
-  final double duration;
-  final double position;
-  final RecordOp op;
-  final double start;
-  final double end;
-  final double at;
-  final void Function(double start, double end)? onRange;
-  final ValueChanged<double>? onAt;
-  final ValueChanged<double>? onSeek;
-
-  @override
-  State<RecordTimeline> createState() => _RecordTimelineState();
-}
-
-class _RecordTimelineState extends State<RecordTimeline> {
-  _Grip? _grip;
-
-  double _timeAt(double dx, double width, bool rtl) {
-    final f = (dx / width).clamp(0.0, 1.0);
-    return (rtl ? 1 - f : f) * widget.duration;
-  }
-
-  double _xOf(double s, double width, bool rtl) {
-    final f = widget.duration <= 0 ? 0.0 : (s / widget.duration).clamp(0.0, 1.0);
-    return (rtl ? 1 - f : f) * width;
-  }
-
-  void _drag(double dx, double width, bool rtl, {bool first = false}) {
-    final s = _timeAt(dx, width, rtl);
-    final w = widget;
-    if (first) {
-      final ranged = w.op == RecordOp.trim || w.op == RecordOp.cut;
-      final cands = <_Grip, double>{
-        if (ranged) _Grip.start: (_xOf(w.start, width, rtl) - dx).abs(),
-        if (ranged) _Grip.end: (_xOf(w.end, width, rtl) - dx).abs(),
-        if (w.op == RecordOp.split) _Grip.at: (_xOf(w.at, width, rtl) - dx).abs(),
-      };
-      final near = cands.entries.where((e) => e.value <= 28).toList()..sort((a, b) => a.value.compareTo(b.value));
-      _grip = near.isEmpty ? _Grip.head : near.first.key;
-    }
-    switch (_grip) {
-      case _Grip.start:
-        w.onRange?.call(s.clamp(0, (w.end - recordMinPart).clamp(0, w.duration)).toDouble(), w.end);
-      case _Grip.end:
-        w.onRange?.call(w.start, s.clamp((w.start + recordMinPart).clamp(0, w.duration), w.duration).toDouble());
-      case _Grip.at:
-        w.onAt?.call(s);
-      case _Grip.head:
-      case null:
-        w.onSeek?.call(s);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final rtl = Directionality.of(context) == TextDirection.rtl;
-    return Semantics(
-      label: t('شريط الوقت', 'Timeline'),
-      value: '${mmss(widget.position)} / ${mmss(widget.duration)}',
-      child: LayoutBuilder(builder: (context, box) {
-        final width = box.maxWidth.isFinite ? box.maxWidth : 320.0;
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragStart: (d) => _drag(d.localPosition.dx, width, rtl, first: true),
-          onHorizontalDragUpdate: (d) => _drag(d.localPosition.dx, width, rtl),
-          onHorizontalDragEnd: (_) => _grip = null,
-          onTapDown: (d) {
-            _grip = _Grip.head;
-            _drag(d.localPosition.dx, width, rtl);
-            _grip = null;
-          },
-          child: SizedBox(
-            height: 56,
-            width: width,
-            child: CustomPaint(
-              painter: _TimelinePainter(
-                duration: widget.duration,
-                position: widget.position,
-                op: widget.op,
-                start: widget.start,
-                end: widget.end,
-                at: widget.at,
-                rtl: rtl,
-                track: c.divider,
-                keep: c.primary,
-                cut: c.danger,
-                head: c.textDark,
-                handle: c.cardBg,
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-}
-
-class _TimelinePainter extends CustomPainter {
-  _TimelinePainter({
-    required this.duration,
-    required this.position,
-    required this.op,
-    required this.start,
-    required this.end,
-    required this.at,
-    required this.rtl,
-    required this.track,
-    required this.keep,
-    required this.cut,
-    required this.head,
-    required this.handle,
-  });
-
-  final double duration, position, start, end, at;
-  final RecordOp op;
-  final bool rtl;
-  final Color track, keep, cut, head, handle;
-
-  double _x(double s, Size size) {
-    final f = duration <= 0 ? 0.0 : (s / duration).clamp(0.0, 1.0);
-    return (rtl ? 1 - f : f) * size.width;
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final mid = size.height / 2;
-    final bar = RRect.fromRectAndRadius(Rect.fromLTWH(0, mid - 6, size.width, 12), const Radius.circular(6));
-    canvas.drawRRect(bar, Paint()..color = track);
-    void span(double a, double b, Color col) {
-      final x1 = _x(a, size), x2 = _x(b, size);
-      canvas.drawRRect(
-          RRect.fromRectAndRadius(Rect.fromLTRB(x1 < x2 ? x1 : x2, mid - 6, x1 < x2 ? x2 : x1, mid + 6), const Radius.circular(6)),
-          Paint()..color = col);
-    }
-
-    void grip(double s, Color col) {
-      final x = _x(s, size);
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, mid), width: 14, height: 34), const Radius.circular(5)),
-          Paint()..color = col);
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, mid), width: 3, height: 14), const Radius.circular(2)),
-          Paint()..color = handle);
-    }
-
-    switch (op) {
-      case RecordOp.trim:
-        span(start, end, keep.withValues(alpha: 0.55));
-        grip(start, keep);
-        grip(end, keep);
-      case RecordOp.cut:
-        span(0, duration, keep.withValues(alpha: 0.35));
-        span(start, end, cut.withValues(alpha: 0.7));
-        grip(start, cut);
-        grip(end, cut);
-      case RecordOp.split:
-        span(0, at, keep.withValues(alpha: 0.55));
-        span(at, duration, keep.withValues(alpha: 0.3));
-        grip(at, keep);
-      case RecordOp.speed:
-      case RecordOp.merge:
-        span(0, position, keep.withValues(alpha: 0.55));
-    }
-    final hx = _x(position, size);
-    canvas.drawLine(Offset(hx, 4), Offset(hx, size.height - 4), Paint()
-      ..color = head
-      ..strokeWidth = 2);
-    canvas.drawCircle(Offset(hx, 5), 4, Paint()..color = head);
-  }
-
-  @override
-  bool shouldRepaint(covariant _TimelinePainter o) =>
-      o.duration != duration || o.position != position || o.op != op || o.start != start || o.end != end || o.at != at ||
-      o.rtl != rtl || o.track != track || o.keep != keep;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Editor
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// The editor body from plain values. [preview] is the player (or a still / a placeholder in tests).
-class RecordEditorLayout extends StatelessWidget {
-  const RecordEditorLayout({
-    super.key,
-    required this.preview,
-    required this.duration,
-    required this.position,
-    required this.op,
-    required this.start,
-    required this.end,
-    required this.at,
-    required this.speed,
-    required this.title,
-    this.playing = false,
-    this.deleteSource = false,
-    this.busy = false,
-    this.onPlayPause,
-    this.onSeek,
-    this.onOp,
-    this.onRange,
-    this.onAt,
-    this.onSpeed,
-    this.onDeleteSource,
-    this.onSave,
-  });
-
-  final Widget preview;
-  final double duration;
-  final double position;
-  final bool playing;
-  final RecordOp op;
-  final double start;
-  final double end;
-  final double at;
-  final double speed;
-
-  /// The name field (the page owns its controller).
-  final Widget title;
-  final bool deleteSource;
-  final bool busy;
-  final VoidCallback? onPlayPause;
-  final ValueChanged<double>? onSeek;
-  final ValueChanged<RecordOp>? onOp;
-  final void Function(double start, double end)? onRange;
-  final ValueChanged<double>? onAt;
-  final ValueChanged<double>? onSpeed;
-  final ValueChanged<bool>? onDeleteSource;
-  final VoidCallback? onSave;
-
-  RecordEdit get edit => RecordEdit(op: op, start: start, end: end, at: at, speed: speed, deleteSource: deleteSource);
-
-  String _result() {
-    final ds = editResultDurations(edit, duration);
-    if (op == RecordOp.split) {
-      return t('ينتج تسجيلين: ${mmss(ds[0])} و${mmss(ds[1])}', 'Makes two recordings: ${mmss(ds[0])} and ${mmss(ds[1])}');
-    }
-    return t('ينتج تسجيلاً جديداً مدته ${mmss(ds[0])}', 'Makes a new recording of ${mmss(ds[0])}');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final problem = editProblem(edit, duration);
-    Widget timeChip(String label, double s) => Text('$label ${mmss(s)}',
-        style: appText(12.5, w: FontWeight.w600, c: c.textDark), textDirection: TextDirection.ltr);
-    Widget here(String key, String label, IconData icon, VoidCallback? onTap) =>
-        AppPill(key: ValueKey('records.editor.$key'), icon: icon, label: label, onTap: busy ? null : onTap);
-    final ranged = op == RecordOp.trim || op == RecordOp.cut;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 360),
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: ClipRRect(borderRadius: BorderRadius.circular(AppRadius.card), child: ColoredBox(color: Colors.black, child: preview)),
-          ),
-        ),
-      ),
-      const SizedBox(height: AppSpace.xs),
-      Row(children: [
-        IconButton(
-          key: const ValueKey('records.editor.play'),
-          tooltip: playing ? t('إيقاف مؤقت', 'Pause') : t('تشغيل', 'Play'),
-          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-          icon: Icon(playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, color: c.primary, size: 34),
-          onPressed: onPlayPause,
-        ),
-        const SizedBox(width: AppSpace.xxs),
-        Text('${mmss(position)} / ${mmss(duration)}',
-            style: appText(13, w: FontWeight.w700, c: c.textDark), textDirection: TextDirection.ltr),
-      ]),
-      RecordTimeline(
-        duration: duration,
-        position: position,
-        op: op,
-        start: start,
-        end: end,
-        at: at,
-        onRange: busy ? null : onRange,
-        onAt: busy ? null : onAt,
-        onSeek: onSeek,
-      ),
-      const SizedBox(height: AppSpace.sm),
-      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-        for (final o in const [RecordOp.trim, RecordOp.split, RecordOp.cut, RecordOp.speed])
-          AppChoiceChip(
-            key: ValueKey('records.editor.op.${o.wire}'),
-            label: o.label,
-            selected: op == o,
-            icon: switch (o) {
-              RecordOp.trim => Icons.content_cut_rounded,
-              RecordOp.split => Icons.call_split_rounded,
-              RecordOp.cut => Icons.remove_circle_outline_rounded,
-              _ => Icons.speed_rounded,
-            },
-            onTap: () => busy ? null : onOp?.call(o),
-          ),
-      ]),
-      const SizedBox(height: AppSpace.sm),
-      AppCard(
-        padding: const EdgeInsets.all(AppSpace.sm),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          Text(
-            switch (op) {
-              RecordOp.trim => t('احتفظ بالجزء الملوّن فقط. اسحب الطرفين أو شغّل وحدّد من موضع التشغيل.',
-                  'Keep only the coloured part. Drag its ends, or play and set them at the playhead.'),
-              RecordOp.cut => t('يُحذف الجزء الأحمر ويُوصل ما قبله بما بعده.', 'The red part is removed and the rest joined.'),
-              RecordOp.split => t('يُقسم التسجيل عند العلامة إلى تسجيلين.', 'The recording is split into two at the marker.'),
-              _ => t('اختر السرعة؛ يبقى الصوت طبيعياً دون تغيير في طبقته.', 'Pick a speed; voices keep their natural pitch.'),
-            },
-            style: appText(12.5, c: c.textMedium, h: 1.45),
-          ),
-          const SizedBox(height: AppSpace.xs),
-          if (ranged)
-            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              timeChip(t('من', 'From'), start),
-              timeChip(t('إلى', 'To'), end),
-              here('set_start', t('البداية هنا', 'Start here'), Icons.first_page_rounded,
-                  onRange == null ? null : () => onRange!(position.clamp(0, (end - recordMinPart).clamp(0, duration)).toDouble(), end)),
-              here('set_end', t('النهاية هنا', 'End here'), Icons.last_page_rounded,
-                  onRange == null ? null : () => onRange!(start, position.clamp((start + recordMinPart).clamp(0, duration), duration).toDouble())),
-            ])
-          else if (op == RecordOp.split)
-            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              timeChip(t('عند', 'At'), at),
-              here('split_here', t('قسّم هنا', 'Split here'), Icons.call_split_rounded, onAt == null ? null : () => onAt!(position)),
-            ])
-          else
-            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-              for (final s in recordSpeeds)
-                AppChoiceChip(
-                  key: ValueKey('records.editor.speed.$s'),
-                  label: speedLabel(s),
-                  selected: speed == s,
-                  onTap: () => busy ? null : onSpeed?.call(s),
-                ),
-            ]),
-        ]),
-      ),
-      const SizedBox(height: AppSpace.sm),
-      title,
-      const SizedBox(height: AppSpace.xs),
-      AppSwitchRow(
-        title: t('احذف الأصل بعد نجاح التعديل', 'Delete the original once the edit is done'),
-        subtitle: t('من القائمة ومن السحابة. بدونها يبقى الأصل كما هو.', 'From the list and the drive. Off: the original stays as it is.'),
-        value: deleteSource,
-        onChanged: (v) => busy ? null : onDeleteSource?.call(v),
-      ),
-      const SizedBox(height: AppSpace.sm),
-      Text(problem ?? _result(),
-          key: const ValueKey('records.editor.result'), style: appText(13, w: FontWeight.w600, c: problem == null ? c.textDark : c.danger)),
-      const SizedBox(height: AppSpace.sm),
-      AppButton.primary(
-        key: const ValueKey('records.editor.save'),
-        label: t('حفظ كتسجيل جديد', 'Save as new'),
-        icon: Icons.save_alt_rounded,
-        busy: busy,
-        expand: true,
-        onPressed: problem == null && !busy ? onSave : null,
-      ),
-    ]);
   }
 }
 

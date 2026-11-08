@@ -1,17 +1,20 @@
-// lib/features/shared/records/records_page.dart — "Records" (D-311): My profile › Records, the editor and the
-// sheets. Pure parts: records_api.dart; plain-values widgets: records_parts.dart.
+// lib/features/shared/records/records_page.dart — "Records" (D-311, D-312): My profile › Records and its sheets.
+// Pure parts: records_api.dart, records_share_api.dart; plain-values widgets: records_parts.dart,
+// records_share_parts.dart, records_studio_parts.dart.
 //
-//   RecordsPage(highlightId:)   the library: groups by meeting, tap → the editor (a ready item) · ⋯ → the item sheet
-//                               (play & edit · rename · cover · open in drive · retry · delete) · long-press → multi-
-//                               select (Merge 2+ ready items in a chosen order · Delete). A running job is watched
-//                               with EventOrPoll on `job_updated{kind: recording}` (no timer polling while the live
-//                               stream is up). Deep link: AppNavigator module `records` (the recording notification).
-//   RecordEditorPage            the player (a signed, Range-proxied stream URL) + RecordEditorLayout: trim · split ·
-//                               cut a period · speed → POST …/edit, the new item(s) come back to the library
+//   RecordsPage(highlightId:, shared:)   two tabs — My recordings · Shared with me (kill switch records.share).
+//                               Mine: groups by meeting, tap → the PLAYER (the course video player, as a student sees
+//                               a lesson) with "Open in Studio" and "Share" on its top bar · ⋯ → the item sheet (play ·
+//                               Studio · share · rename · cover · open in drive · retry · delete) · long-press → multi-
+//                               select (Merge 2+ ready items in a chosen order · Delete). A running job is watched with
+//                               EventOrPoll on `job_updated{kind: recording}` (no timer polling while the live stream
+//                               is up). Shared with me: tap → the player. Deep links: AppNavigator modules `records`
+//                               and `records_shared`.
+//   The Studio (the editor): records_studio.dart · the player and the Share sheet: records_share.dart
 //   (records_notice.dart: showRecordsSavingNotice — "Saving your recording to Records" + Open)
 //   RecordsSettingsTile         the My-profile tile (kill switch profile.records)
 //
-// Every edit is a NEW item; the original stays unless the person switches "Delete the original" on.
+// Every edit is a NEW item; the original stays unless the person picks "Replace the original".
 library;
 
 import 'package:flutter/material.dart';
@@ -25,13 +28,18 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:video_player/video_player.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../guest/guest_state.dart';
 import '../live/meeting_recording_sheets.dart' show openExternalUrl;
+import '../session/video/vod_player_parts.dart' show VodAction;
 import 'records_api.dart';
 import 'records_parts.dart';
+import 'records_share.dart';
+import 'records_share_api.dart';
+import 'records_share_parts.dart';
+import 'records_studio.dart';
 
 /// How often the library re-reads while a job runs and the live stream is down / up (an event re-reads at once).
 const recordsJobPoll = Duration(seconds: 6);
@@ -68,11 +76,15 @@ class RecordsSettingsTile extends StatelessWidget implements AppSettingsSearchab
 // ─────────────────────────────────────────────────────────────────────────────
 
 class RecordsPage extends StatefulWidget {
-  const RecordsPage({super.key, this.highlightId, this.api});
+  const RecordsPage({super.key, this.highlightId, this.api, this.shareApi, this.shared = false});
 
   /// The item a notification pointed at (outlined).
   final int? highlightId;
   final RecordsApi? api;
+  final RecordShareApi? shareApi;
+
+  /// Opens on "Shared with me".
+  final bool shared;
 
   @override
   State<RecordsPage> createState() => _RecordsPageState();
@@ -80,16 +92,46 @@ class RecordsPage extends StatefulWidget {
 
 class _RecordsPageState extends State<RecordsPage> {
   late final RecordsApi _api = widget.api ?? RemoteRecordsApi();
+  late final RecordShareApi _shareApi = widget.shareApi ?? RemoteRecordShareApi();
   List<RecordItem> _items = const [];
   bool _loading = true;
   String? _error;
   final Set<int> _selected = {};
   EventOrPoll? _watch;
+  late int _tab = widget.shared && _sharing ? 1 : 0;
+  List<SharedRecord> _shared = const [];
+  bool _sharedLoading = false;
+  bool _sharedLoaded = false;
+  String? _sharedError;
+
+  bool get _sharing => !AppConfig.disableList.contains(kRecordsShareFeatureKey);
 
   @override
   void initState() {
     super.initState();
     _load();
+    if (_tab == 1) _loadShared();
+  }
+
+  Future<void> _loadShared({bool silent = false}) async {
+    if (!silent) setState(() => _sharedLoading = true);
+    try {
+      final list = await _shareApi.sharedWithMe();
+      if (!mounted) return;
+      setState(() {
+        _shared = list;
+        _sharedError = null;
+        _sharedLoading = false;
+        _sharedLoaded = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _sharedLoading = false;
+        _sharedLoaded = true;
+        if (!silent) _sharedError = recordsErrorText(e);
+      });
+    }
   }
 
   @override
@@ -194,11 +236,46 @@ class _RecordsPageState extends State<RecordsPage> {
 
   void _tap(RecordItem r) {
     if (_selected.isNotEmpty) return _toggle(r);
-    if (r.canEdit) {
-      _openEditor(r);
+    if (r.canPlay) {
+      _openPlayer(r);
     } else {
       _more(r);
     }
+  }
+
+  /// The course video player on the record (D-312), with Open in Studio and Share on its top bar.
+  Future<void> _openPlayer(RecordItem r) async {
+    final nav = Navigator.of(context);
+    final go = await nav.push<String>(MaterialPageRoute(
+      settings: const RouteSettings(name: '/records/play'),
+      builder: (ctx) => RecordPlayerPage(
+        title: r.title,
+        subtitle: [if (r.meetingTitle != null && r.meetingTitle != r.title) r.meetingTitle!, ...r.facts()].join(' · '),
+        play: () => _api.play(r.id),
+        actions: [
+          if (r.canEdit)
+            VodAction(
+                id: 'studio',
+                icon: Icons.auto_fix_high_rounded,
+                label: t('فتح في الاستوديو', 'Open in Studio'),
+                onTap: () => Navigator.of(ctx).pop('studio')),
+          if (_sharing)
+            VodAction(
+                id: 'share',
+                icon: Icons.ios_share_rounded,
+                label: t('مشاركة', 'Share'),
+                onTap: () => showRecordShareSheet(ctx, r, api: _shareApi)),
+        ],
+      ),
+    ));
+    if (go == 'studio' && mounted) await _openEditor(r);
+  }
+
+  void _playMade(BuildContext context, RecordItem r) {
+    Navigator.of(context).push(MaterialPageRoute(
+      settings: const RouteSettings(name: '/records/play'),
+      builder: (_) => RecordPlayerPage(title: r.title, play: () => _api.play(r.id)),
+    ));
   }
 
   void _toggle(RecordItem r) {
@@ -214,7 +291,7 @@ class _RecordsPageState extends State<RecordsPage> {
   Future<void> _openEditor(RecordItem r) async {
     final made = await Navigator.of(context).push<List<RecordItem>>(MaterialPageRoute(
       settings: const RouteSettings(name: '/records/edit'),
-      builder: (_) => RecordEditorPage(item: r, api: _api),
+      builder: (_) => RecordStudioPage(item: r, others: _items, api: _api, shareApi: _shareApi, onPlay: _playMade),
     ));
     if (!mounted || made == null || made.isEmpty) return;
     _put(made);       // a source asked to be deleted goes once the job is done: the next read shows it
@@ -231,7 +308,9 @@ class _RecordsPageState extends State<RecordsPage> {
             onTap: () => Navigator.of(ctx).pop(id),
           );
       return AppSheetContent(title: r.title, children: [
-        if (r.canEdit) row('edit', Icons.movie_creation_outlined, t('تشغيل وتعديل', 'Play and edit')),
+        if (r.canPlay) row('play', Icons.play_circle_outline_rounded, t('تشغيل', 'Play')),
+        if (r.canEdit) row('edit', Icons.auto_fix_high_rounded, t('فتح في الاستوديو', 'Open in Studio')),
+        if (r.canPlay && _sharing) row('share', Icons.ios_share_rounded, t('مشاركة', 'Share')),
         row('rename', Icons.drive_file_rename_outline_rounded, t('تغيير الاسم', 'Rename')),
         row('cover', Icons.image_outlined, r.coverUrl == null ? t('إضافة غلاف', 'Add a cover') : t('تغيير الغلاف', 'Change the cover')),
         if (r.coverUrl != null) row('uncover', Icons.hide_image_outlined, t('إزالة الغلاف', 'Remove the cover')),
@@ -243,8 +322,12 @@ class _RecordsPageState extends State<RecordsPage> {
     });
     if (!mounted || action == null) return;
     switch (action) {
+      case 'play':
+        await _openPlayer(r);
       case 'edit':
         await _openEditor(r);
+      case 'share':
+        await showRecordShareSheet(context, r, api: _shareApi);
       case 'rename':
         await _rename(r);
       case 'cover':
@@ -390,7 +473,7 @@ class _RecordsPageState extends State<RecordsPage> {
         useWebCard: true,
         width: AppWidth.content,
         appBar: ScreenAppBar(title: t('التسجيلات', 'Records'), actions: [
-          AppRefreshAction(onRefresh: () => _load()),
+          AppRefreshAction(onRefresh: () => _tab == 1 ? _loadShared() : _load()),
         ]),
         bottomNavigationBar: selecting
             ? RecordsSelectionBar(
@@ -401,7 +484,39 @@ class _RecordsPageState extends State<RecordsPage> {
                 onCancel: () => setState(_selected.clear),
               )
             : null,
-        child: AppRefresh(
+        child: Column(children: [
+          if (_sharing && !selecting)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+              child: AppTabs(
+                key: const ValueKey('records.tabs'),
+                expand: true,
+                index: _tab,
+                items: [
+                  AppTabItem(t('تسجيلاتي', 'My recordings'), icon: Icons.video_library_outlined,
+                      count: _items.isEmpty ? null : _items.length),
+                  AppTabItem(t('مُشارَكة معي', 'Shared with me'), icon: Icons.folder_shared_outlined,
+                      count: _shared.isEmpty ? null : _shared.length),
+                ],
+                onChanged: (i) {
+                  setState(() => _tab = i);
+                  if (i == 1 && !_sharedLoaded) _loadShared();
+                },
+              ),
+            ),
+          Expanded(
+            child: _tab == 1 && _sharing
+                ? AppRefresh(
+                    onRefresh: () => _loadShared(silent: true),
+                    child: SharedRecordsLayout(
+                      items: _shared,
+                      loading: _sharedLoading || !_sharedLoaded,
+                      error: _sharedError,
+                      onReload: _loadShared,
+                      onTap: (r) => openSharedRecord(context, r, api: _shareApi),
+                    ),
+                  )
+                : AppRefresh(
           onRefresh: () => _load(silent: true),
           child: RecordsLayout(
             items: _items,
@@ -419,6 +534,8 @@ class _RecordsPageState extends State<RecordsPage> {
             onReload: _load,
           ),
         ),
+          ),
+        ]),
       ),
     );
   }
@@ -520,198 +637,4 @@ class _MergeSheetState extends State<_MergeSheet> {
           onMerge: _go,
         ),
       ]);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Editor
-// ─────────────────────────────────────────────────────────────────────────────
-
-class RecordEditorPage extends StatefulWidget {
-  const RecordEditorPage({super.key, required this.item, this.api});
-
-  final RecordItem item;
-  final RecordsApi? api;
-
-  @override
-  State<RecordEditorPage> createState() => _RecordEditorPageState();
-}
-
-class _RecordEditorPageState extends State<RecordEditorPage> {
-  late final RecordsApi _api = widget.api ?? RemoteRecordsApi();
-  VideoPlayerController? _player;
-  String? _playError;
-  bool _ready = false;
-  double _pos = 0;
-  late double _dur = widget.item.durationSeconds;
-  RecordOp _op = RecordOp.trim;
-  late double _start = 0;
-  late double _end = _dur;
-  late double _at = _dur / 2;
-  double _speed = 1.5;
-  bool _deleteSource = false;
-  bool _busy = false;
-  bool _titleTouched = false;
-  late final TextEditingController _title = TextEditingController(text: _defaultTitle());
-
-  String _defaultTitle() => defaultEditTitle(widget.item.title, _op, speed: _speed);
-
-  @override
-  void initState() {
-    super.initState();
-    _open();
-  }
-
-  @override
-  void dispose() {
-    _player?.removeListener(_tick);
-    _player?.dispose();
-    _title.dispose();
-    super.dispose();
-  }
-
-  Future<void> _open() async {
-    try {
-      final play = await _api.play(widget.item.id);
-      if (!mounted) return;
-      final p = VideoPlayerController.networkUrl(Uri.parse(play.url));
-      _player = p;
-      await p.initialize();
-      if (!mounted) return;
-      p.addListener(_tick);
-      final d = p.value.duration.inMilliseconds / 1000;
-      setState(() {
-        _ready = true;
-        if (d > 0 && (_dur <= 0 || (d - _dur).abs() > 1)) {
-          _dur = d;
-          _end = d;
-          _at = d / 2;
-        }
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _playError = recordsErrorText(e));
-    }
-  }
-
-  void _tick() {
-    final p = _player;
-    if (p == null || !mounted) return;
-    final s = p.value.position.inMilliseconds / 1000;
-    if ((s - _pos).abs() >= 0.2 || p.value.isPlaying != _wasPlaying) {
-      _wasPlaying = p.value.isPlaying;
-      setState(() => _pos = s.clamp(0, _dur > 0 ? _dur : s).toDouble());
-    }
-  }
-
-  bool _wasPlaying = false;
-
-  void _seek(double s) {
-    setState(() => _pos = s);
-    _player?.seekTo(Duration(milliseconds: (s * 1000).round()));
-  }
-
-  void _playPause() {
-    final p = _player;
-    if (p == null || !_ready) return;
-    p.value.isPlaying ? p.pause() : p.play();
-  }
-
-  void _setOp(RecordOp o) {
-    setState(() {
-      _op = o;
-      if (!_titleTouched) _title.text = _defaultTitle();
-    });
-  }
-
-  Future<void> _save() async {
-    final edit = RecordEdit(op: _op, start: _start, end: _end, at: _at, speed: _speed, title: _title.text, deleteSource: _deleteSource);
-    if (editProblem(edit, _dur) != null) return;
-    if (_deleteSource &&
-        !await appConfirm(context,
-            message: t('سيُحذف الأصل من القائمة ومن السحابة بعد نجاح التعديل. متابعة؟',
-                'The original will be deleted from the list and the drive once the edit is done. Continue?'),
-            danger: true,
-            confirmLabel: t('متابعة', 'Continue'))) {
-      return;
-    }
-    if (!mounted) return;
-    setState(() => _busy = true);
-    _player?.pause();
-    try {
-      final made = await _api.edit(widget.item.id, edit);
-      if (!mounted) return;
-      showAppNotice(t('جارٍ التعديل — يظهر التسجيل الجديد في «التسجيلات»', 'Editing — the new recording shows up in Records'));
-      Navigator.of(context).pop(made);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      showAppNotice(recordsErrorText(e), error: true);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final p = _player;
-    final Widget preview;
-    if (_playError != null) {
-      preview = Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.md),
-          child: Text(_playError!, textAlign: TextAlign.center, style: appText(13, c: Colors.white70, h: 1.4)),
-        ),
-      );
-    } else if (!_ready || p == null) {
-      preview = const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.5)));
-    } else if (widget.item.isAudio) {
-      preview = Center(child: Icon(Icons.graphic_eq_rounded, color: c.primary, size: 64));
-    } else {
-      preview = Center(child: AspectRatio(aspectRatio: p.value.aspectRatio, child: VideoPlayer(p)));
-    }
-    return BasePage(
-      key: const ValueKey('records.editor'),
-      useWebCard: true,
-      width: AppWidth.reading,
-      appBar: ScreenAppBar(title: widget.item.title),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl),
-        child: RecordEditorLayout(
-          preview: preview,
-          duration: _dur,
-          position: _pos,
-          playing: p?.value.isPlaying ?? false,
-          op: _op,
-          start: _start,
-          end: _end,
-          at: _at,
-          speed: _speed,
-          deleteSource: _deleteSource,
-          busy: _busy,
-          title: TextField(
-            key: const ValueKey('records.editor.title'),
-            controller: _title,
-            maxLength: 120,
-            onChanged: (_) => _titleTouched = true,
-            decoration: InputDecoration(
-              labelText: _op == RecordOp.split ? t('اسم التسجيلين (يُضاف 1 و2)', 'Name of the two (1 and 2 are added)') : t('اسم التسجيل الجديد', 'Name of the new recording'),
-            ),
-          ),
-          onPlayPause: _playPause,
-          onSeek: _seek,
-          onOp: _setOp,
-          onRange: (a, b) => setState(() {
-            _start = a;
-            _end = b;
-          }),
-          onAt: (s) => setState(() => _at = s),
-          onSpeed: (s) => setState(() {
-            _speed = s;
-            if (!_titleTouched) _title.text = _defaultTitle();
-          }),
-          onDeleteSource: (v) => setState(() => _deleteSource = v),
-          onSave: _save,
-        ),
-      ),
-    );
-  }
 }

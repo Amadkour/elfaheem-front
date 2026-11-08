@@ -76,27 +76,6 @@ class _Api implements RecordsApi {
   Future<RecordPlay> play(int id) async => const RecordPlay(url: 'https://x.test/s');
 }
 
-Widget _editor(RecordOp op) => RecordEditorLayout(
-      preview: const SizedBox.expand(),
-      duration: 5400,
-      position: 1200,
-      op: op,
-      start: 600,
-      end: 3000,
-      at: 2700,
-      speed: 1.5,
-      title: const TextField(decoration: InputDecoration(labelText: 'Name of the new recording')),
-      deleteSource: op == RecordOp.cut,
-      onPlayPause: () {},
-      onSeek: (_) {},
-      onOp: (_) {},
-      onRange: (_, _) {},
-      onAt: (_) {},
-      onSpeed: (_) {},
-      onDeleteSource: (_) {},
-      onSave: () {},
-    );
-
 void main() {
   setUp(() {
     AppConfig.lang = 'en';
@@ -133,28 +112,6 @@ void main() {
       await expectNoLayoutErrors(t, () => const Align(alignment: Alignment.bottomCenter, child: RecordsSelectionBar(count: 1)));
     });
 
-    testWidgets('editor in every mode', (t) async {
-      for (final op in const [RecordOp.trim, RecordOp.split, RecordOp.cut, RecordOp.speed]) {
-        await expectNoLayoutErrors(t, () => SingleChildScrollView(child: _editor(op)));
-      }
-      await expectNoLayoutErrors(
-          t,
-          () => SingleChildScrollView(
-                child: RecordEditorLayout(
-                  preview: const SizedBox.expand(),
-                  duration: 0,
-                  position: 0,
-                  op: RecordOp.trim,
-                  start: 0,
-                  end: 0,
-                  at: 0,
-                  speed: 1.5,
-                  title: const SizedBox.shrink(),
-                  busy: true,
-                ),
-              ));
-    });
-
     testWidgets('merge order sheet body', (t) async {
       await expectNoLayoutErrors(
           t,
@@ -171,30 +128,6 @@ void main() {
   });
 
   group('behaviour', () {
-    testWidgets('the editor: Save is off while the period is invalid; the summary names what comes out', (t) async {
-      await t.pumpWidget(layoutHost(SingleChildScrollView(child: _editor(RecordOp.split)), scale: 1));
-      expect(find.text('Makes two recordings: 45:00 and 45:00'), findsOneWidget);
-      await t.pumpWidget(layoutHost(
-          SingleChildScrollView(
-            child: RecordEditorLayout(
-              preview: const SizedBox.expand(),
-              duration: 120,
-              position: 0,
-              op: RecordOp.cut,
-              start: 0,
-              end: 120,
-              at: 60,
-              speed: 1.5,
-              title: const SizedBox.shrink(),
-              onSave: () => fail('saved an invalid edit'),
-            ),
-          ),
-          scale: 1));
-      expect(find.textContaining("can't cut the whole recording"), findsOneWidget);
-      await t.tap(find.byKey(const ValueKey('records.editor.save')), warnIfMissed: false);
-      await t.pumpWidget(const SizedBox());
-    });
-
     testWidgets('long-press selects, Merge sends the ids in the chosen order', (t) async {
       final api = _Api([_item(1, day: 6), _item(2, day: 7), _item(3, status: 'recording', day: 8)]);
       await t.pumpWidget(layoutHost(RecordsPage(api: api), scale: 1, scaffold: false));
@@ -226,6 +159,8 @@ void main() {
       await t.pumpWidget(layoutHost(RecordsPage(api: api), scale: 1, scaffold: false));
       await t.pumpAndSettle();
       await t.tap(find.byKey(const ValueKey('records.more.1')));
+      await t.pumpAndSettle();
+      await t.ensureVisible(find.byKey(const ValueKey('records.sheet.delete')));
       await t.pumpAndSettle();
       await t.tap(find.byKey(const ValueKey('records.sheet.delete')));
       await t.pumpAndSettle();

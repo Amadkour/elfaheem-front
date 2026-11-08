@@ -636,3 +636,70 @@ class VodAudioOnlyTile extends StatelessWidget {
     );
   }
 }
+
+// ── Caller actions on the top bar ─────────────────────────────────────────
+
+/// A button a caller adds to the player's top bar (Records, D-312: "Open in Studio", "Share"). [onTap] runs as is;
+/// the caller decides whether the player closes first.
+class VodAction {
+  const VodAction({required this.icon, required this.label, required this.onTap, this.id});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  /// Becomes the button's key (`vod.action.<id>`), for tests.
+  final String? id;
+}
+
+/// The glass pill of a [VodAction]: the icon, plus the label when [showLabel] (wide screens).
+class VodActionButton extends StatelessWidget {
+  const VodActionButton({super.key, required this.action, this.showLabel = false});
+
+  final VodAction action;
+  final bool showLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = action;
+    return Tooltip(
+      message: a.label,
+      child: Semantics(
+        button: true,
+        label: a.label,
+        excludeSemantics: true,
+        onTap: a.onTap,
+        child: InkResponse(
+          key: a.id == null ? null : ValueKey('vod.action.${a.id}'),
+          onTap: a.onTap,
+          radius: 26,
+          child: SizedBox(
+            height: 48,
+            child: Center(
+              child: Container(
+                height: 38,
+                constraints: const BoxConstraints(minWidth: 38),
+                padding: EdgeInsets.symmetric(horizontal: showLabel ? 12 : 0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(19),
+                  color: VodInk.ink(0.10),
+                  border: Border.all(color: VodInk.ink(0.18)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(a.icon, color: VodInk.textHigh, size: 18),
+                  if (showLabel) ...[
+                    const SizedBox(width: 6),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 120),
+                      child: Text(a.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: _w(12.5)),
+                    ),
+                  ],
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

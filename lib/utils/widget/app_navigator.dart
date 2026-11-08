@@ -40,6 +40,8 @@ import '../../features/shared/points/points_api.dart' show kPointsFeatureKey, po
 import '../../features/shared/points/points_wallet_page.dart' show PointsWalletPage;
 import '../../features/shared/records/records_api.dart' show kRecordsFeatureKey;
 import '../../features/shared/records/records_page.dart' show RecordsPage;
+import '../../features/shared/records/records_share.dart' show SharedRecordPage;
+import '../../features/shared/records/records_share_api.dart' show kRecordsShareFeatureKey;
 import '../../features/shared/rag/rag_admin_links.dart' deferred as rag_admin_links;
 import '../../features/shared/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
 import '../../features/shared/exam_engine/paper/exam_setup_wizard.dart' deferred as exam_setup_wizard;
@@ -281,6 +283,16 @@ class AppNavigator {
         }
         await nav.push(MaterialPageRoute(
             settings: const RouteSettings(name: '/records'), builder: (_) => RecordsPage(highlightId: targetId)));
+        return;
+      case 'records_shared': // someone shared a recording with me (D-312) → its player, or Shared with me without a token
+        final token = '${data['token'] ?? ''}'.trim();
+        if (AppConfig.disableList.contains(kRecordsFeatureKey) || AppConfig.disableList.contains(kRecordsShareFeatureKey)) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        await nav.push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/records/shared'),
+            builder: (_) => token.isEmpty || token == 'null' ? const RecordsPage(shared: true) : SharedRecordPage(token: token)));
         return;
       case 'live_lobby': // someone waits at the door of a room I host → the meeting / session with its lobby sheet
         await openLiveLobby(LiveRoomRef.parse(kind, targetId));

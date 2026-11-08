@@ -282,6 +282,7 @@
  "rag.assistant",
  "rag.learning",
  "rag.qa_admin",
+ "records.share",
  "register",
  "register.dob",
  "register.login_link",

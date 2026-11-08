@@ -6,6 +6,8 @@
 //   https://nextbrain.site/live/<token>                a live room's guest link (no account)
 //   https://nextbrain.site/s/<kind>/<id>               everything else: material · session · meeting · roadmap ·
 //                                                      teacher (by id) · course (an alias of /c/)
+//   https://nextbrain.site/s/record/<token>            a shared meeting recording (D-312): by the share's TOKEN, not
+//                                                      the record id, so "anyone with the link" means exactly that
 //   https://nextbrain.site/s/page/<pageId>?<params>    a page of the route registry (D-170, core/routing/app_routes)
 //
 // Root form on purpose: nginx sends a person on to the web app under /app/ (D-270), the phone apps claim `/s/` with
@@ -23,6 +25,9 @@ enum AppLinkKind {
   session,
   meeting,
   roadmap,
+
+  /// A shared recording (D-312): the link carries the share's token ([AppLink.token]).
+  record,
   page;
 
   /// The `/s/<kind>/` segment.
@@ -37,7 +42,7 @@ enum AppLinkKind {
 }
 
 class AppLink {
-  const AppLink._(this.kind, {this.id, this.pageId, this.params = const {}, this.ref});
+  const AppLink._(this.kind, {this.id, this.pageId, this.params = const {}, this.ref, this.token});
 
   /// A course (`/c/<id>`, with the sharer's id as `ref` for the share counter).
   const AppLink.course(int id, {int? ref}) : this._(AppLinkKind.course, id: id, ref: ref);
@@ -46,6 +51,12 @@ class AppLink {
   const AppLink.session(int id) : this._(AppLinkKind.session, id: id);
   const AppLink.meeting(int id) : this._(AppLinkKind.meeting, id: id);
   const AppLink.roadmap(int courseId) : this._(AppLinkKind.roadmap, id: courseId);
+
+  /// A shared recording by its share token (D-312).
+  const AppLink.record(String token) : this._(AppLinkKind.record, token: token);
+
+  /// What a record token may look like (the server makes 24 url-safe characters).
+  static final recordToken = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
 
   /// A page of the route registry by its stable id (`calendar`, `course` + {courseId: 12}, …).
   const AppLink.page(String pageId, [Map<String, String> params = const {}])
@@ -60,6 +71,9 @@ class AppLink {
   final Map<String, String> params;
   final int? ref;
 
+  /// [AppLinkKind.record] only.
+  final String? token;
+
   /// The in-app route of the link (what Flutter's deep linking hands to `onGenerateRoute`).
   String get route {
     switch (kind) {
@@ -68,6 +82,8 @@ class AppLink {
       case AppLinkKind.page:
         final path = '/s/page/${Uri.encodeComponent(pageId ?? '')}';
         return params.isEmpty ? path : Uri(path: path, queryParameters: params).toString();
+      case AppLinkKind.record:
+        return '/s/record/$token';
       default:
         return '/s/${kind.segment}/$id';
     }
@@ -94,6 +110,10 @@ class AppLink {
     if (segs.length != 3 || segs[0] != 's') return null;
     final kind = AppLinkKind.tryParse(segs[1]);
     if (kind == null) return null;
+    if (kind == AppLinkKind.record) {
+      final tok = segs[2];
+      return recordToken.hasMatch(tok) ? AppLink.record(tok) : null;
+    }
     if (kind == AppLinkKind.page) {
       final id = segs[2];
       if (!RegExp(r'^[a-z][a-z0-9_.]{0,63}$').hasMatch(id)) return null;

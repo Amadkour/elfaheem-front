@@ -3200,3 +3200,73 @@ Edit rows stay out of the meeting's own recordings list, so attendees only ever 
 **After a meeting.** When the meeting recorder's stop reaches the server (End for everyone, or a plain Stop) the app
 shows "Saving your recording to Records" with Open; the ready / failed notification now opens Records on the item
 (`related_type: live_recording`, push module `records`, AppNavigator case `records`) instead of the calendar.
+
+## D-312 — Records: play first, share with chosen people or by link, the Studio · 2026-11-08 · accepted
+
+**Play first.** A tap on a ready record opens the PLAYER, not the editor: the app's one course video player
+(`VideoPlayerScreen.fromLegacy` on the signed stream of D-311, through `RecordPlayerPage` in
+`lib/features/shared/records/records_share.dart`), so the owner sees the recording exactly as a student sees a lesson
+(controls, speed, gestures, fullscreen, screen protection). The player gained `actions: [VodAction]` — caller buttons
+on its top bar (`VodActionButton`, icons only below 720 px, the help button gives them its place below 480 px). Records
+puts **Open in Studio** (pops the player, opens the Studio) and **Share** (the sheet over the player) there; the item
+sheet has Play · Open in Studio · Share too. Why reuse instead of a records-only player: one player to keep right, and
+"like a student sees it" is literal.
+
+**Sharing** (`records_share_api.dart` pure, `records_share_parts.dart` plain values, `records_share.dart`; backend
+`services/records_share.py`, migration 0065 `record_shares` + `record_share_people`; kill switch `records.share`):
+- Two audiences: **Only people I choose** (signed in, on the list) or **Anyone with the link** (anyone signed in; the
+  chosen people are still notified and listed). No signed-out playback: recordings are meetings, and the playback
+  bytes flow through our server (D-311).
+- The link is `https://nextbrain.site/s/record/<token>` — D-307's scheme, kind `record`, but by the share's random
+  TOKEN, not the record id: "anyone with the link" then really means that (ids can be walked); stopping the share
+  kills the token and sharing again makes a new one. `AppLink.record(token)`; the apps already claim `/s/`.
+- People picker: the calendar invitee picker's people half (the same search rule `username_service.people_filter`,
+  the same rows), on the record's own reach — the people I know (my organizations, students of my courses, teachers
+  of my courses, the meeting's host and attendees, those already chosen) by name or @prefix, ANYONE else only by the
+  exact confirmed @username, a platform admin anyone. A record can go beyond my organizations, yet the platform's
+  directory is never searchable by name.
+- Newly chosen people get a notification (`record_shared`, `related_type: record_share`; push / tap module
+  `records_shared` with the token → `SharedRecordPage` → the player; AppNavigator case `records_shared`). The sheet
+  shows who it is shared with and whether they opened it, the views, Copy link / Share via (phones), Save, Stop
+  sharing.
+- Everyone not allowed gets the same 404 `record_not_found` (never "it exists but…"); every stream request re-checks
+  the share, so removing a person or stopping the share stops playback mid-way. Records › **Shared with me** (a tab)
+  lists the shares I am chosen for.
+- Previews never leak: the public / Open-Graph card of a people-only share is the generic "Recording" card; only an
+  anyone-with-the-link share shows its title and cover (the bot already holds the link). nginx needs the new location
+  `^/s/record/[A-Za-z0-9_-]{8,64}/?$` (owner action, `deploy/nginx/nextbrain.conf.example`).
+
+**The Studio** (`records_studio.dart` + plain values `records_studio_parts.dart`, replacing the D-311 editor):
+- A large preview on a dark stage with its own transport (play / pause, −5 / +5 s, current / total mm:ss, a
+  preview-speed chip that never changes the file), the **filmstrip timeline** below, the tools Trim · Cut a part ·
+  Split · Speed · Cover · Merge, each with one line saying what it does; a live summary ("New length 12:40", the two
+  parts of a split, the merge's total) or why it cannot be made; Undo / Start over of the pending selection (the last
+  50 states, a drag counts once); ONE primary button — "Save as new", or "Save and replace" when "Replace the
+  original" is picked (D-311's delete-after-success, confirmed first). Cover saves at once (no new item). Merge picks
+  other ready items, numbered in order after this one. The Speed tool previews at the chosen speed.
+- Filmstrip: the server makes ONE sprite of 24 frames (160×90, letterboxed) per record and drive file, cached on disk
+  (`POST …/frames` → ready / pending / unavailable, `GET …/stream/frames/<token>`), with ffmpeg reading the drive over
+  HTTP with input seeks (download fallback), so a long recording is never downloaded whole just to draw its strip.
+  The app stretches the sprite over the whole length (each tile = its slice of time, so zoom stays right), waits for
+  `job_updated{kind: record_frames}` with JobWatch while pending, and draws a tinted track (a shimmer while pending)
+  when there are no frames (audio, no ffmpeg, a failure). Trade-off: 24 frames are coarse on a 2 h recording at ×16 —
+  the strip is a guide, the preview is the truth.
+- **Time runs left → right in Arabic too**: media timelines do, and so does the player's own chrome; the transport
+  and the timeline are wrapped in an LTR Directionality, the panels around them follow the language.
+- Handles: trim shades what goes and frames what stays; cut stripes what goes in red; split is an accent marker with
+  two knobs; the playhead has a head on the ruler. 48 px grab zones; zoom ×1 – ×16 with a scroll that follows the
+  playhead (a drag pans when zoomed, the mouse wheel scrolls).
+- Keys (web / desktop, never while typing the name): Space, J / K / L, ← / →, I / O (start / end), S (split here),
+  Ctrl+Z.
+- The saved job stays in the Studio, inline (`StudioJobCard`, EventOrPoll on `job_updated{kind: recording}`): stage,
+  progress, then Play or Retry, "Another edit", "To Records". The Studio pops with every item it made or changed.
+- Wide (≥ 960 px): the editor on the left, a 400 px side panel (tools with their descriptions, the tool's controls,
+  the summary, save). Phones: one scrolling column and the tools as a bottom segmented bar.
+
+**Library polish.** Bigger covers with a play mark, a summary line (count · total length · in progress), the empty
+state names the Studio and sharing, tabs My recordings · Shared with me.
+
+Tests: `test/org/records_share_api_test.dart`, `test/ui/records_studio_layout_test.dart` (the layout harness on every
+tool, the job card, the share sheet / picker / list, the LTR timeline in Arabic), `test/ui/records_layout_test.dart`;
+backend `tests/org_v2/e2e_records_share.py`, `records_frames_check.py` (real ffmpeg, dev image). Contract
+`../back/FLUTTER_API_CHANGES.md` "Records: share + studio frames".

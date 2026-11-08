@@ -34,6 +34,7 @@ const kShareLinksKey = 'share.links';
       AppLinkKind.session => (t('حصة مباشرة', 'Live session'), Icons.live_tv_rounded),
       AppLinkKind.meeting => (t('اجتماع', 'Meeting'), Icons.groups_rounded),
       AppLinkKind.roadmap => (t('مسار تعلم', 'Learning path'), Icons.route_rounded),
+      AppLinkKind.record => (t('تسجيل', 'Recording'), Icons.video_library_rounded),
       AppLinkKind.page => (t('صفحة', 'Page'), Icons.web_rounded),
     };
 
