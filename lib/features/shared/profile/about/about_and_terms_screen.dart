@@ -70,7 +70,7 @@ bool _assistantAvailable(BuildContext context) {
 class TermsScreen extends StatefulWidget {
   const TermsScreen({super.key, this.privacy = false, this.canAsk});
 
-  /// Opened from "Privacy": the same content, introduced as the privacy policy and terms.
+  /// The privacy policy instead of the terms of service (D-308: its own document, GET /app-content/legal/privacy).
   final bool privacy;
 
   /// Offer the assistant (null = decide from the session and the kill switch).
@@ -93,7 +93,7 @@ class _TermsScreenState extends State<TermsScreen> {
     super.initState();
     _scroll.addListener(_queueSpy);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AboutTermsProvider>().loadTerms(context);
+      if (mounted) _load(context.read<AboutTermsProvider>());
     });
   }
 
@@ -155,24 +155,52 @@ class _TermsScreenState extends State<TermsScreen> {
 
   void _ask() => AppAssistant.ask(widget.privacy ? 'assistant_q_privacy'.tr : 'assistant_q_terms'.tr);
 
+  Future<void> _load(AboutTermsProvider p, {bool force = false}) =>
+      widget.privacy ? p.loadPrivacy(context, forceRefresh: force) : p.loadTerms(context, forceRefresh: force);
+
+  TermsPageModel? _doc(AboutTermsProvider p) => widget.privacy ? p.privacy : p.terms;
+
+  /// The other document (the privacy policy from the terms, and back), on top of this one.
+  void _openOther() => Navigator.of(context).push(MaterialPageRoute(
+        settings: RouteSettings(name: widget.privacy ? '/terms' : '/privacy'),
+        builder: (_) => TermsScreen(privacy: !widget.privacy, canAsk: widget.canAsk),
+      ));
+
+  Future<void> _copyLink(String url) async {
+    await Clipboard.setData(ClipboardData(text: url));
+    showAppNotice('legal_link_copied'.tr);
+  }
+
+  Future<void> _email(String to) async {
+    final uri = Uri(scheme: 'mailto', path: to);
+    try {
+      if (await launchUrl(uri)) return;
+    } catch (_) {}
+    await Clipboard.setData(ClipboardData(text: to));
+    showAppNotice('legal_email_copied'.tr);
+  }
+
   @override
   Widget build(BuildContext context) {
     context.watch<LangProvider>();
     final p = context.watch<AboutTermsProvider>();
-    if (p.terms != null && p.termsLang != AppConfig.lang && !p.isLoadingTerms) {
+    final doc = _doc(p);
+    final docLang = widget.privacy ? p.privacyLang : p.termsLang;
+    final busy = widget.privacy ? p.isLoadingPrivacy : p.isLoadingTerms;
+    if (doc != null && docLang != AppConfig.lang && !busy) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) p.loadTerms(context);
+        if (mounted) _load(p);
       });
     }
     final canAsk = widget.canAsk ?? _assistantAvailable(context);
-    final title = widget.privacy ? 'privacy'.tr : 'terms_and_conditions'.tr;
+    final title = widget.privacy ? 'privacy_policy'.tr : 'terms_of_service'.tr;
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: BasePage(
-        key: const ValueKey('terms'),
+        key: ValueKey(widget.privacy ? 'terms.privacy' : 'terms'),
         child: SafeArea(
           child: Column(children: [
-            ScreenAppBar(title: title, actions: canAsk && p.terms != null ? [AskAboutPageAction(onTap: _ask)] : null),
+            ScreenAppBar(title: title, actions: canAsk && doc != null ? [AskAboutPageAction(onTap: _ask)] : null),
             Expanded(child: _body(p, canAsk)),
           ]),
         ),
@@ -181,17 +209,19 @@ class _TermsScreenState extends State<TermsScreen> {
   }
 
   Widget _body(AboutTermsProvider p, bool canAsk) {
-    if (p.terms == null && p.termsError == null) return const ReadingSkeleton();
-    if (p.terms == null) {
+    final doc = _doc(p);
+    final error = widget.privacy ? p.privacyError : p.termsError;
+    if (doc == null && error == null) return const ReadingSkeleton();
+    if (doc == null) {
       return AppEmpty(
         icon: Icons.wifi_off_rounded,
         title: 'reading_error_title'.tr,
-        message: p.termsError,
+        message: error,
         actionLabel: 'about_retry'.tr,
-        onAction: () => p.loadTerms(context, forceRefresh: true),
+        onAction: () => _load(p, force: true),
       );
     }
-    final terms = p.terms!;
+    final terms = doc;
     if (terms.sections.isEmpty) {
       return AppEmpty(icon: Icons.description_outlined, title: 'reading_empty_title'.tr, message: 'terms_empty'.tr);
     }
@@ -225,10 +255,10 @@ class _TermsScreenState extends State<TermsScreen> {
       featureKey: 'terms.header',
       child: ReadingHero(
         icon: widget.privacy ? Icons.privacy_tip_outlined : Icons.gavel_rounded,
-        title: widget.privacy ? 'privacy'.tr : 'terms_and_conditions'.tr,
-        intro: widget.privacy ? 'privacy_intro'.tr : 'terms_intro'.tr,
+        title: terms.title.isNotEmpty ? terms.title : (widget.privacy ? 'privacy_policy'.tr : 'terms_of_service'.tr),
+        intro: terms.intro.isNotEmpty ? terms.intro : (widget.privacy ? 'privacy_intro'.tr : 'terms_intro'.tr),
         meta: [
-          if (updated.isNotEmpty) ReadingMetaPill(icon: Icons.update_rounded, label: '${'terms_last_updated'.tr} $updated'),
+          if (updated.isNotEmpty) ReadingMetaPill(icon: Icons.update_rounded, label: '${'legal_effective'.tr} $updated'),
           if (version.isNotEmpty) ReadingMetaPill(icon: Icons.tag_rounded, label: '${'about_version'.tr} $version'),
           ReadingMetaPill(icon: Icons.schedule_rounded, label: readingTr('reading_minutes', {'n': minutes})),
           ReadingMetaPill(icon: Icons.view_agenda_outlined, label: readingTr('terms_n_sections', {'n': sections.length})),
@@ -254,16 +284,32 @@ class _TermsScreenState extends State<TermsScreen> {
       ]),
     );
 
+    final highlights = terms.highlights.isEmpty
+        ? null
+        : ReadingHighlights(title: 'legal_at_a_glance'.tr, items: terms.highlights);
+
+    final email = terms.contactEmail;
     final footer = ParentComponent(
       featureKey: 'terms.footer',
-      child: ReadingNote(
-        icon: Icons.verified_user_outlined,
-        text: 'terms_footer'.tr,
-        caption: [
-          if (updated.isNotEmpty) '${'terms_last_updated'.tr} $updated',
-          if (version.isNotEmpty) '${'about_version'.tr} $version',
-        ].join('  ·  '),
-      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ReadingNote(
+          icon: Icons.verified_user_outlined,
+          text: widget.privacy ? 'privacy_footer'.tr : 'terms_footer'.tr,
+          caption: [
+            if (updated.isNotEmpty) '${'legal_effective'.tr} $updated',
+            if (version.isNotEmpty) '${'about_version'.tr} $version',
+          ].join('  ·  '),
+        ),
+        const SizedBox(height: 16),
+        ReadingLegalActions(
+          otherLabel: widget.privacy ? 'legal_read_terms'.tr : 'legal_read_privacy'.tr,
+          otherIcon: widget.privacy ? Icons.gavel_rounded : Icons.privacy_tip_outlined,
+          onOther: _openOther,
+          email: email.isEmpty ? null : email,
+          onEmail: email.isEmpty ? null : () => _email(email),
+          onCopyLink: terms.url.isEmpty ? null : () => _copyLink(terms.url),
+        ),
+      ]),
     );
 
     Widget padded(Widget child, {double top = 0, double bottom = 0}) => SliverPadding(
@@ -279,13 +325,14 @@ class _TermsScreenState extends State<TermsScreen> {
         return false;
       },
       child: AppRefresh(
-        onRefresh: () => p.loadTerms(context, forceRefresh: true),
+        onRefresh: () => _load(p, force: true),
         edgeOffset: _pinned,
         child: CustomScrollView(
           key: _viewport,
           controller: _scroll,
           slivers: [
-            padded(hero, top: 8, bottom: showChips ? 8 : 24),
+            padded(hero, top: 8, bottom: highlights != null ? 16 : (showChips ? 8 : 24)),
+            if (highlights != null) padded(highlights, bottom: showChips ? 8 : 24),
             if (showChips)
               SliverPersistentHeader(
                 pinned: true,

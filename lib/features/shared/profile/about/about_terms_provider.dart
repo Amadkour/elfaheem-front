@@ -98,9 +98,9 @@ class AboutTermsProvider extends BaseProvider {
     notifyListeners();
   }
 
-  // ── Fetch Terms ───────────────────────────────────────────────────────────
-  Future<void> loadTerms(BuildContext context,
-      {bool forceRefresh = false}) async {
+  // ── Fetch Terms / Privacy (D-308) ─────────────────────────────────────────
+  /// The terms of service: GET /api/v1/app-content/legal/terms (an older server without it: /terms).
+  Future<void> loadTerms(BuildContext context, {bool forceRefresh = false}) async {
     final lang = currentLang(context);
 
     if (_terms != null && !forceRefresh && _lastTermsLang == lang) return;
@@ -110,18 +110,10 @@ class AboutTermsProvider extends BaseProvider {
     notifyListeners();
 
     try {
-      final res = await _api.get(
-        '/api/v1/app-content/terms',
-        queryParams: {'lang': lang},
-      );
-      if (res != null && res is Map) {
-        _terms = TermsPageModel.fromJson(res as Map<String, dynamic>);
-        _lastTermsLang = lang;
-      }
+      _terms = await _fetchLegal('terms', lang, fallback: '/api/v1/app-content/terms');
+      _lastTermsLang = lang;
     } catch (e) {
-      termsError = lang == 'ar'
-          ? 'تعذّر تحميل البيانات، حاول مرة أخرى'
-          : 'Failed to load data, please try again';
+      termsError = _loadError(lang);
       log('loadTerms ❌ $e');
     } finally {
       isLoadingTerms = false;
@@ -129,13 +121,58 @@ class AboutTermsProvider extends BaseProvider {
     }
   }
 
+  TermsPageModel? _privacy;
+  bool isLoadingPrivacy = false;
+  String? privacyError;
+  String _lastPrivacyLang = '';
+
+  TermsPageModel? get privacy => _privacy;
+  String get privacyLang => _lastPrivacyLang;
+
+  /// The privacy policy: GET /api/v1/app-content/legal/privacy (public: guests and the sign-in screens read it).
+  Future<void> loadPrivacy(BuildContext context, {bool forceRefresh = false}) async {
+    final lang = currentLang(context);
+    if (_privacy != null && !forceRefresh && _lastPrivacyLang == lang) return;
+    isLoadingPrivacy = true;
+    privacyError = null;
+    notifyListeners();
+    try {
+      _privacy = await _fetchLegal('privacy', lang);
+      _lastPrivacyLang = lang;
+    } catch (e) {
+      privacyError = _loadError(lang);
+      log('loadPrivacy ❌ $e');
+    } finally {
+      isLoadingPrivacy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<TermsPageModel> _fetchLegal(String doc, String lang, {String? fallback}) async {
+    try {
+      final res = await _api.get('/api/v1/app-content/legal/$doc', queryParams: {'lang': lang});
+      if (res is Map) return TermsPageModel.fromLegal(Map<String, dynamic>.from(res));
+      throw const FormatException('legal: not an object');
+    } on ApiException catch (e) {
+      if (fallback == null || e.statusCode != 404) rethrow;
+      final res = await _api.get(fallback, queryParams: {'lang': lang});
+      if (res is Map) return TermsPageModel.fromJson(Map<String, dynamic>.from(res));
+      throw const FormatException('terms: not an object');
+    }
+  }
+
+  static String _loadError(String lang) =>
+      lang == 'ar' ? 'تعذّر تحميل البيانات، حاول مرة أخرى' : 'Failed to load data, please try again';
+
   /// Call this when the user switches the in-app language so cached
   /// pages are invalidated and re-fetched with the new language.
   void onLanguageChanged() {
     _lastAboutLang = '';
     _lastTermsLang = '';
+    _lastPrivacyLang = '';
     _about = null;
     _terms = null;
+    _privacy = null;
     notifyListeners();
   }
 }

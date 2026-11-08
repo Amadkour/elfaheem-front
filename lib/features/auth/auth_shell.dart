@@ -21,6 +21,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
+import '../shared/legal/legal_links.dart' show LegalLinksRow;
 import 'auth_widgets.dart';
 
 typedef AuthBodyBuilder = Widget Function(BuildContext context, bool isWide);
@@ -39,6 +40,7 @@ class AuthScaffold extends StatelessWidget {
     this.subtitle,
     this.showBack,
     this.header = true,
+    this.legalLinks = true,
   });
 
   /// Builds the page content. It is called again whenever the language changes,
@@ -61,6 +63,9 @@ class AuthScaffold extends StatelessWidget {
   /// false = no title block (the body draws its own heading).
   final bool header;
 
+  /// "Privacy policy · Terms of service" under the card (D-308; kill switch terms.links).
+  final bool legalLinks;
+
   @override
   Widget build(BuildContext context) {
     return Consumer<LangProvider>(
@@ -74,6 +79,7 @@ class AuthScaffold extends StatelessWidget {
           header: header,
           actions: (onHero) => AuthSwitches(onHero: onHero),
           body: builder,
+          footer: legalLinks ? const LegalLinksRow() : null,
         ),
       ),
     );
@@ -91,6 +97,7 @@ class AuthLayout extends StatelessWidget {
     this.showBack,
     this.header = true,
     this.actions,
+    this.footer,
   });
 
   final AuthBodyBuilder body;
@@ -100,6 +107,9 @@ class AuthLayout extends StatelessWidget {
   final bool? showBack;
   final bool header;
   final Widget Function(bool onHero)? actions;
+
+  /// Under the form card (the legal links).
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -154,10 +164,19 @@ class AuthLayout extends StatelessWidget {
                   constraints: BoxConstraints(maxWidth: maxWidth + 32),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: AuthEntrance(
-                      child: AuthCard(
-                        child: Builder(builder: (context) => body(context, false)),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AuthEntrance(
+                          child: AuthCard(
+                            child: Builder(builder: (context) => body(context, false)),
+                          ),
+                        ),
+                        if (footer != null) ...[
+                          const SizedBox(height: 12),
+                          footer!,
+                        ],
+                      ],
                     ),
                   ),
                 ),
@@ -214,24 +233,30 @@ class AuthLayout extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
                           child: ConstrainedBox(
                             constraints: BoxConstraints(maxWidth: maxWidth),
-                            child: AuthEntrance(
-                              child: AuthCard(
-                                padding: const EdgeInsets.fromLTRB(32, 32, 32, 28),
-                                child: Builder(
-                                  builder: (context) => Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (header) ...[
-                                        AuthHeader(title: title, subtitle: subtitle),
-                                        const SizedBox(height: 28),
+                            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              AuthEntrance(
+                                child: AuthCard(
+                                  padding: const EdgeInsets.fromLTRB(32, 32, 32, 28),
+                                  child: Builder(
+                                    builder: (context) => Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (header) ...[
+                                          AuthHeader(title: title, subtitle: subtitle),
+                                          const SizedBox(height: 28),
+                                        ],
+                                        body(context, true),
                                       ],
-                                      body(context, true),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                              if (footer != null) ...[
+                                const SizedBox(height: 16),
+                                footer!,
+                              ],
+                            ]),
                           ),
                         ),
                       ),

@@ -207,10 +207,58 @@ class TermsPageModel {
   final TermsMetaModel? meta;
   final List<TermsSectionModel> sections;
 
+  /// The legal documents (D-308, GET /api/v1/app-content/legal/{doc}) also carry these; the older /terms does not.
+  final String title;
+  final String intro;
+  final List<String> highlights;
+  final String url;
+  final String contactEmail;
+
   const TermsPageModel({
     this.meta,
     this.sections = const [],
+    this.title = '',
+    this.intro = '',
+    this.highlights = const [],
+    this.url = '',
+    this.contactEmail = '',
   });
+
+  /// A legal document in one language: `{doc, version, effective_label, title, intro, highlights, sections: [{id,
+  /// icon_name, title, body, order}], url, contact_email}` (string section ids become their position).
+  factory TermsPageModel.fromLegal(Map<String, dynamic> j) {
+    final raw = j['sections'] is List ? j['sections'] as List : const [];
+    final sections = <TermsSectionModel>[];
+    for (final e in raw) {
+      if (e is! Map) continue;
+      final title = '${e['title'] ?? ''}'.trim();
+      final body = '${e['body'] ?? ''}'.trim();
+      if (title.isEmpty && body.isEmpty) continue;
+      sections.add(TermsSectionModel(
+        id: sections.length + 1,
+        iconName: '${e['icon_name'] ?? 'description'}',
+        title: title,
+        body: body,
+        order: sections.length + 1,
+      ));
+    }
+    final label = '${j['effective_label'] ?? j['effective_date'] ?? ''}';
+    final version = '${j['version'] ?? ''}';
+    return TermsPageModel(
+      meta: label.isEmpty && version.isEmpty
+          ? null
+          : TermsMetaModel(id: 0, lastUpdated: label, version: version.isEmpty ? null : version),
+      sections: sections,
+      title: '${j['title'] ?? ''}',
+      intro: '${j['intro'] ?? ''}',
+      highlights: [
+        for (final h in (j['highlights'] is List ? j['highlights'] as List : const []))
+          if ('$h'.trim().isNotEmpty) '$h'.trim(),
+      ],
+      url: '${j['url'] ?? ''}',
+      contactEmail: '${j['contact_email'] ?? ''}',
+    );
+  }
 
   factory TermsPageModel.fromJson(Map<String, dynamic> j) => TermsPageModel(
     meta: j['meta'] != null

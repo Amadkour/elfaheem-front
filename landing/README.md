@@ -26,6 +26,8 @@ page fetches them in the browser and shows "—" until they arrive.
 | --- | --- |
 | `/` | `dist/index.html`: language chooser. First forwards legacy app URLs (`#/…` hash, installed PWA) to `/app/`, then redirects to `/ar/` or `/en/` (saved choice, else browser language, else Arabic) |
 | `/ar/`, `/en/` | the landing (`src/components/Landing.astro`); the `#/` hash forward is also in their `<head>` |
+| `/privacy/`, `/terms/` | the Privacy policy / Terms of service in English (`src/components/LegalPage.astro`, D-308): the URLs given to Google's OAuth verification and the stores, real HTML |
+| `/ar/privacy/`, `/en/privacy/`, `/ar/terms/`, `/en/terms/` | the same pages per language. Text: `src/content/legal/*.json`, a copy of the backend's `data/legal/` (`back/scripts/contract/export_legal.py --front <front>`); with `LANDING_API_ORIGIN` the build reads the live, possibly edited text |
 | `/sitemap.xml`, `/robots.txt`, `/og.png`, icons | `public/` |
 | `/app/…` | the Flutter web build (login, explore, register, start/institution) |
 | `/api/api/v1/public/landing/{stats,options,match,highlights}` | backend, same origin, plain `fetch`, 4 s timeout, fails soft. On another host (Firebase Hosting) set `PUBLIC_LANDING_API_BASE=https://nextbrain.site` at build time (absolute origin, no trailing slash) so every landing call goes there; `/app/...` links stay relative |

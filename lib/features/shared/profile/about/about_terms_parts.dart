@@ -11,6 +11,8 @@
 //   ReadingSectionCard       one numbered section: icon, title, body in reading typography
 //   ReadingBody              the body blocks (respects DisplaySettings reading spacing through appText)
 //   ReadingNote              the quiet closing note (agreement, last update)
+//   ReadingHighlights        a legal document's "At a glance" points (D-308)
+//   ReadingLegalActions      the legal pages' closing actions: the other document · email us · copy the link
 //   ReadingAskCard           "Something unclear? Ask the assistant" card
 //   AskAboutPageChip         the floating "Ask about this page" pill (collapses to the bot disc while scrolling down)
 //   AskAboutPageAction       the app-bar bot button
@@ -25,6 +27,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_kit.dart' show appText, AppShimmer, AppSkeletonBox;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace, AppTouch;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 import 'about_terms_model.dart';
@@ -639,6 +642,143 @@ class ReadingNote extends StatelessWidget {
             ],
           ]),
         ),
+      ]),
+    );
+  }
+}
+
+/// A legal document's "At a glance" card (D-308): the few promises that matter most, each with a check.
+class ReadingHighlights extends StatelessWidget {
+  const ReadingHighlights({super.key, required this.title, required this.items});
+
+  final String title;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = appInk(context, c.primary);
+    return LayoutBuilder(builder: (context, box) {
+      final two = box.maxWidth >= 640 && items.length > 1;
+      final pad = box.maxWidth >= 560 ? AppSpace.lg : AppSpace.md + 4;
+      final cells = [
+        for (final t in items)
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              width: 24,
+              height: 24,
+              margin: const EdgeInsets.only(top: 1),
+              decoration: BoxDecoration(color: c.success.withValues(alpha: c.isDark ? 0.22 : 0.12), shape: BoxShape.circle),
+              child: Icon(Icons.check_rounded, size: 16, color: appInk(context, c.success)),
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(t, style: appText(14.5, w: FontWeight.w500, c: c.textDark, h: 1.6))),
+          ]),
+      ];
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(pad),
+        decoration: BoxDecoration(
+          color: c.primary.withValues(alpha: c.isDark ? 0.12 : 0.05),
+          borderRadius: BorderRadius.circular(c.radiusMedium),
+          border: Border.all(color: c.primary.withValues(alpha: c.isDark ? 0.30 : 0.16)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.auto_awesome_rounded, size: 18, color: ink),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(title, style: appText(15, w: FontWeight.w700, c: c.textDark, h: 1.3)),
+              ),
+            ),
+          ]),
+          const SizedBox(height: AppSpace.md),
+          if (two)
+            for (var i = 0; i < cells.length; i += 2) ...[
+              if (i > 0) const SizedBox(height: AppSpace.md),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: cells[i]),
+                const SizedBox(width: AppSpace.lg),
+                Expanded(child: i + 1 < cells.length ? cells[i + 1] : const SizedBox.shrink()),
+              ]),
+            ]
+          else
+            for (var i = 0; i < cells.length; i++) ...[
+              if (i > 0) const SizedBox(height: AppSpace.sm),
+              cells[i],
+            ],
+        ]),
+      );
+    });
+  }
+}
+
+/// The legal pages' closing actions: open the other document, email us, copy the page's web link. Plain values.
+class ReadingLegalActions extends StatelessWidget {
+  const ReadingLegalActions({
+    super.key,
+    required this.otherLabel,
+    required this.otherIcon,
+    required this.onOther,
+    this.email,
+    this.onEmail,
+    this.onCopyLink,
+  });
+
+  final String otherLabel;
+  final IconData otherIcon;
+  final VoidCallback onOther;
+  final String? email;
+  final VoidCallback? onEmail;
+  final VoidCallback? onCopyLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = appInk(context, c.primary);
+    Widget action(IconData icon, String label, VoidCallback onTap, {bool primary = false}) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
+          child: primary
+              ? FilledButton.icon(
+                  onPressed: onTap,
+                  icon: Icon(icon, size: 18),
+                  label: Text(label, style: appText(14, w: FontWeight.w600, c: c.onHero)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: c.primary,
+                    minimumSize: const Size(AppTouch.min, AppTouch.min),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + 4),
+                    shape: const StadiumBorder(),
+                  ),
+                )
+              : OutlinedButton.icon(
+                  onPressed: onTap,
+                  icon: Icon(icon, size: 18, color: ink),
+                  label: Text(label, style: appText(14, w: FontWeight.w600, c: ink)),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(AppTouch.min, AppTouch.min),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + 4),
+                    side: BorderSide(color: c.divider),
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+        );
+    return ReadingSurface(
+      padding: const EdgeInsets.all(AppSpace.md + 4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('legal_questions_title'.tr, style: appText(16, w: FontWeight.w700, c: c.textDark, h: 1.35)),
+        const SizedBox(height: AppSpace.xxs),
+        Text(
+          email == null ? 'legal_questions_body'.tr : '${'legal_questions_body'.tr} $email',
+          style: appText(13.5, w: FontWeight.w500, c: c.textMedium, h: 1.6),
+        ),
+        const SizedBox(height: AppSpace.md),
+        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
+          if (onEmail != null) action(Icons.mail_outline_rounded, 'legal_email_us'.tr, onEmail!, primary: true),
+          action(otherIcon, otherLabel, onOther),
+          if (onCopyLink != null) action(Icons.link_rounded, 'legal_copy_link'.tr, onCopyLink!),
+        ]),
       ]),
     );
   }

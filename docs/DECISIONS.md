@@ -2845,3 +2845,29 @@ The core reads the form because it holds the Google token; the Exam Engine impor
 through the Excel import's row checks. What has no engine type (scale, date, time) is reported, never dropped silently.
 A choice question without a correct answer is refused by row, and the preview says so first. Images are not copied,
 because a Forms image URL expires. Forms' responses are not imported.
+
+## D-308 — Privacy policy and terms of service as versioned legal documents · 2026-11-08 · accepted
+
+The app had one "Privacy & terms" page that showed the terms sections under two names, and the website had no
+/privacy at all (Google's OAuth verification rejected it for "insufficient content"). Now there are two documents,
+`privacy` and `terms`, written once in Arabic and English and shipped as versioned files in the backend
+(`data/legal/<doc>.json`: version, effective date, intro, "At a glance" points, sections). The super admin may replace
+either whole document from About & terms → Privacy & terms; the edit is stored in the AppSetting key `legal.<doc>`
+(no table, no migration) and "Restore default" removes it, so a newer shipped version shows again. Public read:
+`GET /api/v1/app-content/legal/{doc}` (`?lang=ar|en|both`).
+
+- **Consolidated, not replaced.** The older terms_meta / terms_sections rows stay (installed app versions and the
+  assistant's sync read `GET /app-content/terms`); saving or restoring the terms rewrites them from the document, and
+  their editor stays as "Terms (older apps)". The app's TermsScreen, the sign-up sheet and the assistant all read the
+  new documents; the privacy policy is also indexed for the app assistant.
+- **Everyone can read them, before signing in.** Routes `/privacy` and `/terms` (no guard), a "Privacy & terms"
+  group on every role's settings page, links under every auth card (kill switch `terms.links`) and a privacy link in
+  the sign-up agreement row.
+- **The website serves real HTML.** The landing builds `/privacy/`, `/terms/` (English, the URLs given to Google and
+  the stores) and `/ar|en/privacy|terms/` from a bundled copy (`landing/src/content/legal/`, refreshed by
+  `back/scripts/contract/export_legal.py`), or from the live document when the build has `LANDING_API_ORIGIN`.
+  `build_landing.sh` refuses to swap in a build whose legal pages are missing or lack the Limited Use sentence.
+  Trade-off: a super admin's edit reaches the website only at its next build.
+- **Open points for the owner.** Governing law is written as "the law applicable where DoubleY operates" until the
+  owner names a country; the retention periods (14-day deletion, 3-day export copy) follow the code, the 12-month
+  security log and 90-day backup windows are commitments to keep.
