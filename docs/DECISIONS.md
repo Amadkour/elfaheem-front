@@ -3481,3 +3481,18 @@ Data: ONE revision `0066_studio_materials_guests` (`material_edits`, `record_sha
 image); app `test/org/records_guests_api_test.dart`, `test/ui/records_guests_layout_test.dart`. Not yet seen in a real
 browser against the local stack.
 
+
+## D-316 — A material card has ONE ⋯; the Studio is left with one pop (2026-11-08)
+
+A teacher's material card carried separate Studio, Share, Settings and Delete icons. They are now one ⋯
+(`MaterialMoreButton`) that opens `MaterialOptionsSheet` (`components/material_tile_parts.dart`): the material on top,
+then Open in Studio (videos) · Edit details and Share lesson link · Delete apart, each with a line saying what it does.
+Captions stay on the card and so does the drag handle, because the first shows a live job status and the second has to
+be grabbed. The card is `_MaterialCardShell`: raised, ink + hover, the type's colour on its start edge, the number on
+the corner of the type tile.
+
+Leaving the Studio: `MaterialStudioPage` and the `RecordStudioPage` inside it each had a `PopScope` that popped, so one
+Back closed the Studio AND the course page under it, the second pop carrying a List into a `bool` route. The inner page
+now owns the only PopScope and pops `popResult()`. The player's Open in Studio no longer pops then pushes from the tile's
+context: the navigator and the reload are read when the tile is tapped, and `pushReplacement` swaps the player for the
+Studio in one step. Tests: `test/ui/material_studio_nav_test.dart`, `test/ui/material_tile_layout_test.dart`.

@@ -49,7 +49,12 @@ class RecordStudioPage extends StatefulWidget {
     this.source,
     this.jobActions,
     this.libraryLabel,
+    this.popResult,
   });
+
+  /// What the page pops with (null: every item it made / changed). The material Studio pops with "changed": the
+  /// page keeps the ONE PopScope, so a Back never pops twice (and the route underneath with it).
+  final Object? Function()? popResult;
 
   final RecordItem item;
 
@@ -106,6 +111,8 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
   bool _titleTouched = false;
   late final TextEditingController _title = TextEditingController(text: _defaultTitle());
   final _focus = FocusNode(debugLabel: 'records-studio');
+
+  Object? _popValue() => widget.popResult != null ? widget.popResult!() : List<RecordItem>.of(_made);
 
   @override
   void initState() {
@@ -593,7 +600,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
               onRetry: _retryJob,
               onPlay: widget.onPlay == null ? null : (r) => widget.onPlay!(context, r),
               onAgain: _again,
-              onLibrary: () => Navigator.of(context).pop(List<RecordItem>.of(_made)),
+              onLibrary: () => Navigator.of(context).pop(_popValue()),
               actionsFor: widget.jobActions == null ? null : (r) => widget.jobActions!(context, r),
               drafts: _src.drafts,
               libraryLabel: widget.libraryLabel,
@@ -603,7 +610,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) Navigator.of(context).pop(List<RecordItem>.of(_made));
+        if (!didPop) Navigator.of(context).pop(_popValue());
       },
       child: BasePage(
         key: const ValueKey('records.studio'),

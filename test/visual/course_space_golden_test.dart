@@ -26,6 +26,7 @@ import 'package:flutter_education_app/features/student/models.dart' show CourseM
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
+import 'package:flutter_education_app/features/shared/session/material/components/material_tile_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_education_app/features/shared/course_profile/course_profile_hub.dart';
@@ -691,6 +692,8 @@ void main() {
   testWidgets('course student real pieces', (t) => _render(t, 'course_student_real', _studentReal));
   testWidgets('course teacher real pieces', (t) => _render(t, 'course_teacher_real', _teacherReal));
   testWidgets('course materials', (t) => _render(t, 'course_materials', _materials));
+  testWidgets('course materials teacher', (t) => _render(t, 'course_materials_teacher', () => _materials(teacher: true)));
+  testWidgets('course material options', (t) => _render(t, 'course_material_options', _materialOptions));
   testWidgets('course teacher empty', (t) => _render(t, 'course_teacher_empty', _teacherEmpty));
   testWidgets('course profile tabs', (t) async {
     SharedPreferences.setMockInitialValues({});
@@ -703,7 +706,9 @@ void main() {
 
 /// N9: a session's files as the student sees them — one done mark, the recording titled "Session recording", stars
 /// only where there are ratings.
-Widget _materials() {
+Widget _materials({bool teacher = false}) {
+  // the drafts panel above a teacher's list needs the server (and leaves a timer behind): not in this render
+  AppConfig.disableList = teacher ? ['materials.studio'] : [];
   final session = SessionModel.fromJson({
     'id': 11,
     'course_id': 42,
@@ -733,9 +738,9 @@ Widget _materials() {
         session: session,
         isLoading: false,
         columns: 1,
-        isTeacher: false,
+        isTeacher: teacher,
         materials: [
-          m(1, 'نن — تسجيل الحصة', 'recorded', done: true, size: 15938355),
+          m(1, 'نن — تسجيل الحصة', 'recorded', done: !teacher, size: 15938355),
           m(2, 'نن — تسجيل الحصة (لقاء 2)', 'recorded', size: 9938355),
           m(3, tr('ملخص المحاضرة الأولى', 'Lecture 1 summary'), 'document', done: true, size: 238355, rate: {'average': 4.5, 'total': 12, 'ratings': []}),
           m(4, tr('رابط المراجع', 'Further reading'), 'link'),
@@ -744,3 +749,34 @@ Widget _materials() {
     ),
   );
 }
+
+/// D-316: what the ⋯ on a teacher's material card opens.
+Widget _materialOptions() => Builder(
+      builder: (context) => Align(
+        alignment: Alignment.bottomCenter,
+        child: Material(
+          color: context.colors.cardBg,
+          child: MaterialOptionsSheet(
+            title: tr('المحاضرة الأولى — مقدمة في الفيزياء', 'Lecture 1 — Introduction to physics'),
+            icon: MaterialIconWidget(icon: Icons.smart_display_rounded, color: context.colors.primary, isCompleted: false, size: 44),
+            color: context.colors.primary,
+            facts: [tr('فيديو', 'Video'), '152.4 MB', '1:02:33'],
+            groups: [
+              [
+                MaterialOption(
+                  id: 'studio',
+                  icon: Icons.movie_edit,
+                  label: tr('فتح في الاستوديو', 'Open in Studio'),
+                  hint: tr('قصّ، اقتطاع، تقسيم، سرعة، دمج — كمسودة لا يراها الطلاب حتى تنشرها', "Trim, cut, split, speed, merge — as a draft students don't see until you publish it"),
+                ),
+              ],
+              [
+                MaterialOption(id: 'edit', icon: Icons.tune_rounded, label: tr('تعديل المادة', 'Edit material'), hint: tr('الاسم والوصف والترتيب', 'Name, description and order')),
+                MaterialOption(id: 'share', icon: Icons.ios_share_rounded, label: tr('مشاركة رابط الدرس', 'Share lesson link'), hint: tr('يفتحه طلاب المقرر بعد تسجيل الدخول', 'The course students open it after signing in')),
+              ],
+            ],
+            danger: MaterialOption(id: 'delete', icon: Icons.delete_outline_rounded, label: tr('حذف المادة', 'Delete material'), danger: true),
+          ),
+        ),
+      ),
+    );

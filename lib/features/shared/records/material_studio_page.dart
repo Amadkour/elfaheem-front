@@ -33,12 +33,17 @@ bool get materialStudioOn => !AppConfig.disableList.contains(kMaterialsStudioFea
 /// Bumped every time a Studio closes: the drafts panels load again.
 final materialStudioRevision = ValueNotifier<int>(0);
 
-Future<bool> openMaterialStudio(BuildContext context, {required int sessionId, required int materialId, MaterialStudioApi? api}) async {
+/// Opens the Studio on [navigator] (null: the one of [context]). [replaceTop]: the top route (the player whose Open in
+/// Studio was tapped) is REPLACED by the Studio in one step: no pop-then-push from a context the pop may take away.
+Future<bool> openMaterialStudio(BuildContext? context,
+    {required int sessionId, required int materialId, MaterialStudioApi? api, NavigatorState? navigator, bool replaceTop = false}) async {
   if (!materialStudioOn) return false;
-  final changed = await Navigator.of(context).push<bool>(MaterialPageRoute(
+  final nav = navigator ?? Navigator.of(context!);
+  final route = MaterialPageRoute<bool>(
     settings: const RouteSettings(name: '/materials/studio'),
     builder: (_) => MaterialStudioPage(sessionId: sessionId, materialId: materialId, api: api),
-  ));
+  );
+  final changed = await (replaceTop ? nav.pushReplacement<bool, Object?>(route) : nav.push<bool>(route));
   materialStudioRevision.value++;
   return changed == true;
 }
@@ -214,22 +219,17 @@ class _MaterialStudioPageState extends State<MaterialStudioPage> {
   Widget build(BuildContext context) {
     final o = _open;
     if (o != null) {
-      return PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) Navigator.of(context).pop(_changed);
+      return RecordStudioPage(
+        item: o.source,
+        others: o.others,
+        source: _src,
+        jobActions: _jobActions,
+        popResult: () => _changed, // the Studio's own PopScope pops with it: ONE pop per Back
+        libraryLabel: t('إلى مواد الحصة', 'To the session'),
+        onPlay: (ctx, r) {
+          final d = _src.latest[r.id];
+          if (d != null) playMaterialDraft(ctx, d, _api);
         },
-        child: RecordStudioPage(
-          item: o.source,
-          others: o.others,
-          source: _src,
-          jobActions: _jobActions,
-          libraryLabel: t('إلى مواد الحصة', 'To the session'),
-          onPlay: (ctx, r) {
-            final d = _src.latest[r.id];
-            if (d != null) playMaterialDraft(ctx, d, _api);
-          },
-        ),
       );
     }
     return BasePage(

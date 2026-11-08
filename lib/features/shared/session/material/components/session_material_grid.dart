@@ -10,7 +10,6 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,6 +20,7 @@ import '../../../../../core/api_client.dart';
 import '../../../../../core/app_time.dart';
 import '../../../../../core/live/event_wait.dart';
 import '../../../../../design/app_kit.dart' show showAppSheet, AppSheetHeader, AppBanner, appText, AppListSkeleton;
+import '../../../../../design/app_tokens.dart';
 import '../../../../../utils/helpers.dart';
 import '../../../../../utils/widget/rating_widget.dart';
 import '../../../../student/courses/details/course_detail_provider.dart';
@@ -32,6 +32,7 @@ import '../../../records/material_studio_page.dart'
     show MaterialStudioDraftsPanel, materialStudioLabel, materialStudioOn, openMaterialStudio;
 import '../session_material_model.dart';
 import 'material_file_style.dart';
+import 'material_tile_parts.dart';
 import 'material_title.dart';
 import 'session_exam_tile.dart';
 import 'session_shared_widgets.dart';
@@ -263,25 +264,14 @@ class SessionMaterialGrid extends StatelessWidget {
 
     return Directionality(
       textDirection: Helpers.textDirOf(displayName),
-      child: GestureDetector(
+      child: _MaterialCardShell(
+        key: ValueKey('material.card.${m.id}'),
         onTap: isRecording
             ? null
             : () => _onTapMaterial(context, m, isCompleted),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: context.colors.cardBg,
-            borderRadius: BorderRadius.circular(12),
-            // calm hairline; "done" is the check badge, not a heavy green frame
-            border: Border.all(
-              color: isCompleted
-                  ? context.colors.success.withValues(alpha: 0.22)
-                  : context.colors.divider,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Column(
+        completed: isCompleted,
+        accent: color,
+        child: Column(
               children: [
                 // ── Top accent strip (recording only) ───────────────────────
                 if (isRecording)
@@ -303,29 +293,13 @@ class SessionMaterialGrid extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Leading icon ────────────────────────────────────────
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.rectangle,
-                          borderRadius: BorderRadius.circular(10),
-                          border: BoxBorder.all(color: context.colors.primary.withValues(alpha: 0.25)),
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.fromLTRB(5, 5, 5, 0),
-                              alignment: Alignment.bottomCenter,
-
-                              child: Text(
-                                (index < 10 ? '0' : '') + index.toString(),
-                                textAlign: TextAlign.center,
-
-                                style: context.colors.h4.copyWith(
-                                  color: context.colors.primary,
-                                ),
-                              ),
-                            ),
-                            isRecording
+                      // ── Leading: the type tile, its number on the corner (D-316) ──
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(top: 6, start: 4),
+                            child: isRecording
                                 ? _RecordingSpinnerIcon(color: color)
                                 : MaterialIconWidget(
                                     icon: icon,
@@ -334,12 +308,14 @@ class SessionMaterialGrid extends StatelessWidget {
                                     isCompleted: false,
                                     badge: fileStyle?.badge,
                                     badgeTextColor: fileStyle?.badgeTextColor,
+                                    size: 44,
                                   ),
-                          ],
-                        ),
+                          ),
+                          PositionedDirectional(top: 0, start: 0, child: MaterialIndexBadge(index: index)),
+                        ],
                       ),
 
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AppSpace.sm),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,32 +448,30 @@ class SessionMaterialGrid extends StatelessWidget {
                                   onManage: (generate) =>
                                       _showCaptionsDialog(context, m, onGenerate: generate),
                                 ),
-                              if ((m.type == SessionMaterialType.video ||
-                                      m.type == SessionMaterialType.recorded) &&
-                                  materialStudioOn)
-                                _iconBtn(
-                                  icon: Icons.movie_edit,
-                                  color: context.colors.textMedium,
-                                  tooltip: materialStudioLabel,
-                                  onTap: () => _openStudio(context, m),
-                                ),
-                              if (!AppConfig.disableList.contains(kShareLinksKey))
-                                _iconBtn(
-                                  icon: Icons.ios_share_rounded,
-                                  color: context.colors.textMedium,
-                                  tooltip: _shareTip,
-                                  onTap: () => shareAppLink(context, AppLink.material(m.id), title: m.name, subtitle: session.name),
-                                ),
-                              _iconBtn(
-                                icon: CupertinoIcons.settings_solid,
-                                color: context.colors.textMedium,
-                                onTap: () => _showEditDialog(context, m),
-                              ),
                             ],
-                            _iconBtn(
-                              icon: CupertinoIcons.minus_circle_fill,
-                              color: context.colors.danger,
-                              onTap: () => _showDeleteDialog(context, m),
+                            // Studio · Edit details · Share · Delete: ONE ⋯ (D-316)
+                            MaterialMoreButton(
+                              key: ValueKey('material.more.${m.id}'),
+                              onTap: () => _showOptions(
+                                context,
+                                m,
+                                icon: isRecording
+                                    ? _RecordingSpinnerIcon(color: color)
+                                    : MaterialIconWidget(
+                                        icon: icon,
+                                        color: color,
+                                        isCompleted: false,
+                                        badge: fileStyle?.badge,
+                                        badgeTextColor: fileStyle?.badgeTextColor,
+                                        size: 44,
+                                      ),
+                                color: color,
+                                facts: [
+                                  fileStyle?.label ?? labelKey.tr,
+                                  if (m.sizeLabel.isNotEmpty && !isRecording) m.sizeLabel,
+                                  if (m.durationLabel.isNotEmpty && !isRecording) m.durationLabel,
+                                ],
+                              ),
                             ),
                           ],
                         )
@@ -550,8 +524,6 @@ class SessionMaterialGrid extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
       ),
     );
   }
@@ -593,14 +565,16 @@ class SessionMaterialGrid extends StatelessWidget {
       SessionMaterialType.video,
       SessionMaterialType.recorded,
     ].contains(m.type)) {
-      Navigator.of(context).push(
+      final nav = Navigator.of(context); // read now: the tile under the player may be rebuilt or gone later
+      final reload = _reloader(context);
+      nav.push(
         MaterialPageRoute<void>(
           builder: (_) => VideoPlayerScreen(
             autoPlay: true,
             startFullScreen: false,
             material: m,
             playlist: materials,
-            actionsFor: isTeacher && materialStudioOn ? (cur) => _studioActions(context, cur) : null,
+            actionsFor: isTeacher && materialStudioOn ? (cur) => _studioActions(nav, reload, cur) : null,
           ),
         ),
       );
@@ -631,49 +605,103 @@ class SessionMaterialGrid extends StatelessWidget {
 
   // ── Studio (D-315) ─────────────────────────────────────────────────────────
 
-  Future<void> _openStudio(BuildContext context, SessionMaterialModel m) async {
-    final changed = await openMaterialStudio(context, sessionId: m.sessionId == 0 ? session.id : m.sessionId, materialId: m.id);
-    if (changed && context.mounted) _reloadMaterials(context);
+  /// Opens the Studio on [nav]. [replaceTop]: called from the player, which the Studio replaces in one step.
+  Future<void> _openStudio(NavigatorState nav, VoidCallback? reload, SessionMaterialModel m, {bool replaceTop = false}) async {
+    final changed = await openMaterialStudio(null,
+        navigator: nav, replaceTop: replaceTop, sessionId: m.sessionId == 0 ? session.id : m.sessionId, materialId: m.id);
+    if (changed) reload?.call();
   }
 
-  void _reloadMaterials(BuildContext context) {
+  void _reloadMaterials(BuildContext context) => _reloader(context)?.call();
+
+  VoidCallback? _reloader(BuildContext context) {
     try {
-      context.read<TeacherCourseScreenProvider>().reloadMaterials(session);
-    } catch (_) {/* opened outside the teacher's course page: nothing to reload */}
+      final p = context.read<TeacherCourseScreenProvider>();
+      return () => p.reloadMaterials(session);
+    } catch (_) {
+      return null; // opened outside the teacher's course page: nothing to reload
+    }
   }
 
-  /// The player's Open in Studio for a video / recorded lecture (pops the player first).
-  List<VodAction> _studioActions(BuildContext context, SessionMaterialModel cur) {
+  /// The player's Open in Studio for a video / recorded lecture: the Studio takes the player's place.
+  List<VodAction> _studioActions(NavigatorState nav, VoidCallback? reload, SessionMaterialModel cur) {
     if (cur.id <= 0 || !(cur.type == SessionMaterialType.video || cur.type == SessionMaterialType.recorded)) return const [];
     return [
       VodAction(
         id: 'studio',
         icon: Icons.movie_edit,
         label: materialStudioLabel,
-        onTap: () {
-          Navigator.of(context).pop();
-          _openStudio(context, cur);
-        },
+        onTap: () => _openStudio(nav, reload, cur, replaceTop: true),
       ),
     ];
   }
 
-  // ── Icon button helper ─────────────────────────────────────────────────────
+  // ── Options (D-316): Studio · Edit details · Share · Delete behind ONE ⋯ ─────
 
-  Widget _iconBtn({
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-    String? tooltip,
-  }) {
-    final btn = GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Icon(icon, size: 23, color: color),
+  Future<void> _showOptions(BuildContext context, SessionMaterialModel m,
+      {required Widget icon, required Color color, required List<String> facts}) async {
+    final isRecording = m.type == SessionMaterialType.recording;
+    final isVideo = m.type == SessionMaterialType.video || m.type == SessionMaterialType.recorded;
+    final ar = AppConfig.lang == 'ar';
+    String tt(String a, String e) => ar ? a : e;
+    final nav = Navigator.of(context);
+    final reload = _reloader(context);
+    final id = await showAppSheet<String>(
+      context,
+      (_) => MaterialOptionsSheet(
+        title: isRecording ? 'recording_in_progress'.tr : materialTitle(m.name, recorded: m.type == SessionMaterialType.recorded),
+        icon: icon,
+        color: color,
+        facts: facts,
+        groups: [
+          if (!isRecording && isVideo && materialStudioOn)
+            [
+              MaterialOption(
+                id: 'studio',
+                icon: Icons.movie_edit,
+                label: materialStudioLabel,
+                hint: tt('قصّ، اقتطاع، تقسيم، سرعة، دمج — كمسودة لا يراها الطلاب حتى تنشرها',
+                    "Trim, cut, split, speed, merge — as a draft students don't see until you publish it"),
+              ),
+            ],
+          if (!isRecording)
+            [
+              MaterialOption(
+                id: 'edit',
+                icon: Icons.tune_rounded,
+                label: 'edit_material'.tr,
+                hint: m.type == SessionMaterialType.link
+                    ? tt('الاسم والوصف والترتيب والرابط', 'Name, description, order and link')
+                    : tt('الاسم والوصف والترتيب', 'Name, description and order'),
+              ),
+              if (!AppConfig.disableList.contains(kShareLinksKey))
+                MaterialOption(
+                  id: 'share',
+                  icon: Icons.ios_share_rounded,
+                  label: _shareTip,
+                  hint: tt('يفتحه طلاب المقرر بعد تسجيل الدخول', 'The course students open it after signing in'),
+                ),
+            ],
+        ],
+        danger: MaterialOption(
+          id: 'delete',
+          icon: Icons.delete_outline_rounded,
+          label: tt('حذف المادة', 'Delete material'),
+          danger: true,
+        ),
       ),
     );
-    return tooltip == null ? btn : Tooltip(message: tooltip, child: Semantics(button: true, label: tooltip, child: btn));
+    if (id == null || !context.mounted) return;
+    switch (id) {
+      case 'studio':
+        await _openStudio(nav, reload, m);
+      case 'edit':
+        _showEditDialog(context, m);
+      case 'share':
+        shareAppLink(context, AppLink.material(m.id), title: m.name, subtitle: session.name);
+      case 'delete':
+        _showDeleteDialog(context, m);
+    }
   }
 
   /// The lesson's member link (D-307, `/s/material/<id>`): the course's students open it after signing in.
@@ -1003,7 +1031,11 @@ class MaterialIconWidget extends StatelessWidget {
     required this.isCompleted,
     this.badge,
     this.badgeTextColor,
+    this.size = 38,
   });
+
+  /// The tile's side (38 in lists; 44 on the material card, D-316).
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -1012,8 +1044,8 @@ class MaterialIconWidget extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Container(
-          width: 38,
-          height: 38,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             gradient: isCompleted
                 ? LinearGradient(
@@ -1053,7 +1085,7 @@ class MaterialIconWidget extends StatelessWidget {
               : Icon(
                   isCompleted ? Icons.check_rounded : icon,
                   color: isCompleted ? context.colors.onHero : effectiveColor,
-                  size: 20,
+                  size: size * 0.53,
                 ),
         ),
         if (isCompleted)
@@ -1530,6 +1562,51 @@ class _CaptionsActionState extends State<_CaptionsAction> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Icon(icon, size: 23, color: color),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The material card's shell (D-316): a soft raised card with ink + hover, the type's colour as a thin start edge.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MaterialCardShell extends StatelessWidget {
+  const _MaterialCardShell({super.key, required this.onTap, required this.completed, required this.accent, required this.child});
+
+  final VoidCallback? onTap;
+  final bool completed;
+  final Color accent;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        // calm hairline; "done" is the check badge, not a heavy green frame
+        border: Border.all(color: completed ? c.success.withValues(alpha: 0.22) : c.divider),
+        boxShadow: AppShadow.card(context),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: AppRadius.cardAll,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          hoverColor: accent.withValues(alpha: 0.04),
+          splashColor: accent.withValues(alpha: 0.08),
+          highlightColor: accent.withValues(alpha: 0.05),
+          child: Container(
+            decoration: BoxDecoration(
+              border: BorderDirectional(start: BorderSide(color: accent.withValues(alpha: 0.55), width: 3)),
+            ),
+            child: child,
+          ),
+        ),
       ),
     );
   }
