@@ -757,13 +757,14 @@ class _MeetingSheetState extends State<MeetingSheet> {
     final counts = asMap(m['counts']);
     final attendees = asMapList(m['attendees']);
     final online = m['mode'] == 'online';
+    final ended = m['status'] == 'ended';
     final dept = asMap(m['dept']), org = asMap(m['org']);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader('${m['title']}'),
         Wrap(spacing: 6, runSpacing: 6, children: [
-          AppTag(calStatusLabel(my), calStatusColor(c, my), icon: calStatusIcon(my)),
+          if (ended) AppTag(t('انتهى', 'Ended'), c.textMedium, icon: Icons.task_alt_rounded) else AppTag(calStatusLabel(my), calStatusColor(c, my), icon: calStatusIcon(my)),
           AppTag(online ? t('عبر الإنترنت', 'Online') : t('حضوري', 'In person'), c.primary,
               icon: online ? Icons.videocam_rounded : Icons.place_rounded),
           if (m['visibility'] == 'private') AppTag(t('خاص', 'Private'), c.accent, icon: Icons.lock_rounded),
@@ -783,7 +784,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
           const SizedBox(height: 6),
           MentionText('${m['notes']}', style: appText(13, c: c.textMedium, h: 1.5)),
         ],
-        if (online && m['status'] != 'cancelled')
+        if (online && m['status'] != 'cancelled' && !ended)
           if (MeetingTimeLimit.parse(m['time_limit']) case final limit?)
             if (!(owner && m['owner_plan_active'] == true)) ...[
               const SizedBox(height: 12),
@@ -828,14 +829,16 @@ class _MeetingSheetState extends State<MeetingSheet> {
             gap: 0,
           ),
         ],
-        if (owner && online && m['status'] != 'cancelled') ...[
+        if (ended) ...[
+          // a closed meeting: nothing to share or to answer any more, its record (above) and invitees stay
+        ] else if (owner && online && m['status'] != 'cancelled') ...[
           const SizedBox(height: 10),
           _hostActions(context),
         ] else if (online && m['status'] != 'cancelled') ...[
           const SizedBox(height: 10),
           Align(alignment: AlignmentDirectional.centerStart, child: _sharePill(context)),
         ],
-        if (!owner && my.isNotEmpty) ...[
+        if (!owner && my.isNotEmpty && !ended) ...[
           const SizedBox(height: 14),
           Text(t('ردّك', 'Your answer'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
           const SizedBox(height: 6),

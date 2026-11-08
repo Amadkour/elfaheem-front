@@ -3,13 +3,17 @@
 // Plain values in, callbacks out (no provider, no API), so test/ui/schedule_layout_test.dart pumps each one at
 // 320×640 and 1400×900, Arabic + English, text ×1.3:
 //
-//   CalViewSwitch       Agenda · Day · Week · Month, a segmented pill
+//   CalPageTabs         the page's two tabs: Scheduled meetings · Calendar (D-321)
+//   CalViewSwitch       Day · Week · Month, a segmented pill (the Calendar tab)
 //   CalFilterChips      the kinds (+ organizations) as chips with their counts — phone / tablet
 //   CalFilterPanel      the same as a list with colour checks — the desktop sidebar
 //   CalMonthPicker      a month of days with event dots, today ring, the selected day / range; mini (sidebar,
 //                       phone header) or roomy (the phone's month view)
 //   CalWeekStrip        seven day pills with dots (the phone's day view)
-//   CalAgendaList       days → CalAgendaDayCard (header + rows + the "now" line + exam-window banner), free-day note
+//   CalTodayHero        the list's head: today's date, what is left, the next event with Join when it is open
+//   CalLiveNowCard      a room open right now: the most prominent row of the list, with Join
+//   CalListBar          "Coming up" / "Past and ended" with the action that flips between them
+//   CalAgendaList       days → CalAgendaDayCard (date tile + one card per event + the "now" line + exam-window banner), free-day note
 //   CalAgendaTile       one event: time column, colour bar, title, meta, tags (live · online · substitute · cancelled
 //                       · my answer), inline Join / Accept · Decline / the change's Accept · Reject
 //   CalEventSheet       a non-meeting event's details: time, place, people, the one-date change with its answers,
@@ -20,6 +24,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
@@ -36,6 +41,13 @@ String calViewLabel(CalView v) => switch (v) {
       CalView.week => t('أسبوع', 'Week'),
       CalView.month => t('شهر', 'Month'),
     };
+
+/// The views of the Calendar tab (the list is the other tab).
+const calGridViews = [CalView.day, CalView.week, CalView.month];
+
+/// "Past and ended" reaches back this many days at a time, up to [calPastMax].
+const calPastStep = 14;
+const calPastMax = 84;
 
 IconData calViewIcon(CalView v) => switch (v) {
       CalView.agenda => Icons.view_agenda_rounded,
@@ -107,8 +119,35 @@ class CalLiveDot extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  View switch
+//  The page's two tabs, view switch
 // ═════════════════════════════════════════════════════════════════════════════
+
+class CalPageTabs extends StatelessWidget {
+  const CalPageTabs({super.key, required this.index, required this.onChanged, this.invites = 0, this.expand = false});
+
+  /// 0 Scheduled meetings · 1 Calendar.
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  /// Invitations awaiting an answer: the count on the first tab.
+  final int invites;
+  final bool expand;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        // a phone's two tabs share the row: the long label alone keeps them equal, with room to spare
+        final roomy = box.maxWidth >= 440;
+        return AppTabs(
+          expand: expand,
+          index: index,
+          onChanged: onChanged,
+          items: [
+            AppTabItem(t('الاجتماعات المجدولة', 'Scheduled meetings'), icon: roomy ? Icons.event_note_rounded : null, count: roomy && invites > 0 ? invites : null),
+            AppTabItem(t('التقويم', 'Calendar'), icon: roomy ? Icons.calendar_month_rounded : null),
+          ],
+        );
+      });
+}
 
 class CalViewSwitch extends StatelessWidget {
   const CalViewSwitch({super.key, required this.view, required this.onView, this.views = CalView.values, this.expand = false});
@@ -592,6 +631,8 @@ class CalAgendaList extends StatelessWidget {
     this.padding = const EdgeInsets.fromLTRB(16, 8, 16, 120),
     this.controller,
     this.emptyRange,
+    this.history = false,
+    this.todayDone = false,
   });
 
   final List<CalAgendaDay> days;
@@ -603,12 +644,18 @@ class CalAgendaList extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final ScrollController? controller;
 
-  /// Shown under today when nothing else is coming in the whole range.
+  /// Shown when no day of the range holds anything.
   final Widget? emptyRange;
+
+  /// The list of what has finished: rows stay readable (nothing here is competing with what is coming).
+  final bool history;
+
+  /// Everything of today is over: today says so instead of "free".
+  final bool todayDone;
 
   @override
   Widget build(BuildContext context) {
-    final upcoming = days.any((d) => !d.today && d.events.isNotEmpty);
+    final nothing = days.every((d) => d.events.isEmpty);
     return ListView(
       controller: controller,
       padding: padding,
@@ -616,10 +663,10 @@ class CalAgendaList extends StatelessWidget {
       children: [
         ?header,
         for (final d in days) ...[
-          CalAgendaDayCard(day: d, nowUtc: nowUtc, liveKeys: liveKeys, actions: actions, showOrg: showOrg),
-          const SizedBox(height: 14),
+          CalAgendaDayCard(day: d, nowUtc: nowUtc, liveKeys: liveKeys, actions: actions, showOrg: showOrg, history: history, todayDone: todayDone),
+          const SizedBox(height: AppSpace.lg),
         ],
-        if (!upcoming && emptyRange != null) emptyRange!,
+        if (nothing && emptyRange != null) emptyRange!,
         ?footer,
       ],
     );
@@ -634,13 +681,15 @@ class CalAgendaDayCard extends StatelessWidget {
     this.liveKeys = const {},
     this.actions = const CalTileActions(),
     this.showOrg = false,
+    this.history = false,
+    this.todayDone = false,
   });
 
   final CalAgendaDay day;
   final DateTime nowUtc;
   final Set<String> liveKeys;
   final CalTileActions actions;
-  final bool showOrg;
+  final bool showOrg, history, todayDone;
 
   @override
   Widget build(BuildContext context) {
@@ -649,67 +698,319 @@ class CalAgendaDayCard extends StatelessWidget {
     final count = day.events.where((e) => !e.cancelled).length;
     final rows = <Widget>[];
     for (var i = 0; i <= day.events.length; i++) {
-      if (day.today && day.nowAt == i && day.events.isNotEmpty) rows.add(CalNowLine(label: AppTime.time(nowUtc)));
+      if (day.today && day.nowAt == i && day.events.isNotEmpty && !history) rows.add(CalNowLine(label: AppTime.time(nowUtc)));
       if (i == day.events.length) break;
       final e = day.events[i];
-      if (rows.isNotEmpty && rows.last is! CalNowLine) rows.add(Divider(height: 1, indent: 16, endIndent: 16, color: c.divider));
+      if (i > 0 && rows.last is! CalNowLine) rows.add(const SizedBox(height: AppSpace.xs));
       rows.add(CalAgendaTile(
         event: e,
         nowUtc: nowUtc,
         live: calIsLive(e, nowUtc, liveKeys: liveKeys),
         joinable: calJoinable(e, nowUtc, liveKeys: liveKeys),
-        past: !e.end.isAfter(nowUtc),
+        past: calIsOver(e, nowUtc, liveKeys: liveKeys),
+        history: history,
         showOrg: showOrg,
         actions: actions,
       ));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(4, 2, 4, 8),
+        padding: const EdgeInsetsDirectional.fromSTEB(2, 2, 4, AppSpace.sm),
         child: Row(children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 46,
+            height: 50,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: day.today ? c.primary : calTint(c, c.primary, 0.08),
-              borderRadius: BorderRadius.circular(11),
+              gradient: day.today ? AppGradients.brand(context) : null,
+              color: day.today ? null : c.cardBg,
+              borderRadius: BorderRadius.circular(AppRadius.card - 2),
+              border: day.today ? null : Border.all(color: c.divider.withValues(alpha: 0.8)),
+              boxShadow: day.today ? c.primaryButtonShadow : null,
             ),
-            child: Text('${day.day.day}', style: appText(15, w: FontWeight.w800, c: day.today ? c.onHero : appInk(context, c.primary))),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(_dayDate(day.day, pattern: 'MMM'), maxLines: 1, style: appText(10, w: FontWeight.w700, c: day.today ? c.onHeroMuted : c.textLight, h: 1.1)),
+                Text('${day.day.day}', maxLines: 1, style: appText(19, w: FontWeight.w800, c: day.today ? c.onHero : c.textDark, h: 1.15)),
+              ]),
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(_dayTitle(day.day, nowWall), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w800, c: c.textDark)),
+              Text(_dayTitle(day.day, nowWall), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.textDark)),
               // the count rides on the date line, beside the title: at the row's END it sat under the assistant's
               // docked edge tab on phones (R3), which docks on that side by default
               Row(children: [
                 Flexible(
-                  child: Text(_dayDate(day.day, pattern: calDay(day.day).difference(calDay(nowWall)).inDays.abs() <= 1 ? 'EEEE d MMMM' : 'd MMMM y'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.textLight)),
+                  child: Text(_dayDate(day.day, pattern: calDay(day.day).difference(calDay(nowWall)).inDays.abs() <= 1 ? 'EEEE d MMMM' : 'd MMMM y'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textMedium)),
                 ),
                 if (count > 0)
-                  Text(t(' · $count ${count == 1 ? 'موعد' : 'مواعيد'}', ' · $count ${count == 1 ? 'event' : 'events'}'),
-                      maxLines: 1, style: appText(11.5, w: FontWeight.w600, c: c.textLight)),
+                  Text(' · ${calEventsText(count)}', maxLines: 1, style: appText(12, w: FontWeight.w600, c: c.textMedium)),
               ]),
             ]),
           ),
         ]),
       ),
-      for (final p in day.pauses) ...[CalPauseBanner(pause: p), const SizedBox(height: 8)],
-      if (day.events.isEmpty)
-        CalFreeDay(today: day.today)
-      else
-        Container(
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: c.divider.withValues(alpha: 0.7)),
-            boxShadow: c.isDark ? null : [BoxShadow(color: c.textDark.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 4))],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
-        ),
+      for (final p in day.pauses) ...[CalPauseBanner(pause: p), const SizedBox(height: AppSpace.xs)],
+      if (day.events.isEmpty) CalFreeDay(today: day.today, done: day.today && todayDone) else ...rows,
     ]);
+  }
+}
+
+/// "1 event" · "2 events" (Arabic's four forms).
+String calEventsText(int n) => countText(n, ar1: 'موعد واحد', ar2: 'موعدان', arFew: '{n} مواعيد', arMany: '{n} موعدًا', en1: '1 event', en: '{n} events');
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  The head of the list
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Lets [child] reach the screen edges through the list's side [gutter]: a horizontal strip scrolls off the edge.
+class CalBleed extends StatelessWidget {
+  const CalBleed({super.key, required this.gutter, required this.child});
+  final double gutter;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, box) => SizedBox(
+          width: box.maxWidth,
+          height: 44,
+          child: OverflowBox(minWidth: box.maxWidth + gutter * 2, maxWidth: box.maxWidth + gutter * 2, child: child),
+        ),
+      );
+}
+
+/// Today in one look: the date, what is left today and the next event (Join when its room is open).
+class CalTodayHero extends StatelessWidget {
+  const CalTodayHero({
+    super.key,
+    required this.nowUtc,
+    required this.left,
+    this.week = 0,
+    this.invites = 0,
+    this.next,
+    this.nextJoinable = false,
+    this.onTapNext,
+    this.onJoinNext,
+  });
+
+  final DateTime nowUtc;
+
+  /// Events still to come today, and in the next seven days.
+  final int left, week;
+  final int invites;
+  final CalEvent? next;
+  final bool nextJoinable;
+  final VoidCallback? onTapNext, onJoinNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final leftText = countText(left,
+        ar0: 'لا مواعيد متبقية اليوم',
+        en0: 'Nothing left today',
+        ar1: 'موعد واحد متبقٍ اليوم',
+        ar2: 'موعدان متبقيان اليوم',
+        arFew: '{n} مواعيد متبقية اليوم',
+        arMany: '{n} موعدًا متبقيًا اليوم',
+        en1: '1 event left today',
+        en: '{n} events left today');
+    final n = next;
+    final nextWhen = n == null ? null : (calWhen(n, nowUtc, toWall: AppTime.toZone) ?? '${AppTime.date(n.start, pattern: 'EEE d MMM')} · ${AppTime.time(n.start)}');
+    Widget figure(String value, String label) => Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(value, maxLines: 1, style: appText(21, w: FontWeight.w800, c: c.onHero, h: 1.15)),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w600, c: c.onHeroMuted)),
+        ]);
+    return AppGradientSurface(
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: LayoutBuilder(builder: (context, box) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Container(
+              width: 56,
+              height: 62,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.heroGlassBorder)),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text(AppTime.date(nowUtc, pattern: 'EEE'), maxLines: 1, style: appText(11, w: FontWeight.w700, c: c.onHeroMuted, h: 1.1)),
+                  Text(AppTime.date(nowUtc, pattern: 'd'), maxLines: 1, style: appText(26, w: FontWeight.w800, c: c.onHero, h: 1.15)),
+                ]),
+              ),
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(AppTime.date(nowUtc, pattern: 'EEEE d MMMM'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w800, c: c.onHero)),
+                const SizedBox(height: 2),
+                Text(leftText, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.onHeroMuted)),
+              ]),
+            ),
+            if (box.maxWidth >= 560) ...[
+              const SizedBox(width: AppSpace.md),
+              figure('$week', t('خلال 7 أيام', 'Next 7 days')),
+              if (invites > 0) ...[
+                const SizedBox(width: AppSpace.lg),
+                figure('$invites', t('دعوات', 'Invitations')),
+              ],
+              const SizedBox(width: AppSpace.xs),
+            ],
+          ]),
+          if (n != null) ...[
+            const SizedBox(height: AppSpace.sm),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const ValueKey('cal.hero.next'),
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                onTap: onTapNext,
+                child: Ink(
+                  padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xs, AppSpace.xs),
+                  decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.heroGlassBorder)),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 40),
+                    child: Row(children: [
+                      Icon(calSourceIcon(n.source), size: AppIconSize.md, color: c.onHero),
+                      const SizedBox(width: AppSpace.xs),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                          Text(n.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.onHero)),
+                          Text('${t('التالي', 'Next')} · $nextWhen', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.onHeroMuted)),
+                        ]),
+                      ),
+                      if (nextJoinable && onJoinNext != null) ...[
+                        const SizedBox(width: AppSpace.xs),
+                        _OnHeroJoin(tone: c.primary, onTap: onJoinNext!, buttonKey: const ValueKey('cal.hero.join')),
+                      ] else
+                        Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.onHeroMuted),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ]);
+      }),
+    );
+  }
+}
+
+/// Join on a coloured surface: the light on-hero fill, ink in the surface's tone.
+class _OnHeroJoin extends StatelessWidget {
+  const _OnHeroJoin({required this.tone, required this.onTap, this.buttonKey});
+  final Color tone;
+  final VoidCallback onTap;
+  final Key? buttonKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return FilledButton.icon(
+      key: buttonKey,
+      onPressed: onTap,
+      style: FilledButton.styleFrom(
+        backgroundColor: c.onHero,
+        foregroundColor: tone,
+        minimumSize: const Size(48, AppTouch.min - 4),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card - 2)),
+      ),
+      icon: Icon(Icons.videocam_rounded, size: 18, color: tone),
+      label: Text(t('انضم', 'Join'), style: appText(13.5, w: FontWeight.w800, c: tone)),
+    );
+  }
+}
+
+/// A room open right now: above every other row of the list, Join within thumb's reach.
+class CalLiveNowCard extends StatelessWidget {
+  const CalLiveNowCard({super.key, required this.event, required this.nowUtc, this.onTap, this.onJoin});
+  final CalEvent event;
+  final DateTime nowUtc;
+  final VoidCallback? onTap, onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final e = event;
+    final when = calWhen(e, nowUtc, toWall: AppTime.toZone);
+    return Semantics(
+      button: onTap != null,
+      label: '${t('مباشر الآن', 'Live now')}: ${e.title}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.sheet - 4),
+          child: Ink(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.sm, AppSpace.sm),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.sheet - 4),
+              gradient: LinearGradient(colors: [c.danger, c.heroEnd(c.danger)], begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd),
+              boxShadow: [BoxShadow(color: c.danger.withValues(alpha: 0.26), blurRadius: 18, offset: const Offset(0, 8))],
+            ),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Row(children: [
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: c.onHero, shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(children: [
+                          TextSpan(text: t('مباشر الآن', 'Live now'), style: appText(12, w: FontWeight.w800, c: c.onHero)),
+                          if (when != null) TextSpan(text: '  ·  $when', style: appText(12, w: FontWeight.w600, c: c.onHeroMuted)),
+                        ]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: AppSpace.xxs),
+                  Text(e.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.onHero, h: 1.3)),
+                  if ((e.subtitle ?? '').isNotEmpty)
+                    Text(e.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.onHeroMuted)),
+                ]),
+              ),
+              if (onJoin != null) ...[
+                const SizedBox(width: AppSpace.sm),
+                _OnHeroJoin(tone: c.danger, onTap: onJoin!, buttonKey: ValueKey('cal.join.${e.id}')),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A section's title with the one action that flips the list.
+class CalListBar extends StatelessWidget {
+  const CalListBar({super.key, required this.title, required this.actionLabel, required this.actionIcon, required this.onAction, this.actionKey});
+  final String title, actionLabel;
+  final IconData actionIcon;
+  final VoidCallback onAction;
+  final String? actionKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: 2, bottom: AppSpace.xxs),
+      child: Row(children: [
+        Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w800, c: c.textDark))),
+        Flexible(
+          child: TextButton.icon(
+            key: actionKey == null ? null : ValueKey<String>(actionKey!),
+            onPressed: onAction,
+            icon: Icon(actionIcon, size: 18),
+            label: Text(actionLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+        ),
+      ]),
+    );
   }
 }
 
@@ -740,8 +1041,11 @@ class CalNowLine extends StatelessWidget {
 }
 
 class CalFreeDay extends StatelessWidget {
-  const CalFreeDay({super.key, this.today = false});
+  const CalFreeDay({super.key, this.today = false, this.done = false});
   final bool today;
+
+  /// Today had events and all of them are over.
+  final bool done;
 
   @override
   Widget build(BuildContext context) {
@@ -758,9 +1062,9 @@ class CalFreeDay extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(today ? t('لا شيء اليوم', 'Nothing today') : t('يوم فارغ', 'A free day'),
+            Text(done ? t('انتهت مواعيد اليوم', "You're done for today") : (today ? t('لا شيء اليوم', 'Nothing today') : t('يوم فارغ', 'A free day')),
                 style: appText(14, w: FontWeight.w800, c: c.textDark)),
-            Text(t('لا محاضرات ولا اجتماعات — وقتك لك', 'No classes, no meetings — the time is yours'),
+            Text(done ? t('ما انتهى تجده في السابقة والمنتهية', 'What finished is under Past and ended') : t('لا محاضرات ولا اجتماعات — وقتك لك', 'No classes, no meetings — the time is yours'),
                 style: appText(12, c: c.textMedium)),
           ]),
         ),
@@ -818,6 +1122,7 @@ List<Widget> calTagsOf(BuildContext context, CalEvent e, {required bool live, re
   final ch = e.change;
   return [
     if (e.cancelled) CalTag(t('أُلغيت', 'Cancelled'), c.danger, icon: Icons.event_busy_rounded),
+    if (e.ended) CalTag(t('انتهى', 'Ended'), c.textMedium, icon: Icons.task_alt_rounded),
     if (live) CalTag(t('مباشر الآن', 'Live now'), c.danger, icon: Icons.sensors_rounded, solid: true),
     if (!e.cancelled && ch != null && ch.online) CalTag(t('أونلاين هذه المرة', 'Online this time'), c.primary, icon: Icons.videocam_rounded),
     if (!e.cancelled && ch != null && ch.substitute) CalTag(t('مدرس بديل', 'Substitute'), c.warning, icon: Icons.person_pin_rounded),
@@ -825,8 +1130,8 @@ List<Widget> calTagsOf(BuildContext context, CalEvent e, {required bool live, re
     if (e.source == 'timetable' && e.kind == 'lab') CalTag(t('معمل', 'Lab'), calEventColor(c, e)),
     if (e.source == 'exam' && e.kind == 'midterm') CalTag(t('منتصف الفصل', 'Midterm'), c.danger),
     if (e.source == 'exam' && e.kind == 'final') CalTag(t('نهائي', 'Final'), c.danger),
-    if (e.isMeeting && e.mode == 'online' && !live) CalTag(t('أونلاين', 'Online'), c.primary, icon: Icons.videocam_rounded),
-    if (e.isMeeting && !e.isOwner && e.myStatus != null && e.myStatus != 'owner')
+    if (e.isMeeting && e.mode == 'online' && !live && !e.ended) CalTag(t('أونلاين', 'Online'), c.primary, icon: Icons.videocam_rounded),
+    if (e.isMeeting && !e.isOwner && e.myStatus != null && e.myStatus != 'owner' && !e.ended)
       CalTag(calStatusLabel(e.myStatus), calStatusColor(c, e.myStatus), icon: calStatusIcon(e.myStatus)),
     if (e.isMeeting && e.isOwner) CalTag(t('أنت المنظّم', 'You organize'), c.textMedium, icon: Icons.star_rounded),
   ];
@@ -840,13 +1145,14 @@ class CalAgendaTile extends StatelessWidget {
     this.live = false,
     this.joinable = false,
     this.past = false,
+    this.history = false,
     this.showOrg = false,
     this.actions = const CalTileActions(),
   });
 
   final CalEvent event;
   final DateTime nowUtc;
-  final bool live, joinable, past, showOrg;
+  final bool live, joinable, past, history, showOrg;
   final CalTileActions actions;
 
   @override
@@ -854,7 +1160,8 @@ class CalAgendaTile extends StatelessWidget {
     final c = context.colors;
     final e = event;
     final color = calEventColor(c, e);
-    final muted = e.cancelled || e.declined;
+    final struck = e.cancelled || e.declined;
+    final muted = struck || e.ended;
     final when = calWhen(e, nowUtc, toWall: AppTime.toZone);
     final meta = [
       if (e.source != 'timetable' || e.kind != 'lab') calSourceLabelShort(e),
@@ -877,7 +1184,7 @@ class CalAgendaTile extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               minimumSize: const Size(48, 40),
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip + 2)),
             ),
             icon: const Icon(Icons.videocam_rounded, size: 18),
             label: Text(t('انضم', 'Join'), style: appText(13, w: FontWeight.w800, c: c.onHero)),
@@ -885,10 +1192,10 @@ class CalAgendaTile extends StatelessWidget {
         : null;
 
     final body = Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 12, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + 4, AppSpace.sm, AppSpace.sm, AppSpace.sm),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(
-          width: 66,
+          width: 62,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (allDay)
               Text(t('طوال اليوم', 'All day'), style: appText(12, w: FontWeight.w800, c: c.textDark))
@@ -896,7 +1203,7 @@ class CalAgendaTile extends StatelessWidget {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: AlignmentDirectional.centerStart,
-                child: Text(AppTime.time(e.start), maxLines: 1, style: appText(13, w: FontWeight.w800, c: muted ? c.textLight : c.textDark)),
+                child: Text(AppTime.time(e.start), maxLines: 1, style: appText(13.5, w: FontWeight.w800, c: muted ? c.textMedium : c.textDark)),
               ),
               const SizedBox(height: 2),
               FittedBox(
@@ -907,15 +1214,7 @@ class CalAgendaTile extends StatelessWidget {
             ],
           ]),
         ),
-        Container(
-          width: 4,
-          height: 44,
-          margin: const EdgeInsetsDirectional.only(end: 12, top: 1),
-          decoration: BoxDecoration(
-            color: muted ? c.textLight.withValues(alpha: 0.4) : color,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
+        const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -924,8 +1223,8 @@ class CalAgendaTile extends StatelessWidget {
                   e.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: appText(14.5, w: FontWeight.w800, c: muted ? c.textLight : c.textDark).copyWith(
-                    decoration: muted ? TextDecoration.lineThrough : null,
+                  style: appText(14.5, w: FontWeight.w800, c: muted ? c.textMedium : c.textDark).copyWith(
+                    decoration: struck ? TextDecoration.lineThrough : null,
                     decorationColor: c.textLight,
                   ),
                 ),
@@ -934,7 +1233,13 @@ class CalAgendaTile extends StatelessWidget {
             ]),
             if (meta.isNotEmpty) ...[
               const SizedBox(height: 3),
-              Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(top: 2, end: AppSpace.xxs),
+                  child: Icon(calSourceIcon(e.source), size: 13, color: muted ? c.textLight : appInk(context, color)),
+                ),
+                Expanded(child: Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium))),
+              ]),
             ],
             if (tags.isNotEmpty || when != null) ...[
               const SizedBox(height: 8),
@@ -978,14 +1283,33 @@ class CalAgendaTile extends StatelessWidget {
       ]),
     );
 
+    final radius = BorderRadius.circular(AppRadius.card);
     return Semantics(
       button: actions.onTap != null,
       label: '${e.title}, ${AppTime.time(e.start)}',
-      child: Material(
-        color: live ? calTint(c, c.danger, 0.05) : Colors.transparent,
-        child: InkWell(
-          onTap: actions.onTap == null ? null : () => actions.onTap!(e),
-          child: Opacity(opacity: past && !live ? 0.55 : 1, child: body),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: c.isDark || past ? null : [BoxShadow(color: c.textDark.withValues(alpha: 0.05), blurRadius: 14, offset: const Offset(0, 4))],
+        ),
+        child: Material(
+          color: live ? Color.alphaBlend(calTint(c, c.danger, 0.05), c.cardBg) : c.cardBg,
+          shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider.withValues(alpha: 0.7))),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: actions.onTap == null ? null : () => actions.onTap!(e),
+            child: Stack(children: [
+              Opacity(opacity: past && !live && !history ? 0.55 : 1, child: body),
+              // the kind's colour down the card's edge, the height of the card whatever it holds
+              PositionedDirectional(
+                start: 0,
+                top: 0,
+                bottom: 0,
+                width: 5,
+                child: ColoredBox(color: muted ? c.textLight.withValues(alpha: 0.35) : (past ? color.withValues(alpha: 0.5) : color)),
+              ),
+            ]),
+          ),
         ),
       ),
     );
@@ -1295,8 +1619,11 @@ class CalInvitesCard extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class CalScheduleSkeleton extends StatelessWidget {
-  const CalScheduleSkeleton({super.key, required this.view});
+  const CalScheduleSkeleton({super.key, required this.view, this.bare = false});
   final CalView view;
+
+  /// Only the day rows, inside a list that already has its head.
+  final bool bare;
 
   @override
   Widget build(BuildContext context) {
@@ -1306,45 +1633,45 @@ class CalScheduleSkeleton extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 18),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const Row(children: [
-                AppSkeletonBox(width: 34, height: 34, radius: 11),
-                SizedBox(width: 10),
+                AppSkeletonBox(width: 46, height: 50, radius: 14),
+                SizedBox(width: AppSpace.sm),
                 AppSkeletonBox(width: 120, height: 14),
               ]),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.divider.withValues(alpha: 0.7))),
-                child: Column(children: [
-                  for (var i = 0; i < rows; i++)
-                    Padding(
-                      padding: EdgeInsets.only(bottom: i == rows - 1 ? 0 : 16),
-                      child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          AppSkeletonBox(width: 48, height: 12),
-                          SizedBox(height: 6),
-                          AppSkeletonBox(width: 36, height: 10),
-                        ]),
-                        SizedBox(width: 18),
-                        AppSkeletonBox(width: 4, height: 40, radius: 4),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            AppSkeletonBox(height: 13),
-                            SizedBox(height: 8),
-                            AppSkeletonBox(width: 150, height: 10),
-                          ]),
-                        ),
+              const SizedBox(height: AppSpace.sm),
+              for (var i = 0; i < rows; i++)
+                Container(
+                  margin: EdgeInsets.only(bottom: i == rows - 1 ? 0 : AppSpace.xs),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.divider.withValues(alpha: 0.7))),
+                  child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      AppSkeletonBox(width: 48, height: 12),
+                      SizedBox(height: 6),
+                      AppSkeletonBox(width: 36, height: 10),
+                    ]),
+                    SizedBox(width: AppSpace.md),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        AppSkeletonBox(height: 13),
+                        SizedBox(height: 8),
+                        AppSkeletonBox(width: 150, height: 10),
                       ]),
                     ),
-                ]),
-              ),
+                  ]),
+                ),
             ]),
           );
+      if (bare) return AppShimmer(child: Column(mainAxisSize: MainAxisSize.min, children: [day(2), day(2)]));
       return AppShimmer(
         child: ListView(
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          children: [day(3), day(2), day(2)],
+          children: [
+            const Padding(padding: EdgeInsets.only(bottom: AppSpace.lg), child: AppSkeletonBox(height: 118, radius: AppRadius.sheet)),
+            day(3),
+            day(2),
+            day(2),
+          ],
         ),
       );
     }

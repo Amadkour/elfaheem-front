@@ -4,6 +4,8 @@
 //   CalFilters                 hidden kinds + hidden organizations, remembered on the device (encode / decode)
 //   calOrgsOf                  the organizations the events come from (0 = personal), for the per-org chips
 //   calAgenda                  the agenda: today pinned, then the days that hold something, the "now" line's place
+//   calIsOver / calComing /    what has finished (its time passed, or a meeting that was closed: D-321), what is still
+//   calPast                    to come, and the finished ones by day, newest first (the Scheduled meetings tab)
 //   calJoinable / calIsLive    when an event shows Join, and when it is live (the home's live rooms + the clock)
 //   calWeeklySlotsFrom /       a personal course's weekly appointments (GET /student|teacher/schedules) expanded to
 //   calWeeklyEvents            dated `course_weekly` events in the range, minus the dates a dated session covers
@@ -71,6 +73,21 @@ Map<CalCat, int> calCountsByCat(Iterable<CalEvent> events) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 const calFiltersPrefKey = 'calendar.filters.v1';
+
+/// The tab and the grid the page was last on, remembered on the device: `<view>|<grid view>`.
+const calViewPrefKey = 'calendar.view.v1';
+
+/// [view] = the page's view (`agenda` is the Scheduled meetings tab), [grid] = the one the Calendar tab goes back to.
+String calViewEncode(CalView view, CalView? grid) => '${view.name}|${grid?.name ?? ''}';
+
+/// Anything unreadable gives (null, null): the page then opens on its default for the width.
+(CalView?, CalView?) calViewDecode(String? raw) {
+  if (raw == null || raw.isEmpty) return (null, null);
+  final names = {for (final v in CalView.values) v.name: v};
+  final p = raw.split('|');
+  final grid = p.length > 1 ? names[p[1]] : null;
+  return (names[p[0]], grid == CalView.agenda ? null : grid);
+}
 
 class CalFilters {
   const CalFilters({this.hiddenCats = const {}, this.hiddenOrgs = const {}});
@@ -215,6 +232,30 @@ List<CalAgendaDay> calAgenda(
 /// How many events the agenda lists, cancelled dates left out (an event over midnight counts on each day).
 int calAgendaCount(List<CalAgendaDay> days) => days.fold(0, (n, d) => n + d.events.where((e) => !e.cancelled).length);
 
+/// Finished: a meeting that was closed, whatever its scheduled end says, or any event whose time has passed. A room
+/// still open past its scheduled end is not finished.
+bool calIsOver(CalEvent e, DateTime nowUtc, {Set<String> liveKeys = const {}}) =>
+    e.ended || (!e.end.isAfter(nowUtc) && !calIsLive(e, nowUtc, liveKeys: liveKeys));
+
+/// What is still to come (live rooms included), in the order given.
+List<CalEvent> calComing(Iterable<CalEvent> events, DateTime nowUtc, {Set<String> liveKeys = const {}}) =>
+    [for (final e in events) if (!calIsOver(e, nowUtc, liveKeys: liveKeys)) e];
+
+/// The finished events by the day they were scheduled on, the newest day and the latest event first. A cancelled date
+/// is left out here (it never happened); the grid still draws it.
+List<CalAgendaDay> calPast(Iterable<CalEvent> events, {required DateTime nowUtc, required DateTime nowWall, Set<String> liveKeys = const {}}) {
+  final byDay = <DateTime, List<CalEvent>>{};
+  for (final e in events) {
+    if (e.cancelled || !calIsOver(e, nowUtc, liveKeys: liveKeys)) continue;
+    (byDay[calDay(e.wallStart)] ??= []).add(e);
+  }
+  final today = calDay(nowWall);
+  final days = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
+  return [
+    for (final d in days) CalAgendaDay(day: d, today: d == today, events: byDay[d]!..sort((a, b) => b.start.compareTo(a.start))),
+  ];
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Live / join
 // ═════════════════════════════════════════════════════════════════════════════
@@ -226,12 +267,12 @@ String calLiveKeyMeeting(int id) => 'meeting:$id';
 String calLiveKeySession(int id) => 'session:$id';
 String calLiveKeyCourse(int id) => 'course:$id';
 
-bool calRunning(CalEvent e, DateTime nowUtc) => !e.start.isAfter(nowUtc) && e.end.isAfter(nowUtc);
+bool calRunning(CalEvent e, DateTime nowUtc) => !e.ended && !e.start.isAfter(nowUtc) && e.end.isAfter(nowUtc);
 
 /// Live right now: a room the home knows is open ([liveKeys]: `meeting:<id>` · `session:<id>` · `course:<courseId>`),
-/// or a running online class / meeting.
+/// or a running online class / meeting. A closed meeting never is, even when a stale live key still names it.
 bool calIsLive(CalEvent e, DateTime nowUtc, {Set<String> liveKeys = const {}}) {
-  if (e.cancelled || e.declined) return false;
+  if (e.cancelled || e.declined || e.ended) return false;
   if (e.meetingId != null && liveKeys.contains(calLiveKeyMeeting(e.meetingId!))) return true;
   if (e.sessionId != null && liveKeys.contains(calLiveKeySession(e.sessionId!))) return true;
   if (e.source == 'course_weekly' && e.courseId != null && liveKeys.contains(calLiveKeyCourse(e.courseId!))) return true;
@@ -240,7 +281,7 @@ bool calIsLive(CalEvent e, DateTime nowUtc, {Set<String> liveKeys = const {}}) {
 
 /// Join shows: a live room, or an online meeting / online class from [calJoinEarly] before its start to its end.
 bool calJoinable(CalEvent e, DateTime nowUtc, {Set<String> liveKeys = const {}}) {
-  if (e.cancelled || e.declined) return false;
+  if (e.cancelled || e.declined || e.ended) return false;
   if (calIsLive(e, nowUtc, liveKeys: liveKeys)) return true;
   final window = !e.start.subtract(calJoinEarly).isAfter(nowUtc) && e.end.isAfter(nowUtc);
   if (!window) return false;
@@ -252,6 +293,7 @@ bool calJoinable(CalEvent e, DateTime nowUtc, {Set<String> liveKeys = const {}})
 /// "Now · 20 min left" · "In 45 min" · "In 3 h" (same day) · "Ended" (today) · null for another day.
 String? calWhen(CalEvent e, DateTime nowUtc, {DateTime Function(DateTime)? toWall}) {
   if (e.cancelled) return null;
+  if (e.ended) return t('انتهى', 'Ended');
   final w = toWall ?? (DateTime d) => d;
   if (calRunning(e, nowUtc)) {
     final left = e.end.difference(nowUtc).inMinutes;
