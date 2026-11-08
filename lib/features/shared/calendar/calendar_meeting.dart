@@ -31,8 +31,8 @@ import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
 // [meeting-recording] the latest recording's card + the creator's Record right (docs/backend/live-rooms-spec.md §5)
-import '../live/meeting_recording.dart' show MeetingRecording;
-import '../live/meeting_recording_sheets.dart' show MeetingRecordingStatus;
+import '../live/meeting_recording.dart' show MeetingRecording, RecordingQuality;
+import '../live/meeting_recording_sheets.dart' show MeetingRecordingStatus, RecordingQualityField;
 import '../points/live_plan_sheet.dart' show showLivePlanSheet;
 import '../points/points_api.dart';
 import 'calendar_api.dart';
@@ -329,6 +329,7 @@ class _MeetingFormState extends State<MeetingForm> {
   final _aud = CalAudience();
   late DateTime _s = widget.start, _e = widget.start.add(const Duration(minutes: 30));
   String _mode = 'offline';
+  RecordingQuality _recordQuality = RecordingQuality.p720;
   bool _private = true, _saving = false, _checking = false, _student = false;
   List<Map<String, dynamic>> _busy = const [];
   String? _error;
@@ -394,6 +395,7 @@ class _MeetingFormState extends State<MeetingForm> {
         endsAt: _utcIso(_e),
         mode: _mode,
         location: _place.text,
+        recordQuality: _recordQuality.wire,
         orgId: widget.orgId,
         deptId: widget.deptId,
         audience: _private ? CalAudience().toJson() : _aud.toJson(),
@@ -415,6 +417,13 @@ class _MeetingFormState extends State<MeetingForm> {
       });
     }
   }
+
+  Widget get _recordQualityField => RecordingQualityField(
+        key: const ValueKey('meeting_form.record_quality'),
+        value: _recordQuality,
+        label: t('جودة التسجيل', 'Recording quality'),
+        onChanged: (q) => setState(() => _recordQuality = q),
+      );
 
   int? get _me {
     try {
@@ -455,14 +464,16 @@ class _MeetingFormState extends State<MeetingForm> {
               _scheduleCheck();
             }),
         const SizedBox(height: 14),
-        if (_student)
+        if (_student) ...[
           AppBanner(
               key: const ValueKey('meeting_form.student_note'),
               icon: Icons.videocam_rounded,
               text: t('يمكن للطلاب إنشاء اجتماعات خاصة عبر الإنترنت؛ شارك الرابط لدعوة الآخرين',
                   'Students can create online private meetings; share the link to invite people'),
-              color: c.primary)
-        else ...[
+              color: c.primary),
+          const SizedBox(height: 10),
+          _recordQualityField,
+        ] else ...[
         CalModeChoice(mode: _mode, onChanged: (m) => setState(() => _mode = m)),
         const SizedBox(height: 10),
         if (_mode == 'offline')
@@ -472,6 +483,7 @@ class _MeetingFormState extends State<MeetingForm> {
               icon: Icons.link_rounded,
               text: t('يُنشأ رابط الانضمام تلقائياً عبر البث المباشر للمنصة.', 'A join link is created automatically (live video).'),
               color: c.primary),
+        if (_mode == 'online') ...[const SizedBox(height: 10), _recordQualityField],
         const SizedBox(height: 14),
         Wrap(spacing: 8, runSpacing: 8, children: [
           AppChoiceChip(

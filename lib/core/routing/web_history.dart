@@ -146,6 +146,10 @@ class WebHistory extends NavigatorObserver {
 
   bool _enabled = false;
 
+  /// How the browser is moved (tests put a fake browser here).
+  @visibleForTesting
+  Future<bool> Function(int delta) go = browserGo;
+
   /// The system back: true when something handled it (a page or dialog closed, the shell switched tab).
   Future<bool> Function() onBack = () async => false;
 
@@ -171,6 +175,9 @@ class WebHistory extends NavigatorObserver {
 
   Future<void> _tail = Future<void>.value();
   bool _queued = false;
+
+  /// The entries the sync's own  is landing on, until its popstate has been seen.
+  final _ownLandings = <int>{};
 
   NavigatorState? _nav;
 
@@ -320,7 +327,11 @@ class WebHistory extends NavigatorObserver {
       switch (op) {
         case HistoryGo(:final delta):
           _have.removeRange(_have.length + delta, _have.length);
-          await browserGo(delta);
+          // Its popstate is followed only after this whole sync, so with a push behind it (a page replaced by another)
+          // the entry it lands on is no longer the top and would read as the person pressing Back.
+          final landing = _have.last.serial;
+          _ownLandings.add(landing);
+          if (!await go(delta)) _ownLandings.remove(landing);
         case HistoryReplace(:final entry):
           await _report(entry, replace: true);
           _have[_have.length - 1] = entry;
@@ -347,6 +358,7 @@ class WebHistory extends NavigatorObserver {
     final st = info.state;
     final ours = st is Map && st['sid'] == _sid;
     final serial = ours ? (st['nb'] as num?)?.toInt() : null;
+    if (serial != null && _ownLandings.remove(serial)) return; // the sync's own step back
     final i = serial == null ? -1 : _have.indexWhere((e) => e.serial == serial);
     if (i == _have.length - 1) return; // the entry the app is on: its own `go`, or nothing changed
 
@@ -366,7 +378,7 @@ class WebHistory extends NavigatorObserver {
         final handled = await onBack();
         await _settle();
         if (!handled) {
-          if (await browserGo(-1)) return; // out of the app, or to an earlier page load (a move like any other)
+          if (await go(-1)) return; // out of the app, or to an earlier page load (a move like any other)
         }
       }
       await _sync();
@@ -389,7 +401,7 @@ class WebHistory extends NavigatorObserver {
         }
         _have.removeLast();
       }
-      await browserGo(-1);
+      await go(-1);
       return;
     }
 
@@ -404,7 +416,7 @@ class WebHistory extends NavigatorObserver {
         return;
       }
     }
-    if (await browserGo(-1)) return;
+    if (await go(-1)) return;
     _have = [HistoryEntry(0, location)]; // nowhere further back: the app stays, on this entry
     await _sync();
   }
@@ -423,6 +435,8 @@ class WebHistory extends NavigatorObserver {
     _have = [];
     _nextSerial = 1;
     _adopt = null;
+    _ownLandings.clear();
+    go = browserGo;
     _pageQueries.clear();
     _tail = Future<void>.value();
   }

@@ -78,7 +78,7 @@ import 'package:provider/provider.dart';
 import 'widgets/room_recorder.dart';
 // [meeting-recording] meeting rooms record to the creator's cloud drive (docs/backend/live-rooms-spec.md §5)
 import 'package:flutter_education_app/features/shared/live/meeting_recording.dart'
-    show CloudProvider, RecordingQuality, RecordingStart, RemoteMeetingRecordingApi;
+    show recordingBoardSize, CloudProvider, RecordingQuality, RecordingStart, RemoteMeetingRecordingApi;
 import 'package:flutter_education_app/features/shared/live/meeting_recording_sheets.dart'
     show showRecordSetupSheet;
 // Part 2 (live-rooms-spec §8, §11): the free-time countdown, the (i) sheet and the live plan
@@ -91,6 +91,7 @@ import 'package:flutter_education_app/features/shared/live/live_net_pill.dart';
 import 'package:flutter_education_app/features/shared/live/live_quality_governor.dart' show LiveVideoTier;
 import 'whiteboard/board_video_track.dart';
 import 'whiteboard/board_export.dart' show BoardRecordingFrames;
+import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart' show RemoteCalendarApi;
 import 'whiteboard/board_rec_pacing.dart';
 import 'whiteboard/board_format.dart' show BoardViewportPos;
 import 'package:flutter_education_app/features/shared/live/live_recording_layout.dart';
@@ -907,7 +908,7 @@ class _RoomPageState extends State<RoomPage>
       }
       if (!mounted) return;
     }
-    start ??= await showRecordSetupSheet(context, kind: widget.ref.kindName, id: widget.ref.id);
+    start ??= await showRecordSetupSheet(context, kind: widget.ref.kindName, id: widget.ref.id, preferredQuality: _meetingRecordQuality);
     if (start == null || !mounted) return;
     final dest = start.destination;
     if (dest != null) _recChoice[key] = (quality: start.quality, destination: dest);
@@ -2707,6 +2708,19 @@ class _RoomPageState extends State<RoomPage>
   final BoardRecStats _recBoardStats = BoardRecStats();
   final BoardRecordingFrames _recBoardFrames = BoardRecordingFrames();
 
+  /// The board's size in this recording: follows the picked quality (D-319); a course session keeps 1280 × 720.
+  (int, int) get _recBoardBaseSize {
+    final q = _meetingRecording?.quality;
+    return q == null || q.audioOnly ? (kBoardVideoWidth, kBoardVideoHeight) : recordingBoardSize(q.maxHeight);
+  }
+
+  /// What the meeting's creator picked for its recording (D-319).
+  Future<RecordingQuality?> _meetingRecordQuality() async {
+    final m = await RemoteCalendarApi().meeting(widget.ref.id).timeout(const Duration(seconds: 5));
+    final wire = m is Map ? m['record_quality'] : null;
+    return wire == null ? null : RecordingQuality.fromWire(wire);
+  }
+
   bool get _webRecordsVideo {
     final r = _recorder;
     return kIsWeb && _recordsHere && r != null && !r.audioOnly && _recorderStarted;
@@ -2825,7 +2839,8 @@ class _RoomPageState extends State<RoomPage>
     if (_recBoardBusy || rec == null || _recBoardWatch == null || !_isBoardMain || LiveRoomHost.isMinimized) return;
     if (settle && (_recBoardDirty || _recBoardCrisp)) return; // drawing again / already crisp
     final tier = settle ? kBoardRecTiers.first : _recBoardPacer.tier;
-    final (w, h) = BoardRecPacer.sizeFor(tier, baseWidth: kBoardVideoWidth, baseHeight: kBoardVideoHeight);
+    final (baseW, baseH) = _recBoardBaseSize;
+    final (w, h) = BoardRecPacer.sizeFor(tier, baseWidth: baseW, baseHeight: baseH);
     _recBoardBusy = true;
     _recBoardDirty = false;
     _recBoardView = _board.localViewport;
@@ -2835,7 +2850,7 @@ class _RoomPageState extends State<RoomPage>
     try {
       final frame = await _recBoardFrames.next(_board, width: w, height: h, crisp: settle);
       sw.stop();
-      _recBoardCrisp = _recBoardFrames.baseWidth >= kBoardVideoWidth;
+      _recBoardCrisp = _recBoardFrames.baseWidth >= baseW;
       if (frame == null || !identical(rec, _recorder)) return;
       if (!rec.pushBoardFrame('board', frame)) {
         _recBoardFrames.dispose(); // the recorder has no base (a new one, a lost canvas): the next frame is a raster

@@ -152,9 +152,14 @@ DateTime? parseRecordingTime(dynamic v) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum RecordingQuality {
+  p2160('2160p', maxHeight: 2160, videoBitsPerSecond: 16000000),
+  p1440('1440p', maxHeight: 1440, videoBitsPerSecond: 9000000),
   p1080('1080p', maxHeight: 1080, videoBitsPerSecond: 5000000),
   p720('720p', maxHeight: 720, videoBitsPerSecond: 3000000),
   p480('480p', maxHeight: 480, videoBitsPerSecond: 1500000),
+  p360('360p', maxHeight: 360, videoBitsPerSecond: 800000),
+  p240('240p', maxHeight: 240, videoBitsPerSecond: 400000),
+  p144('144p', maxHeight: 144, videoBitsPerSecond: 200000),
   audio('audio', maxHeight: 0, videoBitsPerSecond: 0);
 
   const RecordingQuality(this.wire, {required this.maxHeight, required this.videoBitsPerSecond});
@@ -162,8 +167,14 @@ enum RecordingQuality {
   /// The value the server takes (`quality`).
   final String wire;
 
-  /// The recorder's target: the longest side is scaled down to this many pixels (0 = no video).
+  /// The picture's height at 16:9, the "p" of the name (0 = no video).
   final int maxHeight;
+
+  /// The width at 16:9 (even): what the native recorders cap the longer side to.
+  int get longSide => (maxHeight * 16 / 9 / 2).round() * 2;
+
+  /// Asks a lot of the device and the connection: the Record sheet says so.
+  bool get demanding => maxHeight >= 1440;
 
   /// The encoder bitrate the recorder asks for (0 = no video track worth bits).
   final int videoBitsPerSecond;
@@ -179,9 +190,14 @@ enum RecordingQuality {
   }
 
   String get label => switch (this) {
+        RecordingQuality.p2160 => t('2160p — دقة فائقة 4K', '2160p — 4K'),
+        RecordingQuality.p1440 => t('1440p — دقة 2K', '1440p — 2K'),
         RecordingQuality.p1080 => t('1080p — دقة عالية', '1080p — Full HD'),
         RecordingQuality.p720 => t('720p — موصى به', '720p — recommended'),
         RecordingQuality.p480 => t('480p — حجم أصغر', '480p — smaller file'),
+        RecordingQuality.p360 => t('360p — حجم صغير', '360p — small file'),
+        RecordingQuality.p240 => t('240p — حجم صغير جداً', '240p — very small file'),
+        RecordingQuality.p144 => t('144p — لأضعف اتصال', '144p — the weakest connection'),
         RecordingQuality.audio => t('صوت فقط', 'Audio only'),
       };
 }
@@ -207,9 +223,16 @@ class RecorderSettings {
   /// What goes over the method channel / into the web compositor's meta.
   Map<String, Object> toMap() => {
         'videoBitrate': videoBitsPerSecond,
-        'maxHeight': maxHeight,
+        'maxHeight': (maxHeight * 16 / 9 / 2).round() * 2, // what the native recorders cap: the longer side
         'audioOnly': audioOnly,
       };
+}
+
+/// The size the board is drawn at for a recording of this height (16:9): sharp up to full HD, where the cost of a page
+/// change (a read-back from the GPU) stops being worth it; never so small that writing is unreadable.
+(int, int) recordingBoardSize(int height) {
+  final h = height.clamp(480, 1080);
+  return ((h * 16 / 9 / 2).round() * 2, h);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

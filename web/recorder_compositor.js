@@ -302,6 +302,9 @@
   const CHUNK_INTERVAL_MS = 10_000;   // native timeslice — recorder auto-flushes every 10s
   const CANVAS_W = 1920;
   const CANVAS_H = 1080;
+  // Drawing always happens in that 1920 × 1080 space; the context's scale maps it onto the real canvas, whose height
+  // is the quality picked for the recording (meta.canvasHeight, D-319).
+  let _canvasHeight = CANVAS_H;
   // Labels whose stream the recorder itself opened (its own getUserMedia in
   // recorder_web_impl.dart): the only ones stop() may end. Every other label
   // wraps a LiveKit track the room still uses ('screen', 'remote_<sid>').
@@ -530,7 +533,7 @@
     try {
       // Sample a small region instead of the whole canvas (cheap) and
       // report whether it's non-uniform/non-black at this instant.
-      const sample = _ctx.getImageData(CANVAS_W / 2 - 5, CANVAS_H / 2 - 5, 10, 10).data;
+      const sample = _ctx.getImageData(_canvas.width / 2 - 5, _canvas.height / 2 - 5, 10, 10).data;
       let nonZero = 0;
       for (let i = 0; i < sample.length; i += 4) {
         if (sample[i] || sample[i + 1] || sample[i + 2]) nonZero++;
@@ -1024,6 +1027,7 @@
       window._ElFaheemCompositorAssembled = false;
       _videoBitrate     = VIDEO_BITRATE;
       _audioOnly        = false;
+      _canvasHeight     = CANVAS_H;
       _chunkExt         = 'webm';
       try {
         if (meta) {
@@ -1036,6 +1040,7 @@
           const bps = Number(parsed.videoBitsPerSecond) || 0;
           if (bps > 0) _videoBitrate = bps;
           _audioOnly        = parsed.audioOnly === true;
+          _canvasHeight     = Number(parsed.canvasHeight) || CANVAS_H;
         }
       } catch (e) {
         console.warn('[Compositor] failed to parse start() meta — using defaults:', e);
@@ -1060,9 +1065,10 @@
       _ctx    = null;
       if (!_audioOnly) {
         _canvas        = document.createElement('canvas');
-        _canvas.width  = CANVAS_W;
-        _canvas.height = CANVAS_H;
+        _canvas.width  = Math.round(_canvasHeight * 16 / 9 / 2) * 2;
+        _canvas.height = _canvasHeight;
         _ctx           = _canvas.getContext('2d');
+        _ctx.setTransform(_canvasHeight / CANVAS_H, 0, 0, _canvasHeight / CANVAS_H, 0, 0);
       }
 
       _audioCtx = new (window.AudioContext || window.webkitAudioContext)();

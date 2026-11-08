@@ -81,7 +81,7 @@ void main() {
 
   group('quality', () {
     test('wire values match the spec; an unknown value falls back to 720p', () {
-      expect(RecordingQuality.values.map((q) => q.wire), ['1080p', '720p', '480p', 'audio']);
+      expect(RecordingQuality.values.map((q) => q.wire), ['2160p', '1440p', '1080p', '720p', '480p', '360p', '240p', '144p', 'audio']);
       expect(RecordingQuality.fromWire('480p'), RecordingQuality.p480);
       expect(RecordingQuality.fromWire('8k'), RecordingQuality.p720);
       expect(RecordingQuality.fromWire(null, fallback: RecordingQuality.audio), RecordingQuality.audio);
@@ -101,7 +101,24 @@ void main() {
         expect(RecorderSettings.of(q).audioOnly, isFalse, reason: q.wire);
         expect(RecorderSettings.of(q).toMap()['audioOnly'], isFalse, reason: q.wire);
       }
-      expect(s720.toMap(), {'videoBitrate': 3000000, 'maxHeight': 720, 'audioOnly': false});
+      expect(s720.toMap(), {'videoBitrate': 3000000, 'maxHeight': 1280, 'audioOnly': false}, reason: 'the longer side');
+    });
+
+    test('144p to 2160p and audio (D-319): the wire names, the real picture size, bitrates fall with the height', () {
+      expect(RecordingQuality.values.map((q) => q.wire),
+          ['2160p', '1440p', '1080p', '720p', '480p', '360p', '240p', '144p', 'audio']);
+      expect([for (final q in RecordingQuality.values) q.longSide], [3840, 2560, 1920, 1280, 854, 640, 426, 256, 0]);
+      for (final q in RecordingQuality.values) {
+        expect(RecordingQuality.fromWire(q.wire), q);
+        expect(RecorderSettings.of(q).toMap()['maxHeight'], q.longSide, reason: q.wire);
+      }
+      final video = RecordingQuality.values.where((q) => !q.audioOnly).toList();
+      for (var i = 1; i < video.length; i++) {
+        expect(video[i].videoBitsPerSecond, lessThan(video[i - 1].videoBitsPerSecond), reason: video[i].wire);
+      }
+      expect(recordingBoardSize(2160), (1920, 1080), reason: 'a page change would cost too much above full HD');
+      expect(recordingBoardSize(720), (1280, 720));
+      expect(recordingBoardSize(144), (854, 480), reason: 'writing must stay readable');
     });
 
     test('audio is a real audio-only capture: audioOnly on the wire, no video bitrate or height cap', () {

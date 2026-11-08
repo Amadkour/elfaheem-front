@@ -1907,7 +1907,7 @@ import os
         let rawH   = videoHeight > 0 ? videoHeight : Int(UIScreen.main.bounds.height * scale)
         // Clamp to 720p on the short side to keep files manageable — or to the
         // picked quality of a meeting recording (maxHeight is its longer side).
-        let maxShort = maxHeight > 0 ? max(240, min(maxHeight, 1080)) : 720
+        let maxShort = maxHeight > 0 ? max(144, min(maxHeight * 9 / 16, 2160)) : 720
         let shortSide = min(rawW, rawH)
         let ratio  = shortSide > maxShort ? CGFloat(maxShort) / CGFloat(shortSide) : 1.0
         let w      = (Int(CGFloat(rawW) * ratio) / 2) * 2   // must be even

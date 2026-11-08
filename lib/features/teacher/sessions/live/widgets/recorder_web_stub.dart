@@ -33,6 +33,7 @@ class WebRecorder {
         int participantCount = 0,
         String? uploadUrl,
         int? videoBitsPerSecond,
+        int? canvasHeight,
         bool audioOnly = false,
         String? epoch,
       }) {}

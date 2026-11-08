@@ -241,12 +241,7 @@ class RecordSetupLayout extends StatelessWidget {
             ),
         ],
         const SizedBox(height: 10),
-        AppDropdown<RecordingQuality>(
-          value: quality,
-          decoration: InputDecoration(labelText: t('الجودة', 'Quality')),
-          items: [for (final q in RecordingQuality.values) DropdownMenuItem(value: q, child: Text(q.label))],
-          onChanged: onQuality == null ? null : (q) => onQuality!(q ?? RecordingQuality.p720),
-        ),
+        RecordingQualityField(value: quality, onChanged: onQuality),
         const SizedBox(height: 12),
         RecordingIncludes(audioOnly: quality.audioOnly),
         if (error != null) ...[
@@ -266,6 +261,36 @@ class RecordSetupLayout extends StatelessWidget {
         ),
       ]),
     );
+  }
+}
+
+/// The recording quality, audio only to 2160p (D-319): the Record sheet and the new-meeting form.
+class RecordingQualityField extends StatelessWidget {
+  const RecordingQualityField({super.key, required this.value, this.onChanged, this.label});
+
+  final RecordingQuality value;
+  final ValueChanged<RecordingQuality>? onChanged;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppDropdown<RecordingQuality>(
+        value: value,
+        decoration: InputDecoration(labelText: label ?? t('الجودة', 'Quality')),
+        items: [for (final q in RecordingQuality.values) DropdownMenuItem(value: q, child: Text(q.label))],
+        onChanged: onChanged == null ? null : (q) => onChanged!(q ?? RecordingQuality.p720),
+      ),
+      if (value.demanding) ...[
+        const SizedBox(height: 6),
+        Text(
+          t('تحتاج جهازاً قوياً واتصالاً سريعاً، والملف كبير. لن تكون الصورة أوضح من الكاميرا أو الشاشة المعروضة.',
+              'Needs a powerful device and a fast connection, and the file is large. The picture is only as sharp as the camera or screen being shown.'),
+          style: appText(12, c: c.textMedium),
+        ),
+      ],
+    ]);
   }
 }
 
@@ -324,11 +349,14 @@ class RecordingIncludes extends StatelessWidget {
 
 /// Opens the setup sheet; resolves with the started recording, or null when the person backed out.
 Future<RecordingStart?> showRecordSetupSheet(BuildContext context,
-        {required String kind, required int id, MeetingRecordingApi? api}) =>
-    showAppSheet<RecordingStart>(context, (ctx) => RecordSetupSheet(kind: kind, id: id, api: api));
+        {required String kind, required int id, MeetingRecordingApi? api, Future<RecordingQuality?> Function()? preferredQuality}) =>
+    showAppSheet<RecordingStart>(context, (ctx) => RecordSetupSheet(kind: kind, id: id, api: api, preferredQuality: preferredQuality));
 
 class RecordSetupSheet extends StatefulWidget {
-  const RecordSetupSheet({super.key, required this.kind, required this.id, this.api, this.initialAccounts});
+  const RecordSetupSheet({super.key, required this.kind, required this.id, this.api, this.initialAccounts, this.preferredQuality});
+
+  /// What the meeting's creator picked (D-319): the sheet opens on it unless the person has already chosen.
+  final Future<RecordingQuality?> Function()? preferredQuality;
 
   final String kind;
   final int id;
@@ -346,6 +374,7 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
   List<CloudAccount>? _accounts;
   CloudProvider? _selected, _connecting;
   RecordingQuality _quality = RecordingQuality.p720;
+  bool _qualityTouched = false;
   bool _busy = false;
   String? _error;
   EventOrPoll? _poll;
@@ -354,6 +383,7 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
   @override
   void initState() {
     super.initState();
+    _loadPreferred();
     final initial = widget.initialAccounts;
     if (initial != null) {
       _accounts = initial;
@@ -367,6 +397,15 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
   void dispose() {
     _poll?.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPreferred() async {
+    try {
+      final q = await widget.preferredQuality?.call();
+      if (q != null && mounted && !_qualityTouched) setState(() => _quality = q);
+    } catch (_) {
+      // the default stays: the creator's choice is a convenience, never a reason not to record
+    }
   }
 
   CloudProvider? _firstUsable(List<CloudAccount> list) {
@@ -482,7 +521,10 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
         error: _error,
         onPick: (p) => setState(() => _selected = p),
         onConnect: _connect,
-        onQuality: (q) => setState(() => _quality = q),
+        onQuality: (q) => setState(() {
+          _quality = q;
+          _qualityTouched = true;
+        }),
         onStart: _start,
       );
 }

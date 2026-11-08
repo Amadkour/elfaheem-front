@@ -361,12 +361,15 @@ const _qualityCeilingKbps = <int, Map<StudioQualityLevel, int>>{
   1080: {StudioQualityLevel.small: 1800, StudioQualityLevel.balanced: 3000, StudioQualityLevel.best: 5500},
   720: {StudioQualityLevel.small: 900, StudioQualityLevel.balanced: 1500, StudioQualityLevel.best: 2800},
   480: {StudioQualityLevel.small: 500, StudioQualityLevel.balanced: 800, StudioQualityLevel.best: 1400},
+  1440: {StudioQualityLevel.small: 3500, StudioQualityLevel.balanced: 6000, StudioQualityLevel.best: 9000},
+  2160: {StudioQualityLevel.small: 6000, StudioQualityLevel.balanced: 10000, StudioQualityLevel.best: 16000},
 };
 
 /// The most a file of [seconds] can weigh at this size and level (bytes): the server caps the bitrate, so this is a
 /// ceiling; a quiet video such as a whiteboard comes out well under it. [sourceHeight] stands in when [height] is null.
 int studioQualityCeilingBytes(double seconds, {int? height, required StudioQualityLevel level, required int sourceHeight}) {
-  final h = height ?? (sourceHeight >= 1000 ? 1080 : (sourceHeight >= 700 ? 720 : 480));
+  final h = height ??
+      (sourceHeight >= 1800 ? 2160 : (sourceHeight >= 1300 ? 1440 : (sourceHeight >= 1000 ? 1080 : (sourceHeight >= 700 ? 720 : 480))));
   return ((_qualityCeilingKbps[h]![level]! + 128) * 1000 / 8 * math.max(0, seconds)).round();
 }
 

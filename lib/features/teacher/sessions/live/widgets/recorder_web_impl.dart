@@ -68,6 +68,7 @@ void _compositorStart(
       int participantCount = 0,
       String? uploadUrl,
       int? videoBitsPerSecond,
+      int? canvasHeight,
       bool audioOnly = false,
       String? epoch,
     }) {
@@ -82,6 +83,7 @@ void _compositorStart(
     // (recorder_compositor.js falls back to the session route / its constant).
     'uploadUrl': ?uploadUrl,
     'videoBitsPerSecond': ?videoBitsPerSecond,
+    'canvasHeight': ?canvasHeight, // the picture's real height (D-319); absent: full HD
     // Audio-only: the compositor records the mixed audio stream alone (no
     // canvas, audio/webm;codecs=opus chunks) — see its start().
     'audioOnly': audioOnly,
@@ -403,6 +405,7 @@ class WebRecorder {
         int participantCount = 0,
         String? uploadUrl,
         int? videoBitsPerSecond,
+        int? canvasHeight,
         bool audioOnly = false,
         String? epoch,
       }) {
@@ -418,6 +421,7 @@ class WebRecorder {
         participantCount: participantCount,
         uploadUrl: uploadUrl,
         videoBitsPerSecond: videoBitsPerSecond,
+        canvasHeight: canvasHeight,
         audioOnly: audioOnly,
         epoch: epoch,
       );

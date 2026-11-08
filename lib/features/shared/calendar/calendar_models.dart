@@ -498,6 +498,7 @@ Map<String, dynamic> calMeetingBody({
   required Map<String, dynamic> emptyAudience,
   bool student = false,
   bool force = false,
+  String? recordQuality,
 }) {
   final m = student ? 'online' : mode;
   return {
@@ -510,6 +511,7 @@ Map<String, dynamic> calMeetingBody({
     'org_id': ?orgId,
     'dept_id': ?deptId,
     'audience': student ? emptyAudience : audience,
+    if (m == 'online') 'record_quality': ?recordQuality,
     'force': force,
   };
 }

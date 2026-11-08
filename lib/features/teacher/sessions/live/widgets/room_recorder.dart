@@ -881,6 +881,7 @@ class ClientRecorder extends ChangeNotifier {
       uploadUrl: chunkPath == null ? null : uploadUrl,
       videoBitsPerSecond: q == null || q.audioOnly ? null : RecorderSettings.of(q).videoBitsPerSecond,
       audioOnly: audioOnly,
+      canvasHeight: q == null || q.audioOnly ? null : q.maxHeight,
     );
   }
 
