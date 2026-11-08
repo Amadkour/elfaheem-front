@@ -3111,3 +3111,51 @@ a changed interest or an older server without steps still use `GET /me/journey`)
 `journey_hint: pick_interests` and a "Plan your learning path" invite that opens the interests sheet. Trade-off: the
 home payload grows by the path's course briefs (a handful), and the cached journey is the full one; the home's
 request budget is unchanged.
+
+## D-310 — Meetings: End for everyone or Leave, handing the host over, the recording seen by everyone · 2026-11-08 · accepted
+
+**End / Leave (owner: "a premium selection").** A meeting's host pressing End (the bar, or hang-up on the mini box)
+no longer gets the plain "Leave?" dialog, which left the room running for the others without saying so. A sheet
+offers two large choices — **End meeting for everyone** (danger; "the recording is saved" when this device records;
+it is the host controls' end-for-all, so it is offered only while those controls are on) and **Leave meeting** (the
+others stay) — plus Cancel. Everyone else, and every course session, keeps the plain confirmation: a class has one
+teacher, and its End flow (recording drain, the session's end call) is unchanged.
+
+**Handing the host over.** After Leave, while at least one signed-in person (never a guest) is in the room, a second
+sheet asks "Give someone host controls?": the people with their photo and name (one person is pre-selected), **Make
+host and leave** (disabled until someone is picked; a failure — they left meanwhile — keeps the sheet open with the
+reason) and **No, just leave**; closing it keeps the host in the room. "For this meeting only": the server stores
+`cal_meetings.acting_host_id` (migration 0063, no foreign key on purpose, it lives for one room) and every live host
+check of the meeting reads `acting_host_id or owner_id` (`calendar_service.meeting_host_id`, `Room.host_id`): lobby,
+policy and link, the controls, end for everyone, the admin LiveKit token and starting a recording. It never changes
+the person's role or the meeting's owner, and it is cleared when the room closes (end for everyone, LiveKit's
+room_finished, a retired room), so the next room is the owner's again. Only the current host may hand over
+(`POST /api/v1/live/meeting/{id}/host {user_id}`, audited `live.host_handover`); the target must be the owner or an
+invitee who did not decline, not removed, and in the LiveKit room now. LiveKit gives the new host every publish
+source (the app's server-host test), the old host camera + microphone.
+
+**Telling the new host's room.** Three paths, the server always deciding: the event `live_host_changed` (SSE + silent
+push, to the owner and invitees; the room binds the SSE stream while it is open), a LiveKit data packet on topic
+`host` from the leaving host — only a hint, the room confirms it with `GET …/host` — and one `GET …/host` when a
+meeting room opens (a rejoin after a handover, the owner coming back). The room then starts the lobby and the host
+controls and may record, without rejoining (`RoomPage._hostOverride`); a host handed away stops them.
+
+**Who pays, who owns.** Billing stays on the owner: the free minutes and the live plan (`live_plan_service`) keep
+reading `owner_id`, so a handover never moves the cost to the new host (who could otherwise end up paying, or a
+student could dodge the limit by handing over), and the live plan's Upgrade stays the owner's button
+(`RoomPage.isOwner`). Editing the meeting and the meeting's recordings list stay the owner's; a recording the new host
+starts goes to the NEW host's drive (the recorder is theirs). The owner rejoining never waits in the lobby and passes
+the lock, as a member; the host may hand the room back to them. Kill switch `live.host_handover` (Leave then just
+leaves).
+
+**The recording indicator (owner: "pause icon while paused, live recording icon while recording").** The recording
+device already drew it in the top row (D-095); the gap was that a meeting records on its host's device (D-098) and
+nobody else's room knew. The recording device now publishes its state on the LiveKit data topic `rec`
+(`live_rec_signal.dart`: recording / paused / off + the elapsed time; on every change, to a newcomer, and every 15 s;
+forgotten after 45 s of silence or when the sender leaves), and every other room draws the same control without its
+menu: a pulsing red dot + REC + the time while recording, the amber pause glyph + "Paused" («متوقف مؤقتًا») while
+paused, and a notice "This meeting is being recorded". A remote recording takes the slot before the Record offer (a
+second recording of the same meeting helps nobody). The dot now follows Reduce motion (`syncMotionLoop`, parked fully
+lit: the colour and the label still say it). Trade-off: a data packet is not proof — any participant could send one;
+the worst case is a false "REC", and guests' packets are ignored. Tests: `test/org/live_host_handover_test.dart`,
+`test/ui/live_host_handover_layout_test.dart`; backend `tests/org_v2/e2e_meeting_host_handover.py`.

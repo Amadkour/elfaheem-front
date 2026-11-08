@@ -17,6 +17,9 @@
 // recording time while recording (amber + pause glyph while paused); a tap opens Pause / Resume / Stop recording —
 // exactly the actions the device had on the bar (a course's teacher: Pause / Resume; a meeting's creator: also
 // Stop). Everyone sees "● REC" while the server records (no controls: the device does not record, D-090).
+// D-310: in a meeting everyone else sees the device's recording too (live_rec_signal.dart, topic `rec`): the same
+// control — pulsing red dot + REC + the time while recording, the amber pause glyph + "Paused" while paused — with
+// no menu. The dot follows the room's pulse, which Reduce motion parks fully lit.
 //
 // Fitting ONE line (D-108): below [kLiveTopRowCompactWidth] the labels are icons (the times stay). Whatever still
 // does not fit folds by priority — a labelled chip first loses its label, then the least important pieces move
@@ -36,6 +39,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/shared/live/live_rec_signal.dart' show LiveRemoteRecState;
 import 'package:flutter_education_app/features/shared/live/live_time_limit.dart' show LiveLimitTone, LiveTimeLimit;
 
 import 'live_palette.dart';
@@ -70,8 +74,11 @@ enum LiveRecPhase {
 
 /// The phase of the control. [state] = this device's recorder (null when it does not record); [pending] = a
 /// recording was asked for and the recorder is not running yet; [offer] = Record may be pressed; [server] = the
-/// room's server recording is on. The device's own recorder wins (it is the one with controls).
-LiveRecPhase liveRecPhase({RecState? state, bool pending = false, bool offer = false, bool server = false}) {
+/// room's server recording is on; [remote] = someone else in the meeting records on their device (D-310, shown before
+/// the Record offer: a second recording of the same meeting helps nobody). The device's own recorder wins (it is the
+/// one with controls).
+LiveRecPhase liveRecPhase(
+    {RecState? state, bool pending = false, bool offer = false, bool server = false, LiveRemoteRecState? remote}) {
   switch (state) {
     case RecState.starting:
       return LiveRecPhase.starting;
@@ -90,6 +97,8 @@ LiveRecPhase liveRecPhase({RecState? state, bool pending = false, bool offer = f
       break;
   }
   if (pending) return LiveRecPhase.starting;
+  if (remote == LiveRemoteRecState.recording) return LiveRecPhase.recording;
+  if (remote == LiveRemoteRecState.paused) return LiveRecPhase.paused;
   if (offer) return LiveRecPhase.offer;
   if (server) return LiveRecPhase.server;
   return LiveRecPhase.none;
@@ -1555,7 +1564,7 @@ class _RecordControl extends StatelessWidget {
           lead: r.busy ? _spinner(c) : (paused ? Icon(Icons.pause_rounded, size: 18, color: c) : _PulseDot(color: c, pulse: pulse)),
           parts: [
             if (!compact) ...[
-              Text(paused ? t('متوقف', 'Paused') : t('يُسجَّل', 'REC'), maxLines: 1, style: _label(c, spacing: paused ? 0.2 : 0.8)),
+              Text(paused ? t('متوقف مؤقتًا', 'Paused') : t('يُسجَّل', 'REC'), maxLines: 1, style: _label(c, spacing: paused ? 0.2 : 0.8)),
               const SizedBox(width: 8),
             ],
             clock,

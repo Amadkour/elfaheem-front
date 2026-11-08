@@ -1008,13 +1008,15 @@ Future<void> openMeetingRoom(BuildContext context,
     {required CalendarApi api, required Map<String, dynamic> meeting, bool? canRecord, bool? isHost}) async {
   final auth = context.read<MyAuthProvider>();
   final id = asInt(meeting['id']);
-  final owner = isHost ?? meeting['is_owner'] == true;
+  // D-310: who hosts the room now (`is_host`, after a handover not always the owner); older servers: the owner.
+  final owner = isHost ?? (meeting['is_host'] ?? meeting['is_owner']) == true;
   await Navigator.of(context).push(MaterialPageRoute(
     builder: (_) => deferredPreJoin(
       args: JoinArgs(
         sessionId: -id, // not a course session: keeps the course-session calls of the room away from real ones
         roomRef: LiveRoomRef.meeting(id),
-        isHost: owner, // the owner runs the lobby (share link, admission) without being a "teacher"
+        isHost: owner, // the host runs the lobby (share link, admission) without being a "teacher"
+        isOwner: meeting['is_owner'] == true || isHost == true,
         courseId: 0,
         isTeacher: false,
         canRecord: canRecord ?? meetingCanRecord(meeting), // [meeting-recording]

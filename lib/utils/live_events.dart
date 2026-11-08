@@ -94,6 +94,11 @@ class LiveEvents {
   /// server: services/calendar_service.notify). The schedule page reloads its range (D-085).
   static const calendarUpdated = 'calendar_updated';
 
+  /// A meeting's host handed the room's host controls to someone in it (D-310): `{kind: meeting, id, host_id,
+  /// previous_host_id, owner_id, acting}` (server: services/live_controls.hand_over). The new host's open room takes
+  /// the lobby / controls / Record at once.
+  static const liveHostChanged = 'live_host_changed';
+
   /// The teacher started a quiz in the room: `{course_id}`.
   static const quizStarted = 'quiz_started';
 
@@ -145,6 +150,7 @@ class LiveEvents {
     sessionLive,
     meetingLive,
     calendarUpdated,
+    liveHostChanged,
     quizStarted,
     attendanceRosterUpdated,
     orgAccessChanged,

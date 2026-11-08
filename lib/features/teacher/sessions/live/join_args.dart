@@ -34,6 +34,7 @@ class JoinArgs {
     this.canPublish = true,
     this.roomRef,
     this.isHost,
+    this.isOwner,
     this.onPoll,
     this.canRecord = false,
     @Deprecated('D-106: the pre-join page always waits for Join; the value is ignored') this.autoJoin = false,
@@ -67,6 +68,10 @@ class JoinArgs {
   /// Who runs the lobby (share link, admission). Null → `isTeacher && !guest`; a meeting owner passes true
   /// without being a "teacher" (no recorder, no course-session calls).
   final bool? isHost;
+
+  /// D-310: a meeting's owner (the live plan's Upgrade is theirs). Null → [isHost]: after a handover the host of a
+  /// meeting may not be its owner.
+  final bool? isOwner;
 
   /// Polls a waiting lobby request (`onStart` answered `JoinOutcome.waiting`). Null → [LiveRoomApi.poll],
   /// which picks the public poll when the outcome carries a secret and the member poll otherwise.
@@ -141,6 +146,7 @@ class JoinArgs {
         canPublish: canPublish,
         roomRef: roomRef,
         isHost: isHost,
+        isOwner: isOwner,
         onPoll: onPoll,
         canRecord: canRecord,
         startsAt: startsAt,

@@ -425,6 +425,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         canPublish: args.canPublish,
         roomRef: args.ref,
         isHost: args.isHost,
+        isOwner: args.isOwner,
         canRecord: args.canRecord, // [meeting-recording]
         freeEndsAt: data.freeEndsAt,
         liveStartedAt: data.liveStartedAt,

@@ -59,6 +59,9 @@ import 'package:flutter_education_app/features/shared/live/live_controls_api.dar
 import 'package:flutter_education_app/features/shared/live/live_participant_controls.dart'
     show LiveHostControlsController, LiveHostControlsHeader, LiveParticipantControlsButton, showLiveParticipantControls;
 import 'package:flutter_education_app/features/shared/live/live_end_signal.dart';
+import 'package:flutter_education_app/features/shared/live/live_host_handover.dart';
+import 'package:flutter_education_app/features/shared/live/live_rec_signal.dart';
+import 'package:flutter_education_app/core/live/live_events_client.dart' show LiveEventsClient;
 // One share at a time + "Request to share", the attention badges and the chat preview: the "Share arbitration"
 // region below (lib/features/shared/live/live_share_arbiter.dart, live_attention.dart, live_share_widgets.dart)
 import 'package:flutter_education_app/features/shared/live/live_share_arbiter.dart';
@@ -324,6 +327,10 @@ class RoomPage extends StatefulWidget {
 
   bool get host => isHost ?? (isTeacher && !isGuest);
 
+  /// D-310: the meeting's OWNER (billing: the live plan's Upgrade). Null → [host] (a host is the owner unless the
+  /// room was handed over to them).
+  final bool? isOwner;
+
   /// [meeting-recording] The creator of a calendar meeting (the detail's `can_record` / `is_owner`): the room
   /// offers Record → RecordSetupSheet → chunks to the recording's own route (spec §5). Course sessions ignore it.
   final bool canRecord;
@@ -366,6 +373,7 @@ class RoomPage extends StatefulWidget {
         this.canPublish = true,
         this.roomRef,
         this.isHost,
+        this.isOwner,
         this.canRecord = false,
         this.freeEndsAt,
         this.startsAt,
@@ -467,13 +475,13 @@ class _RoomPageState extends State<RoomPage>
   LiveAllowedControls _allowedFrom(ParticipantPermissions? p) {
     if (p == null) {
       return widget.canPublish
-          ? liveAllowedControls(canPublish: true, sources: const [], host: widget.isTeacher || widget.host)
+          ? liveAllowedControls(canPublish: true, sources: const [], host: widget.isTeacher || _host)
           : LiveAllowedControls.none;
     }
     return liveAllowedControls(
       canPublish: p.canPublish,
       sources: [for (final s in p.canPublishSources) s.name],
-      host: widget.isTeacher || widget.host,
+      host: widget.isTeacher || _host,
     );
   }
 
@@ -589,7 +597,8 @@ class _RoomPageState extends State<RoomPage>
     // Full-screen again: a share request that waited while the room was a box is asked now.
     WidgetsBinding.instance.addPostFrameCallback((_) => _openShareDialog());
     syncMotionLoop(context, _auroraAnim, rest: 0);
-    if (!_recDotAnim.isAnimating) _recDotAnim.repeat(reverse: true); // tells something: never parked by motion
+    // D-310: Reduce motion parks the REC dot fully lit (red + "REC" still say it; only the pulse stops).
+    syncMotionLoop(context, _recDotAnim, reverse: true, rest: 0);
   }
 
   // Live emoji reactions (everyone): published lossy on topic 'reaction', shown by LiveReactionsOverlay.
@@ -602,6 +611,16 @@ class _RoomPageState extends State<RoomPage>
     return (p?.name.isNotEmpty ?? false) ? p!.name : (p?.identity ?? '');
   }
   String get _myIdentity => widget.room.localParticipant?.identity ?? '';
+
+  // ── D-310: the meeting's host can change while the room is open (a handover) ──────────────────────────────
+  /// Set when this room became (true) or stopped being (false) the meeting's host; null = as joined.
+  bool? _hostOverride;
+
+  /// Runs the lobby and the host controls: as joined ([RoomPage.host]) unless a handover changed it.
+  bool get _host => _hostOverride ?? widget.host;
+
+  /// May start a meeting recording (the host of the room).
+  bool get _canRecord => _hostOverride ?? widget.canRecord;
 
   // Hand-raise queue (reliable data on topic 'hand'; see live_hands.dart).
   late final LiveHandsController _hands = LiveHandsController(
@@ -852,7 +871,7 @@ class _RoomPageState extends State<RoomPage>
   /// The creator may record this meeting (feature key `live.meeting_recording`).
   bool get _canRecordMeeting =>
       widget.ref.isMeeting &&
-      widget.canRecord &&
+      _canRecord &&
       !widget.isGuest &&
       !AppConfig.disableList.contains('live.meeting_recording');
 
@@ -912,7 +931,7 @@ class _RoomPageState extends State<RoomPage>
 
   // ── Part 2: free-time limit · info sheet (docs/backend/live-rooms-spec.md §8, §11) ──────────────────────────
   /// The meeting's owner: the only one who can lift the limit (the live plan).
-  bool get _isMeetingOwner => widget.host && widget.ref.isMeeting && !widget.isGuest;
+  bool get _isMeetingOwner => (widget.isOwner ?? widget.host) && widget.ref.isMeeting && !widget.isGuest;
 
   /// The owner subscribed during this visit: the countdown is gone.
   bool _limitLifted = false;
@@ -973,7 +992,7 @@ class _RoomPageState extends State<RoomPage>
     return MeetingInfo(
       title: widget.sessionName ?? '',
       isMeeting: widget.ref.isMeeting,
-      role: widget.isGuest ? LiveRoomRole.guest : (widget.host ? LiveRoomRole.host : LiveRoomRole.member),
+      role: widget.isGuest ? LiveRoomRole.guest : (_host ? LiveRoomRole.host : LiveRoomRole.member),
       hostName: widget.hostName,
       startsAt: widget.startsAt,
       elapsed: Duration(seconds: _sessionElapsedSeconds),
@@ -1470,6 +1489,7 @@ class _RoomPageState extends State<RoomPage>
     if (widget.isTeacher && !_isMeeting) LiveQuizBroadcast.latest.addListener(_onQuizPublished);
     _startLobby(); // host only; see the "Lobby" region
     _startControls(); // host only; see the "Host controls" region
+    _startHostWatch(); // meetings: a handover gives this room the host controls (D-310)
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Annotation: ask the room for the board (a late joiner sees what is drawn already).
@@ -1531,6 +1551,7 @@ class _RoomPageState extends State<RoomPage>
     } else {
       _stopRecClock(pause: state == RecState.paused);
     }
+    _announceRec();
     setState(() {});
   }
 
@@ -1601,6 +1622,7 @@ class _RoomPageState extends State<RoomPage>
     _syncFocusSystemUi(force: false); // D-306: the system bars come back with the room gone
     _lobby?.dispose();
     _controls?.dispose();
+    _stopHostWatch();
     // Annotation: the Android overlay is hidden by disposeLiveNativeEvents() below (it owns onClosed).
     annotationOverlayActive.removeListener(_onAnnotOverlay);
     _annot.removeListener(_onAnnotChanged);
@@ -1696,8 +1718,8 @@ class _RoomPageState extends State<RoomPage>
   /// The hang-up button of the minimized box: back to full screen, then the same confirmation as End.
   Future<void> _leaveFromMiniBox() async {
     LiveRoomScope.maybeOf(context)?.expand();
-    final ok = await context.showDisconnectDialog();
-    if (ok != true || !mounted) return;
+    final ok = await _confirmEnd();
+    if (!ok || !mounted) return;
     // The same path as the End button: it closes the layer, and the page's dispose disconnects the room once
     // (a second disconnect() here raced that one).
     await _endSessionWithRecording();
@@ -2283,12 +2305,14 @@ class _RoomPageState extends State<RoomPage>
     // A raised hand leaves with its owner; a late joiner gets my raised hand re-announced.
     ..on<ParticipantDisconnectedEvent>((e) {
       _hands.drop(e.participant.identity);
+      _remoteRecLeft(e.participant.identity); // their recording indicator goes with them (D-310)
       _share.participantLeft(e.participant.identity); // their request, approval and grant go too
       _board.participantLeft(e.participant.identity); // a presenter who left takes the board with them
       _scheduleSort();
     })
     ..on<ParticipantConnectedEvent>((e) {
       _hands.reannounceLocal();
+      _announceRec(); // a newcomer learns at once that this meeting is recorded (D-310)
       // Annotation: the responder (presenter, else the first host) sends the newcomer the board.
       if (_annotEnabled) _annot.onParticipantJoined(e.participant.identity);
       // Whiteboard: the presenter sends the newcomer the board.
@@ -2369,6 +2393,15 @@ class _RoomPageState extends State<RoomPage>
       final senderName = (p?.name.isNotEmpty ?? false) ? p!.name : p?.identity;
       if (event.topic == kLiveEndForAllTopic) {
         _endSignal.receive(event.data, senderIdentity: p?.identity);
+        return;
+      }
+      // D-310: the leaving host named a new host (a hint, confirmed with the server) / someone's recording state.
+      if (event.topic == kLiveHostTopic) {
+        _onHostPacket(event.data);
+        return;
+      }
+      if (event.topic == kLiveRecTopic) {
+        _onRecPacket(event.data, p?.identity);
         return;
       }
       switch (liveDataRoute(event.topic)) {
@@ -3960,11 +3993,14 @@ class _RoomPageState extends State<RoomPage>
           recordsHere: _recordsHere,
         );
     final meetingRec = _canRecordMeeting && _meetingRecording != null;
+    // D-310: someone else in the meeting records on their device (their `rec` packets); forgotten when stale.
+    final remote = st == null && !meetingRec && _remoteRec != null && !_remoteRec!.staleAt(now) ? _remoteRec : null;
     final phase = liveRecPhase(
       state: st,
       pending: meetingRec,
       offer: _canRecordMeeting && _meetingRecording == null && !_endingSession,
       server: _serverRecording,
+      remote: remote?.state,
     );
     final detail = rec != null && st != null && st != RecState.idle
         ? trp('lr_chunk_mb', {'n': '${rec.uploadedChunks}', 'mb': (rec.totalBytes / (1024 * 1024)).toStringAsFixed(1)})
@@ -3990,7 +4026,7 @@ class _RoomPageState extends State<RoomPage>
       onLocked: _showParticipants ? null : _toggleParticipantPanel,
       recording: LiveTopRecording(
         phase: phase,
-        elapsed: Duration(seconds: _recElapsedSeconds),
+        elapsed: remote?.elapsedAt(now) ?? Duration(seconds: _recElapsedSeconds),
         detail: detail,
         busy: _meetingRecordBusy || _isPausingRecording || _isResumingRecording,
         onRecord: _recordMeeting,
@@ -4149,8 +4185,9 @@ class _RoomPageState extends State<RoomPage>
         onInteraction: _pokeControls,
         // End session goes through our recorder-aware wrapper
         onEndSession: _endSessionWithRecording,
+        confirmEnd: _confirmEnd, // D-310: a meeting's host chooses End for everyone / Leave (+ handover)
         isTeacher: widget.isTeacher,
-        isHost: widget.host,
+        isHost: _host,
         // D29: what the server allows right now (a guest allowed to speak, a student allowed to share)
         canPublish: _allowed.any,
         allowMic: _allowed.mic,
@@ -4190,7 +4227,7 @@ class _RoomPageState extends State<RoomPage>
   LiveLobbyController? _lobby;
 
   void _startLobby() {
-    if (!widget.host || AppConfig.disableList.contains(kLiveLobbyFeatureKey)) return;
+    if (!_host || AppConfig.disableList.contains(kLiveLobbyFeatureKey)) return;
     _lobby = LiveLobbyController(widget.ref)
       ..addListener(_syncAttention)
       ..start();
@@ -4309,7 +4346,7 @@ class _RoomPageState extends State<RoomPage>
     final hosts = <String>{
       for (final p in widget.room.remoteParticipants.values)
         if (isHostIdentity(p.identity)) p.identity,
-      if (local != null && local.identity.isNotEmpty && (isHostIdentity(local.identity) || widget.host))
+      if (local != null && local.identity.isNotEmpty && (isHostIdentity(local.identity) || _host))
         local.identity,
     };
     final presenter = _isScreenShareMain ? _stageTracks.first.participant.identity : null;
@@ -4552,9 +4589,197 @@ class _RoomPageState extends State<RoomPage>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // D-310: End / Leave, handing the host over, and the meeting's recording indicator for everyone
+  // ═══════════════════════════════════════════════════════════════════════════
+  // A meeting's host pressing End (the bar or the mini box) gets showLiveEndChoiceSheet: End for everyone (the host
+  // controls' end-for-all, which also stops / saves a recording on this device) or Leave; after Leave, while a
+  // signed-in person is still in the room (and live.host_handover is on), showLiveHandoverSheet: Make host and leave
+  // (POST /live/meeting/{id}/host, then the `host` data packet) or No, just leave. Everyone else, and every course
+  // session, keeps the plain leave confirmation. The new host's room takes the controls on the server's
+  // `live_host_changed` event or on the packet (after GET …/host confirms it). UI + API: live_host_handover.dart.
+  StreamSubscription<LiveEvent>? _hostEvents;
+  bool _sseBound = false;
+
+  bool get _meetingMember => widget.ref.isMeeting && !widget.isGuest;
+
+  void _startHostWatch() {
+    if (!_meetingMember) return;
+    LiveEventsClient.instance.bind();
+    _sseBound = true;
+    _hostEvents = LiveEvents.instance.listen({LiveEvents.liveHostChanged}, (e) {
+      if ('${e.data['kind'] ?? 'meeting'}' != 'meeting' || '${e.data['id']}' != '${widget.ref.id}') return;
+      final hostId = int.tryParse('${e.data['host_id'] ?? ''}');
+      final me = liveMeetingUserId(_myIdentity);
+      if (hostId == null || me == null) return;
+      _applyHost(hostId == me);
+    });
+    // Who hosts NOW (a rejoin after a handover, the owner back after handing it over): the server decides.
+    unawaited(() async {
+      try {
+        final s = await MeetingHostApi(widget.ref.id).current();
+        if (mounted && s.hostId > 0) _applyHost(s.isHost);
+      } catch (e) {
+        log('[LIVE] host state: $e'); // an older server has no route: the room stays as joined
+      }
+    }());
+  }
+
+  void _stopHostWatch() {
+    unawaited(_hostEvents?.cancel());
+    _hostEvents = null;
+    _recBeat?.cancel();
+    if (_sseBound) {
+      _sseBound = false;
+      LiveEventsClient.instance.release();
+    }
+  }
+
+  /// The leaving host's `host` packet: only a hint — the server says whether this room hosts now.
+  void _onHostPacket(List<int> bytes) {
+    final target = liveHostFromPacket(bytes);
+    if (target == null || !_meetingMember) return;
+    final mine = target == _myIdentity;
+    if (mine == _host) return;
+    unawaited(() async {
+      try {
+        final s = await MeetingHostApi(widget.ref.id).current();
+        if (mounted) _applyHost(s.isHost);
+      } catch (e) {
+        log('[LIVE] host check: $e');
+      }
+    }());
+  }
+
+  /// This room became (or stopped being) the meeting's host: start / stop the lobby and the host controls.
+  void _applyHost(bool host) {
+    if (!mounted || _endingSession || host == _host) return;
+    setState(() => _hostOverride = host);
+    if (host) {
+      _startLobby();
+      _startControls();
+      showAppNotice(t('أصبحت مضيف هذا الاجتماع: يمكنك قبول المنتظرين وإدارة المشاركين والتسجيل.',
+          'You are now the host of this meeting: you can admit people, manage participants and record.'),
+          icon: Icons.admin_panel_settings_rounded);
+    } else {
+      _lobby?.dispose();
+      _lobby = null;
+      _controls?.dispose();
+      _controls = null;
+    }
+    _syncAttention();
+  }
+
+  /// What End asks first (true = leave). A meeting's host: End for everyone / Leave (+ the handover); everyone else
+  /// (and every course session): the plain confirmation.
+  Future<bool> _confirmEnd() async {
+    if (!(_isMeeting && _host && !widget.isGuest)) return await context.showDisconnectDialog() == true;
+    final people = _handoverCandidates();
+    final rec = _recorder?.state;
+    final choice = await showLiveEndChoiceSheet(
+      context,
+      recording: _recordsHere && (rec == RecState.recording || rec == RecState.paused),
+      canEndForAll: _controls != null,
+      others: widget.room.remoteParticipants.length,
+    );
+    if (choice == null || !mounted) return false;
+    if (choice == LiveEndChoice.endForAll) {
+      final c = _controls;
+      if (c == null) return false;
+      // The server ends the room for everyone; the recorder is then stopped and saved by End's own path.
+      return c.endForAll();
+    }
+    if (people.isEmpty || !liveHostHandoverOn) return true;
+    final outcome = await showLiveHandoverSheet(context, people: people, handOver: _handOver);
+    return outcome != null && mounted;
+  }
+
+  List<LiveHandoverCandidate> _handoverCandidates() => liveHandoverCandidates(
+        [
+          for (final p in widget.room.remoteParticipants.values)
+            (identity: p.identity, name: p.name, imageUrl: participantPhotoFromMetadata(p.metadata)),
+        ],
+        localIdentity: _myIdentity,
+      );
+
+  /// Null = handed over (and the room told); else the error text the sheet shows.
+  Future<String?> _handOver(LiveHandoverCandidate person) async {
+    try {
+      await MeetingHostApi(widget.ref.id).handOver(person.userId);
+    } catch (e) {
+      return liveHandoverErrorText(e);
+    }
+    try {
+      await widget.room.localParticipant
+          ?.publishData(liveHostPacket(person.identity), reliable: true, topic: kLiveHostTopic);
+    } catch (e) {
+      log('[LIVE] host packet: $e'); // the server's live_host_changed tells them anyway
+    }
+    if (mounted) setState(() => _hostOverride = false); // no host controls on the way out
+    showAppNotice(t('أصبح ${person.name} مضيف الاجتماع', '${person.name} is now the host of the meeting'),
+        icon: Icons.admin_panel_settings_rounded);
+    return null;
+  }
+
+  // ── the meeting's recording, for everyone (live_rec_signal.dart) ──────────────────────────────────────────
+  LiveRemoteRec? _remoteRec;
+  Timer? _recBeat;
+  LiveRemoteRecState? _recSent;
+
+  LiveRemoteRecState? get _myRecState {
+    if (!_recordsHere) return null;
+    return switch (_recorder?.state) {
+      RecState.recording => LiveRemoteRecState.recording,
+      RecState.paused => LiveRemoteRecState.paused,
+      _ => null,
+    };
+  }
+
+  /// This device records a meeting: tell the room (on a change, to a newcomer, and every 15 s while it lasts).
+  void _announceRec() {
+    if (!widget.ref.isMeeting || widget.isGuest) return;
+    final s = _myRecState;
+    if (s == null && _recSent == null) return; // never recorded here: nothing to say
+    _recSent = s;
+    final local = widget.room.localParticipant;
+    if (local != null) {
+      unawaited(local
+          .publishData(liveRecPacket(s, Duration(seconds: _recElapsedSeconds)), reliable: true, topic: kLiveRecTopic)
+          .catchError((Object e) => log('[LIVE] rec packet: $e')));
+    }
+    if (s == null) {
+      _recBeat?.cancel();
+      _recBeat = null;
+    } else {
+      _recBeat ??= Timer.periodic(kLiveRecHeartbeat, (_) {
+        if (!mounted || _myRecState == null) return;
+        _announceRec();
+      });
+    }
+  }
+
+  void _onRecPacket(List<int> bytes, String? from) {
+    if (from == null || from.isEmpty || isGuestIdentity(from) || from == _myIdentity) return;
+    final signal = liveRecFromPacket(bytes);
+    if (signal == null || !mounted) return;
+    final next = liveRemoteRecAfter(_remoteRec, signal, from: from, now: DateTime.now());
+    final changed = next?.state != _remoteRec?.state || next?.from != _remoteRec?.from;
+    _remoteRec = next;
+    _clockTick.value++; // the top row re-reads it
+    if (changed && next != null && next.state == LiveRemoteRecState.recording) {
+      showAppNotice(t('يُسجَّل هذا الاجتماع', 'This meeting is being recorded'), icon: Icons.fiber_manual_record_rounded);
+    }
+  }
+
+  void _remoteRecLeft(String identity) {
+    if (_remoteRec?.from != identity) return;
+    _remoteRec = null;
+    _clockTick.value++;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // Host controls (live.teacher_controls / live.room_lock) — live hardening L2
   // ═══════════════════════════════════════════════════════════════════════════
-  // A host (`widget.host && !widget.isGuest`) gets LiveHostControlsController: the participants panel's header
+  // A host (`_host && !widget.isGuest`) gets LiveHostControlsController: the participants panel's header
   // (Mute all · Lock room · End for everyone) and a ⋮ per participant (mute · stop camera / share · allow / revoke
   // screen share · remove). UI and API in lib/features/shared/live/live_controls_api.dart +
   // live_participant_controls.dart; wiring in docs/live/teacher_controls_wiring.md — keep this region the only
@@ -4569,7 +4794,7 @@ class _RoomPageState extends State<RoomPage>
   /// This host is ending / ended the room for everyone: its own disconnect then shows no dialog.
   bool _endedForAll = false;
 
-  bool get _canModerate => widget.host && !widget.isGuest;
+  bool get _canModerate => _host && !widget.isGuest;
 
   /// The per-participant ⋮ and Mute all (not only the lock row) are on.
   bool get _teacherControlsOn =>
@@ -4688,7 +4913,7 @@ class _RoomPageState extends State<RoomPage>
   /// This device hosts the share rules: the room's host whom the SERVER set up as one too (a co-host the server
   /// minted as a member would have its answers ignored by everyone else — it asks like a member then).
   bool get _isShareHost {
-    if (!widget.host || widget.isGuest) return false;
+    if (!_host || widget.isGuest) return false;
     final local = widget.room.localParticipant;
     if (local == null) return true;
     final perms = local.permissions;

@@ -33,6 +33,10 @@ class ControlsWidget extends StatefulWidget {
   final Future<dynamic> Function() onEndSession;
   final bool isTeacher;
 
+  /// D-310: what End asks before [onEndSession] runs (true = go on). Null → the plain leave confirmation; a
+  /// meeting's host passes the End / Leave sheet (and the handover after Leave).
+  final Future<bool> Function()? confirmEnd;
+
   /// The room's host (a course's teacher, a meeting's owner): may share the screen. A meeting owner is not a
   /// "teacher", and the server grants the host every publish source.
   final bool isHost;
@@ -95,6 +99,7 @@ class ControlsWidget extends StatefulWidget {
         super.key,
         required this.onEndSession,
         required this.isTeacher,
+        this.confirmEnd,
         this.isHost = false,
         this.onToggleScreenShare,
         this.onToggleReactions,
@@ -335,7 +340,9 @@ class ControlsWidgetState extends State<ControlsWidget> {
 
   // ── Disconnect ─────────────────────────────────────────────────────────────
   void _onTapDisconnect() async {
-    final result = await context.showDisconnectDialog();
+    final confirm = widget.confirmEnd;
+    final result = confirm != null ? await confirm() : await context.showDisconnectDialog();
+    if (!mounted) return;
     if (result == true) {
       await widget.onEndSession();
       try {

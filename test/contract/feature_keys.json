@@ -179,6 +179,7 @@
  "instructor.teacher_stats",
  "live.annotation",
  "live.guest_link",
+ "live.host_handover",
  "live.lobby",
  "live.meeting_links",
  "live.meeting_recording",
