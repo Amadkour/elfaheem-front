@@ -80,6 +80,20 @@ calls) next to screens whose bodies are plain-value widgets the layout harness p
   `test/org/fixtures/omr_smart_payloads.json` (the contract's fields on recorded replies); tests
   `test/org/omr_smart_photos_test.dart`.
 
+## Any sheet, a whole class, the marks where they belong (D-340 – D-343)
+
+`paper/bubble/` is the premium path a teacher reaches from the exam hub's "Correct bubble sheets" (`deferredBubbleHome`, kill switch `exam.bubble`). Pure part `bubble_flow.dart`, screens over plain-value widgets `bubble_widgets.dart` and `bubble_sheet_view.dart` (the regions drawn over the sheet, a tap reported as a fraction of it).
+
+| Step | Screen | Server |
+|---|---|---|
+| Choose: ready, saved, or Import a new sheet | `BubbleHomeScreen` | `GET /omr/templates`, `GET /omr/sheet-imports` |
+| Teach: four checked pictures, review, Confirm | `BubbleImportScreen` | `POST /omr/sheet-imports`, `…/steps/{question\|identifier\|empty\|filled}`, `…/detect`, `…/feedback`, `…/undo`, `…/confirm` (`exam.bubble.teach`) |
+| Key: grid or a marked sheet read back | `BubbleKeyScreen` | `PUT /bubble/runs/{id}/key`, `POST …/key/sheet` (`exam.bubble.key_sheet`), void / restore |
+| Correct and review | `BubbleRunScreen` over `OmrScanSection` | the paper-exam routes |
+| Marks | `showBubbleDataLab`, `OmrResultsPage` | `…/datalab/columns`, `/preview`, `/apply` (`exam.bubble.datalab`) |
+
+A run is an exam (`settings.bubble_run`): the review queue, evidence and analytics are this guide's other sections. Rules: nothing of a teaching draft is usable before Confirm; a sheet that can't be placed safely asks for a retake (D-199 in `../back/docs/DECISIONS.md`); marks are written to Data Lab only after a before / after preview.
+
 ## Getting the pages in: camera, gallery, files, a scanner's folder
 
 Both paper kinds take pages the same way: bubble sheets ("Upload papers" in `OmrScanSection`, and "Upload more" /
