@@ -4,9 +4,11 @@
 // fitted into the widget with `contain` (the way VideoTrackRenderer shows a screen share), so a stroke lands on
 // the same spot of the content on a phone, a laptop, in portrait or landscape.
 //
-// The ink (annotation_ink.dart, D-083): the centre line is the midpoint chain of quadratic Béziers. A pressure
-// stroke (stylus) is ONE filled shape whose width follows the averaged pressure and tapers at the ends; its
-// finished pieces are cached and only the last piece is rebuilt while it grows, so what is drawn never moves.
+// The ink (annotation_ink.dart, D-083 / D-314): the centre line is a centripetal Catmull–Rom spline through the
+// samples. A pressure stroke (stylus) is a filled outline whose width follows the averaged pressure and tapers at
+// the ends; its finished pieces are cached and only the last piece is rebuilt while it grows, so what is drawn never
+// moves. A viewer may draw an open stroke only part of the way ([paintStroke] `shown`, D-314: remote ink revealed
+// at the drawer's pace).
 // A stroke without pressure (finger, mouse) is one stroked path, round caps: a ballpoint. The highlighter is one
 // translucent stroked path (never darker where it crosses itself). The laser is a dot with a glow that fades.
 // Every device draws the same points with this same code: the drawer's preview and every viewer match.
@@ -78,12 +80,26 @@ class AnnotationPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// One stroke in the content rect [rect] (the whiteboard draws its ink with this too, D-087).
-  static void paintStroke(Canvas canvas, AnnotStroke s, Rect rect) => _paintStroke(canvas, s, rect);
+  /// One stroke in the content rect [rect] (the whiteboard draws its ink with this too, D-087). [shown] (an open
+  /// stroke): how many of its points to draw — the last one reached part of the way (D-314); null: all.
+  static void paintStroke(Canvas canvas, AnnotStroke s, Rect rect, {double? shown}) =>
+      _paintStroke(canvas, s, rect, shown: shown);
 
-  static void _paintStroke(Canvas canvas, AnnotStroke s, Rect rect) {
-    final pts = s.points;
-    if (pts.isEmpty) return;
+  static void _paintStroke(Canvas canvas, AnnotStroke s, Rect rect, {double? shown}) {
+    final all = s.points;
+    if (all.isEmpty) return;
+    // Partly shown: the first [whole] points and a tip part of the way to the next.
+    var count = all.length;
+    AnnotPoint? tip;
+    if (shown != null && s.open && shown < all.length) {
+      count = shown.floor().clamp(1, all.length);
+      final f = shown - count + 1; // toward point [count]
+      if (count < all.length && f > 1e-3) {
+        final a = all[count - 1], b = all[count];
+        tip = AnnotPoint(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, a.p + (b.p - a.p) * f);
+      }
+    }
+    final pts = count == all.length && tip == null ? all : [...all.take(count), ?tip];
     final highlighter = s.ink == AnnotInk.highlighter;
     // A pen is opaque (the tail overlaps the cached part where they meet); the highlighter is translucent and
     // ONE path, so it never darkens where it crosses itself.
@@ -114,7 +130,9 @@ class AnnotationPainter extends CustomPainter {
         ..strokeCap = highlighter ? StrokeCap.butt : StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..isAntiAlias = true;
-      canvas.drawPath(_strokedPath(s, rect), paint);
+      canvas.drawPath(
+          identical(pts, all) ? _strokedPath(s, rect) : annotSmoothPath([for (final p in pts) AnnotFit.toLocal(p.x, p.y, rect)]),
+          paint);
       return;
     }
 
@@ -123,7 +141,7 @@ class AnnotationPainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
-    final ink = _inkFor(s, rect, base);
+    final ink = _inkFor(s, rect, base, count: count, tip: tip);
     canvas.drawPath(ink.committed, fill);
     final tail = ink.tail;
     if (tail != null) canvas.drawPath(tail, fill);
@@ -138,32 +156,36 @@ class AnnotationPainter extends CustomPainter {
     return path;
   }
 
-  static _InkCache _inkFor(AnnotStroke s, Rect rect, double base) {
+  /// [count] of the stroke's points are drawn, then [tip] (a point part of the way to the next one) when given.
+  static _InkCache _inkFor(AnnotStroke s, Rect rect, double base, {required int count, AnnotPoint? tip}) {
     final pts = s.points;
-    final n = pts.length;
+    final partial = count < pts.length || tip != null;
     var c = _cache[s];
-    if (c != null && c.stroked == null && c.matches(s, rect)) return c; // nothing changed
+    if (!partial && c != null && c.stroked == null && c.matches(s, rect)) return c; // nothing changed
     // While open, points are only appended to the same list: the cached pieces stay valid.
+    final finalNow = count - 2; // the pieces final for what is drawn now (see below)
     final grows = c != null &&
         c.stroked == null &&
         c.rect == rect &&
         identical(c.points, pts) &&
         c.open &&
         s.open &&
-        c.count <= n;
+        c.pieces <= finalNow;
     if (!grows) {
       c = _InkCache(s, rect);
       _cache[s] = c;
     }
     final ink = c;
-    final o = [for (final p in pts) AnnotFit.toLocal(p.x, p.y, rect)];
-    final radii = annotInkRadii([for (final p in pts) p.p], base);
+    final used = [for (var i = 0; i < count; i++) pts[i], ?tip];
+    final n = used.length;
+    final o = [for (final p in used) AnnotFit.toLocal(p.x, p.y, rect)];
+    final radii = annotInkRadii([for (final p in used) p.p], base);
     final spacing = (base * 0.3).clamp(0.5, 3.0).toDouble();
     if (!s.open) {
       // Finished: the whole shape once, now with the end taper.
       final nodes = annotInkTapered(annotInkCenterline(o, radii, spacing: spacing), base, taperEnd: true);
       ink.committed = Path();
-      annotInkAppend(ink.committed, nodes);
+      annotInkOutline(ink.committed, nodes);
       ink
         ..tail = null
         ..version = s.version
@@ -171,27 +193,28 @@ class AnnotationPainter extends CustomPainter {
         ..open = false;
       return ink;
     }
-    // Open: pieces 1 .. n - 2 never change again; the last piece is the tail.
-    final finalPieces = n - 2;
+    // Open: pieces 1 .. n − 2 never change again (they end at a real point and their next point is known); the
+    // rest is the tail. A partly drawn tip is provisional, so the piece before it is not committed either.
+    final finalPieces = tip != null ? n - 3 : n - 2;
     if (finalPieces > ink.pieces) {
       final nodes = annotInkTapered(
         annotInkCenterline(o, radii, spacing: spacing, fromPiece: ink.pieces + 1, toPiece: finalPieces),
         base,
         startArc: ink.arc,
       );
-      annotInkAppend(ink.committed, nodes);
+      annotInkOutline(ink.committed, nodes);
       ink.arc += annotInkArc(nodes);
       ink.pieces = finalPieces;
     }
     final tailNodes = annotInkTapered(
-      annotInkCenterline(o, radii, spacing: spacing, fromPiece: math.max(1, n - 1), toPiece: n - 1),
+      annotInkCenterline(o, radii, spacing: spacing, fromPiece: math.max(1, ink.pieces + 1), toPiece: n - 1),
       base,
       startArc: ink.arc,
     );
     ink.tail = Path();
-    annotInkAppend(ink.tail!, tailNodes);
+    annotInkOutline(ink.tail!, tailNodes);
     ink
-      ..version = s.version
+      ..version = partial ? -1 : s.version
       ..count = n;
     return ink;
   }

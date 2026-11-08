@@ -145,6 +145,7 @@ class BoardItemsPainter extends CustomPainter {
     required this.laserOpacity,
     this.coordSize,
     this.coordOrigin = Offset.zero,
+    this.shownPoints,
     super.repaint,
   });
 
@@ -159,6 +160,10 @@ class BoardItemsPainter extends CustomPainter {
 
   /// Where the page's x 0 / y 0 is in the painted area (a continuous page grown to the left, D-107: to its right).
   final Offset coordOrigin;
+
+  /// How many points of an open stroke to draw now (BoardController.inkShown: a viewer reveals remote ink at the
+  /// drawer's pace, D-314). Null: all of them.
+  final double Function(BoardInk ink)? shownPoints;
 
   static final Expando<AnnotStroke> _strokes = Expando('board.ink');
 
@@ -194,7 +199,7 @@ class BoardItemsPainter extends CustomPainter {
     for (final it in items()) {
       switch (it) {
         case BoardInk():
-          AnnotationPainter.paintStroke(canvas, strokeFor(it), rect);
+          AnnotationPainter.paintStroke(canvas, strokeFor(it), rect, shown: it.open ? shownPoints?.call(it) : null);
         case BoardShape():
           paintShape(canvas, it, rect);
         case BoardText():

@@ -147,8 +147,8 @@ double boardFollowTop({required BoardViewportPos presenter, required double visi
   return top.clamp(0.0, math.max(0.0, extent - visible)).toDouble();
 }
 
-/// One device's view of a continuous page. The column fills the stage's width up to a page width (a laptop gets a
-/// page, not a banner); [zoom] ≥ 1 scales it about a point; [scroll] is the page fraction at the top of the stage;
+/// One device's view of a continuous page. The column fills the stage's whole width (D-314: it was capped at a page's
+/// shape on a laptop, which left paper-less margins beside it); [zoom] ≥ 1 scales it about a point; [scroll] is the page fraction at the top of the stage;
 /// [panX] moves a zoomed column — or a page grown sideways ([xMin] / [xMax], D-107) — sideways: screen pixels from the
 /// column centred on the stage, so growing the page (to the left too) never moves what is drawn.
 class ContinuousView {
@@ -170,9 +170,13 @@ class ContinuousView {
   /// The page reaches past its column.
   bool get grown => xMin < 0 || xMax > 1;
 
-  /// The column's width at zoom 1: the stage's width, at most max(480, 0.8 × its height) — on a laptop the shape of a
-  /// portrait page fitted to the height (a page, not a banner); a phone's or a tablet's full width.
-  static double columnWidth(Size box) => math.max(0.0, math.min(box.width, math.max(480.0, box.height * 0.8)));
+  /// The column's width at zoom 1: the stage's whole width (D-314). Page coordinates are page-width fractions, so this
+  /// is a view change only: every device still draws everyone's ink in the same place of the page.
+  static double columnWidth(Size box) => math.max(0.0, box.width);
+
+  /// The column as it was before D-314 (the stage's width, at most max(480, 0.8 × its height)): the pen and text sizes
+  /// are kept as many pixels as they were then ([boardContinuousStyleFactor]).
+  static double legacyColumnWidth(Size box) => math.max(0.0, math.min(box.width, math.max(480.0, box.height * 0.8)));
 
   double get pageWidth => columnWidth(box) * zoom;
 
@@ -286,6 +290,16 @@ class ContinuousView {
     if (r.isEmpty) return Offset.zero;
     return Offset((local.dx - r.left) / r.width, (local.dy - r.top) / r.height);
   }
+}
+
+/// D-314: how much thinner (in page widths) a new pen stroke, shape and text box is on a continuous page shown on
+/// [box], so that it is as many pixels as before the column filled the whole width — a laptop's full-width page is
+/// ~2.5 page widths of the old column, and a medium pen would otherwise draw 2.5× as thick. 1 on a phone or a tablet
+/// (the column already filled their width). Local choice only: the wire carries the fractions.
+double boardContinuousStyleFactor(Size box) {
+  final w = ContinuousView.columnWidth(box);
+  if (w <= 0) return 1;
+  return (ContinuousView.legacyColumnWidth(box) / w).clamp(0.25, 1.0).toDouble();
 }
 
 /// Every item of [items] moved from a page of format [from] to one of [to]: positions are kept in page widths and,

@@ -88,13 +88,24 @@ const kBoardSideMax = 1.5;
 /// (landscape / portrait) keeps its own 0..1 (the controller clamps what it draws there).
 double boardClampX(double v) => v.isNaN ? 0 : v.clamp(-kBoardSideMax, 1 + kBoardSideMax).toDouble();
 
+/// Decimals of a board point's y (D-314). y is a fraction of the page's HEIGHT, and a continuous page is
+/// [kBoardContinuousLength] widths long: at 5 decimals its y moved in steps of 1/5000 of a width — 0.4 px on a page as
+/// wide as a 1920 px screen (D-314 fills the stage's width), 1.5 px zoomed in, a visible stair on a slow line. 6
+/// decimals: 0.04 px. One more character per point; an older app reads the number and rounds it to the 5 it knew.
+const kBoardYDigits = 6;
+
 /// A board point as it travels: x on the widest page ([boardClampX]), y and the pressure 0..1, rounded like
-/// [AnnotPoint.wire] (which keeps x in 0..1 for the shared screen's annotation).
+/// [AnnotPoint.wire] (which keeps x in 0..1 for the shared screen's annotation) — y to [kBoardYDigits].
 AnnotPoint boardPoint(double x, double y, [double p = 0.5]) => AnnotPoint(
       annotRound(boardClampX(x), kAnnotCoordDigits).toDouble(),
-      annotRound(_c(y), kAnnotCoordDigits).toDouble(),
+      annotRound(_c(y), kBoardYDigits).toDouble(),
       annotRound(_c(p), kAnnotPressureDigits).toDouble(),
     );
+
+/// A board point on the wire: [AnnotPoint.toJson] with y to [kBoardYDigits] (a fixed page's points are 5-decimal
+/// numbers already, so they go out byte for byte as before).
+List<num> boardPointJson(AnnotPoint p) =>
+    [annotRound(p.x, kAnnotCoordDigits), annotRound(p.y, kBoardYDigits), annotRound(p.p, kAnnotPressureDigits)];
 
 // ── Format ────────────────────────────────────────────────────────────────────
 
@@ -245,7 +256,7 @@ final class BoardInk extends BoardItem {
         'tl': _inkCode(ink),
         'c': color,
         'w': annotRound(width),
-        'p': [for (final pt in only ?? points) pt.toJson()],
+        'p': [for (final pt in only ?? points) boardPointJson(pt)],
         if (open) 'o': 1,
         if (pressured != null) 'pr': pressured! ? 1 : 0,
       };
@@ -567,7 +578,7 @@ class BoardInkPoints extends BoardMsg {
   final List<AnnotPoint> points;
 
   @override
-  Map<String, Object?> body() => {'t': 'm', 'id': id, 'p': [for (final p in points) p.toJson()]};
+  Map<String, Object?> body() => {'t': 'm', 'id': id, 'p': [for (final p in points) boardPointJson(p)]};
 }
 
 class BoardInkEnd extends BoardMsg {
@@ -833,7 +844,7 @@ class BoardCodec {
         var pieceSize = emptySize;
         final start = i;
         while (i < it.points.length) {
-          final ptSize = _len(it.points[i].toJson()) + 1;
+          final ptSize = _len(boardPointJson(it.points[i])) + 1;
           if (i > start && pieceSize + ptSize > budget) break;
           pieceSize += ptSize;
           i++;

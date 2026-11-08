@@ -133,10 +133,17 @@ void main() {
       expect(after, greaterThan(before));
     });
 
-    test('the view: width-filled column (a reading width on a laptop), scroll kept inside the extent', () {
+    test('the view: the column fills the whole width (D-314), scroll kept inside the extent', () {
       expect(ContinuousView.columnWidth(const Size(390, 600)), 390);
-      expect(ContinuousView.columnWidth(const Size(1440, 640)), 512);
-      expect(ContinuousView.columnWidth(const Size(1440, 500)), 480);
+      expect(ContinuousView.columnWidth(const Size(1440, 640)), 1440);
+      expect(ContinuousView.columnWidth(const Size(1440, 500)), 1440);
+      // The pen keeps its old pixel size: the old reading-width column over the full width.
+      expect(ContinuousView.legacyColumnWidth(const Size(1440, 640)), 512);
+      expect(boardContinuousStyleFactor(const Size(1440, 640)), closeTo(512 / 1440, 1e-9));
+      expect(boardContinuousStyleFactor(const Size(390, 600)), 1);
+      const lap = ContinuousView(box: Size(1440, 640));
+      expect(lap.clamped().pageRect.left, 0);
+      expect(lap.clamped().pageRect.width, 1440);
       final v = const ContinuousView(box: Size(390, 600), scroll: 0.9, extent: 0.2).clamped();
       expect(v.pageHeight, 390 * kBoardContinuousLength);
       expect(v.visible, closeTo(600 / 7800, 1e-9));

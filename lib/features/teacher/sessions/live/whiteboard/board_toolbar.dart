@@ -62,7 +62,7 @@ String boardFormatLabel(BoardFormat f) => switch (f) {
 String boardFormatHint(BoardFormat f) => switch (f) {
       BoardFormat.landscape => t('16:9 للشاشات وأجهزة العرض', '16:9 for screens and projectors'),
       BoardFormat.portrait => t('3:4 يملأ الهاتف والجهاز اللوحي', '3:4 fills phones and tablets'),
-      BoardFormat.continuous => t('ورقة تمتد للأسفل كلما كتبت', 'A page that grows as you write'),
+      BoardFormat.continuous => t('تملأ الشاشة وتمتد كلما كتبت', 'Fills the screen and grows as you write'),
     };
 
 String boardBackgroundLabel(BoardBackground b) => switch (b) {

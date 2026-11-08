@@ -14,14 +14,18 @@
 //   on the wire, so every viewer draws the very same numbers.
 //
 // Output (every device, annotation_painter.dart):
-//   the centre line is the chain of quadratic Béziers through the MIDPOINTS of consecutive samples (each sample
-//   is a control point). A point added at the end changes only the last piece: what is already drawn never
-//   moves again ("no re-wiggle"). A pressure stroke is ONE filled shape — the union of round "capsules" along
-//   the densely sampled centre line, every sub-path clockwise under the non-zero rule — whose radius follows
-//   the pressure (causally averaged, so it never changes behind the pen) and tapers at the start, and at the
-//   end once the stroke is finished. A stroke without pressure (finger, mouse) is one stroked path with
-//   round caps and joins: the constant width of a ballpoint. The highlighter is one translucent stroked path
-//   (it never darkens where it crosses itself) of constant width.
+//   the centre line is a centripetal Catmull–Rom spline THROUGH the samples (D-314; it was the chain of quadratic
+//   Béziers through their midpoints, which cut every corner: at the 60 – 120 samples a second a phone or a tablet
+//   delivers — Flutter drops the digitiser's in-between samples — a quick loop came out smaller and flattened).
+//   Centripetal (α = ½) never makes a cusp or a loop inside a piece, so it adds no wiggle of its own. A point added
+//   at the end changes only the last piece: what is already drawn never moves again ("no re-wiggle"). A pressure
+//   stroke is a filled OUTLINE — the left and right edges of the densely sampled centre line, round caps, clockwise
+//   under the non-zero rule (D-314; it was a circle + a band per node, thousands of sub-paths per stroke that every
+//   frame had to fill) — whose radius follows the pressure (causally averaged, so it never changes behind the pen)
+//   and tapers at the start, and at the end once the stroke is finished; a turn tighter than the pen gets a round
+//   join so its inner side never opens. A stroke without pressure (finger, mouse) is one stroked path with round
+//   caps and joins: the constant width of a ballpoint. The highlighter is one translucent stroked path (it never
+//   darkens where it crosses itself) of constant width.
 library;
 
 import 'dart:math' as math;
@@ -220,13 +224,45 @@ List<double> annotInkRadii(List<double> pressures, double base) {
   return out;
 }
 
-/// Samples the midpoint chain through [pts] (each point a quadratic control, pieces from midpoint to
-/// midpoint; the first piece starts at the first point, the last ends at the last point) into nodes about
-/// [spacing] px apart, with radii interpolated from [radii] (one per point).
+/// The two inner control points of the cubic Bézier that is the centripetal Catmull–Rom piece from [p1] to [p2]
+/// (α = ½; [p0] and [p3] are its neighbours). Coincident neighbours fall back to the straight tangent.
+(Offset, Offset) annotCatmullRom(Offset p0, Offset p1, Offset p2, Offset p3) {
+  final d2 = math.sqrt((p2 - p1).distance);
+  if (d2 < 1e-6) return (p1, p2);
+  final d1 = math.sqrt((p1 - p0).distance), d3 = math.sqrt((p3 - p2).distance);
+  final Offset b1, b2;
+  if (d1 < 1e-6) {
+    b1 = p1 + (p2 - p1) / 3;
+  } else {
+    final a = 2 * d1 * d1 + 3 * d1 * d2 + d2 * d2;
+    b1 = (p2 * (d1 * d1) - p0 * (d2 * d2) + p1 * a) / (3 * d1 * (d1 + d2));
+  }
+  if (d3 < 1e-6) {
+    b2 = p2 - (p2 - p1) / 3;
+  } else {
+    final b = 2 * d3 * d3 + 3 * d3 * d2 + d2 * d2;
+    b2 = (p1 * (d3 * d3) - p3 * (d2 * d2) + p2 * b) / (3 * d3 * (d3 + d2));
+  }
+  return (b1, b2);
+}
+
+/// Piece [i] (1 ≤ i ≤ n − 1) of the spline through [pts]: from pts[i − 1] to pts[i], its controls. The ends use a
+/// reflected neighbour, so the last piece is provisional until the next point arrives (and the one before it is
+/// final: piece i depends on points i − 2 .. i + 1 only).
+(Offset, Offset, Offset, Offset) annotInkPiece(List<Offset> pts, int i) {
+  final n = pts.length;
+  final a = pts[i - 1], b = pts[i];
+  final before = i >= 2 ? pts[i - 2] : a * 2 - b;
+  final after = i + 1 < n ? pts[i + 1] : b * 2 - a;
+  final (c1, c2) = annotCatmullRom(before, a, b, after);
+  return (a, c1, c2, b);
+}
+
+/// Samples the spline through [pts] ([annotInkPiece]) into nodes about [spacing] px apart, with radii interpolated
+/// from [radii] (one per point).
 ///
-/// [fromPiece] / [toPiece]: only pieces in that range (piece i, 1 ≤ i ≤ n − 1, ends at the midpoint of
-/// points i and i + 1, the last one at the last point). The painter caches finished pieces and redraws only
-/// the tail.
+/// [fromPiece] / [toPiece]: only pieces in that range (piece i, 1 ≤ i ≤ n − 1, ends at point i). The painter caches
+/// finished pieces and redraws only the tail.
 List<AnnotInkNode> annotInkCenterline(List<Offset> pts, List<double> radii,
     {double spacing = 1.0, int fromPiece = 1, int? toPiece}) {
   final n = pts.length;
@@ -234,27 +270,22 @@ List<AnnotInkNode> annotInkCenterline(List<Offset> pts, List<double> radii,
   if (n == 0) return out;
   if (n == 1) return [AnnotInkNode(pts[0].dx, pts[0].dy, radii[0])];
   final sp = math.max(0.25, spacing);
+  final first = math.max(1, fromPiece);
   final last = math.min(toPiece ?? n - 1, n - 1);
-
-  // Piece i goes from start(i) to end(i) with control pts[i] (and, for n == 2, a straight line).
-  Offset startOf(int i) => i == 1 ? pts[0] : (pts[i - 1] + pts[i]) / 2;
-  double startR(int i) => i == 1 ? radii[0] : (radii[i - 1] + radii[i]) / 2;
-  Offset endOf(int i) => i == n - 1 ? pts[n - 1] : (pts[i] + pts[i + 1]) / 2;
-  double endR(int i) => i == n - 1 ? radii[n - 1] : (radii[i] + radii[i + 1]) / 2;
-
-  for (var i = math.max(1, fromPiece); i <= last; i++) {
-    final a = startOf(i), b = endOf(i);
-    final ra = startR(i), rb = endR(i);
-    // n == 2: the one piece is the straight line between the two points (pts[1] is its end, not a control).
-    final c = n == 2 ? (a + b) / 2 : pts[i];
-    final len = (c - a).distance + (b - c).distance;
+  for (var i = first; i <= last; i++) {
+    final (a, c1, c2, b) = annotInkPiece(pts, i);
+    final ra = radii[i - 1], rb = radii[i];
+    final len = (c1 - a).distance + (c2 - c1).distance + (b - c2).distance;
     final steps = math.max(1, (len / sp).ceil());
-    for (var k = i == math.max(1, fromPiece) ? 0 : 1; k <= steps; k++) {
+    for (var k = i == first ? 0 : 1; k <= steps; k++) {
       final t = k / steps;
       final u = 1 - t;
-      final x = u * u * a.dx + 2 * u * t * c.dx + t * t * b.dx;
-      final y = u * u * a.dy + 2 * u * t * c.dy + t * t * b.dy;
-      out.add(AnnotInkNode(x, y, ra + (rb - ra) * t));
+      final w0 = u * u * u, w1 = 3 * u * u * t, w2 = 3 * u * t * t, w3 = t * t * t;
+      out.add(AnnotInkNode(
+        w0 * a.dx + w1 * c1.dx + w2 * c2.dx + w3 * b.dx,
+        w0 * a.dy + w1 * c1.dy + w2 * c2.dy + w3 * b.dy,
+        ra + (rb - ra) * t,
+      ));
     }
   }
   return out;
@@ -325,6 +356,64 @@ void annotInkAppend(Path path, List<AnnotInkNode> nodes) {
   }
 }
 
+/// Appends the filled outline of [nodes] to [path] (D-314): one closed contour — one edge along the left of the
+/// centre line, a round cap, the right edge back, a round cap — clockwise on screen like every other sub-path, so
+/// pieces appended one after another (the cached part, the tail) and a stroke crossing itself stay filled under
+/// non-zero. Where the centre line turns tighter than the pen is wide, the inner edge folds back on itself; a round
+/// join (a clockwise circle) there keeps that corner filled.
+void annotInkOutline(Path path, List<AnnotInkNode> nodes) {
+  final m = nodes.length;
+  if (m == 0) return;
+  if (m == 1) {
+    final b = nodes[0];
+    if (b.r > 0) path.addOval(Rect.fromCircle(center: b.offset, radius: b.r));
+    return;
+  }
+  final left = List<Offset>.filled(m, Offset.zero), right = List<Offset>.filled(m, Offset.zero);
+  final dirs = List<Offset>.filled(m, Offset.zero);
+  var prev = const Offset(1, 0);
+  for (var i = 0; i < m; i++) {
+    final a = nodes[i == 0 ? 0 : i - 1].offset, b = nodes[i == m - 1 ? m - 1 : i + 1].offset;
+    var d = b - a;
+    final len = d.distance;
+    d = len < 1e-9 ? prev : d / len;
+    prev = d;
+    dirs[i] = d;
+    final r = math.max(0.0, nodes[i].r);
+    // y down: (−dy, dx) points to the right of the direction of travel as seen.
+    final nrm = Offset(-d.dy, d.dx) * r;
+    right[i] = nodes[i].offset + nrm;
+    left[i] = nodes[i].offset - nrm;
+  }
+  // Clockwise as seen: forward along the left edge, the end cap, back along the right edge, the start cap.
+  path.moveTo(left[0].dx, left[0].dy);
+  for (var i = 1; i < m; i++) {
+    path.lineTo(left[i].dx, left[i].dy);
+  }
+  final de = dirs[m - 1], ds = dirs[0];
+  final ae = math.atan2(de.dy, de.dx), as = math.atan2(ds.dy, ds.dx);
+  final last = nodes[m - 1], first = nodes[0];
+  if (last.r > 0) path.arcTo(Rect.fromCircle(center: last.offset, radius: last.r), ae - math.pi / 2, math.pi, false);
+  for (var i = m - 1; i >= 0; i--) {
+    path.lineTo(right[i].dx, right[i].dy);
+  }
+  if (first.r > 0) path.arcTo(Rect.fromCircle(center: first.offset, radius: first.r), as + math.pi / 2, math.pi, false);
+  path.close();
+  // Round joins where the edge folds (the turn over one node spacing is wider than the pen allows).
+  for (var i = 1; i < m - 1; i++) {
+    final r = nodes[i].r;
+    if (r <= 0) continue;
+    final a = nodes[i - 1].offset, b = nodes[i].offset, c = nodes[i + 1].offset;
+    final u = b - a, v = c - b;
+    final lu = u.distance, lv = v.distance;
+    if (lu < 1e-9 || lv < 1e-9) continue;
+    final cross = (u.dx * v.dy - u.dy * v.dx) / (lu * lv), dot = (u.dx * v.dx + u.dy * v.dy) / (lu * lv);
+    final turn = math.atan2(cross, dot).abs();
+    // The inner edge runs backwards once the radius of curvature (spacing / turn) is under the pen's radius.
+    if (turn > 1e-6 && math.min(lu, lv) / turn < r * 1.05) path.addOval(Rect.fromCircle(center: b, radius: r));
+  }
+}
+
 /// [pts] in clockwise order on screen (y down): positive shoelace area.
 List<Offset> annotClockwise(List<Offset> pts) => annotSignedArea(pts) >= 0 ? pts : pts.reversed.toList();
 
@@ -338,9 +427,8 @@ double annotSignedArea(List<Offset> pts) {
   return a;
 }
 
-/// The centre line of a constant-width stroke as a path (stroked by the painter): straight to the first
-/// midpoint, quadratic pieces through every sample, straight to the last point. Same chain as
-/// [annotInkCenterline].
+/// The centre line of a constant-width stroke as a path (stroked by the painter): the same spline as
+/// [annotInkCenterline], one cubic per piece.
 Path annotSmoothPath(List<Offset> o) {
   final path = Path();
   if (o.isEmpty) return path;
@@ -349,11 +437,10 @@ Path annotSmoothPath(List<Offset> o) {
     path.lineTo(o[1].dx, o[1].dy);
     return path;
   }
-  for (var i = 1; i < o.length - 1; i++) {
-    final mid = Offset((o[i].dx + o[i + 1].dx) / 2, (o[i].dy + o[i + 1].dy) / 2);
-    path.quadraticBezierTo(o[i].dx, o[i].dy, mid.dx, mid.dy);
+  for (var i = 1; i < o.length; i++) {
+    final (_, c1, c2, b) = annotInkPiece(o, i);
+    path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, b.dx, b.dy);
   }
-  path.lineTo(o.last.dx, o.last.dy);
   return path;
 }
 

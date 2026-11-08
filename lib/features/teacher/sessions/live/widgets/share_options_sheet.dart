@@ -24,7 +24,7 @@ import 'share_presets.dart';
 /// What the presenter picked: a screen ([quality], [deviceAudio]) or, when [whiteboard] is set, a whiteboard on
 /// that background, in [boardFormat].
 class ShareChoice {
-  const ShareChoice({required this.quality, required this.deviceAudio, this.whiteboard, this.boardFormat = BoardFormat.landscape});
+  const ShareChoice({required this.quality, required this.deviceAudio, this.whiteboard, this.boardFormat = BoardFormat.continuous});
 
   final ShareQuality quality;
   final bool deviceAudio;
@@ -91,13 +91,10 @@ class _ShareOptionsSheetState extends State<_ShareOptionsSheet> {
   late ShareTab _tab = widget.whiteboard && !widget.screenAvailable ? ShareTab.whiteboard : ShareTab.screen;
   late BoardBackground _bg = widget.background;
 
-  /// A portrait phone starts with a portrait page (it fills the width); everything else with landscape.
-  late BoardFormat _format = _defaultFormat();
-
-  BoardFormat _defaultFormat() {
-    final s = MediaQuery.maybeSizeOf(context);
-    return s != null && s.width < 600 && s.height > s.width ? BoardFormat.portrait : BoardFormat.landscape;
-  }
+  /// D-314: the continuous page, on every device — it fills the stage's whole width and height for the presenter and
+  /// for every viewer (a fixed 16:9 or 3:4 sheet is letterboxed wherever the screen has another shape). Landscape and
+  /// portrait stay one tap away (a slide for a projector, a sheet of paper).
+  BoardFormat _format = BoardFormat.continuous;
 
   // Scrolls: the Whiteboard tab (page format + backgrounds) is taller than a small phone's sheet.
   @override

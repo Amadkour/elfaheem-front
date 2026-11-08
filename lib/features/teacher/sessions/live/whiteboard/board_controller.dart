@@ -46,6 +46,29 @@ import 'board_protocol.dart';
 /// A finger's stroke waits this long before it goes out (a second finger in that time makes it a pinch).
 const kBoardTouchHold = Duration(milliseconds: 70);
 
+/// D-314: a viewer draws a remote stroke's new points over about the time they took to arrive (the gap since the
+/// previous batch, within these bounds), so the ink glides at the drawer's pace instead of jumping a batch at a time.
+const kBoardRevealMin = Duration(milliseconds: 16);
+const kBoardRevealMax = Duration(milliseconds: 120);
+
+/// How far a remote stroke is drawn: from [from] points at [start] to [to] points [dur] later (linear).
+class BoardInkRevealStep {
+  const BoardInkRevealStep(this.from, this.to, this.start, this.dur);
+
+  final double from;
+  final double to;
+  final DateTime start;
+  final Duration dur;
+
+  double at(DateTime t) {
+    if (dur <= Duration.zero) return to;
+    final k = (t.difference(start).inMicroseconds / dur.inMicroseconds).clamp(0.0, 1.0);
+    return from + (to - from) * k;
+  }
+
+  bool doneAt(DateTime t) => !t.isBefore(start.add(dur));
+}
+
 /// The presenter's continuous view goes out at most this often while it moves.
 const kBoardViewportInterval = Duration(milliseconds: 100);
 
@@ -67,7 +90,16 @@ extension BoardToolKind on BoardTool {
   bool get isShape => shape != null;
 }
 
+class _SceneSignal extends ChangeNotifier {
+  void ping() => notifyListeners();
+}
+
 /// The drawable state: notifies only on visible changes (the painter repaints on it alone).
+///
+/// D-314: it notifies on EVERY change (the live ink layer and the recording follow each pen sample), and [settled]
+/// on every change except the ones only the live layer draws — points added to a stroke still being drawn, laser
+/// dots. Whatever lays the page out (the stage, the room view, the dock) listens to [settled]: a pen sample used to
+/// rebuild ~500 widgets and re-measure every stroke on the page, so the stroke under the pen advanced in jumps.
 class BoardScene extends ChangeNotifier {
   final Map<String, BoardItem> _items = {}; // insertion order = drawing order
   final Map<String, AnnotLaserDot> _lasers = {};
@@ -89,9 +121,30 @@ class BoardScene extends ChangeNotifier {
   /// The visible page has nothing on it.
   bool get pageEmpty => !visibleItems.any((_) => true);
 
+  final _SceneSignal _settled = _SceneSignal();
+  int _settledRevision = 0;
+
+  /// Notifies on every change but a stroke's new points and laser dots (D-314).
+  Listenable get settled => _settled;
+  int get settledRevision => _settledRevision;
+
   void _changed() {
     _revision++;
+    _settledRevision++;
+    _settled.ping();
     notifyListeners();
+  }
+
+  /// Only what the live layer draws changed: points of an open stroke, a laser dot.
+  void _changedLive() {
+    _revision++;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _settled.dispose();
+    super.dispose();
   }
 }
 
@@ -489,7 +542,14 @@ class BoardController extends ChangeNotifier {
   int get fontStep => _fontStep;
 
   /// Thickness and text steps of this format ([kBoardTallStyleScale] on portrait / continuous pages).
-  double get styleScale => boardStyleScale(_format);
+  double get styleScale => boardStyleScale(_format) * (isContinuous ? viewStyleFactor : 1);
+
+  /// D-314: set by the stage from its size ([boardContinuousStyleFactor]); a continuous page's pen, shapes and text
+  /// keep their pixel size on a wide screen now that the page fills its width.
+  double viewStyleFactor = 1;
+
+  /// A new text box's width (page widths).
+  double get defaultTextWidth => kBoardDefaultTextWidth * (isContinuous ? viewStyleFactor : 1);
 
   /// The font size (page-width fraction) of text step [step] on this format.
   double fontSize(int step) => annotRound(kBoardFontSizes[step.clamp(0, kBoardFontSizes.length - 1)] * styleScale).toDouble();
@@ -652,7 +712,7 @@ class BoardController extends ChangeNotifier {
     _noteX(pt.x);
     s.points.add(pt);
     s.version++;
-    scene._changed();
+    scene._changedLive();
     if (_held) {
       if (now().difference(_heldSince ?? now()) >= kBoardTouchHold) _releaseHeld();
       return;
@@ -663,6 +723,49 @@ class BoardController extends ChangeNotifier {
     } else {
       _scheduleFlush();
     }
+  }
+
+  // ── Remote ink revealed at the drawer's pace (D-314) ───────────────────────
+  final Map<String, BoardInkRevealStep> _reveals = {};
+  final _SceneSignal _revealTick = _SceneSignal();
+
+  /// Ticks while a remote stroke is being revealed ([stepReveal]): the live ink layer repaints on it.
+  Listenable get revealTick => _revealTick;
+
+  /// A remote stroke is still catching up with the points that arrived.
+  bool get revealing {
+    final t = now();
+    return _reveals.values.any((r) => !r.doneAt(t));
+  }
+
+  /// How many of [s]'s points to draw now (fractional: the last one is reached part of the way). A finished stroke,
+  /// this device's own stroke and one that caught up: all of them.
+  double inkShown(BoardInk s) {
+    final r = _reveals[s.id];
+    final n = s.points.length.toDouble();
+    if (r == null || !s.open) return n;
+    return math.min(n, r.at(now()));
+  }
+
+  void _revealArrived(BoardInk s, int before) {
+    final t = now();
+    final prev = _reveals[s.id];
+    final shown = prev == null ? math.max(1.0, before.toDouble()) : math.min(prev.at(t), before.toDouble());
+    final gap = prev == null ? batchInterval : t.difference(prev.start);
+    final dur = gap < kBoardRevealMin ? kBoardRevealMin : (gap > kBoardRevealMax ? kBoardRevealMax : gap);
+    _reveals[s.id] = BoardInkRevealStep(shown, s.points.length.toDouble(), t, dur);
+  }
+
+  /// One frame of the reveal (the stage's frame clock): repaints the live layer; whether any is still running.
+  bool stepReveal() {
+    if (_reveals.isEmpty) return false;
+    _reveals.removeWhere((id, _) {
+      final it = scene._items[id];
+      return it is! BoardInk || !it.open;
+    });
+    final on = revealing;
+    _revealTick.ping();
+    return on;
   }
 
   void endInk() {
@@ -773,7 +876,7 @@ class BoardController extends ChangeNotifier {
   /// it has text. Returns its id (null when the local person may not draw).
   String? createText(double x, double y, {double? boxWidth}) {
     if (!canDrawLocal || scene._items.length >= kBoardMaxItems) return null;
-    final w = boxWidth ?? kBoardDefaultTextWidth;
+    final w = boxWidth ?? defaultTextWidth;
     final t = BoardText(
       id: _newId(),
       author: localIdentity,
@@ -1029,7 +1132,7 @@ class BoardController extends ChangeNotifier {
     if (!canDrawLocal) return;
     final t = now();
     scene._lasers[localIdentity] = AnnotLaserDot(author: localIdentity, x: _cx(x), y: _c(y), at: t);
-    scene._changed();
+    scene._changedLive();
     if (_lastLaserSent != null && t.difference(_lastLaserSent!) < batchInterval) return;
     _lastLaserSent = t;
     _emit(BoardLaser(x: _cx(x), y: _c(y)));
@@ -1040,7 +1143,7 @@ class BoardController extends ChangeNotifier {
     final t = now();
     final before = scene._lasers.length;
     scene._lasers.removeWhere((_, d) => t.difference(d.at) >= laserTtl);
-    if (scene._lasers.length != before) scene._changed();
+    if (scene._lasers.length != before) scene._changedLive();
     return scene._lasers.isNotEmpty;
   }
 
@@ -1314,14 +1417,16 @@ class BoardController extends ChangeNotifier {
         if (s is! BoardInk || !s.open || _openBy[m.id] != sender || !canDraw(sender)) return false;
         final room = kAnnotMaxPointsPerStroke - s.points.length;
         if (room <= 0) return false;
+        final before = s.points.length;
         s.points.addAll(m.points.take(room));
         s.version++;
+        _revealArrived(s, before);
         if (isLocalPresenting) {
           for (final p in m.points) {
             _noteX(p.x);
           }
         }
-        scene._changed();
+        scene._changedLive();
         final tip = s.points.last;
         presence.mark(sender, name: displayName(sender), x: tip.x, y: tip.y, page: s.page, color: s.color, active: true);
         return true;
@@ -1329,6 +1434,7 @@ class BoardController extends ChangeNotifier {
         final s = scene._items[m.id];
         if (s is! BoardInk || !s.open || _openBy[m.id] != sender) return false;
         _openBy.remove(m.id);
+        _reveals.remove(m.id);
         s.open = false;
         s.version++;
         scene._changed();
@@ -1401,7 +1507,7 @@ class BoardController extends ChangeNotifier {
       case BoardLaser():
         if (!canDraw(sender)) return false;
         scene._lasers[sender] = AnnotLaserDot(author: sender, x: m.x, y: m.y, at: now());
-        scene._changed();
+        scene._changedLive();
         presence.mark(sender, name: displayName(sender), x: m.x, y: m.y, page: scene._page, active: false);
         return true;
       case BoardViewport():
@@ -1531,6 +1637,7 @@ class BoardController extends ChangeNotifier {
     _flushTimer?.cancel();
     _putTimer?.cancel();
     _vpTimer?.cancel();
+    _revealTick.dispose();
     scene.dispose();
     presence.dispose();
     presenterViewport.dispose();

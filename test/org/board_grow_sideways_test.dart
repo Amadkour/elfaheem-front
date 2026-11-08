@@ -212,21 +212,16 @@ void main() {
       expect(back.xMax, 1 + kBoardSideMax, reason: 'a pan never shrinks the page');
     });
 
-    test('growing to the left never moves what is drawn: x 0 stays where it was until the view itself moves', () {
+    test('growing to the left never moves what is drawn: x 0 moves only with the view', () {
+      // D-314: a laptop's column fills its width like a phone's, so the page always covers the stage.
       const v0 = ContinuousView(box: laptop, extent: 0.2);
       final col = v0.clamped().pageRect;
-      // A laptop: the column (640 px) sits in the middle with room beside it. The page grows under a still view…
+      expect(col.left, 0);
+      // Held at the left edge: the view moves with the pointer, and x 0 with it, by the same.
       final v1 = v0.clamped().scrolledBy(-200, 0, grow: true);
-      expect(v1.xMin, closeTo(-200 / 640, 1e-9));
-      expect(v1.pageRect.left, col.left, reason: 'the column did not move');
-      expect(v1.shownRect.left, closeTo(col.left - 200, 1e-9));
-      // …until its left edge reaches the stage's: then the view moves with the pointer, and x 0 with it, by the same.
-      var v = v1;
-      for (var i = 0; i < 10; i++) {
-        v = v.scrolledBy(-100, 0, grow: true);
-      }
-      expect(v.shownRect.left, closeTo(0, 1e-6));
-      expect(v.xMin, lessThan(v1.xMin));
+      expect(v1.xMin, closeTo(-200 / 1440, 1e-9));
+      expect(v1.shownRect.left, closeTo(0, 1e-6));
+      expect(v1.pageRect.left, closeTo(200, 1e-6));
       // A viewer whose page grows because content arrived (no pan): the clamp keeps every point where it was.
       final grown = v0.clamped().copyWith(xMin: -0.4).clamped();
       expect(grown.pageRect.left, col.left);
@@ -239,13 +234,14 @@ void main() {
       expect(c.viewLeft, closeTo(-0.5, 1e-9));
       final c2 = wide.copyWith(panX: -9999).clamped();
       expect(c2.shownRect.right, closeTo(phone.width, 1e-9));
+      // D-314: a laptop too (its column is its whole width): the grown page covers it, the viewport is one width.
       const lap = ContinuousView(box: laptop, extent: 0.2, xMax: 1.4, panX: 9999);
       final c3 = lap.clamped();
-      expect(c3.shownRect.right, closeTo(laptop.width, 1e-9));
-      expect(c3.shownRect.left, greaterThan(0));
-      // The viewport that goes out is clipped to the page's reach (a laptop's stage is wider than the page).
+      expect(c3.shownRect.left, closeTo(0, 1e-9));
+      final c4 = lap.copyWith(panX: -9999).clamped();
+      expect(c4.shownRect.right, closeTo(laptop.width, 1e-9));
       expect(c3.viewport.left, closeTo(0, 1e-9));
-      expect(c3.viewport.width, closeTo(1.4, 1e-9));
+      expect(c3.viewport.width, closeTo(1, 1e-9));
     });
 
     test('the edge auto-scroll has room to grow into on the plain column', () {
