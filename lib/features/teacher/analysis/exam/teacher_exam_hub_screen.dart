@@ -4,7 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredAllExams;
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredAllExams, deferredBubbleHome;
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart';
 import 'package:provider/provider.dart';
@@ -57,6 +57,7 @@ class TeacherExamHubScreen extends StatelessWidget {
   Widget _build(BuildContext context) => ChangeNotifierProvider(
     create: (_) => TeacherExamProvider(courseId: courseId)..loadExams(),
     child: _HubView(
+      orgId: orgId,
       courseTitle: courseTitle,
       initialSessionId: initialSessionId,
       openCreateOnStart: openCreateOnStart,
@@ -72,11 +73,13 @@ class _HubView extends StatefulWidget {
   final String courseTitle;
   final int? initialSessionId;
   final bool openCreateOnStart;
+  final int? orgId;
 
   const _HubView({
     required this.courseTitle,
     this.initialSessionId,
     this.openCreateOnStart = false,
+    this.orgId,
   });
 
   @override
@@ -175,6 +178,16 @@ class _HubViewState extends State<_HubView>
       child: Column(
         children: [
           ExamHeroBar(title: 'exam_hub_title'.tr, subtitle: widget.courseTitle, actions: [
+            // correct bubble sheets, any sheet, a whole class (D-340)
+            ParentComponent(
+              featureKey: 'exam.bubble',
+              child: GlassIcon(
+                key: const ValueKey('exam_hub.bubble'),
+                icon: Icons.grading_rounded,
+                tooltip: AppConfig.lang == 'ar' ? 'تصحيح أوراق التظليل' : 'Correct bubble sheets',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => deferredBubbleHome(courseId: prov.courseId, courseTitle: widget.courseTitle, orgId: widget.orgId))),
+              ),
+            ),
             // every exam across the courses (D-300)
             ParentComponent(
               featureKey: 'exam.all_exams',
