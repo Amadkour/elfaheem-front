@@ -13,8 +13,11 @@
 //                 ("No classes today · Next: … · Thu 30") — the empty courses section too. "This week" left the
 //                 home (the schedule page has it)
 //     my courses  courses_progress[] in one card (StudentCourseSummary): the 3 that matter now, slim lines
-//     journey     ONE small card under the courses, only with a clear field: "Continue your journey in <field>" ·
-//                 the next step · a light bar, a slow light sweep (HomeJourneyCard, D-120) → the whole path
+//     journey     ONE card under the courses, only with a clear field: "Your learning path" · "Continue your
+//                 journey in <field>" · the next step · the path as segments · a "Continue" button straight into the
+//                 next course, a slow light sweep (HomeJourneyCard, D-120 / D-309) → the whole path (JourneyPage,
+//                 drawn from the same block); no journey yet + the server's `journey_hint` → "Plan your learning
+//                 path" · Pick your interests (HomeJourneyInvite)
 //     inbox       ONE slim entry (InboxEntry: "3 to do · 2 unread · 1 overdue", the actionable count = to-dos +
 //                 unread notifications) → the inbox page on To do; beside Today on a wide window
 //     feeds       ads · organizations · other courses · categories · best teachers (HomeProvider's marketing call,
@@ -45,6 +48,7 @@ import 'package:flutter_education_app/features/shared/calendar/calendar_models.d
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
+import 'package:flutter_education_app/features/shared/roadmap/recommendations.dart' show showInterestsSheet;
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
 import 'package:flutter_education_app/features/student/home/home_journey.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart';
@@ -228,8 +232,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                   onRetry: svc.refresh,
                                   onOpenCourse: (id) => AppNavigator.openCourse(id),
                                   onOpenJourney: () => Navigator.of(context).push(
-                                    MaterialPageRoute(settings: const RouteSettings(name: '/journey'), builder: (_) => const JourneyPage()),
+                                    MaterialPageRoute(
+                                      settings: const RouteSettings(name: '/journey'),
+                                      builder: (_) => JourneyPage(initial: homeJourney(svc.home?.journey)),
+                                    ),
                                   ),
+                                  // the interests sheet; a save can give the student a journey → the home reloads
+                                  onPickInterests: () => showInterestsSheet(context).then((saved) {
+                                    if (saved == true) svc.refresh();
+                                  }),
                                   onOpenEvent: (e) => openHomeEvent(context, e),
                                   // what was answered there leaves the counts: the home reloads when the inbox closes
                                   onOpenInbox: () => Navigator.of(context)
@@ -318,6 +329,7 @@ class StudentHomeBody extends StatelessWidget {
     this.onRetry,
     this.onOpenCourse,
     this.onOpenJourney,
+    this.onPickInterests,
     this.onOpenEvent,
     this.onOpenInbox,
     this.onOpenNotifications,
@@ -335,6 +347,9 @@ class StudentHomeBody extends StatelessWidget {
 
   /// The journey card → the whole path (JourneyPage).
   final VoidCallback? onOpenJourney;
+
+  /// The "Plan your learning path" invitation → the interests sheet (D-309).
+  final VoidCallback? onPickInterests;
   final ValueChanged<CalEvent>? onOpenEvent;
   final VoidCallback? onOpenInbox;
   final VoidCallback? onOpenNotifications, onOpenTodo, onOpenOrgs;
@@ -494,14 +509,22 @@ class _Sections extends StatelessWidget {
     ));
 
     // ── the ONE journey card (D-120), under the courses and with them on every layout; no clear field → nothing
+    //    (D-309: with a "Continue" button into the next course); no journey yet → the "pick your interests" invite
     final j = homeJourney(home.journey);
-    final coursesBlock = j == null
+    final invite = j == null && body.onPickInterests != null && homeJourneyInvite(home.journeyHint);
+    final coursesBlock = j == null && !invite
         ? courses
         : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             courses,
             enter(Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              child: HomeJourneyCard(journey: j, onTap: body.onOpenJourney),
+              child: j != null
+                  ? HomeJourneyCard(
+                      journey: j,
+                      onTap: body.onOpenJourney,
+                      onContinue: body.onOpenCourse == null ? null : () => body.onOpenCourse!(j.next.id),
+                    )
+                  : HomeJourneyInvite(onPick: body.onPickInterests!),
             )),
           ]);
 

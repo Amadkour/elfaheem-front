@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
+import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
 import 'package:flutter_education_app/features/shared/roadmap/roadmap_api.dart';
 import 'package:flutter_education_app/features/student/home/home_journey.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
@@ -108,5 +109,54 @@ void main() {
     expect(homeJourney(raw), isNull);
     AppConfig.disableList = [];
     expect(homeJourney(raw), isNotNull);
+  });
+
+  // ── D-309 ──
+  test('the home block carries the whole path, so the page needs no call', () {
+    final j = Journey.fromJson(MeHome.fromJson(_home()).journey)!;
+    expect(j.steps, isNotEmpty);
+    expect(j.steps.where((s) => s.current).single.id, j.next.id);
+    expect(journeyComplete(j), isTrue);
+    expect(journeyComplete(Journey.fromJson({...MeHome.fromJson(_home()).journey!}..remove('steps'))), isFalse,
+        reason: 'an older server: the page asks /me/journey');
+  });
+
+  testWidgets('the card: Continue opens the next course, the card opens the path', (t) async {
+    final home = MeHome.fromJson(_home());
+    int? opened;
+    var path = 0;
+    await t.pumpWidget(layoutHost(SingleChildScrollView(
+      child: StudentHomeBody(
+        data: StudentHomeData(home: home, now: DateTime.utc(2026, 10, 31, 9)),
+        onTab: (_) {},
+        onOpenCourse: (id) => opened = id,
+        onOpenJourney: () => path++,
+      ),
+    )));
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('home_journey.continue')));
+    expect(opened, homeJourney(home.journey)!.next.id);
+    await t.tap(find.text(homeJourney(home.journey)!.title));
+    expect(path, 1);
+  });
+
+  testWidgets('no journey + the hint from the server: the "pick your interests" invite', (t) async {
+    final raw = {..._home(), 'journey': null, 'journey_hint': 'pick_interests'};
+    final home = MeHome.fromJson(raw);
+    expect(home.journeyHint, 'pick_interests');
+    var picked = 0;
+    await t.pumpWidget(layoutHost(SingleChildScrollView(
+      child: StudentHomeBody(data: StudentHomeData(home: home, now: DateTime.utc(2026, 10, 31, 9)), onTab: (_) {}, onPickInterests: () => picked++),
+    )));
+    await t.pump();
+    expect(find.byType(HomeJourneyInvite), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('home_journey.pick')));
+    expect(picked, 1);
+    // recommendations off, Organization mode, or no hint: nothing
+    AppConfig.disableList = [kRoadmapRecsKey];
+    expect(homeJourneyInvite(home.journeyHint), isFalse);
+    AppConfig.disableList = [];
+    expect(homeJourneyInvite(null), isFalse);
+    expect(homeJourneyInvite('pick_interests', role: 'org-staff'), isFalse);
   });
 }

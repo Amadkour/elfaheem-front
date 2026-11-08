@@ -1,14 +1,19 @@
 // lib/features/student/home/home_journey.dart
 //
-// The student home's ONE roadmap card (D-120): "Continue your journey in <field>" · the next step only · a light
-// bar of the path done. Read from /me/home's `journey` (no call of its own); no clear field → no card at all.
-// Card surface + hairline like the rest of the calm home (D-102); the attendance entry's light sweep (AppShineBand)
-// crosses it slowly every few seconds, parked by Reduce motion. Tap → the whole path (JourneyPage).
+// The student home's ONE roadmap card (D-120, redesigned D-309): "Your learning path" · "Continue your journey in
+// <field>" · the next step (thumbnail, name, where the student is in it) · the path as segments (done / here / next)
+// · "2 of 3 done" · ONE tonal "Continue" / "Start" button that opens the next course straight away. The card itself
+// opens the whole path (JourneyPage), drawn at once from the same block. Read from /me/home's `journey` (no call of
+// its own); card surface + hairline like the rest of the calm home (D-102); the attendance entry's light sweep
+// (AppShineBand) crosses it slowly every few seconds, parked by Reduce motion.
 //
 // When it shows ([homeJourney]): the personal context only (never in Organization mode, never for an org-admin /
-// org-staff login), the switches `roadmap` / `roadmap.journey` on, and a clear field — the server's block is null
-// only when the student has no roadmap course, no completed course and no chosen interest yet (or turned
-// recommendations off). That "no data" state is the one intentional reason the card is absent.
+// org-staff login), the switches `roadmap` / `roadmap.journey` on, and a clear field.
+//
+// No journey yet (D-309): the server names `journey_hint: "pick_interests"` when choosing interests would give the
+// student one (personal context, switch on, recommendations not turned off, no interest chosen). Then the same slot
+// holds [HomeJourneyInvite] — "Plan your learning path" · one "Pick your interests" button (the interests sheet) —
+// so a new student finds the roadmap too. Without the hint (an older server, recommendations off) the slot is empty.
 library;
 
 import 'package:flutter/material.dart';
@@ -16,6 +21,9 @@ import 'package:flutter/material.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_shine.dart';
+import '../../../utils/widget/app_network_image.dart';
+import '../../admin/admin_common.dart' show t;
+import '../../shared/roadmap/journey_page.dart' show JourneyTrack, journeyActionLabel, journeyStepState;
 import '../../shared/roadmap/roadmap_api.dart';
 
 /// The card's data from /me/home's raw `journey` block, or null when no card is drawn: not the personal context
@@ -25,70 +33,210 @@ Journey? homeJourney(Map<String, dynamic>? raw, {String? role}) {
   return Journey.fromJson(raw);
 }
 
+/// Whether the slot invites the student to pick interests (no journey yet, /me/home's `journey_hint`).
+bool homeJourneyInvite(String? hint, {String? role}) =>
+    hint == 'pick_interests' && !roadmapOff(kRoadmapJourneyKey) && !roadmapOff(kRoadmapRecsKey) && !roadmapOrgAccount(role);
+
 class HomeJourneyCard extends StatelessWidget {
-  const HomeJourneyCard({super.key, required this.journey, this.onTap});
+  const HomeJourneyCard({super.key, required this.journey, this.onTap, this.onContinue});
 
   final Journey journey;
+
+  /// The card → the whole path.
   final VoidCallback? onTap;
+
+  /// The button → the next course itself.
+  final VoidCallback? onContinue;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final j = journey;
-    return Semantics(
-      button: onTap != null,
-      label: '${j.title}. ${j.nextLine}. ${j.doneLine}',
-      excludeSemantics: true,
-      child: Material(
-        color: c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.divider)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: AppShineBand(
-                  color: c.primary.withValues(alpha: 0.07),
-                  period: const Duration(seconds: 6),
-                  sweep: 0.3,
-                  width: 28,
-                ),
+    final ink = appInk(context, c.primary);
+    return Material(
+      color: c.cardBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card), side: BorderSide(color: c.divider)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AppShineBand(
+                color: c.primary.withValues(alpha: 0.07),
+                period: const Duration(seconds: 6),
+                sweep: 0.3,
+                width: 28,
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(12)),
-                      child: Icon(Icons.route_rounded, size: 22, color: appInk(context, c.primary)),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(j.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark, h: 1.3)),
-                          const SizedBox(height: 2),
-                          Text(j.nextLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w400, c: c.textMedium)),
-                          const SizedBox(height: 8),
-                          AppProgressBar(value: j.fraction * 100, height: 4, color: appInk(context, c.primary)),
-                          Text(j.doneLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w500, c: c.textMedium)),
+            ),
+            Padding(
+              padding: AppSpace.card,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Semantics(
+                    button: onTap != null,
+                    label: '${j.title}. ${j.doneLine}',
+                    excludeSemantics: true,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
+                          child: Icon(Icons.route_rounded, size: 22, color: ink),
+                        ),
+                        AppSpace.gapSm,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(t('مسارك التعليمي', 'Your learning path'),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: ink)),
+                              Text(j.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark, h: 1.3)),
+                            ],
+                          ),
+                        ),
+                        if (onTap != null) ...[
+                          AppSpace.gapXs,
+                          Icon(Icons.chevron_right_rounded, size: 22, color: c.textLight),
                         ],
-                      ),
+                      ],
                     ),
-                    if (onTap != null) ...[
-                      const SizedBox(width: 8),
-                      Icon(Icons.chevron_right_rounded, size: 22, color: c.textLight),
+                  ),
+                  AppSpace.gapSm,
+                  _NextStep(course: j.next, label: j.next.kind == 'continue' ? t('أكمل', 'Continue') : t('خطوتك التالية', 'Your next step')),
+                  AppSpace.gapSm,
+                  JourneyTrack(journey: j),
+                  const SizedBox(height: AppSpace.xs),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(j.doneLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w500, c: c.textMedium)),
+                      ),
+                      if (onContinue != null) ...[
+                        AppSpace.gapXs,
+                        Flexible(
+                          child: AppButton.tonal(
+                            key: const ValueKey('home_journey.continue'),
+                            label: journeyActionLabel(j),
+                            trailingIcon: Icons.arrow_forward_rounded,
+                            size: AppButtonSize.sm,
+                            onPressed: onContinue,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+/// The next course in a soft box: thumbnail · "Your next step" · name · where the student is in it.
+class _NextStep extends StatelessWidget {
+  const _NextStep({required this.course, required this.label});
+
+  final RmCourse course;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final co = course;
+    final meta = [journeyStepState(co), if ((co.teacherName ?? '').isNotEmpty) co.teacherName!].join(' · ');
+    return Semantics(
+      label: '$label: ${co.name}. $meta',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpace.sm),
+        decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.06), border: Border.all(color: c.primary.withValues(alpha: 0.12)), borderRadius: BorderRadius.circular(AppRadius.chip)),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: co.imageUrl == null
+                    ? ColoredBox(color: c.cardBg, child: Icon(Icons.play_lesson_rounded, size: 22, color: appInk(context, c.primary)))
+                    : AppNetworkImage(url: co.imageUrl!, width: 44, height: 44, fit: BoxFit.cover, borderRadius: BorderRadius.zero),
+              ),
+            ),
+            AppSpace.gapSm,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w500, c: c.textMedium)),
+                  Text(co.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark, h: 1.3)),
+                  Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w400, c: c.textMedium)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// No journey yet: "Plan your learning path" · one "Pick your interests" button (D-309).
+class HomeJourneyInvite extends StatelessWidget {
+  const HomeJourneyInvite({super.key, required this.onPick});
+
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = appInk(context, c.primary);
+    return Container(
+      padding: AppSpace.card,
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.divider),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: Icon(Icons.explore_rounded, size: 22, color: ink),
+          ),
+          AppSpace.gapSm,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t('خطّط لمسارك التعليمي', 'Plan your learning path'),
+                    style: appText(15, w: FontWeight.w600, c: c.textDark, h: 1.3)),
+                const SizedBox(height: AppSpace.xxs),
+                Text(
+                  t('اختر ما يهمّك وسنرسم لك طريقاً واضحاً: خطوتك التالية والكورسات التي تليها.',
+                      'Pick what interests you and we’ll lay out a clear way: your next step and the courses after it.'),
+                  style: appText(13, w: FontWeight.w400, c: c.textMedium, h: 1.4),
+                ),
+                AppSpace.gapSm,
+                AppButton.tonal(
+                  key: const ValueKey('home_journey.pick'),
+                  label: t('اختر اهتماماتك', 'Pick your interests'),
+                  icon: Icons.favorite_border_rounded,
+                  size: AppButtonSize.sm,
+                  onPressed: onPick,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

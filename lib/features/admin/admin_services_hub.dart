@@ -537,14 +537,14 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           colors: AdminPalette.rose,
           onTap: () => push(const AdminFlagsSettingsPage()),
         ),
-        // app versions from the dashboard (D-144): Codemagic builds them, then the store or our website's download
-        // banner; going live also fills the update prompt below, which stays for a manual override
+        // app versions (D-144, ONE screen since D-309): per platform the latest / minimum version, the update message
+        // with a live preview and the link; "Build a version" (Codemagic / runner) is its primary action
         AdminService(
           labelKey: 'svc_app_releases',
           descKey: 'svc_app_releases_d',
           label: t('إصدارات التطبيق', 'App versions'),
-          desc: t('بناء إصدار ونشره، ورسالة التحديث التي يراها المستخدمون',
-              'Build and publish a version, and set the update prompt users see'),
+          desc: t('أحدث إصدار وأقل إصدار مسموح لكل منصة، ورسالة التحديث مع معاينتها، وبناء إصدار جديد',
+              'Each platform’s latest and minimum version, the update message with its preview, and new builds'),
           icon: Icons.rocket_launch_rounded,
           colors: AdminPalette.indigo,
           onTap: () => push(const AdminAppVersionsPage()),

@@ -150,6 +150,10 @@ void main() {
 
   testWidgets('Home journey card + the journey page', (t) async {
     await expectNoLayoutErrors(t, () => _scroll(HomeJourneyCard(journey: _journey(), onTap: () {})));
+    await expectNoLayoutErrors(t, () => _scroll(HomeJourneyCard(journey: _journey(), onTap: () {}, onContinue: () {})));
+    await expectNoLayoutErrors(t, () => _scroll(HomeJourneyCard(journey: _journey(steps: false), onContinue: () {})));
+    await expectNoLayoutErrors(t, () => _scroll(HomeJourneyInvite(onPick: () {})));
+    await expectNoLayoutErrors(t, () => _scroll(JourneyContent(journey: _journey(), onOpenCourse: (_) {}, onPickInterests: () {}, onMoreForYou: () {})));
     await expectNoLayoutErrors(t, () => _scroll(JourneyContent(journey: _journey(), onOpenCourse: (_) {})));
     await expectNoLayoutErrors(t, () => _scroll(JourneyContent(journey: _journey(steps: false), onOpenCourse: (_) {})));
   });
