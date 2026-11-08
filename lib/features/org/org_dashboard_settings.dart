@@ -41,6 +41,7 @@ import 'org_v3.dart' show orgCall, orgCodeText;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
 import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
+import 'org_chat_settings_tile.dart';
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
 import 'org_ui.dart' show orgPickAndUpload;
@@ -141,6 +142,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
           ]),
         AppSettingsGroup(title: t('المؤسسة', 'Organization'), icon: Icons.domain_rounded, children: [
           if (s.isOrgAdmin) ...[
+            if (s.currentId != null) OrgChatSettingsTile(orgId: s.currentId!),
             AppSettingsTile(
                 icon: Icons.edit_rounded,
                 label: t('تعديل بيانات المؤسسة', 'Edit organization'),

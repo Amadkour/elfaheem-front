@@ -59,6 +59,8 @@ import '../../features/teacher/sessions/live/prejoin.dart' deferred as prejoin;
 import '../../features/teacher/sessions/sessions_screen.dart' deferred as sessions;
 import '../../features/teacher/todo/teacher_todo_models.dart' show TodoItem;
 import '../../features/teacher/todo/teacher_todo_page.dart' deferred as teacher_todo;
+import '../../features/shared/chat/chat_page.dart' deferred as chat_page;
+import '../../features/shared/chat/chat_sheets.dart' deferred as chat_sheets;
 
 /// What the person sees while a part downloads.
 enum DeferredLook {
@@ -324,6 +326,21 @@ Widget deferredTeacherSessionsScreen({bool? expandDetails, CourseProfileHub? pro
 
 /// The teacher's whole to-do list (D-303).
 Widget deferredTeacherTodoPage() => DeferredPage(id: 'teacher_todo', load: teacher_todo.loadLibrary, builder: (_) => teacher_todo.TeacherTodoPage());
+
+/// NextBrain Messages (D-330). [args]: a conversation id (int), or {peer_id, course_id?, org_id?} to open that person's chat.
+Widget deferredChatHome(Object? args) => DeferredPage(
+    id: 'chat',
+    load: chat_page.loadLibrary,
+    builder: (_) {
+      if (args is Map) {
+        return chat_page.ChatHomePage(startPeerId: args['peer_id'] as int?, startCourseId: args['course_id'] as int?, startOrgId: args['org_id'] as int?);
+      }
+      return chat_page.ChatHomePage(initialConversationId: args is int ? args : null);
+    });
+
+Widget deferredChatBlocks() => DeferredPage(id: 'chat_sheets', load: chat_sheets.loadLibrary, builder: (_) => chat_sheets.ChatBlocksPage());
+
+Widget deferredChatReports() => DeferredPage(id: 'chat_sheets', load: chat_sheets.loadLibrary, builder: (_) => chat_sheets.ChatReportsPage());
 
 /// Opens where a to-do item is done (teacher_todo_actions.dart, in the to-do part); false = nothing to open.
 Future<bool> deferredOpenTodoAction(BuildContext context, TodoItem item) async {

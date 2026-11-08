@@ -1,0 +1,89 @@
+// NextBrain Messages (D-330): no overflow from 320 px to desktop, Arabic and English, large text.
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/shared/chat/chat_api.dart';
+import 'package:flutter_education_app/features/shared/chat/chat_models.dart';
+import 'package:flutter_education_app/features/shared/chat/chat_sheets.dart';
+import 'package:flutter_education_app/features/shared/chat/chat_store.dart';
+import 'package:flutter_education_app/features/shared/chat/chat_widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../ui/layout_harness.dart';
+
+const longName = 'Abdelrahman Mohamed Ibrahim Abdelaziz El Sayed عبد الرحمن محمد إبراهيم عبد العزيز السيد';
+final now = DateTime.utc(2026, 11, 8, 10);
+
+ChatConversation conv({bool group = false, int unread = 3, bool muted = true}) => ChatConversation(
+      id: 1,
+      kind: group ? 'course_group' : 'direct',
+      peer: group ? null : const ChatPerson(id: 2, name: longName, role: 'teacher'),
+      online: !group,
+      course: const ChatCourse(id: 3, name: 'أساسيات الرياضيات المتقدمة للمرحلة الثانوية', nameEn: 'Advanced Mathematics Foundations for Secondary'),
+      child: const ChatPerson(id: 4, name: 'Omar Hassan', role: 'student'),
+      last: ChatLastMessage(id: 9, kind: 'text', body: 'The homework is due tomorrow, please check the attached sheet carefully before you start.', senderId: 2, senderName: longName, createdAt: now),
+      lastAt: now,
+      unread: unread,
+      muted: muted,
+      pinned: true,
+    );
+
+ChatMessage m(int id, String body, {bool att = false}) => ChatMessage(
+      id: id,
+      clientId: 'c$id',
+      conversationId: 1,
+      body: body,
+      senderId: 2,
+      senderName: longName,
+      senderIsTeacher: true,
+      createdAt: now,
+      attachments: att ? const [ChatAttachment(id: 1, name: 'a very long lecture notes file name for the midterm.pdf', mime: 'application/pdf', ext: 'pdf', size: 123456)] : const [],
+    );
+
+void main() {
+  setUp(() => AppConfig.lang = 'ar');
+
+  testWidgets('conversation tiles', (t) async {
+    await expectNoLayoutErrors(t, () => Column(children: [
+          ChatConversationTile(conversation: conv(), myId: 1, now: now),
+          ChatConversationTile(conversation: conv(group: true, unread: 120, muted: false), myId: 1, now: now),
+          ChatConversationTile(conversation: conv(unread: 0), myId: 2, draft: 'a long draft that the person has not sent yet', now: now),
+          ChatConversationTile(conversation: conv(), myId: 1, typingName: longName, now: now),
+        ]));
+  });
+
+  testWidgets('bubbles', (t) async {
+    await expectNoLayoutErrors(t, () => ListView(padding: const EdgeInsets.all(8), children: [
+          ChatBubble(message: m(1, 'short'), mine: false, showSender: true),
+          ChatBubble(message: m(2, 'A much longer message that has to wrap over several lines in a phone width without any overflow at all. ' * 3), mine: true, tick: ChatTick.read),
+          ChatBubble(message: m(3, '', att: true), mine: false),
+          ChatBubble(message: m(4, 'with file', att: true), mine: true, tick: ChatTick.sending),
+          ChatBubble(message: m(5, 'failed')..sendState = ChatSendState.failed, mine: true, tick: ChatTick.failed, onRetry: () {}),
+          const ChatTypingBubble(name: longName),
+          const ChatDateChip(label: 'Yesterday'),
+        ]));
+  });
+
+  testWidgets('composer notices and chips', (t) async {
+    await expectNoLayoutErrors(t, () => ListView(children: [
+          for (final s in ChatComposerState.values) ChatComposerNotice(state: s, onUnblock: () {}),
+        ]));
+  });
+
+  testWidgets('chips', (t) async {
+    await expectNoLayoutErrors(t, () => ListView(children: [
+          Wrap(children: [ChatPendingFileChip(name: 'a very very long file name that should be cut.png', onRemove: () {})]),
+          Wrap(children: [ChatFilterChip(label: longName, selected: true, onTap: () {})]),
+        ]));
+  });
+
+  testWidgets('block sheet at every level', (t) async {
+    const person = ChatPerson(id: 2, name: longName);
+    await expectNoLayoutErrors(t, () => const SingleChildScrollView(
+          child: ChatBlockSheet(user: person, preloaded: ChatBlockOptions(['person', 'course', 'all_courses'], [ChatCourse(id: 1, name: 'math', nameEn: 'Maths')], [])),
+        ));
+  });
+
+  testWidgets('report sheet', (t) async {
+    await expectNoLayoutErrors(t, () => SingleChildScrollView(child: ChatReportSheet(conversation: conv())));
+  });
+}

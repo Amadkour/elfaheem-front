@@ -100,7 +100,7 @@ class _ParentOverviewPageState extends State<ParentOverviewPage> with AutomaticK
                       helpPageId: 'home.parent',
                       name: user?.name ?? 'role_parent'.tr,
                       leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-                      shellActions: [const CalendarEntryIcon(), NotificationIcon(unreadCount: unread)],
+                      shellActions: [const CalendarEntryIcon(), const ChatEntryIcon(), NotificationIcon(unreadCount: unread)],
                     ),
                   ),
                   const SizedBox(height: 8),

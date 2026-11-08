@@ -37,6 +37,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntryIcon;
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
@@ -182,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // the counts are drawn once, by the inbox entry / the "Needs you" strip — the bell stays plain here
               actions: [if (!guest) const QuickMeetingIcon()],
               // the top bar carries these on desktop / tablet: drawn here on phones only (M7)
-              shellActions: [if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0, withTodos: false)],
+              shellActions: [if (!guest) const CalendarIcon(), if (!guest) const ChatEntryIcon(), if (!guest) const NotificationIcon(unreadCount: 0, withTodos: false)],
               contextSwitcher: guest ? null : const ContextSwitcher(),
             ),
           ),

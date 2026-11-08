@@ -190,6 +190,12 @@ class AppNavigator {
         return;
       case 'exam_identifiers': // a duplicate identifier → the exam's setup on its students step
         return _deferred('exam_setup_wizard', exam_setup_wizard.loadLibrary, () => exam_setup_wizard.openExamIdentifiersFromLink(nav, targetId));
+      case 'chat': // a new message (push tap) or the Messages badge → that chat, or the list (D-330)
+        await _nav?.pushNamed('/chat', arguments: targetId);
+        return;
+      case 'chat_reports': // an admin: the chat reports to review (D-330)
+        await _nav?.pushNamed('/chat/reports');
+        return;
       case 'teacher_todo': // the attention badge's "urgent items on your to-do list" (D-303) → the whole list
         await nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/teacher-todo'), builder: (_) => deferredTeacherTodoPage()));
         return;
