@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:flutter_education_app/design/app_share_sheet.dart' show showAppShareSheet, appLinkKindLabel, AppLinkKind;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:provider/provider.dart';
@@ -26,20 +26,18 @@ String courseShareUrl(CourseModel course, {int? sharerId}) {
   return kIsWeb ? link.replaceFirst(DeepLinkService.siteBase, Uri.base.origin) : link;
 }
 
+/// The app's one share sheet (D-307, design/app_share_sheet.dart): the link, Copy, the system share sheet (apps) and a
+/// QR code. The link keeps the sharer's id (`?ref=`) for the share counter.
 Future<void> shareCourseLink(BuildContext context, CourseModel course) async {
-  if (kIsWeb) {
-    await showShareLinkDialog(
-      context,
-      url: courseShareUrl(course, sharerId: context.read<MyAuthProvider>().currentUser?.id),
-      title: (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
-    );
-    return;
-  }
-  final copied = await DeepLinkService.shareCourse(
-    courseId: int.parse(course.id),
-    courseName:(AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
+  final title = (AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? '';
+  final (kind, icon) = appLinkKindLabel(AppLinkKind.course);
+  await showAppShareSheet(
+    context,
+    url: courseShareUrl(course, sharerId: context.read<MyAuthProvider>().currentUser?.id),
+    title: title,
+    kind: kind,
+    icon: icon,
   );
-  if (copied) Helpers.showMessage(gt('تم نسخ الرابط', 'Link copied'));
 }
 
 /// [heading] replaces "Share this course" (e.g. a profile link, D-074).

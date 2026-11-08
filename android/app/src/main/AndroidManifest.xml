@@ -116,6 +116,11 @@
                     android:host="nextbrain.site"
                     android:pathPrefix="/i/"
                     android:scheme="https" />
+                <!-- share links of everything /s/<kind>/<id> and /s/page/<pageId> (D-307) -->
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/s/"
+                    android:scheme="https" />
             </intent-filter>
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"

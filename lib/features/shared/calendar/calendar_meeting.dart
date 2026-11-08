@@ -21,6 +21,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_share_sheet.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart' show showLobbySheet, showShareLinkSheet;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
@@ -670,11 +671,27 @@ class _MeetingSheetState extends State<MeetingSheet> {
     unawaited(_load());
   }
 
+  /// The meeting's member link (D-307, `https://nextbrain.site/s/meeting/<id>`): invitees open it after signing in.
+  Widget _sharePill(BuildContext context) => ParentComponent(
+        featureKey: kShareLinksKey,
+        child: AppPill(
+          key: const ValueKey('meeting.share_member_link'),
+          icon: Icons.ios_share_rounded,
+          label: t('مشاركة الاجتماع', 'Share meeting'),
+          onTap: () => shareAppLink(context, AppLink.meeting(widget.meetingId),
+              title: '${_m?['title'] ?? ''}',
+              subtitle: _parse(_m?['starts_at']) == null ? null : AppTime.dateTime(_parse(_m?['starts_at'])!),
+              hint: t('يفتحه المدعوون بعد تسجيل الدخول. للضيوف بلا حساب استخدم «رابط المشاركة».',
+                  'Invitees open it after signing in. For guests without an account, use "Share link".')),
+        ),
+      );
+
   /// Owner of an online meeting: the share link and the admission lobby (kill switches `live.share_link` / `live.lobby`).
   Widget _hostActions(BuildContext context) {
     final ref = LiveRoomRef.meeting(widget.meetingId);
     final title = '${_m?['title'] ?? ''}';
     return Wrap(spacing: 8, runSpacing: 8, children: [
+      _sharePill(context),
       ParentComponent(
         featureKey: kLiveShareLinkFeatureKey,
         child: AppPill(
@@ -802,6 +819,9 @@ class _MeetingSheetState extends State<MeetingSheet> {
         if (owner && online && m['status'] != 'cancelled') ...[
           const SizedBox(height: 10),
           _hostActions(context),
+        ] else if (online && m['status'] != 'cancelled') ...[
+          const SizedBox(height: 10),
+          Align(alignment: AlignmentDirectional.centerStart, child: _sharePill(context)),
         ],
         if (!owner && my.isNotEmpty) ...[
           const SizedBox(height: 14),

@@ -4,30 +4,27 @@
 //
 //   PublicProfileScreen(username:)     loads GET /api/v1/public/u/{username}, draws PublicProfileView; a course card
 //                                      opens the usual course page (AppNavigator.openCourse → CourseLinkLoader)
-//   shareProfileLink(context, …)       web: the link in a dialog with "Copy link"; apps: the native share sheet
-//                                      (copy as the fallback) — the course share link's mechanism
+//   shareProfileLink(context, …)       the app's one share sheet (D-307): the link, Copy, the system share sheet, QR
+//                                      (design/app_share_sheet.dart), like the course share link
 //   ShareMyProfileTile                 the Profile tile, only for a teacher with a CONFIRMED username; kill switches
 //                                      `auth.username` + `profile.public_link`
 // Routing: main.dart `_router` (`/@name`, signed out → login first, like `/c/<id>`), DeepLinkService, AppNavigator.
 library;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
-import '../../../design/app_notice.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_navigator.dart';
 import '../../../utils/widget/base_page.dart';
-import '../../../utils/widget/deep_link_service.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../auth/auth_provider.dart';
 import '../../auth/username.dart' show kUsernameFeatureKey;
-import '../../student/courses/details/components/share_link.dart' show showShareLinkDialog;
+import '../../../design/app_share_sheet.dart' show showAppShareSheet, appLinkKindLabel, AppLinkKind;
 import 'public_profile.dart';
 import 'public_profile_view.dart';
 
@@ -88,18 +85,10 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
 
 /// Shares `https://nextbrain.site/@username`: on the web the link is shown in a dialog with "Copy link" (the browser
 /// has no share sheet), in the apps the native share sheet opens (the link is copied when it cannot).
+/// Now the app's one share sheet (D-307): the link, Copy, the system share sheet (apps) and a QR code.
 Future<void> shareProfileLink(BuildContext context, {required String username, required String name}) async {
-  if (kIsWeb) {
-    await showShareLinkDialog(
-      context,
-      url: profileUrl(username),
-      title: '$name (@$username)',
-      heading: t('مشاركة الملف الشخصي', 'Share profile'),
-    );
-    return;
-  }
-  final copied = await DeepLinkService.shareProfile(username: username, name: name);
-  if (copied) showAppNotice(t('تم نسخ الرابط', 'Link copied'));
+  final (kind, icon) = appLinkKindLabel(AppLinkKind.teacher);
+  await showAppShareSheet(context, url: profileUrl(username), title: name, subtitle: '@$username', kind: kind, icon: icon);
 }
 
 /// "Share my profile link" in the teacher's Profile (D-074). Nothing for other roles, without a username, or while

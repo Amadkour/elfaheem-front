@@ -53,6 +53,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../admin/admin_common.dart' show t, asMap;
+import '../../../config/app_config.dart';
+import '../live/meeting_links_page.dart' show MeetingLinksIcon, kMeetingLinksFeatureKey, openMeetingLinks;
 import 'calendar_api.dart';
 import 'calendar_meeting.dart';
 import 'calendar_models.dart';
@@ -813,6 +815,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             child: SizedBox(width: 60, child: LinearProgressIndicator(minHeight: 3, borderRadius: BorderRadius.circular(3), color: c.primary, backgroundColor: c.inputBg)),
           ),
         CalViewSwitch(view: view, onView: (v) => _go(v, _anchor)),
+        const MeetingLinksIcon(),
         _MoreMenu(onRefresh: _refresh, onExport: _export),
       ]),
     );
@@ -1166,8 +1169,19 @@ class _MoreMenu extends StatelessWidget {
       onSelected: (v) {
         if (v == 'refresh') onRefresh();
         if (v == 'ics') onExport();
+        if (v == 'links') openMeetingLinks(context);
       },
       itemBuilder: (_) => [
+        if (!AppConfig.disableList.contains(kMeetingLinksFeatureKey))
+          PopupMenuItem(
+            key: const ValueKey('cal.more.links'),
+            value: 'links',
+            child: Row(children: [
+              const Icon(Icons.link_rounded, size: 20),
+              const SizedBox(width: 10),
+              Flexible(child: Text(t('روابط الاجتماعات', 'Meeting links'))),
+            ]),
+          ),
         PopupMenuItem(
           value: 'refresh',
           child: Row(children: [const Icon(Icons.refresh_rounded, size: 20), const SizedBox(width: 10), Text(t('تحديث', 'Refresh'))]),

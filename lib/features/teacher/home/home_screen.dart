@@ -47,6 +47,7 @@ import 'package:flutter_education_app/features/student/home/home_live.dart' show
 import 'package:flutter_education_app/features/student/home/home_screen.dart' show orgModeDaySummary;
 import 'package:flutter_education_app/features/teacher/home/go_live.dart' show kQuickLiveFeatureKey;
 import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart' show GoLiveEntry;
+import 'package:flutter_education_app/features/shared/live/meeting_links_page.dart' show MeetingLinksIcon;
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
@@ -207,6 +208,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                           actions: [
                             // "Meet now" moved into the Go live sheet; the icon comes back when Go live is switched off
                             if (!quickLive) const QuickMeetingIcon(),
+                            const MeetingLinksIcon(chrome: true), // every session / meeting link to copy or share (D-307)
                           ],
                           // the top bar carries these on desktop / tablet: drawn here on phones only (M7); while the
                           // inbox entry is on the page it carries the count (to-dos + unread), so the bell stays plain
