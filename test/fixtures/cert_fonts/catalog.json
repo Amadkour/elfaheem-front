@@ -1,6 +1,20 @@
 {
  "default": "tajawal",
  "files": {
+  "alex_brush": {
+   "regular": "c4bf8b453fa5138537f8c3f5dd0adb87337c23bc"
+  },
+  "alexandria": {
+   "bold": "0059a1bf5bd04de026563e1773733b580f00cc10",
+   "regular": "06b941ccb33b85b6038b95816cfa406f444bd5ec"
+  },
+  "allura": {
+   "regular": "b301dc43880e7597184f2e3acc11270ef6cbab4c"
+  },
+  "almarai": {
+   "bold": "cda41dfff65bac5e6e7fee4911ef10844583c4bf",
+   "regular": "1cb59258a0736cc154a5ce0171b1eebc00ebe96f"
+  },
   "amiri": {
    "bold": "eb84bdc491cdb1a8d6b3d4a1fba9508759789836",
    "regular": "a5f4fe8279d587ca8e65b01159c405788850c6d3"
@@ -9,16 +23,50 @@
    "bold": "a181b3c19da18d52f6c0f41b7c34540f3fdc3f39",
    "regular": "104e2dc48776980cf5f3babc01022b0573d09cfe"
   },
+  "beiruti": {
+   "bold": "3b5eea40ed6b2c0b2539f6ca2787c7adc7848b3b",
+   "regular": "0ea85b024f002be839005d6318e4b93cb95d5831"
+  },
+  "bodoni_moda": {
+   "bold": "29e020cf39aa116757acc21546e121695910d9a9",
+   "italic": "67f7e3d2b782c9c6153b38f94e1171f913723508",
+   "regular": "44ff84a32195823a4740cce4dec9a466abece17f"
+  },
   "cairo": {
    "bold": "cea9b5184311b687f0f24b465f9863948b016ce5",
    "regular": "f33f8befd4e1b5fc0fc5dbb47f2c2e413b400752"
   },
+  "cardo": {
+   "bold": "4fd12be64df267bb24bfc326633da3cef00a2d66",
+   "italic": "3cadac2c2aac26f4b00469721db77f54b517d2e7",
+   "regular": "9dcd23a348e554fca938b960d8692d844eb2bb40"
+  },
+  "changa": {
+   "bold": "4fed68bdf3e0e8f7e12f9f203927276e3b31b5c2",
+   "regular": "9060a32ed89499c78519d66b9451f2745970a5d3"
+  },
   "cinzel": {
    "regular": "85949e36cdc07e2c6d24a805b901701c298b8686"
+  },
+  "cinzel_deco": {
+   "bold": "fad1f64b8d8b8824f63f4477685653f1064e1c32",
+   "regular": "b2390c2693fc61bc5aa2b9906b5ca3b61178897b"
   },
   "cormorant": {
    "italic": "eb39b1b7b405c7e35042511f6609c02953358cac",
    "regular": "dd18a201d21e916c93419b3f40e948f29b0b4b8f"
+  },
+  "cormorant_sc": {
+   "bold": "852d7149ee213d3e4bb1e695beae8832bb2c6b20",
+   "regular": "e678a2ad09773b95b19347b2f6a7a39682f3ff97"
+  },
+  "crimson": {
+   "bold": "a7d34462bdf8b40fd3f6ba0822ce4bb09b3f9698",
+   "italic": "09bb567e77194f0de41a0be61b4ffbabc306fc12",
+   "regular": "64c3d3ce79fc29150b97c9b8462aec907a5b22e4"
+  },
+  "delafield": {
+   "regular": "45e20374e236e61c846fdaed28a59b4b9793bd29"
   },
   "eb_garamond": {
    "regular": "43cc6354462d792c4db743dbfa91a5374880d4ce"
@@ -27,189 +75,919 @@
    "bold": "64d1b013f22965576d116036fe836542ac8bb5bd",
    "regular": "f4fc4faf15e4db56bfc6954c071af86e5fd28407"
   },
+  "gilda": {
+   "regular": "04cea27f26285f7b7df063f1359c846e8b209bc7"
+  },
   "great_vibes": {
    "regular": "7904ee6600d331678424b639ca85dcfc36b5d12c"
+  },
+  "katibeh": {
+   "regular": "b16a9c648e646f8874c68daef8bfdbdf6076736a"
+  },
+  "kufam": {
+   "bold": "7fcbf1ddecc0c35b1a12e944441ec1ff3e0f0c18",
+   "italic": "96509c7463157ed5087ba656a186ac340617a928",
+   "regular": "939dcffab0554671236d0c3006ebcfeac1eaa054"
+  },
+  "lalezar": {
+   "regular": "79542329d39093000769ec97aedb3f9cf13c43ec"
+  },
+  "lato": {
+   "bold": "a3a53a436baaf6dc2e7a05f05866a761c214692b",
+   "italic": "5fab64c8752be020a42f18b74690b76356073fed",
+   "regular": "29eb192629b0bbb41a7b7f49ab2aec82d4261921"
+  },
+  "libre_caslon": {
+   "bold": "ac50c136b54da4e7cb209cb706baa8dcd9f40a87",
+   "italic": "5d7188d0b45ed1b01abb4176cd70e8efbe930ef3",
+   "regular": "d0740ec2f7d19d8baee9ae99d4143c8d7201ccdb"
+  },
+  "marcellus": {
+   "regular": "2ce64972df95ca864a2b5fb9e14b482c57b24b68"
+  },
+  "marcellus_sc": {
+   "regular": "a3181da3ab239f10d0555372b63142b574b08c08"
   },
   "markazi": {
    "bold": "de67cf9cd4a75c3e00e1652968668b4eaeb6b501",
    "regular": "85bc0d544efe6895d42a065f900eff99c20873aa"
   },
+  "mirza": {
+   "bold": "7b4b75822136d2cf5ae4f4f6ece34c0db7ade9d3",
+   "regular": "3476596a16e1e814582722660d83e32cf3553e4d"
+  },
+  "monsieur": {
+   "regular": "2a08bdd0ccbf74bba9caddd7e7a1ec566031e4e6"
+  },
+  "montserrat": {
+   "bold": "0f614bbcbe4e983f846453708e5a701d13e71e6d",
+   "italic": "7d4888723fa8fe908ff6e84f11291862395be6ac",
+   "regular": "8690d86944322b76eae9835b0527524917472b47"
+  },
   "noto_kufi": {
    "bold": "b0dca58ebc57c5255afd36861f8d688a7d0178c8",
    "regular": "788b89abfad821aa468001c6aa0be98d0a319568"
   },
+  "noto_naskh": {
+   "bold": "1a6e6a40abda009c47a80ba570fc5026c95aef17",
+   "regular": "65a7b8fd6a195e938812cdefa92ad65a6bedc95d"
+  },
+  "noto_sans_ar": {
+   "bold": "d6f778a80a5f8c5cd38c0c5948303fa73e0f02e8",
+   "regular": "0a2be3c7107b822f748f85e13a51440d7cdc1617"
+  },
+  "old_standard": {
+   "bold": "334fbb31722369aeaa70ebad392418807d155f14",
+   "italic": "aff8596963c49a56a7a3ccef471f3257f8680931",
+   "regular": "c1d876f932ba21819322dac41f678ca2c78a862f"
+  },
+  "parisienne": {
+   "regular": "38ab1f96d6ae368ee21c690fbdbe3913f3ec6372"
+  },
+  "petit_formal": {
+   "regular": "b601732150463cfb066418c434b9f5f25ca42d3b"
+  },
   "pinyon_script": {
    "regular": "bdb8dd38cc4cda3dc7816413620cf2d81561441a"
+  },
+  "pirata": {
+   "regular": "663bde04ea929ab03548e4712c3b6b50f13a48ff"
   },
   "playfair": {
    "bold": "3434072b9fd9d439c1656552c609c9c1d7cc28e9",
    "italic": "8c51ae632f9e126662ecc7147edcfd3f5b6317b3",
    "regular": "8af59fb4b4f4d02028b683b897a47257e7a365d7"
   },
+  "playfair_sc": {
+   "bold": "d5695b451d66f6aa7b5cca619af8cd558478fab1",
+   "italic": "946619612f919dae87344f51e11af05f649105dc",
+   "regular": "dfc27c043a4c015d8cd3938310780524d6beb1af"
+  },
   "plex": {
    "bold": "3d7fcb29ba45385d6b7c1a69729a95909d41ae11",
    "regular": "0326c65c6b21647ce733fe9edd6719ef2341dec5"
+  },
+  "poppins": {
+   "bold": "45e4d582cbb4dab2bbad3f624fad9ae567c66547",
+   "italic": "85a636b7eadeaa3dc87564646116c605dfe8b2dd",
+   "regular": "86a425be5a919d86729b85b2bc1d07da5ce413d4"
+  },
+  "prata": {
+   "regular": "8f7947724c98e3f1f2b2ef9ee65d5af432d252ed"
+  },
+  "rakkas": {
+   "regular": "b2a88f6a0f087fb6af859de21a88cb808549d2b4"
+  },
+  "readex": {
+   "bold": "185f5da0d40870443d8668642dce91af376d0563",
+   "regular": "2a17042c272ef8af4775b69233eea0802f50da72"
   },
   "scheherazade": {
    "bold": "02229f47fbad51a861379b024abb73676b3e2e11",
    "regular": "9deea08a3a74349a8cf37532d34146105d59818a"
   },
+  "sorts_mill": {
+   "italic": "789640810d2f067f4da38b4f170c5297655880f4",
+   "regular": "d0fd5e78358d7ba5afefdd68ff6ef5457bea9d61"
+  },
+  "spectral": {
+   "bold": "7a3245c3a5c77a704fe0b66d5fae9a9c2284c3d6",
+   "italic": "67838c1fb47a828cac4898547d3cf1ba45336c75",
+   "regular": "ebe00acfa7061ceae902a2c0d8a88f0717152103"
+  },
   "tajawal": {
    "bold": "3028c3b3afa120de0737802415314fe328655300",
    "regular": "6231d7c967bf36a7891e3479e0fbb72d35badce2"
+  },
+  "tangerine": {
+   "bold": "49afd32d5a544780a35c967b0e51944ad9b233d7",
+   "regular": "e201c022219bad1e0cf8831ccafff9e09d99f519"
+  },
+  "unifraktur": {
+   "bold": "58ef3bf17a110a4623a95911a6c1a69e342a28d4",
+   "regular": "58ef3bf17a110a4623a95911a6c1a69e342a28d4"
+  },
+  "vazirmatn": {
+   "bold": "0dadea8546b74ac92d2a4bc467f26f09e0d27be3",
+   "regular": "6bad9dd03b615bc97f07df8448e02624ad71f951"
+  },
+  "zain": {
+   "bold": "c06c4bde9fd6c87fc3e15c52a39fb76443467260",
+   "italic": "558dc0e74295156ebd1dadeaa5584f674bf635d1",
+   "regular": "aeb59ee7b794e460ef891cb21c351dea0f03c4b1"
   }
  },
- "generated_by": "scripts/contract/dump_cert_fonts.py (back 4b0c664)",
+ "generated_by": "scripts/contract/dump_cert_fonts.py (back 6202911)",
  "items": [
   {
    "bold": true,
+   "bundled": true,
    "family": "Tajawal",
    "id": "tajawal",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "arabic",
     "latin"
-   ]
+   ],
+   "style": "sans"
   },
   {
    "bold": true,
+   "bundled": true,
    "family": "Cairo",
    "id": "cairo",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "arabic",
     "latin"
-   ]
+   ],
+   "style": "sans"
   },
   {
    "bold": true,
+   "bundled": true,
    "family": "Amiri",
    "id": "amiri",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "arabic",
     "latin"
-   ]
+   ],
+   "style": "naskh"
   },
   {
    "bold": true,
+   "bundled": true,
    "family": "Markazi Text",
    "id": "markazi",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "arabic",
     "latin"
-   ]
+   ],
+   "style": "naskh"
   },
   {
    "bold": true,
+   "bundled": true,
    "family": "El Messiri",
    "id": "el_messiri",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "arabic",
     "latin"
-   ]
+   ],
+   "style": "display"
   },
   {
    "bold": true,
+   "bundled": true,
    "family": "Scheherazade New",
    "id": "scheherazade",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "arabic",
     "latin"
-   ]
+   ],
+   "style": "naskh"
   },
   {
    "bold": true,
+   "bundled": true,
    "family": "Noto Kufi Arabic",
    "id": "noto_kufi",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "arabic",
     "latin"
-   ]
+   ],
+   "style": "kufi"
   },
   {
    "bold": true,
+   "bundled": true,
    "family": "IBM Plex Sans Arabic",
    "id": "plex",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "arabic",
     "latin"
-   ]
+   ],
+   "style": "sans"
   },
   {
    "arabic_fallback": "amiri",
    "bold": true,
+   "bundled": true,
    "family": "Playfair Display",
    "id": "playfair",
    "italic": true,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "latin"
-   ]
+   ],
+   "style": "serif"
   },
   {
    "arabic_fallback": "amiri",
    "bold": true,
+   "bundled": true,
    "family": "Libre Baskerville",
    "id": "baskerville",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "latin"
-   ]
+   ],
+   "style": "serif"
   },
   {
    "arabic_fallback": "amiri",
    "bold": false,
+   "bundled": true,
    "family": "EB Garamond",
    "id": "eb_garamond",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "latin"
-   ]
+   ],
+   "style": "serif"
   },
   {
    "arabic_fallback": "amiri",
    "bold": false,
+   "bundled": true,
    "family": "Cormorant Garamond",
    "id": "cormorant",
    "italic": true,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "latin"
-   ]
+   ],
+   "style": "serif"
   },
   {
    "arabic_fallback": "amiri",
    "bold": false,
+   "bundled": true,
    "family": "Cinzel",
    "id": "cinzel",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "latin"
-   ]
+   ],
+   "style": "engraved"
   },
   {
    "arabic_fallback": "amiri",
    "bold": false,
+   "bundled": true,
    "family": "Great Vibes",
    "id": "great_vibes",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "latin"
-   ]
+   ],
+   "style": "script"
   },
   {
    "arabic_fallback": "amiri",
    "bold": false,
+   "bundled": true,
    "family": "Pinyon Script",
    "id": "pinyon_script",
    "italic": false,
+   "label_ar": "",
+   "label_en": "",
    "scripts": [
     "latin"
-   ]
+   ],
+   "style": "script"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Noto Naskh Arabic",
+   "id": "noto_naskh",
+   "italic": false,
+   "label_ar": "نوتو نسخ",
+   "label_en": "Noto Naskh Arabic",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "naskh"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Mirza",
+   "id": "mirza",
+   "italic": false,
+   "label_ar": "ميرزا",
+   "label_en": "Mirza",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "naskh"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Kufam",
+   "id": "kufam",
+   "italic": true,
+   "label_ar": "كوفام",
+   "label_en": "Kufam",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "kufi"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Changa",
+   "id": "changa",
+   "italic": false,
+   "label_ar": "تشانجا",
+   "label_en": "Changa",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "kufi"
+  },
+  {
+   "bold": false,
+   "bundled": false,
+   "family": "Katibeh",
+   "id": "katibeh",
+   "italic": false,
+   "label_ar": "كاتبة",
+   "label_en": "Katibeh",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "calligraphic"
+  },
+  {
+   "bold": false,
+   "bundled": false,
+   "family": "Rakkas",
+   "id": "rakkas",
+   "italic": false,
+   "label_ar": "ركّاس",
+   "label_en": "Rakkas",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "calligraphic"
+  },
+  {
+   "bold": false,
+   "bundled": false,
+   "family": "Lalezar",
+   "id": "lalezar",
+   "italic": false,
+   "label_ar": "لاله زار",
+   "label_en": "Lalezar",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "display"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Alexandria",
+   "id": "alexandria",
+   "italic": false,
+   "label_ar": "الإسكندرية",
+   "label_en": "Alexandria",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "sans"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Almarai",
+   "id": "almarai",
+   "italic": false,
+   "label_ar": "المراعي",
+   "label_en": "Almarai",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "sans"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Readex Pro",
+   "id": "readex",
+   "italic": false,
+   "label_ar": "ريدكس",
+   "label_en": "Readex Pro",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "sans"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Vazirmatn",
+   "id": "vazirmatn",
+   "italic": false,
+   "label_ar": "وزير متن",
+   "label_en": "Vazirmatn",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "sans"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Zain",
+   "id": "zain",
+   "italic": true,
+   "label_ar": "زين",
+   "label_en": "Zain",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "sans"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Beiruti",
+   "id": "beiruti",
+   "italic": false,
+   "label_ar": "بيروتي",
+   "label_en": "Beiruti",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "sans"
+  },
+  {
+   "bold": true,
+   "bundled": false,
+   "family": "Noto Sans Arabic",
+   "id": "noto_sans_ar",
+   "italic": false,
+   "label_ar": "نوتو سانس",
+   "label_en": "Noto Sans Arabic",
+   "scripts": [
+    "arabic",
+    "latin"
+   ],
+   "style": "sans"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Libre Caslon Text",
+   "id": "libre_caslon",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Libre Caslon Text",
+   "scripts": [
+    "latin"
+   ],
+   "style": "serif"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Cardo",
+   "id": "cardo",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Cardo",
+   "scripts": [
+    "latin"
+   ],
+   "style": "serif"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Crimson Text",
+   "id": "crimson",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Crimson Text",
+   "scripts": [
+    "latin"
+   ],
+   "style": "serif"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Spectral",
+   "id": "spectral",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Spectral",
+   "scripts": [
+    "latin"
+   ],
+   "style": "serif"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Old Standard TT",
+   "id": "old_standard",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Old Standard TT",
+   "scripts": [
+    "latin"
+   ],
+   "style": "serif"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Sorts Mill Goudy",
+   "id": "sorts_mill",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Sorts Mill Goudy",
+   "scripts": [
+    "latin"
+   ],
+   "style": "serif"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Bodoni Moda",
+   "id": "bodoni_moda",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Bodoni Moda",
+   "scripts": [
+    "latin"
+   ],
+   "style": "display"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Prata",
+   "id": "prata",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Prata",
+   "scripts": [
+    "latin"
+   ],
+   "style": "display"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Gilda Display",
+   "id": "gilda",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Gilda Display",
+   "scripts": [
+    "latin"
+   ],
+   "style": "display"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Marcellus",
+   "id": "marcellus",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Marcellus",
+   "scripts": [
+    "latin"
+   ],
+   "style": "display"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Cormorant SC",
+   "id": "cormorant_sc",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Cormorant SC",
+   "scripts": [
+    "latin"
+   ],
+   "style": "engraved"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Playfair Display SC",
+   "id": "playfair_sc",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Playfair Display SC",
+   "scripts": [
+    "latin"
+   ],
+   "style": "engraved"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Marcellus SC",
+   "id": "marcellus_sc",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Marcellus SC",
+   "scripts": [
+    "latin"
+   ],
+   "style": "engraved"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Cinzel Decorative",
+   "id": "cinzel_deco",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Cinzel Decorative",
+   "scripts": [
+    "latin"
+   ],
+   "style": "engraved"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Allura",
+   "id": "allura",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Allura",
+   "scripts": [
+    "latin"
+   ],
+   "style": "script"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Alex Brush",
+   "id": "alex_brush",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Alex Brush",
+   "scripts": [
+    "latin"
+   ],
+   "style": "script"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Parisienne",
+   "id": "parisienne",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Parisienne",
+   "scripts": [
+    "latin"
+   ],
+   "style": "script"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Tangerine",
+   "id": "tangerine",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Tangerine",
+   "scripts": [
+    "latin"
+   ],
+   "style": "script"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Monsieur La Doulaise",
+   "id": "monsieur",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Monsieur La Doulaise",
+   "scripts": [
+    "latin"
+   ],
+   "style": "script"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Mrs Saint Delafield",
+   "id": "delafield",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Mrs Saint Delafield",
+   "scripts": [
+    "latin"
+   ],
+   "style": "script"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Petit Formal Script",
+   "id": "petit_formal",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Petit Formal Script",
+   "scripts": [
+    "latin"
+   ],
+   "style": "script"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "bundled": false,
+   "family": "Pirata One",
+   "id": "pirata",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "Pirata One",
+   "scripts": [
+    "latin"
+   ],
+   "style": "blackletter"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "UnifrakturCook",
+   "id": "unifraktur",
+   "italic": false,
+   "label_ar": "",
+   "label_en": "UnifrakturCook",
+   "scripts": [
+    "latin"
+   ],
+   "style": "blackletter"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Poppins",
+   "id": "poppins",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Poppins",
+   "scripts": [
+    "latin"
+   ],
+   "style": "sans"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Lato",
+   "id": "lato",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Lato",
+   "scripts": [
+    "latin"
+   ],
+   "style": "sans"
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "bundled": false,
+   "family": "Montserrat",
+   "id": "montserrat",
+   "italic": true,
+   "label_ar": "",
+   "label_en": "Montserrat",
+   "scripts": [
+    "latin"
+   ],
+   "style": "sans"
   }
  ]
 }

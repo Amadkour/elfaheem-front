@@ -22233,6 +22233,10 @@
     "en": "Bahij",
     "ar": "بهيج"
   },
+  "export_font_noto_kufi": {
+    "en": "Noto Kufi Arabic",
+    "ar": "نوتو كوفي"
+  },
   "export_font_plex": {
     "en": "IBM Plex Sans Arabic",
     "ar": "IBM Plex عربي"

@@ -37,7 +37,6 @@ import '../../../../design/app_notice.dart';
 import 'cert_template_colours.dart';
 import 'cert_wordings_panel.dart';
 import '../../../../design/app_tokens.dart';
-import '../../../../design/export/export_fonts.dart' show ExportFonts;
 import '../../../../design/export_layout/layout_canvas.dart';
 import '../../../../design/export_layout/layout_element_view.dart' show LayoutAssets;
 import '../../../../design/export_layout/layout_model.dart';
@@ -187,7 +186,6 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   void initState() {
     super.initState();
     _id = widget.designId;
-    unawaited(ExportFonts.ensureCertFamilies()); // the certificate families are plain assets: registered when a studio opens
     _dirty.addListener(_syncSaveState);
     _saving.addListener(_syncSaveState);
     _conflict.addListener(_syncSaveState);
@@ -251,6 +249,10 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
         _id = await _api.createBlank(orgId: widget.orgId);
         _fresh = true;
       }
+      // a saved design that names a server-only font redraws once its name is known (the files come when drawn, D-410)
+      unawaited(CertFontCatalog.of(_api).then((fonts) {
+        if (mounted && _doc != null && _namesServerFont(fonts)) setState(() => _gen++);
+      }, onError: (Object _) {}));
       final r = await _api.load(_id!);
       if (!mounted) return;
       _adopt(r);
@@ -273,6 +275,17 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
         _forbidden = x.statusCode == 403;
       });
     }
+  }
+
+  bool _namesServerFont(List<CertFontInfo> fonts) {
+    final server = {for (final f in fonts) if (!f.bundled) f.id};
+    for (final d in doc.designs.values) {
+      if (server.contains(d.page.font)) return true;
+      for (final e in d.row.elements) {
+        if (server.contains(e.style.font)) return true;
+      }
+    }
+    return false;
   }
 
   /// Takes a server document as the working copy (nothing is dirty).

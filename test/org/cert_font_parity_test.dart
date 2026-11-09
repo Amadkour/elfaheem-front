@@ -11,7 +11,6 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/export/export_fonts.dart';
-import 'package:flutter_education_app/design/export_hub/export_designer.dart' show exportFlutterFont;
 import 'package:flutter_education_app/design/export_layout/layout_element_view.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_education_app/design/export_layout/layout_props.dart';
@@ -34,9 +33,10 @@ void main() {
   setUp(() => AppConfig.lang = 'en');
 
   group('the catalog on the canvas', () {
-    test('every font of the renderer draws from the same file as the renderer', () {
+    test('every font the app ships draws from the same file as the renderer', () {
       final files = (_catalog['files'] as Map).cast<String, Map>();
-      for (final f in _fonts) {
+      expect(_fonts.where((f) => f.bundled), isNotEmpty);
+      for (final f in _fonts.where((f) => f.bundled)) {
         expect(ExportFonts.has(f.id), isTrue, reason: '${f.id} is not an app font: the canvas would draw another face');
         final x = ExportFonts.byId(f.id);
         expect(_sha(x.regularAsset), files[f.id]!['regular'], reason: '${f.id}: canvas and renderer use different files');
@@ -46,12 +46,30 @@ void main() {
       }
     });
 
-    test('a font this build lacks is registered from the server bytes', () async {
+    test('a font this build lacks is announced at once and its file only fetched when drawn', () async {
       expect(ExportFonts.has('xserver_only'), isFalse);
-      await ExportFonts.addRemote(id: 'xserver_only', family: 'Server Only', arabic: true, regular: File('assets/fonts/cert/Amiri-Regular.ttf').readAsBytesSync());
+      final asked = <String>[];
+      ExportFonts.remoteFetch = (id, variant) async {
+        asked.add('$id:$variant');
+        return File('assets/fonts/cert/Amiri-Regular.ttf').readAsBytesSync();
+      };
+      ExportFonts.declareRemote(id: 'xserver_only', family: 'Server Only', arabic: true, bold: true, italic: true);
+      expect(asked, isEmpty, reason: 'declaring downloads nothing');
       expect(ExportFonts.has('xserver_only'), isTrue);
-      expect(exportFlutterFont('xserver_only'), 'xf_xserver_only');
+      expect(ExportFonts.has('xserver_only_italic'), isTrue);
+      expect(ExportFonts.byId('xserver_only').previewFamily, 'xf_xserver_only');
       expect(await ExportFonts.bytes(ExportFonts.byId('xserver_only').regularAsset), isNotEmpty);
+      expect(asked, ['xserver_only:regular']);
+      ExportFonts.remoteFetch = null;
+    });
+
+    test('a font the catalog names but the app does not ship stays a server font, not a Tajawal copy', () {
+      for (final f in _fonts.where((f) => !f.bundled)) {
+        expect(f.style, isNotEmpty, reason: '${f.id}: the picker groups by style');
+        expect(ExportFonts.has(f.id), isFalse, reason: '${f.id} needs no copy in the app build');
+      }
+      expect(_fonts.where((f) => !f.bundled && f.arabic).length, greaterThanOrEqualTo(12));
+      expect(_fonts.where((f) => !f.bundled && !f.arabic).length, greaterThanOrEqualTo(12));
     });
   });
 
@@ -159,14 +177,16 @@ void main() {
       await tester.pumpWidget(layoutHost(SizedBox(width: 400, child: control(ctlOf([e]), [e], lang: 'ar')), scale: 1));
       await tester.pumpAndSettle();
       await openPicker(tester);
-      expect(find.text('عربي'), findsOneWidget);
-      await row(tester, 'playfair');
-      expect(find.text('لاتيني', skipOffstage: false), findsOneWidget);
+      expect(find.text('عربي'), findsOneWidget, reason: 'the Arabic tab opens for an Arabic field');
+      expect(find.byKey(const ValueKey('cert-font-style-naskh')), findsOneWidget);
+      await row(tester, 'amiri');
+      expect(find.byKey(const ValueKey('cert-font-note-amiri')), findsNothing);
+      await tester.tap(find.text('إنجليزي'));
+      await tester.pumpAndSettle();
       await row(tester, 'cinzel');
       expect(find.byKey(const ValueKey('cert-font-note-cinzel')), findsOneWidget, reason: 'Cinzel has no Arabic letters: said before it is chosen');
-      await tester.drag(find.byKey(const ValueKey('cert-font-list')), const Offset(0, 2000));
+      await tester.tap(find.text('عربي'));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('cert-font-note-amiri')), findsNothing);
       expect(find.text('شهادة تقدير'), findsWidgets);
       await tester.enterText(find.byKey(const ValueKey('cert-font-search')), 'kufi');
       await tester.pumpAndSettle();
@@ -180,6 +200,27 @@ void main() {
     expect(_font('cinzel').arabic, isFalse);
     expect(_font('cinzel').arabicFallback, 'amiri');
     expect(_font('playfair').italic, isTrue);
+  });
+
+  testWidgets('the rows load only the fonts on screen, a few at a time, regular file only', (tester) async {
+    final asked = <String>[];
+    ExportFonts.remoteFetch = (id, variant) async {
+      asked.add('$id:$variant');
+      return File('assets/fonts/cert/Amiri-Regular.ttf').readAsBytesSync();
+    };
+    final many = [for (var i = 0; i < 40; i++) CertFontInfo(id: 'lazyf$i', family: 'Lazy $i', scripts: const ['arabic', 'latin'], bold: true, style: 'sans', bundled: false)];
+    for (final f in many) {
+      ExportFonts.declareRemote(id: f.id, family: f.family, arabic: true, bold: true);
+    }
+    await tester.pumpWidget(layoutHost(SizedBox(width: 400, height: 500, child: CertFontPickerBody(fonts: many, value: null, sample: 'شهادة تقدير', lang: 'ar', selected: 1, total: 1, onPick: (_) {})), scale: 1));
+    await tester.pump();
+    expect(asked.length, lessThanOrEqualTo(3), reason: 'at most three at a time');
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pump();
+    expect(asked.length, lessThan(15), reason: 'rows off the screen stay unloaded, got ${asked.length}');
+    expect(asked.every((a) => a.endsWith(':regular')), isTrue, reason: 'a row does not fetch the bold');
+    await tester.pumpWidget(const SizedBox());
+    ExportFonts.remoteFetch = null;
   });
 
   testWidgets('the picker lays out on every screen', (tester) async {
