@@ -87,6 +87,38 @@
     "en": "Select all",
     "ar": "تحديد الكل"
   },
+  "ds_focus_enter": {
+    "en": "Focus mode: use the whole screen",
+    "ar": "وضع التركيز: استخدام الشاشة كاملة"
+  },
+  "ds_focus_exit": {
+    "en": "Exit focus mode",
+    "ar": "الخروج من وضع التركيز"
+  },
+  "ds_num_increase": {
+    "en": "Increase",
+    "ar": "زيادة"
+  },
+  "ds_num_decrease": {
+    "en": "Decrease",
+    "ar": "إنقاص"
+  },
+  "ds_num_invalid": {
+    "en": "Enter a valid number",
+    "ar": "أدخل رقمًا صحيحًا"
+  },
+  "ds_num_required": {
+    "en": "This field is required",
+    "ar": "هذا الحقل مطلوب"
+  },
+  "ds_num_min": {
+    "en": "The minimum is {n}",
+    "ar": "الحد الأدنى {n}"
+  },
+  "ds_num_max": {
+    "en": "The maximum is {n}",
+    "ar": "الحد الأقصى {n}"
+  },
   "ds_more_actions": {
     "en": "More actions",
     "ar": "إجراءات أخرى"

@@ -45,6 +45,8 @@ import '../utils/widget/app_navigator.dart' show AppNavigator;
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
 import '../utils/widget/refresh_button.dart';
+import 'app_focus_mode.dart';
+import 'app_tokens.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart';
 import 'calendar_entry.dart';
@@ -249,6 +251,8 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     AppShellNav.register(_tabs);
     _tabs.addListener(_changed);
+    AppFocusMode.instance.addListener(_changed);
+    AppFocusMode.instance.ensureLoaded();
     AppNavigator.requestedTab.addListener(_onTabRequested);
     // a request made before this shell existed (a `<home>/<tab>` URL, a refresh)
     WidgetsBinding.instance.addPostFrameCallback((_) => _onTabRequested());
@@ -274,6 +278,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _tabs.removeListener(_changed);
+    AppFocusMode.instance.removeListener(_changed);
     AppNavigator.requestedTab.removeListener(_onTabRequested);
     AppShellNav.unregister(_tabs);
     _tabs.dispose();
@@ -313,8 +318,9 @@ class _AppShellState extends State<AppShell> {
     final body = LazyTabStack(key: _stackKey, index: _current, items: items, tabs: _tabs);
     final kind = Breakpoints.shellFor(widget.width);
     final full = _tabs.fullScreen;
+    final focus = kind != AppShellKind.mobile && AppFocusMode.instance.value;
     _tabs.bottomBar = full || kind != AppShellKind.mobile ? 0 : BottomNavMetrics.heightFor(context);
-    _tabs.sideChrome = full
+    _tabs.sideChrome = full || focus
         ? 0
         : switch (kind) {
             AppShellKind.wide => Breakpoints.sidebarW,
@@ -326,10 +332,10 @@ class _AppShellState extends State<AppShell> {
         : switch (kind) {
             AppShellKind.wide => WideShell(
                 currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body,
-                showTopBar: widget.showTopBar),
+                showTopBar: widget.showTopBar, focus: focus),
             AppShellKind.rail => RailShell(
                 currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body,
-                showTopBar: widget.showTopBar),
+                showTopBar: widget.showTopBar, focus: focus),
             AppShellKind.mobile => MobileShell(currentIndex: _current, onTap: _onTap, dashboardItems: items, body: body),
           };
     final back = shellBackAction(tabCanPop: _tabs.activeCanPop, index: _current);
@@ -347,6 +353,44 @@ class _AppShellState extends State<AppShell> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FOCUS MODE (D-360)
+// ─────────────────────────────────────────
+
+/// The sidebar / rail: folds to nothing in focus mode and stays in the tree.
+class _FocusFold extends StatelessWidget {
+  const _FocusFold({required this.focus, required this.child});
+
+  final bool focus;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ClipRect(
+        child: AnimatedAlign(
+          alignment: AlignmentDirectional.centerEnd,
+          widthFactor: focus ? 0 : 1,
+          duration: AppMotion.of(context).slow,
+          curve: AppMotion.curve,
+          child: ExcludeFocus(excluding: focus, child: ExcludeSemantics(excluding: focus, child: child)),
+        ),
+      );
+}
+
+/// The page area, with the way out of focus mode floating over it.
+class _FocusExitLayer extends StatelessWidget {
+  const _FocusExitLayer({required this.focus, required this.child});
+
+  final bool focus;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
+        child,
+        if (focus)
+          const PositionedDirectional(bottom: AppSpace.md, end: AppSpace.md, child: AppFocusExitPill()),
+      ]);
+}
+
+// ─────────────────────────────────────────
 // WIDE LAYOUT (>= Breakpoints.desktop) — persistent sidebar + top bar
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -367,10 +411,14 @@ class WideShell extends StatelessWidget {
     required this.unreadCount,
     this.body,
     this.showTopBar = true,
+    this.focus = false,
   });
 
   /// False: no top bar — the pages draw their own header with these actions (the organization dashboard, D-103).
   final bool showTopBar;
+
+  /// Focus mode: no side chrome and no top bar (the exit pill floats instead).
+  final bool focus;
 
   @override
   Widget build(BuildContext context) {
@@ -381,7 +429,7 @@ class WideShell extends StatelessWidget {
       child: Row(
         children: [
           // ── Sidebar ──────────────────────────────────────────────────────
-          Container(
+          _FocusFold(focus: focus, child: Container(
             width: Breakpoints.sidebarW,
             decoration: BoxDecoration(gradient: c.slideBarGradient),
             clipBehavior: Clip.antiAlias,
@@ -467,13 +515,13 @@ class WideShell extends StatelessWidget {
                 ),
               ],
             ),
-          ),
+          )),
 
           // ── Main content ──────────────────────────────────────────────────
           Expanded(
             child: Column(
               children: [
-                if (showTopBar)
+                if (showTopBar && !focus)
                   _TopBar(
                     title: dashboardItems[current].label.tr,
                     unread: unreadCount,
@@ -484,8 +532,8 @@ class WideShell extends StatelessWidget {
                 Expanded(
                   child: MediaQuery.removePadding(
                     context: context,
-                    removeTop: showTopBar,
-                    child: body ?? LazyTabStack(index: current, items: dashboardItems),
+                    removeTop: showTopBar && !focus,
+                    child: _FocusExitLayer(focus: focus, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
                   ),
                 ),
               ],
@@ -783,6 +831,7 @@ class _TopBar extends StatelessWidget {
                       ),
                     if (helpPageId != null && !pushed) HelpInfoButton(pageId: helpPageId!),
                     NotificationIcon(unreadCount: unread),
+                    AppFocusToggle(onHero: !c.isDark),
                   ]),
                 ),
               ),
@@ -846,10 +895,14 @@ class RailShell extends StatelessWidget {
     required this.unreadCount,
     this.body,
     this.showTopBar = true,
+    this.focus = false,
   });
 
   /// False: no top bar — the pages draw their own header with these actions (the organization dashboard, D-103).
   final bool showTopBar;
+
+  /// Focus mode: no side chrome and no top bar (the exit pill floats instead).
+  final bool focus;
 
   @override
   Widget build(BuildContext context) {
@@ -860,7 +913,7 @@ class RailShell extends StatelessWidget {
     return BasePage(
       child: Row(
         children: [
-          ColoredBox(
+          _FocusFold(focus: focus, child: ColoredBox(
             color: railBg,
             child: Column(
               children: [
@@ -891,12 +944,12 @@ class RailShell extends StatelessWidget {
                 if (user != null) UserChipButton(user: user, showLabel: false),
               ],
             ),
-          ),
-          VerticalDivider(width: 1, color: c.divider),
+          )),
+          if (!focus) VerticalDivider(width: 1, color: c.divider),
           Expanded(
             child: Column(
               children: [
-                if (showTopBar)
+                if (showTopBar && !focus)
                   _TopBar(
                     title: dashboardItems[current].label.tr,
                     unread: unreadCount,
@@ -907,8 +960,8 @@ class RailShell extends StatelessWidget {
                 Expanded(
                   child: MediaQuery.removePadding(
                     context: context,
-                    removeTop: showTopBar,
-                    child: body ?? LazyTabStack(index: current, items: dashboardItems),
+                    removeTop: showTopBar && !focus,
+                    child: _FocusExitLayer(focus: focus, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
                   ),
                 ),
               ],

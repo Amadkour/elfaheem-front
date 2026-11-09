@@ -8,6 +8,7 @@
 //   • Helpers.showMessage / pageDirection (utils/helpers.dart)
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -317,61 +318,8 @@ class _AskTextDialogState extends State<_AskTextDialog> {
 }
 
 /// Full-height modal sheet that survives the keyboard.
-Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) {
-  return showModalBottomSheet<T>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    elevation: 0,
-    builder: (ctx) => Directionality(
-      textDirection: dir,
-      child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-        // The height left ABOVE the keyboard (not the screen height): with the keyboard open a
-        // `size.height * 0.92` box was taller than the space and the sheet overflowed.
-        child: LayoutBuilder(builder: (ctx, box) => ConstrainedBox(
-          constraints: BoxConstraints(
-              maxHeight: box.maxHeight.isFinite
-                  ? box.maxHeight * (MediaQuery.viewInsetsOf(ctx).bottom > 0 ? 1 : 0.92)
-                  : MediaQuery.sizeOf(ctx).height * 0.92),
-          // A Material (not a coloured Container): ListTiles inside paint their tileColor / ink on
-          // the nearest Material. A coloured box in between hid them and made Flutter report
-          // "ListTile background color or ink splashes may be invisible" for every tappable row.
-          child: Material(
-          color: ctx.colors.cardBg,
-          surfaceTintColor: Colors.transparent,
-          clipBehavior: Clip.antiAlias,
-          shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            // grab handle
-            Container(
-              width: 42,
-              height: 5,
-              margin: const EdgeInsets.only(top: 10),
-              decoration: BoxDecoration(
-                color: ctx.colors.divider,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-            // bottom safe area: content never sits under the home indicator / gesture bar
-            // The sheet is already lifted above the keyboard, so the content sees no view insets
-            // (content that padded itself by viewInsets again got squeezed twice and overflowed).
-            Flexible(
-              child: MediaQuery.removeViewInsets(
-                context: ctx,
-                removeBottom: true,
-                child: SafeArea(top: false, child: Builder(builder: builder)),
-              ),
-            ),
-          ]),
-          ),
-        )),
-      ),
-    ),
-  );
-}
+Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) =>
+    showAppSideSheet<T>(context, builder: (ctx) => Directionality(textDirection: dir, child: Builder(builder: builder)));
 
 // ── small widgets ────────────────────────────────────────────────────────────
 
@@ -384,21 +332,15 @@ class SheetHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 12, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, AppSpace.md, AppSpace.sm, AppSpace.xs),
       child: Row(children: [
-        Expanded(
-          child: Text(title,
-              style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                  color: c.textDark)),
-        ),
+        Expanded(child: Semantics(header: true, child: Text(title, style: AppType.pageTitle(context)))),
         ?trailing,
-        IconButton(tooltip: t('إغلاق', 'Close'), 
+        IconButton(tooltip: t('إغلاق', 'Close'),
+            constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
             style: IconButton.styleFrom(backgroundColor: c.inputBg),
             onPressed: () => Navigator.pop(context),
-            icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20)),
+            icon: Icon(Icons.close_rounded, color: c.textMedium, size: AppIconSize.md)),
       ]),
     );
   }
