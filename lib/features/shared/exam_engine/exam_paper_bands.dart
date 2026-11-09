@@ -27,6 +27,90 @@ import 'exam_authoring.dart' show fmtPoints;
 import 'exam_paper.dart';
 import 'exam_qr_png.dart';
 
+// ── the student's printed identifiers (D-354) ─────────────────────────────────────────────────────────────────────
+
+/// One identifier printed on a copy (`student.identifiers` of the print plan). [value] empty = a place to write it in.
+class PaperPrintedId {
+  const PaperPrintedId({required this.labelAr, required this.labelEn, this.value = ''});
+  final String labelAr, labelEn, value;
+
+  /// The label in the paper's own language.
+  String label({required bool rtl}) => rtl ? (labelAr.isEmpty ? labelEn : labelAr) : (labelEn.isEmpty ? labelAr : labelEn);
+}
+
+/// A per-student copy that also carries the identifiers printed on it. A subclass rather than a field of [ExamPaperDoc]
+/// so the writers read one thing: [ExamPaperDocIds.printedIds], and every `copyWith` keeps them.
+class ExamPaperCopy extends ExamPaperDoc {
+  ExamPaperCopy.of(ExamPaperDoc d, this.printedIds)
+      : super(
+            institution: d.institution, course: d.course, title: d.title, dateText: d.dateText, durationText: d.durationText, total: d.total, sections: d.sections,
+            instructions: d.instructions, rtl: d.rtl, logo: d.logo, accentHex: d.accentHex, showPoints: d.showPoints, seatNumber: d.seatNumber, answerKey: d.answerKey,
+            version: d.version, studentName: d.studentName, qrPages: d.qrPages, qrSlots: d.qrSlots, answerTable: d.answerTable, keySummary: d.keySummary, design: d.design,
+            cover: d.cover, assets: d.assets, seat: d.seat);
+
+  final List<PaperPrintedId> printedIds;
+
+  @override
+  ExamPaperDoc copyWith({List<PaperSection>? sections, String? version, String? studentName, List<String>? qrPages, int? qrSlots, AnswerTablePlace? answerTable, bool? answerKey,
+          List<PaperKeyLine>? keySummary, String? seat, ExamCover? cover, bool dropCover = false, LayoutDocument? design, bool dropDesign = false, Map<String, Uint8List>? assets}) =>
+      ExamPaperCopy.of(
+          super.copyWith(
+              sections: sections, version: version, studentName: studentName, qrPages: qrPages, qrSlots: qrSlots, answerTable: answerTable, answerKey: answerKey,
+              keySummary: keySummary, seat: seat, cover: cover, dropCover: dropCover, design: design, dropDesign: dropDesign, assets: assets),
+          printedIds);
+
+  /// Adds what a design can print: `identifiers` (every one with its label) and `identifier_1` … `identifier_4` (the values).
+  @override
+  Map<String, String> paperValues({ExamPaperDoc? copy}) => {...super.paperValues(copy: copy), ...paperIdentifierValues(copy ?? this)};
+}
+
+extension ExamPaperDocIds on ExamPaperDoc {
+  /// The identifiers printed on this copy (empty on a plain paper).
+  List<PaperPrintedId> get printedIds => this is ExamPaperCopy ? (this as ExamPaperCopy).printedIds : const [];
+}
+
+/// The placeholder values of a copy's identifiers; every key exists, so a design never prints a raw `{{identifier_3}}`.
+Map<String, String> paperIdentifierValues(ExamPaperDoc d) {
+  final ids = d.printedIds;
+  return {
+    'identifiers': [for (final x in ids) '${x.label(rtl: d.rtl)}: ${x.value}'].join('   ·   '),
+    for (var i = 0; i < kPaperMaxIdentifiers; i++) 'identifier_${i + 1}': i < ids.length ? ids[i].value : '',
+  };
+}
+
+/// The most identifiers a copy prints (`settings.print_identifiers`).
+const kPaperMaxIdentifiers = 4;
+
+/// One box of the student area.
+class PaperBoxCell {
+  const PaperBoxCell(this.key, this.label, this.value);
+
+  /// name · id · group · seat · score · identifier.
+  final String key;
+  final String label, value;
+}
+
+/// The student area of [d], two cells a row, the same in the PDF, the Word file and a design's `student_box`. Without
+/// identifiers it is today's name / ID / class / seat. With them the name comes first, then the identifiers, and any room
+/// left stays for the student to write in. An identifier that only repeats the printed name is left out.
+List<List<PaperBoxCell>> paperStudentBoxRows(ExamPaperDoc d) {
+  final w = PaperWords(d.rtl);
+  final seat = PaperBoxCell(d.seatNumber ? 'seat' : 'score', d.seatNumber ? w.seat : w.score, d.seatNumber ? d.seat : '');
+  final ids = [for (final x in d.printedIds) if (d.studentName.isEmpty || x.value != d.studentName) x];
+  final name = PaperBoxCell('name', w.name, d.studentName);
+  if (ids.isEmpty) {
+    final cells = [name, PaperBoxCell('id', w.id, ''), PaperBoxCell('group', w.group, ''), seat];
+    return [cells.sublist(0, 2), cells.sublist(2)];
+  }
+  final cells = [name, for (final x in ids) PaperBoxCell('identifier', x.label(rtl: d.rtl), x.value)];
+  // what is left for the student to write in, unless an identifier already says it
+  final free = [for (final c in [PaperBoxCell('group', w.group, ''), seat]) if (!cells.any((x) => x.label == c.label)) c];
+  while ((cells.length < 4 || cells.length.isOdd) && free.isNotEmpty) {
+    cells.add(free.removeAt(0));
+  }
+  return [for (var i = 0; i < cells.length; i += 2) cells.sublist(i, i + 2 > cells.length ? cells.length : i + 2)];
+}
+
 const double _ptPerMm = 72 / 25.4;
 const double _twipPerMm = 1440 / 25.4;
 const int _emuPerMm = 36000;
@@ -261,21 +345,24 @@ PaperItem _shrunk(PaperItem it, bool shrink) {
 
 // ── specials ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/// The student's boxes (name, ID, class, seat) in an [w] × [h] mm area.
+/// The student's boxes in an [w] × [h] mm area (name, then ID / class / seat or the copy's printed identifiers).
 List<PaperItem> _studentBox(PaperBandCtx c, double x, double y, double w, double h, {required String color}) {
-  final words = PaperWords(c.doc.rtl);
   final rtl = c.pageRtl, al = rtl ? 'right' : 'left';
-  final rowH = h / 2;
-  PaperItem cell(String label, String value, double cx, double cy, double cw) => PaperItem(
-      kind: 'text', x: cx, y: cy, w: cw, h: rowH, text: value.isEmpty ? '$label:' : '$label: $value', size: 10, bold: false, color: '4B5563', border: 'B9C1CA',
+  final rows = paperStudentBoxRows(c.doc);
+  final rowH = h / rows.length;
+  PaperItem cell(PaperBoxCell f, double cx, double cy, double cw) {
+    // a blank copy: the design's writing line, as before
+    final value = f.key == 'name' ? (c.values['student_name'] ?? '') : f.key == 'seat' ? (c.values['seat'] ?? '') : f.value;
+    return PaperItem(
+      kind: 'text', x: cx, y: cy, w: cw, h: rowH, text: value.isEmpty ? '${f.label}:' : '${f.label}: $value', size: 10, bold: false, color: '4B5563', border: 'B9C1CA',
       borderMm: .25, align: al, valign: 'middle', rtl: rtl, padMm: 1.6, maxLines: 1);
+  }
+
   final a = w * .6, b = w - a;
-  final name = c.values['student_name'] ?? '', seat = c.values['seat'] ?? '';
-  final first = rtl ? [(words.name, name, x + b, a), (words.id, '', x, b)] : [(words.name, name, x, a), (words.id, '', x + a, b)];
-  final second = rtl ? [(words.group, '', x + b, a), (c.doc.seatNumber ? words.seat : words.score, seat, x, b)] : [(words.group, '', x, a), (c.doc.seatNumber ? words.seat : words.score, seat, x + a, b)];
   return [
-    for (final f in first) cell(f.$1, f.$2, f.$3, y, f.$4),
-    for (final f in second) cell(f.$1, f.$2, f.$3, y + rowH, f.$4),
+    for (var r = 0; r < rows.length; r++)
+      for (var i = 0; i < rows[r].length; i++)
+        cell(rows[r][i], i == 0 ? (rtl ? x + b : x) : (rtl ? x : x + a), y + r * rowH, i == 0 ? a : b),
   ];
 }
 

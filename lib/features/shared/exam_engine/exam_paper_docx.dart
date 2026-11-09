@@ -16,7 +16,7 @@ import '../../../design/export/table_export_model.dart' show onColorHex, shadeHe
 import '../../org/org_reports/report_render.dart' show docxPicture, imageSize;
 import 'exam_paper.dart';
 import 'exam_paper_bands.dart';
-import 'exam_paper_pdf.dart' show fmtTotal;
+import 'exam_paper_pdf.dart' show PaperBuildControl, fmtTotal;
 import 'exam_qr_png.dart';
 
 const _ns = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
@@ -373,7 +373,9 @@ String _coverXml(ExamPaperDoc d, PaperStyle style, PaperDocxMedia media, PaperPa
 }
 
 /// A built-in design. [tpl] must be resolved (classic, modern or minimal).
-Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
+Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) => _zip(_docxParts(d, tpl));
+
+Map<String, List<int>> _docxParts(ExamPaperDoc d, PaperTemplate tpl) {
   final style = PaperStyle.of(tpl);
 
   // an engine design (null = the template alone, unchanged): header / footer bands and the page background in the header /
@@ -468,10 +470,10 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
   // ── student box
   if (!d.answerKey && !ownStudentBox) {
     final a = (_usable * .6).round(), b = _usable - a;
-    String field(String label, [String name = '']) => w.para(w.run('$label:', color: '6B7280', size: 10) + (name.isEmpty ? '' : w.run(' $name', bold: true, size: 10.5)));
+    String field(PaperBoxCell f) => w.para(w.run('${f.label}:', color: '6B7280', size: 10) + (f.value.isEmpty ? '' : w.run(' ${f.value}', bold: true, size: 10.5)));
     body.write(w.table([a, b], [
-      w.row([w.cell(field(words.name, d.studentName), width: a), w.cell(field(words.id), width: b)], height: 520),
-      w.row([w.cell(field(words.group), width: a), w.cell(field(d.seatNumber ? words.seat : words.score), width: b)], height: 520),
+      for (final r in paperStudentBoxRows(d))
+        w.row([w.cell(field(r[0]), width: a), w.cell(r.length > 1 ? field(r[1]) : '', width: b)], height: 520),
     ], border: rule, borderPt: classic ? 1 : .6));
     body.write(w.para('', after: 120));
   }
@@ -592,7 +594,7 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
         '<w:footerReference w:type="default" r:id="$f"/>${first ? '<w:footerReference w:type="first" r:id="$f"/>' : ''}'
         '<w:pgSz w:w="11906" w:h="16838"/>'
         '<w:pgMar w:top="${900 + (everyPageHeader ? headerPush : 0)}" w:right="1000" w:bottom="${(qrCount > 0 ? 1600 : 900) + footerPush}" w:left="1000" w:header="420" w:footer="420" w:gutter="0"/>'
-        '$pgBorders${first && pagesMinus > 0 ? '<w:pgNumType w:start="1"/>' : ''}${first ? '<w:titlePg/>' : ''}${d.rtl ? '<w:bidi/>' : ''}</w:sectPr>';
+        '$pgBorders${first ? '<w:pgNumType w:start="1"/>' : ''}${first ? '<w:titlePg/>' : ''}${d.rtl ? '<w:bidi/>' : ''}</w:sectPr>';
   }
 
   final pages = StringBuffer(coverXml);
@@ -611,7 +613,7 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
 
   final now = DateTime.now().toUtc().toIso8601String().split('.').first;
 
-  return _zip({
+  return {
     '[Content_Types].xml': utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
@@ -664,7 +666,128 @@ Uint8List examPaperDocx(ExamPaperDoc d, PaperTemplate tpl) {
     for (final e in media.entries) 'word/media/${e.key}': e.value,
     'word/document.xml': utf8.encode(doc),
     if (logoExt != null) 'word/media/logo.$logoExt': d.logo!,
-  });
+  };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Every copy in ONE Word file
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Several papers (every version, or a whole class) in ONE .docx: each keeps its own sections, headers and QR footers, a
+/// next-page section break between them, page numbers restarting at 1 ("Page 2 of 3" counts that copy's pages). Identical
+/// pictures (a logo on 300 copies) are stored once.
+Future<Uint8List> examPaperDocxMany(List<ExamPaperDoc> docs, PaperTemplate tpl, {PaperBuildControl? control}) async {
+  if (docs.length == 1) return examPaperDocx(docs.first, tpl);
+  final merger = _DocxMerger();
+  for (var i = 0; i < docs.length; i++) {
+    merger.add(_docxParts(docs[i], tpl), hasCover: docs[i].cover != null);
+    if (control != null) await control.tick(i + 1, docs.length);
+  }
+  return _zip(merger.finish());
+}
+
+class _DocxMerger {
+  final _body = StringBuffer();
+  final _files = <String, List<int>>{};
+  final _rels = StringBuffer();
+  final _overrides = StringBuffer();
+  final _exts = <String>{};
+  final _mediaByContent = <String, String>{};
+  String? _pendingSect;
+  Map<String, List<int>>? _first;
+  int _n = 0, _docPr = 5000;
+
+  static final _rid = RegExp(r'\br:(id|embed|link)="([^"]+)"');
+  static final _docPrId = RegExp(r'<wp:docPr id="\d+"');
+  static final _rel = RegExp(r'<Relationship Id="([^"]+)" Type="([^"]+)" Target="([^"]+)"/>');
+
+  String _renumber(String xml) => xml.replaceAllMapped(_docPrId, (_) => '<wp:docPr id="${_docPr++}"');
+
+  String _mediaName(int doc, String target, List<int> bytes) {
+    final key = '${bytes.length}:${_fnv(bytes)}';
+    final existing = _mediaByContent[key];
+    if (existing != null) return existing;
+    final name = 'media/d${doc}_${target.split('/').last}';
+    _mediaByContent[key] = name;
+    _files['word/$name'] = bytes;
+    return name;
+  }
+
+  static int _fnv(List<int> b) {
+    var h = 0x811c9dc5;
+    for (final x in b) {
+      h = ((h ^ x) * 0x01000193) & 0xffffffff;
+    }
+    return h;
+  }
+
+  void add(Map<String, List<int>> parts, {required bool hasCover}) {
+    _first ??= parts;
+    final i = _n++;
+    String text(String name) => utf8.decode(parts[name]!);
+    // the section the previous paper ended with becomes a section break, now that something follows it
+    if (_pendingSect != null) {
+      _body.write('<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/><w:rPr><w:sz w:val="2"/></w:rPr>$_pendingSect</w:pPr></w:p>');
+    }
+    final document = _renumber(text('word/document.xml').replaceAllMapped(_rid, (m) => 'r:${m[1]}="d${i}_${m[2]}"'));
+    final from = document.indexOf('<w:body>') + '<w:body>'.length, to = document.lastIndexOf('</w:body>');
+    final inner = document.substring(from, to);
+    final cut = inner.lastIndexOf('<w:sectPr>');
+    _pendingSect = inner.substring(cut);
+    _body.write(inner.substring(0, cut));
+
+    // Word has no field that counts the pages of one copy across its one-section-per-page split
+    final sections = '<w:sectPr>'.allMatches(document).length - (hasCover ? 1 : 0);
+    final renames = <String, String>{};
+    for (final name in parts.keys.where((n) => RegExp(r'^word/(header|footer)\d+\.xml$').hasMatch(n))) {
+      final base = name.substring(5);
+      renames[base] = 'd${i}_$base';
+      _overrides.write('<Override PartName="/word/d${i}_$base" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.${base.startsWith('header') ? 'header' : 'footer'}+xml"/>');
+    }
+    for (final e in parts.entries.where((e) => e.key.startsWith('word/media/'))) {
+      final base = e.key.substring(5);
+      renames[base] = _mediaName(i, base, e.value);
+      _exts.add(base.split('.').last);
+    }
+    String retarget(String xml) => xml.replaceAllMapped(_rel, (m) => '<Relationship Id="${m[1]}" Type="${m[2]}" Target="${renames[m[3]] ?? m[3]}"/>');
+    for (final m in _rel.allMatches(text('word/_rels/document.xml.rels'))) {
+      final target = renames[m[3]];
+      if (target == null) continue; // the styles part: the first paper's serves all
+      _rels.write('<Relationship Id="d${i}_${m[1]}" Type="${m[2]}" Target="$target"/>');
+    }
+    for (final base in renames.keys.where((b) => !b.startsWith('media/'))) {
+      var xml = _renumber(text('word/$base'));
+      if (base.startsWith('footer')) xml = sections > 1 ? _staticPages(xml, sections) : xml.replaceAll(' NUMPAGES ', ' SECTIONPAGES ');
+      _files['word/${renames[base]}'] = utf8.encode(xml);
+      final rels = 'word/_rels/$base.rels';
+      if (parts.containsKey(rels)) _files['word/_rels/${renames[base]}.rels'] = utf8.encode(retarget(text(rels)));
+    }
+  }
+
+  /// A paper split in sections: "of N" is written as the number of its sections.
+  static String _staticPages(String xml, int sections) => xml.replaceAllMapped(
+      RegExp(r'<w:fldSimple w:instr=" NUMPAGES "><w:r>(<w:rPr>.*?</w:rPr>)<w:t>[^<]*</w:t></w:r></w:fldSimple>'), (m) => '<w:r>${m[1]}<w:t>$sections</w:t></w:r>');
+
+  Map<String, List<int>> finish() {
+    final first = _first!;
+    final head = utf8.decode(first['word/document.xml']!);
+    final open = head.substring(0, head.indexOf('<w:body>'));
+    _files['word/document.xml'] = utf8.encode('$open<w:body>$_body${_pendingSect ?? ''}</w:body></w:document>');
+    _files['word/styles.xml'] = first['word/styles.xml']!;
+    _files['_rels/.rels'] = first['_rels/.rels']!;
+    _files['docProps/core.xml'] = first['docProps/core.xml']!;
+    _files['word/_rels/document.xml.rels'] = utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>$_rels</Relationships>');
+    _files['[Content_Types].xml'] = utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+        '${[for (final e in _exts) '<Default Extension="$e" ContentType="image/$e"/>'].join()}'
+        '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+        '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
+        '$_overrides<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>');
+    return _files;
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -231,15 +231,16 @@ void main() {
       expect(jsonDecode(seen.last), containsPair('mode', 'blank'));
     });
 
-    test('Word copies: a zip with one document per student, the name in every header', () async {
+    test('Word copies: one document with every student, the name in every header', () async {
       final regular = await _font('assets/fonts/plex/IBMPlexSansArabic-Regular.ttf'), bold = await _font('assets/fonts/plex/IBMPlexSansArabic-Bold.ttf');
       final res = await buildPaperCopies(
           base: _paper(), versions: const ExamVersions(), api: ExamVersionsApi(), examId: 5, tpl: PaperTemplate.minimal, regular: regular, bold: bold,
           named: true, studentIds: [7, 8], word: true);
-      final files = ZipDecoder().decodeBytes(res.bytes!).files.where((f) => f.name.endsWith('.docx')).toList();
-      expect(files.length, 2);
-      final inner = ZipDecoder().decodeBytes(files.first.content as List<int>);
-      final header = utf8.decode(inner.files.firstWhere((f) => f.name == 'word/header2.xml').content as List<int>);
+      final files = ZipDecoder().decodeBytes(res.bytes!).files;
+      expect(files.where((f) => f.name.endsWith('.docx')), isEmpty);
+      expect(files.any((f) => f.name == 'word/document.xml'), isTrue);
+      expect(res.copies, 2);
+      final header = utf8.decode(files.firstWhere((f) => f.name == 'word/d0_header2.xml').content as List<int>);
       expect(header, contains('Student 7'));
     });
   });

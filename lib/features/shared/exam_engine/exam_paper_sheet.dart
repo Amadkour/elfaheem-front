@@ -6,7 +6,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -28,6 +27,7 @@ import '../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '.
 import 'exam_authoring.dart';
 import 'exam_media.dart' show bankQuestionBytes;
 import 'exam_paper.dart';
+import 'exam_paper_bands.dart' show ExamPaperCopy, PaperPrintedId;
 import 'exam_paper_design_api.dart';
 import 'exam_paper_designer.dart';
 import 'exam_paper_docx.dart';
@@ -53,7 +53,7 @@ Future<void> openExamPaper(BuildContext context, {required int examId, String co
     return appToast(t('هذا الامتحان ملف مرفوع — نزّله واطبعه من صفحة النتائج', 'This exam is an uploaded file — download and print it from the results'));
   }
   if (view.questionCount == 0) return appToast(t('أضف أسئلة أولاً', 'Add questions first'), error: true);
-  final org = _orgOf(view.exam.orgId);
+  final org = examPaperOrgOf(view.exam.orgId);
   final brand = '${org['color'] ?? ''}'.replaceAll('#', '');
   await showAppSheet<void>(
       context,
@@ -68,13 +68,25 @@ Future<void> openExamPaper(BuildContext context, {required int examId, String co
           ));
 }
 
-Map<String, dynamic> _orgOf(int? orgId) {
+/// The exam's organization among the person's (name, logo, colour); empty for a personal exam.
+Map<String, dynamic> examPaperOrgOf(int? orgId) {
   if (orgId == null) return const {};
   for (final e in AppModeController.instance.entries) {
     final o = asMap(e['organization']);
     if (asInt(o['id'], -1) == orgId) return o;
   }
   return const {};
+}
+
+/// The organization's logo, ready for the writers; null when there is none or it cannot be fetched.
+Future<Uint8List?> fetchPaperLogo(String? url) async {
+  if (url == null || url.isEmpty) return null;
+  try {
+    final res = await http.get(Uri.parse(orgFileUrl(url))).timeout(const Duration(seconds: 20));
+    return res.statusCode == 200 ? printableImage(res.bodyBytes) : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 /// PDF keeps PNG / JPEG only: anything else is re-encoded as PNG (null when it cannot be read).
@@ -456,16 +468,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     });
   }
 
-  Future<Uint8List?> _logo() async {
-    final u = widget.logoUrl;
-    if (u == null || u.isEmpty) return null;
-    try {
-      final res = await http.get(Uri.parse(orgFileUrl(u))).timeout(const Duration(seconds: 20));
-      return res.statusCode == 200 ? printableImage(res.bodyBytes) : null;
-    } catch (_) {
-      return null;
-    }
-  }
+  Future<Uint8List?> _logo() => fetchPaperLogo(widget.logoUrl);
 
   Future<ExamPaperDoc> _baseDoc({required bool answerKey}) async =>
       attachPaperImages(await _designed(await _plainDoc(answerKey: answerKey)), bankQuestionBytes);
@@ -504,7 +507,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         appToast(res.error!, error: true);
       } else {
         final name = '${base.title} - ${t('نسخ الطلاب', 'student copies')}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
-        final path = await saver.dlSaveBytes(res.bytes!, '$name.${word ? 'zip' : 'pdf'}', word ? 'application/zip' : 'application/pdf');
+        final path = await saver.dlSaveBytes(res.bytes!, '$name.${word ? 'docx' : 'pdf'}', word ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf');
         appToast(path == null ? t('جاهز للطباعة', 'Ready to print') : '${t('حُفظ في', 'Saved to')} $path');
         if (res.warning != null) appToast(res.warning!, error: true);
       }
@@ -876,7 +879,8 @@ class PaperCopiesResult {
 
 /// Per-student copies (D-print): lays each version out once to count its pages, asks `POST …/print-plan` for the QR
 /// payloads of that many pages, then renders one paper per plan item with the student's name and a QR on EVERY page,
-/// merged into one PDF. [word]: a zip of Word files instead (the name in every page header; one section per planned page, each with its own QR in its footer).
+/// in one file. [word]: ONE Word file instead (the name in every page header; one section per planned page, each with its own QR in its footer).
+/// [printedLabels]: the identifiers printed on each copy (labels; used for the count pass and on blank copies).
 Future<PaperCopiesResult> buildPaperCopies({
   required ExamPaperDoc base,
   required ExamVersions versions,
@@ -890,6 +894,8 @@ Future<PaperCopiesResult> buildPaperCopies({
   int blank = 1,
   String? form,
   bool word = false,
+  List<PaperPrintedId> printedLabels = const [],
+  PaperBuildControl? control,
 }) async {
   final codes = <String?>[
     if (form != null) form else if (versions.items.isEmpty) null else ...versions.items.map((v) => v.code),
@@ -897,7 +903,9 @@ Future<PaperCopiesResult> buildPaperCopies({
   final pagesOf = <String?, int>{};
   for (final code in codes) {
     final v = versions.byCode(code);
-    final doc = (v == null ? base : applyVersion(base, v)).copyWith(qrSlots: 1);
+    var doc = (v == null ? base : applyVersion(base, v)).copyWith(qrSlots: 1);
+    // the count pass lays out the same boxes the real copies will carry
+    if (printedLabels.isNotEmpty) doc = ExamPaperCopy.of(doc, printedLabels);
     // Word lays itself out: its page count is the writer's own split, not the PDF's
     pagesOf[code] = word ? wordPageCount(doc, tpl) : (await examPaperPdfMany([doc], tpl, regular: regular, bold: bold)).pages.first;
   }
@@ -906,16 +914,9 @@ Future<PaperCopiesResult> buildPaperCopies({
   if (!r.ok) return PaperCopiesResult(error: versionsErrorText(r));
   final plan = PrintPlan.fromJson(r.map);
   if (plan.items.isEmpty) return PaperCopiesResult(error: t('لا توجد نسخ للطباعة', 'There are no copies to print'));
-  final docs = copiesFor(base, plan, versions, pagesOf: pagesOf);
-  if (word) {
-    final zip = Archive();
-    for (var i = 0; i < docs.length; i++) {
-      final n = docs[i].studentName.isEmpty ? '${plan.items[i].copyNo}' : '${plan.items[i].copyNo} - ${docs[i].studentName}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-      zip.add(ArchiveFile.bytes('$n.docx', examPaperDocx(docs[i], tpl)));
-    }
-    return PaperCopiesResult(bytes: Uint8List.fromList(ZipEncoder().encodeBytes(zip)), copies: docs.length);
-  }
-  final out = await examPaperPdfMany(docs, tpl, regular: regular, bold: bold);
+  final docs = copiesFor(base, plan, versions, pagesOf: pagesOf, blankIds: printedLabels);
+  if (word) return PaperCopiesResult(bytes: await examPaperDocxMany(docs, tpl, control: control), copies: docs.length);
+  final out = await examPaperPdfMany(docs, tpl, regular: regular, bold: bold, control: control);
   var mismatch = out.pages.length != plan.items.length || out.pages.any((p) => p > kMaxQrPages);
   for (var i = 0; !mismatch && i < out.pages.length; i++) {
     if (out.pages[i] != docs[i].qrPages.length) mismatch = true; // the QRs the copy got (plan.items[i].pages cut to its own count)
@@ -1049,8 +1050,8 @@ class PaperCopiesSection extends StatelessWidget {
         if (wordNote)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(t('في Word: ملف لكل طالب داخل ملف مضغوط، والاسم ورمز QR في كل صفحة. Word يرتّب الصفحات بنفسه: افتح نسخة وتأكد أن كل صفحة برمز مختلف قبل الطباعة، أو اطبع PDF لتطابق مضمون.',
-                'Word: one file per student in a zip, the name and a QR code on every page. Word lays out the pages itself: open one copy and check every page has its own code before printing, or print the PDF for an exact match.'),
+            child: Text(t('في Word: ملف واحد يضم كل النسخ بالترتيب، والاسم ورمز QR في كل صفحة. Word يرتّب الصفحات بنفسه: افتح نسخة وتأكد أن كل صفحة برمز مختلف قبل الطباعة، أو اطبع PDF لتطابق مضمون.',
+                'Word: one file with every copy in order, the name and a QR code on every page. Word lays out the pages itself: open one copy and check every page has its own code before printing, or print the PDF for an exact match.'),
                 style: appText(11.5, c: c.textLight)),
           ),
         const SizedBox(height: 8),
