@@ -45,9 +45,13 @@ bool isHostIdentity(String identity) => identity.startsWith(kHostIdentityPrefix)
 class ParticipantTrack {
   ParticipantTrack(
       {required this.participant,
-        this.type = ParticipantTrackType.kUserMedia});
+        this.type = ParticipantTrackType.kUserMedia,
+        this.companion});
   Participant participant;
   final ParticipantTrackType type;
+
+  /// D-520: the person's phone, when it is this person's camera: the tile shows its video under the person.
+  final Participant? companion;
 }
 
 /// Network quality as the tile shows it — LiveKit's `ConnectionQuality` without the LiveKit type, so

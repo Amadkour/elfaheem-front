@@ -13,6 +13,10 @@ import '../../../student/models.dart';
 import '../components/exts.dart';
 import '../model/live_response_model.dart';
 import '../sessions_provider.dart';
+import 'package:flutter_education_app/features/shared/live/companion/companion_core.dart';
+import 'package:flutter_education_app/features/shared/live/companion/companion_parts.dart' show PreJoinPhoneRow;
+import 'package:flutter_education_app/features/shared/live/companion/companion_platform.dart' as companion_platform;
+import 'package:flutter_education_app/features/shared/live/companion/companion_sheet.dart' show pickCompanionSources;
 import 'prejoin_layout.dart';
 import 'prejoin_mic_meter_stub.dart'
     if (dart.library.js_interop) 'prejoin_mic_meter_web.dart' as mic_meter;
@@ -77,6 +81,17 @@ class _PreJoinPageState extends State<PreJoinPage> {
 
   LocalAudioTrack? _audioTrack;
   LocalVideoTrack? _videoTrack;
+
+  // D-520: what to ask the phone for at Join (web / desktop).
+  Set<CompanionSource> _phoneSources = const {};
+
+  bool get _companionHere =>
+      !widget.args.guest && widget.args.canPublish && !AppConfig.disableList.contains(kCompanionFeatureKey) && !companion_platform.companionRunsOnPhone();
+
+  Future<void> _pickPhone() async {
+    final picked = await pickCompanionSources(context, _phoneSources);
+    if (picked != null && mounted) setState(() => _phoneSources = picked);
+  }
   Map<String, dynamic>? _selectedVideoDevice;
   Map<String, dynamic>? _selectedAudioDevice;
 
@@ -416,6 +431,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         // ── Passes the authenticated ApiClient so _ClientRecorder can
         //    upload chunks with the correct Bearer token ─────────────────
         apiClient: args.apiClient,
+        askPhoneFor: _phoneSources,
         // ── Prejoin audio/video toggle state ─────────────────────────────
         enableAudio: _enableAudio,
         enableVideo: _enableVideo,
@@ -650,6 +666,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         issue: _issue,
         onRetry: _retry,
         cameraOffHint: _cameraOffByDefault && !_enableVideo && _videoInputs.isNotEmpty,
+        phoneSlot: _companionHere ? PreJoinPhoneRow(selected: _phoneSources, onTap: _pickPhone) : null,
       ),
     );
   }

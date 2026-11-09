@@ -193,7 +193,8 @@ abstract class ParticipantWidget extends StatefulWidget {
           showStatsLayer,
           imageUrl: imageUrl,
           isHost: isHost,
-          renderVideo: renderVideo);
+          renderVideo: renderVideo,
+          companion: participantTrack.companion);
     } else if (participantTrack.participant is RemoteParticipant) {
       return RemoteParticipantWidget(
           participantTrack.participant as RemoteParticipant,
@@ -201,7 +202,8 @@ abstract class ParticipantWidget extends StatefulWidget {
           showStatsLayer,
           imageUrl: imageUrl,
           isHost: isHost,
-          renderVideo: renderVideo);
+          renderVideo: renderVideo,
+          companion: participantTrack.companion);
     }
     throw UnimplementedError('Unknown participant type');
   }
@@ -218,11 +220,15 @@ abstract class ParticipantWidget extends StatefulWidget {
   /// video budget, D-090).
   final bool renderVideo;
 
+  /// D-520: the person's phone, folded into this tile (its video, its mic, its speaking).
+  final Participant? companion;
+
   const ParticipantWidget({
     this.quality = VideoQuality.MEDIUM,
     this.imageUrl,
     this.isHost,
     this.renderVideo = true,
+    this.companion,
     super.key,
   });
 }
@@ -242,6 +248,7 @@ class LocalParticipantWidget extends ParticipantWidget {
         super.imageUrl,
         super.isHost,
         super.renderVideo,
+        super.companion,
         super.key,
       });
 
@@ -264,6 +271,7 @@ class RemoteParticipantWidget extends ParticipantWidget {
         super.imageUrl,
         super.isHost,
         super.renderVideo,
+        super.companion,
         super.key,
       });
 
@@ -295,12 +303,14 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
     });
 
     widget.participant.addListener(_onParticipantChanged);
+    widget.companion?.addListener(_onParticipantChanged);
     _onParticipantChanged();
   }
 
   @override
   void dispose() {
     widget.participant.removeListener(_onParticipantChanged);
+    widget.companion?.removeListener(_onParticipantChanged);
     unawaited(_listener?.dispose());
     super.dispose();
   }
@@ -308,7 +318,9 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
   @override
   void didUpdateWidget(covariant T oldWidget) {
     oldWidget.participant.removeListener(_onParticipantChanged);
+    oldWidget.companion?.removeListener(_onParticipantChanged);
     widget.participant.addListener(_onParticipantChanged);
+    widget.companion?.addListener(_onParticipantChanged);
     _onParticipantChanged();
     super.didUpdateWidget(oldWidget);
   }
@@ -330,14 +342,23 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
     final guest = isGuestIdentity(p.identity);
     // A guest's identity is an opaque `guest:<random>`: show only the name they typed.
     final name = p.name.isNotEmpty ? p.name : (guest ? 'lr_guest'.tr : p.identity);
-    final video = activeVideoTrack;
+    // D-520: the phone is part of this person: its camera on the tile, its mic and voice counted as theirs.
+    final phone = widget.companion;
+    TrackPublication? phoneCam;
+    TrackPublication? phoneMic;
+    if (phone != null) {
+      phoneCam = phone.videoTrackPublications.where((t) => t.source == TrackSource.camera).firstOrNull;
+      phoneMic = phone.audioTrackPublications.where((t) => t.source == TrackSource.microphone).firstOrNull;
+    }
+    final phoneVideo = isScreenShare ? null : phoneCam?.track;
+    final video = phoneVideo is VideoTrack && phoneCam?.muted != true ? phoneVideo : activeVideoTrack;
     final camOn = video != null && !video.muted;
     return ParticipantTileLayout(
       name: name,
       imageUrl: photoUrl,
-      isSpeaking: p.isSpeaking,
-      audioLevel: p.audioLevel,
-      micOn: audioPublication?.muted == false && audioPublication?.subscribed == true,
+      isSpeaking: p.isSpeaking || (phone?.isSpeaking ?? false),
+      audioLevel: p.audioLevel > (phone?.audioLevel ?? 0) ? p.audioLevel : (phone?.audioLevel ?? 0),
+      micOn: (audioPublication?.muted == false && audioPublication?.subscribed == true) || (phoneMic?.muted == false && phoneMic?.subscribed == true),
       camOn: camOn,
       isHost: widget.isHost ?? isHostIdentity(p.identity),
       isGuest: guest,
