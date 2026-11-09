@@ -263,7 +263,7 @@ class _MarkTemplateEditorPageState extends State<MarkTemplateEditorPage> {
       },
       child: BasePage(
         key: const ValueKey(kMarkTemplatesFeatureKey),
-        appBar: ScreenAppBar(
+        appBar: ScreenAppBar(compact: true,
           title: _saved == null ? t('قالب جديد', 'New template') : t('تعديل القالب', 'Edit template'),
           actions: [
             if (model != null)

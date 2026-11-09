@@ -23,11 +23,16 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.background,
     this.titleColor,
     this.helpPageId,
+    this.compact = false,
   });
+
+  /// Tool screens: always the compact height.
+  final bool compact;
 
   AppHeader get _header => AppHeader(
         title: title,
         showBack: showBack,
+        compact: compact,
         actions: [...?actions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!)],
       );
 

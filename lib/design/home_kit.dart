@@ -248,7 +248,7 @@ class HomeSplit extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// The widest a home (or a course list) grows on a desktop window.
-const double kHomeWideMax = 1200;
+const double kHomeWideMax = 1440;
 
 /// From this content width the home is a two-column dashboard (a 1280 px window with the sidebar is 1012 wide).
 const double kHomeWideMin = 960;

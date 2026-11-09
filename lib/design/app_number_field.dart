@@ -78,6 +78,7 @@ class AppNumberField extends StatefulWidget {
     this.textInputAction,
     this.focusNode,
     this.autofocus = false,
+    this.helper,
   });
 
   final TextEditingController? controller;
@@ -102,6 +103,9 @@ class AppNumberField extends StatefulWidget {
   final TextInputAction? textInputAction;
   final FocusNode? focusNode;
   final bool autofocus;
+
+  /// A short line under the field.
+  final String? helper;
 
   @override
   State<AppNumberField> createState() => _AppNumberFieldState();
@@ -232,6 +236,8 @@ class _AppNumberFieldState extends State<AppNumberField> {
         filled: true,
         fillColor: c.inputBg,
         errorText: _error,
+        helperText: widget.helper,
+        helperMaxLines: 2,
         errorMaxLines: 2,
         contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.sm + 2),
         border: border(c.divider),

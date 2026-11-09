@@ -145,7 +145,11 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     this.bottom,
     this.color,
     this.seed = 0,
+    this.compact = false,
   });
+
+  /// Tool screens (editors, designers): always the compact height, every pixel goes to the work area.
+  final bool compact;
 
   final String title;
   final String? subtitle;
@@ -184,12 +188,11 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     final sub = subtitle;
     final hasSub = sub != null && sub.isNotEmpty;
     final open = (hasSub ? openHeightWithSubtitle : openHeight) * scale;
-    final compact = compactHeight * (1 + (scale - 1) * 0.5);
+    final shutHeight = compactHeight * (1 + (scale - 1) * 0.5);
     final titleOpen = AppType.headline(context).copyWith(color: c.onHero);
     final titleCompact = AppType.section(context).copyWith(color: c.onHero);
     final tabs = bottom;
-    return AppHeaderCollapse(
-      builder: (context, collapse, _) => RepaintBoundary(
+    Widget paint(BuildContext context, Animation<double> collapse) => RepaintBoundary(
         child: Semantics(
           container: true,
           explicitChildNodes: true,
@@ -205,7 +208,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                   builder: (context, _) {
                     final t = collapse.value;
                     return SizedBox(
-                      height: lerpDouble(open, compact, t),
+                      height: lerpDouble(open, shutHeight, t),
                       child: Padding(
                         padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.xxs),
                         child: Row(children: [
@@ -235,8 +238,9 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
+    if (compact) return paint(context, kAlwaysCompleteAnimation);
+    return AppHeaderCollapse(builder: (context, collapse, _) => paint(context, collapse));
   }
 }
 
