@@ -4,7 +4,43 @@
 // sends and shows the reason.
 library;
 
+import 'package:flutter/foundation.dart';
+
 import '../mark_sessions_api.dart';
+
+/// What a screen wrapped around the capture needs (the Exam Hub's revision run): it holds the camera while a result is
+/// on screen, hears each page the server accepted, and knows when the camera is between papers.
+class GradeCaptureBridge extends ChangeNotifier {
+  bool _hold = false, _busy = false;
+  VoidCallback? _rearm;
+
+  /// Called with the id the server gave a queued page and the photo that was sent.
+  void Function(int pageId, Uint8List photo)? onQueued;
+
+  bool get hold => _hold;
+
+  /// A shot is under way or a steady run towards auto-capture has begun.
+  bool get busy => _busy;
+
+  set hold(bool v) {
+    if (v == _hold) return;
+    _hold = v;
+    notifyListeners();
+  }
+
+  /// Called by the capture screen when its state moves.
+  void report({required bool busy}) {
+    if (busy == _busy) return;
+    _busy = busy;
+    notifyListeners();
+  }
+
+  /// Set by the capture screen.
+  void attach(VoidCallback rearm) => _rearm = rearm;
+
+  /// The next paper may fire at once (after Retake: the same paper is still under the camera).
+  void rearm() => _rearm?.call();
+}
 
 /// What the capture screen is doing, in the order the person sees it.
 enum GradeCaptureStage {

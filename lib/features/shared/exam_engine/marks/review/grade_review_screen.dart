@@ -18,6 +18,11 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../../../../teacher/data_lab/data_lab_api.dart';
+import '../../hub/revision/revision_api.dart';
+import '../../hub/revision/revision_history_screen.dart';
+import '../../hub/revision/revision_models.dart';
+import '../../hub/revision/revision_papers_screen.dart';
+import '../../hub/revision/revision_run_screen.dart';
 import '../../paper/scan/omr_camera.dart' show OmrCamera;
 import '../mark_sessions_api.dart';
 import 'grade_review_capture.dart';
@@ -64,6 +69,11 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
   EventOrPoll? _watch;
 
   MarkSession? _session;
+
+  /// The same answer with the source and the sheet; null until it is known.
+  RevisionSession? _info;
+  late final RevisionApi _revision = RevisionApi();
+  bool get _hub => _info?.hubServer ?? false;
   final _rows = <MarkList, List<MarkRow>>{};
   bool _loading = true, _busy = false;
   String? _error;
@@ -100,9 +110,11 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
   Future<void> _load({bool silent = false}) async {
     if (!silent) setState(() => _loading = true);
     final list = _list;
-    final results = await Future.wait([_api.get(widget.sessionId), _api.rows(widget.sessionId, list: list)]);
+    // an older server treats status=all as a status no row has, so the first read asks the session first
+    final s = await _api.get(widget.sessionId);
+    final info = s.ok ? RevisionSession.fromJson(s.map) : null;
+    final r = await _api.rows(widget.sessionId, list: list, status: (info?.hubServer ?? false) ? 'all' : null);
     if (!mounted) return;
-    final s = results[0], r = results[1];
     setState(() {
       _loading = false;
       if (!s.ok) {
@@ -111,8 +123,11 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
       }
       _error = null;
       _session = MarkSession.fromJson(s.map);
+      _info = info;
       if (r.ok) {
-        _rows[list] = [for (final i in (r.map['items'] as List?) ?? const []) if (i is Map) MarkRow.fromJson(Map<String, dynamic>.from(i))];
+        final got = [for (final i in (r.map['items'] as List?) ?? const []) if (i is Map) MarkRow.fromJson(Map<String, dynamic>.from(i))];
+        // what still needs a decision comes first, in capture order; the decided papers stay, tagged, under it
+        _rows[list] = [...got.where((x) => !x.decided), ...got.where((x) => x.decided)];
         if (_selected >= _current.length) _selected = _current.isEmpty ? 0 : _current.length - 1;
       }
     });
@@ -153,11 +168,13 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
       context,
       (ctx) => AppSheetContent(
         title: t('تطبيق التصحيح', 'Apply correction'),
-        children: [GradeApplySheet(row: row, columnLabel: s.columnKey, onConfirm: (why) => Navigator.pop(ctx, why))],
+        children: [GradeApplySheet(row: row, columnLabel: revisionColumnLabel(s.columnKey), onConfirm: (why) => Navigator.pop(ctx, why))],
       ),
     );
     if (reason == null || !mounted) return;
-    if (await _decide(row, 'apply', value: row.proposed, reason: reason) && mounted) showAppNotice(t('كُتبت الدرجة في الدفتر', 'The grade was written to the gradebook'));
+    if (await _decide(row, 'apply', value: row.proposed, reason: reason) && mounted) {
+      showAppNotice((_info?.excel ?? false) ? t('حُدّثت الدرجة في نسخة الملف', 'The grade was updated in the sheet copy') : t('كُتبت الدرجة في الدفتر', 'The grade was written to the gradebook'));
+    }
   }
 
   Future<void> _keep(MarkRow row) async {
@@ -177,7 +194,8 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
     if (students == null) {
       setState(() => _busy = true);
       try {
-        students = await (widget.studentsLoader ?? loadCourseStudents)(s.courseId);
+        final info = _info;
+        students = await (info != null && info.excel ? _revision.students(info) : (widget.studentsLoader ?? loadCourseStudents)(s.courseId));
       } catch (_) {
         students = const [];
       }
@@ -233,6 +251,11 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
     await _reloadAfterDecision();
   }
 
+  Future<void> _downloadSheet() async {
+    final info = _info;
+    if (info != null) await downloadCorrectedSheet(_revision, info);
+  }
+
   Future<void> _close() async {
     final ok = await appConfirm(context,
         message: t('بعد الإغلاق لا تُضاف أوراق جديدة ولا تُتخذ قرارات. هل تغلق الجلسة؟', 'After closing, no more sheets are added and no decisions are made. Close the session?'),
@@ -251,6 +274,13 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
   void _scanMore() {
     final s = _session;
     if (s == null) return;
+    final info = _info;
+    if (info != null && _hub) {
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RevisionRunScreen(info: info, api: _revision, camera: widget.camera, popOnFinish: true))).then((_) {
+        if (mounted) _load(silent: true);
+      });
+      return;
+    }
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => GradeCaptureScreen(session: s, api: _api, camera: widget.camera, onDone: (ctx) => Navigator.of(ctx).maybePop()),
     ));
@@ -263,6 +293,13 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
   Future<void> _open(MarkRow row) async {
     final s = _session;
     if (s == null) return;
+    if (_hub) {
+      // the paper's own page: arrows through the whole session, decisions and the decided papers too
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RevisionPapersScreen(sessionId: s.id, api: _revision, initialRowId: row.id)));
+      if (mounted) await _reloadAfterDecision();
+      return;
+    }
+    if (!mounted) return;
     await showAppSheet<void>(
       context,
       (ctx) => AppSheetContent(
@@ -331,6 +368,8 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
         title: Text(s == null || s.mode == MarkMode.review ? t('مراجعة الدرجات', 'Review grades') : t('استيراد الدرجات', 'Import marks')),
         actions: [
           if (s != null && s.open) IconButton(tooltip: t('تصوير المزيد', 'Scan more'), onPressed: _scanMore, icon: const Icon(Icons.photo_camera_outlined)),
+          if (_hub) IconButton(tooltip: t('السجل', 'History'), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RevisionHistoryScreen(sessionId: widget.sessionId, api: _revision))), icon: const Icon(Icons.history_rounded)),
+          if (_info?.excel ?? false) IconButton(tooltip: t('تنزيل الملف المصحّح', 'Download the corrected sheet'), onPressed: _downloadSheet, icon: const Icon(Icons.download_rounded)),
           IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: () => _load(silent: true), icon: const Icon(Icons.refresh_rounded)),
           if (s != null && s.open) IconButton(tooltip: t('إغلاق الجلسة', 'Close session'), onPressed: _close, icon: const Icon(Icons.lock_outline_rounded)),
         ],

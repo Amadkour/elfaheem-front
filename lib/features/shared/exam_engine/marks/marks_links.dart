@@ -13,6 +13,8 @@ import '../exam_features.dart' show examAutoCorrectAllowed;
 import '../../../admin/admin_common.dart' show asInt, asMap, t;
 import '../../../teacher/data_lab/data_lab_api.dart';
 import '../exam_authoring.dart' show ExamAuthoringApi;
+import '../hub/revision/exam_revision_flow.dart' show openExamRevision;
+import 'mark_sessions_api.dart' show MarkMode;
 import 'review/grade_review_entry.dart';
 import 'review/grade_review_start.dart';
 import 'templates/mark_templates.dart';
@@ -23,9 +25,13 @@ Future<({int id, String name, double totalMax})?> markTemplatePicker(BuildContex
   return m == null ? null : (id: m.id, name: m.name, totalMax: m.totalMax ?? 0);
 }
 
-/// Grade review for the course of exam [examId], with that exam preselected. The gradebook's numeric, writable
+/// "Grade review by camera" on an exam's review screen: the guided revision (which falls back to the short form below
+/// on an older server).
+Future<void> openGradeReviewForExam(BuildContext context, int examId, String examTitle) => openExamRevision(context, examId: examId, title: examTitle);
+
+/// The short form for the course of exam [examId], with that exam preselected. The gradebook's numeric, writable
 /// columns come from the Data Lab; an exam without a course explains itself instead.
-Future<void> openGradeReviewForExam(BuildContext context, int examId, String examTitle) async {
+Future<void> openLegacyGradeReviewForExam(BuildContext context, int examId, String examTitle) async {
   if (!examAutoCorrectAllowed()) return;                 // D-301: the Super Admin's switch
   final r = await ExamAuthoringApi().exam(examId);
   final exam = asMap(r.map['exam']).isNotEmpty ? asMap(r.map['exam']) : r.map;
@@ -53,5 +59,23 @@ Future<void> openGradeReviewForExam(BuildContext context, int examId, String exa
     showAppNotice(t('لا يوجد في دفتر الدرجات عمود رقمي قابل للتعديل', 'The gradebook has no editable number column'), error: true);
     return;
   }
-  await openGradeReview(context, courseId: courseId, columns: columns, pickTemplate: markTemplatePicker, exams: [GradeExam(examId, examTitle)]);
+  await openGradeReview(context, courseId: courseId, columns: columns, pickTemplate: markTemplatePicker, exams: [GradeExam(examId, examTitle)], legacy: true);
+}
+
+/// The short form for a course: mark import, or a review on an older server.
+Future<void> openLegacyGradeReview(BuildContext context, int courseId, {MarkMode mode = MarkMode.review}) async {
+  final columns = await markColumnsOf(courseId);
+  if (!context.mounted || columns == null) return;
+  await openGradeReview(context, courseId: courseId, columns: columns, pickTemplate: markTemplatePicker, mode: mode, legacy: true);
+}
+
+/// The gradebook's numeric, writable columns; null (after a notice) when the gradebook cannot be opened.
+Future<List<GradeColumn>?> markColumnsOf(int courseId) async {
+  try {
+    final g = await DataLabApi().grid(courseId, limit: 1, lang: AppConfig.lang);
+    return [for (final c in g.columns) if (c.isNumber && !c.isCalculated && !c.isLocked) GradeColumn(c.key, c.label, c.maxValue)];
+  } catch (_) {
+    showAppNotice(t('تعذّر فتح دفتر درجات المقرر', 'The course gradebook could not be opened'), error: true);
+    return null;
+  }
 }
