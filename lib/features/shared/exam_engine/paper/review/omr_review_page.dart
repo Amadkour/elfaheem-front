@@ -615,7 +615,7 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
               child: Align(
                 alignment: AlignmentDirectional.topStart,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 920),
+                  constraints: BoxConstraints(maxWidth: AppWidth.content.max),
                   child: ListView(padding: const EdgeInsets.all(AppSpace.lg), children: [detail]),
                 ),
               ),

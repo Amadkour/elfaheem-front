@@ -395,14 +395,7 @@ class HubDegreesPreviewBody extends StatelessWidget {
         }),
         AppSpace.gapSm,
       ],
-      AppField(
-        controller: maxController,
-        label: t('الدرجة العظمى', 'Full mark'),
-        hint: t('مثال: 20', 'For example: 20'),
-        keyboard: const TextInputType.numberWithOptions(decimal: true),
-        ltr: true,
-        onChanged: (_) => onMaxChanged(),
-      ),
+      Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: maxController, label: t('الدرجة العظمى', 'Full mark'), hint: t('مثال: 20', 'For example: 20'), min: 0, decimals: 2, onChanged: (_) => onMaxChanged())),
       Text(t('الدرجات الأعلى منها لن تُحفظ.', 'Degrees above it are not saved.'), style: appText(12, c: c.textLight)),
       if (p.unmatched.isNotEmpty) ...[
         AppSpace.gapMd,

@@ -144,7 +144,7 @@ class _OmrResultsPageState extends State<OmrResultsPage> {
           child: ListView(padding: EdgeInsets.fromLTRB(pad, AppSpace.md, pad, AppSpace.xl), children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1200),
+                constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   if (_error != null)
                     AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!, action: TextButton(onPressed: _load, child: Text(t('إعادة المحاولة', 'Try again')))),

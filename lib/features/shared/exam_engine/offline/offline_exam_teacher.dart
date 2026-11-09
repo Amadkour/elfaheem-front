@@ -17,6 +17,7 @@ import '../exam_review_screen.dart';
 import 'offline_exam_core.dart';
 import 'offline_exam_relay.dart';
 import 'offline_exam_service.dart';
+import '../exam_page_width.dart';
 
 String offlineFlagText(String code) => switch (code) {
       'unsealed' => t('غير مختومة', 'Not sealed'),
@@ -322,7 +323,7 @@ class _OfflineExamPanelState extends State<OfflineExamPanel> {
           ? const AppListSkeleton(items: 4)
           : AppRefresh(
               onRefresh: _load,
-              child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), physics: const AlwaysScrollableScrollPhysics(), children: [
+              child: ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 32), physics: const AlwaysScrollableScrollPhysics(), children: [
                 if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
                 if (ov != null) ...[
                   AppCard(
@@ -397,7 +398,7 @@ class _OfflineExamPanelState extends State<OfflineExamPanel> {
                       child: AppEmpty(icon: Icons.inbox_outlined, title: t('لم تصل إجابات بعد', 'No answers yet')),
                     ),
                 ],
-              ]),
+              ])),
             ),
     );
   }

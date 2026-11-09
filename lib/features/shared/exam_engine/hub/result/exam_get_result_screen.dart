@@ -279,7 +279,7 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
           child: ListView(padding: EdgeInsets.fromLTRB(pad, AppSpace.md, pad, AppSpace.xl), children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1240),
+                constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
                 child: AnimatedSwitcher(
                   duration: AppMotion.of(context).base,
                   child: b == null

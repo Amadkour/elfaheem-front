@@ -595,7 +595,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
           Text(t('كم ورقة ستصوّر؟ يظهر العدد في "تم التقاط الورقة 12 من 40". اختياري.', 'How many papers will you scan? It shows as "Paper 12 of 40 captured". Optional.'),
               style: appText(13.5, c: ctx.colors.textMedium, h: 1.4)),
           const SizedBox(height: AppSpace.sm),
-          AppField(controller: ctl, label: t('عدد الأوراق', 'Papers'), keyboard: TextInputType.number, ltr: true),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl, label: t('عدد الأوراق', 'Papers'), min: 1)),
           const SizedBox(height: AppSpace.md),
           AppPrimaryButton(
             label: t('حفظ', 'Save'),

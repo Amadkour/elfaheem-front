@@ -305,7 +305,7 @@ class CorrectionStartView extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, AppSpace.xl),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1120),
+            constraints: BoxConstraints(maxWidth: AppWidth.content.max),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               head,
               if (wide)

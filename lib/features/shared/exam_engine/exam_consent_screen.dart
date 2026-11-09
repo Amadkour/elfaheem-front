@@ -10,6 +10,7 @@ import '../../student/courses/security/device_id_service.dart';
 import 'exam_engine_api.dart';
 import 'exam_integrity.dart';
 import 'exam_taking.dart';
+import 'exam_page_width.dart';
 
 /// Plain-values body (what the layout harness pumps): the text, what it requires, what this platform can do.
 class ConsentBody extends StatelessWidget {
@@ -28,7 +29,7 @@ class ConsentBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final monitoring = monitoringText(requires);
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 16, side, 16), children: [
       AppHero(title: title, subtitle: t('النسخة $version — اقرأ قبل البدء', 'Version $version — read before you start'), icon: Icons.verified_user_rounded),
       const SizedBox(height: 12),
       AppCard(child: Text(body, style: appText(14.5, h: 1.6, c: c.textDark))),
@@ -54,7 +55,7 @@ class ConsentBody extends StatelessWidget {
         busy: busy,
         onPressed: onAccept,
       ),
-    ]);
+    ]));
   }
 }
 

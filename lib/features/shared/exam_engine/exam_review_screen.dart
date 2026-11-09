@@ -23,6 +23,7 @@ import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
 import 'exam_scan_review.dart';
 import 'marks/marks_links.dart' show openGradeReviewForExam;
 import 'offline/offline_exam_teacher.dart';
+import 'exam_page_width.dart';
 import 'exam_taking.dart' show examCodeText;
 import 'exam_quick_screen.dart' show openQuickExam;
 import 'exam_results_screen.dart' show ExamResultsScreen;
@@ -267,7 +268,7 @@ class _MarkEditorState extends State<MarkEditor> {
           Text(t('المجموع ${_pts(criteriaTotal(_crit, it.scale))} من ${_pts(it.points)}', 'Total ${_pts(criteriaTotal(_crit, it.scale))} of ${_pts(it.points)}'),
               style: appText(14, w: FontWeight.w800, c: c.primary)),
         ] else
-          AppField(controller: _score, label: t('الدرجة (من ${_pts(it.points)})', 'Score (of ${_pts(it.points)})'), keyboard: const TextInputType.numberWithOptions(decimal: true), ltr: true),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _score, label: t('الدرجة (من ${_pts(it.points)})', 'Score (of ${_pts(it.points)})'), min: 0, max: it.points, step: 0.5, decimals: 2)),
         if (_error != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_error!, style: appText(12.5, c: c.danger))),
         const SizedBox(height: 10),
         AppField(controller: _comment, label: t('تعليق للطالب (اختياري)', 'Comment for the student (optional)'), maxLines: 3),
@@ -524,7 +525,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
       ]),
       child: AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+        child: ExamPageWidth(width: AppWidth.content, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 8, side, 32), children: [
           AppHero(title: widget.examTitle, subtitle: t('يقترح المصحح الآلي وتقرر أنت · الأقل ثقة أولاً', 'The grader proposes, you decide · lowest confidence first'),
               icon: Icons.rate_review_outlined),
           Wrap(spacing: 8, runSpacing: 8, children: [
@@ -561,7 +562,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
                   onAccept: () => _accept(it), onEdit: () => _edit(it),
                   onScan: it.scanPageId == null ? null : () => _scans(pageId: it.scanPageId),
                   onSheet: _omrReview && it.fromPaperReader ? () => _openSheetReview(it) : null),
-        ]),
+        ])),
       ),
     );
   }

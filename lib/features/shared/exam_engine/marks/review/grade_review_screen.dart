@@ -407,7 +407,7 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
         autofocus: true,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
+            constraints: BoxConstraints(maxWidth: AppWidth.content.max),
             child: Column(children: [
               _Summary(session: s),
               if (clean.isNotEmpty)
