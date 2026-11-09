@@ -467,7 +467,7 @@ class SheetLegend extends StatelessWidget {
     Widget item(IconData i, Color tone, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(i, size: AppIconSize.sm, color: appInk(context, tone)),
           const SizedBox(width: AppSpace.xxs),
-          Text(label, style: appText(12, c: c.textMedium)),
+          Flexible(child: Text(label, style: appText(12, c: c.textMedium))),
         ]);
     return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, children: [
       item(Icons.check_box_outlined, c.success, t('إجابة صحيحة', 'Right answer')),
