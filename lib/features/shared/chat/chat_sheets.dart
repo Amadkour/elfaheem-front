@@ -8,6 +8,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'chat_api.dart';
 import 'chat_models.dart';
@@ -26,6 +27,60 @@ const _kReportKey = 'chat.report';
 Future<ChatContact?> showChatContactPicker(BuildContext context) => showAppSheet<ChatContact>(context, (_) => const ChatNewMessageSheet());
 
 // ── actions ──────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// One action of a menu: the same list opens as a popup at a mouse and as a sheet on a phone.
+class ChatMenuAction {
+  const ChatMenuAction({required this.icon, required this.label, required this.onTap, this.danger = false});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool danger;
+}
+
+Future<void> _showActions(BuildContext context, {required String title, required List<ChatMenuAction> actions, Rect? anchor}) async {
+  if (actions.isEmpty) return;
+  if (anchor == null) {
+    await showAppSheet<void>(
+      context,
+      (sheet) => AppSheetContent(title: title, children: [
+        for (final a in actions)
+          _ActionRow(
+            icon: a.icon,
+            label: a.label,
+            danger: a.danger,
+            onTap: () {
+              Navigator.of(sheet).pop();
+              a.onTap();
+            },
+          ),
+      ]),
+    );
+    return;
+  }
+  final c = context.colors;
+  final overlay = Overlay.of(context, rootOverlay: true).context.findRenderObject()! as RenderBox;
+  final picked = await showMenu<ChatMenuAction>(
+    context: context,
+    useRootNavigator: true,
+    color: c.cardBg,
+    elevation: 6,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip + 2)),
+    position: RelativeRect.fromRect(anchor, Offset.zero & overlay.size),
+    items: [
+      for (final a in actions)
+        PopupMenuItem<ChatMenuAction>(
+          value: a,
+          height: AppTouch.min - 4,
+          child: Row(children: [
+            Icon(a.icon, size: AppIconSize.md, color: a.danger ? c.danger : c.textMedium),
+            const SizedBox(width: AppSpace.sm),
+            Flexible(child: Text(a.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w500, c: a.danger ? c.danger : c.textDark))),
+          ]),
+        ),
+    ],
+  );
+  picked?.onTap();
+}
 
 class _ActionRow extends StatelessWidget {
   const _ActionRow({required this.icon, required this.label, required this.onTap, this.danger = false});
@@ -55,22 +110,16 @@ class _ActionRow extends StatelessWidget {
   }
 }
 
-Future<void> showChatRowActions(BuildContext context, ChatConversation conv, {bool inThread = false}) => showAppSheet<void>(
+Future<void> showChatRowActions(BuildContext context, ChatConversation conv, {bool inThread = false, Rect? anchor}) => _showActions(
       context,
-      (sheet) => AppSheetContent(title: conv.title, children: [
-        _ActionRow(
-          icon: conv.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-          label: conv.pinned ? 'chat_unpin'.tr : 'chat_pin'.tr,
-          onTap: () {
-            Navigator.of(sheet).pop();
-            ChatHub.instance.togglePin(conv);
-          },
-        ),
-        _ActionRow(
+      title: conv.title,
+      anchor: anchor,
+      actions: [
+        ChatMenuAction(icon: conv.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined, label: conv.pinned ? 'chat_unpin'.tr : 'chat_pin'.tr, onTap: () => ChatHub.instance.togglePin(conv)),
+        ChatMenuAction(
           icon: conv.muted ? Icons.notifications_active_outlined : Icons.notifications_off_outlined,
           label: conv.muted ? 'chat_unmute'.tr : 'chat_mute'.tr,
           onTap: () {
-            Navigator.of(sheet).pop();
             if (conv.muted) {
               ChatHub.instance.setMute(conv, 'off');
             } else {
@@ -78,36 +127,12 @@ Future<void> showChatRowActions(BuildContext context, ChatConversation conv, {bo
             }
           },
         ),
-        if (conv.isGroup && inThread)
-          _ActionRow(
-            icon: Icons.info_outline_rounded,
-            label: 'chat_group_info'.tr,
-            onTap: () {
-              Navigator.of(sheet).pop();
-              showChatInfoSheet(context, conv);
-            },
-          ),
+        if (conv.isGroup && inThread) ChatMenuAction(icon: Icons.info_outline_rounded, label: 'chat_group_info'.tr, onTap: () => showChatInfoSheet(context, conv)),
         if (!conv.isGroup && conv.peer != null && !AppConfig.disableList.contains(_kBlockingKey))
-          _ActionRow(
-            icon: Icons.block_rounded,
-            danger: true,
-            label: 'chat_block'.tr,
-            onTap: () {
-              Navigator.of(sheet).pop();
-              showChatBlockSheet(context, conv.peer!);
-            },
-          ),
+          ChatMenuAction(icon: Icons.block_rounded, danger: true, label: 'chat_block'.tr, onTap: () => showChatBlockSheet(context, conv.peer!)),
         if (!AppConfig.disableList.contains(_kReportKey))
-          _ActionRow(
-            icon: Icons.flag_outlined,
-            danger: true,
-            label: 'chat_report'.tr,
-            onTap: () {
-              Navigator.of(sheet).pop();
-              showChatReportSheet(context, conv);
-            },
-          ),
-      ]),
+          ChatMenuAction(icon: Icons.flag_outlined, danger: true, label: 'chat_report'.tr, onTap: () => showChatReportSheet(context, conv)),
+      ],
     );
 
 void _showMute(BuildContext context, ChatConversation conv) {
@@ -127,21 +152,17 @@ void _showMute(BuildContext context, ChatConversation conv) {
   );
 }
 
-Future<void> showChatMessageActions(BuildContext context, ChatConversation conv, ChatMessage m, {required bool mine}) async {
-  if (mine || AppConfig.disableList.contains(_kReportKey) || m.id == null) return;
-  await showAppSheet<void>(
+Future<void> showChatMessageActions(BuildContext context, ChatConversation conv, ChatMessage m, {required bool mine, Rect? anchor, VoidCallback? onReply, VoidCallback? onCopy}) async {
+  final canReport = !mine && !AppConfig.disableList.contains(_kReportKey) && m.id != null && !m.deleted;
+  await _showActions(
     context,
-    (sheet) => AppSheetContent(title: 'chat_message'.tr, children: [
-      _ActionRow(
-        icon: Icons.flag_outlined,
-        danger: true,
-        label: 'chat_report_message'.tr,
-        onTap: () {
-          Navigator.of(sheet).pop();
-          showChatReportSheet(context, conv, messageId: m.id);
-        },
-      ),
-    ]),
+    title: 'chat_message'.tr,
+    anchor: anchor,
+    actions: [
+      if (onReply != null) ChatMenuAction(icon: Icons.reply_rounded, label: 'chat_reply'.tr, onTap: onReply),
+      if (onCopy != null && (m.body ?? '').trim().isNotEmpty && !m.deleted) ChatMenuAction(icon: Icons.copy_rounded, label: 'chat_copy'.tr, onTap: onCopy),
+      if (canReport) ChatMenuAction(icon: Icons.flag_outlined, danger: true, label: 'chat_report_message'.tr, onTap: () => showChatReportSheet(context, conv, messageId: m.id)),
+    ],
   );
 }
 
@@ -407,17 +428,18 @@ class _ChatInfoSheetState extends State<ChatInfoSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final conv = widget.conversation;
-    return AppSheetContent(title: conv.isGroup ? 'chat_group_info'.tr : conv.title, children: [
-      Row(children: [
-        ChatAvatar(name: conv.title, url: conv.isGroup ? conv.course?.imageUrl : conv.peer?.imageUrl, size: 56, group: conv.isGroup && conv.course?.imageUrl == null),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(conv.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w700, c: c.textDark)),
-            if (conv.contextLine.isNotEmpty && !conv.isGroup) Text(conv.contextLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w500, c: c.accent2)),
-          ]),
-        ),
-      ]),
+    final role = conv.isGroup ? '' : chatRoleLabel(conv.peer?.role ?? '');
+    final username = conv.isGroup ? null : conv.peer?.username;
+    final facts = [role, if (conv.child != null) '${'chat_parent_of'.tr} ${conv.child!.name.split(' ').first}', if (!conv.isGroup && conv.contextLine.isNotEmpty) conv.contextLine].where((x) => x.isNotEmpty).join(' · ');
+    return AppSheetContent(title: conv.isGroup ? 'chat_group_info'.tr : 'chat_person_info'.tr, children: [
+      Center(child: ChatAvatar(name: conv.title, url: conv.isGroup ? conv.course?.imageUrl : conv.peer?.imageUrl, size: 84, online: conv.online, group: conv.isGroup && conv.course?.imageUrl == null)),
+      const SizedBox(height: AppSpace.sm),
+      Text(conv.title, textAlign: TextAlign.center, style: appText(18, w: FontWeight.w700, c: c.textDark)),
+      if (username != null) Text('@$username', textAlign: TextAlign.center, style: appText(13, w: FontWeight.w500, c: chatInk(c))),
+      if (facts.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.xxs),
+        Text(facts, textAlign: TextAlign.center, style: appText(13, w: FontWeight.w500, c: c.textMedium, h: 1.35)),
+      ],
       if (conv.canManage) ...[
         const SizedBox(height: AppSpace.sm),
         AppSwitchTile(title: 'chat_group_open'.tr, subtitle: 'chat_group_open_body'.tr, icon: Icons.lock_open_rounded, value: _open, onChanged: _busy ? null : _toggle),
@@ -457,16 +479,52 @@ class _ChatInfoSheetState extends State<ChatInfoSheet> {
 
 Future<void> showChatImage(BuildContext context, String url, String name) => showDialog<void>(
       context: context,
-      barrierColor: Colors.black87,
-      builder: (ctx) => GestureDetector(
-        onTap: () => Navigator.of(ctx).pop(),
-        child: Center(
-          child: InteractiveViewer(
-            child: CachedNetworkImage(imageUrl: url, placeholder: (_, _) => const CircularProgressIndicator()),
+      useSafeArea: false,
+      barrierColor: Colors.black.withValues(alpha: 0.92),
+      builder: (ctx) => _ChatImageViewer(url: url, name: name),
+    );
+
+/// A picture full-screen: zoom, a name and the close and open buttons in the top bar; Escape or a tap on the dark closes it.
+class _ChatImageViewer extends StatelessWidget {
+  const _ChatImageViewer({required this.url, required this.name});
+  final String url, name;
+
+  @override
+  Widget build(BuildContext context) {
+    final close = Navigator.of(context).pop;
+    return SafeArea(
+      child: Column(children: [
+        SizedBox(
+          height: kChatBarHeight,
+          child: Row(children: [
+            const SizedBox(width: AppSpace.md),
+            Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: Colors.white))),
+            IconButton(tooltip: 'chat_open_external'.tr, constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min), icon: const Icon(Icons.open_in_new_rounded, color: Colors.white), onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)),
+            IconButton(tooltip: 'chat_close'.tr, constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min), icon: const Icon(Icons.close_rounded, color: Colors.white), onPressed: () => close()),
+            const SizedBox(width: AppSpace.xxs),
+          ]),
+        ),
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => close(),
+            child: Center(
+              child: InteractiveViewer(
+                maxScale: 5,
+                child: CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.contain,
+                  placeholder: (_, _) => const Center(child: SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))),
+                  errorWidget: (_, _, _) => const Icon(Icons.broken_image_outlined, color: Colors.white70, size: AppIconSize.xl),
+                ),
+              ),
+            ),
           ),
         ),
-      ),
+      ]),
     );
+  }
+}
 
 // ── blocked people ───────────────────────────────────────────────────────────────────────────────────────────
 

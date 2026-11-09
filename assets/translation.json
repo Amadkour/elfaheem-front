@@ -23631,6 +23631,66 @@
   "pp_msg_note": {"en": "The teacher gets it as a notification about {child}. Up to 3 messages per teacher a day.", "ar": "تصل المدرّس إشعارًا عن {child}. الحد 3 رسائل لكل مدرّس يوميًا."},
   "pp_msg_empty": {"en": "Write your message first.", "ar": "اكتب رسالتك أولًا."},
   "pp_msg_no_teacher": {"en": "No teacher to message yet.", "ar": "لا يوجد مدرّس لمراسلته بعد."},
+  "chat_reply": {
+    "en": "Reply",
+    "ar": "رد"
+  },
+  "chat_reply_cancel": {
+    "en": "Cancel reply",
+    "ar": "إلغاء الرد"
+  },
+  "chat_copy": {
+    "en": "Copy text",
+    "ar": "نسخ النص"
+  },
+  "chat_copied": {
+    "en": "Copied",
+    "ar": "تم النسخ"
+  },
+  "chat_deleted": {
+    "en": "This message was deleted",
+    "ar": "حُذفت هذه الرسالة"
+  },
+  "chat_quote_gone": {
+    "en": "That message is no longer available",
+    "ar": "هذه الرسالة لم تعد متاحة"
+  },
+  "chat_requests_sub": {
+    "en": "People you have no link with yet",
+    "ar": "أشخاص لا تربطك بهم صلة بعد"
+  },
+  "chat_requests_note": {
+    "en": "Nothing is shared with them until you accept. Decline quietly or block if it is not welcome.",
+    "ar": "لا يصلهم أي شيء منك قبل أن تقبل. ارفض بهدوء أو احظر إن لم يكن مرحبًا به."
+  },
+  "chat_request_from": {
+    "en": "{name} wants to message you",
+    "ar": "{name} يريد مراسلتك"
+  },
+  "chat_person_info": {
+    "en": "Contact info",
+    "ar": "بيانات جهة الاتصال"
+  },
+  "chat_filter_more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
+  "chat_filter_person": {
+    "en": "Person",
+    "ar": "الشخص"
+  },
+  "chat_filter_course": {
+    "en": "Course",
+    "ar": "الدورة"
+  },
+  "chat_open_external": {
+    "en": "Open in a new tab",
+    "ar": "فتح في تبويب جديد"
+  },
+  "chat_close": {
+    "en": "Close",
+    "ar": "إغلاق"
+  },
   "chat_title": {
     "en": "Messages",
     "ar": "الرسائل"

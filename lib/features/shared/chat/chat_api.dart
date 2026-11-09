@@ -75,11 +75,12 @@ class ChatApi {
     return ChatMessagePage([for (final x in (r['items'] as List)) ChatMessage.fromJson(_m(x))], r['has_more'] == true);
   }
 
-  Future<ChatMessage> send(int id, {required String clientId, String? body, List<int> attachmentIds = const []}) async {
+  Future<ChatMessage> send(int id, {required String clientId, String? body, List<int> attachmentIds = const [], int? replyToId}) async {
     final r = _m(await _c.post('$_b/conversations/$id/messages', body: {
       'client_id': clientId,
       if (body != null) 'body': body,
       if (attachmentIds.isNotEmpty) 'attachment_ids': attachmentIds,
+      if (replyToId != null) 'reply_to_id': replyToId,
     }));
     return ChatMessage.fromJson(_m(r['message']));
   }
