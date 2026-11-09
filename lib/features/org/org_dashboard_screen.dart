@@ -512,7 +512,7 @@ class _OrgTabState extends State<_OrgTab> {
       controller: _refresh,
       child: BasePage(
         useWebCard: true,
-        maxWith: 1200,
+        width: AppWidth.wide,
         child: widget.header
             ? Column(children: [OrgPageHeader(title: widget.title, helpPageId: widget.helpPageId), Expanded(child: body)])
             : body,
