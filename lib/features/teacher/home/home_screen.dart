@@ -214,12 +214,11 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
     final staleError = provider.hasError && provider.loaded ? (provider.errorMessage ?? 'generic_error'.tr) : null;
     final quickLive = !AppConfig.disableList.contains(kQuickLiveFeatureKey); // D-091
 
-    // a desktop window: one wide calm card over the page's pattern (homeCardWidth), the dashboard inside it
-    return LayoutBuilder(
-      builder: (context, area) => BasePage(
+    // a desktop window: one wide calm card over the page's pattern (the wide role, D-360), the dashboard inside it
+    return BasePage(
       key: const ValueKey('teacher_home'),
       useWebCard: true,
-      maxWith: homeCardWidth(area.maxWidth),
+      width: AppWidth.wide,
       enableFooterWidget: false,
       child: SafeArea(
         child: AppRefresh(
@@ -341,7 +340,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
           ),
         ),
       ),
-    ),
     );
   }
 }
@@ -380,7 +378,7 @@ class _Width extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: kHomeWideMax), child: child));
+      Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.wide.max), child: child));
 }
 
 /// The Personal side of the instructor home (no providers inside → layout-tested on its own).

@@ -19,7 +19,6 @@
 //   • the attendance spotlight selects (type, session count) on its own.
 // ─────────────────────────────────────────────────────────────────────────
 
-import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async' show unawaited;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -31,6 +30,7 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_responsive.dart';
+import '../../../design/app_tokens.dart' show AppWidth;
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../../shared/attendance/attendance_course_entry.dart';
@@ -197,19 +197,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     _openingDone = true;
   });
 
-  void _openAddSheet() {
-    final provider = _provider;
-    showAppModalSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      useSafeArea: true,
-      builder: (_) => ChangeNotifierProvider.value(
-        value: provider,
-        child: SessionFormSheet(provider: provider),
-      ),
-    );
-  }
+  void _openAddSheet() => showSessionFormSheet(context);
 
   Future<void> _openEditCourse() async {
     final provider = _provider;
@@ -250,7 +238,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     return BasePage(
       key: const ValueKey('teacher_sessions'),
       useWebCard: true,
-      maxWith: 1360,
+      width: AppWidth.wide,
       child: SafeArea(
         top: false,
         child: Selector<TeacherCourseScreenProvider, _PageData>(
