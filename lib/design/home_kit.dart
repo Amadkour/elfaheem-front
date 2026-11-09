@@ -38,6 +38,7 @@
 // the screen-reader hint); a section with nothing to say is not drawn; what is live comes first.
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -446,8 +447,8 @@ class HomeHeroCard extends StatelessWidget {
             child: ClipRRect(
               borderRadius: r,
               child: Stack(children: [
-                // the brand hero's faint warm glow (D-136), only on the default gradient
-                if (gradient == null) Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: c.heroGlow))),
+                // the organic brand gradient (D-360), only when the caller chose no gradient of its own
+                if (gradient == null) const Positioned.fill(child: RepaintBoundary(child: AppMeshSurface(seed: 11))),
                 // a single quiet ornament: a large ring bleeding off the end edge
                 PositionedDirectional(
                   end: -60,

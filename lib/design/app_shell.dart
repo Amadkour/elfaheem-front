@@ -46,6 +46,7 @@ import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
 import '../utils/widget/refresh_button.dart';
 import 'app_focus_mode.dart';
+import 'app_mesh.dart';
 import 'app_tokens.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart';
@@ -429,10 +430,8 @@ class WideShell extends StatelessWidget {
       child: Row(
         children: [
           // ── Sidebar ──────────────────────────────────────────────────────
-          _FocusFold(focus: focus, child: Container(
+          _FocusFold(focus: focus, child: AppMeshSurface(seed: 3, child: Container(
             width: Breakpoints.sidebarW,
-            decoration: BoxDecoration(gradient: c.slideBarGradient),
-            clipBehavior: Clip.antiAlias,
             child: Stack(
               children: [
                 // decorative glows
@@ -515,7 +514,7 @@ class WideShell extends StatelessWidget {
                 ),
               ],
             ),
-          )),
+          ))),
 
           // ── Main content ──────────────────────────────────────────────────
           Expanded(
@@ -787,16 +786,8 @@ class _TopBar extends StatelessWidget {
       container: true,
       explicitChildNodes: true,
       label: 'shell_top_bar'.tr,
-      child: Container(
+      child: AppMeshSurface(seed: 5, child: Container(
         height: 64,
-        // light: the hero gradient (D-180), so the bar and the brand sidebar read as one header — both start at
-        // primary on the reading-start side; dark: the card surface (a brand fill glares on a dark page)
-        decoration: BoxDecoration(
-          color: c.isDark ? c.cardBg : null,
-          gradient: c.isDark ? null : c.heroGradient,
-          border: Border(bottom: BorderSide(color: c.primary.withValues(alpha: 0.08))),
-          boxShadow: c.cardShadow,
-        ),
         padding: const EdgeInsets.symmetric(horizontal: 28),
         child: ChromeBar(
           child: Row(
@@ -810,7 +801,7 @@ class _TopBar extends StatelessWidget {
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: c.h2.copyWith(color: c.isDark ? c.textDark : c.onHero, fontWeight: FontWeight.w600),
+                          style: c.h2.copyWith(color: c.onHero, fontWeight: FontWeight.w600),
                         ),
                       ),
               ),
@@ -831,14 +822,14 @@ class _TopBar extends StatelessWidget {
                       ),
                     if (helpPageId != null && !pushed) HelpInfoButton(pageId: helpPageId!),
                     NotificationIcon(unreadCount: unread),
-                    AppFocusToggle(onHero: !c.isDark),
+                    const AppFocusToggle(onHero: true),
                   ]),
                 ),
               ),
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

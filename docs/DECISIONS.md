@@ -3711,3 +3711,11 @@ Starting a chat with no context named reuses the most recently active thread the
 
 ## D-374 — Messages in every role's profile · 2026-11-09 · accepted
 `ChatEntryTile` (next to `CalendarEntryTile` in `calendar_entry.dart`) is the row with the attention feed's unread count, in the student / teacher profile, the parent and admin More pages and the organization settings. Requests are deliberately not in the badge: the calm place for them is the inbox line (`GET /conversations` → `requests`).
+
+## D-360 — One premium language: organic gradient everywhere, one collapsing header, side sheets, focus mode, one number field · 2026-11-09 · accepted
+
+**Context.** The owner asked for one premium design language on every screen, role and platform. This replaces the "gradient as a touch" rule of D-180.
+
+**Decision.** `lib/design/app_mesh.dart` builds every gradient from a main colour and its companion hue: layered radial blobs for large surfaces, a multi-stop angled blend for small fills, a faint wash for cards. Blob positions are random-looking but seeded, shaders are cached in unit space, and fills are moved until the on-hero ink keeps AA. `AppHeader` is the one page header; it listens to the Scaffold's own scroll notifications, so a page needs no slivers. It reacts to scroll direction, animating between open and compact. `showAppSheet` and `showAppModalSheet` are a floating side panel from 700 px up and a refined bottom sheet below; they open on the nearest Navigator, as before, so tab-scoped providers stay readable. `AppFocusMode` folds the shell's sidebar and top bar and is remembered per device. `AppNumberField` is for real quantities only, never phones, codes or IDs.
+
+**Kept from D-180.** No opaque fill behind body text, forms, lists or dense tables; no gradient values in a screen.
