@@ -23468,8 +23468,8 @@
     "ar": "لم نجد أحدًا بهذا الاسم"
   },
   "chat_nm_no_results_body": {
-    "en": "Check the spelling or try their @username. Students appear only when your teacher or organization allows private chat between students.",
-    "ar": "راجع الإملاء أو جرّب @اسم_المستخدم. لا يظهر الطلاب إلا إذا سمح معلمك أو مؤسستك بالمحادثة الخاصة بين الطلاب."
+    "en": "Check the spelling or try their @username. Students you have no course, organization or parent link with do not appear here.",
+    "ar": "راجع الإملاء أو جرّب @اسم_المستخدم. لا يظهر هنا الطلاب الذين لا يربطك بهم مقرر أو مؤسسة أو ولاية أمر."
   },
   "chat_nm_short_query": {
     "en": "Type at least two letters to search everyone",
