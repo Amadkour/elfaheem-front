@@ -259,6 +259,19 @@ class ChatHub extends ChangeNotifier {
   @visibleForTesting
   void onMessageEvent(Map<String, dynamic> d) => _onMessage(d);
 
+  /// The server took my message: the list row says so now. Its echo on the stream is late or lost when the stream
+  /// is still reconnecting (the moment a queued message goes out); arriving later it changes nothing.
+  void noteSent(int conv, ChatMessage msg) {
+    final row = conversations.where((c) => c.id == conv).firstOrNull;
+    final id = msg.id;
+    if (row == null || id == null || (row.last != null && id < row.last!.id)) return;
+    row
+      ..last = ChatLastMessage(id: id, kind: msg.kind, body: msg.body ?? '', senderId: msg.senderId, senderName: msg.senderName, createdAt: msg.createdAt)
+      ..lastAt = msg.createdAt;
+    _sortRows();
+    notifyListeners();
+  }
+
   void _onMessage(Map<String, dynamic> d) {
     final raw = d['message'];
     final conv = int.tryParse('${d['conversation_id'] ?? ''}');
@@ -691,9 +704,10 @@ class ChatHub extends ChangeNotifier {
             m['uploaded'] = ids;
             _saveOutbox();
           }
-          await api.send(conv, clientId: clientId, body: m['body'] as String?, attachmentIds: ids);
+          final sent = await api.send(conv, clientId: clientId, body: m['body'] as String?, attachmentIds: ids);
           if (_myId != owner) return;
           outboxRemove(clientId);
+          noteSent(conv, sent);
         } catch (e) {
           if (_myId != owner) return;
           if (chatIsNetworkError(e)) break;
@@ -1085,6 +1099,7 @@ class ChatThreadController extends ChangeNotifier {
       if (_stale(m)) return;
       hub.outboxRemove(m.clientId);
       messages = chatMergeMessages(messages, [sent]);
+      hub.noteSent(conversationId, sent);
       _notify();
     } catch (e) {
       if (_stale(m)) return;
