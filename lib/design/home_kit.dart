@@ -38,6 +38,7 @@
 // the screen-reader hint); a section with nothing to say is not drawn; what is live comes first.
 library;
 
+import 'chrome_button.dart';
 import 'package:flutter_education_app/design/app_mesh.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -175,7 +176,7 @@ class HomeHeader extends StatelessWidget {
             if (leading != null) ...[leading!, const SizedBox(width: 10)],
             Expanded(
               child: Text(homeGreetingKey(homeNow().hour).tr,
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, c: c.textLight)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, c: c.onHeroMuted)),
             ),
             ...lineButtons,
           ]),
@@ -185,20 +186,18 @@ class HomeHeader extends StatelessWidget {
             child: Text(name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: appText(24, w: FontWeight.w600, c: c.textDark, h: 1.2).copyWith(letterSpacing: -0.3)),
+                style: appText(24, w: FontWeight.w600, c: c.onHero, h: 1.2).copyWith(letterSpacing: -0.3)),
           ),
           if (subtitle != null && subtitle!.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.4)),
+            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.onHeroMuted, h: 1.4)),
           ],
           if (contextSwitcher != null) ...[
             const SizedBox(height: 14),
             Align(alignment: AlignmentDirectional.centerStart, child: contextSwitcher!),
           ],
         ]);
-        return Padding(
-          padding: padding,
-          child: !wide
+        final content = !wide
               ? block
               : Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   Expanded(child: block),
@@ -211,7 +210,20 @@ class HomeHeader extends StatelessWidget {
                       for (final b in buttons) ...[const SizedBox(width: 8), b],
                     ]),
                   ),
-                ]),
+                ]);
+        // the greeting wears the same organic gradient as every page header (D-360); its buttons turn to glass on it
+        return Padding(
+          padding: padding.resolve(Directionality.of(context)).copyWith(top: AppSpace.sm, bottom: AppSpace.xs),
+          child: RepaintBoundary(
+            child: AppMeshSurface(
+              seed: 21,
+              radius: BorderRadius.circular(AppRadius.sheet),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs),
+                child: ChromeBar(child: content),
+              ),
+            ),
+          ),
         );
       }),
     );

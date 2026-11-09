@@ -431,7 +431,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   LinearGradient _brand(List<Color> stops) => LinearGradient(
     begin: const AlignmentDirectional(-1, -0.7),
     end: const AlignmentDirectional(1, 0.5),
-    colors: [stops[0], stops[1], ensureContrast(companionOf(stops[1]), [onHero], min: _kBrandInk), stops[1], stops[2]],
+    colors: [stops[0], stops[1], Color.lerp(stops[1], ensureContrast(companionOf(stops[1]), [onHero], min: _kBrandInk), 0.55)!, stops[1], stops[2]],
     stops: const [0, 0.28, 0.52, 0.74, 1],
   );
 

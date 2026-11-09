@@ -133,7 +133,7 @@ class AdvStudentsView extends StatelessWidget {
       );
     } else {
       final unassigned = p.facet('unassigned'), away = p.facet('away');
-      body = AdvPageFrame(fab: primary != null, children: [
+      body = AdvPageFrame(maxWidth: 1440, fab: primary != null, children: [
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: Text(

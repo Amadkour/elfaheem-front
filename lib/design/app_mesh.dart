@@ -95,7 +95,7 @@ abstract final class AppMesh {
     return _blends[key] = LinearGradient(
       begin: AlignmentDirectional(-1, tilt),
       end: AlignmentDirectional(1, -tilt * 0.7),
-      colors: [partner, base, Color.lerp(base, deep, 0.6)!, partner, deep],
+      colors: [Color.lerp(base, partner, 0.7)!, base, Color.lerp(base, deep, 0.5)!, Color.lerp(base, partner, 0.5)!, deep],
       stops: [0, middle, middle + 0.3, middle + 0.5, 1],
     );
   }
