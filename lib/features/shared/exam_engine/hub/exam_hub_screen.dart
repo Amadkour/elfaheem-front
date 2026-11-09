@@ -197,7 +197,7 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
       case HubAction.publish:
         await _publish(e);
       case HubAction.deliver:
-        await _flow(() => openExamDeliver(context, examId: e.id, title: e.displayTitle, courseId: e.courseId));
+        await _flow(() => openExamDeliver(context, examId: e.id, title: e.displayTitle, courseId: e.courseId, course: _data?.courseName(e) ?? ''));
       case HubAction.correct:
         await _correct(e);
       case HubAction.getResult:

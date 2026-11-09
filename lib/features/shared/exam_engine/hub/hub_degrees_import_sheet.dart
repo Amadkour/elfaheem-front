@@ -2,7 +2,8 @@
 // fill in, if the teacher wants it), then what the file holds: the server's guess at the two columns, how many rows
 // match, what will be left out and why, and the full mark. Nothing is saved until the last button.
 //
-// HubDegreesPickBody / HubDegreesPreviewBody take plain values (under the layout harness); the calls: `hub_degrees_import.dart`.
+// The ONE totals import: the hub's row and the Get Result screen both open it. HubDegreesPickBody / HubDegreesPreviewBody take
+// plain values (under the layout harness); the calls: `hub_degrees_import.dart`.
 library;
 
 import 'package:file_picker/file_picker.dart';
@@ -66,8 +67,15 @@ class _HubDegreesImportSheetState extends State<HubDegreesImportSheet> {
   Future<void> _pick() async {
     final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: kDegreesFileTypes);
     if (f == null || !mounted) return;
-    final bytes = await f.readAsBytes();
+    Uint8List? bytes;
+    try {
+      bytes = await f.readAsBytes();
+    } catch (_) {}
     if (!mounted) return;
+    if (bytes == null) {
+      setState(() => _error = t('تعذّرت قراءة الملف', 'The file could not be read'));
+      return;
+    }
     if (bytes.length > kDegreesMaxBytes) {
       setState(() => _error = t('الملف أكبر من 2 ميجابايت', 'The file is larger than 2 MB'));
       return;
@@ -330,13 +338,16 @@ class HubDegreesPreviewBody extends StatelessWidget {
         Expanded(child: _CountTile(value: p.invalid.length, label: t('غير صالح', 'Not valid'), color: c.danger)),
       ]),
       AppSpace.gapMd,
-      LayoutBuilder(builder: (context, box) {
-        if (box.maxWidth < 480) {
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [student, AppSpace.gapSm, degree]);
-        }
-        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: student), AppSpace.gapSm, Expanded(child: degree)]);
-      }),
-      AppSpace.gapSm,
+      // two columns, both recognised: nothing to choose
+      if (p.needsColumns || p.columns.length > 2) ...[
+        LayoutBuilder(builder: (context, box) {
+          if (box.maxWidth < 480) {
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [student, AppSpace.gapSm, degree]);
+          }
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: student), AppSpace.gapSm, Expanded(child: degree)]);
+        }),
+        AppSpace.gapSm,
+      ],
       AppField(
         controller: maxController,
         label: t('الدرجة العظمى', 'Full mark'),

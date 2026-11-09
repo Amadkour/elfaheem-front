@@ -33,6 +33,7 @@ import '../../exam_versions.dart';
 import '../../exam_versions_sheet.dart' show openExamVersions;
 import '../../paper/exam_setup.dart' show kExamOmrFeatureKey;
 import '../../paper/scan/omr_sheets_sheet.dart' show showOmrSheetsSheet;
+import '../create/exam_create_logic.dart' show versionsCountText;
 import 'deliver_build.dart';
 import 'deliver_logic.dart';
 import 'identifier_plan_step.dart' show openIdentifierPlanSheet;
@@ -46,8 +47,6 @@ const _docxMime = 'application/vnd.openxmlformats-officedocument.wordprocessingm
 /// [course]: the course's name for the paper's header, when the caller knows it.
 Future<void> openExamDeliver(BuildContext context, {required int examId, required String title, int? courseId, String course = ''}) =>
     Navigator.of(context).push(MaterialPageRoute(settings: const RouteSettings(name: '/exam-deliver'), builder: (_) => ExamDeliverScreen(examId: examId, title: title, courseId: courseId, course: course)));
-
-enum DeliverScope { students, versions, blank }
 
 class ExamDeliverScreen extends StatefulWidget {
   const ExamDeliverScreen({super.key, required this.examId, required this.title, this.courseId, this.course = ''});
@@ -74,6 +73,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
   bool _previewBusy = true;
 
   DeliverScope _scope = DeliverScope.students;
+  bool _scopeSettled = false;
   bool _word = false;
   int _blank = 30;
   bool _printing = false;
@@ -108,22 +108,31 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     });
     final s = load.source;
     if (s == null) return setState(() => _previewBusy = false);
-    if (!s.isPaper && _scope == DeliverScope.students) _scope = DeliverScope.versions;
     if (s.isPaper && s.hasCourse) {
       final roster = await loadPlanRoster(_id, _vApi);
       if (!mounted) return;
       setState(() {
         _roster = roster.items;
         _rosterError = roster.error;
+        _settleScope(s, rosterKnown: roster.error == null);
       });
-      if (roster.items.isEmpty && _scope == DeliverScope.students) _scope = DeliverScope.versions;
       final email = await _api.values(_id, 'email', null);
       if (mounted) setState(() => _email = email.ok ? IdCoverage.fromJson(email.map) : const IdCoverage(unreadable: true));
-    } else if (_scope == DeliverScope.students) {
-      _scope = DeliverScope.versions;
+    } else {
+      _settleScope(s, rosterKnown: true);
     }
     await _rebuildPreview();
     await _reloadDeliveries();
+  }
+
+  /// Opens once on what the wizard planned; after that the teacher's choice stands, through every reload.
+  void _settleScope(DeliverSource s, {required bool rosterKnown}) {
+    if (!_scopeSettled) {
+      _scope = deliverOpeningScope(s.plan, paper: s.isPaper && s.hasCourse, hasRoster: _roster.isNotEmpty);
+      _scopeSettled = rosterKnown;
+    } else if (_scope == DeliverScope.students && _roster.isEmpty) {
+      _scope = DeliverScope.versions;
+    }
   }
 
   Future<void> _rebuildPreview() async {
@@ -196,10 +205,10 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     if (mounted) await _reloadAll();
   }
 
-  Future<void> _versions() async {
+  Future<void> _versions({int? count}) async {
     final s = _s;
     if (s == null) return;
-    await openExamVersions(context, examId: _id, current: s.versions, api: _vApi, bubble: s.bubble);
+    await openExamVersions(context, examId: _id, current: s.versions, api: _vApi, bubble: s.bubble, initialCount: count);
     if (mounted) await _reloadAll();
   }
 
@@ -387,7 +396,17 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     final c = context.colors;
     final paper = s.isPaper;
     final showStudents = paper && _roster.isNotEmpty;
+    final owed = paper ? deliverVersionsOwed(s.plan, s.versions.items.length) : null;
     return [
+      if (owed != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
+          child: AppBanner(
+              key: const ValueKey('deliver.plan.versions'),
+              icon: Icons.shuffle_rounded,
+              text: t('خططت لهذا الاختبار ${versionsCountText(owed)}، ولم تُنشأ بعد.', 'You planned ${versionsCountText(owed)} for this exam. They are not made yet.'),
+              action: TextButton(onPressed: () => _versions(count: owed), child: Text(t('إنشاؤها', 'Make them')))),
+        ),
       if (s.versions.stale)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.sm),
@@ -441,7 +460,10 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
         title: t('اطبع', 'Print'),
         child: DeliverPrintCard(
           scope: _scope,
-          onScope: (v) => setState(() => _scope = v),
+          onScope: (v) => setState(() {
+            _scope = v;
+            _scopeSettled = true;
+          }),
           word: _word,
           onWord: (v) => setState(() => _word = v),
           studentCount: _roster.length,

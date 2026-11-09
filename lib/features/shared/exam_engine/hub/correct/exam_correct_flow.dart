@@ -1,6 +1,7 @@
 // Exam Hub, F4: "Correct this exam". One calm start: import one PDF with every paper, or scan with the camera; what was
-// corrected so far, and the way back into it. An exam without bubble sheets goes straight to the written flow, so
-// nobody lands on a dead end. A teacher's own sheet has no live camera (it looks for NextBrain's corner marks).
+// corrected so far, and the way back into it. An online exam goes straight to the marking screen and a paper exam without
+// bubble sheets to the written flow, so nobody lands on a dead end. A teacher's own sheet has no live camera (it looks for
+// NextBrain's corner marks).
 library;
 
 import 'dart:typed_data';
@@ -14,6 +15,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../../exam_features.dart' show kExamAutoCorrectKey;
+import '../../exam_review_screen.dart' show ExamReviewScreen;
 import '../../exam_scan_review.dart' show ExamScansScreen;
 import '../../paper/exam_setup.dart' show ExamSetup, ExamSetupApi, kExamOmrFeatureKey;
 import '../../paper/omr_counts.dart' show omrSheetsText;
@@ -27,10 +29,14 @@ import 'sheet_review_screen.dart';
 Future<void> openExamCorrection(BuildContext context, {required int examId, required String title, int? courseId}) => Navigator.of(context)
     .push<void>(MaterialPageRoute<void>(builder: (_) => ExamCorrectionScreen(examId: examId, title: title, courseId: courseId)));
 
-/// What the exam can do (pure, for the test). [written]: no bubble sheet, or scanning is switched off.
-enum CorrectionRoute { written, uploadOnly, cameraAndUpload }
+/// What the exam can do (pure, for the test). [onlineMarking]: taken in the app, so the answers are marked on screen.
+/// [written]: on paper with no bubble sheet, or scanning is switched off.
+enum CorrectionRoute { onlineMarking, written, uploadOnly, cameraAndUpload }
 
-CorrectionRoute correctionRouteOf({required bool isBubble, required bool ownSheet, required bool omrOff}) {
+/// [delivery] / [paperSections]: `GET /exams/{id}/setup`. An exam older than the setup route reads `online` whatever it was,
+/// so a paper section is what tells such a paper exam apart.
+CorrectionRoute correctionRouteOf({required String delivery, required int paperSections, required bool isBubble, required bool ownSheet, required bool omrOff}) {
+  if (delivery == 'online' && paperSections == 0) return CorrectionRoute.onlineMarking;
   if (!isBubble || omrOff) return CorrectionRoute.written;
   return ownSheet ? CorrectionRoute.uploadOnly : CorrectionRoute.cameraAndUpload;
 }
@@ -96,9 +102,14 @@ class _ExamCorrectionScreenState extends State<ExamCorrectionScreen> {
     if (!mounted) return;
     if (!s.ok) return setState(() => _error = omrErrorText(s));
     final setup = ExamSetup.fromJson(s.map);
-    if (correctionRouteOf(isBubble: setup.isBubble, ownSheet: setup.template?.ownSheet ?? false, omrOff: _omrOff) == CorrectionRoute.written) {
-      await Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => ExamScansScreen(examId: widget.examId, examTitle: widget.title)));
+    final route = correctionRouteOf(delivery: setup.delivery, paperSections: setup.paperSections, isBubble: setup.isBubble, ownSheet: setup.template?.ownSheet ?? false, omrOff: _omrOff);
+    if (route == CorrectionRoute.onlineMarking || route == CorrectionRoute.written) {
+      // pushed, then this page leaves: a replacement would finish the caller's `await` now and the hub would refresh too early
+      await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+          builder: (_) => route == CorrectionRoute.onlineMarking
+              ? ExamReviewScreen(examId: widget.examId, examTitle: widget.title)
+              : ExamScansScreen(examId: widget.examId, examTitle: widget.title)));
+      if (mounted) Navigator.of(context).pop();
       return;
     }
     setState(() {

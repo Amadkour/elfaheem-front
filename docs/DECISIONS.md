@@ -3643,3 +3643,11 @@ Every resolved bubble review item on an own sheet records, per bubble, its fill 
 
 Measured on the owner's real phone photos (bench/omr/teach_real.py, the empty sheet being the platform's own render since none was photographed): on the papers never used to set a threshold (`real_heldout`), 8 of 10 photos read, 351 of 400 questions right, 49 sent to review, 0 wrong auto-graded; the 2 others are asked for a retake.
 
+## D-356 — Exam Hub front: one wizard, one hub, printed identifiers, our own PDF replay · 2026-11-09 · accepted
+Exams were reached through several lists, a quick form and a separate paper setup, each ending somewhere different. The client now has ONE hub (`ExamHubScreen`: Creation, Results & Correction) and ONE new-exam wizard (`openExamCreateWizard`, one server draft however often the teacher goes Back); the older screens stay reachable from inside those flows, nothing was deleted. The hub only opens flows and re-reads its list on return. Where two parts had built the same thing the better one stayed: one Excel totals import (`openHubDegreesImport`), used by the hub and by Get Result.
+
+Correction decides from the exam itself, inside `correctionRouteOf`, so every caller agrees: an online exam goes to the marking screen, a paper exam to scans or bubble sheets. An exam older than the setup route reads `delivery: online` whatever it was, so an exam with paper sections counts as paper.
+
+The wizard records what it planned in `settings.paper_plan` and Deliver opens on it (personal copies or versions), switchable; versions are made on Finish, and a draft published from the list that never got there is offered them in Deliver. What is printed under a student's name is `settings.print_identifiers`, chosen per exam, and is separate from the identifier sheets are matched on (at most four; national id, phone and email cut to the last four digits).
+
+Deliver's preview replays the actual pages of the actual PDF with our own painter (`paper_page_replay.dart`) rather than the `printing` package, which adds two lock entries and loads pdf.js from a CDN at run time. Cost: one more renderer to keep in step with the paper builder, which a test covers.

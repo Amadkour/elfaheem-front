@@ -142,14 +142,23 @@ void main() {
   });
 
   group('what the exam can do', () {
-    test('a non-bubble exam, or scanning switched off, is the written flow', () {
-      expect(correctionRouteOf(isBubble: false, ownSheet: false, omrOff: false), CorrectionRoute.written);
-      expect(correctionRouteOf(isBubble: true, ownSheet: false, omrOff: true), CorrectionRoute.written);
+    test('a paper exam without bubbles, or with scanning switched off, is the written flow', () {
+      expect(correctionRouteOf(delivery: 'paper', paperSections: 1, isBubble: false, ownSheet: false, omrOff: false), CorrectionRoute.written);
+      expect(correctionRouteOf(delivery: 'paper', paperSections: 1, isBubble: true, ownSheet: false, omrOff: true), CorrectionRoute.written);
+    });
+
+    test('an online exam is marked on screen, never sent to the paper scans', () {
+      expect(correctionRouteOf(delivery: 'online', paperSections: 0, isBubble: false, ownSheet: false, omrOff: false), CorrectionRoute.onlineMarking);
+      expect(correctionRouteOf(delivery: 'online', paperSections: 0, isBubble: false, ownSheet: false, omrOff: true), CorrectionRoute.onlineMarking);
+    });
+
+    test('an older paper exam reads online but has paper sections: still the written flow', () {
+      expect(correctionRouteOf(delivery: 'online', paperSections: 2, isBubble: false, ownSheet: false, omrOff: false), CorrectionRoute.written);
     });
 
     test('an own sheet has no live camera', () {
-      expect(correctionRouteOf(isBubble: true, ownSheet: true, omrOff: false), CorrectionRoute.uploadOnly);
-      expect(correctionRouteOf(isBubble: true, ownSheet: false, omrOff: false), CorrectionRoute.cameraAndUpload);
+      expect(correctionRouteOf(delivery: 'paper', paperSections: 1, isBubble: true, ownSheet: true, omrOff: false), CorrectionRoute.uploadOnly);
+      expect(correctionRouteOf(delivery: 'paper', paperSections: 1, isBubble: true, ownSheet: false, omrOff: false), CorrectionRoute.cameraAndUpload);
     });
 
     test('totals add up over batches', () {

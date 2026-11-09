@@ -326,8 +326,6 @@ void main() {
         unmatched: [for (var i = 0; i < 8; i++) 'Student number $i'],
       );
       await expectNoLayoutErrors(tester, () => ListView(padding: const EdgeInsets.all(16), children: [ResultLabDiff(preview: p)]));
-      const d = DegreePreviewData(rows: 9, matched: 6, matchColumn: 'id', degreeColumn: 'mark', unmatched: [DegreeProblem(4, 'x')], invalid: [DegreeProblem(5, 'y', 'above_max')]);
-      await expectNoLayoutErrors(tester, () => ListView(padding: const EdgeInsets.all(16), children: const [ResultDegreeSummary(preview: d)]));
     });
 
     testWidgets('the published state keeps its status and export card', (tester) async {

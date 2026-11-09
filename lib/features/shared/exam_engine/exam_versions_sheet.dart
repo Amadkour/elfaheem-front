@@ -11,8 +11,9 @@ import 'exam_versions.dart';
 import 'paper/exam_setup.dart' show versionsBubbleText;
 
 /// Opens the sheet; the versions after it (null when closed without generating).
-Future<ExamVersions?> openExamVersions(BuildContext context, {required int examId, ExamVersions? current, ExamVersionsApi? api, bool bubble = false}) =>
-    showAppSheet<ExamVersions>(context, (_) => ExamVersionsSheet(examId: examId, current: current, api: api, bubble: bubble));
+/// [initialCount]: the number to start from when none are made yet (what the exam's plan asked for).
+Future<ExamVersions?> openExamVersions(BuildContext context, {required int examId, ExamVersions? current, ExamVersionsApi? api, bool bubble = false, int? initialCount}) =>
+    showAppSheet<ExamVersions>(context, (_) => ExamVersionsSheet(examId: examId, current: current, api: api, bubble: bubble, initialCount: initialCount));
 
 class VersionsForm extends StatelessWidget {
   const VersionsForm({
@@ -88,11 +89,12 @@ class VersionsForm extends StatelessWidget {
 }
 
 class ExamVersionsSheet extends StatefulWidget {
-  const ExamVersionsSheet({super.key, required this.examId, this.current, this.api, this.bubble = false});
+  const ExamVersionsSheet({super.key, required this.examId, this.current, this.api, this.bubble = false, this.initialCount});
   final bool bubble;
   final int examId;
   final ExamVersions? current;
   final ExamVersionsApi? api;
+  final int? initialCount;
 
   @override
   State<ExamVersionsSheet> createState() => _ExamVersionsSheetState();
@@ -100,7 +102,7 @@ class ExamVersionsSheet extends StatefulWidget {
 
 class _ExamVersionsSheetState extends State<ExamVersionsSheet> {
   late final ExamVersionsApi _api = widget.api ?? ExamVersionsApi();
-  late int _count = (widget.current?.items.length ?? 2).clamp(1, kMaxVersions);
+  late int _count = (widget.initialCount ?? widget.current?.items.length ?? 2).clamp(1, kMaxVersions);
   late bool _q = !widget.bubble && (widget.current?.shuffleQuestions ?? true), _o = widget.current?.shuffleOptions ?? true;
   late int _copies = widget.current?.items.isNotEmpty == true ? (widget.current!.items.first.copies ?? 1) : 1;
   List<ExamVersion> _made = const [];

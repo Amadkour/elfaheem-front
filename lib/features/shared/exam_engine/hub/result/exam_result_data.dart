@@ -6,8 +6,6 @@
 // settled attempt when it is graded, else the imported total. So the numbers on the screen are the numbers that get written.
 library;
 
-import 'dart:typed_data';
-
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/plural.dart';
@@ -480,56 +478,6 @@ String? labDefaultColumn(List<LabColumnChoice> columns, {String? lastWritten, St
 
 // ── totals from Excel ───────────────────────────────────────────────────────────────────────────────────────────────
 
-class DegreeProblem {
-  const DegreeProblem(this.row, this.value, [this.reason = '']);
-  final int row;
-  final String value, reason;
-}
-
-class DegreePreviewData {
-  const DegreePreviewData({
-    this.columns = const [],
-    this.matchColumn,
-    this.degreeColumn,
-    this.maxScore,
-    this.rows = 0,
-    this.matched = 0,
-    this.unmatched = const [],
-    this.invalid = const [],
-    this.importKey,
-  });
-
-  final List<String> columns;
-  final String? matchColumn, degreeColumn, importKey;
-  final double? maxScore;
-  final int rows, matched;
-  final List<DegreeProblem> unmatched, invalid;
-
-  /// The columns could not be told apart: the teacher names them.
-  bool get needsColumns => matchColumn == null || degreeColumn == null;
-
-  factory DegreePreviewData.fromJson(Map<String, dynamic> j) => DegreePreviewData(
-        columns: [for (final c in (j['columns'] as List? ?? const [])) '$c'],
-        matchColumn: j['match_column']?.toString(),
-        degreeColumn: j['degree_column']?.toString(),
-        maxScore: j['max_score'] == null ? null : asDouble(j['max_score']),
-        rows: asInt(j['rows']),
-        matched: asInt(j['matched']),
-        unmatched: [for (final x in asMapList(j['unmatched'])) DegreeProblem(asInt(x['row']), '${x['value'] ?? ''}')],
-        invalid: [for (final x in asMapList(j['invalid'])) DegreeProblem(asInt(x['row']), '${x['value'] ?? ''}', '${x['reason'] ?? ''}')],
-        importKey: j['import_key']?.toString(),
-      );
-}
-
-String degreeReasonText(String reason) => switch (reason) {
-      'empty' => t('الدرجة فارغة', 'The degree is empty'),
-      'not_a_number' => t('ليست رقمًا', 'Not a number'),
-      'negative' => t('درجة سالبة', 'A negative degree'),
-      'duplicate_student' => t('الطالب مكرر في الملف', 'The student appears twice'),
-      'above_max' => t('أعلى من الدرجة العظمى', 'Above the full mark'),
-      _ => reason,
-    };
-
 // ── server errors in plain words ────────────────────────────────────────────────────────────────────────────────────
 
 String resultErrorText(EngineResult r) {
@@ -542,8 +490,6 @@ String resultErrorText(EngineResult r) {
     'column_label_required' => t('اكتب اسم العمود', 'Enter the column\'s name'),
     'rounding_step_invalid' => t('خطوة التقريب غير صالحة', 'The rounding step is not valid'),
     'feature_disabled' => t('هذه الميزة غير مفعّلة حاليًا', 'This feature is switched off right now'),
-    'import_expired' => t('انتهت صلاحية المعاينة. ارفع الملف مرة أخرى', 'This preview has expired. Upload the file again'),
-    'max_score_invalid' => t('الدرجة العظمى غير صالحة', 'The full mark is not valid'),
     _ => '',
   };
   if (mapped.isNotEmpty) return mapped;
@@ -630,14 +576,4 @@ class ResultsHubApi {
 
   Future<EngineResult> labPreview(int id, Map<String, dynamic> body) => engineCall(() => _api.post('$base/exams/$id/results/data-lab/preview', body: body));
   Future<EngineResult> labApply(int id, Map<String, dynamic> body) => engineCall(() => _api.post('$base/exams/$id/results/data-lab/apply', body: body));
-
-  Future<Uint8List> degreesTemplate(int id) => _api.getBytes('$base/exams/$id/degrees/template');
-  Future<EngineResult> degreesPreview(int id, {required String fileName, required Uint8List bytes, String? matchColumn, String? degreeColumn}) => engineCall(() => _api.postMultipart(
-      '$base/exams/$id/degrees/preview',
-      fields: {'match_column': ?matchColumn, 'degree_column': ?degreeColumn},
-      fileField: 'file',
-      fileName: fileName,
-      fileBytes: bytes));
-  Future<EngineResult> degreesCommit(int id, String importKey, double maxScore) =>
-      engineCall(() => _api.post('$base/exams/$id/degrees/commit', body: {'import_key': importKey, 'max_score': maxScore}));
 }

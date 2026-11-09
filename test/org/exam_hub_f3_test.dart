@@ -243,6 +243,30 @@ void main() {
       expect(uploadBatches(const []), isEmpty);
     });
 
+    test('the plan the wizard saved decides what Deliver opens on, once read from settings', () {
+      expect(DeliverPlan.ofSettings({'other': 1}), isNull);
+      expect(DeliverPlan.ofSettings(null), isNull);
+      final personal = DeliverPlan.ofSettings({'paper_plan': {'mode': 'personal', 'versions': 1}})!;
+      final three = DeliverPlan.ofSettings({'paper_plan': {'mode': 'versions', 'versions': 3}})!;
+      expect(personal.personal, isTrue);
+      expect(three.versions, 3);
+      expect(deliverOpeningScope(personal, paper: true, hasRoster: true), DeliverScope.students);
+      expect(deliverOpeningScope(three, paper: true, hasRoster: true), DeliverScope.versions);
+      expect(deliverOpeningScope(null, paper: true, hasRoster: true), DeliverScope.students);
+      expect(deliverOpeningScope(personal, paper: true, hasRoster: false), DeliverScope.versions);
+      expect(deliverOpeningScope(personal, paper: false, hasRoster: true), DeliverScope.versions);
+    });
+
+    test('planned versions nobody made are offered; a number the teacher made is left alone', () {
+      const three = DeliverPlan(personal: false, versions: 3);
+      expect(deliverVersionsOwed(three, 0), 3);
+      expect(deliverVersionsOwed(three, 1), 3);
+      expect(deliverVersionsOwed(three, 2), isNull);
+      expect(deliverVersionsOwed(const DeliverPlan(personal: true), 0), isNull);
+      expect(deliverVersionsOwed(const DeliverPlan(personal: false), 0), isNull);
+      expect(deliverVersionsOwed(null, 0), isNull);
+    });
+
     test('delivery rows', () {
       final d = ExamDelivery.fromJson({'id': 'x', 'mode': 'students', 'recipients': 3, 'sent': 2, 'failed': 0, 'no_email': [{'student_id': 9, 'name': 'Z'}], 'status': 'partial', 'created_by_name': 'T'});
       expect(d.running, isFalse);

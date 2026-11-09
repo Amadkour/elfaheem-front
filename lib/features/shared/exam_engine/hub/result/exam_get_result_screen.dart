@@ -30,6 +30,7 @@ import '../../exam_review_screen.dart' show ExamReviewScreen;
 import '../../paper/review/omr_results_parts.dart' show OmrQuestionStatsView;
 import '../../paper/review/omr_review_page.dart' show OmrReviewPage, omrScanWatch;
 import '../correct/exam_correct_flow.dart' show openExamCorrection;
+import '../hub_degrees_import_sheet.dart' show openHubDegreesImport;
 import 'exam_result_data.dart';
 import 'exam_result_sheets.dart';
 import 'exam_result_widgets.dart';
@@ -186,7 +187,7 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
   }
 
   Future<void> _import() async {
-    if (await showResultImportSheet(context, examId: widget.examId, title: widget.title, api: _api) && mounted) {
+    if (await openHubDegreesImport(context, examId: widget.examId, title: widget.title) && mounted) {
       await _load(silent: true);
     }
   }

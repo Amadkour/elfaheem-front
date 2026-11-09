@@ -36,7 +36,7 @@ String get sampleStudentName => t('اسم الطالب', 'Student name');
 /// Everything delivery needs about one exam.
 class DeliverSource {
   DeliverSource({required this.view, required this.base, required this.tpl, required this.versions, required this.regular, required this.bold,
-      required this.delivery, required this.bubble, required this.printed, this.design, this.cover, this.designVersion = 0, this.identifier, this.orgId, this.hasCourse = false});
+      required this.delivery, required this.bubble, required this.printed, this.design, this.cover, this.designVersion = 0, this.identifier, this.orgId, this.hasCourse = false, this.plan});
   final ExamView view;
 
   /// The exam's paper with the design and every picture applied, in the exam's own order.
@@ -47,6 +47,9 @@ class DeliverSource {
 
   /// online | paper.
   final String delivery;
+
+  /// What the wizard planned (`settings.paper_plan`); null on an exam made any other way.
+  final DeliverPlan? plan;
 
   /// The exam uses bubble answer sheets.
   final bool bubble;
@@ -131,6 +134,7 @@ Future<DeliverLoad> loadDeliverSource(int examId, {required String accentFallbac
     regular: fonts[0],
     bold: fonts[1],
     delivery: setup?.delivery ?? 'online',
+    plan: DeliverPlan.ofSettings(r.map['settings']),
     bubble: setup?.isBubble ?? false,
     printed: results[1].ok ? printedIdsOfSetup(results[1].map) : const [],
     design: pd?.document,

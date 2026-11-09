@@ -297,7 +297,8 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       _published = true;
     });
     if (_plan.isPaper) {
-      await openExamDeliver(context, examId: _sync.examId!, title: _plan.exam.title.trim(), courseId: _plan.exam.courseId);
+      final course = _plan.exam.courseId == null ? '' : (_plan.place?.name ?? '');   // a place without a course is named for the organization
+      await openExamDeliver(context, examId: _sync.examId!, title: _plan.exam.title.trim(), courseId: _plan.exam.courseId, course: course);
       if (mounted) Navigator.of(context).pop();
     }
   }

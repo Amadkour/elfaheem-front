@@ -18,6 +18,34 @@ import '../../paper/exam_setup.dart';
 /// Kill switch of the email part of delivery.
 const kDeliverEmailFeatureKey = 'exam.deliver_email';
 
+/// What one press of Print makes.
+enum DeliverScope { students, versions, blank }
+
+/// What the wizard planned to print (`settings.paper_plan`); null on an exam made any other way.
+class DeliverPlan {
+  const DeliverPlan({required this.personal, this.versions = 1});
+  final bool personal;
+  final int versions;
+
+  static DeliverPlan? ofSettings(Object? settings) {
+    final p = settings is Map ? settings['paper_plan'] : null;
+    if (p is! Map) return null;
+    final mode = '${p['mode'] ?? ''}';
+    if (mode != 'personal' && mode != 'versions') return null;
+    return DeliverPlan(personal: mode == 'personal', versions: asInt(p['versions'], 1));
+  }
+}
+
+/// The choice Deliver opens on. Personal copies need a paper exam with students; with no plan they are still the default.
+DeliverScope deliverOpeningScope(DeliverPlan? plan, {required bool paper, required bool hasRoster}) {
+  if (!paper || !hasRoster) return DeliverScope.versions;
+  return plan == null || plan.personal ? DeliverScope.students : DeliverScope.versions;
+}
+
+/// The versions the plan asked for and nobody has made (the wizard makes them on Finish; a saved draft published from the
+/// list never got there). Null when there is nothing to offer, which includes a teacher who has made their own number.
+int? deliverVersionsOwed(DeliverPlan? plan, int made) => plan != null && !plan.personal && plan.versions > 1 && made < 2 ? plan.versions : null;
+
 /// One identifier printed on each copy.
 class PrintedIdSpec {
   const PrintedIdSpec({required this.source, this.key, required this.labelAr, required this.labelEn});
